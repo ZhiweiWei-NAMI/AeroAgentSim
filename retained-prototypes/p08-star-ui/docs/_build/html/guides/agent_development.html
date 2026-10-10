@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Agent Development Guide &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Component Development Guide" href="component_development.html" />
+    <link rel="prev" title="Architecture Guide" href="architecture.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="component_development.html" title="Component Development Guide"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="architecture.html" title="Architecture Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Agent Development Guide</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="agent-development-guide">
+<h1>Agent Development Guide<a class="headerlink" href="#agent-development-guide" title="Permalink to this heading">¶</a></h1>
+<p>This guide covers how to create custom agent types in AeroAgentSim.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">¶</a></h2>
+<p>Agents are autonomous entities that make decisions and perform actions in the simulation. They are the primary actors in AeroAgentSim and represent entities like drones, ground stations, or other autonomous systems.</p>
+</section>
+<section id="key-concepts">
+<h2>Key Concepts<a class="headerlink" href="#key-concepts" title="Permalink to this heading">¶</a></h2>
+<section id="agent-architecture">
+<h3>Agent Architecture<a class="headerlink" href="#agent-architecture" title="Permalink to this heading">¶</a></h3>
+<p>Every agent in AeroAgentSim consists of:</p>
+<ul class="simple">
+<li><p><strong>State Management</strong>: Internal state variables with type validation</p></li>
+<li><p><strong>Decision Logic</strong>: SimPy process defining behavior and decision-making</p></li>
+<li><p><strong>Component Ownership</strong>: Components that provide capabilities</p></li>
+<li><p><strong>Event Handling</strong>: Subscription and triggering of simulation events</p></li>
+</ul>
+</section>
+<section id="base-agent-class">
+<h3>Base Agent Class<a class="headerlink" href="#base-agent-class" title="Permalink to this heading">¶</a></h3>
+<p>All agents inherit from the base <code class="docutils literal notranslate"><span class="pre">Agent</span></code> class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.agent</span> <span class="kn">import</span> <span class="n">Agent</span>
+
+<span class="k">class</span> <span class="nc">CustomAgent</span><span class="p">(</span><span class="n">Agent</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom agent implementation.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Define the states this agent produces</span>
+    <span class="n">PRODUCED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;custom_state&#39;</span><span class="p">,</span> <span class="s1">&#39;agent_status&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+        <span class="c1"># Custom initialization</span>
+
+    <span class="k">def</span> <span class="nf">_setup_state_templates</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Define state templates for this agent.&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_setup_state_templates</span><span class="p">()</span>
+        <span class="c1"># Add custom state templates</span>
+
+    <span class="k">def</span> <span class="nf">_decision_logic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Main decision-making process.&quot;&quot;&quot;</span>
+        <span class="c1"># Implement agent behavior</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="creating-a-custom-agent">
+<h2>Creating a Custom Agent<a class="headerlink" href="#creating-a-custom-agent" title="Permalink to this heading">¶</a></h2>
+<section id="step-1-define-agent-class">
+<h3>Step 1: Define Agent Class<a class="headerlink" href="#step-1-define-agent-class" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.agent</span> <span class="kn">import</span> <span class="n">Agent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">AgentStatus</span>
+
+<span class="k">class</span> <span class="nc">WeatherMonitorAgent</span><span class="p">(</span><span class="n">Agent</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Agent that monitors weather conditions.&quot;&quot;&quot;</span>
+
+    <span class="n">PRODUCED_STATES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;weather_data&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;monitoring_status&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;alert_level&#39;</span>
+    <span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitoring_interval</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;monitoring_interval&#39;</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alert_threshold</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;alert_threshold&#39;</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="step-2-setup-state-templates">
+<h3>Step 2: Setup State Templates<a class="headerlink" href="#step-2-setup-state-templates" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_setup_state_templates</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Define state templates for weather monitoring.&quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_setup_state_templates</span><span class="p">()</span>
+
+    <span class="c1"># Weather data state</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">register_state_template</span><span class="p">(</span>
+        <span class="s1">&#39;weather_data&#39;</span><span class="p">,</span>
+        <span class="n">value_type</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;temperature&#39;</span><span class="p">:</span> <span class="mf">20.0</span><span class="p">,</span> <span class="s1">&#39;humidity&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Monitoring status</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">register_state_template</span><span class="p">(</span>
+        <span class="s1">&#39;monitoring_status&#39;</span><span class="p">,</span>
+        <span class="n">value_type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="s1">&#39;idle&#39;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Alert level</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">register_state_template</span><span class="p">(</span>
+        <span class="s1">&#39;alert_level&#39;</span><span class="p">,</span>
+        <span class="n">value_type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="mf">0.0</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="step-3-implement-decision-logic">
+<h3>Step 3: Implement Decision Logic<a class="headerlink" href="#step-3-implement-decision-logic" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_decision_logic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Main decision-making process for weather monitoring.&quot;&quot;&quot;</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Check current weather conditions</span>
+            <span class="n">weather_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;weather_data&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Calculate alert level based on conditions</span>
+            <span class="n">alert_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_alert_level</span><span class="p">(</span><span class="n">weather_data</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;alert_level&#39;</span><span class="p">,</span> <span class="n">alert_level</span><span class="p">)</span>
+
+            <span class="c1"># Update monitoring status</span>
+            <span class="k">if</span> <span class="n">alert_level</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">alert_threshold</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;monitoring_status&#39;</span><span class="p">,</span> <span class="s1">&#39;alert&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;weather_alert&#39;</span><span class="p">,</span> <span class="p">{</span>
+                    <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;alert_level&#39;</span><span class="p">:</span> <span class="n">alert_level</span><span class="p">,</span>
+                    <span class="s1">&#39;weather_data&#39;</span><span class="p">:</span> <span class="n">weather_data</span>
+                <span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;monitoring_status&#39;</span><span class="p">,</span> <span class="s1">&#39;normal&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Wait for next monitoring cycle</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">monitoring_interval</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in decision logic: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="n">AgentStatus</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+            <span class="k">break</span>
+</pre></div>
+</div>
+</section>
+<section id="step-4-add-helper-methods">
+<h3>Step 4: Add Helper Methods<a class="headerlink" href="#step-4-add-helper-methods" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_calculate_alert_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weather_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate alert level based on weather conditions.&quot;&quot;&quot;</span>
+    <span class="n">temperature</span> <span class="o">=</span> <span class="n">weather_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;temperature&#39;</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)</span>
+    <span class="n">humidity</span> <span class="o">=</span> <span class="n">weather_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;humidity&#39;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">wind_speed</span> <span class="o">=</span> <span class="n">weather_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="c1"># Simple alert calculation (customize as needed)</span>
+    <span class="n">temp_factor</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">temperature</span> <span class="o">-</span> <span class="mi">20</span><span class="p">)</span> <span class="o">/</span> <span class="mi">40</span>  <span class="c1"># Normalize temperature</span>
+    <span class="n">humidity_factor</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">humidity</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">/</span> <span class="mf">0.5</span>  <span class="c1"># Normalize humidity</span>
+    <span class="n">wind_factor</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">wind_speed</span> <span class="o">/</span> <span class="mi">20</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># Normalize wind speed</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">temp_factor</span> <span class="o">+</span> <span class="n">humidity_factor</span> <span class="o">+</span> <span class="n">wind_factor</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="agent-integration">
+<h2>Agent Integration<a class="headerlink" href="#agent-integration" title="Permalink to this heading">¶</a></h2>
+<section id="using-your-custom-agent">
+<h3>Using Your Custom Agent<a class="headerlink" href="#using-your-custom-agent" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">your_module</span> <span class="kn">import</span> <span class="n">WeatherMonitorAgent</span>
+
+<span class="c1"># Create environment</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="c1"># Create weather monitor agent</span>
+<span class="n">monitor</span> <span class="o">=</span> <span class="n">WeatherMonitorAgent</span><span class="p">(</span>
+    <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+    <span class="n">agent_name</span><span class="o">=</span><span class="s2">&quot;weather_station_1&quot;</span><span class="p">,</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;monitoring_interval&#39;</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span>  <span class="c1"># Monitor every 30 seconds</span>
+        <span class="s1">&#39;alert_threshold&#39;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span>     <span class="c1"># Alert when level &gt; 0.7</span>
+        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>  <span class="c1"># Station position</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Register agent with environment</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">monitor</span><span class="p">)</span>
+
+<span class="c1"># Run simulation</span>
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="adding-components">
+<h3>Adding Components<a class="headerlink" href="#adding-components" title="Permalink to this heading">¶</a></h3>
+<p>Agents gain capabilities through components:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.component.communication</span> <span class="kn">import</span> <span class="n">CommunicationComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.sensing</span> <span class="kn">import</span> <span class="n">SensorComponent</span>
+
+<span class="c1"># Add communication capability</span>
+<span class="n">monitor</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">CommunicationComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">monitor</span><span class="p">))</span>
+
+<span class="c1"># Add sensing capability</span>
+<span class="n">monitor</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">SensorComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">monitor</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Permalink to this heading">¶</a></h2>
+<section id="state-management">
+<h3>State Management<a class="headerlink" href="#state-management" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Define clear state templates</strong> with appropriate types and defaults</p></li>
+<li><p><strong>Use meaningful state names</strong> that describe the agent’s condition</p></li>
+<li><p><strong>Update states consistently</strong> to trigger appropriate events</p></li>
+<li><p><strong>Validate state changes</strong> to prevent invalid transitions</p></li>
+</ol>
+</section>
+<section id="error-handling">
+<h3>Error Handling<a class="headerlink" href="#error-handling" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Wrap decision logic in try-catch</strong> blocks</p></li>
+<li><p><strong>Log errors appropriately</strong> for debugging</p></li>
+<li><p><strong>Set error status</strong> when critical failures occur</p></li>
+<li><p><strong>Implement recovery mechanisms</strong> where possible</p></li>
+</ol>
+</section>
+<section id="performance">
+<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Use appropriate timeout intervals</strong> to balance responsiveness and performance</p></li>
+<li><p><strong>Avoid blocking operations</strong> in decision logic</p></li>
+<li><p><strong>Clean up resources</strong> properly when agents are destroyed</p></li>
+<li><p><strong>Monitor memory usage</strong> for long-running simulations</p></li>
+</ol>
+</section>
+<section id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Test state transitions</strong> thoroughly</p></li>
+<li><p><strong>Verify event triggering</strong> works correctly</p></li>
+<li><p><strong>Test error conditions</strong> and recovery</p></li>
+<li><p><strong>Benchmark performance</strong> with realistic workloads</p></li>
+</ol>
+</section>
+</section>
+<section id="advanced-topics">
+<h2>Advanced Topics<a class="headerlink" href="#advanced-topics" title="Permalink to this heading">¶</a></h2>
+<section id="multi-agent-coordination">
+<h3>Multi-Agent Coordination<a class="headerlink" href="#multi-agent-coordination" title="Permalink to this heading">¶</a></h3>
+<p>Agents can coordinate through:</p>
+<ul class="simple">
+<li><p><strong>Event communication</strong>: Publishing and subscribing to events</p></li>
+<li><p><strong>Shared resources</strong>: Accessing common simulation resources</p></li>
+<li><p><strong>Contract systems</strong>: Formal agreements between agents</p></li>
+<li><p><strong>Workflow coordination</strong>: Participating in multi-agent workflows</p></li>
+</ul>
+<p>For more advanced topics, see:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="component_development.html"><span class="doc">Component Development Guide</span></a> - Creating custom components</p></li>
+<li><p><a class="reference internal" href="workflow_development.html"><span class="doc">Workflow Development Guide</span></a> - Designing agent workflows</p></li>
+<li><p><a class="reference internal" href="../api/agent.html"><span class="doc">Agent Classes</span></a> - Complete agent API reference</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Agent Development Guide</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#key-concepts">Key Concepts</a><ul>
+<li><a class="reference internal" href="#agent-architecture">Agent Architecture</a></li>
+<li><a class="reference internal" href="#base-agent-class">Base Agent Class</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#creating-a-custom-agent">Creating a Custom Agent</a><ul>
+<li><a class="reference internal" href="#step-1-define-agent-class">Step 1: Define Agent Class</a></li>
+<li><a class="reference internal" href="#step-2-setup-state-templates">Step 2: Setup State Templates</a></li>
+<li><a class="reference internal" href="#step-3-implement-decision-logic">Step 3: Implement Decision Logic</a></li>
+<li><a class="reference internal" href="#step-4-add-helper-methods">Step 4: Add Helper Methods</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#agent-integration">Agent Integration</a><ul>
+<li><a class="reference internal" href="#using-your-custom-agent">Using Your Custom Agent</a></li>
+<li><a class="reference internal" href="#adding-components">Adding Components</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#best-practices">Best Practices</a><ul>
+<li><a class="reference internal" href="#state-management">State Management</a></li>
+<li><a class="reference internal" href="#error-handling">Error Handling</a></li>
+<li><a class="reference internal" href="#performance">Performance</a></li>
+<li><a class="reference internal" href="#testing">Testing</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#advanced-topics">Advanced Topics</a><ul>
+<li><a class="reference internal" href="#multi-agent-coordination">Multi-Agent Coordination</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="architecture.html"
+                          title="previous chapter">Architecture Guide</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="component_development.html"
+                          title="next chapter">Component Development Guide</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guides/agent_development.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="component_development.html" title="Component Development Guide"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="architecture.html" title="Architecture Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Agent Development Guide</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

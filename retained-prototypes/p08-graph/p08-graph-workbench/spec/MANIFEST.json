@@ -1,0 +1,128 @@
+{
+  "schema_version": "p08.spec-manifest/v1",
+  "contract_version": "1.0.0",
+  "files": [
+    {
+      "path": "spec/CONTRACT.md",
+      "sha256": "8427012def4a7e34028c0c38bd5677da4fe0a3319386c2254af81af381f240fe",
+      "bytes": 4423
+    },
+    {
+      "path": "spec/CONTRACT_DRAFT.md",
+      "sha256": "d83141f7db3455f008f1b24c2abc62b38850ddfe09b4e3d7f98b474b7d573705",
+      "bytes": 4318
+    },
+    {
+      "path": "spec/README.md",
+      "sha256": "a4f17cb17d48eb672976004b1f8d09132ee23256f7a77c2616613e746690591e",
+      "bytes": 6048
+    },
+    {
+      "path": "spec/SEMANTIC_DECISIONS.md",
+      "sha256": "2a1fdcec33d49342ee61402effb3d00e6c87ff1be322a139eeb95e44bbb3308f",
+      "bytes": 49479
+    },
+    {
+      "path": "spec/ambiguity-ledger.json",
+      "sha256": "28608b92c656b16cf8dd29da91d235180085e5899f8368ecd4e1c44bfdff3e62",
+      "bytes": 7322
+    },
+    {
+      "path": "spec/ast-preservation.schema.json",
+      "sha256": "7a4d2e2d1361a81e68385575240cbe406254b58565eacf734c56a6add7c82215",
+      "bytes": 1293
+    },
+    {
+      "path": "spec/build_all.py",
+      "sha256": "c0d781b31d2c8ba5d54ef228d4b4ac3a9bf8984588787e664cfc5ff2d967cbe1",
+      "bytes": 323
+    },
+    {
+      "path": "spec/build_contract.py",
+      "sha256": "b2c46bd28e2f05aa593c626fe9d4c7560e7cd1e4719fb63df4dae6e03632ac79",
+      "bytes": 38599
+    },
+    {
+      "path": "spec/build_semantic_facets.py",
+      "sha256": "86d8a0cca35270fe56f0c76eae99eeaf6d069e2da7b000bf27aa8d4c873b422c",
+      "bytes": 10065
+    },
+    {
+      "path": "spec/canonical-identity-policy.json",
+      "sha256": "2ef2755377b1c33c72553451ddfff6a5bf90187b1392023172d2361b1461764f",
+      "bytes": 3075
+    },
+    {
+      "path": "spec/contract.py",
+      "sha256": "34842b46c9fd65f222dfa9dffd057901141b41e1492fc5288ec5fa4f0cf411d4",
+      "bytes": 14558
+    },
+    {
+      "path": "spec/migration-mappings.json",
+      "sha256": "bdecd39b3d58203fe47fd739a5f223204f7d18a5c4c85b177d19f511e34f8d9b",
+      "bytes": 132373
+    },
+    {
+      "path": "spec/node-type-registry.json",
+      "sha256": "f131a87e99e2ea6b5e70c05d46c6596202f6a0d11e316866d2020adeec4d6415",
+      "bytes": 78393
+    },
+    {
+      "path": "spec/p08-graph.schema.json",
+      "sha256": "8be40b6594a5fe3c938dc9747bbbf1c34c6509fe9b774d80851821aaec7f6008",
+      "bytes": 52085
+    },
+    {
+      "path": "spec/regression-summary.json",
+      "sha256": "ad7352788cb7a96491ad4cd64d7f3a041ab3eef458dc04794442b4acbef3d8df",
+      "bytes": 1748
+    },
+    {
+      "path": "spec/relation-registry.json",
+      "sha256": "1b1c820d2b880bc0112ae8db96bd7ca9c5cd2a1c36a25aa835f2b77dc6415ad4",
+      "bytes": 308251
+    },
+    {
+      "path": "spec/semantic-facets.schema.json",
+      "sha256": "fe8adf300c9d02f16349806944c06e9d9b6343951e0f62c28173f0f22db1c98b",
+      "bytes": 455581
+    },
+    {
+      "path": "spec/source-manifest.json",
+      "sha256": "cf1ff9a132474e8eb94be6be63ef999acd88f8cf7038d4845d6025c24bcd740b",
+      "bytes": 3641
+    },
+    {
+      "path": "spec/test_contract.py",
+      "sha256": "fdd74101d966d15e9842bdf632388ecd8e270f029e6ce9d29ad1976fd6ad3dee",
+      "bytes": 5003
+    },
+    {
+      "path": "spec/validate_contract.py",
+      "sha256": "5f228efec1372ea12cefd8660fed88db8df1ca466ef6991f32eb442646393067",
+      "bytes": 8167
+    },
+    {
+      "path": "spec/validation-report.json",
+      "sha256": "0a76c728871f0b8c149edcc4d3ab776f57db58d43ff49e49af7f2956853b1835",
+      "bytes": 8726
+    },
+    {
+      "path": "spec/write_decisions.py",
+      "sha256": "3aa1fc92f8fd2fc3d6a399ad05b45e3f0f04c54cb8749ff2000aa9fbd07f2dae",
+      "bytes": 6917
+    }
+  ],
+  "validated_graph_sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de",
+  "validation_summary": {
+    "nodes": 20201,
+    "edges": 64978,
+    "errors": 0,
+    "warnings": 0,
+    "readiness_gap_records": 2028,
+    "ast_ordered_slots": 878,
+    "ast_missing_slot_edges": 0
+  },
+  "local_regressions_passed": true,
+  "scope": "Private authoring and lossless semantic migration contract; native evaluator and real backend unverified."
+}

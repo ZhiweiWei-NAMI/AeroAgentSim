@@ -1,0 +1,11 @@
+{
+  "graph_sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de",
+  "schema_sha256": "8be40b6594a5fe3c938dc9747bbbf1c34c6509fe9b774d80851821aaec7f6008",
+  "schema": "spec/p08-graph.schema.json",
+  "nodes": 20201,
+  "edges": 64978,
+  "error_count": 0,
+  "errors_by_validator": {},
+  "examples": [],
+  "elapsed_seconds": 59.384
+}

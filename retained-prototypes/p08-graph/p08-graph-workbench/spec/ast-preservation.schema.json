@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aeroagentsim:p08:ast-preservation:v1",
+  "title": "Lossless source AST envelope, not a native grammar",
+  "type": "object",
+  "required": [
+    "source_pointer",
+    "root_role",
+    "native_source_ast",
+    "native_compatibility"
+  ],
+  "properties": {
+    "source_pointer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "root_role": {
+      "enum": [
+        "main",
+        "applicability",
+        "source_expression"
+      ]
+    },
+    "native_source_ast": {
+      "$ref": "#/$defs/json_value"
+    },
+    "native_compatibility": {
+      "enum": [
+        "unverified",
+        "unsupported",
+        "verified_at_pinned_revision"
+      ]
+    },
+    "diagnostics": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "json_value": {
+      "anyOf": [
+        {
+          "type": [
+            "null",
+            "boolean",
+            "string",
+            "number"
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/json_value"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/json_value"
+          }
+        }
+      ]
+    }
+  }
+}

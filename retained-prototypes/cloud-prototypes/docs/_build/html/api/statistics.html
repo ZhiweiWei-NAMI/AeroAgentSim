@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Statistics and Analysis &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Utilities and Helpers" href="utils.html" />
+    <link rel="prev" title="Resource Classes" href="resource.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="utils.html" title="Utilities and Helpers"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="resource.html" title="Resource Classes"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">API Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Statistics and Analysis</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="statistics-and-analysis">
+<h1>Statistics and Analysis<a class="headerlink" href="#statistics-and-analysis" title="Permalink to this heading">¶</a></h1>
+<p>Statistics modules provide data collection, analysis, and visualization capabilities for simulation results.</p>
+<section id="statistics-collector">
+<h2>Statistics Collector<a class="headerlink" href="#statistics-collector" title="Permalink to this heading">¶</a></h2>
+</section>
+<section id="module-aeroagentsim.statistics.stats_analyzer">
+<span id="statistics-analyzer"></span><h2>Statistics Analyzer<a class="headerlink" href="#module-aeroagentsim.statistics.stats_analyzer" title="Permalink to this heading">¶</a></h2>
+<p>AirFogSim统计数据分析器</p>
+<p>该模块提供了统计数据分析功能，用于分析仿真数据并生成统计报告。</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.statistics.stats_analyzer.StatsAnalyzer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.statistics.stats_analyzer.</span></span><span class="sig-name descname"><span class="pre">StatsAnalyzer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stats_dir</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/statistics/stats_analyzer.html#StatsAnalyzer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>统计数据分析器</p>
+<p>负责分析仿真数据并生成统计报告，包括工作流完成率、电池消耗率、任务执行时间等。</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stats_dir</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/statistics/stats_analyzer.html#StatsAnalyzer.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化统计数据分析器</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>stats_dir</strong> – 统计数据目录</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_workflow_completion">
+<span class="sig-name descname"><span class="pre">analyze_workflow_completion</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/statistics/stats_analyzer.html#StatsAnalyzer.analyze_workflow_completion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_workflow_completion" title="Permalink to this definition">¶</a></dt>
+<dd><p>分析工作流完成率</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>工作流完成率统计</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_battery_consumption">
+<span class="sig-name descname"><span class="pre">analyze_battery_consumption</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/statistics/stats_analyzer.html#StatsAnalyzer.analyze_battery_consumption"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_battery_consumption" title="Permalink to this definition">¶</a></dt>
+<dd><p>分析电池消耗率</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>电池消耗率统计</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_weather_impact">
+<span class="sig-name descname"><span class="pre">analyze_weather_impact</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/statistics/stats_analyzer.html#StatsAnalyzer.analyze_weather_impact"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_weather_impact" title="Permalink to this definition">¶</a></dt>
+<dd><p>分析天气对电池消耗的影响</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>天气影响统计</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_task_execution_time">
+<span class="sig-name descname"><span class="pre">analyze_task_execution_time</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/statistics/stats_analyzer.html#StatsAnalyzer.analyze_task_execution_time"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_task_execution_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>分析任务执行时间</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>任务执行时间统计</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.generate_report">
+<span class="sig-name descname"><span class="pre">generate_report</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/statistics/stats_analyzer.html#StatsAnalyzer.generate_report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.generate_report" title="Permalink to this definition">¶</a></dt>
+<dd><p>生成统计报告</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>统计报告</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.save_report">
+<span class="sig-name descname"><span class="pre">save_report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/statistics/stats_analyzer.html#StatsAnalyzer.save_report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.save_report" title="Permalink to this definition">¶</a></dt>
+<dd><p>保存统计报告</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_file</strong> – 输出文件路径</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>保存的文件路径</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="statistics-visualizer">
+<h2>Statistics Visualizer<a class="headerlink" href="#statistics-visualizer" title="Permalink to this heading">¶</a></h2>
+</section>
+<section id="module-aeroagentsim.statistics.collectors">
+<span id="collectors"></span><h2>Collectors<a class="headerlink" href="#module-aeroagentsim.statistics.collectors" title="Permalink to this heading">¶</a></h2>
+<p>AirFogSim统计数据收集器模块</p>
+<p>该模块提供了用于收集仿真数据的收集器，包括代理状态、工作流状态和事件数据。</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Statistics and Analysis</a><ul>
+<li><a class="reference internal" href="#statistics-collector">Statistics Collector</a></li>
+<li><a class="reference internal" href="#module-aeroagentsim.statistics.stats_analyzer">Statistics Analyzer</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer"><code class="docutils literal notranslate"><span class="pre">StatsAnalyzer</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.__init__"><code class="docutils literal notranslate"><span class="pre">StatsAnalyzer.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_workflow_completion"><code class="docutils literal notranslate"><span class="pre">StatsAnalyzer.analyze_workflow_completion()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_battery_consumption"><code class="docutils literal notranslate"><span class="pre">StatsAnalyzer.analyze_battery_consumption()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_weather_impact"><code class="docutils literal notranslate"><span class="pre">StatsAnalyzer.analyze_weather_impact()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_task_execution_time"><code class="docutils literal notranslate"><span class="pre">StatsAnalyzer.analyze_task_execution_time()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.generate_report"><code class="docutils literal notranslate"><span class="pre">StatsAnalyzer.generate_report()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.save_report"><code class="docutils literal notranslate"><span class="pre">StatsAnalyzer.save_report()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#statistics-visualizer">Statistics Visualizer</a></li>
+<li><a class="reference internal" href="#module-aeroagentsim.statistics.collectors">Collectors</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="resource.html"
+                          title="previous chapter">Resource Classes</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="utils.html"
+                          title="next chapter">Utilities and Helpers</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/statistics.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="utils.html" title="Utilities and Helpers"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="resource.html" title="Resource Classes"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >API Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Statistics and Analysis</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

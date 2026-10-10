@@ -1,0 +1,12 @@
+✔ offline HTML has no external scripts/styles and enforces connect-src none (44.955758ms)
+✔ every embedded gzip recovers byte-identically, including full graph and all 75 chunks (1789.568844ms)
+✔ offline transport supports graph queries, cancellation and missing-feature report without network fallback (3.697833ms)
+✔ double-click file bootstrap loads global index and authored scene in emulated DOM (no pixel evidence) (3474.019854ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5515.176365

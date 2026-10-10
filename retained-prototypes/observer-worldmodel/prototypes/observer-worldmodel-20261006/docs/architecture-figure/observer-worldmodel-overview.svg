@@ -1,0 +1,583 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2640" height="2150" viewBox="0 0 2640 2150" role="img" aria-labelledby="title desc"><title id="title">Observer 多模态图世界模型：两阶段完整架构</title><desc id="desc">历史21个采样点。Observer观测经多token模态编码和typed图融合投影到Qwen，联合动力学采样8条10步完整图轨迹。共享Graph Transformer按查询输出11类概率，逐轨迹softmax再平均。主训练损失是平均概率上的CDF-RPS与终点BCE。</desc>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 Z" fill="#6C819D"/></marker><marker id="arrp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 Z" fill="#7D6B9E"/></marker></defs>
+<rect width="2640" height="2150" fill="#F8FAFD"/>
+<text x="60" y="73" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="48" font-weight="500" fill="#20334C" text-anchor="start">Observer 多模态图世界模型</text>
+<text x="60" y="118" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="400" fill="#53667F" text-anchor="start">两阶段主线  ·  10 秒历史 → 5 秒联合未来 → 谓词首次翻转分布</text>
+<text x="2580" y="72" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="end">架构方案 · 2026-10-06</text>
+<text x="2580" y="112" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="end">接口建议；不代表已训练或已验收</text>
+<rect x="60" y="144" width="50" height="50" rx="12" fill="#2D63AD" stroke="#2D63AD" stroke-width="2"/>
+<text x="85" y="181" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="128" y="182" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="33" font-weight="500" fill="#2D63AD" text-anchor="start">历史图 → Qwen 条件世界模型</text>
+<text x="128" y="222" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">历史 t−10s … t，间隔 0.5s，包含双端点：21 个采样点；仅使用 cutoff 前已可用信息。</text>
+<rect x="60" y="252" width="470" height="180" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="61" y="274" width="5" height="136" rx="2.5" fill="#2D63AD"/>
+<text x="84" y="300" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">Observer 拥有的观测</text>
+<text x="84" y="343" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">图像 / 点云 / 日志，多 token</text>
+<text x="84" y="380" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">observer ID、pose、标定、时间</text>
+<text x="84" y="417" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">每次 scene 表征只存一份</text>
+<rect x="610" y="252" width="410" height="180" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="611" y="274" width="5" height="136" rx="2.5" fill="#2D63AD"/>
+<text x="634" y="300" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">冻结模态编码器</text>
+<text x="634" y="343" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">image / point / log encoders</text>
+<text x="634" y="380" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">保留 scene + 局部空间 token</text>
+<text x="634" y="417" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">图像特征 ≠ 可逆生成 latent</text>
+<rect x="60" y="466" width="470" height="161" rx="18" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="61" y="488" width="5" height="117" rx="2.5" fill="#2D63AD"/>
+<text x="84" y="514" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">实体数值与状态来源</text>
+<text x="84" y="557" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">x、field mask、entity mask</text>
+<text x="84" y="595" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">stable ID、uncertainty、time gap</text>
+<rect x="60" y="659" width="470" height="145" rx="18" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="61" y="681" width="5" height="101" rx="2.5" fill="#2D63AD"/>
+<text x="84" y="707" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">Observation ↔ Entity 关联</text>
+<text x="84" y="750" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">ROI / mask / point indices</text>
+<text x="84" y="783" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">关联分数、来源、可见性 / unknown</text>
+<rect x="610" y="478" width="410" height="309" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="611" y="500" width="5" height="265" rx="2.5" fill="#2D63AD"/>
+<text x="634" y="526" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">PyG typed 图融合</text>
+<text x="634" y="569" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">observed_by + physical edges</text>
+<text x="634" y="611" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">同实体 temporal links</text>
+<text x="634" y="653" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">子图压缩 / 全局 entity 索引</text>
+<text x="634" y="695" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">重复节点合并、跨子图边保留</text>
+<text x="634" y="737" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">输出 entity + scene tokens</text>
+<rect x="1100" y="514" width="260" height="227" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1101" y="536" width="5" height="183" rx="2.5" fill="#2D63AD"/>
+<text x="1124" y="562" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">可训练 projector</text>
+<text x="1124" y="605" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">time / type / ID</text>
+<text x="1124" y="648" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">geometry 编码</text>
+<text x="1124" y="691" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">→ 2048 维 token</text>
+<rect x="1440" y="489" width="470" height="278" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1441" y="511" width="5" height="234" rx="2.5" fill="#2D63AD"/>
+<text x="1464" y="537" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">Qwen3.5-2B-Base</text>
+<text x="1464" y="580" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">冻结基座 + 指定 LoRA</text>
+<text x="1464" y="626" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">inputs_embeds → 历史表征</text>
+<text x="1464" y="672" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">末尾查询 / cross-attn 读出</text>
+<text x="1464" y="718" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">24 层；18 DeltaNet + 6 attention</text>
+<rect x="1990" y="489" width="590" height="278" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1991" y="511" width="5" height="234" rx="2.5" fill="#2D63AD"/>
+<text x="2014" y="537" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">图 transition + 联合状态分布头</text>
+<text x="2014" y="580" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">当前样本图 + 历史 context + controls</text>
+<text x="2014" y="626" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">场景共享随机模式 / 相关残差</text>
+<text x="2014" y="672" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">数值状态、存在 / 离散关系分布</text>
+<text x="2014" y="718" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">可选 entity / scene / observation latent</text>
+<rect x="1100" y="252" width="1480" height="152" rx="18" fill="#F0F4F9" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1101" y="274" width="5" height="108" rx="2.5" fill="#2D63AD"/>
+<text x="1124" y="300" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">已知未来条件 + 静态规则上下文</text>
+<text x="1124" y="343" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="26" font-weight="400" fill="#53667F" text-anchor="start">已知 controls、区域 / 地形 / 单位 / 绝对坐标；未知未来行为以潜在不确定性处理</text>
+<text x="1124" y="381" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="26" font-weight="400" fill="#53667F" text-anchor="start">未来 Observer pose / calibration 只有在事先可得时才作为条件</text>
+<path d="M 530,340 L 610,340" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 810,432 L 810,478" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 530,548 L 610,548" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 530,723 L 610,723" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 1020,624 L 1100,624" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 1360,624 L 1440,624" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 1910,624 L 1990,624" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 2300,404 L 2300,489" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="2330" y="454" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="400" fill="#53667F" text-anchor="start">条件输入</text>
+<path d="M 2290,767 L 2290,830 L 1560,830 L 1560,898" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="1800" y="820" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">联合分布采样</text>
+<rect x="60" y="898" width="1660" height="310" rx="22" fill="#EAF2FC" stroke="#2D63AD" stroke-width="2"/>
+<text x="90" y="947" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="34" font-weight="500" fill="#2D63AD" text-anchor="start">K = 8 条完整联合图轨迹</text>
+<text x="90" y="989" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="26" font-weight="400" fill="#20334C" text-anchor="start">每条包含 H = 10 个未来 tick（0.5 … 5.0s），全部相关实体及其关系</text>
+<rect x="90" y="1016" width="376" height="57" rx="10" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="1"/>
+<text x="102" y="1052" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="20" font-weight="500" fill="#2D63AD" text-anchor="start">k=1</text>
+<path d="M 176,1043 L 188,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 164,1035 L 176,1043 L 164,1051 L 164,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="164" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="176" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="164" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 205,1043 L 217,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 193,1035 L 205,1043 L 193,1051 L 193,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="193" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="205" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="193" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 234,1043 L 246,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 222,1035 L 234,1043 L 222,1051 L 222,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="222" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="234" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="222" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 263,1043 L 275,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 251,1035 L 263,1043 L 251,1051 L 251,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="251" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="263" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="251" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 292,1043 L 304,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 280,1035 L 292,1043 L 280,1051 L 280,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="280" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="292" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="280" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 321,1043 L 333,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 309,1035 L 321,1043 L 309,1051 L 309,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="309" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="321" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="309" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 350,1043 L 362,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 338,1035 L 350,1043 L 338,1051 L 338,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="338" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="350" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="338" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 379,1043 L 391,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 367,1035 L 379,1043 L 367,1051 L 367,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="367" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="379" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="367" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 408,1043 L 420,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 396,1035 L 408,1043 L 396,1051 L 396,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="396" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="408" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="396" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 425,1035 L 437,1043 L 425,1051 L 425,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="425" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="437" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="425" cy="1051" r="2" fill="#2D63AD"/>
+<rect x="491" y="1016" width="376" height="57" rx="10" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="1"/>
+<text x="503" y="1052" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="20" font-weight="500" fill="#2D63AD" text-anchor="start">k=2</text>
+<path d="M 577,1043 L 589,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 565,1035 L 577,1043 L 565,1051 L 565,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="565" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="577" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="565" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 606,1043 L 618,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 594,1035 L 606,1043 L 594,1051 L 594,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="594" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="606" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="594" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 635,1043 L 647,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 623,1035 L 635,1043 L 623,1051 L 623,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="623" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="635" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="623" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 664,1043 L 676,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 652,1035 L 664,1043 L 652,1051 L 652,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="652" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="664" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="652" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 693,1043 L 705,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 681,1035 L 693,1043 L 681,1051 L 681,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="681" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="693" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="681" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 722,1043 L 734,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 710,1035 L 722,1043 L 710,1051 L 710,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="710" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="722" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="710" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 751,1043 L 763,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 739,1035 L 751,1043 L 739,1051 L 739,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="739" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="751" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="739" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 780,1043 L 792,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 768,1035 L 780,1043 L 768,1051 L 768,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="768" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="780" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="768" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 809,1043 L 821,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 797,1035 L 809,1043 L 797,1051 L 797,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="797" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="809" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="797" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 826,1035 L 838,1043 L 826,1051 L 826,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="826" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="838" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="826" cy="1051" r="2" fill="#2D63AD"/>
+<rect x="892" y="1016" width="376" height="57" rx="10" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="1"/>
+<text x="904" y="1052" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="20" font-weight="500" fill="#2D63AD" text-anchor="start">k=3</text>
+<path d="M 978,1043 L 990,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 966,1035 L 978,1043 L 966,1051 L 966,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="966" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="978" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="966" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1007,1043 L 1019,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 995,1035 L 1007,1043 L 995,1051 L 995,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="995" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1007" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="995" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1036,1043 L 1048,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1024,1035 L 1036,1043 L 1024,1051 L 1024,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1024" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1036" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1024" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1065,1043 L 1077,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1053,1035 L 1065,1043 L 1053,1051 L 1053,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1053" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1065" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1053" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1094,1043 L 1106,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1082,1035 L 1094,1043 L 1082,1051 L 1082,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1082" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1094" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1082" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1123,1043 L 1135,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1111,1035 L 1123,1043 L 1111,1051 L 1111,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1111" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1123" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1111" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1152,1043 L 1164,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1140,1035 L 1152,1043 L 1140,1051 L 1140,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1140" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1152" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1140" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1181,1043 L 1193,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1169,1035 L 1181,1043 L 1169,1051 L 1169,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1169" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1181" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1169" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1210,1043 L 1222,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1198,1035 L 1210,1043 L 1198,1051 L 1198,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1198" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1210" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1198" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1227,1035 L 1239,1043 L 1227,1051 L 1227,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1227" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1239" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1227" cy="1051" r="2" fill="#2D63AD"/>
+<rect x="1293" y="1016" width="376" height="57" rx="10" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="1"/>
+<text x="1305" y="1052" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="20" font-weight="500" fill="#2D63AD" text-anchor="start">k=4</text>
+<path d="M 1379,1043 L 1391,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1367,1035 L 1379,1043 L 1367,1051 L 1367,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1367" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1379" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1367" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1408,1043 L 1420,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1396,1035 L 1408,1043 L 1396,1051 L 1396,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1396" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1408" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1396" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1437,1043 L 1449,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1425,1035 L 1437,1043 L 1425,1051 L 1425,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1425" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1437" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1425" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1466,1043 L 1478,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1454,1035 L 1466,1043 L 1454,1051 L 1454,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1454" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1466" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1454" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1495,1043 L 1507,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1483,1035 L 1495,1043 L 1483,1051 L 1483,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1483" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1495" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1483" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1524,1043 L 1536,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1512,1035 L 1524,1043 L 1512,1051 L 1512,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1512" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1524" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1512" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1553,1043 L 1565,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1541,1035 L 1553,1043 L 1541,1051 L 1541,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1541" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1553" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1541" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1582,1043 L 1594,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1570,1035 L 1582,1043 L 1570,1051 L 1570,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1570" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1582" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1570" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1611,1043 L 1623,1043" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1599,1035 L 1611,1043 L 1599,1051 L 1599,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1599" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1611" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1599" cy="1051" r="2" fill="#2D63AD"/>
+<path d="M 1628,1035 L 1640,1043 L 1628,1051 L 1628,1035" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1628" cy="1035" r="2" fill="#2D63AD"/>
+<circle cx="1640" cy="1043" r="2" fill="#2D63AD"/>
+<circle cx="1628" cy="1051" r="2" fill="#2D63AD"/>
+<rect x="90" y="1086" width="376" height="57" rx="10" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="1"/>
+<text x="102" y="1122" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="20" font-weight="500" fill="#2D63AD" text-anchor="start">k=5</text>
+<path d="M 176,1113 L 188,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 164,1105 L 176,1113 L 164,1121 L 164,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="164" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="176" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="164" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 205,1113 L 217,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 193,1105 L 205,1113 L 193,1121 L 193,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="193" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="205" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="193" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 234,1113 L 246,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 222,1105 L 234,1113 L 222,1121 L 222,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="222" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="234" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="222" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 263,1113 L 275,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 251,1105 L 263,1113 L 251,1121 L 251,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="251" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="263" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="251" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 292,1113 L 304,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 280,1105 L 292,1113 L 280,1121 L 280,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="280" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="292" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="280" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 321,1113 L 333,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 309,1105 L 321,1113 L 309,1121 L 309,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="309" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="321" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="309" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 350,1113 L 362,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 338,1105 L 350,1113 L 338,1121 L 338,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="338" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="350" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="338" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 379,1113 L 391,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 367,1105 L 379,1113 L 367,1121 L 367,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="367" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="379" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="367" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 408,1113 L 420,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 396,1105 L 408,1113 L 396,1121 L 396,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="396" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="408" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="396" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 425,1105 L 437,1113 L 425,1121 L 425,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="425" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="437" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="425" cy="1121" r="2" fill="#2D63AD"/>
+<rect x="491" y="1086" width="376" height="57" rx="10" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="1"/>
+<text x="503" y="1122" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="20" font-weight="500" fill="#2D63AD" text-anchor="start">k=6</text>
+<path d="M 577,1113 L 589,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 565,1105 L 577,1113 L 565,1121 L 565,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="565" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="577" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="565" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 606,1113 L 618,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 594,1105 L 606,1113 L 594,1121 L 594,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="594" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="606" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="594" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 635,1113 L 647,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 623,1105 L 635,1113 L 623,1121 L 623,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="623" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="635" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="623" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 664,1113 L 676,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 652,1105 L 664,1113 L 652,1121 L 652,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="652" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="664" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="652" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 693,1113 L 705,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 681,1105 L 693,1113 L 681,1121 L 681,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="681" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="693" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="681" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 722,1113 L 734,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 710,1105 L 722,1113 L 710,1121 L 710,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="710" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="722" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="710" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 751,1113 L 763,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 739,1105 L 751,1113 L 739,1121 L 739,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="739" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="751" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="739" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 780,1113 L 792,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 768,1105 L 780,1113 L 768,1121 L 768,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="768" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="780" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="768" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 809,1113 L 821,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 797,1105 L 809,1113 L 797,1121 L 797,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="797" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="809" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="797" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 826,1105 L 838,1113 L 826,1121 L 826,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="826" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="838" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="826" cy="1121" r="2" fill="#2D63AD"/>
+<rect x="892" y="1086" width="376" height="57" rx="10" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="1"/>
+<text x="904" y="1122" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="20" font-weight="500" fill="#2D63AD" text-anchor="start">k=7</text>
+<path d="M 978,1113 L 990,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 966,1105 L 978,1113 L 966,1121 L 966,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="966" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="978" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="966" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1007,1113 L 1019,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 995,1105 L 1007,1113 L 995,1121 L 995,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="995" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1007" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="995" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1036,1113 L 1048,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1024,1105 L 1036,1113 L 1024,1121 L 1024,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1024" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1036" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1024" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1065,1113 L 1077,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1053,1105 L 1065,1113 L 1053,1121 L 1053,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1053" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1065" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1053" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1094,1113 L 1106,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1082,1105 L 1094,1113 L 1082,1121 L 1082,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1082" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1094" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1082" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1123,1113 L 1135,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1111,1105 L 1123,1113 L 1111,1121 L 1111,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1111" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1123" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1111" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1152,1113 L 1164,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1140,1105 L 1152,1113 L 1140,1121 L 1140,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1140" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1152" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1140" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1181,1113 L 1193,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1169,1105 L 1181,1113 L 1169,1121 L 1169,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1169" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1181" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1169" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1210,1113 L 1222,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1198,1105 L 1210,1113 L 1198,1121 L 1198,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1198" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1210" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1198" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1227,1105 L 1239,1113 L 1227,1121 L 1227,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1227" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1239" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1227" cy="1121" r="2" fill="#2D63AD"/>
+<rect x="1293" y="1086" width="376" height="57" rx="10" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="1"/>
+<text x="1305" y="1122" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="20" font-weight="500" fill="#2D63AD" text-anchor="start">k=8</text>
+<path d="M 1379,1113 L 1391,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1367,1105 L 1379,1113 L 1367,1121 L 1367,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1367" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1379" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1367" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1408,1113 L 1420,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1396,1105 L 1408,1113 L 1396,1121 L 1396,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1396" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1408" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1396" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1437,1113 L 1449,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1425,1105 L 1437,1113 L 1425,1121 L 1425,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1425" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1437" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1425" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1466,1113 L 1478,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1454,1105 L 1466,1113 L 1454,1121 L 1454,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1454" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1466" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1454" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1495,1113 L 1507,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1483,1105 L 1495,1113 L 1483,1121 L 1483,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1483" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1495" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1483" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1524,1113 L 1536,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1512,1105 L 1524,1113 L 1512,1121 L 1512,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1512" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1524" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1512" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1553,1113 L 1565,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1541,1105 L 1553,1113 L 1541,1121 L 1541,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1541" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1553" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1541" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1582,1113 L 1594,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1570,1105 L 1582,1113 L 1570,1121 L 1570,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1570" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1582" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1570" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1611,1113 L 1623,1113" fill="none" stroke="#6C819D" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 1599,1105 L 1611,1113 L 1599,1121 L 1599,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1599" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1611" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1599" cy="1121" r="2" fill="#2D63AD"/>
+<path d="M 1628,1105 L 1640,1113 L 1628,1121 L 1628,1105" fill="none" stroke="#6C819D" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1628" cy="1105" r="2" fill="#2D63AD"/>
+<circle cx="1640" cy="1113" r="2" fill="#2D63AD"/>
+<circle cx="1628" cy="1121" r="2" fill="#2D63AD"/>
+<text x="90" y="1186" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#20334C" text-anchor="start">states [B,8,10,N,Dx] + edges / masks + scene / entity latent（按需）</text>
+<path d="M 1720,1006 L 1772,1006 L 1772,865 L 2490,865 L 2490,767" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="1810" y="896" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#2D63AD" text-anchor="start">每条轨迹反馈自身上一图 / 隐状态；按样本重建几何边</text>
+<rect x="1840" y="965" width="740" height="243" rx="18" fill="#F3EFF8" stroke="#7D6B9E" stroke-width="2" stroke-dasharray="9 7"/>
+<rect x="1841" y="987" width="5" height="199" rx="2.5" fill="#7D6B9E"/>
+<text x="1864" y="1013" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">可选：未来观测生成</text>
+<text x="1864" y="1056" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">足够的 scene / appearance / entity latent</text>
+<text x="1864" y="1095" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">+ 未来 Observer pose、calibration、sensor type</text>
+<text x="1864" y="1134" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">→ 独立 image / point / occupancy decoder</text>
+<text x="1864" y="1173" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">单独训练、单独验收；首版不启用</text>
+<path d="M 1720,1110 L 1840,1110" fill="none" stroke="#7D6B9E" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="10 8" marker-end="url(#arrp)"/>
+<path d="M 2580,334 L 2610,334 L 2610,1085 L 2580,1085" fill="none" stroke="#7D6B9E" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="10 8" marker-end="url(#arrp)"/>
+<text x="1780" y="1088" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="20" font-weight="400" fill="#7D6B9E" text-anchor="middle">latent</text>
+<rect x="60" y="1255" width="50" height="50" rx="12" fill="#187B78" stroke="#187B78" stroke-width="2"/>
+<text x="85" y="1292" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="128" y="1293" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="33" font-weight="500" fill="#187B78" text-anchor="start">逐轨迹、逐查询的共享 Graph Transformer</text>
+<text x="128" y="1333" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">Stage 1 与轨迹版本固定；Stage 2 从零训练，所有谓词共享参数。</text>
+<rect x="60" y="1400" width="470" height="244" rx="18" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="61" y="1422" width="5" height="200" rx="2.5" fill="#187B78"/>
+<text x="84" y="1448" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">Query + G₀ / 初始真值</text>
+<text x="84" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">predicate / 组合规则</text>
+<text x="84" y="1530" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">绑定实体与角色、阈值、持续时间</text>
+<text x="84" y="1569" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">规则所需绝对量、初始有效 mask</text>
+<text x="84" y="1608" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">初始规则记忆 / 计时器（cutoff 前）</text>
+<rect x="640" y="1373" width="480" height="251" rx="18" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="641" y="1395" width="5" height="207" rx="2.5" fill="#187B78"/>
+<text x="664" y="1421" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">共享小型 Graph Transformer</text>
+<text x="664" y="1464" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">每 tick 空间关系消息传递</text>
+<text x="664" y="1504" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">沿 entity 时间边融合 10 步</text>
+<text x="664" y="1544" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">query → 绑定节点 / 边读出</text>
+<text x="664" y="1584" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">跨谓词共享；不是第二个 Qwen</text>
+<rect x="640" y="1680" width="480" height="143" rx="18" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="641" y="1702" width="5" height="99" rx="2.5" fill="#187B78"/>
+<text x="664" y="1728" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">精确数值操作数旁路</text>
+<text x="664" y="1771" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">q + 原数值 / 阈值差 / 时间 / mask</text>
+<text x="664" y="1806" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">按 query 选取；不从 pooled latent 猜回</text>
+<rect x="1200" y="1430" width="330" height="220" rx="18" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1201" y="1452" width="5" height="176" rx="2.5" fill="#187B78"/>
+<text x="1224" y="1478" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">Query 条件读出头</text>
+<text x="1224" y="1521" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">融合图表征 + 操作数</text>
+<text x="1224" y="1560" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">逐 k、逐 q：11 logits</text>
+<text x="1224" y="1599" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">[B,8,Q,11]</text>
+<rect x="1610" y="1450" width="340" height="175" rx="18" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1611" y="1472" width="5" height="131" rx="2.5" fill="#187B78"/>
+<text x="1634" y="1498" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">逐轨迹 softmax</text>
+<text x="1634" y="1541" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">pₖ = softmax(logitsₖ)</text>
+<text x="1634" y="1580" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">[B,8,Q,11]</text>
+<rect x="2030" y="1450" width="550" height="175" rx="18" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="2031" y="1472" width="5" height="131" rx="2.5" fill="#187B78"/>
+<text x="2054" y="1498" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">K 条概率取均值</text>
+<text x="2054" y="1541" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="400" fill="#53667F" text-anchor="start">p̄ = (1/8) Σₖ pₖ</text>
+<text x="2054" y="1582" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="400" fill="#53667F" text-anchor="start">每个 query 输出 [B,Q,11]</text>
+<path d="M 1640,1208 L 1640,1350 L 880,1350 L 880,1373" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="1664" y="1295" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#187B78" text-anchor="start">未来图序列</text>
+<path d="M 60,1180 L 35,1180 L 35,1755 L 640,1755" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<circle cx="35" cy="1755" r="4" fill="#6C819D"/>
+<path d="M 530,1492 L 640,1492" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 530,1557 L 600,1557 L 600,1789 L 640,1789" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 1120,1492 L 1200,1492" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 1120,1750 L 1365,1750 L 1365,1650" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="1206" y="1737" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="400" fill="#187B78" text-anchor="start">保留规则依赖量</text>
+<path d="M 1530,1536 L 1610,1536" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 1950,1536 L 2030,1536" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<rect x="60" y="1900" width="1060" height="134" rx="18" fill="#F0F4F9" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="61" y="1922" width="5" height="90" rx="2.5" fill="#2D63AD"/>
+<text x="84" y="1948" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">精确 RULEMC：独立基准路径</text>
+<text x="84" y="1991" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">同一组 K=8 图 + 同一 query / G₀ → 每轨迹执行原规则 → 11 桶频率</text>
+<path d="M 35,1755 L 35,1967 L 60,1967" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 295,1644 L 295,1900" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="318" y="1847" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="400" fill="#53667F" text-anchor="start">同一 query / G₀</text>
+<rect x="1200" y="1867" width="750" height="167" rx="18" fill="#FFF6E5" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1201" y="1889" width="5" height="123" rx="2.5" fill="#A5731C"/>
+<text x="1224" y="1915" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">真实未来 → 原规则事件标签 y</text>
+<text x="1224" y="1958" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">主方案学习真实事件风险；不要求每个分支等于 y</text>
+<text x="1224" y="1998" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">规则代理是另一对照：每条假设图使用自己的规则标签</text>
+<rect x="2030" y="1690" width="550" height="344" rx="18" fill="#FFF6E5" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="2031" y="1712" width="5" height="300" rx="2.5" fill="#A5731C"/>
+<text x="2054" y="1738" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">主损失：平均概率上的 hybrid</text>
+<text x="2054" y="1781" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">Fⱼ = Σᵦ≤ⱼ p̄ᵦ</text>
+<text x="2054" y="1826" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">CDF-RPS：j = 1 … 9</text>
+<text x="2054" y="1871" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">terminal BCE：F₁₀</text>
+<text x="2054" y="1916" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">λ=0.5；mask / 均值按冻结配置</text>
+<text x="2054" y="1961" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">CE / NLL 仅可选比较 / 评估</text>
+<path d="M 2305,1625 L 2305,1690" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="10 8" marker-end="url(#arr)"/>
+<path d="M 1950,1945 L 2030,1945" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="10 8" marker-end="url(#arr)"/>
+<text x="1610" y="1692" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#187B78" text-anchor="start">1 … 10：对应未来 tick 首次翻转</text>
+<text x="1610" y="1732" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#187B78" text-anchor="start">第 11 桶：5 秒窗口内无翻转</text>
+<text x="1610" y="1772" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">unknown / 右删失：单独 mask</text>
+<path d="M 70,2090 L 140,2090" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="154" y="2098" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#20334C" text-anchor="start">推理数据流</text>
+<path d="M 370,2090 L 440,2090" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="10 8" marker-end="url(#arr)"/>
+<text x="454" y="2098" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#20334C" text-anchor="start">训练 / 监督</text>
+<path d="M 710,2090 L 780,2090" fill="none" stroke="#7D6B9E" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="10 8" marker-end="url(#arrp)"/>
+<text x="794" y="2098" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#20334C" text-anchor="start">可选扩展</text>
+<text x="2580" y="2098" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="end">跨阶段可复用结构 / 初始化；默认权重 untied，Stage 1 冻结。</text></svg>

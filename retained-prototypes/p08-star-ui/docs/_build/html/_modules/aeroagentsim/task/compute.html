@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.task.compute &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.task.compute</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.task.compute</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim计算任务模块</span>
+
+<span class="sd">该模块定义了文件计算任务，负责将一个文件通过计算转换为另一个文件。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 文件计算进度跟踪</span>
+<span class="sd">2. 计算性能评估</span>
+<span class="sd">3. 与文件管理器集成</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.task</span> <span class="kn">import</span> <span class="n">Task</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+<div class="viewcode-block" id="FileComputeTask"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.compute.FileComputeTask">[docs]</a><span class="k">class</span> <span class="nc">FileComputeTask</span><span class="p">(</span><span class="n">Task</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    文件计算任务</span>
+
+<span class="sd">    将一个文件通过计算转换为另一个文件的任务</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">NECESSARY_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;processing_power&#39;</span><span class="p">,</span> <span class="s1">&#39;computation_efficiency&#39;</span><span class="p">]</span>
+    <span class="n">PRODUCED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;computing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;compute_progress&#39;</span><span class="p">,</span> <span class="s1">&#39;compute_speed&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="FileComputeTask.__init__"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.compute.FileComputeTask.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span><span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">workflow_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">target_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化文件计算任务</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 执行任务的代理</span>
+<span class="sd">            component_name: 使用的组件名称</span>
+<span class="sd">            workflow_id: 工作流ID</span>
+<span class="sd">            properties: 任务属性</span>
+<span class="sd">                file_id: 要计算的文件ID</span>
+<span class="sd">                result_file_name: 结果文件名（可选）</span>
+<span class="sd">                result_file_type: 结果文件类型（可选，默认与源文件相同）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="p">,</span> <span class="s2">&quot;file_compute&quot;</span> <span class="ow">or</span> <span class="n">task_name</span><span class="p">,</span>
+                         <span class="n">workflow_id</span><span class="o">=</span><span class="n">workflow_id</span><span class="p">,</span>
+                         <span class="n">target_state</span><span class="o">=</span><span class="n">target_state</span><span class="p">,</span>
+                         <span class="n">properties</span><span class="o">=</span><span class="n">properties</span> <span class="ow">or</span> <span class="p">{})</span>
+
+        <span class="c1"># 文件计算参数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_id</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;file_id&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result_file_name</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;result_file_name&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result_file_type</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;result_file_type&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 获取文件管理器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;file_manager&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;环境中没有文件管理器，无法执行文件计算任务&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 获取文件信息</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">get_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_info</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;文件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="si">}</span><span class="s2"> 不存在&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 检查文件所有权</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">get_file_owner</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">)</span> <span class="o">!=</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;文件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="si">}</span><span class="s2"> 不在 agent </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 上&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 文件大小和类型</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;size&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;文件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="si">}</span><span class="s2"> 大小无效: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">file_size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">result_file_type</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">result_file_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_type</span>
+
+        <span class="c1"># 如果没有指定结果文件名，生成默认名称</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">result_file_name</span><span class="p">:</span>
+            <span class="n">original_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">result_file_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;result_</span><span class="si">{</span><span class="n">original_name</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># 计算状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_progress</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_speed</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># 计算速度 (单位时间内处理的数据量)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processed_bytes</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># 已处理的数据量</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimated_time_remaining</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># 秒</span>
+
+        <span class="c1"># 设置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;computing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;computing&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;compute_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;compute_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="c1"># 设置CPU使用率，根据文件类型设置不同的基础占用率</span>
+        <span class="n">file_type_cpu_usage</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;image&#39;</span><span class="p">:</span> <span class="mf">40.0</span><span class="p">,</span>  <span class="c1"># 图像处理基础CPU占用</span>
+            <span class="s1">&#39;video&#39;</span><span class="p">:</span> <span class="mf">60.0</span><span class="p">,</span>  <span class="c1"># 视频处理基础CPU占用</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="mf">30.0</span><span class="p">,</span>   <span class="c1"># 数据处理基础CPU占用</span>
+            <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="mf">20.0</span>    <span class="c1"># 文本处理基础CPU占用</span>
+        <span class="p">}</span>
+
+        <span class="c1"># 获取当前文件类型的CPU占用率，默认为30.0</span>
+        <span class="n">base_cpu_usage</span> <span class="o">=</span> <span class="n">file_type_cpu_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_type</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">)</span>
+
+        <span class="c1"># 根据文件大小调整CPU占用率，文件越大占用越高</span>
+        <span class="n">size_factor</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">100</span><span class="p">))</span>  <span class="c1"># 限制在0.5-1.5之间</span>
+        <span class="n">cpu_usage</span> <span class="o">=</span> <span class="n">base_cpu_usage</span> <span class="o">*</span> <span class="n">size_factor</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cpu_usage</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+            <span class="n">cpu_usage</span> <span class="o">=</span> <span class="mf">100.0</span>
+
+        <span class="c1"># 设置代理的CPU使用率状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="n">cpu_usage</span><span class="p">)</span>
+
+        <span class="c1"># 通知文件管理器开始计算</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">mark_file_computing_started</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_update_task_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        更新任务状态</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            performance_metrics: 性能指标</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">current_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+        <span class="c1"># 如果是第一次更新，记录开始时间</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span> <span class="o">=</span> <span class="n">current_time</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 计算时间间隔</span>
+        <span class="n">time_delta</span> <span class="o">=</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span>
+        <span class="k">if</span> <span class="n">time_delta</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 获取处理能力和计算效率</span>
+        <span class="n">processing_power</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;processing_power&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="n">computation_efficiency</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;computation_efficiency&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># 获取当前文件类型的计算效率</span>
+        <span class="n">type_efficiency</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">computation_efficiency</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_type</span> <span class="ow">in</span> <span class="n">computation_efficiency</span><span class="p">:</span>
+            <span class="n">type_efficiency</span> <span class="o">=</span> <span class="n">computation_efficiency</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">file_type</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">computation_efficiency</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="n">type_efficiency</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">computation_efficiency</span><span class="p">)</span>
+
+        <span class="c1"># 计算处理速度 (KB/s)</span>
+        <span class="c1"># 假设每单位处理能力每秒可以处理0.1KB数据</span>
+        <span class="n">compute_speed</span> <span class="o">=</span> <span class="n">processing_power</span> <span class="o">*</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">type_efficiency</span>
+
+        <span class="c1"># 计算这个时间间隔内处理的数据量</span>
+        <span class="n">processed_in_interval</span> <span class="o">=</span> <span class="n">compute_speed</span> <span class="o">*</span> <span class="n">time_delta</span>
+
+        <span class="c1"># 更新已处理数据量</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processed_bytes</span> <span class="o">+=</span> <span class="n">processed_in_interval</span>
+
+        <span class="c1"># 限制已处理数据量不超过文件大小</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processed_bytes</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">processed_bytes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span><span class="p">)</span>
+
+        <span class="c1"># 更新计算进度</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_progress</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">processed_bytes</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span>
+
+        <span class="c1"># 更新计算速度</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_speed</span> <span class="o">=</span> <span class="n">compute_speed</span>
+
+        <span class="c1"># 计算剩余时间</span>
+        <span class="n">remaining_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">processed_bytes</span>
+        <span class="k">if</span> <span class="n">compute_speed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">estimated_time_remaining</span> <span class="o">=</span> <span class="n">remaining_bytes</span> <span class="o">/</span> <span class="n">compute_speed</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">estimated_time_remaining</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 更新代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;compute_progress&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_progress</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;compute_speed&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_speed</span><span class="p">)</span>
+
+        <span class="c1"># 检查是否完成计算</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_progress</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_progress</span>
+
+<div class="viewcode-block" id="FileComputeTask.estimate_remaining_time"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.compute.FileComputeTask.estimate_remaining_time">[docs]</a>    <span class="k">def</span> <span class="nf">estimate_remaining_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_metrics</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        估计剩余时间</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            performance_metrics: 性能指标</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: 估计的剩余时间 (秒)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 如果已经完成，返回0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="c1"># 获取处理能力和计算效率</span>
+        <span class="n">processing_power</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;processing_power&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="n">computation_efficiency</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;computation_efficiency&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># 获取当前文件类型的计算效率</span>
+        <span class="n">type_efficiency</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">computation_efficiency</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_type</span> <span class="ow">in</span> <span class="n">computation_efficiency</span><span class="p">:</span>
+            <span class="n">type_efficiency</span> <span class="o">=</span> <span class="n">computation_efficiency</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">file_type</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">computation_efficiency</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="n">type_efficiency</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">computation_efficiency</span><span class="p">)</span>
+
+        <span class="c1"># 计算处理速度 (KB/s)</span>
+        <span class="n">compute_speed</span> <span class="o">=</span> <span class="n">processing_power</span> <span class="o">*</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">type_efficiency</span>
+
+        <span class="c1"># 计算剩余数据量</span>
+        <span class="n">remaining_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">processed_bytes</span>
+
+        <span class="c1"># 计算剩余时间</span>
+        <span class="k">if</span> <span class="n">compute_speed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">remaining_bytes</span> <span class="o">/</span> <span class="n">compute_speed</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_task_specific_state_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取任务特定状态表示</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict: 任务特定状态表示</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 根据任务进度确定计算状态</span>
+        <span class="n">computing_status</span> <span class="o">=</span> <span class="s1">&#39;computing&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">&lt;</span> <span class="mf">1.0</span> <span class="k">else</span> <span class="s1">&#39;completed&#39;</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;computing_status&#39;</span><span class="p">:</span> <span class="n">computing_status</span><span class="p">,</span>
+            <span class="s1">&#39;compute_progress&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_progress</span><span class="p">,</span>
+            <span class="s1">&#39;compute_speed&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_speed</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理任务完成时对代理拥有对象的操作&quot;&quot;&quot;</span>
+        <span class="c1"># 重置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;computing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;completed&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;compute_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;compute_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="c1"># 获取当前CPU使用率并减去任务占用的部分</span>
+        <span class="n">current_cpu_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">file_type_cpu_usage</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;image&#39;</span><span class="p">:</span> <span class="mf">40.0</span><span class="p">,</span>
+            <span class="s1">&#39;video&#39;</span><span class="p">:</span> <span class="mf">60.0</span><span class="p">,</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="mf">30.0</span><span class="p">,</span>
+            <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="mf">20.0</span>
+        <span class="p">}</span>
+        <span class="n">base_cpu_usage</span> <span class="o">=</span> <span class="n">file_type_cpu_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_type</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">)</span>
+        <span class="n">size_factor</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">100</span><span class="p">))</span>
+        <span class="n">task_cpu_usage</span> <span class="o">=</span> <span class="n">base_cpu_usage</span> <span class="o">*</span> <span class="n">size_factor</span>
+
+        <span class="c1"># 计算新的CPU使用率，确保不低于10.0%的基础空闲状态</span>
+        <span class="n">new_cpu_usage</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">current_cpu_usage</span> <span class="o">-</span> <span class="n">task_cpu_usage</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="n">new_cpu_usage</span><span class="p">)</span>
+
+        <span class="c1"># 创建结果文件</span>
+        <span class="n">original_content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content&#39;</span><span class="p">)</span>
+        <span class="n">result_content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_content</span><span class="p">(</span><span class="n">original_content</span><span class="p">)</span>
+
+        <span class="c1"># 创建结果文件</span>
+        <span class="n">result_file_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">create_file</span><span class="p">(</span>
+            <span class="n">owner_agent_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="n">file_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">result_file_name</span><span class="p">,</span>
+            <span class="n">file_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">,</span>  <span class="c1"># 假设结果文件比原文件小</span>
+            <span class="n">file_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">result_file_type</span><span class="p">,</span>
+            <span class="n">content</span><span class="o">=</span><span class="n">result_content</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;source_file_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">,</span>
+                <span class="s1">&#39;computation_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+                <span class="s1">&#39;processed_by&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 标记原文件为已计算</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">mark_file_computed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">,</span> <span class="n">result_file_id</span><span class="p">)</span>
+
+        <span class="c1"># 添加结果文件到代理的possessing_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">add_possessing_object</span><span class="p">(</span><span class="n">result_file_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">get_file</span><span class="p">(</span><span class="n">result_file_id</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_fail</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理任务失败时对代理拥有对象的操作&quot;&quot;&quot;</span>
+        <span class="c1"># 重置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;computing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;compute_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;compute_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="c1"># 获取当前CPU使用率并减去任务占用的部分</span>
+        <span class="n">current_cpu_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">file_type_cpu_usage</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;image&#39;</span><span class="p">:</span> <span class="mf">40.0</span><span class="p">,</span>
+            <span class="s1">&#39;video&#39;</span><span class="p">:</span> <span class="mf">60.0</span><span class="p">,</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="mf">30.0</span><span class="p">,</span>
+            <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="mf">20.0</span>
+        <span class="p">}</span>
+        <span class="n">base_cpu_usage</span> <span class="o">=</span> <span class="n">file_type_cpu_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_type</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">)</span>
+        <span class="n">size_factor</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">100</span><span class="p">))</span>
+        <span class="n">task_cpu_usage</span> <span class="o">=</span> <span class="n">base_cpu_usage</span> <span class="o">*</span> <span class="n">size_factor</span>
+
+        <span class="c1"># 计算新的CPU使用率，确保不低于10.0%的基础空闲状态</span>
+        <span class="n">new_cpu_usage</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">current_cpu_usage</span> <span class="o">-</span> <span class="n">task_cpu_usage</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="n">new_cpu_usage</span><span class="p">)</span>
+
+        <span class="c1"># 获取当前CPU使用率并减去任务占用的部分</span>
+        <span class="n">current_cpu_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">file_type_cpu_usage</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;image&#39;</span><span class="p">:</span> <span class="mf">40.0</span><span class="p">,</span>
+            <span class="s1">&#39;video&#39;</span><span class="p">:</span> <span class="mf">60.0</span><span class="p">,</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="mf">30.0</span><span class="p">,</span>
+            <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="mf">20.0</span>
+        <span class="p">}</span>
+        <span class="n">base_cpu_usage</span> <span class="o">=</span> <span class="n">file_type_cpu_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_type</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">)</span>
+        <span class="n">size_factor</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">100</span><span class="p">))</span>
+        <span class="n">task_cpu_usage</span> <span class="o">=</span> <span class="n">base_cpu_usage</span> <span class="o">*</span> <span class="n">size_factor</span>
+
+        <span class="c1"># 计算新的CPU使用率，确保不低于10.0%的基础空闲状态</span>
+        <span class="n">new_cpu_usage</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">current_cpu_usage</span> <span class="o">-</span> <span class="n">task_cpu_usage</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="n">new_cpu_usage</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理任务取消时对代理拥有对象的操作&quot;&quot;&quot;</span>
+        <span class="c1"># 重置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;computing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;compute_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;compute_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_process_content</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理文件内容，生成结果内容</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            content: 原始内容</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            处理后的内容</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 这里是模拟处理逻辑，实际应用中可以根据不同文件类型实现不同的处理算法</span>
+        <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;处理结果&quot;</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;处理结果: </span><span class="si">{</span><span class="n">content</span><span class="p">[:</span><span class="mi">50</span><span class="p">]</span><span class="si">}</span><span class="s2">...&quot;</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="s2">&quot;processed&quot;</span><span class="p">,</span> <span class="s2">&quot;original&quot;</span><span class="p">:</span> <span class="n">content</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;processed&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">content</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="s2">&quot;处理结果&quot;</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.task.compute</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

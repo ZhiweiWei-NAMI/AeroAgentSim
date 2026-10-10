@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.workflow.logistics &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.workflow.logistics</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.workflow.logistics</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim物流工作流模块</span>
+
+<span class="sd">该模块定义了无人机物流工作流及其元类，实现了无人机取件、运输和交付货物的过程管理。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 货物(Payload)信息管理</span>
+<span class="sd">2. 取件点和交付点管理</span>
+<span class="sd">3. 取件、运输和交付状态转换</span>
+<span class="sd">4. 状态机转换和事件触发</span>
+<span class="sd">5. 动态任务生成</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core</span> <span class="kn">import</span> <span class="n">Workflow</span><span class="p">,</span> <span class="n">WorkflowMeta</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TriggerOperator</span><span class="p">,</span> <span class="n">WorkflowStatus</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">LogisticsWorkflowMeta</span><span class="p">(</span><span class="n">WorkflowMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;物流工作流元类&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="c1"># 注册物流工作流专用的属性模板</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;pickup_location&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">),</span> <span class="kc">True</span><span class="p">,</span>
+                          <span class="k">lambda</span> <span class="n">loc</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">loc</span><span class="p">),</span>
+                          <span class="s2">&quot;取件点坐标 (x, y, z)&quot;</span><span class="p">)</span>
+
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;delivery_location&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">),</span> <span class="kc">True</span><span class="p">,</span>
+                          <span class="k">lambda</span> <span class="n">loc</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">loc</span><span class="p">),</span>
+                          <span class="s2">&quot;交付点坐标 (x, y, z)&quot;</span><span class="p">)</span>
+
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;payloads&#39;</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span>
+                          <span class="k">lambda</span> <span class="n">payloads</span><span class="p">:</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;id&#39;</span> <span class="ow">in</span> <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">payloads</span><span class="p">),</span>
+                          <span class="s2">&quot;货物列表，每个货物为字典，包含id和其他属性&quot;</span><span class="p">)</span>
+
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;source_agent_id&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span>
+                          <span class="k">lambda</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">agent_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span>
+                          <span class="s2">&quot;源代理ID，负责提供货物的代理&quot;</span><span class="p">)</span>
+
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;target_agent_id&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span>
+                          <span class="k">lambda</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">agent_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span>
+                          <span class="s2">&quot;目标代理ID，负责接收货物的代理&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span>
+
+<div class="viewcode-block" id="LogisticsWorkflow"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.logistics.LogisticsWorkflow">[docs]</a><span class="k">class</span> <span class="nc">LogisticsWorkflow</span><span class="p">(</span><span class="n">Workflow</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">LogisticsWorkflowMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    物流工作流，管理无人机取件、运输和交付货物的过程。</span>
+
+<span class="sd">    工作流状态流转：</span>
+<span class="sd">    picking_up -&gt; transporting -&gt; delivering -&gt; completed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="LogisticsWorkflow.get_description"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.logistics.LogisticsWorkflow.get_description">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_description</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取工作流类型的描述&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;物流工作流 - 管理无人机取件、运输和交付货物的过程&quot;</span></div>
+
+<div class="viewcode-block" id="LogisticsWorkflow.__init__"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.logistics.LogisticsWorkflow.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">owner</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">event_names</span><span class="o">=</span><span class="p">[],</span> <span class="n">initial_status</span><span class="o">=</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># 取件点坐标</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pickup_location</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pickup_location&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="c1"># 交付点坐标</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delivery_location</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;delivery_location&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="c1"># 货物列表</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">payloads</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;payloads&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="c1"># 源代理ID</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_agent_id</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_agent_id&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+        <span class="c1"># 目标代理ID</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_agent_id</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_agent_id&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 工作流的事件</span>
+        <span class="n">event_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;pickup_started&#39;</span><span class="p">,</span> <span class="s1">&#39;pickup_completed&#39;</span><span class="p">,</span> <span class="s1">&#39;transport_started&#39;</span><span class="p">,</span>
+                      <span class="s1">&#39;transport_completed&#39;</span><span class="p">,</span> <span class="s1">&#39;delivery_started&#39;</span><span class="p">,</span> <span class="s1">&#39;delivery_completed&#39;</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">owner</span><span class="o">=</span><span class="n">owner</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+            <span class="n">event_names</span><span class="o">=</span><span class="n">event_names</span><span class="p">,</span>
+            <span class="n">initial_status</span><span class="o">=</span><span class="n">initial_status</span><span class="p">,</span>
+            <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 当前处理的货物ID</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="LogisticsWorkflow.get_details"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.logistics.LogisticsWorkflow.get_details">[docs]</a>    <span class="k">def</span> <span class="nf">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取工作流详细信息&quot;&quot;&quot;</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_details</span><span class="p">()</span>
+        <span class="n">details</span><span class="p">[</span><span class="s1">&#39;pickup_location&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pickup_location</span>
+        <span class="n">details</span><span class="p">[</span><span class="s1">&#39;delivery_location&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delivery_location</span>
+        <span class="n">details</span><span class="p">[</span><span class="s1">&#39;payloads&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">payloads</span>
+        <span class="n">details</span><span class="p">[</span><span class="s1">&#39;source_agent_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_agent_id</span>
+        <span class="n">details</span><span class="p">[</span><span class="s1">&#39;target_agent_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_agent_id</span>
+        <span class="n">details</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;物流工作流 - 从</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">source_agent_id</span><span class="si">}</span><span class="s2">取件，交付到</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_agent_id</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">details</span></div>
+
+    <span class="k">def</span> <span class="nf">_is_at_pickup_location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查是否到达取件位置&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">position</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">pickup_location</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 检查是否在取件点附近（允许一定误差）</span>
+        <span class="n">tolerance</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># 1米误差范围</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pickup_location</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">tolerance</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_is_at_delivery_location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查是否到达交付位置&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">position</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">delivery_location</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 检查是否在交付点附近（允许一定误差）</span>
+        <span class="n">tolerance</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># 1米误差范围</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">delivery_location</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">tolerance</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+
+<div class="viewcode-block" id="LogisticsWorkflow.get_current_suggested_task"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.logistics.LogisticsWorkflow.get_current_suggested_task">[docs]</a>    <span class="k">def</span> <span class="nf">get_current_suggested_task</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取当前状态下建议执行的任务</span>
+
+<span class="sd">        根据当前状态机状态，动态生成任务信息。</span>
+
+<span class="sd">        返回:</span>
+<span class="sd">            Dict: 任务信息字典</span>
+<span class="sd">            None: 如果没有找到匹配的任务</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span>
+        <span class="n">current_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 根据当前状态生成对应的任务</span>
+        <span class="k">if</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;picking_up&#39;</span><span class="p">:</span>
+            <span class="c1"># 首先检查是否已经到达取件位置</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_at_pickup_location</span><span class="p">(</span><span class="n">current_position</span><span class="p">):</span>
+                <span class="c1"># 如果还没到达取件位置，需要先移动到取件位置</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s1">&#39;component&#39;</span><span class="p">:</span> <span class="s1">&#39;MoveTo&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="s1">&#39;MoveToTask&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="s1">&#39;移动到取件点&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;target_state&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pickup_location</span><span class="p">},</span>
+                    <span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s1">&#39;movement_type&#39;</span><span class="p">:</span> <span class="s1">&#39;path_following&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;target_position&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pickup_location</span><span class="p">,</span>
+                        <span class="s1">&#39;priority&#39;</span><span class="p">:</span> <span class="s1">&#39;high&#39;</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># 如果已经到达取件位置，创建取件任务</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s1">&#39;component&#39;</span><span class="p">:</span> <span class="s1">&#39;Logistics&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="s1">&#39;PickupTask&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="s1">&#39;取件任务&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;target_state&#39;</span><span class="p">:</span> <span class="p">{},</span>
+                    <span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s1">&#39;payload_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">payloads</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;id&#39;</span><span class="p">],</span>
+                        <span class="s1">&#39;pickup_location&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pickup_location</span><span class="p">,</span>
+                        <span class="s1">&#39;source_agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_agent_id</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+        <span class="k">elif</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;transporting&#39;</span><span class="p">:</span>
+            <span class="c1"># 创建运输任务</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;component&#39;</span><span class="p">:</span> <span class="s1">&#39;MoveTo&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="s1">&#39;MoveToTask&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="s1">&#39;运输货物&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;target_state&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">delivery_location</span><span class="p">},</span>
+                <span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;movement_type&#39;</span><span class="p">:</span> <span class="s1">&#39;path_following&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;target_position&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">delivery_location</span><span class="p">,</span>
+                    <span class="s1">&#39;priority&#39;</span><span class="p">:</span> <span class="s1">&#39;high&#39;</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="k">elif</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;delivering&#39;</span><span class="p">:</span>
+            <span class="c1"># 创建交付任务</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;component&#39;</span><span class="p">:</span> <span class="s1">&#39;Logistics&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="s1">&#39;HandoverTask&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="s1">&#39;交付货物&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;target_state&#39;</span><span class="p">:</span> <span class="p">{},</span>
+                <span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;payload_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span><span class="p">,</span>
+                    <span class="s1">&#39;delivery_location&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">delivery_location</span><span class="p">,</span>
+                    <span class="s1">&#39;target_agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_agent_id</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="k">def</span> <span class="nf">_setup_transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;设置状态机转换规则&quot;&quot;&quot;</span>
+        <span class="c1"># 工作流启动时，进入取件状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">set_start_transition</span><span class="p">(</span><span class="s1">&#39;picking_up&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 添加从取件到运输的转换 - 使用payload_id作为key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+            <span class="s1">&#39;picking_up&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;transporting&#39;</span><span class="p">,</span>
+            <span class="n">event_trigger</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;possessing_object_added&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;value_key&#39;</span><span class="p">:</span> <span class="s1">&#39;object_name&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">,</span>
+                <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">obj_name</span><span class="p">:</span> <span class="n">obj_name</span> <span class="ow">in</span> <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">payloads</span><span class="p">]</span>
+            <span class="p">},</span>
+            <span class="n">callback</span><span class="o">=</span><span class="k">lambda</span> <span class="n">context</span><span class="p">:</span> <span class="nb">setattr</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;current_payload_id&#39;</span><span class="p">,</span> <span class="n">context</span><span class="p">[</span><span class="s1">&#39;event_value&#39;</span><span class="p">][</span><span class="s1">&#39;object_name&#39;</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 添加从运输到交付的转换</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+            <span class="s1">&#39;transporting&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;delivering&#39;</span><span class="p">,</span>
+            <span class="n">agent_state</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;state_key&#39;</span><span class="p">:</span> <span class="s1">&#39;position&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">,</span>
+                <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">pos</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_at_delivery_location</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 添加从交付到完成的转换 - 使用payload_id作为key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+            <span class="s1">&#39;delivering&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+            <span class="n">event_trigger</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;possessing_object_removed&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;value_key&#39;</span><span class="p">:</span> <span class="s1">&#39;object_name&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">,</span>
+                <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">obj_name</span><span class="p">:</span> <span class="n">obj_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 失败处理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+            <span class="s1">&#39;*&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+            <span class="n">event_trigger</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;status_changed&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;value_key&#39;</span><span class="p">:</span> <span class="s1">&#39;new_status&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">EQUALS</span><span class="p">,</span>
+                <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">FAILED</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 添加状态回调</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_state_callbacks</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_add_state_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;添加状态转换回调函数&quot;&quot;&quot;</span>
+        <span class="c1"># 取件开始回调</span>
+        <span class="k">def</span> <span class="nf">on_pickup_started</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 开始取件，目标位置: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pickup_location</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># 触发取件开始事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;pickup_started&#39;</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;pickup_location&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pickup_location</span><span class="p">,</span>
+                    <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 运输开始回调</span>
+        <span class="k">def</span> <span class="nf">on_transport_started</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 取件完成，开始运输货物 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># 触发取件完成和运输开始事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;pickup_completed&#39;</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;payload_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span><span class="p">,</span>
+                    <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;transport_started&#39;</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;payload_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span><span class="p">,</span>
+                    <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 交付开始回调</span>
+        <span class="k">def</span> <span class="nf">on_delivery_started</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 到达交付点，开始交付货物 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># 触发运输完成和交付开始事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;transport_completed&#39;</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;payload_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span><span class="p">,</span>
+                    <span class="s1">&#39;delivery_location&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">delivery_location</span><span class="p">,</span>
+                    <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;delivery_started&#39;</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;payload_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span><span class="p">,</span>
+                    <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 交付完成回调</span>
+        <span class="k">def</span> <span class="nf">on_delivery_completed</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 完成货物 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span><span class="si">}</span><span class="s2"> 的交付&quot;</span><span class="p">)</span>
+            <span class="c1"># 触发交付完成事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;delivery_completed&#39;</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;payload_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_payload_id</span><span class="p">,</span>
+                    <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 获取当前触发器</span>
+        <span class="n">transitions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state_transitions</span>
+
+        <span class="c1"># 为状态添加回调</span>
+        <span class="k">for</span> <span class="n">state</span><span class="p">,</span> <span class="n">trans_list</span> <span class="ow">in</span> <span class="n">transitions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">trigger</span><span class="p">,</span> <span class="n">next_state</span><span class="p">,</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">trans_list</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">state</span> <span class="o">==</span> <span class="s1">&#39;picking_up&#39;</span> <span class="ow">and</span> <span class="n">next_state</span> <span class="o">==</span> <span class="s1">&#39;transporting&#39;</span><span class="p">:</span>
+                    <span class="n">trigger</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">on_transport_started</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">state</span> <span class="o">==</span> <span class="s1">&#39;transporting&#39;</span> <span class="ow">and</span> <span class="n">next_state</span> <span class="o">==</span> <span class="s1">&#39;delivering&#39;</span><span class="p">:</span>
+                    <span class="n">trigger</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">on_delivery_started</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">state</span> <span class="o">==</span> <span class="s1">&#39;delivering&#39;</span> <span class="ow">and</span> <span class="n">next_state</span> <span class="o">==</span> <span class="s1">&#39;completed&#39;</span><span class="p">:</span>
+                    <span class="n">trigger</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">on_delivery_completed</span><span class="p">)</span></div>
+
+
+<span class="c1"># 使用示例</span>
+<span class="k">def</span> <span class="nf">create_logistics_workflow</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">pickup_location</span><span class="p">,</span> <span class="n">delivery_location</span><span class="p">,</span> <span class="n">payloads</span><span class="p">,</span> <span class="n">source_agent_id</span><span class="p">,</span> <span class="n">target_agent_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    创建物流工作流</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+<span class="sd">        agent: 执行物流任务的代理</span>
+<span class="sd">        pickup_location: 取件位置坐标</span>
+<span class="sd">        delivery_location: 交付位置坐标</span>
+<span class="sd">        payloads: 货物列表</span>
+<span class="sd">        source_agent_id: 源代理ID，提供货物的代理</span>
+<span class="sd">        target_agent_id: 目标代理ID，接收货物的代理</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        LogisticsWorkflow: 创建的物流工作流</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span>
+
+    <span class="c1"># 确保每个payload都有唯一ID</span>
+    <span class="k">for</span> <span class="n">payload</span> <span class="ow">in</span> <span class="n">payloads</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s1">&#39;id&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">:</span>
+            <span class="n">payload</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;payload_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+        <span class="n">LogisticsWorkflow</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Logistics of </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">owner</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span>
+        <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;pickup_location&#39;</span><span class="p">:</span> <span class="n">pickup_location</span><span class="p">,</span>
+            <span class="s1">&#39;delivery_location&#39;</span><span class="p">:</span> <span class="n">delivery_location</span><span class="p">,</span>
+            <span class="s1">&#39;payloads&#39;</span><span class="p">:</span> <span class="n">payloads</span><span class="p">,</span>
+            <span class="s1">&#39;source_agent_id&#39;</span><span class="p">:</span> <span class="n">source_agent_id</span><span class="p">,</span>
+            <span class="s1">&#39;target_agent_id&#39;</span><span class="p">:</span> <span class="n">target_agent_id</span>
+        <span class="p">},</span>
+        <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="o">=</span><span class="mi">1</span><span class="o">+</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;延迟启动派送工作流&#39;</span><span class="p">),</span>  <span class="c1"># 1秒后启动</span>
+        <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>  <span class="c1"># 只启动一次</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">workflow</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.workflow.logistics</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

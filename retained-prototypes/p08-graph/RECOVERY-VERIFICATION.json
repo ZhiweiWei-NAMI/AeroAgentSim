@@ -1,0 +1,67 @@
+{
+  "snapshot_date": "2026-10-05",
+  "scope": {
+    "source_activities": 35,
+    "ordered_steps": 226,
+    "predicate_definition_records": 265,
+    "historical_1686_catalog_recovered": false,
+    "nodes": 20201,
+    "edges": 64978,
+    "scene_chunks": 75
+  },
+  "restoration": {
+    "checked_original_files": 193,
+    "original_bytes": 456656436,
+    "stored_project_bytes": 35072108,
+    "largest_stored_project_file_bytes": 8867008,
+    "all_original_hashes_match": true
+  },
+  "independent_rebuild": {
+    "command": "python3 pipeline/import_catalogs.py --source-root data/inputs --output rebuilt-data",
+    "files_compared": 94,
+    "mismatches": [],
+    "graph_sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de"
+  },
+  "offline_html": {
+    "regenerated_bytes": 35236782,
+    "sha256": "cfa6fc4c010d05781b864906b8d819d4053b26c7273f0ecda820326908bc11f1",
+    "matches_original": true,
+    "embedded_files": 103,
+    "embedded_scene_chunks": 75,
+    "embedded_byte_audit_errors": []
+  },
+  "tests": {
+    "python_technical_acceptance": {
+      "passed": 31,
+      "failed": 0
+    },
+    "node_model_acceptance_geometry": {
+      "passed": 19,
+      "failed": 0
+    },
+    "ui_suite_including_offline_dom": {
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    "javascript_syntax": "passed",
+    "actual_browser_pixel_verification": "not_run",
+    "full_historical_source_audit": "not_rerun"
+  },
+  "publication_scan": {
+    "credential_patterns": "no credential detected; authorization values contain only missing_transport_verified_human_grant synthetic marker",
+    "email_addresses_found": 0,
+    "private_key_or_token_patterns_found": 0,
+    "project_source_reference": "Original activity source page is the user project deliverable; provenance references preserved",
+    "excluded": [
+      "duplicate technical rebuild output",
+      "prebuilt source ZIP",
+      "regenerable offline HTML",
+      "obsolete ZIP-specific package manifest/report",
+      "Python caches",
+      "hidden source files",
+      "third-party asset packs",
+      "unrelated files"
+    ]
+  }
+}

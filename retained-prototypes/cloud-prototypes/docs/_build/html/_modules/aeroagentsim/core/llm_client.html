@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.core.llm_client &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.llm_client</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.core.llm_client</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim LLM 客户端模块</span>
+
+<span class="sd">该模块提供了与大型语言模型（LLM）交互的功能，用于智能任务规划和决策。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. LLM 客户端初始化和配置</span>
+<span class="sd">2. 提示构建和发送</span>
+<span class="sd">3. 响应解析和验证</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="c1"># Import find_compatible_tasks function at runtime to avoid circular imports</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.json_parser</span> <span class="kn">import</span> <span class="n">parse_llm_json_response</span>
+
+<span class="c1"># 获取logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.core.agent</span> <span class="kn">import</span> <span class="n">Agent</span>
+
+<div class="viewcode-block" id="LLMClient"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.llm_client.LLMClient">[docs]</a><span class="k">class</span> <span class="nc">LLMClient</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;LLM 客户端类，用于与大型语言模型交互&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="LLMClient.__init__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.llm_client.LLMClient.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gpt-4o&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化 LLM 客户端</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 环境实例，用于获取任务类</span>
+<span class="sd">            api_key: API 密钥，如果为 None，则尝试从环境变量中获取</span>
+<span class="sd">            model: 使用的模型名称，默认为 &quot;gpt-4o&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">openai</span> <span class="kn">import</span> <span class="n">OpenAI</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;警告: OpenAI 包未安装，LLM 功能将不可用&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;初始化 OpenAI 客户端失败: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LLMClient.is_available"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.llm_client.LLMClient.is_available">[docs]</a>    <span class="k">def</span> <span class="nf">is_available</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        检查 LLM 客户端是否可用</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 如果客户端可用，则返回 True，否则返回 False</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="LLMClient.analyze_agent_tasks"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.llm_client.LLMClient.analyze_agent_tasks">[docs]</a>    <span class="k">def</span> <span class="nf">analyze_agent_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent</span><span class="p">:</span> <span class="s1">&#39;Agent&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        分析代理，生成需要执行的任务和等待的任务</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent: 代理对象</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            to_execute_tasks 和 queuing_tasks</span>
+<span class="sd">            List[Dict]: 需执行任务列表，每个任务是一个字典</span>
+<span class="sd">            List[Dict]: 等待任务列表，每个任务是一个字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># 在运行时导入find_compatible_tasks函数，避免循环导入</span>
+        <span class="kn">from</span> <span class="nn">aeroagentsim.helper.class_checker</span> <span class="kn">import</span> <span class="n">find_compatible_tasks</span>
+
+        <span class="n">workflows</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_active_workflows</span><span class="p">()</span>
+        <span class="n">agent_details</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_details</span><span class="p">()</span>
+        <span class="n">possible_tasks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">workflow</span> <span class="ow">in</span> <span class="n">workflows</span><span class="p">:</span>
+            <span class="n">tmp_tasks</span> <span class="o">=</span> <span class="n">find_compatible_tasks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">workflow</span><span class="o">=</span><span class="n">workflow</span><span class="p">)</span>
+            <span class="n">possible_tasks</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">tmp_tasks</span><span class="p">)</span>
+
+        <span class="c1"># 构建提示，包含工作流状态机信息</span>
+        <span class="n">prompt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_workflow_prompt</span><span class="p">(</span><span class="n">workflows</span><span class="p">,</span> <span class="n">agent_details</span><span class="p">,</span> <span class="n">possible_tasks</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 使用 OpenAI 新版客户端 API</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+                <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+                <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
+                    <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;You are a drone task planner assistant.&quot;</span><span class="p">},</span>
+                    <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">prompt</span><span class="p">}</span>
+                <span class="p">],</span>
+                <span class="n">temperature</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+                <span class="n">max_tokens</span><span class="o">=</span><span class="mi">1000</span>
+            <span class="p">)</span>
+            <span class="c1"># 提取回复内容</span>
+            <span class="n">response_text</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">content</span>
+            <span class="n">tasks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_response</span><span class="p">(</span><span class="n">response_text</span><span class="p">)</span>
+
+            <span class="c1"># 确保每个任务都有工作流 ID</span>
+            <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
+                <span class="n">task</span><span class="p">[</span><span class="s1">&#39;workflow_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">id</span>
+
+            <span class="k">return</span> <span class="n">tasks</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LLM 分析失败: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span></div>
+
+    <span class="k">def</span> <span class="nf">_build_workflow_prompt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflows</span><span class="p">,</span> <span class="n">agent_details</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">possible_tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        构建工作流分析提示</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            workflows: 工作流列表</span>
+<span class="sd">            agent_details: 代理当前详细信息</span>
+<span class="sd">            possible_tasks: 可能的任务列表，每个元素是(task_class, compatibility_score)元组</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: 提示字符串</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 获取可用的任务类</span>
+        <span class="n">available_task_classes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_task_classes</span><span class="p">()</span>
+
+        <span class="c1"># 从agent_details中提取组件信息</span>
+        <span class="n">available_components</span> <span class="o">=</span> <span class="n">agent_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;components&#39;</span><span class="p">,</span> <span class="p">[])</span>
+
+        <span class="c1"># 格式化可能的任务信息</span>
+        <span class="n">formatted_tasks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">task_class</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">possible_tasks</span><span class="p">:</span>
+            <span class="n">task_info</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="s1">&#39;compatibility_score&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;necessary_metrics&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">task_class</span><span class="p">,</span> <span class="s1">&#39;NECESSARY_METRICS&#39;</span><span class="p">,</span> <span class="p">[])),</span>
+                <span class="s1">&#39;produced_states&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">task_class</span><span class="p">,</span> <span class="s1">&#39;PRODUCED_STATES&#39;</span><span class="p">,</span> <span class="p">[])),</span>
+                <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">task_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> 任务&quot;</span>
+            <span class="p">}</span>
+            <span class="n">formatted_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task_info</span><span class="p">)</span>
+
+        <span class="c1"># 构建提示</span>
+        <span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            Suggest tasks directly without analysis:</span>
+
+<span class="s2">            Agent Details: </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">agent_details</span><span class="p">,</span><span class="w"> </span><span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="si">}</span>
+
+<span class="s2">            Workflows: </span><span class="si">{</span><span class="p">[</span><span class="n">w</span><span class="o">.</span><span class="n">id</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">w</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">workflows</span><span class="p">]</span><span class="si">}</span>
+<span class="s2">            &quot;&quot;&quot;</span>
+
+        <span class="c1"># 为每个工作流添加详细信息</span>
+        <span class="k">for</span> <span class="n">workflow</span> <span class="ow">in</span> <span class="n">workflows</span><span class="p">:</span>
+            <span class="n">prompt</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            Workflow ID: </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span>
+<span class="s2">            Workflow Name: </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">name</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">workflow</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;name&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;Unknown&#39;</span><span class="si">}</span>
+<span class="s2">            Current Workflow State: </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">workflow</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;status_machine&#39;</span><span class="p">)</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;state&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;Unknown&#39;</span><span class="si">}</span>
+<span class="s2">            Current Workflow Details: </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">get_details</span><span class="p">()</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">workflow</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;get_details&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{}</span><span class="si">}</span>
+<span class="s2">            Possible Next States: </span><span class="si">{</span><span class="p">[</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">_get_current_transitions</span><span class="p">()]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">workflow</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;status_machine&#39;</span><span class="p">)</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;_get_current_transitions&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">[]</span><span class="si">}</span>
+<span class="s2">            &quot;&quot;&quot;</span>
+
+        <span class="n">prompt</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            Available Task Classes: </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">available_task_classes</span><span class="p">,</span><span class="w"> </span><span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="si">}</span>
+<span class="s2">            Available Components: </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">available_components</span><span class="p">,</span><span class="w"> </span><span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="si">}</span>
+<span class="s2">            Compatible Tasks: </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">formatted_tasks</span><span class="p">,</span><span class="w"> </span><span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="si">}</span>
+
+<span class="s2">            Return a JSON array of tasks following this format:</span>
+<span class="s2">            [</span>
+<span class="s2">            </span><span class="se">{{</span>
+<span class="s2">                &quot;component&quot;: &quot;ComponentName&quot;,</span>
+<span class="s2">                &quot;task_class&quot;: &quot;TaskClassName&quot;,</span>
+<span class="s2">                &quot;task_name&quot;: &quot;Human readable task name&quot;,</span>
+<span class="s2">                &quot;workflow_id&quot;: &quot;workflow-id&quot;,</span>
+<span class="s2">                &quot;target_state&quot;: </span><span class="se">{{</span><span class="s2">&quot;position&quot;: [x, y, z]</span><span class="se">}}</span><span class="s2">,  # Target drone state</span>
+<span class="s2">                &quot;properties&quot;: </span><span class="se">{{</span>
+<span class="s2">                    &quot;key1&quot;: &quot;value1&quot;,</span>
+<span class="s2">                    &quot;key2&quot;: &quot;value2&quot;</span>
+<span class="s2">                </span><span class="se">}}</span>
+<span class="s2">            </span><span class="se">}}</span>
+<span class="s2">            ]</span>
+<span class="s2">            &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">prompt</span>
+
+    <span class="k">def</span> <span class="nf">_get_available_task_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取可用的任务类及其文档</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, str]: 任务类名称到文档的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 使用环境的task_manager获取所有注册的任务类</span>
+        <span class="n">task_classes</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 使用保存的环境实例</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;env&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;task_manager&#39;</span><span class="p">):</span>
+                <span class="c1"># 获取所有注册的任务类</span>
+                <span class="k">for</span> <span class="n">task_name</span><span class="p">,</span> <span class="n">task_class</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">task_manager</span><span class="o">.</span><span class="n">get_all_task_classes_dict</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="c1"># 获取任务类的文档</span>
+                    <span class="n">doc</span> <span class="o">=</span> <span class="n">task_class</span><span class="o">.</span><span class="fm">__init__</span><span class="o">.</span><span class="vm">__doc__</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">task_class</span><span class="p">,</span> <span class="s1">&#39;__init__&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">task_class</span><span class="o">.</span><span class="fm">__init__</span><span class="o">.</span><span class="vm">__doc__</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+                    <span class="n">task_classes</span><span class="p">[</span><span class="n">task_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">doc</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># 如果没有环境实例，使用默认任务类</span>
+                <span class="kn">from</span> <span class="nn">aeroagentsim.task.mobility</span> <span class="kn">import</span> <span class="n">MoveToTask</span>
+                <span class="n">task_classes</span><span class="p">[</span><span class="s1">&#39;MoveToTask&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">MoveToTask</span><span class="o">.</span><span class="fm">__init__</span><span class="o">.</span><span class="vm">__doc__</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;获取任务类失败: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># 使用默认任务类</span>
+            <span class="kn">from</span> <span class="nn">aeroagentsim.task.mobility</span> <span class="kn">import</span> <span class="n">MoveToTask</span>
+            <span class="n">task_classes</span><span class="p">[</span><span class="s1">&#39;MoveToTask&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">MoveToTask</span><span class="o">.</span><span class="fm">__init__</span><span class="o">.</span><span class="vm">__doc__</span>
+
+        <span class="k">return</span> <span class="n">task_classes</span>
+
+    <span class="k">def</span> <span class="nf">_parse_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        解析 LLM 响应并转换为任务列表</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            response: LLM 响应文本</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Dict]: 任务列表，每个任务是一个字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tasks</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 使用通用JSON解析工具</span>
+        <span class="n">task_data</span> <span class="o">=</span> <span class="n">parse_llm_json_response</span><span class="p">(</span>
+            <span class="n">response_text</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+            <span class="n">expected_type</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span>
+            <span class="n">auto_fix</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">debug</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">task_data</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">task_data</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_task_format</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+                    <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;跳过无效任务格式: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">task</span><span class="p">)</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">task_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;LLM响应JSON解析失败&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LLM响应解析结果不是列表类型: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">task_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">tasks</span>
+
+    <span class="k">def</span> <span class="nf">_validate_task_format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        验证任务格式是否正确</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task: 任务字典</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 如果任务格式正确，则返回 True，否则返回 False</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">required_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;component&#39;</span><span class="p">,</span> <span class="s1">&#39;task_name&#39;</span><span class="p">,</span> <span class="s1">&#39;task_class&#39;</span><span class="p">,</span> <span class="s1">&#39;target_state&#39;</span><span class="p">,</span> <span class="s1">&#39;properties&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">field</span> <span class="ow">in</span> <span class="n">task</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">required_fields</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    LLM客户端测试代码</span>
+<span class="sd">    测试find_compatible_tasks的返回格式和_build_workflow_prompt方法</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">os</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+    <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+    <span class="kn">from</span> <span class="nn">unittest.mock</span> <span class="kn">import</span> <span class="n">MagicMock</span>
+
+    <span class="c1"># 添加项目根目录到系统路径</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s1">&#39;../..&#39;</span><span class="p">)))</span>
+
+    <span class="c1"># 模拟环境和代理</span>
+    <span class="k">class</span> <span class="nc">MockTask</span><span class="p">:</span>
+        <span class="n">NECESSARY_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="s1">&#39;battery&#39;</span><span class="p">]</span>
+        <span class="n">PRODUCED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">]</span>
+
+        <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">_</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;Mock task for testing&quot;</span>
+
+    <span class="k">class</span> <span class="nc">MockWorkflow</span><span class="p">:</span>
+        <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">workflow_id</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s2">&quot;IDLE&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">_get_current_transitions</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">(</span><span class="n">return_value</span><span class="o">=</span><span class="p">[(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;RUNNING&quot;</span><span class="p">)])</span>
+
+        <span class="k">def</span> <span class="nf">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ready&quot;</span><span class="p">,</span> <span class="s2">&quot;progress&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+
+    <span class="k">class</span> <span class="nc">MockAgent</span><span class="p">:</span>
+        <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">agent_id</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_workflows</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">def</span> <span class="nf">get_active_workflows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_workflows</span>
+
+        <span class="k">def</span> <span class="nf">add_workflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_workflows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;drone&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>
+                    <span class="s2">&quot;battery&quot;</span><span class="p">:</span> <span class="mi">95</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;components&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;camera&quot;</span><span class="p">,</span> <span class="s2">&quot;gps&quot;</span><span class="p">,</span> <span class="s2">&quot;battery&quot;</span><span class="p">]</span>
+            <span class="p">}</span>
+
+        <span class="k">def</span> <span class="nf">get_component_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;camera&quot;</span><span class="p">,</span> <span class="s2">&quot;gps&quot;</span><span class="p">,</span> <span class="s2">&quot;battery&quot;</span><span class="p">]</span>
+
+    <span class="k">class</span> <span class="nc">MockEnvironment</span><span class="p">:</span>
+        <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_manager</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_manager</span><span class="o">.</span><span class="n">task_classes</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;MockTask&quot;</span><span class="p">:</span> <span class="n">MockTask</span><span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">now</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># 模拟 find_compatible_tasks 函数</span>
+    <span class="k">def</span> <span class="nf">mock_find_compatible_tasks</span><span class="p">(</span><span class="o">*</span><span class="n">_</span><span class="p">,</span> <span class="o">**</span><span class="n">__</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;模拟函数，忽略所有参数，返回固定结果&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[(</span><span class="n">MockTask</span><span class="p">,</span> <span class="mf">0.85</span><span class="p">)]</span>
+
+    <span class="c1"># 在测试中使用模拟函数，不需要导入原始模块</span>
+
+    <span class="c1"># 创建测试环境</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">MockEnvironment</span><span class="p">()</span>
+    <span class="n">agent</span> <span class="o">=</span> <span class="n">MockAgent</span><span class="p">(</span><span class="s2">&quot;drone-001&quot;</span><span class="p">)</span>
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">MockWorkflow</span><span class="p">(</span><span class="s2">&quot;workflow-001&quot;</span><span class="p">,</span> <span class="s2">&quot;Test Workflow&quot;</span><span class="p">)</span>
+    <span class="n">agent</span><span class="o">.</span><span class="n">add_workflow</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span>
+
+    <span class="c1"># 创建LLM客户端</span>
+    <span class="n">llm_client</span> <span class="o">=</span> <span class="n">LLMClient</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+
+    <span class="c1"># 测试_build_workflow_prompt方法</span>
+    <span class="n">workflows</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_active_workflows</span><span class="p">()</span>
+    <span class="n">agent_details</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_details</span><span class="p">()</span>
+    <span class="n">possible_tasks</span> <span class="o">=</span> <span class="n">mock_find_compatible_tasks</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">workflow</span><span class="p">)</span>
+
+    <span class="n">prompt</span> <span class="o">=</span> <span class="n">llm_client</span><span class="o">.</span><span class="n">_build_workflow_prompt</span><span class="p">(</span><span class="n">workflows</span><span class="p">,</span> <span class="n">agent_details</span><span class="p">,</span> <span class="n">possible_tasks</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Generated Prompt ===</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== End of Prompt ===</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># 测试解析响应</span>
+    <span class="n">mock_response</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    ```json</span>
+<span class="s2">    [</span>
+<span class="s2">      {</span>
+<span class="s2">        &quot;component&quot;: &quot;gps&quot;,</span>
+<span class="s2">        &quot;task_class&quot;: &quot;MockTask&quot;,</span>
+<span class="s2">        &quot;task_name&quot;: &quot;Navigate to position&quot;,</span>
+<span class="s2">        &quot;workflow_id&quot;: &quot;workflow-001&quot;,</span>
+<span class="s2">        &quot;target_state&quot;: {&quot;position&quot;: [10, 20, 30]},</span>
+<span class="s2">        &quot;properties&quot;: {</span>
+<span class="s2">          &quot;speed&quot;: 5,</span>
+<span class="s2">          &quot;altitude&quot;: 30</span>
+<span class="s2">        }</span>
+<span class="s2">      }</span>
+<span class="s2">    ]</span>
+<span class="s2">    ```</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+
+    <span class="n">tasks</span> <span class="o">=</span> <span class="n">llm_client</span><span class="o">.</span><span class="n">_parse_response</span><span class="p">(</span><span class="n">mock_response</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Parsed Tasks ===</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== End of Tasks ===</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.llm_client</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

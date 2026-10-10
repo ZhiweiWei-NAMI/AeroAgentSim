@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.helper.class_checker &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.helper.class_checker</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.helper.class_checker</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AeroAgentSim类检查工具</span>
+
+<span class="sd">该模块提供工具函数，用于检查系统中已实现的各种类及其关键信息。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 检查所有已注册的类</span>
+<span class="sd">2. 根据需求查找兼容的类</span>
+<span class="sd">3. 展示类的关键信息</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">importlib</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span> <span class="nn">tabulate</span> <span class="kn">import</span> <span class="n">tabulate</span>
+<span class="kn">import</span> <span class="nn">textwrap</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.agent</span> <span class="kn">import</span> <span class="n">Agent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.component</span> <span class="kn">import</span> <span class="n">Component</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.task</span> <span class="kn">import</span> <span class="n">Task</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.workflow</span> <span class="kn">import</span> <span class="n">Workflow</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_wrap_text</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">60</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;将长文本按指定宽度换行&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">textwrap</span><span class="o">.</span><span class="n">wrap</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">))</span>
+
+<div class="viewcode-block" id="check_all_classes"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.class_checker.check_all_classes">[docs]</a><span class="k">def</span> <span class="nf">check_all_classes</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    检查系统中所有已注册的类</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;AeroAgentSim系统类检查工具&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    
+    <span class="n">check_agent_classes</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">check_component_classes</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">check_task_classes</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">check_workflow_classes</span><span class="p">(</span><span class="n">env</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="check_agent_classes"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.class_checker.check_agent_classes">[docs]</a><span class="k">def</span> <span class="nf">check_agent_classes</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    检查系统中所有已注册的代理类</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;代理(Agent)类检查&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    
+    <span class="n">agent_classes</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">agent_manager</span><span class="o">.</span><span class="n">get_all_agent_classes</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">agent_classes</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;未找到任何代理类&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    
+    <span class="n">agent_info</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">agent_class</span> <span class="ow">in</span> <span class="n">agent_classes</span><span class="p">:</span>
+        <span class="c1"># 获取代理类支持的状态</span>
+        <span class="n">states</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;_state_templates&#39;</span><span class="p">):</span>
+                <span class="n">states</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_state_templates</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        
+        <span class="c1"># 获取代理类描述</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">agent_class</span><span class="o">.</span><span class="n">get_description</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">agent_class</span><span class="p">,</span> <span class="s1">&#39;get_description&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+        
+        <span class="n">agent_info</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">_wrap_text</span><span class="p">(</span><span class="n">description</span><span class="p">),</span>
+            <span class="s1">&#39;states&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">states</span><span class="p">)),</span>
+            <span class="s1">&#39;module&#39;</span><span class="p">:</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__module__</span>
+        <span class="p">})</span>
+    
+    <span class="c1"># 按名称排序</span>
+    <span class="n">agent_info</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
+    
+    <span class="c1"># 使用tabulate打印表格</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;代理类名&quot;</span><span class="p">,</span> <span class="s2">&quot;描述&quot;</span><span class="p">,</span> <span class="s2">&quot;支持的状态&quot;</span><span class="p">,</span> <span class="s2">&quot;模块&quot;</span><span class="p">]</span>
+    <span class="n">table_data</span> <span class="o">=</span> <span class="p">[[</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;states&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;module&#39;</span><span class="p">]]</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">agent_info</span><span class="p">]</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="n">tabulate</span><span class="p">(</span><span class="n">table_data</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">tablefmt</span><span class="o">=</span><span class="s2">&quot;grid&quot;</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;共找到 </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">agent_info</span><span class="p">)</span><span class="si">}</span><span class="s2"> 个代理类&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="check_component_classes"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.class_checker.check_component_classes">[docs]</a><span class="k">def</span> <span class="nf">check_component_classes</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    检查系统中所有已注册的组件类</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;组件(Component)类检查&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    
+    <span class="n">component_classes</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">component_manager</span><span class="o">.</span><span class="n">get_all_component_classes</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">component_classes</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;未找到任何组件类&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    
+    <span class="n">component_info</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">component_class</span> <span class="ow">in</span> <span class="n">component_classes</span><span class="p">:</span>
+        <span class="c1"># 获取组件类产生的指标和监控的状态</span>
+        <span class="n">produced_metrics</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">component_class</span><span class="p">,</span> <span class="s1">&#39;PRODUCED_METRICS&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">monitored_states</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">component_class</span><span class="p">,</span> <span class="s1">&#39;MONITORED_STATES&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        
+        <span class="c1"># 获取组件类描述</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">component_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">component_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> 组件&quot;</span>
+        
+        <span class="n">component_info</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">component_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">_wrap_text</span><span class="p">(</span><span class="n">description</span><span class="p">),</span>
+            <span class="s1">&#39;produced_metrics&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">produced_metrics</span><span class="p">),</span>
+            <span class="s1">&#39;monitored_states&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">monitored_states</span><span class="p">),</span>
+            <span class="s1">&#39;module&#39;</span><span class="p">:</span> <span class="n">component_class</span><span class="o">.</span><span class="vm">__module__</span>
+        <span class="p">})</span>
+    
+    <span class="c1"># 按名称排序</span>
+    <span class="n">component_info</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
+    
+    <span class="c1"># 使用tabulate打印表格</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;组件类名&quot;</span><span class="p">,</span> <span class="s2">&quot;描述&quot;</span><span class="p">,</span> <span class="s2">&quot;产生的指标&quot;</span><span class="p">,</span> <span class="s2">&quot;监控的状态&quot;</span><span class="p">,</span> <span class="s2">&quot;模块&quot;</span><span class="p">]</span>
+    <span class="n">table_data</span> <span class="o">=</span> <span class="p">[[</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;produced_metrics&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;monitored_states&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;module&#39;</span><span class="p">]]</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">component_info</span><span class="p">]</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="n">tabulate</span><span class="p">(</span><span class="n">table_data</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">tablefmt</span><span class="o">=</span><span class="s2">&quot;grid&quot;</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;共找到 </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">component_info</span><span class="p">)</span><span class="si">}</span><span class="s2"> 个组件类&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="check_task_classes"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.class_checker.check_task_classes">[docs]</a><span class="k">def</span> <span class="nf">check_task_classes</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    检查系统中所有已注册的任务类</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;任务(Task)类检查&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    
+    <span class="n">task_classes</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">task_manager</span><span class="o">.</span><span class="n">get_all_task_classes</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">task_classes</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;未找到任何任务类&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    
+    <span class="n">task_info</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">task_class</span> <span class="ow">in</span> <span class="n">task_classes</span><span class="p">:</span>
+        <span class="c1"># 获取任务类所需的指标和产生的状态</span>
+        <span class="n">necessary_metrics</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">task_class</span><span class="p">,</span> <span class="s1">&#39;NECESSARY_METRICS&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">produced_states</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">task_class</span><span class="p">,</span> <span class="s1">&#39;PRODUCED_STATES&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        
+        <span class="c1"># 获取任务类描述</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">task_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> 任务&quot;</span>
+        
+        <span class="n">task_info</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">_wrap_text</span><span class="p">(</span><span class="n">description</span><span class="p">),</span>
+            <span class="s1">&#39;necessary_metrics&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">necessary_metrics</span><span class="p">),</span>
+            <span class="s1">&#39;produced_states&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">produced_states</span><span class="p">),</span>
+            <span class="s1">&#39;module&#39;</span><span class="p">:</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__module__</span>
+        <span class="p">})</span>
+    
+    <span class="c1"># 按名称排序</span>
+    <span class="n">task_info</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
+    
+    <span class="c1"># 使用tabulate打印表格</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;任务类名&quot;</span><span class="p">,</span> <span class="s2">&quot;描述&quot;</span><span class="p">,</span> <span class="s2">&quot;所需指标&quot;</span><span class="p">,</span> <span class="s2">&quot;产生的状态&quot;</span><span class="p">,</span> <span class="s2">&quot;模块&quot;</span><span class="p">]</span>
+    <span class="n">table_data</span> <span class="o">=</span> <span class="p">[[</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;necessary_metrics&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;produced_states&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;module&#39;</span><span class="p">]]</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">task_info</span><span class="p">]</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="n">tabulate</span><span class="p">(</span><span class="n">table_data</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">tablefmt</span><span class="o">=</span><span class="s2">&quot;grid&quot;</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;共找到 </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">task_info</span><span class="p">)</span><span class="si">}</span><span class="s2"> 个任务类&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="check_workflow_classes"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.class_checker.check_workflow_classes">[docs]</a><span class="k">def</span> <span class="nf">check_workflow_classes</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    检查系统中所有已注册的工作流类</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;工作流(Workflow)类检查&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    
+    <span class="c1"># 从 aeroagentsim.workflow 模块获取所有工作流类</span>
+    <span class="kn">import</span> <span class="nn">aeroagentsim.workflow</span> <span class="k">as</span> <span class="nn">workflow_module</span>
+    <span class="n">workflow_classes</span> <span class="o">=</span> <span class="n">workflow_module</span><span class="o">.</span><span class="n">get_all_workflow_classes</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">workflow_classes</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;未找到任何工作流类&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    
+    <span class="n">workflow_info</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">workflow_class</span> <span class="ow">in</span> <span class="n">workflow_classes</span><span class="p">:</span>
+        <span class="c1"># 获取工作流类的属性模板</span>
+        <span class="n">property_templates</span> <span class="o">=</span> <span class="n">workflow_class</span><span class="o">.</span><span class="n">get_property_templates</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">workflow_class</span><span class="p">,</span> <span class="s1">&#39;get_property_templates&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
+        
+        <span class="c1"># 获取工作流类描述</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">workflow_class</span><span class="o">.</span><span class="n">get_description</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">workflow_class</span><span class="p">,</span> <span class="s1">&#39;get_description&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="n">workflow_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+        
+        <span class="c1"># 获取工作流类的创建函数</span>
+        <span class="n">create_function</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">workflow_class</span><span class="o">.</span><span class="vm">__module__</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">module</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">isfunction</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="ow">and</span> 
+                <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;create_&#39;</span><span class="p">)</span> <span class="ow">and</span> 
+                <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;_workflow&#39;</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="n">workflow_class</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">in</span> <span class="n">name</span><span class="p">):</span>
+                <span class="n">create_function</span> <span class="o">=</span> <span class="n">name</span>
+                <span class="k">break</span>
+        
+        <span class="n">workflow_info</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">workflow_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">_wrap_text</span><span class="p">(</span><span class="n">description</span><span class="p">),</span>
+            <span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">property_templates</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
+            <span class="s1">&#39;create_function&#39;</span><span class="p">:</span> <span class="n">create_function</span> <span class="ow">or</span> <span class="s2">&quot;无&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;module&#39;</span><span class="p">:</span> <span class="n">workflow_class</span><span class="o">.</span><span class="vm">__module__</span>
+        <span class="p">})</span>
+    
+    <span class="c1"># 按名称排序</span>
+    <span class="n">workflow_info</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
+    
+    <span class="c1"># 使用tabulate打印表格</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;工作流类名&quot;</span><span class="p">,</span> <span class="s2">&quot;描述&quot;</span><span class="p">,</span> <span class="s2">&quot;属性&quot;</span><span class="p">,</span> <span class="s2">&quot;创建函数&quot;</span><span class="p">,</span> <span class="s2">&quot;模块&quot;</span><span class="p">]</span>
+    <span class="n">table_data</span> <span class="o">=</span> <span class="p">[[</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;properties&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;create_function&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;module&#39;</span><span class="p">]]</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">workflow_info</span><span class="p">]</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="n">tabulate</span><span class="p">(</span><span class="n">table_data</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">tablefmt</span><span class="o">=</span><span class="s2">&quot;grid&quot;</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;共找到 </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">workflow_info</span><span class="p">)</span><span class="si">}</span><span class="s2"> 个工作流类&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="find_compatible_agents"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.class_checker.find_compatible_agents">[docs]</a><span class="k">def</span> <span class="nf">find_compatible_agents</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">required_states</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    查找支持指定状态的代理类</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+<span class="sd">        required_states: 需要的状态列表</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;查找支持以下状态的代理类: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">required_states</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    
+    <span class="n">compatible_agents</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">agent_manager</span><span class="o">.</span><span class="n">find_compatible_agents</span><span class="p">(</span><span class="n">required_states</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">compatible_agents</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;未找到兼容的代理类&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    
+    <span class="n">agent_info</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">agent_class</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">compatible_agents</span><span class="p">:</span>
+        <span class="c1"># 获取代理类支持的状态</span>
+        <span class="n">states</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;_state_templates&#39;</span><span class="p">):</span>
+                <span class="n">states</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_state_templates</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        
+        <span class="c1"># 获取代理类描述</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">agent_class</span><span class="o">.</span><span class="n">get_description</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">agent_class</span><span class="p">,</span> <span class="s1">&#39;get_description&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+        
+        <span class="n">agent_info</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">_wrap_text</span><span class="p">(</span><span class="n">description</span><span class="p">),</span>
+            <span class="s1">&#39;states&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">states</span><span class="p">)),</span>
+            <span class="s1">&#39;compatibility_score&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;module&#39;</span><span class="p">:</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__module__</span>
+        <span class="p">})</span>
+    
+    <span class="c1"># 使用tabulate打印表格</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;代理类名&quot;</span><span class="p">,</span> <span class="s2">&quot;描述&quot;</span><span class="p">,</span> <span class="s2">&quot;支持的状态&quot;</span><span class="p">,</span> <span class="s2">&quot;兼容性分数&quot;</span><span class="p">,</span> <span class="s2">&quot;模块&quot;</span><span class="p">]</span>
+    <span class="n">table_data</span> <span class="o">=</span> <span class="p">[[</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;states&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;compatibility_score&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;module&#39;</span><span class="p">]]</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">agent_info</span><span class="p">]</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="n">tabulate</span><span class="p">(</span><span class="n">table_data</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">tablefmt</span><span class="o">=</span><span class="s2">&quot;grid&quot;</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;共找到 </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">agent_info</span><span class="p">)</span><span class="si">}</span><span class="s2"> 个兼容的代理类&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="find_compatible_components"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.class_checker.find_compatible_components">[docs]</a><span class="k">def</span> <span class="nf">find_compatible_components</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">agent</span><span class="p">:</span> <span class="n">Agent</span><span class="p">,</span> <span class="n">required_metrics</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    查找与代理兼容的组件类</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+<span class="sd">        agent: 代理</span>
+<span class="sd">        required_metrics: 需要的指标列表（可选）</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;查找与代理 </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 兼容的组件类&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">required_metrics</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;需要的指标: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">required_metrics</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    
+    <span class="n">compatible_components</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">component_manager</span><span class="o">.</span><span class="n">find_compatible_components</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="n">required_metrics</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">compatible_components</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;未找到兼容的组件类&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    
+    <span class="n">component_info</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">component_class</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">compatible_components</span><span class="p">:</span>
+        <span class="c1"># 获取组件类产生的指标和监控的状态</span>
+        <span class="n">produced_metrics</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">component_class</span><span class="p">,</span> <span class="s1">&#39;PRODUCED_METRICS&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">monitored_states</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">component_class</span><span class="p">,</span> <span class="s1">&#39;MONITORED_STATES&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        
+        <span class="c1"># 获取组件类描述</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">component_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">component_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> 组件&quot;</span>
+        
+        <span class="n">component_info</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">component_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">_wrap_text</span><span class="p">(</span><span class="n">description</span><span class="p">),</span>
+            <span class="s1">&#39;produced_metrics&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">produced_metrics</span><span class="p">),</span>
+            <span class="s1">&#39;monitored_states&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">monitored_states</span><span class="p">),</span>
+            <span class="s1">&#39;compatibility_score&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;module&#39;</span><span class="p">:</span> <span class="n">component_class</span><span class="o">.</span><span class="vm">__module__</span>
+        <span class="p">})</span>
+    
+    <span class="c1"># 使用tabulate打印表格</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;组件类名&quot;</span><span class="p">,</span> <span class="s2">&quot;描述&quot;</span><span class="p">,</span> <span class="s2">&quot;产生的指标&quot;</span><span class="p">,</span> <span class="s2">&quot;监控的状态&quot;</span><span class="p">,</span> <span class="s2">&quot;兼容性分数&quot;</span><span class="p">,</span> <span class="s2">&quot;模块&quot;</span><span class="p">]</span>
+    <span class="n">table_data</span> <span class="o">=</span> <span class="p">[[</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;produced_metrics&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;monitored_states&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;compatibility_score&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;module&#39;</span><span class="p">]]</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">component_info</span><span class="p">]</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="n">tabulate</span><span class="p">(</span><span class="n">table_data</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">tablefmt</span><span class="o">=</span><span class="s2">&quot;grid&quot;</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;共找到 </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">component_info</span><span class="p">)</span><span class="si">}</span><span class="s2"> 个兼容的组件类&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="find_compatible_tasks"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.class_checker.find_compatible_tasks">[docs]</a><span class="k">def</span> <span class="nf">find_compatible_tasks</span><span class="p">(</span><span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">agent</span><span class="p">:</span> <span class="n">Agent</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Workflow</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">required_states</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    查找与代理和工作流兼容的任务类</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+<span class="sd">        agent: 代理</span>
+<span class="sd">        workflow: 工作流（可选）</span>
+<span class="sd">        required_states: 需要的状态列表（可选）</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;查找与代理 </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 兼容的任务类&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">workflow</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;工作流: </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">required_states</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;需要的状态: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">required_states</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    
+    <span class="n">compatible_tasks</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">task_manager</span><span class="o">.</span><span class="n">find_compatible_tasks</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="n">required_states</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">compatible_tasks</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;未找到兼容的任务类&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    
+    <span class="n">task_info</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">task_class</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">compatible_tasks</span><span class="p">:</span>
+        <span class="c1"># 获取任务类所需的指标和产生的状态</span>
+        <span class="n">necessary_metrics</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">task_class</span><span class="p">,</span> <span class="s1">&#39;NECESSARY_METRICS&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">produced_states</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">task_class</span><span class="p">,</span> <span class="s1">&#39;PRODUCED_STATES&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        
+        <span class="c1"># 获取任务类描述</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">task_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> 任务&quot;</span>
+        
+        <span class="n">task_info</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">_wrap_text</span><span class="p">(</span><span class="n">description</span><span class="p">),</span>
+            <span class="s1">&#39;necessary_metrics&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">necessary_metrics</span><span class="p">),</span>
+            <span class="s1">&#39;produced_states&#39;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">produced_states</span><span class="p">),</span>
+            <span class="s1">&#39;compatibility_score&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;module&#39;</span><span class="p">:</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__module__</span>
+        <span class="p">})</span>
+    
+    <span class="c1"># 使用tabulate打印表格</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;任务类名&quot;</span><span class="p">,</span> <span class="s2">&quot;描述&quot;</span><span class="p">,</span> <span class="s2">&quot;所需指标&quot;</span><span class="p">,</span> <span class="s2">&quot;产生的状态&quot;</span><span class="p">,</span> <span class="s2">&quot;兼容性分数&quot;</span><span class="p">,</span> <span class="s2">&quot;模块&quot;</span><span class="p">]</span>
+    <span class="n">table_data</span> <span class="o">=</span> <span class="p">[[</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;necessary_metrics&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;produced_states&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;compatibility_score&#39;</span><span class="p">],</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;module&#39;</span><span class="p">]]</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">task_info</span><span class="p">]</span>
+    
+    <span class="c1"># print(tabulate(table_data, headers=headers, tablefmt=&quot;grid&quot;))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;共找到 </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">task_info</span><span class="p">)</span><span class="si">}</span><span class="s2"> 个兼容的任务类&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">compatible_tasks</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.helper.class_checker</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

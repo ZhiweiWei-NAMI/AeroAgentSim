@@ -1,0 +1,2324 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aeroagentsim:p08:typed-graph:v1",
+  "title": "P08 lossless typed authoring graph",
+  "description": "Shape and preservation validity are distinct from semantic readiness and native/live execution. Payloads retain original unsupported constructs.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "p08.typed-graph/v1"
+    },
+    "contract_version": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    },
+    "readiness": {
+      "$ref": "#/$defs/readiness"
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "semantic_level",
+        "label",
+        "provenance",
+        "source_records",
+        "payload"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "accounting_record",
+            "activity",
+            "activity_step",
+            "agent",
+            "arbitration_policy",
+            "artifact_change_record",
+            "artifact_version_binding",
+            "authority_record",
+            "baseline_revision_acceptance_requirement",
+            "behavior_definition",
+            "behavior_execution",
+            "business_order",
+            "capability_claim",
+            "capability_declaration",
+            "check_binding",
+            "check_result",
+            "command_attempt",
+            "command_definition",
+            "command_lifecycle_receipt",
+            "command_receipt",
+            "compute_job_resource_binding",
+            "constraint_check",
+            "constraint_check_result",
+            "constraint_definition",
+            "custody_and_responsibility_handover",
+            "decision",
+            "delivery_receipt",
+            "effect_evaluation_result",
+            "engineering_review_record",
+            "entity",
+            "entity_type",
+            "evaluation_binding",
+            "event_definition",
+            "event_occurrence",
+            "evidence_source",
+            "expression",
+            "expression_type",
+            "fact",
+            "feedback_policy",
+            "future_followup_attempt",
+            "human_actor",
+            "human_review_record",
+            "lease_approval",
+            "lease_request",
+            "link_configuration",
+            "longitudinal_observation",
+            "material_transformation",
+            "migration_record",
+            "module",
+            "module_execution",
+            "node_type",
+            "objective",
+            "paired_observation",
+            "parameter_definition",
+            "passenger_itinerary",
+            "passenger_leg",
+            "passenger_manifest_entry",
+            "predicate_definition",
+            "predicate_evaluation",
+            "predicate_expectation",
+            "predicate_result",
+            "prepared_input",
+            "relation_definition",
+            "relation_instance",
+            "request",
+            "resource",
+            "review_signature_record",
+            "rule_ast_expression",
+            "rule_definition",
+            "sample_collection_record",
+            "scenario_definition",
+            "source_record",
+            "space_time_allocation",
+            "spatial_zone",
+            "state_specification",
+            "strategy_definition",
+            "strategy_invocation",
+            "task",
+            "time_context"
+          ]
+        },
+        "semantic_level": {
+          "enum": [
+            "definition",
+            "configured_instance",
+            "runtime_record",
+            "source_record"
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "raw_kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_collection": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provenance": {
+          "type": [
+            "object",
+            "string"
+          ],
+          "description": "Source provenance is preserved. A synthetic fixture cannot be relabelled as measured/native/live evidence."
+        },
+        "source_records": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/source_record"
+          }
+        },
+        "payload": {
+          "$ref": "#/$defs/json_value"
+        },
+        "identity": {
+          "type": "object"
+        },
+        "semantics": {
+          "type": "object"
+        },
+        "readiness": {
+          "$ref": "#/$defs/readiness"
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "node_type"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "entity_type"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "entity"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "state_specification"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "fact"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "module"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "agent"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "strategy_definition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "capability_declaration"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition",
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "behavior_definition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "request"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "objective"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "decision"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "task"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "resource"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "constraint_definition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "predicate_definition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "rule_definition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "event_definition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "command_definition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "arbitration_policy"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "evidence_source"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "source_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "scenario_definition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "check_binding"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "feedback_policy"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "predicate_result"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "relation_definition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "parameter_definition"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "spatial_zone"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "lease_request"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "lease_approval"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "space_time_allocation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "configured_instance"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "delivery_receipt"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "expression_type"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "expression"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "accounting_record"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "artifact_change_record"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "artifact_version_binding"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "authority_record"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition",
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "baseline_revision_acceptance_requirement"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "behavior_execution"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "business_order"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "capability_claim"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "check_result"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "command_attempt"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "command_lifecycle_receipt"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "command_receipt"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "compute_job_resource_binding"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "constraint_check"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "constraint_check_result"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "custody_and_responsibility_handover"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "effect_evaluation_result"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "engineering_review_record"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "evaluation_binding"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "event_occurrence"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "future_followup_attempt"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "human_actor"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "human_review_record"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "longitudinal_observation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "material_transformation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "migration_record"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "module_execution"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "paired_observation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "passenger_itinerary"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "passenger_leg"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "passenger_manifest_entry"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "predicate_evaluation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "predicate_expectation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "prepared_input"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "relation_instance"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "review_signature_record"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "sample_collection_record"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "strategy_invocation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "time_context"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "runtime_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "link_configuration"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "source_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "source_record"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "source_record"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "rule_ast_expression"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "activity"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "activity_step"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_level": {
+                "enum": [
+                  "definition"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "edge": {
+      "type": "object",
+      "required": [
+        "id",
+        "relation",
+        "source",
+        "target",
+        "role",
+        "semantic_level",
+        "provenance",
+        "source_records",
+        "payload"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relation": {
+          "enum": [
+            "accepts_state_signature",
+            "allocated_under_approval",
+            "allocates_zone",
+            "applicability_expression_of",
+            "applies_when",
+            "approved_by_agent",
+            "arbitrated_by",
+            "arbitrates_agent",
+            "argument_of",
+            "assigned_decision_agent",
+            "based_on_fact",
+            "baseline_evidence",
+            "behavior_subject",
+            "binding_result_reference",
+            "binds_role",
+            "candidate_occurrence_of",
+            "capability_available_to",
+            "capability_provided_by",
+            "checks_behavior_definition",
+            "cited_from",
+            "classified_as",
+            "command_receipt_for",
+            "command_target_binding",
+            "composes_behavior_definition",
+            "composes_behavior_execution",
+            "conditioned_on_predicate",
+            "conditions_behavior",
+            "conforms_to_transformation_relation",
+            "constrained_by",
+            "constraint_basis",
+            "consumes_input_lot",
+            "continues_task",
+            "control_evidence",
+            "control_input_to",
+            "controls",
+            "decides_lease_request",
+            "declares_admission_for_behavior",
+            "declares_authored_fact_output",
+            "declares_command_attempt",
+            "declares_command_definition",
+            "declares_command_output",
+            "declares_decision_output",
+            "declares_event",
+            "declares_event_evidence",
+            "declares_event_feedback",
+            "declares_execution_dependency",
+            "declares_fact_input",
+            "declares_fact_output",
+            "declares_object_type",
+            "declares_read_scope",
+            "declares_resource_allocation",
+            "declares_state",
+            "declares_subject_type",
+            "declares_write_scope",
+            "defines_target",
+            "delivery_receipt_for",
+            "depends_on_definition",
+            "evaluates_predicate",
+            "evaluates_rule",
+            "evidenced_by",
+            "execution_module_binding",
+            "execution_of_module",
+            "expectation_of_predicate",
+            "expression_kind_of",
+            "feedback_agent_binding",
+            "feedback_behavior_binding",
+            "feeds_back",
+            "follows_transformation",
+            "followup_evidence",
+            "generates_command",
+            "handles_event_definition",
+            "has_argument",
+            "has_expression",
+            "implements_task",
+            "input_to_strategy",
+            "instance_of",
+            "instantiates_state",
+            "invocation_of_strategy",
+            "invoked_by",
+            "issued_by",
+            "leg_of",
+            "legacy_field_reference",
+            "lifecycle_record_for_attempt",
+            "managed_by",
+            "manifest_for",
+            "message_evidence_only",
+            "observes_fact",
+            "output_must_satisfy",
+            "owns_resource",
+            "owns_state",
+            "parameter_binding_input_to",
+            "parameter_input_to",
+            "permits_or_blocks",
+            "produces_check_result",
+            "produces_decision",
+            "produces_evaluation_result",
+            "produces_fact",
+            "produces_output_lot",
+            "proposes_decision",
+            "proposes_replan",
+            "pursues_objective",
+            "reads_definition",
+            "reads_fact",
+            "reads_input",
+            "reads_state_signature",
+            "realized_by_module_execution",
+            "realizes_execution",
+            "received_by",
+            "references_predicate",
+            "references_prior_review",
+            "relation_uses_field",
+            "replays_command_attempt",
+            "replays_command_definition",
+            "replays_event_definition",
+            "requested_by_agent",
+            "requested_by_attempt",
+            "requested_by_request",
+            "requests_behavior_definition",
+            "requests_task",
+            "requests_zone",
+            "requires_allocation",
+            "requires_capability",
+            "requires_check",
+            "requires_delivery_receipt",
+            "requires_evidence",
+            "requires_fresh_check_definition",
+            "requires_resource",
+            "result_of_check",
+            "result_of_predicate",
+            "review_digest_evidence",
+            "review_version_evidence",
+            "sample_custody_evidence",
+            "sample_seal_evidence",
+            "sample_volume_evidence",
+            "scenario_input",
+            "scenario_proposes_decision",
+            "schedules_check_binding",
+            "schedules_event_definition",
+            "schedules_fact",
+            "scoped_to",
+            "seat_requested",
+            "selects_allocation",
+            "selects_command_definition",
+            "selects_delivery_receipt",
+            "selects_lease_approval",
+            "selects_lease_request",
+            "selects_strategy",
+            "selects_task",
+            "sent_by",
+            "source_covers_entity_type",
+            "source_field_reference",
+            "starts_strategy_invocation",
+            "state_input_to",
+            "subject_of_fact",
+            "target_result_input_to",
+            "updates_state",
+            "uses_binding",
+            "uses_constraint",
+            "uses_equipment",
+            "uses_history",
+            "uses_parameter_definition",
+            "uses_rule",
+            "value_references_entity",
+            "waits_for",
+            "waits_for_transfer"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semantic_level": {
+          "enum": [
+            "definition",
+            "configuration",
+            "runtime",
+            "cross_level",
+            "source_record"
+          ]
+        },
+        "raw_relation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contract_variant": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provenance": {
+          "type": [
+            "object",
+            "string"
+          ],
+          "description": "Source provenance is preserved. A synthetic fixture cannot be relabelled as measured/native/live evidence."
+        },
+        "source_records": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/source_record"
+          }
+        },
+        "payload": {
+          "$ref": "#/$defs/json_value"
+        },
+        "semantics": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "source_record": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "pointer",
+        "source_id"
+      ],
+      "properties": {
+        "artifact": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pointer": {
+          "type": "string",
+          "pattern": "^(|/.*)$"
+        },
+        "source_id": {
+          "type": [
+            "string",
+            "integer",
+            "null"
+          ]
+        },
+        "case_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "exact_ref": {
+      "type": "object",
+      "required": [
+        "run_id",
+        "epoch",
+        "id",
+        "generation",
+        "ref_type"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epoch": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generation": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "ref_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "json_value": {
+      "anyOf": [
+        {
+          "type": [
+            "null",
+            "boolean",
+            "string",
+            "number"
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/json_value"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/json_value"
+          }
+        }
+      ]
+    },
+    "timepoint": {
+      "type": "object",
+      "required": [
+        "clock_domain",
+        "value",
+        "unit"
+      ],
+      "properties": {
+        "clock_domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "unit": {
+          "enum": [
+            "ns",
+            "us",
+            "ms",
+            "s",
+            "tick",
+            "source_native"
+          ]
+        },
+        "source_path": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "ns"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "string",
+                "pattern": "^-?[0-9]+$"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "readiness": {
+      "type": "object",
+      "properties": {
+        "authoring": {
+          "enum": [
+            "valid",
+            "invalid",
+            "ready",
+            "not_ready",
+            "unverified",
+            "not_executed",
+            "not_applicable"
+          ]
+        },
+        "preservation": {
+          "enum": [
+            "valid",
+            "invalid",
+            "ready",
+            "not_ready",
+            "unverified",
+            "not_executed",
+            "not_applicable"
+          ]
+        },
+        "fixture_execution": {
+          "enum": [
+            "valid",
+            "invalid",
+            "ready",
+            "not_ready",
+            "unverified",
+            "not_executed",
+            "not_applicable"
+          ]
+        },
+        "native_rule": {
+          "enum": [
+            "valid",
+            "invalid",
+            "ready",
+            "not_ready",
+            "unverified",
+            "not_executed",
+            "not_applicable"
+          ]
+        },
+        "real_backend": {
+          "enum": [
+            "valid",
+            "invalid",
+            "ready",
+            "not_ready",
+            "unverified",
+            "not_executed",
+            "not_applicable"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "truth": {
+      "enum": [
+        "True",
+        "False",
+        "Unknown"
+      ]
+    },
+    "applicability": {
+      "enum": [
+        "applicable",
+        "not_applicable",
+        "applicability_unknown"
+      ]
+    }
+  }
+}

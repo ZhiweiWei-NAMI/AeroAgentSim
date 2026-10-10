@@ -1,0 +1,13 @@
+# Documentation build requirements
+sphinx>=4.0
+sphinx-rtd-theme
+sphinx-autodoc-typehints
+myst-parser
+sphinx-copybutton
+
+# Optional for live reload during development
+sphinx-autobuild
+
+# Optional for PDF generation
+# Uncomment if you need PDF documentation
+# rst2pdf

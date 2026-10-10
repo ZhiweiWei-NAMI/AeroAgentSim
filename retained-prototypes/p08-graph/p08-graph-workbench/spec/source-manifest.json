@@ -1,0 +1,96 @@
+{
+  "schema_version": "p08.contract-sources/v1",
+  "sources": [
+    {
+      "path": "/workspace/shared/aero-unified-graph-inventory-20261005.json",
+      "sha256": "043e26cec57c785b90db0bc64c0828c9f7c0a9b22d0c8cceb8c6eedcd441c01b",
+      "bytes": 42779
+    },
+    {
+      "path": "/workspace/shared/p02_stage1/review/proposed-runtime-contract-ledger.json",
+      "sha256": "b205376b048583b8f29eb6bd3f708c57b8db6f2ea99fc91287d4287696cb5d1c",
+      "bytes": 3183985
+    },
+    {
+      "path": "/workspace/shared/p02_stage1/review/STAGE1_REVIEW.md",
+      "sha256": "a6e4e337f20c0ba040ec1e06271208ce39ee7eaaa39dcfe09ad2917968273e52",
+      "bytes": 7694
+    },
+    {
+      "path": "/workspace/shared/p02_stage1/sources/original_activity_catalog_35.json",
+      "sha256": "fd5536a3a5eecc0de61a8d7183040a5c09fde9079996639df2aff0711690409f",
+      "bytes": 17177
+    },
+    {
+      "path": "/workspace/shared/AeroAgentSim/docs/integration/ARCHITECTURE.md",
+      "sha256": "a5cdc5d66f9157951cf1e0d12637ec9825c11f77e8875472a887bcf25428d3ac",
+      "bytes": 14776
+    },
+    {
+      "path": "/workspace/shared/AeroAgentSim/docs/integration/CONFIGURATION_UI_PLAN.md",
+      "sha256": "4c60c634c8475a489bb5964ca05299ee7701709361c72e5611269c272c09bcfd",
+      "bytes": 13348
+    },
+    {
+      "path": "/workspace/shared/AeroAgentSim/docs/integration/DESIGN_COMPLETENESS_REVIEW.md",
+      "sha256": "75f1c6721f8a382aa99d07c588b25882d88a5bad262474edbb91bcb0ae57bf98",
+      "bytes": 8790
+    },
+    {
+      "path": "/workspace/shared/AeroAgentSim/docs/integration/MAPPING_AUDIT.md",
+      "sha256": "49a05cdeb8ef527b1b1c42fbef5a3532a09eb5a61350db1e506a1c4dccfdb674",
+      "bytes": 7787
+    },
+    {
+      "path": "/workspace/shared/AeroAgentSim/docs/integration/MODULE_STATE_INVENTORY.md",
+      "sha256": "c9790e22cfce19e247a1dcecd7003c9da60ee47e04a6ad9a225784a4098d099c",
+      "bytes": 12320
+    },
+    {
+      "path": "/workspace/shared/AeroAgentSim/docs/integration/RULE_AST_CONTRACT.md",
+      "sha256": "7180d99214182827a04889ceff12013cb2fb0945c40225d228cd1f741a66d5f5",
+      "bytes": 12231
+    },
+    {
+      "path": "/workspace/shared/AeroAgentSim/docs/integration/TERMINOLOGY.md",
+      "sha256": "16e4d912fe988474bce46c65ab7138d3ff5fd6029f51a1e3d5705d9974545506",
+      "bytes": 15168
+    },
+    {
+      "path": "/workspace/shared/AeroAgentSim/docs/integration/TYPED_GRAPH_RELATIONS.md",
+      "sha256": "4fdb7c82d86ded8667d55fa752adecab3cfddcf0e1bce3ba37e5239fed463e07",
+      "bytes": 19457
+    },
+    {
+      "path": "/workspace/shared/p02_stage1/agriculture/agriculture-instances.json",
+      "sha256": "9969daf32ac8cfac730d15a241832eaf4683bd70753a6a5f85c752d5a6fb28b7",
+      "bytes": 45181465
+    },
+    {
+      "path": "/workspace/shared/p02_stage1/delivery/delivery-activity-instances.json",
+      "sha256": "d72a0c2d2bf27afbb043a349cd7081b9dea9dec5b7d6f4bb2826e9dedb2e174f",
+      "bytes": 11156370
+    },
+    {
+      "path": "/workspace/shared/p02_stage1/city/city-activity-instances.json",
+      "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50",
+      "bytes": 16361607
+    },
+    {
+      "path": "/workspace/shared/p02_stage1/network/network-instance-catalog.json",
+      "sha256": "3daf1dbdd08ccede5ded7cd7be39a1e9ea984021efb8e698eefcce9804a3bfaf",
+      "bytes": 18568852
+    }
+  ],
+  "scope": {
+    "source_workflows": 35,
+    "ordered_source_steps": 226,
+    "machine_examples": 20,
+    "runtime_raw_kinds": 42,
+    "runtime_raw_relations": 69,
+    "runtime_record_occurrences": 4446,
+    "runtime_relation_occurrences": 12157
+  },
+  "native_source_inspected": false,
+  "real_execution": false
+}

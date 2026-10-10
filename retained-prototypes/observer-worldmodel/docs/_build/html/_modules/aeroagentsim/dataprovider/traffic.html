@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.dataprovider.traffic &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.traffic</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.dataprovider.traffic</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Set</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">from</span> <span class="nn">..core.dataprovider</span> <span class="kn">import</span> <span class="n">DataProvider</span>
+
+<span class="c1"># Type hinting</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+    <span class="c1"># from aeroagentsim.core.agent import Agent # No longer needed for on_traffic_update</span>
+    <span class="c1"># from aeroagentsim.manager.landing import LandingManager # No longer needed for on_traffic_update</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.manager.airspace</span> <span class="kn">import</span> <span class="n">AirspaceManager</span> <span class="c1"># Import AirspaceManager</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TrafficDataProvider"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider">[docs]</a><span class="k">class</span> <span class="nc">TrafficDataProvider</span><span class="p">(</span><span class="n">DataProvider</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    提供地面车辆交通数据，触发车辆位置更新事件。</span>
+<span class="sd">    </span>
+<span class="sd">    支持两种数据源：</span>
+<span class="sd">    1. SUMO 交通仿真器（通过 TraCI 接口）</span>
+<span class="sd">    2. 轨迹文件（CSV 格式）</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># EVENT_TRAFFIC_UPDATE = &#39;TrafficUpdate&#39; # Removed, no longer using events</span>
+
+<div class="viewcode-block" id="TrafficDataProvider.__init__"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="s1">&#39;Environment&#39;</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化 TrafficDataProvider。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境实例。</span>
+<span class="sd">            config (dict, optional): 配置字典，支持以下键：</span>
+<span class="sd">                - &#39;source&#39;: 数据源类型，&#39;sumo&#39; 或 &#39;file&#39;。</span>
+<span class="sd">                - &#39;update_interval&#39; (float, optional): 更新间隔（秒），主要用于 SUMO 数据源。默认为 1.0 秒。</span>
+<span class="sd">                - &#39;sumo_config&#39; (dict, 当 source=&#39;sumo&#39; 时必需):</span>
+<span class="sd">                    - &#39;host&#39;: (str, 默认=&#39;localhost&#39;) SUMO TraCI 服务器主机。</span>
+<span class="sd">                    - &#39;port&#39;: (int, 默认=8813) SUMO TraCI 服务器端口。</span>
+<span class="sd">                    - &#39;vehicle_filter&#39; (dict, 可选): 过滤 SUMO 车辆（例如，{&#39;type&#39;: &#39;passenger&#39;}）。</span>
+<span class="sd">                - &#39;file_config&#39; (dict, 当 source=&#39;file&#39; 时必需):</span>
+<span class="sd">                    - &#39;path&#39;: (str) 轨迹文件路径。</span>
+<span class="sd">                    - &#39;format&#39;: (str, 默认=&#39;csv&#39;) 文件格式（目前支持 &#39;csv&#39;）。</span>
+<span class="sd">                    - &#39;time_column&#39;: (str, 默认=&#39;timestamp&#39;) 时间列名。</span>
+<span class="sd">                    - &#39;id_column&#39;: (str, 默认=&#39;vehicle_id&#39;) 车辆 ID 列名。</span>
+<span class="sd">                    - &#39;pos_columns&#39;: (list[str], 默认=[&#39;x&#39;, &#39;y&#39;, &#39;z&#39;]) 位置列名。</span>
+<span class="sd">                    - &#39;speed_column&#39;: (str, 可选) 速度列名（米/秒）。</span>
+<span class="sd">                    - &#39;angle_column&#39;: (str, 可选) 方向角列名（度）。</span>
+<span class="sd">                    - &#39;type_column&#39;: (str, 可选) 车辆类型列名。</span>
+<span class="sd">                - &#39;center_coordinates&#39; (dict, 可选，但推荐用于SUMO坐标转换):</span>
+<span class="sd">                    - &#39;lat&#39;: (float) 地图中心点纬度。</span>
+<span class="sd">                    - &#39;lon&#39;: (float) 地图中心点经度。</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_interval</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">visual_interval</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;sumo&#39;</span><span class="p">,</span> <span class="s1">&#39;file&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;TrafficDataProvider &#39;source&#39; 必须是 &#39;sumo&#39; 或 &#39;file&#39;&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 内部状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># SUMO 连接</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_traffic_schedule</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 文件数据源的调度表：{sim_time: [vehicle_state_dict, ...]}</span>
+        <span class="c1"># 添加存储车辆速度和角度的数据结构</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span> <span class="c1"># 存储车辆的速度和角度: {vehicle_id: {&#39;speed&#39;: speed, &#39;angle&#39;: angle}}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span> <span class="c1"># Track vehicles registered in AirspaceManager from SUMO</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_known_file_vehicles</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span> <span class="c1"># Track vehicles registered in AirspaceManager from file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_center_lat</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_center_lon</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sumo_conv_boundary</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># (min_x, min_y, max_x, max_y)</span>
+
+        <span class="c1"># 验证特定配置</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">==</span> <span class="s1">&#39;sumo&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;sumo_config&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;使用 &#39;sumo&#39; 数据源时必须提供 &#39;sumo_config&#39;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sumo_cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;sumo_config&#39;</span><span class="p">]</span>
+            <span class="c1"># 在这里导入 traci 以避免不使用 SUMO 时的依赖</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">global</span> <span class="n">traci</span>
+                <span class="kn">import</span> <span class="nn">traci</span>
+            <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;未找到 Python 库 &#39;traci&#39;。请安装它以使用 SUMO 数据源。&quot;</span><span class="p">)</span>
+                <span class="k">raise</span>
+            <span class="c1"># 获取中心点坐标</span>
+            <span class="n">center_coords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;center_coordinates&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">center_coords</span> <span class="ow">and</span> <span class="s1">&#39;lat&#39;</span> <span class="ow">in</span> <span class="n">center_coords</span> <span class="ow">and</span> <span class="s1">&#39;lon&#39;</span> <span class="ow">in</span> <span class="n">center_coords</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_center_lat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">center_coords</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_center_lon</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">center_coords</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">])</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;已配置地图中心点: Lat=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_center_lat</span><span class="si">}</span><span class="s2">, Lon=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_center_lon</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;未在配置中找到 &#39;center_coordinates&#39;。SUMO 坐标将不会相对于中心点转换。&quot;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">==</span> <span class="s1">&#39;file&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;file_config&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;使用 &#39;file&#39; 数据源时必须提供 &#39;file_config&#39;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_file_cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;file_config&#39;</span><span class="p">]</span>
+            <span class="c1"># 在 load_data 中验证文件配置详情</span>
+
+        <span class="c1"># 获取 AirspaceManager 实例</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;AirspaceManager&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">airspace_manager</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="p">:</span>
+                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;AirspaceManager 未在环境中找到。车辆位置将不会被注册或更新。&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;环境对象没有 &#39;get_manager&#39; 方法或 AirspaceManager 未注册。车辆位置将不会被注册或更新。&quot;</span><span class="p">)</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="TrafficDataProvider.load_data"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.load_data">[docs]</a>    <span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;根据配置的数据源加载交通数据。&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;从数据源加载交通数据: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">==</span> <span class="s1">&#39;sumo&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connect_sumo</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">==</span> <span class="s1">&#39;file&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_load_from_file</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="TrafficDataProvider.start_event_triggering"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.start_event_triggering">[docs]</a>    <span class="k">def</span> <span class="nf">start_event_triggering</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;启动 SimPy 进程以触发 TrafficUpdate 事件。&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">==</span> <span class="s1">&#39;sumo&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;SUMO 连接未建立。无法启动事件触发。&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;启动 SUMO 更新循环，间隔: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">update_interval</span><span class="si">}</span><span class="s2">秒&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sumo_update_loop</span><span class="p">())</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">==</span> <span class="s1">&#39;file&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traffic_schedule</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;从文件加载的交通调度表为空。不会触发任何事件。&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;启动基于文件的交通更新循环。&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_file_update_loop</span><span class="p">())</span></div>
+
+    <span class="c1"># --- SUMO 特定方法 ---</span>
+    <span class="k">def</span> <span class="nf">_connect_sumo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;建立与 SUMO TraCI 服务器的连接。&quot;&quot;&quot;</span>
+        <span class="n">host</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sumo_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;host&#39;</span><span class="p">,</span> <span class="s1">&#39;localhost&#39;</span><span class="p">)</span>
+        <span class="n">port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sumo_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;port&#39;</span><span class="p">,</span> <span class="mi">8813</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;连接到 SUMO TraCI 服务器 </span><span class="si">{</span><span class="n">host</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+            <span class="c1"># 考虑添加重试逻辑？</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span> <span class="o">=</span> <span class="n">traci</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;TrafficDataProvider_</span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;成功连接到 SUMO。&quot;</span><span class="p">)</span>
+            <span class="c1"># 获取并存储边界信息</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># 返回 ((min_x, min_y), (max_x, max_y))</span>
+                <span class="n">conv_bound_tuple</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">getNetBoundary</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_sumo_conv_boundary</span> <span class="o">=</span> <span class="p">(</span><span class="n">conv_bound_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">conv_bound_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">conv_bound_tuple</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">conv_bound_tuple</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+                
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;获取到 SUMO 边界: Conv=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_sumo_conv_boundary</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">bound_error</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;无法获取 SUMO 边界信息: </span><span class="si">{</span><span class="n">bound_error</span><span class="si">}</span><span class="s2">. 坐标转换可能不准确。&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_sumo_conv_boundary</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># 减少等待时间</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;无法连接到 SUMO TraCI 服务器: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="c1"># 决定是否应该抛出错误或只是记录</span>
+            <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;无法连接到 SUMO </span><span class="si">{</span><span class="n">host</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+            
+    <span class="k">def</span> <span class="nf">_cleanup_vehicles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        清理所有已注册的车辆，从 AirspaceManager 和内部状态中移除它们</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="p">:</span>
+            <span class="c1"># 清理 SUMO 车辆</span>
+            <span class="k">for</span> <span class="n">veh_id</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span><span class="p">):</span>  <span class="c1"># 创建副本避免在迭代时修改</span>
+                <span class="n">vehicle_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">remove_object</span><span class="p">(</span><span class="n">agent_id</span><span class="o">=</span><span class="n">vehicle_id</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>
+                <span class="c1"># 从速度和角度字典中移除</span>
+                <span class="k">if</span> <span class="n">vehicle_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">[</span><span class="n">vehicle_id</span><span class="p">]</span>
+            
+            <span class="c1"># 清理文件数据车辆</span>
+            <span class="k">for</span> <span class="n">veh_id</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_known_file_vehicles</span><span class="p">):</span>  <span class="c1"># 创建副本避免在迭代时修改</span>
+                <span class="n">vehicle_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">remove_object</span><span class="p">(</span><span class="n">agent_id</span><span class="o">=</span><span class="n">vehicle_id</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_known_file_vehicles</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>
+                <span class="c1"># 从速度和角度字典中移除</span>
+                <span class="k">if</span> <span class="n">vehicle_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">[</span><span class="n">vehicle_id</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_sumo_update_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;SimPy 进程，定期查询 SUMO 并触发事件。&quot;&quot;&quot;</span>
+        <span class="n">vehicle_filter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sumo_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;vehicle_filter&#39;</span><span class="p">)</span>  <span class="c1"># 实现过滤逻辑</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;AirspaceManager 不可用，无法启动 SUMO 更新循环。&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 检查SUMO是否设置了结束时间</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sumo_end_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">getEndTime</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SUMO 配置的结束时间: </span><span class="si">{</span><span class="n">sumo_end_time</span><span class="si">}</span><span class="s2"> 秒&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;无法获取 SUMO 结束时间: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">sumo_end_time</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># 1. 推进 SUMO 仿真时间</span>
+                <span class="c1"># 我们根据 SimPy 等待的时间量推进 SUMO。</span>
+                <span class="c1"># 这使 SUMO 时间与 SimPy 时间大致保持一致。</span>
+                <span class="n">target_sumo_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>  <span class="c1"># SUMO 时间应对应的当前 SimPy 时间</span>
+                
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">current_sumo_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">getTime</span><span class="p">()</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;当前 SUMO 时间: </span><span class="si">{</span><span class="n">current_sumo_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">，目标时间: </span><span class="si">{</span><span class="n">target_sumo_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s2">&quot;connection closed by SUMO&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                        <span class="c1"># SUMO可能已经到达结束时间或被外部关闭</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SUMO连接已关闭: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">，尝试重新连接...&quot;</span><span class="p">)</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="c1"># 尝试重新连接SUMO</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_connect_sumo</span><span class="p">()</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="p">:</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;无法重新连接到SUMO，退出更新循环&quot;</span><span class="p">)</span>
+                                <span class="k">break</span>
+                            <span class="n">current_sumo_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">getTime</span><span class="p">()</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;已重新连接到SUMO，当前时间: </span><span class="si">{</span><span class="n">current_sumo_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">reconnect_error</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;重新连接SUMO失败: </span><span class="si">{</span><span class="n">reconnect_error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                            <span class="k">break</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># 其他类型的错误</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;获取SUMO时间时出错: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">break</span>
+                
+                <span class="c1"># 检查是否接近SUMO结束时间</span>
+                <span class="k">if</span> <span class="n">sumo_end_time</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">current_sumo_time</span> <span class="o">&gt;=</span> <span class="n">sumo_end_time</span> <span class="o">-</span> <span class="mi">10</span> <span class="ow">and</span> <span class="n">sumo_end_time</span><span class="o">!=-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SUMO接近结束时间(</span><span class="si">{</span><span class="n">sumo_end_time</span><span class="si">}</span><span class="s2">)，当前时间: </span><span class="si">{</span><span class="n">current_sumo_time</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                
+                <span class="c1"># 只有当 SUMO 时间落后于目标 SimPy 时间时才推进 SUMO</span>
+                <span class="k">if</span> <span class="n">current_sumo_time</span> <span class="o">&lt;</span> <span class="n">target_sumo_time</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">simulationStep</span><span class="p">(</span><span class="n">target_sumo_time</span><span class="p">)</span>
+                    <span class="n">current_sumo_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">getTime</span><span class="p">()</span>  <span class="c1"># 步进后更新 SUMO 时间</span>
+
+                <span class="c1"># 2. 获取车辆数据</span>
+                <span class="n">current_vehicle_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">vehicle</span><span class="o">.</span><span class="n">getIDList</span><span class="p">())</span>
+                <span class="n">current_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>  <span class="c1"># 使用 SimPy 时间作为时间戳</span>
+
+                <span class="c1"># --- 检测车辆变化 ---</span>
+                <span class="n">new_vehicles</span> <span class="o">=</span> <span class="n">current_vehicle_ids</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span>
+                <span class="n">departed_vehicles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span> <span class="o">-</span> <span class="n">current_vehicle_ids</span>
+                <span class="n">existing_vehicles</span> <span class="o">=</span> <span class="n">current_vehicle_ids</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span><span class="p">)</span>
+
+                <span class="c1"># --- 处理离开的车辆 ---</span>
+                <span class="k">for</span> <span class="n">veh_id</span> <span class="ow">in</span> <span class="n">departed_vehicles</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;车辆 </span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s2"> 已离开 SUMO 仿真，从 AirspaceManager 移除。&quot;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">remove_object</span><span class="p">(</span><span class="n">agent_id</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>
+                    <span class="c1"># 从速度和角度字典中移除</span>
+                    <span class="k">if</span> <span class="sa">f</span><span class="s1">&#39;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s1">&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">:</span>
+                        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+
+                <span class="c1"># --- 处理新车辆和现有车辆 ---</span>
+                <span class="n">vehicles_to_process</span> <span class="o">=</span> <span class="n">new_vehicles</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">existing_vehicles</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">veh_id</span> <span class="ow">in</span> <span class="n">vehicles_to_process</span><span class="p">:</span>
+                    <span class="c1"># 应用 vehicle_filter（如果定义）</span>
+                    <span class="k">if</span> <span class="n">vehicle_filter</span><span class="p">:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">veh_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">vehicle</span><span class="o">.</span><span class="n">getTypeID</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="s1">&#39;type&#39;</span> <span class="ow">in</span> <span class="n">vehicle_filter</span> <span class="ow">and</span> <span class="n">veh_type</span> <span class="o">!=</span> <span class="n">vehicle_filter</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]:</span>
+                                <span class="k">continue</span> <span class="c1"># 跳过不匹配的车辆类型</span>
+                        <span class="k">except</span> <span class="n">traci</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">TraCIException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                             <span class="k">if</span> <span class="s2">&quot;does not exist&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;尝试过滤时车辆 </span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s2"> 已离开。&quot;</span><span class="p">)</span>
+                                <span class="k">if</span> <span class="n">veh_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span><span class="p">:</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">remove_object</span><span class="p">(</span><span class="n">agent_id</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>
+                                    <span class="c1"># 从速度和角度字典中移除</span>
+                                    <span class="k">if</span> <span class="sa">f</span><span class="s1">&#39;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s1">&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">:</span>
+                                        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+                                <span class="k">continue</span>
+                             <span class="k">else</span><span class="p">:</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;获取车辆 </span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s2"> 类型时出错: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                                <span class="k">continue</span>
+
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">vehicle</span><span class="o">.</span><span class="n">getPosition</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>  <span class="c1"># SUMO 坐标中的 (x, y)</span>
+                        <span class="n">speed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">vehicle</span><span class="o">.</span><span class="n">getSpeed</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>  <span class="c1"># 米/秒</span>
+                        <span class="n">angle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">vehicle</span><span class="o">.</span><span class="n">getAngle</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>  <span class="c1"># 度（0=北，90=东）</span>
+                        <span class="n">veh_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">vehicle</span><span class="o">.</span><span class="n">getTypeID</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>
+
+                        <span class="c1"># 转换坐标</span>
+                        <span class="n">source_pos</span> <span class="o">=</span> <span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mf">0.0</span><span class="p">)</span>  <span class="c1"># 假设 SUMO 中 Z=0</span>
+                        <span class="n">sim_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_coordinates</span><span class="p">(</span><span class="n">source_pos</span><span class="p">)</span>
+
+                        <span class="c1"># --- 更新或注册车辆到 AirspaceManager 并存储速度和角度 ---</span>
+                        <span class="n">vehicle_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="c1"># 更新速度和角度信息</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">[</span><span class="n">vehicle_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                            <span class="s1">&#39;speed&#39;</span><span class="p">:</span> <span class="n">speed</span><span class="p">,</span>
+                            <span class="s1">&#39;angle&#39;</span><span class="p">:</span> <span class="n">angle</span><span class="p">,</span>
+                            <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">veh_type</span>
+                        <span class="p">}</span>
+                        
+                        <span class="k">if</span> <span class="n">veh_id</span> <span class="ow">in</span> <span class="n">new_vehicles</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;新车辆 </span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s2"> 检测到，注册到 AirspaceManager。位置: </span><span class="si">{</span><span class="n">sim_pos</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">register_object</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="n">sim_pos</span><span class="p">,</span> <span class="n">agent_id</span><span class="o">=</span><span class="n">vehicle_id</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="n">veh_id</span> <span class="ow">in</span> <span class="n">existing_vehicles</span><span class="p">:</span>
+                            <span class="c1"># logger.debug(f&quot;更新车辆 {veh_id} 位置到 AirspaceManager。位置: {sim_pos}&quot;)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">update_object_position</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="n">sim_pos</span><span class="p">,</span> <span class="n">agent_id</span><span class="o">=</span><span class="n">vehicle_id</span><span class="p">)</span>
+                        <span class="c1"># else: # Should not happen due to logic above</span>
+                        <span class="c1">#    logger.warning(f&quot;车辆 {veh_id} 状态未知，既不是新的也不是现有的。&quot;)</span>
+
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="c1"># 车辆可能在 getIDList 和 getPosition 之间离开仿真</span>
+                       <span class="k">if</span> <span class="s2">&quot;does not exist&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+                           <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;获取车辆 </span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s2"> 数据时，它已离开仿真。从 AirspaceManager 移除。&quot;</span><span class="p">)</span>
+                           <span class="k">if</span> <span class="n">veh_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span><span class="p">:</span>
+                               <span class="n">vehicle_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s1">&#39;</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">remove_object</span><span class="p">(</span><span class="n">agent_id</span><span class="o">=</span><span class="n">vehicle_id</span><span class="p">)</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">_known_sumo_vehicles</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>
+                               <span class="c1"># 从速度和角度字典中移除</span>
+                               <span class="k">if</span> <span class="n">vehicle_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">:</span>
+                                   <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">[</span><span class="n">vehicle_id</span><span class="p">]</span>
+                       <span class="k">else</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;获取车辆 </span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s2"> 数据时出错: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+               <span class="c1"># 3. 更新 known_sumo_vehicles 状态</span>
+               <span class="c1"># self._known_sumo_vehicles = current_vehicle_ids # Done implicitly via add/remove</span>
+
+               <span class="c1"># 4. 等待下一个间隔</span>
+                <span class="n">visual_update_event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;visual_update&#39;</span><span class="p">)</span>
+                <span class="k">yield</span> <span class="n">visual_update_event</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;connection closed by SUMO&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SUMO 关闭了连接: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">。尝试重新连接...&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="c1"># 尝试重新连接</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="c1"># 关闭旧连接（如果有）</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                            <span class="k">pass</span>
+                        
+                        <span class="c1"># 等待一小段时间，让SUMO释放端口</span>
+                        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+                        
+                        <span class="c1"># 尝试重新连接</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_connect_sumo</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;成功重新连接到SUMO，继续更新循环&quot;</span><span class="p">)</span>
+                            <span class="k">continue</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;无法重新连接到SUMO，停止更新循环&quot;</span><span class="p">)</span>
+                            <span class="c1"># 清理资源</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_vehicles</span><span class="p">()</span>
+                            <span class="k">break</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">reconnect_error</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;重新连接SUMO时出错: </span><span class="si">{</span><span class="n">reconnect_error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span> <span class="o">=</span> <span class="kc">None</span>
+                        <span class="c1"># 清理资源</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_vehicles</span><span class="p">()</span>
+                        <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SUMO 更新循环中出错: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">。停止循环。&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="c1"># 尝试关闭连接</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                        <span class="k">pass</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="c1"># 清理资源</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_vehicles</span><span class="p">()</span>
+                    <span class="k">break</span>
+
+    <span class="c1"># --- 文件特定方法 ---</span>
+    <span class="k">def</span> <span class="nf">_load_from_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;从指定的文件加载交通数据。&quot;&quot;&quot;</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">)</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;format&#39;</span><span class="p">,</span> <span class="s1">&#39;csv&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">time_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time_column&#39;</span><span class="p">,</span> <span class="s1">&#39;timestamp&#39;</span><span class="p">)</span>
+        <span class="n">id_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id_column&#39;</span><span class="p">,</span> <span class="s1">&#39;vehicle_id&#39;</span><span class="p">)</span>
+        <span class="n">pos_cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pos_columns&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span><span class="p">])</span>
+        <span class="n">speed_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;speed_column&#39;</span><span class="p">)</span>
+        <span class="n">angle_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;angle_column&#39;</span><span class="p">)</span>
+        <span class="n">type_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type_column&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;file_config 中未指定文件路径&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;从 </span><span class="si">{</span><span class="n">fmt</span><span class="si">}</span><span class="s2"> 文件读取交通数据: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s1">&#39;csv&#39;</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>  <span class="c1"># 添加 pandas 依赖</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+                <span class="c1"># 基本验证</span>
+                <span class="n">required_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">time_col</span><span class="p">,</span> <span class="n">id_col</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">pos_cols</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pos_cols</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">pos_cols</span><span class="p">])</span>
+                <span class="n">missing_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">required_cols</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">missing_cols</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CSV 中缺少必需的列: </span><span class="si">{</span><span class="n">missing_cols</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># 确保时间列是数值型</span>
+                <span class="n">df</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">time_col</span><span class="p">])</span>
+
+                <span class="c1"># 处理行并填充调度表</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_traffic_schedule</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+                    <span class="n">sim_time</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">time_col</span><span class="p">])</span>  <span class="c1"># 假设文件中的时间是仿真时间</span>
+                    <span class="n">veh_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">id_col</span><span class="p">])</span>
+
+                    <span class="c1"># 提取位置，处理可能缺少的 Z</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pos_cols</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pos_cols</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                            <span class="n">source_pos</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">pos_cols</span><span class="p">[</span><span class="mi">0</span><span class="p">]]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">pos_cols</span><span class="p">[</span><span class="mi">1</span><span class="p">]]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">pos_cols</span><span class="p">[</span><span class="mi">2</span><span class="p">]]))</span>
+                        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">pos_cols</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                            <span class="n">source_pos</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">pos_cols</span><span class="p">[</span><span class="mi">0</span><span class="p">]]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">pos_cols</span><span class="p">[</span><span class="mi">1</span><span class="p">]]),</span> <span class="mf">0.0</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;位置列数无效: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">pos_cols</span><span class="p">)</span><span class="si">}</span><span class="s2">。跳过行。&quot;</span><span class="p">)</span>
+                            <span class="k">continue</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># 如果 pos_cols 是单个字符串，假设它包含序列化的位置</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="kn">import</span> <span class="nn">json</span>
+                            <span class="n">source_pos</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">pos_cols</span><span class="p">])</span>
+                            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">source_pos</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                                <span class="n">source_pos</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_pos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">source_pos</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mf">0.0</span><span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;解析位置列 &#39;</span><span class="si">{</span><span class="n">pos_cols</span><span class="si">}</span><span class="s2">&#39; 时出错: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">。跳过行。&quot;</span><span class="p">)</span>
+                            <span class="k">continue</span>
+
+                    <span class="n">sim_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_coordinates</span><span class="p">(</span><span class="n">source_pos</span><span class="p">)</span>
+
+                    <span class="n">event_data</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="c1"># &#39;sim_time&#39; 将在触发时添加</span>
+                        <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">veh_id</span><span class="p">,</span>
+                        <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">type_col</span><span class="p">])</span> <span class="k">if</span> <span class="n">type_col</span> <span class="ow">and</span> <span class="n">type_col</span> <span class="ow">in</span> <span class="n">row</span> <span class="k">else</span> <span class="s1">&#39;unknown&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="n">sim_pos</span><span class="p">,</span>
+                        <span class="s1">&#39;speed&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">speed_col</span><span class="p">])</span> <span class="k">if</span> <span class="n">speed_col</span> <span class="ow">and</span> <span class="n">speed_col</span> <span class="ow">in</span> <span class="n">row</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+                        <span class="s1">&#39;angle&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">angle_col</span><span class="p">])</span> <span class="k">if</span> <span class="n">angle_col</span> <span class="ow">and</span> <span class="n">angle_col</span> <span class="ow">in</span> <span class="n">row</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+                    <span class="p">}</span>
+
+                    <span class="k">if</span> <span class="n">sim_time</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traffic_schedule</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_traffic_schedule</span><span class="p">[</span><span class="n">sim_time</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_traffic_schedule</span><span class="p">[</span><span class="n">sim_time</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event_data</span><span class="p">)</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;成功从 </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> 加载 </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s2"> 条记录到交通调度表中。&quot;</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;文件格式 &#39;</span><span class="si">{</span><span class="n">fmt</span><span class="si">}</span><span class="s2">&#39; 尚不支持。&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;未找到交通数据文件: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;从文件 </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> 加载交通数据时出错: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_traffic_schedule</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 出错时清空调度表</span>
+            <span class="k">raise</span>
+
+    <span class="k">def</span> <span class="nf">_file_update_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;SimPy 进程，基于文件调度表更新 AirspaceManager。&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="p">:</span>
+           <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;AirspaceManager 不可用，无法启动基于文件的更新循环。&quot;</span><span class="p">)</span>
+           <span class="k">return</span>
+        <span class="c1"># 获取调度表中排序的仿真时间列表</span>
+        <span class="n">scheduled_times</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_traffic_schedule</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+        <span class="n">last_triggered_time</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">sim_time</span> <span class="ow">in</span> <span class="n">scheduled_times</span><span class="p">:</span>
+            <span class="c1"># 确保我们只处理相对于当前仿真时间的未来事件</span>
+            <span class="k">if</span> <span class="n">sim_time</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="ow">and</span> <span class="n">sim_time</span> <span class="o">&gt;</span> <span class="n">last_triggered_time</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># 等待直到预定的事件时间</span>
+                    <span class="n">wait_duration</span> <span class="o">=</span> <span class="n">sim_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                    <span class="k">if</span> <span class="n">wait_duration</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">wait_duration</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">wait_duration</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;尝试在过去触发文件事件？预定=</span><span class="si">{</span><span class="n">sim_time</span><span class="si">}</span><span class="s2">，现在=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">continue</span>  <span class="c1"># 跳过</span>
+
+                    <span class="n">current_sim_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>  <span class="c1"># 使用实际触发时间</span>
+
+                    <span class="c1"># 触发此时间戳的所有车辆事件</span>
+                    <span class="k">if</span> <span class="n">sim_time</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traffic_schedule</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">event_data_template</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traffic_schedule</span><span class="p">[</span><span class="n">sim_time</span><span class="p">]:</span>
+                            <span class="n">event_data</span> <span class="o">=</span> <span class="n">event_data_template</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                            <span class="n">event_data</span><span class="p">[</span><span class="s1">&#39;sim_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_sim_time</span> <span class="c1"># 添加实际触发时间</span>
+                            <span class="n">veh_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
+                            <span class="n">sim_pos</span> <span class="o">=</span> <span class="n">event_data</span><span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">]</span>
+
+                            <span class="c1"># 获取速度和角度信息</span>
+                            <span class="n">speed</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                            <span class="n">angle</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;angle&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                            <span class="n">veh_type</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+                            <span class="n">vehicle_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;vehicle_</span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s2">&quot;</span>
+                            
+                            <span class="c1"># 存储速度和角度信息</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="p">[</span><span class="n">vehicle_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                                <span class="s1">&#39;speed&#39;</span><span class="p">:</span> <span class="n">speed</span><span class="p">,</span>
+                                <span class="s1">&#39;angle&#39;</span><span class="p">:</span> <span class="n">angle</span><span class="p">,</span>
+                                <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">veh_type</span>
+                            <span class="p">}</span>
+                            
+                            <span class="c1"># 更新或注册到 AirspaceManager</span>
+                            <span class="k">if</span> <span class="n">veh_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_known_file_vehicles</span><span class="p">:</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;文件数据：新车辆 </span><span class="si">{</span><span class="n">veh_id</span><span class="si">}</span><span class="s2"> 检测到，注册到 AirspaceManager。位置: </span><span class="si">{</span><span class="n">sim_pos</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">register_object</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="n">sim_pos</span><span class="p">,</span> <span class="n">agent_id</span><span class="o">=</span><span class="n">vehicle_id</span><span class="p">)</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_known_file_vehicles</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">veh_id</span><span class="p">)</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="c1"># logger.debug(f&quot;文件数据：更新车辆 {veh_id} 位置到 AirspaceManager。位置: {sim_pos}&quot;)</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">update_object_position</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="n">sim_pos</span><span class="p">,</span> <span class="n">agent_id</span><span class="o">=</span><span class="n">vehicle_id</span><span class="p">)</span>
+                        <span class="n">last_triggered_time</span> <span class="o">=</span> <span class="n">sim_time</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># 如果逻辑正确，这不应该发生</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;等待后在调度表中找不到预定时间 </span><span class="si">{</span><span class="n">sim_time</span><span class="si">}</span><span class="s2">。&quot;</span><span class="p">)</span>
+
+                <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;文件交通更新循环被中断。&quot;</span><span class="p">)</span>
+                    <span class="k">return</span>  <span class="c1"># 退出循环</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;文件交通更新循环在时间 </span><span class="si">{</span><span class="n">sim_time</span><span class="si">}</span><span class="s2"> 出错: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="c1"># 决定如何处理：继续，中断？让我们尝试继续。</span>
+                    <span class="n">last_triggered_time</span> <span class="o">=</span> <span class="n">sim_time</span>  <span class="c1"># 标记为已处理，以避免潜在的无限循环</span>
+
+            <span class="k">elif</span> <span class="n">sim_time</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;跳过过去的文件事件，预定时间 </span><span class="si">{</span><span class="n">sim_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">（当前时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">）&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;文件交通更新循环完成处理调度表。&quot;</span><span class="p">)</span>
+
+    <span class="c1"># --- 辅助方法 ---</span>
+    <span class="k">def</span> <span class="nf">_convert_coordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_pos</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        将源坐标（例如 SUMO 内部坐标）转换为仿真使用的坐标系。</span>
+<span class="sd">        对于 SUMO，如果提供了中心点和边界信息，则转换为相对于中心点的局部坐标。</span>
+<span class="sd">        返回 (X, Y, Z)，其中 Y 是高度，Z 对应 SUMO 的 Y（南北方向）。</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">==</span> <span class="s1">&#39;sumo&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_center_lat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_center_lon</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># 使用线性插值方法</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sumo_conv_boundary</span><span class="p">:</span>
+                    <span class="n">min_x</span><span class="p">,</span> <span class="n">min_y</span><span class="p">,</span> <span class="n">max_x</span><span class="p">,</span> <span class="n">max_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sumo_conv_boundary</span>
+                    <span class="n">x_range</span> <span class="o">=</span> <span class="n">max_x</span> <span class="o">-</span> <span class="n">min_x</span>
+                    <span class="n">y_range</span> <span class="o">=</span> <span class="n">max_y</span> <span class="o">-</span> <span class="n">min_y</span>
+                    
+                    <span class="c1"># 计算中心点在 SUMO 坐标系中的位置 (线性插值)</span>
+                    <span class="n">center_x_sumo</span> <span class="o">=</span> <span class="n">min_x</span> <span class="o">+</span> <span class="n">x_range</span> <span class="o">/</span> <span class="mi">2</span>
+                    <span class="n">center_y_sumo</span> <span class="o">=</span> <span class="n">min_y</span> <span class="o">+</span> <span class="n">y_range</span> <span class="o">/</span> <span class="mi">2</span>
+                    
+                    <span class="c1"># 计算相对坐标</span>
+                    <span class="n">veh_x_sumo</span><span class="p">,</span> <span class="n">veh_y_sumo</span> <span class="o">=</span> <span class="n">source_pos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">source_pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">relative_x</span> <span class="o">=</span> <span class="n">veh_x_sumo</span> <span class="o">-</span> <span class="n">center_x_sumo</span>
+                    <span class="n">relative_y</span> <span class="o">=</span> <span class="n">veh_y_sumo</span> <span class="o">-</span> <span class="n">center_y_sumo</span>
+                    
+                    <span class="c1"># 返回 (X, Y, Z)，其中 Z 对应 SUMO 的 Y（南北方向）</span>
+                    <span class="k">return</span> <span class="p">(</span><span class="n">relative_x</span><span class="p">,</span> <span class="n">relative_y</span><span class="p">,</span> <span class="n">source_pos</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;坐标转换时出错: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">. 返回原始 SUMO 坐标。&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                
+        <span class="c1"># 对于文件源或缺少转换信息的情况，直接返回源坐标</span>
+        <span class="k">return</span> <span class="n">source_pos</span>
+        
+<div class="viewcode-block" id="TrafficDataProvider.close"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;清理资源，如关闭 TraCI 连接。&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">==</span> <span class="s1">&#39;sumo&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;关闭 SUMO TraCI 连接。&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;关闭 SUMO 连接时出错: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_traci_conn</span> <span class="o">=</span> <span class="kc">None</span></div>
+                
+    <span class="c1"># --- 获取车辆动态信息的方法 ---</span>
+<div class="viewcode-block" id="TrafficDataProvider.get_vehicle_dynamics"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_dynamics">[docs]</a>    <span class="k">def</span> <span class="nf">get_vehicle_dynamics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vehicle_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取车辆的速度和角度信息</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            vehicle_id: 车辆ID（注意：需要包含&#39;vehicle_&#39;前缀）</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            包含速度和角度的字典，如果车辆不存在则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">vehicle_id</span><span class="p">)</span></div>
+        
+<div class="viewcode-block" id="TrafficDataProvider.get_all_vehicle_dynamics"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_dynamics">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_vehicle_dynamics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有车辆的速度和角度信息</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            所有车辆的ID到速度和角度信息的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+    
+    <span class="c1"># --- 结合位置和动态信息的接口 ---</span>
+<div class="viewcode-block" id="TrafficDataProvider.get_vehicle_state"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_state">[docs]</a>    <span class="k">def</span> <span class="nf">get_vehicle_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vehicle_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取车辆的完整状态（位置、速度和角度）</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            vehicle_id: 车辆ID（注意：需要包含&#39;vehicle_&#39;前缀）</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            包含位置、速度和角度的完整状态字典，如果车辆不存在则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+            
+        <span class="c1"># 从 AirspaceManager 获取位置</span>
+        <span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_agent_position</span><span class="p">(</span><span class="n">vehicle_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">position</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+            
+        <span class="c1"># 获取动态信息</span>
+        <span class="n">dynamics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">vehicle_id</span><span class="p">,</span> <span class="p">{})</span>
+        
+        <span class="c1"># 构建完整状态</span>
+        <span class="n">vehicle_state</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">vehicle_id</span><span class="p">,</span>
+            <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="n">position</span><span class="p">,</span>
+            <span class="s1">&#39;sim_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">}</span>
+        
+        <span class="c1"># 添加动态信息</span>
+        <span class="n">vehicle_state</span><span class="p">[</span><span class="s1">&#39;speed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dynamics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">vehicle_state</span><span class="p">[</span><span class="s1">&#39;angle&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dynamics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;angle&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">vehicle_state</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dynamics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">vehicle_state</span></div>
+    
+<div class="viewcode-block" id="TrafficDataProvider.get_all_vehicle_states"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_states">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_vehicle_states</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有车辆的完整状态（位置、速度和角度）</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            所有车辆的完整状态列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+            
+        <span class="c1"># 从 AirspaceManager 获取所有车辆位置</span>
+        <span class="n">all_agents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_all_agents</span><span class="p">()</span>
+        
+        <span class="c1"># 过滤出车辆（以&#39;vehicle_&#39;开头的ID）</span>
+        <span class="n">vehicle_positions</span> <span class="o">=</span> <span class="p">{</span><span class="nb">id</span><span class="p">:</span> <span class="n">pos</span> <span class="k">for</span> <span class="nb">id</span><span class="p">,</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">all_agents</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="nb">id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;vehicle_&#39;</span><span class="p">)}</span>
+        
+        <span class="c1"># 构建结果列表</span>
+        <span class="n">vehicle_states</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">vehicle_id</span><span class="p">,</span> <span class="n">position</span> <span class="ow">in</span> <span class="n">vehicle_positions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># 获取动态信息</span>
+            <span class="n">dynamics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vehicle_dynamics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">vehicle_id</span><span class="p">,</span> <span class="p">{})</span>
+            
+            <span class="c1"># 构建完整状态</span>
+            <span class="n">vehicle_state</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">vehicle_id</span><span class="p">,</span>
+                <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="n">position</span><span class="p">,</span>
+                <span class="s1">&#39;sim_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+                <span class="s1">&#39;speed&#39;</span><span class="p">:</span> <span class="n">dynamics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s1">&#39;angle&#39;</span><span class="p">:</span> <span class="n">dynamics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;angle&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">dynamics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+            <span class="p">}</span>
+            
+            <span class="n">vehicle_states</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vehicle_state</span><span class="p">)</span>
+            
+        <span class="k">return</span> <span class="n">vehicle_states</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.traffic</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

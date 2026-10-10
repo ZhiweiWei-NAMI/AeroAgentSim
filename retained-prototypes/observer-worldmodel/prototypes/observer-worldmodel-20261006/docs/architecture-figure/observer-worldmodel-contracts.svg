@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2640" height="1990" viewBox="0 0 2640 1990" role="img" aria-labelledby="title desc"><title id="title">Observer 世界模型：张量、联合采样与训练契约</title><desc id="desc">展示历史输入张量、两阶段模块接口、联合模式与低秩协方差候选、10步样本反馈、11桶定义以及平均概率上的混合损失。</desc>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 Z" fill="#6C819D"/></marker><marker id="arrp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 Z" fill="#7D6B9E"/></marker></defs>
+<rect width="2640" height="1990" fill="#F8FAFD"/>
+<text x="60" y="74" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="47" font-weight="500" fill="#20334C" text-anchor="start">张量、联合采样与训练契约</text>
+<text x="60" y="118" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="400" fill="#53667F" text-anchor="start">与总览配套  ·  设计边界与训练语义固定在这里</text>
+<text x="2580" y="76" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="end">B=batch · Q=query · N≤100 · O≤10 cameras</text>
+<text x="2580" y="114" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="end">示例宽度与随机头超参需 profile，不是已验证最优值</text>
+<rect x="60" y="167" width="1230" height="694" rx="22" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="2"/>
+<text x="88" y="218" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="34" font-weight="500" fill="#2D63AD" text-anchor="start">A. 输入图与 token 契约</text>
+<rect x="90" y="250" width="550" height="228" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="91" y="272" width="5" height="184" rx="2.5" fill="#2D63AD"/>
+<text x="114" y="298" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">实体数值与时间</text>
+<text x="114" y="341" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">x_hist、field_valid：[B,21,N,Dx]</text>
+<text x="114" y="378" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">entity_present：[B,21,N]</text>
+<text x="114" y="415" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">stable entity ID、source、uncertainty</text>
+<text x="114" y="452" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">event_time ≠ available_time；cutoff 审计</text>
+<rect x="680" y="250" width="580" height="228" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="681" y="272" width="5" height="184" rx="2.5" fill="#2D63AD"/>
+<text x="704" y="298" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">Observer / Observation</text>
+<text x="704" y="341" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">obs_tokens：[B,21,O,Pv,Dv]</text>
+<text x="704" y="378" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">image / point / log 保留多 token</text>
+<text x="704" y="415" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">scene token 存一次；ROI / 点集关联实体</text>
+<text x="704" y="452" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">pose / calibration / type / quality / time</text>
+<rect x="90" y="518" width="550" height="235" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="91" y="540" width="5" height="191" rx="2.5" fill="#2D63AD"/>
+<text x="114" y="566" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">typed graph / subgraph encoder</text>
+<text x="114" y="609" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">图内融合后按时间序列排列</text>
+<text x="114" y="647" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">g_hist：[B,21,Lg,dg]</text>
+<text x="114" y="685" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">例：dg=256；重叠节点用全局索引</text>
+<text x="114" y="723" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">实体重编号时 query 与边同步重编号</text>
+<rect x="680" y="518" width="580" height="235" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="681" y="540" width="5" height="191" rx="2.5" fill="#2D63AD"/>
+<text x="704" y="566" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">projector → Qwen text backbone</text>
+<text x="704" y="609" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">inputs_embeds：[B,Ltotal,2048]</text>
+<text x="704" y="647" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">末尾 entity / scene query 或 cross-attn</text>
+<text x="704" y="685" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">数值由专门分布头输出，不取词表 logits</text>
+<text x="704" y="723" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">例：Pv=8 → 2100+1680=3780 基础 tokens</text>
+<path d="M 367,478 L 367,518" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 680,365 L 660,365 L 660,490 L 590,490 L 590,518" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 640,637 L 680,637" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="90" y="798" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#20334C" text-anchor="start">21 samples = t−10s … t 共 20 个间隔；未来 H=10，Δt=0.5s。</text>
+<text x="90" y="837" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">3780 不含额外点云 / 关系 / query / context；所有 padding 和缺字段有 mask。</text>
+<rect x="1350" y="167" width="1230" height="694" rx="22" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="2"/>
+<text x="1378" y="218" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="34" font-weight="500" fill="#2D63AD" text-anchor="start">B. 联合分布与样本自己的反馈</text>
+<rect x="1380" y="250" width="1170" height="185" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1381" y="272" width="5" height="141" rx="2.5" fill="#2D63AD"/>
+<text x="1404" y="298" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">最小候选：场景级混合模式 + 低秩高斯残差</text>
+<text x="1404" y="341" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="26" font-weight="400" fill="#53667F" text-anchor="start">mode_logits [B,M]；μ、scale [B,M,N,Dx]；F [B,M,N,Dx,R]</text>
+<text x="1404" y="381" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="26" font-weight="400" fill="#53667F" text-anchor="start">同一场景共享 mode / rank-R 噪声；Σ = diag(scale²) + F Fᵀ</text>
+<text x="1404" y="421" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="26" font-weight="400" fill="#53667F" text-anchor="start">M=4、R=4 只是起点；离散存在 / 类别另设合法分布头</text>
+<rect x="1380" y="482" width="280" height="150" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1381" y="504" width="5" height="106" rx="2.5" fill="#2D63AD"/>
+<text x="1404" y="530" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">sample k 的 Gₜ</text>
+<text x="1404" y="573" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">自身上一图 / 隐状态</text>
+<text x="1404" y="609" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">+ 已知 controls</text>
+<rect x="1730" y="482" width="430" height="150" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1731" y="504" width="5" height="106" rx="2.5" fill="#2D63AD"/>
+<text x="1754" y="530" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">共享 transition decoder</text>
+<text x="1754" y="573" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">历史 context + 当前图</text>
+<text x="1754" y="609" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">→ p(Gₜ₊₁ | context, Gₜ)</text>
+<rect x="2230" y="482" width="320" height="150" rx="18" fill="#EAF2FC" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="2231" y="504" width="5" height="106" rx="2.5" fill="#2D63AD"/>
+<text x="2254" y="530" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">抽样 Gₜ₊₁</text>
+<text x="2254" y="573" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">采样全部相关实体</text>
+<text x="2254" y="609" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">重建几何关系边</text>
+<path d="M 1660,557 L 1730,557" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 2160,557 L 2230,557" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 2390,632 L 2390,682 L 1520,682 L 1520,632" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="1960" y="669" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#2D63AD" text-anchor="middle">每个 k 各自重复 10 次，时间连续；K=8 条完整轨迹</text>
+<text x="1380" y="735" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#20334C" text-anchor="start">最小实现选择：Qwen 编码一次历史，再由图 transition 推进。</text>
+<text x="1380" y="780" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">逐步重新调用 Qwen 是独立消融，不与上述实现混称。</text>
+<text x="1380" y="825" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">不回填真实未来状态 / 关联 / 日志；mode 的时间假设须与似然一致。</text>
+<rect x="60" y="906" width="1230" height="725" rx="22" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="2"/>
+<text x="88" y="957" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="34" font-weight="500" fill="#187B78" text-anchor="start">C. 一个 Stage 2，覆盖所有 predicates</text>
+<rect x="90" y="988" width="550" height="170" rx="18" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="91" y="1010" width="5" height="126" rx="2.5" fill="#187B78"/>
+<text x="114" y="1036" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">未来图 + G₀ / q₀ + query</text>
+<text x="114" y="1079" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">future states：[B,8,10,N,Dx]</text>
+<text x="114" y="1114" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">q：规则 / 实体与角色 / θ / duration</text>
+<text x="114" y="1149" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="23" font-weight="400" fill="#53667F" text-anchor="start">初始规则记忆 / 计时器（cutoff 前）</text>
+<rect x="680" y="988" width="580" height="170" rx="18" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="681" y="1010" width="5" height="126" rx="2.5" fill="#187B78"/>
+<text x="704" y="1036" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">scratch 小型 Graph Transformer</text>
+<text x="704" y="1079" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">空间关系层 + 同实体时间消息传递</text>
+<text x="704" y="1114" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">query-conditioned cross-attn / readout</text>
+<text x="704" y="1149" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">d2=128 或 256 为预算起点</text>
+<path d="M 640,1072 L 680,1072" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<rect x="90" y="1203" width="550" height="150" rx="18" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="91" y="1225" width="5" height="106" rx="2.5" fill="#187B78"/>
+<text x="114" y="1251" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">query 的数值旁路</text>
+<text x="114" y="1294" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">operand_bypass：[B,8,Q,10,Do]</text>
+<text x="114" y="1330" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">原数值、阈值差、mask、真实时间</text>
+<rect x="680" y="1203" width="580" height="150" rx="18" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="681" y="1225" width="5" height="106" rx="2.5" fill="#187B78"/>
+<text x="704" y="1251" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">共享融合 / 分类 head</text>
+<text x="704" y="1294" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">logits：[B,8,Q,11]</text>
+<text x="704" y="1330" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">softmax 沿 11 桶；mean 只沿 K 维</text>
+<path d="M 367,1158 L 367,1203" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 970,1158 L 970,1203" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<path d="M 640,1276 L 680,1276" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="90" y="1410" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="27" font-weight="500" fill="#187B78" text-anchor="start">输出 11 桶：离散网格上的首次翻转</text>
+<rect x="90" y="1434" width="96" height="69" rx="8" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="1"/>
+<text x="138" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">1</text>
+<text x="138" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">0.5s</text>
+<rect x="195" y="1434" width="96" height="69" rx="8" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="1"/>
+<text x="243" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">2</text>
+<text x="243" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">1.0s</text>
+<rect x="300" y="1434" width="96" height="69" rx="8" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="1"/>
+<text x="348" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">3</text>
+<text x="348" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">1.5s</text>
+<rect x="405" y="1434" width="96" height="69" rx="8" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="1"/>
+<text x="453" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">4</text>
+<text x="453" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">2.0s</text>
+<rect x="510" y="1434" width="96" height="69" rx="8" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="1"/>
+<text x="558" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">5</text>
+<text x="558" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">2.5s</text>
+<rect x="615" y="1434" width="96" height="69" rx="8" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="1"/>
+<text x="663" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">6</text>
+<text x="663" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">3.0s</text>
+<rect x="720" y="1434" width="96" height="69" rx="8" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="1"/>
+<text x="768" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">7</text>
+<text x="768" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">3.5s</text>
+<rect x="825" y="1434" width="96" height="69" rx="8" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="1"/>
+<text x="873" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">8</text>
+<text x="873" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">4.0s</text>
+<rect x="930" y="1434" width="96" height="69" rx="8" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="1"/>
+<text x="978" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">9</text>
+<text x="978" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">4.5s</text>
+<rect x="1035" y="1434" width="96" height="69" rx="8" fill="#E9F7F4" stroke="#CAD5E4" stroke-width="1"/>
+<text x="1083" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">10</text>
+<text x="1083" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">5.0s</text>
+<rect x="1140" y="1434" width="96" height="69" rx="8" fill="#F0F4F9" stroke="#CAD5E4" stroke-width="1"/>
+<text x="1188" y="1465" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="22" font-weight="500" fill="#187B78" text-anchor="middle">11</text>
+<text x="1188" y="1491" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="21" font-weight="400" fill="#53667F" text-anchor="middle">&gt;5s*</text>
+<text x="90" y="1542" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#20334C" text-anchor="start">* 第 11 桶 = 窗口内无翻转；不代表永不发生，也不容纳 unknown。</text>
+<text x="90" y="1588" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#53667F" text-anchor="start">状态型 / 持续时长 / 窗口谓词：保留 cutoff 前必要历史摘要。</text>
+<rect x="1350" y="906" width="1230" height="725" rx="22" fill="#FFFFFF" stroke="#CAD5E4" stroke-width="2"/>
+<text x="1378" y="957" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="34" font-weight="500" fill="#A5731C" text-anchor="start">D. 保留既有 hybrid 训练主目标</text>
+<rect x="1380" y="988" width="530" height="161" rx="18" fill="#FFF6E5" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1381" y="1010" width="5" height="117" rx="2.5" fill="#A5731C"/>
+<text x="1404" y="1036" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">逐轨迹概率 → K 均值</text>
+<text x="1404" y="1079" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="27" font-weight="400" fill="#53667F" text-anchor="start">pₖ = softmax(logitsₖ)</text>
+<text x="1404" y="1121" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="27" font-weight="400" fill="#53667F" text-anchor="start">p̄ = (1/K) Σₖ pₖ ∈ ℝ¹¹</text>
+<rect x="1980" y="988" width="570" height="161" rx="18" fill="#FFF6E5" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1981" y="1010" width="5" height="117" rx="2.5" fill="#A5731C"/>
+<text x="2004" y="1036" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="28" font-weight="500" fill="#20334C" text-anchor="start">实际未来 → 原规则 label</text>
+<text x="2004" y="1079" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="26" font-weight="400" fill="#53667F" text-anchor="start">y ∈ {1,…,11}；cⱼ = 1[y ≤ j]</text>
+<text x="2004" y="1121" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="26" font-weight="400" fill="#53667F" text-anchor="start">CDF：Fⱼ = Σᵦ≤ⱼ p̄ᵦ</text>
+<rect x="1380" y="1200" width="1170" height="197" rx="18" fill="#FFF6E5" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1381" y="1222" width="5" height="153" rx="2.5" fill="#A5731C"/>
+<text x="1404" y="1248" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="27" font-weight="500" fill="#20334C" text-anchor="start">L_event = L_timing + 0.5 × L_terminal</text>
+<text x="1404" y="1291" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">L_timing：mean_known (Fⱼ − cⱼ)²，j=1,…,9（0.5 … 4.5s）</text>
+<text x="1404" y="1330" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">L_terminal：mean_known BCE(F₁₀, c₁₀)，5s 终点</text>
+<text x="1404" y="1369" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">两项分别按自身已知项取均值；K 仅均值一次；mask / clamp 复用冻结实现</text>
+<path d="M 1645,1149 L 1645,1200" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="10 8" marker-end="url(#arr)"/>
+<path d="M 2265,1149 L 2265,1200" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="10 8" marker-end="url(#arr)"/>
+<text x="1380" y="1448" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#20334C" text-anchor="start">Stage 1：状态 NLL + 必要存在 / 类别 CE；模态 encoder 冻结。</text>
+<text x="1380" y="1493" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#20334C" text-anchor="start">Stage 2：冻结 Stage 1 及 encoder 版本，使用训练外 / 折外预测轨迹。</text>
+<text x="1380" y="1538" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#20334C" text-anchor="start">未知初始真值 / 必要操作数 → 无效；右删失后未知项不当负例。</text>
+<text x="1380" y="1583" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">报告 RPS 另含 j=1…10；CE 可选比较，NLL / Brier 用于评价。</text>
+<rect x="60" y="1680" width="1230" height="209" rx="18" fill="#F3EFF8" stroke="#7D6B9E" stroke-width="2" stroke-dasharray="9 7"/>
+<rect x="61" y="1702" width="5" height="165" rx="2.5" fill="#7D6B9E"/>
+<text x="84" y="1728" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="30" font-weight="500" fill="#20334C" text-anchor="start">E. 观测解码是另一个受条件约束的任务</text>
+<text x="84" y="1771" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">预测 scene / entity / appearance latent + 已知未来 Observer pose / calibration</text>
+<text x="84" y="1811" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">→ 模态专用 image / point / occupancy decoder；必要时保留历史 appearance context</text>
+<text x="84" y="1851" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">单一 pooled entity embedding 没有恢复整幅场景 / 全点云的信息保证</text>
+<rect x="1350" y="1680" width="1230" height="209" rx="18" fill="#F0F4F9" stroke="#CAD5E4" stroke-width="2"/>
+<rect x="1351" y="1702" width="5" height="165" rx="2.5" fill="#187B78"/>
+<text x="1374" y="1728" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="30" font-weight="500" fill="#20334C" text-anchor="start">F. 参数共享边界与对照</text>
+<text x="1374" y="1771" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">所有 predicate：同一 Stage 2 参数；跨 Stage 1/2：默认 untied，结构 / 初始化可复用</text>
+<text x="1374" y="1811" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">复制初始化后分开训练为消融；不在 Stage 2 训练时悄悄更新 Stage 1 encoder</text>
+<text x="1374" y="1851" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="start">同 K / 同 query 比较 RULEMC、规则代理与主风险头；NLL / Brier / 校准 / K 敏感性</text>
+<path d="M 70,1940 L 140,1940" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arr)"/>
+<text x="154" y="1948" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#20334C" text-anchor="start">推理数据流</text>
+<path d="M 370,1940 L 440,1940" fill="none" stroke="#6C819D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="10 8" marker-end="url(#arr)"/>
+<text x="454" y="1948" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#20334C" text-anchor="start">训练 / 监督</text>
+<path d="M 710,1940 L 780,1940" fill="none" stroke="#7D6B9E" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="10 8" marker-end="url(#arrp)"/>
+<text x="794" y="1948" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="400" fill="#20334C" text-anchor="start">可选扩展</text>
+<text x="2580" y="1948" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="400" fill="#53667F" text-anchor="end">数值精度、事件可靠性、观测重建分别验收。</text></svg>

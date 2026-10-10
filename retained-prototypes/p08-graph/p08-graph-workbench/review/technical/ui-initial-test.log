@@ -1,0 +1,68 @@
+{"benchmark":"model_only_no_render","source_nodes":20000,"source_edges":64000,"visible_nodes":600,"visible_edges":132,"elapsed_ms":131.47}
+✔ parallel edge occurrences and self-loops survive indexing without endpoint dedup (1.564633ms)
+✔ edge payload, direction, relation and role survive scene projection exactly (0.230366ms)
+✔ filtering away middle nodes does not synthesize shortcut edges (0.908797ms)
+✔ bounded preview reports total matching nodes and exact omitted edge counts (0.331629ms)
+✔ scene retains selected focus outside filter and makes override explicit (0.196866ms)
+✔ every source node kind and edge relation is cataloged even outside visible cap (2.149483ms)
+✔ unknown, missing, null and false values are retained distinctly (0.3061ms)
+✖ shared canonical nodes do not import another case edge into selected case (1.21016ms)
+✖ same canonical ID cannot silently mask differing semantic level or identity (4.336286ms)
+✔ dangling endpoints are diagnosed without creating entity nodes (0.323667ms)
+✔ large multi-kind graph indexing and bounded projections are finite (158.974094ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 9
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 261.103794
+
+✖ failing tests:
+
+test at review/technical/ui_acceptance.test.mjs:44:1
+✖ shared canonical nodes do not import another case edge into selected case (1.21016ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'A-edge',
+  +   'B-edge'
+    ]
+  
+      at TestContext.<anonymous> (file:///workspace/shared/p08-graph-workbench/review/technical/ui_acceptance.test.mjs:48:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'A-edge', 'B-edge' ],
+    expected: [ 'A-edge' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at review/technical/ui_acceptance.test.mjs:50:1
+✖ same canonical ID cannot silently mask differing semantic level or identity (4.336286ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(idx.conflicts.some(c=>c.id==='same'))
+  
+      at TestContext.<anonymous> (file:///workspace/shared/p08-graph-workbench/review/technical/ui_acceptance.test.mjs:52:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

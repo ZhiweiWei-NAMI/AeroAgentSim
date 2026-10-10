@@ -1,0 +1,198 @@
+{
+  "status": "implementation proposal; not a completed runtime config",
+  "run_contract": {
+    "old_training": "stop only after final all-family acceptance; retain checkpoint/log",
+    "input_mode": "real_predicted",
+    "oracle_mode": "separate diagnostic only",
+    "label_contract": "inherit final accepted first-flip implementation",
+    "outsidewindow": "class index 10 only when valid support establishes T > 5.0 s; censor/unknown stay masked",
+    "provenance_policy": "offline availability manifest and focused loader tests; no per-field runtime policing"
+  },
+  "backbone": {
+    "model_id": "Qwen/Qwen3.5-2B-Base",
+    "revision": "b1485b2fa6dfa1287294f269f5fb618e03d52d7c",
+    "component": "model.language_model, verified full pretrained text weights",
+    "hidden_size": 2048,
+    "num_layers": 24,
+    "train_dtype": "bfloat16 after runtime support check",
+    "attention_backend": "sdpa or measured compatible optimized backend",
+    "delta_kernel": "pin and record actually used backend; verify training backward",
+    "use_cache_train": false,
+    "output_hidden_states": false,
+    "output_attentions": false,
+    "lm_head_forward": false,
+    "transformers_version": null,
+    "peft_version": null
+  },
+  "data": {
+    "history_times_s": [
+      -10.0,
+      -9.5,
+      -9.0,
+      -8.5,
+      -8.0,
+      -7.5,
+      -7.0,
+      -6.5,
+      -6.0,
+      -5.5,
+      -5.0,
+      -4.5,
+      -4.0,
+      -3.5,
+      -3.0,
+      -2.5,
+      -2.0,
+      -1.5,
+      -1.0,
+      -0.5,
+      0.0
+    ],
+    "future_times_s": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5,
+      3.0,
+      3.5,
+      4.0,
+      4.5,
+      5.0
+    ],
+    "num_predicate_definitions": 72,
+    "num_bound_queries": "measure each scene from binding registry; no fixed nominal count",
+    "K_target": 8,
+    "K_smoke": 1,
+    "splits": "grouped by original sequence/scene; inherited fixed manifest",
+    "normalization": "TRAIN only"
+  },
+  "graph": {
+    "reuse_existing_typed_encoder": true,
+    "query_dependent_graph_rebuild": false,
+    "if_relation_module_missing": {
+      "layers_default": 2,
+      "width_default": 256,
+      "reason": "small two-hop relation encoder as engineering starting point, not empirical optimum"
+    },
+    "entity_time_slots": 1,
+    "projector": "D_existing_or_256 -> 2048",
+    "time_order": "time major, stable scene-local entity slots",
+    "future_to_history_message_passing": false,
+    "dropout_initial": 0.0
+  },
+  "semantic": {
+    "schema_prefix_query_independent": true,
+    "actual_token_count": "measure tokenizer; no silent truncation",
+    "schema_token_budget_initial_suggestion": 256,
+    "query_text_encoder_initial": "frozen native token embeddings + masked pooling + trainable projection",
+    "canonical_AST_units_parameters_bindings": "retained explicitly"
+  },
+  "head": {
+    "width_initial_suggestion": 256,
+    "cross_attention_layers_initial": 1,
+    "query_self_attention": false,
+    "query_specific_dependency_bias": "head only",
+    "exact_predicted_rule_features": "reuse available typed executor outputs for same trajectory, never labels/oracle",
+    "graph_skip": true,
+    "num_bins": 11,
+    "logits_shape": [
+      "B",
+      "Q",
+      "K",
+      11
+    ],
+    "probability_dtype": "float32",
+    "aggregation": "softmax over 11 independently, then equal mean over K",
+    "query_chunk_initial_suggestion": 32,
+    "query_chunk_scope": "head only; normalize loss over same full valid query set"
+  },
+  "lora": {
+    "r": 8,
+    "alpha": 16,
+    "dropout": 0.0,
+    "bias": "none",
+    "targets_relative_to_text_model": [
+      "layers.16.linear_attn.in_proj_qkv",
+      "layers.16.linear_attn.in_proj_z",
+      "layers.16.linear_attn.out_proj",
+      "layers.17.linear_attn.in_proj_qkv",
+      "layers.17.linear_attn.in_proj_z",
+      "layers.17.linear_attn.out_proj",
+      "layers.18.linear_attn.in_proj_qkv",
+      "layers.18.linear_attn.in_proj_z",
+      "layers.18.linear_attn.out_proj",
+      "layers.19.self_attn.q_proj",
+      "layers.19.self_attn.k_proj",
+      "layers.19.self_attn.v_proj",
+      "layers.19.self_attn.o_proj",
+      "layers.20.linear_attn.in_proj_qkv",
+      "layers.20.linear_attn.in_proj_z",
+      "layers.20.linear_attn.out_proj",
+      "layers.21.linear_attn.in_proj_qkv",
+      "layers.21.linear_attn.in_proj_z",
+      "layers.21.linear_attn.out_proj",
+      "layers.22.linear_attn.in_proj_qkv",
+      "layers.22.linear_attn.in_proj_z",
+      "layers.22.linear_attn.out_proj",
+      "layers.23.self_attn.q_proj",
+      "layers.23.self_attn.k_proj",
+      "layers.23.self_attn.v_proj",
+      "layers.23.self_attn.o_proj"
+    ],
+    "expected_target_count": 26,
+    "expected_adapter_parameter_count": 1032192,
+    "verify_exact_shapes_and_runtime_names": true
+  },
+  "loss": {
+    "function": "inherit accepted hybridCDF + terminalBCE",
+    "source_path": null,
+    "source_hash": null,
+    "coefficients": "inherit accepted configuration; resolve before training",
+    "input": "mixture_prob only, with existing masks/reduction",
+    "new_teacher_or_residual_loss": false
+  },
+  "optimizer_initial_suggestion": {
+    "type": "AdamW",
+    "lr_lora": 0.0001,
+    "lr_graph_projector_head": 0.001,
+    "grad_clip_norm": 1.0,
+    "reassessment": "check gradients and units; defaults not tuning conclusion"
+  },
+  "memory": {
+    "microbatch_windows_per_gpu_initial": 1,
+    "activation_checkpointing": "non-reentrant; verify gradients",
+    "K_memory_path": "full parallel small reference; two-pass exact first-order recomputation for real shapes when needed",
+    "training_cache_reuse": false,
+    "ddp": "one complete B-window and all its K samples stay on each rank initially",
+    "profile": "load, forward, backward, first optimizer step, steady steps; allocated/reserved plus device free memory",
+    "headroom_suggestion_fraction": 0.15
+  },
+  "modalities": {
+    "phase1": [
+      "typed state graph",
+      "semantic text"
+    ],
+    "camera_lidar_interfaces_retained": true,
+    "real_sensor_time": "t <= 0",
+    "candidate_camera_shape": {
+      "cameras": 10,
+      "fps": 1,
+      "inclusive_frames_per_camera": 11,
+      "image_height": 512,
+      "image_width": 512
+    },
+    "independent_image_token_nominal_arithmetic": 28160,
+    "actual_visual_tokens": "processor grid measurement required",
+    "phase2": "entity/time aligned historical sensor features into the graph path; no blanket raw multiview prefill in phase1"
+  },
+  "must_resolve_before_real_training": [
+    "final all-family acceptance artifact",
+    "loss path/hash/coefficients",
+    "real-predicted field availability and missing-data behavior",
+    "fixed model and working library/kernel revisions",
+    "actual N/E/Q/token distributions",
+    "pretrained weight load and LoRA whitelist verification",
+    "K/query/leakage/padding/gradient/restore gates"
+  ]
+}

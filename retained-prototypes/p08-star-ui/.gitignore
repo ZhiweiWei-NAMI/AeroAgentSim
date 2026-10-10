@@ -1,0 +1,88 @@
+# --- Databases and Runtime State ---
+*.db
+*.sqlite
+*.db-shm
+*.db-wal
+runtime/
+logs/
+*.log
+optimization_log.txt
+
+# --- Project-specific generated data ---
+# --- Research / experimental code (not part of platform delivery) ---
+paper_code/
+TCCN_auto_planner/
+pddl_planner/
+examples/
+data/
+
+# --- Project-specific generated data ---
+TCCN_auto_planner/model_cache/
+TCCN_auto_planner/data/
+data/cache/
+data/generated/
+data/output/
+
+# --- Archives ---
+*.tar.gz
+
+# --- Python ---
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+develop-eggs/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+htmlcov/
+.coverage
+
+# --- Virtual environments ---
+venv/
+env/
+ENV/
+.env
+.venv/
+
+# --- IDE and OS ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# --- Frontend build artifacts ---
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+frontend/coverage/
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# --- Local tooling ---
+.clinerules
+=1.21.0
+# dev_plan/
+
+# Generated standalone authoring route, built from console-prototype source
+/frontend/public/configuration/

@@ -1,0 +1,553 @@
+{
+  "source_title": "空地协同低空城市事件平台建设方案",
+  "source_version": "2026-10-04",
+  "retrieved_at": "2026-10-05",
+  "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+  "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+  "inventory_scope": "Exact Appendix B activity names and source steps; no inferred names; this page preserves pre-existing whitepaper directory but is not itself the raw whitepapers.",
+  "activity_count": 35,
+  "step_count": 226,
+  "activities": [
+    {
+      "catalog_index": 1,
+      "name": "作物/果园精准液体施用",
+      "steps": [
+        "目标确认",
+        "配方核验",
+        "配液过滤",
+        "校准试喷",
+        "分区施用",
+        "补液复作",
+        "清洁回收",
+        "效果复核"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 2,
+      "name": "种子/颗粒肥/固体物料精准播撒",
+      "steps": [
+        "物料检验",
+        "排料器匹配",
+        "流量校准",
+        "试播",
+        "航带播撒",
+        "补料",
+        "分布验收"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 3,
+      "name": "果树液体辅助授粉",
+      "steps": [
+        "花期核验",
+        "花粉批次准备",
+        "活力确认",
+        "悬液准备",
+        "授粉覆盖",
+        "坐果效果随访"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 4,
+      "name": "作物长势与病虫害巡测",
+      "steps": [
+        "校准",
+        "规划采样",
+        "采集",
+        "质量检查",
+        "地面复核",
+        "干预建议"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 5,
+      "name": "树冠识别与变量处方生成",
+      "steps": [
+        "树冠测绘",
+        "分割定位",
+        "地面核验",
+        "处方签审",
+        "路径绑定",
+        "版本发布"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 6,
+      "name": "统防统治效果与作业追溯",
+      "steps": [
+        "目标清单",
+        "作业取证",
+        "田间复测",
+        "配对评价",
+        "验收",
+        "归档"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 7,
+      "name": "农林产品与生产物资吊运",
+      "steps": [
+        "勘线",
+        "地勤分工",
+        "挂载",
+        "清场口令",
+        "起吊",
+        "载荷转运",
+        "落地释放",
+        "卸货确认",
+        "空载返程"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 8,
+      "name": "工程物资通用吊运",
+      "steps": [
+        "载荷方案",
+        "专用许可",
+        "勘线",
+        "绑扎",
+        "协调起吊",
+        "定位落料",
+        "验收"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 9,
+      "name": "林地健康与有害生物监测",
+      "steps": [
+        "林班范围核对",
+        "生态窗口评估",
+        "采集",
+        "变化识别",
+        "样地复核",
+        "管护建议"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 10,
+      "name": "森林火情巡护",
+      "steps": [
+        "巡护计划",
+        "热异常搜索",
+        "目标复核",
+        "火点定位",
+        "通知指挥",
+        "持续更新"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 11,
+      "name": "治沙/造林修复物资投送",
+      "steps": [
+        "修复地块核验",
+        "批次配载",
+        "投送",
+        "落点确认",
+        "复植/萌发随访"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 12,
+      "name": "鱼虾养殖定量投饲",
+      "steps": [
+        "塘区与计划核验",
+        "投料准备",
+        "航线投饲",
+        "用量核对",
+        "剩料/水质复核"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 13,
+      "name": "水体生态/污染巡测",
+      "steps": [
+        "采样设计",
+        "现场观测",
+        "取样",
+        "数据质检",
+        "异常复核",
+        "责任方交接"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 14,
+      "name": "地形/地籍/灾情测绘",
+      "steps": [
+        "测区定义",
+        "控制点布设",
+        "校准",
+        "采集",
+        "建模",
+        "独立检核",
+        "产品交付"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 15,
+      "name": "施工土方/堆料测量",
+      "steps": [
+        "基线核对",
+        "重复采集",
+        "表面重建",
+        "体积与不确定度计算",
+        "工程复核"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 16,
+      "name": "施工进度/BIM偏差核对",
+      "steps": [
+        "计划/BIM版本核验",
+        "现场采集",
+        "对齐",
+        "差异候选",
+        "人工核验",
+        "更新"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 17,
+      "name": "桥梁/幕墙/屋顶缺陷巡检",
+      "steps": [
+        "资产部位清单",
+        "安全净距",
+        "多视角采集",
+        "缺陷筛查",
+        "复核",
+        "维修工单交接"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 18,
+      "name": "输配电资产多模态巡检",
+      "steps": [
+        "资产/运行状态核验",
+        "净距规划",
+        "采集",
+        "缺陷复核",
+        "工单",
+        "复检"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 19,
+      "name": "油气管道泄漏与通道巡检",
+      "steps": [
+        "背景标定",
+        "风场观测",
+        "通道采集",
+        "异常定位候选",
+        "复核",
+        "处置交接"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 20,
+      "name": "河道/堤防/水库巡查",
+      "steps": [
+        "巡查范围",
+        "采集",
+        "漂浮物/渗漏候选",
+        "定位复核",
+        "派工",
+        "复查"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 21,
+      "name": "城市综合问题巡查与工单",
+      "steps": [
+        "部门目标合并",
+        "调度",
+        "采集",
+        "AI候选",
+        "人工审核",
+        "工单派发",
+        "闭环核验"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 22,
+      "name": "道路交通与事故现场评估",
+      "steps": [
+        "接报",
+        "场地/空域核验",
+        "采集",
+        "交通/现场判读",
+        "指挥交接",
+        "持续更新"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 23,
+      "name": "人员搜寻与救援物资送达",
+      "steps": [
+        "搜索区定义",
+        "分区搜索",
+        "候选目标",
+        "复核定位",
+        "救援授权",
+        "投送/交接",
+        "回访"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 24,
+      "name": "火场侦察/灭火支持",
+      "steps": [
+        "指挥授权",
+        "侦察定位",
+        "风险区核验",
+        "介质投送/引导",
+        "效果复测",
+        "复燃监测",
+        "解除"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 25,
+      "name": "灾损/阻断道路快速测绘",
+      "steps": [
+        "灾区定义",
+        "安全窗口",
+        "采集",
+        "重建",
+        "变化候选",
+        "指挥复核",
+        "发布"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 26,
+      "name": "医疗样本/血液/用品运输",
+      "steps": [
+        "接单核对",
+        "专业包装放行",
+        "装载交接",
+        "运输监控",
+        "收货核对",
+        "专业质量验收"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 27,
+      "name": "即时零售/餐食末端配送",
+      "steps": [
+        "订单匹配",
+        "装载",
+        "航路运输",
+        "站点接收",
+        "最后一米交付",
+        "回执"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 28,
+      "name": "站间及偏远地区货运",
+      "steps": [
+        "配载",
+        "航线与备用点",
+        "始发交接",
+        "运输",
+        "接驳",
+        "收货"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 29,
+      "name": "断网区域空中通信服务",
+      "steps": [
+        "需求范围",
+        "部署",
+        "接入开通",
+        "回传验证",
+        "服务值守",
+        "轮换",
+        "撤收"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 30,
+      "name": "端边云计算卸载与迁移",
+      "steps": [
+        "任务图校验",
+        "资源预留",
+        "上传/分片",
+        "计算",
+        "必要迁移",
+        "返回",
+        "验证",
+        "回收"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 31,
+      "name": "低空观光与飞行体验",
+      "steps": [
+        "预约",
+        "人员/天气检查",
+        "简报",
+        "登机",
+        "观光",
+        "落地",
+        "安全离机",
+        "接续"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 32,
+      "name": "通航短途/联程接驳",
+      "steps": [
+        "联程核验",
+        "机场准备",
+        "登机",
+        "航段",
+        "备降/接续",
+        "离机清点"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 33,
+      "name": "无人机集群灯光表演",
+      "steps": [
+        "场地审批",
+        "脚本校验",
+        "全机检查",
+        "同步起飞",
+        "编队变换",
+        "异常离场",
+        "落地清点"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 34,
+      "name": "共享机巢换电/换装/出勤恢复",
+      "steps": [
+        "预约",
+        "入场",
+        "安全隔离",
+        "补能/换装",
+        "检查",
+        "重新放行"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    },
+    {
+      "catalog_index": 35,
+      "name": "跨部门/多任务资源协同调度",
+      "steps": [
+        "需求确认",
+        "权限/优先级",
+        "冲突检查",
+        "资源分配",
+        "执行回执",
+        "复核",
+        "释放"
+      ],
+      "source_page_id": "page_925e13a0cc34819194af35bb99778994",
+      "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+      "source_section": "附录 B 现有 35 项业务流程"
+    }
+  ]
+}

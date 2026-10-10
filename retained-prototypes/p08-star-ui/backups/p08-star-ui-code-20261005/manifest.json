@@ -1,0 +1,113 @@
+{
+  "schema": "source-only-backup/v1",
+  "snapshot_date": "2026-10-05",
+  "scope": "P08 star-graph authored UI source",
+  "source_only": true,
+  "complete_application": false,
+  "dataset_records_included": false,
+  "original_ui_files": 12,
+  "validation": {
+    "node_version": "24.19.0",
+    "synthetic_smoke_tests": {
+      "passed": 8,
+      "failed": 0
+    },
+    "javascript_syntax": "passed for all included JS and MJS modules",
+    "python_build_script_syntax": "passed",
+    "full_browser_acceptance": "not established",
+    "real_provider_integration": "not established"
+  },
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 234,
+      "sha256": "eb33c3e5af7f479e4aaf8d07f9c6b60bab3f9c7cca146fe4dfb3d6707c6100bd",
+      "role": "backup_documentation_or_synthetic_test"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4792,
+      "sha256": "f73f1d732312e219cf796e5f433c42f5bf97ec82e69a7d2dfc370946bfdff285",
+      "role": "backup_documentation_or_synthetic_test"
+    },
+    {
+      "path": "tests/source-smoke.test.mjs",
+      "bytes": 5735,
+      "sha256": "ba941f6d3cdba7ac999a5837799a1c28e39ac8159ed3541ed4cf48be7e38ea0e",
+      "role": "backup_documentation_or_synthetic_test"
+    },
+    {
+      "path": "ui/app.js",
+      "bytes": 47129,
+      "sha256": "04e78e42321ea2f110e52417469c969fef11f7c40c1376e243ee4c0a293bf009",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/build-offline.py",
+      "bytes": 3057,
+      "sha256": "172c1261dc4d2d6aea0ddee18305172ed4ce3d1632676d18e90bc866c453abeb",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/canonical-model.js",
+      "bytes": 9912,
+      "sha256": "f73e67100982b570ba091d9266e447ffda7ded6862e3ce37b41ef44cfbd8d54f",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/coherent.js",
+      "bytes": 2891,
+      "sha256": "c038eb15f02043c884d14fcd5c179a8a89cc11e2877fee790fe400bbee136c9a",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/display-vocabulary.js",
+      "bytes": 14927,
+      "sha256": "bb10f96ec53ac959e97cbe14792b34458ace363be5f5fcfd5687e64379cc930b",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/display.js",
+      "bytes": 10600,
+      "sha256": "eefe36f19113399bf87ae91f3cba0b61fae0fb1bd49d0d0140c86c871620037b",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/index.html",
+      "bytes": 7182,
+      "sha256": "1f02195083744eeb5ac88767e5d92361c02b1b10df3fadb0584093cfef0dd551",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/model.js",
+      "bytes": 8326,
+      "sha256": "f51441635d6978832c5bde468a57c1a5bdd1556840d215c71e05a0c0ca1c9b61",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/package.json",
+      "bytes": 384,
+      "sha256": "4cdb9856a50b0725b75e947e1f8c1e3c0ba8891a83dfd759f5fa67c06ceae29c",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/renderer.js",
+      "bytes": 14705,
+      "sha256": "501fdd6a5612d67b56235384f07840013e3278acb7325d8ef426cd22f5614d32",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/server.mjs",
+      "bytes": 2254,
+      "sha256": "5f09990b481534688e1fedf604f7ce7c8d31dde5a6843f11054549ddcf040df9",
+      "role": "original_authored_ui_source"
+    },
+    {
+      "path": "ui/styles.css",
+      "bytes": 18573,
+      "sha256": "cac951eb638e70ad8a5009e7731023dacfb0dfbd97fd934b334ffca938d4e1c3",
+      "role": "original_authored_ui_source"
+    }
+  ],
+  "integrity_note": "This manifest excludes itself and SHA256SUMS. SHA256SUMS covers all other files including this manifest."
+}

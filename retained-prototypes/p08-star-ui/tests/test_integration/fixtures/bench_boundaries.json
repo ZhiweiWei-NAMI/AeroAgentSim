@@ -1,0 +1,772 @@
+{
+  "schema": "aeroagentsim.bench-boundary-fixture/v1",
+  "description": "Independently authored partial boundary fixture. StageBarrier and native kind/authority enums are unexpanded placeholders. Not a valid full native BENCH scenario or genuine trace. Digests are synthetic declarations, not cryptographically verified source evidence.",
+  "engine_origin_ns": "9007199254740993000",
+  "resolved_entities": [
+    {
+      "entity_id": "aircraft.alpha",
+      "kind": "fixture-aerial",
+      "owner_kind": "provider",
+      "owner_id": "motion.synthetic",
+      "source_provider_id": "motion.synthetic",
+      "authority_kind": "fixture-unexpanded-enum",
+      "state": "dynamic",
+      "model_asset_id": "model.synthetic",
+      "initial_pose": {
+        "position": {
+          "enu": {
+            "east_m": 0,
+            "north_m": 0,
+            "up_m": 0
+          },
+          "ned": {
+            "north_m": 0,
+            "east_m": 0,
+            "down_m": 0
+          },
+          "ecef": {
+            "x_m": 1,
+            "y_m": 2,
+            "z_m": 3
+          },
+          "wgs84": {
+            "longitude_deg": 12,
+            "latitude_deg": 48,
+            "ellipsoid_height_m": 120
+          },
+          "geoid_separation_m": 20,
+          "amsl_m": 100,
+          "terrain_amsl_m": 90,
+          "agl_m": 10
+        },
+        "orientation_enu": {
+          "qw": 1,
+          "qx": 0,
+          "qy": 0,
+          "qz": 0
+        },
+        "orientation_ned": {
+          "qw": 0,
+          "qx": 0.7071067811865476,
+          "qy": 0.7071067811865476,
+          "qz": 0
+        }
+      },
+      "selected_launch_override": false
+    },
+    {
+      "entity_id": "vehicle.main",
+      "kind": "fixture-ground",
+      "owner_kind": "provider",
+      "owner_id": "motion.synthetic",
+      "source_provider_id": "motion.synthetic",
+      "authority_kind": "fixture-unexpanded-enum",
+      "state": "dynamic",
+      "model_asset_id": "model.synthetic",
+      "initial_pose": {
+        "position": {
+          "enu": {
+            "east_m": 0,
+            "north_m": 0,
+            "up_m": 0
+          },
+          "ned": {
+            "north_m": 0,
+            "east_m": 0,
+            "down_m": 0
+          },
+          "ecef": {
+            "x_m": 1,
+            "y_m": 2,
+            "z_m": 3
+          },
+          "wgs84": {
+            "longitude_deg": 12,
+            "latitude_deg": 48,
+            "ellipsoid_height_m": 120
+          },
+          "geoid_separation_m": 20,
+          "amsl_m": 100,
+          "terrain_amsl_m": 90,
+          "agl_m": 10
+        },
+        "orientation_enu": {
+          "qw": 1,
+          "qx": 0,
+          "qy": 0,
+          "qz": 0
+        },
+        "orientation_ned": {
+          "qw": 0,
+          "qx": 0.7071067811865476,
+          "qy": 0.7071067811865476,
+          "qz": 0
+        }
+      },
+      "selected_launch_override": false
+    },
+    {
+      "entity_id": "antenna.fixed",
+      "kind": "fixture-static",
+      "owner_kind": "scenario",
+      "owner_id": "scenario.compiler",
+      "source_provider_id": null,
+      "authority_kind": "fixture-unexpanded-enum",
+      "state": "static",
+      "model_asset_id": "model.synthetic",
+      "initial_pose": {
+        "position": {
+          "enu": {
+            "east_m": 0,
+            "north_m": 0,
+            "up_m": 0
+          },
+          "ned": {
+            "north_m": 0,
+            "east_m": 0,
+            "down_m": 0
+          },
+          "ecef": {
+            "x_m": 1,
+            "y_m": 2,
+            "z_m": 3
+          },
+          "wgs84": {
+            "longitude_deg": 12,
+            "latitude_deg": 48,
+            "ellipsoid_height_m": 120
+          },
+          "geoid_separation_m": 20,
+          "amsl_m": 100,
+          "terrain_amsl_m": 90,
+          "agl_m": 10
+        },
+        "orientation_enu": {
+          "qw": 1,
+          "qx": 0,
+          "qy": 0,
+          "qz": 0
+        },
+        "orientation_ned": {
+          "qw": 0,
+          "qx": 0.7071067811865476,
+          "qy": 0.7071067811865476,
+          "qz": 0
+        }
+      },
+      "selected_launch_override": false
+    }
+  ],
+  "scene_state": {
+    "schema_version": "aero-bench.scene-state/v1",
+    "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "scenario_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "at": {
+      "tick": 1,
+      "sim_time_ns": 9007199255740993001
+    },
+    "declared_entity_ids": [
+      "aircraft.alpha",
+      "vehicle.main",
+      "antenna.fixed"
+    ],
+    "samples": [
+      {
+        "schema_version": "aero-bench.state-sample/v1",
+        "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "scenario_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "at": {
+          "tick": 1,
+          "sim_time_ns": 9007199255740993001
+        },
+        "stage": "motion",
+        "entity_id": "antenna.fixed",
+        "provider_id": "scenario.compiler",
+        "sample_kind": "static",
+        "pose": {
+          "position": {
+            "enu": {
+              "east_m": 0,
+              "north_m": 10,
+              "up_m": 0
+            },
+            "ned": {
+              "north_m": 10,
+              "east_m": 0,
+              "down_m": 0
+            },
+            "ecef": {
+              "x_m": 1,
+              "y_m": 2,
+              "z_m": 3
+            },
+            "wgs84": {
+              "longitude_deg": 12,
+              "latitude_deg": 48,
+              "ellipsoid_height_m": 120
+            },
+            "geoid_separation_m": 20,
+            "amsl_m": 100,
+            "terrain_amsl_m": 90,
+            "agl_m": 10
+          },
+          "orientation_enu": {
+            "qw": 1,
+            "qx": 0,
+            "qy": 0,
+            "qz": 0
+          },
+          "orientation_ned": {
+            "qw": 0,
+            "qx": 0.7071067811865476,
+            "qy": 0.7071067811865476,
+            "qz": 0
+          }
+        },
+        "linear_velocity_enu": {
+          "frame_id": "ENU",
+          "east_mps": 0,
+          "north_mps": 0,
+          "up_mps": 0
+        },
+        "linear_velocity_ned": {
+          "frame_id": "NED",
+          "north_mps": 0,
+          "east_mps": 0,
+          "down_mps": 0
+        },
+        "sample_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      {
+        "schema_version": "aero-bench.state-sample/v1",
+        "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "scenario_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "at": {
+          "tick": 1,
+          "sim_time_ns": 9007199255740993001
+        },
+        "stage": "motion",
+        "entity_id": "vehicle.main",
+        "provider_id": "motion.synthetic",
+        "sample_kind": "dynamic",
+        "pose": {
+          "position": {
+            "enu": {
+              "east_m": 10,
+              "north_m": 0,
+              "up_m": 0
+            },
+            "ned": {
+              "north_m": 0,
+              "east_m": 10,
+              "down_m": 0
+            },
+            "ecef": {
+              "x_m": 1,
+              "y_m": 2,
+              "z_m": 3
+            },
+            "wgs84": {
+              "longitude_deg": 12,
+              "latitude_deg": 48,
+              "ellipsoid_height_m": 120
+            },
+            "geoid_separation_m": 20,
+            "amsl_m": 100,
+            "terrain_amsl_m": 90,
+            "agl_m": 10
+          },
+          "orientation_enu": {
+            "qw": 1,
+            "qx": 0,
+            "qy": 0,
+            "qz": 0
+          },
+          "orientation_ned": {
+            "qw": 0,
+            "qx": 0.7071067811865476,
+            "qy": 0.7071067811865476,
+            "qz": 0
+          }
+        },
+        "linear_velocity_enu": {
+          "frame_id": "ENU",
+          "east_mps": 1,
+          "north_mps": 0,
+          "up_mps": 0
+        },
+        "linear_velocity_ned": {
+          "frame_id": "NED",
+          "north_mps": 0,
+          "east_mps": 1,
+          "down_mps": 0
+        },
+        "sample_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      {
+        "schema_version": "aero-bench.state-sample/v1",
+        "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "scenario_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "at": {
+          "tick": 1,
+          "sim_time_ns": 9007199255740993001
+        },
+        "stage": "motion",
+        "entity_id": "aircraft.alpha",
+        "provider_id": "motion.synthetic",
+        "sample_kind": "dynamic",
+        "pose": {
+          "position": {
+            "enu": {
+              "east_m": 1,
+              "north_m": 2,
+              "up_m": 3
+            },
+            "ned": {
+              "north_m": 2,
+              "east_m": 1,
+              "down_m": -3
+            },
+            "ecef": {
+              "x_m": 1,
+              "y_m": 2,
+              "z_m": 3
+            },
+            "wgs84": {
+              "longitude_deg": 12,
+              "latitude_deg": 48,
+              "ellipsoid_height_m": 120
+            },
+            "geoid_separation_m": 20,
+            "amsl_m": 100,
+            "terrain_amsl_m": 90,
+            "agl_m": 10
+          },
+          "orientation_enu": {
+            "qw": 1,
+            "qx": 0,
+            "qy": 0,
+            "qz": 0
+          },
+          "orientation_ned": {
+            "qw": 0,
+            "qx": 0.7071067811865476,
+            "qy": 0.7071067811865476,
+            "qz": 0
+          }
+        },
+        "linear_velocity_enu": {
+          "frame_id": "ENU",
+          "east_mps": 3,
+          "north_mps": 4,
+          "up_mps": 2
+        },
+        "linear_velocity_ned": {
+          "frame_id": "NED",
+          "north_mps": 4,
+          "east_mps": 3,
+          "down_mps": -2
+        },
+        "sample_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    ],
+    "stage_barrier": {
+      "fixture_only": "caller-validated-placeholder"
+    },
+    "contribution_digests": [
+      "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    ],
+    "previous_scene_state_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "scene_state_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "network_geometry": {
+    "at": {
+      "tick": 1,
+      "sim_time_ns": 9007199255740993001
+    },
+    "scene_state_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "nodes": [
+      {
+        "node_id": "node.air",
+        "entity_id": "aircraft.alpha",
+        "endpoint_id": "endpoint.air",
+        "pose": {
+          "position": {
+            "enu": {
+              "east_m": 1,
+              "north_m": 2,
+              "up_m": 3
+            },
+            "ned": {
+              "north_m": 2,
+              "east_m": 1,
+              "down_m": -3
+            },
+            "ecef": {
+              "x_m": 1,
+              "y_m": 2,
+              "z_m": 3
+            },
+            "wgs84": {
+              "longitude_deg": 12,
+              "latitude_deg": 48,
+              "ellipsoid_height_m": 120
+            },
+            "geoid_separation_m": 20,
+            "amsl_m": 100,
+            "terrain_amsl_m": 90,
+            "agl_m": 10
+          },
+          "orientation_enu": {
+            "qw": 1,
+            "qx": 0,
+            "qy": 0,
+            "qz": 0
+          },
+          "orientation_ned": {
+            "qw": 0,
+            "qx": 0.7071067811865476,
+            "qy": 0.7071067811865476,
+            "qz": 0
+          }
+        }
+      },
+      {
+        "node_id": "node.ground",
+        "entity_id": "vehicle.main",
+        "endpoint_id": "endpoint.ground",
+        "pose": {
+          "position": {
+            "enu": {
+              "east_m": 10,
+              "north_m": 0,
+              "up_m": 0
+            },
+            "ned": {
+              "north_m": 0,
+              "east_m": 10,
+              "down_m": 0
+            },
+            "ecef": {
+              "x_m": 1,
+              "y_m": 2,
+              "z_m": 3
+            },
+            "wgs84": {
+              "longitude_deg": 12,
+              "latitude_deg": 48,
+              "ellipsoid_height_m": 120
+            },
+            "geoid_separation_m": 20,
+            "amsl_m": 100,
+            "terrain_amsl_m": 90,
+            "agl_m": 10
+          },
+          "orientation_enu": {
+            "qw": 1,
+            "qx": 0,
+            "qy": 0,
+            "qz": 0
+          },
+          "orientation_ned": {
+            "qw": 0,
+            "qx": 0.7071067811865476,
+            "qy": 0.7071067811865476,
+            "qz": 0
+          }
+        }
+      }
+    ],
+    "links": [
+      {
+        "link_id": "link.main",
+        "source_node_id": "node.air",
+        "destination_node_id": "node.ground",
+        "source_pose": {
+          "position": {
+            "enu": {
+              "east_m": 1,
+              "north_m": 2,
+              "up_m": 3
+            },
+            "ned": {
+              "north_m": 2,
+              "east_m": 1,
+              "down_m": -3
+            },
+            "ecef": {
+              "x_m": 1,
+              "y_m": 2,
+              "z_m": 3
+            },
+            "wgs84": {
+              "longitude_deg": 12,
+              "latitude_deg": 48,
+              "ellipsoid_height_m": 120
+            },
+            "geoid_separation_m": 20,
+            "amsl_m": 100,
+            "terrain_amsl_m": 90,
+            "agl_m": 10
+          },
+          "orientation_enu": {
+            "qw": 1,
+            "qx": 0,
+            "qy": 0,
+            "qz": 0
+          },
+          "orientation_ned": {
+            "qw": 0,
+            "qx": 0.7071067811865476,
+            "qy": 0.7071067811865476,
+            "qz": 0
+          }
+        },
+        "destination_pose": {
+          "position": {
+            "enu": {
+              "east_m": 10,
+              "north_m": 0,
+              "up_m": 0
+            },
+            "ned": {
+              "north_m": 0,
+              "east_m": 10,
+              "down_m": 0
+            },
+            "ecef": {
+              "x_m": 1,
+              "y_m": 2,
+              "z_m": 3
+            },
+            "wgs84": {
+              "longitude_deg": 12,
+              "latitude_deg": 48,
+              "ellipsoid_height_m": 120
+            },
+            "geoid_separation_m": 20,
+            "amsl_m": 100,
+            "terrain_amsl_m": 90,
+            "agl_m": 10
+          },
+          "orientation_enu": {
+            "qw": 1,
+            "qx": 0,
+            "qy": 0,
+            "qz": 0
+          },
+          "orientation_ned": {
+            "qw": 0,
+            "qx": 0.7071067811865476,
+            "qy": 0.7071067811865476,
+            "qz": 0
+          }
+        }
+      }
+    ]
+  },
+  "public_link_document": {
+    "link_id": "link.main",
+    "source_entity_id": "aircraft.alpha",
+    "target_entity_id": "vehicle.main",
+    "state": "above-sensitivity",
+    "public_properties": [
+      {
+        "name": "distance_m",
+        "value": 10,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "base_path_loss_db",
+        "value": 80,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "obstruction_loss_db",
+        "value": 4,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "forward_rssi_dbm",
+        "value": -70,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "reverse_rssi_dbm",
+        "value": -72,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "forward_snr_db",
+        "value": 12,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "reverse_snr_db",
+        "value": 10,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "source_queue_packets",
+        "value": 2,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "destination_queue_packets",
+        "value": 3,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "source_queue_bytes",
+        "value": 64,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "destination_queue_bytes",
+        "value": 96,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "pending_messages",
+        "value": 1,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "obstruction_volume_count",
+        "value": 2,
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      },
+      {
+        "name": "obstruction_volume_ids",
+        "value": "[\"building.one\", \"building.two\"]",
+        "provenance": {
+          "source": "authored-fixture",
+          "direction": "named-field"
+        }
+      }
+    ],
+    "provenance": {
+      "source": "authored-fixture"
+    }
+  },
+  "provider_receipt": {
+    "provider_id": "network.synthetic",
+    "event_id": "state.1",
+    "time": {
+      "tick": 1,
+      "sim_time_ns": 9007199255740993001
+    },
+    "payload_schema_id": "ns3.state.v4",
+    "payload": [
+      {
+        "name": "accepted_scene_state_digest",
+        "value": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      {
+        "name": "motion_predecessor_barrier_digest",
+        "value": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      {
+        "name": "staged_positions_applied",
+        "value": true
+      },
+      {
+        "name": "staged_position_binding",
+        "value": "synthetic"
+      },
+      {
+        "name": "staged_node_positions_digest",
+        "value": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      {
+        "name": "staged_link_attenuations_digest",
+        "value": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      {
+        "name": "staged_link_obstructions_digest",
+        "value": "4444444444444444444444444444444444444444444444444444444444444444"
+      },
+      {
+        "name": "link_state_digest",
+        "value": "5555555555555555555555555555555555555555555555555555555555555555"
+      },
+      {
+        "name": "link_state_count",
+        "value": 1
+      },
+      {
+        "name": "network_model",
+        "value": "synthetic"
+      },
+      {
+        "name": "network_projection_digest",
+        "value": "6666666666666666666666666666666666666666666666666666666666666666"
+      },
+      {
+        "name": "simulator_time_ns",
+        "value": 9007199255740993001
+      },
+      {
+        "name": "submitted_messages",
+        "value": 5
+      },
+      {
+        "name": "delivered_messages",
+        "value": 3
+      },
+      {
+        "name": "delivered_payload_bytes_this_step",
+        "value": 256
+      },
+      {
+        "name": "delivered_throughput_bps",
+        "value": 2048
+      },
+      {
+        "name": "dropped_messages",
+        "value": 1
+      }
+    ]
+  }
+}

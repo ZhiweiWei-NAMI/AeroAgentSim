@@ -1,0 +1,4494 @@
+{
+  "schema_version": "aero-console.config/v1",
+  "metadata": {
+    "id": "emergency-delivery-demo",
+    "name": "Emergency delivery · unified authored graph",
+    "version": "1.0.0",
+    "description": "Fictional emergency delivery authoring scenario. No real child imagery, identity, medical diagnosis, legal authority, telemetry, uploaded media or remote simulator execution. Facts and decisions are authored fixtures; actual feasibility/permission/suitability and native predicates remain UNKNOWN."
+  },
+  "scenario": {
+    "duration_s": 120,
+    "step_ms": 100,
+    "seed": 42,
+    "frame": "ENU",
+    "vertical_datum": "local",
+    "scene_id": "synthetic-emergency-delivery"
+  },
+  "entities": [
+    {
+      "id": "uav-alpha",
+      "type": "uav",
+      "count": 1,
+      "provider": "local-demo",
+      "position_enu_m": [
+        0,
+        0,
+        15
+      ],
+      "radio_profile_id": "demo-wifi",
+      "compute_profile_id": "onboard"
+    },
+    {
+      "id": "uav-beta",
+      "type": "uav",
+      "count": 1,
+      "provider": "local-demo",
+      "position_enu_m": [
+        65,
+        50,
+        45
+      ],
+      "radio_profile_id": "demo-wifi",
+      "compute_profile_id": "onboard"
+    },
+    {
+      "id": "vehicle",
+      "type": "vehicle",
+      "count": 3,
+      "provider": "local-demo",
+      "position_enu_m": [
+        -90,
+        0,
+        0
+      ],
+      "radio_profile_id": "demo-wifi",
+      "compute_profile_id": null
+    },
+    {
+      "id": "pedestrian",
+      "type": "pedestrian",
+      "count": 4,
+      "provider": "local-demo",
+      "position_enu_m": [
+        -35,
+        -30,
+        0
+      ],
+      "radio_profile_id": null,
+      "compute_profile_id": null
+    },
+    {
+      "id": "station-west",
+      "type": "base_station",
+      "count": 1,
+      "provider": "static",
+      "position_enu_m": [
+        -100,
+        30,
+        12
+      ],
+      "radio_profile_id": "demo-wifi",
+      "compute_profile_id": null
+    },
+    {
+      "id": "edge-west",
+      "type": "edge",
+      "count": 1,
+      "provider": "static",
+      "position_enu_m": [
+        -105,
+        35,
+        0
+      ],
+      "radio_profile_id": null,
+      "compute_profile_id": "edge-demo"
+    },
+    {
+      "id": "cloud-demo",
+      "type": "cloud",
+      "count": 1,
+      "provider": "static",
+      "position_enu_m": [
+        120,
+        95,
+        0
+      ],
+      "radio_profile_id": null,
+      "compute_profile_id": "cloud-demo"
+    }
+  ],
+  "mobility": {
+    "sumo": {
+      "enabled": false,
+      "network_asset": "authored-campus.net.xml",
+      "route_asset": "authored-campus.rou.xml",
+      "step_ms": 100
+    },
+    "uav": {
+      "model": "waypoint",
+      "cruise_speed_mps": 8,
+      "altitude_m": 15
+    }
+  },
+  "network": {
+    "enabled": true,
+    "provider": "local-demo",
+    "radio_profiles": [
+      {
+        "id": "demo-wifi",
+        "wifi_standard": "802.11n",
+        "frequency_ghz": 2.412,
+        "channel_width_mhz": 20,
+        "tx_power_dbm": 16,
+        "rx_sensitivity_dbm": -95
+      }
+    ],
+    "link": {
+      "configured_rate_mbps": 24,
+      "propagation_delay_ms": 2
+    }
+  },
+  "compute": {
+    "provider": "local-demo",
+    "profiles": [
+      {
+        "id": "onboard",
+        "cpu_cores": 6,
+        "gpu_units": 0.5,
+        "memory_mb": 3072,
+        "queue_limit": 8,
+        "deadline_ms": 800
+      },
+      {
+        "id": "edge-demo",
+        "cpu_cores": 12,
+        "gpu_units": 2,
+        "memory_mb": 12288,
+        "queue_limit": 32,
+        "deadline_ms": 500
+      },
+      {
+        "id": "cloud-demo",
+        "cpu_cores": 24,
+        "gpu_units": 4,
+        "memory_mb": 49152,
+        "queue_limit": 96,
+        "deadline_ms": 1500
+      }
+    ]
+  },
+  "semantics": {
+    "adapter": "atlas",
+    "execution": "not_connected",
+    "bindings": [
+      {
+        "id": "moving-alpha",
+        "target": "hu.predicate.actor_moving",
+        "entity_id": "uav-alpha",
+        "parameters": {}
+      }
+    ]
+  },
+  "graph": {
+    "schema_version": "aeroagentsim.unified-graph/v1",
+    "provenance": {
+      "kind": "authored_fixture",
+      "note": "Fictional emergency delivery authoring scenario. No real child imagery, identity, medical diagnosis, legal authority, telemetry, uploaded media or remote simulator execution. Facts and decisions are authored fixtures; actual feasibility/permission/suitability and native predicates remain UNKNOWN."
+    },
+    "node_types": [
+      {
+        "id": "entity-type-type",
+        "label": "Entity types definition",
+        "collection": "entity_types"
+      },
+      {
+        "id": "field-type",
+        "label": "Field definitions definition",
+        "collection": "fields"
+      },
+      {
+        "id": "fact-type",
+        "label": "Timed facts definition",
+        "collection": "facts"
+      },
+      {
+        "id": "module-type",
+        "label": "Modules definition",
+        "collection": "modules"
+      },
+      {
+        "id": "agent-type",
+        "label": "Agents definition",
+        "collection": "agents"
+      },
+      {
+        "id": "strategy-type",
+        "label": "Strategies definition",
+        "collection": "strategies"
+      },
+      {
+        "id": "capability-type",
+        "label": "Capabilities definition",
+        "collection": "capabilities"
+      },
+      {
+        "id": "behavior-type",
+        "label": "Behaviors definition",
+        "collection": "behaviors"
+      },
+      {
+        "id": "request-type",
+        "label": "Requests definition",
+        "collection": "requests"
+      },
+      {
+        "id": "objective-type",
+        "label": "Objectives definition",
+        "collection": "objectives"
+      },
+      {
+        "id": "decision-type",
+        "label": "Decisions definition",
+        "collection": "decisions"
+      },
+      {
+        "id": "task-type",
+        "label": "Tasks definition",
+        "collection": "tasks"
+      },
+      {
+        "id": "resource-type",
+        "label": "Resources definition",
+        "collection": "resources"
+      },
+      {
+        "id": "constraint-type",
+        "label": "Constraints definition",
+        "collection": "constraints"
+      },
+      {
+        "id": "predicate-type",
+        "label": "Predicates definition",
+        "collection": "predicates"
+      },
+      {
+        "id": "rule-type",
+        "label": "Rules definition",
+        "collection": "rules"
+      },
+      {
+        "id": "event-type",
+        "label": "Events definition",
+        "collection": "events"
+      },
+      {
+        "id": "command-type",
+        "label": "Commands definition",
+        "collection": "commands"
+      },
+      {
+        "id": "arbitration-type",
+        "label": "Arbitration definition",
+        "collection": "arbitrations"
+      },
+      {
+        "id": "source-type",
+        "label": "Sources definition",
+        "collection": "sources"
+      },
+      {
+        "id": "scenario-type",
+        "label": "Fixture cases definition",
+        "collection": "scenarios"
+      },
+      {
+        "id": "admission-check-type",
+        "label": "Admission checks definition",
+        "collection": "admission_checks"
+      },
+      {
+        "id": "feedback-policy-type",
+        "label": "Feedback policies definition",
+        "collection": "feedback_policies"
+      },
+      {
+        "id": "predicate-result-type",
+        "label": "Predicate results definition",
+        "collection": "predicate_results"
+      },
+      {
+        "id": "relation-definition-type",
+        "label": "Relation definitions definition",
+        "collection": "relation_definitions"
+      },
+      {
+        "id": "parameter-definition-type",
+        "label": "Parameter definitions definition",
+        "collection": "parameter_definitions"
+      },
+      {
+        "id": "spatial-zone-type",
+        "label": "Spatial zones definition",
+        "collection": "spatial_zones"
+      },
+      {
+        "id": "lease-request-type",
+        "label": "Lease requests definition",
+        "collection": "lease_requests"
+      },
+      {
+        "id": "lease-approval-type",
+        "label": "Lease approvals definition",
+        "collection": "lease_approvals"
+      },
+      {
+        "id": "space-time-allocation-type",
+        "label": "Space-time allocations definition",
+        "collection": "space_time_allocations"
+      },
+      {
+        "id": "delivery-receipt-type",
+        "label": "Delivery receipts definition",
+        "collection": "delivery_receipts"
+      }
+    ],
+    "entity_types": [
+      {
+        "id": "demo.emergency_delivery.type.uav",
+        "label": "UAV type",
+        "label_zh": "无人机类型",
+        "type_id": "entity-type-type",
+        "field_ids": [
+          "demo.emergency_delivery.state.separation",
+          "demo.emergency_delivery.state.energy",
+          "demo.emergency_delivery.state.pose",
+          "demo.emergency_delivery.state.target",
+          "demo.emergency_delivery.state.capability_ready"
+        ],
+        "compatible_config_types": [
+          "uav"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.type.parcel",
+        "label": "Parcel type",
+        "label_zh": "包裹类型",
+        "type_id": "entity-type-type",
+        "field_ids": [
+          "demo.emergency_delivery.state.task_state",
+          "demo.emergency_delivery.state.custody",
+          "demo.emergency_delivery.state.attachment"
+        ],
+        "compatible_config_types": []
+      },
+      {
+        "id": "demo.emergency_delivery.type.person",
+        "label": "Person type",
+        "label_zh": "人员类型",
+        "type_id": "entity-type-type",
+        "field_ids": [
+          "demo.emergency_delivery.state.confidence"
+        ],
+        "compatible_config_types": [
+          "pedestrian"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.type.camera",
+        "label": "Camera type",
+        "label_zh": "相机类型",
+        "type_id": "entity-type-type",
+        "field_ids": [
+          "demo.emergency_delivery.state.media"
+        ],
+        "compatible_config_types": []
+      },
+      {
+        "id": "demo.emergency_delivery.type.radio",
+        "label": "Radio type",
+        "label_zh": "无线电类型",
+        "type_id": "entity-type-type",
+        "field_ids": [
+          "demo.emergency_delivery.state.upload"
+        ],
+        "compatible_config_types": []
+      },
+      {
+        "id": "demo.emergency_delivery.type.region",
+        "label": "Region type",
+        "label_zh": "区域类型",
+        "type_id": "entity-type-type",
+        "field_ids": [
+          "demo.emergency_delivery.state.privacy",
+          "demo.emergency_delivery.state.exercise_permission"
+        ],
+        "compatible_config_types": []
+      },
+      {
+        "id": "demo.emergency_delivery.type.endpoint",
+        "label": "Endpoint type",
+        "label_zh": "接收端类型",
+        "type_id": "entity-type-type",
+        "field_ids": [],
+        "compatible_config_types": []
+      },
+      {
+        "id": "demo.emergency_delivery.type.edge_server",
+        "label": "Edge-server type",
+        "label_zh": "边缘服务器类型",
+        "type_id": "entity-type-type",
+        "field_ids": [
+          "demo.emergency_delivery.state.report_received"
+        ],
+        "compatible_config_types": [
+          "edge"
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "id": "demo.emergency_delivery.uav",
+        "label": "UAV A",
+        "label_zh": "无人机 A",
+        "type_id": "demo.emergency_delivery.type.uav",
+        "scene_entity_id": "uav-alpha"
+      },
+      {
+        "id": "demo.emergency_delivery.parcel",
+        "label": "Parcel P",
+        "label_zh": "包裹 P",
+        "type_id": "demo.emergency_delivery.type.parcel",
+        "scene_entity_id": null
+      },
+      {
+        "id": "demo.emergency_delivery.person",
+        "label": "Synthetic child C",
+        "label_zh": "虚拟儿童 C",
+        "type_id": "demo.emergency_delivery.type.person",
+        "scene_entity_id": "pedestrian-1"
+      },
+      {
+        "id": "demo.emergency_delivery.camera",
+        "label": "Camera CAM-1",
+        "label_zh": "相机 CAM-1",
+        "type_id": "demo.emergency_delivery.type.camera",
+        "scene_entity_id": null
+      },
+      {
+        "id": "demo.emergency_delivery.radio",
+        "label": "Radio RF-1",
+        "label_zh": "无线电 RF-1",
+        "type_id": "demo.emergency_delivery.type.radio",
+        "scene_entity_id": null
+      },
+      {
+        "id": "demo.emergency_delivery.region",
+        "label": "Observation region",
+        "label_zh": "安全观察区域",
+        "type_id": "demo.emergency_delivery.type.region",
+        "scene_entity_id": null
+      },
+      {
+        "id": "demo.emergency_delivery.endpoint",
+        "label": "Exercise recipient",
+        "label_zh": "演练接收端",
+        "type_id": "demo.emergency_delivery.type.endpoint",
+        "scene_entity_id": null
+      },
+      {
+        "id": "demo.emergency_delivery.edge_server",
+        "label": "Edge server E",
+        "label_zh": "边缘服务器 E",
+        "type_id": "demo.emergency_delivery.type.edge_server",
+        "scene_entity_id": "edge-west"
+      }
+    ],
+    "fields": [
+      {
+        "id": "demo.emergency_delivery.state.confidence",
+        "label": "Fall-report confidence",
+        "label_zh": "跌倒报告置信度",
+        "type_id": "field-type",
+        "value_type": "number",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.separation",
+        "label": "Separation from person",
+        "label_zh": "与人员的最小距离",
+        "type_id": "field-type",
+        "value_type": "number",
+        "unit": "m",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.energy",
+        "label": "Estimated energy",
+        "label_zh": "剩余能量估计",
+        "type_id": "field-type",
+        "value_type": "number",
+        "unit": "Wh",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.pose",
+        "label": "Actual pose",
+        "label_zh": "实际位置",
+        "type_id": "field-type",
+        "value_type": "vector3",
+        "unit": "m",
+        "frame": "ENU",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.target",
+        "label": "Accepted motion target",
+        "label_zh": "已接受运动目标",
+        "type_id": "field-type",
+        "value_type": "entity_ref",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.task_state",
+        "label": "Delivery task state",
+        "label_zh": "配送任务状态",
+        "type_id": "field-type",
+        "value_type": "string",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.custody",
+        "label": "Responsible custodian",
+        "label_zh": "责任保管人",
+        "type_id": "field-type",
+        "value_type": "entity_ref",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.attachment",
+        "label": "Physical attachment",
+        "label_zh": "物理挂载",
+        "type_id": "field-type",
+        "value_type": "entity_ref",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.upload",
+        "label": "Upload status",
+        "label_zh": "上传状态",
+        "type_id": "field-type",
+        "value_type": "string",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.media",
+        "label": "Minimized capture artifact",
+        "label_zh": "最小化拍摄产物",
+        "type_id": "field-type",
+        "value_type": "string",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.report_received",
+        "label": "Report received at edge",
+        "label_zh": "Report received at edge",
+        "type_id": "field-type",
+        "value_type": "boolean",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.privacy",
+        "label": "Synthetic metadata minimization",
+        "label_zh": "Synthetic metadata minimization",
+        "type_id": "field-type",
+        "value_type": "boolean",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.exercise_permission",
+        "label": "Exercise-scoped recording permission",
+        "label_zh": "Exercise-scoped recording permission",
+        "type_id": "field-type",
+        "value_type": "boolean",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      },
+      {
+        "id": "demo.emergency_delivery.state.capability_ready",
+        "label": "Declared vehicle readiness",
+        "label_zh": "Declared vehicle readiness",
+        "type_id": "field-type",
+        "value_type": "boolean",
+        "unit": "1",
+        "frame": "none",
+        "temporal": "dynamic"
+      }
+    ],
+    "facts": [
+      {
+        "id": "demo.emergency_delivery.fact.incident",
+        "label": "Suspected fall · 0.91",
+        "label_zh": "疑似跌倒 · 0.91",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.person",
+        "field_id": "demo.emergency_delivery.state.confidence",
+        "value": 0.91,
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "12000000000",
+        "available_time_ns": "12100000000",
+        "valid_until_ns": "17000000000",
+        "producer_module_id": "demo.emergency_delivery.perception",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.separation",
+        "label": "Separation · 12 m",
+        "label_zh": "安全距离 · 12 m",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.uav",
+        "field_id": "demo.emergency_delivery.state.separation",
+        "value": 12,
+        "unit": "m",
+        "frame": "none",
+        "valid_time_ns": "20000000000",
+        "available_time_ns": "20100000000",
+        "valid_until_ns": "25000000000",
+        "producer_module_id": "demo.emergency_delivery.gazebo",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.energy",
+        "label": "Energy · 60 Wh",
+        "label_zh": "剩余能量 · 60 Wh",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.uav",
+        "field_id": "demo.emergency_delivery.state.energy",
+        "value": 60,
+        "unit": "Wh",
+        "frame": "none",
+        "valid_time_ns": "12000000000",
+        "available_time_ns": "12100000000",
+        "valid_until_ns": "38000000000",
+        "producer_module_id": "demo.emergency_delivery.energy_module",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.pose",
+        "label": "At observation point",
+        "label_zh": "到达观察点",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.uav",
+        "field_id": "demo.emergency_delivery.state.pose",
+        "value": [
+          35,
+          12,
+          15
+        ],
+        "unit": "m",
+        "frame": "ENU",
+        "valid_time_ns": "20000000000",
+        "available_time_ns": "20100000000",
+        "valid_until_ns": "25000000000",
+        "producer_module_id": "demo.emergency_delivery.gazebo",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.target",
+        "label": "Accepted: observation point",
+        "label_zh": "已接受：观察点",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.uav",
+        "field_id": "demo.emergency_delivery.state.target",
+        "value": "demo.emergency_delivery.region",
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "16000000000",
+        "available_time_ns": "16100000000",
+        "valid_until_ns": "38000000000",
+        "producer_module_id": "demo.emergency_delivery.px4",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.paused",
+        "label": "Delivery paused",
+        "label_zh": "配送任务已暂停",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.parcel",
+        "field_id": "demo.emergency_delivery.state.task_state",
+        "value": "paused",
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "13000000000",
+        "available_time_ns": "13100000000",
+        "valid_until_ns": "38000000000",
+        "producer_module_id": "demo.emergency_delivery.business",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.custody",
+        "label": "Parcel stays in A custody",
+        "label_zh": "包裹仍由 A 保管",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.parcel",
+        "field_id": "demo.emergency_delivery.state.custody",
+        "value": "demo.emergency_delivery.uav",
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "13000000000",
+        "available_time_ns": "13100000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.business",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.attachment",
+        "label": "Parcel remains attached",
+        "label_zh": "包裹保持挂载",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.parcel",
+        "field_id": "demo.emergency_delivery.state.attachment",
+        "value": "demo.emergency_delivery.uav",
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "13000000000",
+        "available_time_ns": "13100000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.gazebo",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.capture",
+        "label": "Minimized frame created",
+        "label_zh": "已生成最小化画面",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.camera",
+        "field_id": "demo.emergency_delivery.state.media",
+        "value": "synthetic-placeholder-only",
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "21500000000",
+        "available_time_ns": "21600000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.perception",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.upload",
+        "label": "Upload success · 16 s",
+        "label_zh": "上传成功 · 16 s",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.radio",
+        "field_id": "demo.emergency_delivery.state.upload",
+        "value": "acknowledged",
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "38000000000",
+        "available_time_ns": "38100000000",
+        "valid_until_ns": "39000000000",
+        "producer_module_id": "demo.emergency_delivery.ns3",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.after_energy",
+        "label": "Settled · 56.90 Wh",
+        "label_zh": "结算后 · 56.90 Wh",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.uav",
+        "field_id": "demo.emergency_delivery.state.energy",
+        "value": 56.9,
+        "unit": "Wh",
+        "frame": "none",
+        "valid_time_ns": "38000000000",
+        "available_time_ns": "38100000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.energy_module",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.report_received",
+        "label": "fact.report_received",
+        "label_zh": "fact.report_received",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.edge_server",
+        "field_id": "demo.emergency_delivery.state.report_received",
+        "value": true,
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "13000000000",
+        "available_time_ns": "13000000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.ns3",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.privacy",
+        "label": "fact.privacy",
+        "label_zh": "fact.privacy",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.region",
+        "field_id": "demo.emergency_delivery.state.privacy",
+        "value": true,
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "14000000000",
+        "available_time_ns": "14000000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.business",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.exercise_permission",
+        "label": "fact.exercise_permission",
+        "label_zh": "fact.exercise_permission",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.region",
+        "field_id": "demo.emergency_delivery.state.exercise_permission",
+        "value": true,
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "14000000000",
+        "available_time_ns": "14000000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.business",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.capability_ready",
+        "label": "fact.capability_ready",
+        "label_zh": "fact.capability_ready",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.uav",
+        "field_id": "demo.emergency_delivery.state.capability_ready",
+        "value": true,
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "12000000000",
+        "available_time_ns": "12000000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.px4",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.incident_refresh",
+        "label": "fact.incident_refresh",
+        "label_zh": "fact.incident_refresh",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.person",
+        "field_id": "demo.emergency_delivery.state.confidence",
+        "value": 0.91,
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "20000000000",
+        "available_time_ns": "20100000000",
+        "valid_until_ns": "27000000000",
+        "producer_module_id": "demo.emergency_delivery.perception",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.upload_failure",
+        "label": "fact.upload_failure",
+        "label_zh": "fact.upload_failure",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.radio",
+        "field_id": "demo.emergency_delivery.state.upload",
+        "value": "failed",
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "42000000000",
+        "available_time_ns": "42100000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.ns3",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.upload_unknown",
+        "label": "fact.upload_unknown",
+        "label_zh": "fact.upload_unknown",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.radio",
+        "field_id": "demo.emergency_delivery.state.upload",
+        "value": null,
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "46000000000",
+        "available_time_ns": "46000000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.ns3",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.delivery_active",
+        "label": "fact.delivery_active",
+        "label_zh": "fact.delivery_active",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.parcel",
+        "field_id": "demo.emergency_delivery.state.task_state",
+        "value": "active",
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "40000000000",
+        "available_time_ns": "40100000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.business",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.delivery_returned",
+        "label": "fact.delivery_returned",
+        "label_zh": "fact.delivery_returned",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.parcel",
+        "field_id": "demo.emergency_delivery.state.task_state",
+        "value": "paused_returned",
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "78000000000",
+        "available_time_ns": "78000000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.business",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.delivery_waiting",
+        "label": "fact.delivery_waiting",
+        "label_zh": "fact.delivery_waiting",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.parcel",
+        "field_id": "demo.emergency_delivery.state.task_state",
+        "value": "paused",
+        "unit": "1",
+        "frame": "none",
+        "valid_time_ns": "46000000000",
+        "available_time_ns": "46000000000",
+        "valid_until_ns": "50000000000",
+        "producer_module_id": "demo.emergency_delivery.business",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      },
+      {
+        "id": "demo.emergency_delivery.fact.return_pose",
+        "label": "fact.return_pose",
+        "label_zh": "fact.return_pose",
+        "type_id": "fact-type",
+        "entity_id": "demo.emergency_delivery.uav",
+        "field_id": "demo.emergency_delivery.state.pose",
+        "value": [
+          0,
+          0,
+          0
+        ],
+        "unit": "m",
+        "frame": "ENU",
+        "valid_time_ns": "78000000000",
+        "available_time_ns": "78000000000",
+        "valid_until_ns": "120000000000",
+        "producer_module_id": "demo.emergency_delivery.gazebo",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_fact"
+      }
+    ],
+    "modules": [
+      {
+        "id": "demo.emergency_delivery.px4",
+        "label": "PX4 flight module",
+        "label_zh": "PX4 飞控模块",
+        "type_id": "module-type",
+        "kind": "dynamics",
+        "reads": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.uav"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.pose",
+              "demo.emergency_delivery.state.energy"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.uav"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.target",
+              "demo.emergency_delivery.state.capability_ready"
+            ]
+          }
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "px4-not-connected"
+        },
+        "parameters": {
+          "execution": "fixture_binding_only",
+          "native_connected": false,
+          "authored_interface_boundary": "Declared read scope for this authored fixture only; no native module API compatibility or execution is asserted."
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.gazebo",
+        "label": "Gazebo physics module",
+        "label_zh": "Gazebo 物理模块",
+        "type_id": "module-type",
+        "kind": "dynamics",
+        "reads": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.uav"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.target"
+            ]
+          },
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.parcel"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.custody"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.uav"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.separation",
+              "demo.emergency_delivery.state.pose"
+            ]
+          },
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.parcel"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.attachment"
+            ]
+          }
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "gazebo-not-connected"
+        },
+        "parameters": {
+          "execution": "fixture_binding_only",
+          "native_connected": false,
+          "authored_interface_boundary": "Declared read scope for this authored fixture only; no native module API compatibility or execution is asserted."
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.ns3",
+        "label": "ns-3 network module",
+        "label_zh": "ns-3 网络模块",
+        "type_id": "module-type",
+        "kind": "network",
+        "reads": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.person"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.confidence"
+            ]
+          },
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.camera"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.media"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.radio"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.upload"
+            ]
+          },
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.edge_server"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.report_received"
+            ]
+          }
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "ns3-not-connected"
+        },
+        "parameters": {
+          "execution": "fixture_binding_only",
+          "native_connected": false,
+          "authored_interface_boundary": "Declared read scope for this authored fixture only; no native module API compatibility or execution is asserted."
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.energy_module",
+        "label": "Energy module",
+        "label_zh": "能量模块",
+        "type_id": "module-type",
+        "kind": "energy",
+        "reads": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.uav"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.pose"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.uav"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.energy"
+            ]
+          }
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "energy_module-not-connected"
+        },
+        "parameters": {
+          "execution": "fixture_binding_only",
+          "native_connected": false,
+          "authored_interface_boundary": "Declared read scope for this authored fixture only; no native module API compatibility or execution is asserted."
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.business",
+        "label": "Business/task module",
+        "label_zh": "业务/任务模块",
+        "type_id": "module-type",
+        "kind": "cargo",
+        "reads": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.radio"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.upload"
+            ]
+          },
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.parcel"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.attachment"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.parcel"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.task_state",
+              "demo.emergency_delivery.state.custody"
+            ]
+          },
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.region"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.privacy",
+              "demo.emergency_delivery.state.exercise_permission"
+            ]
+          }
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "business-not-connected"
+        },
+        "parameters": {
+          "execution": "fixture_binding_only",
+          "native_connected": false,
+          "authored_branch_expectations": {
+            "success": {
+              "record_kind": "authored_expected_effect",
+              "execution": "not_executed",
+              "scenario_id": "demo.emergency_delivery.scenario.success",
+              "expected_at_ns": "45000000000",
+              "expected_task_state": "active",
+              "expected_accepted_target": "dropoff D",
+              "expected_position_enu_m": [
+                40,
+                12,
+                15
+              ],
+              "custodian_entity_id": "demo.emergency_delivery.uav",
+              "parcel_attached": true,
+              "actual_effect_established": false,
+              "actual_upload_verified": false,
+              "expected_energy_ledger": {
+                "id": "demo.emergency_delivery.ledger.success",
+                "authority": "demo.emergency_delivery.energy_module",
+                "start_wh": 60,
+                "entries": [
+                  {
+                    "id": "success.outbound-flight",
+                    "wh": 3.0
+                  },
+                  {
+                    "id": "success.camera",
+                    "wh": 0.04
+                  },
+                  {
+                    "id": "success.radio",
+                    "wh": 0.06
+                  },
+                  {
+                    "id": "success.resumed-flight",
+                    "wh": 2.0
+                  }
+                ],
+                "end_wh": 54.9,
+                "at_s": 45,
+                "charge_rule": "each distinct entry exactly once; do not add separate module charges again"
+              },
+              "related_fact_ids": [
+                "demo.emergency_delivery.fact.custody",
+                "demo.emergency_delivery.fact.attachment",
+                "demo.emergency_delivery.fact.delivery_active"
+              ],
+              "wait_deadline_ns": null
+            },
+            "failure": {
+              "record_kind": "authored_expected_effect",
+              "execution": "not_executed",
+              "scenario_id": "demo.emergency_delivery.scenario.return",
+              "expected_at_ns": "78000000000",
+              "expected_task_state": "paused_returned",
+              "expected_accepted_target": "base B",
+              "expected_position_enu_m": [
+                0,
+                0,
+                0
+              ],
+              "custodian_entity_id": "demo.emergency_delivery.uav",
+              "parcel_attached": true,
+              "actual_effect_established": false,
+              "actual_upload_verified": false,
+              "expected_energy_ledger": {
+                "id": "demo.emergency_delivery.ledger.failure",
+                "authority": "demo.emergency_delivery.energy_module",
+                "start_wh": 60,
+                "entries": [
+                  {
+                    "id": "failure.outbound-flight",
+                    "wh": 3.0
+                  },
+                  {
+                    "id": "failure.camera",
+                    "wh": 0.04
+                  },
+                  {
+                    "id": "failure.radio-failed",
+                    "wh": 0.08
+                  },
+                  {
+                    "id": "failure.return-flight",
+                    "wh": 5.0
+                  }
+                ],
+                "end_wh": 51.88,
+                "at_s": 78,
+                "charge_rule": "each distinct entry exactly once; do not add separate module charges again"
+              },
+              "related_fact_ids": [
+                "demo.emergency_delivery.fact.custody",
+                "demo.emergency_delivery.fact.attachment",
+                "demo.emergency_delivery.fact.delivery_returned"
+              ],
+              "wait_deadline_ns": null
+            },
+            "unknown": {
+              "record_kind": "authored_expected_effect",
+              "execution": "not_executed",
+              "scenario_id": "demo.emergency_delivery.scenario.unknown",
+              "expected_at_ns": "46000000000",
+              "expected_task_state": "paused",
+              "expected_accepted_target": "safe observation point",
+              "expected_position_enu_m": [
+                35,
+                12,
+                15
+              ],
+              "custodian_entity_id": "demo.emergency_delivery.uav",
+              "parcel_attached": true,
+              "actual_effect_established": false,
+              "actual_upload_verified": false,
+              "expected_energy_ledger": {
+                "id": "demo.emergency_delivery.ledger.unknown",
+                "authority": "demo.emergency_delivery.energy_module",
+                "start_wh": 60,
+                "entries": [
+                  {
+                    "id": "unknown.outbound-flight",
+                    "wh": 3.0
+                  },
+                  {
+                    "id": "unknown.camera",
+                    "wh": 0.04
+                  },
+                  {
+                    "id": "unknown.radio-pending",
+                    "wh": 0.09
+                  },
+                  {
+                    "id": "unknown.continued-hold",
+                    "wh": 0.8
+                  }
+                ],
+                "end_wh": 56.07,
+                "at_s": 46,
+                "charge_rule": "each distinct entry exactly once; do not add separate module charges again"
+              },
+              "related_fact_ids": [
+                "demo.emergency_delivery.fact.custody",
+                "demo.emergency_delivery.fact.attachment",
+                "demo.emergency_delivery.fact.delivery_waiting"
+              ],
+              "wait_deadline_ns": "50000000000"
+            }
+          },
+          "authored_interface_boundary": "Declared read scope for this authored fixture only; no native module API compatibility or execution is asserted."
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.perception",
+        "label": "Observation/camera module",
+        "label_zh": "观察/相机模块",
+        "type_id": "module-type",
+        "kind": "compute",
+        "reads": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.uav"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.pose",
+              "demo.emergency_delivery.state.separation"
+            ]
+          },
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.region"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.privacy",
+              "demo.emergency_delivery.state.exercise_permission"
+            ]
+          }
+        ],
+        "writes": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.person"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.confidence"
+            ]
+          },
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.camera"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.media"
+            ]
+          }
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "perception-not-connected"
+        },
+        "parameters": {
+          "execution": "fixture_binding_only",
+          "native_connected": false,
+          "authored_interface_boundary": "Declared read scope for this authored fixture only; no native module API compatibility or execution is asserted.",
+          "raw_sensor_input_mapping": {
+            "status": "schema_mapping_gap",
+            "source": "not_represented",
+            "explanation": "Synthetic fall-confidence and zero-byte media records are authored fixture outputs. No raw image, video or sensor stream is bound to this module; the example does not execute perception."
+          }
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.edge_compute",
+        "label": "edge_compute",
+        "label_zh": "edge_compute",
+        "type_id": "module-type",
+        "kind": "compute",
+        "reads": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.edge_server"
+            ],
+            "field_ids": [
+              "demo.emergency_delivery.state.report_received"
+            ]
+          }
+        ],
+        "writes": [],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "edge-corridor-review-stub"
+        },
+        "parameters": {
+          "execution": "fixture_binding_only",
+          "native_connected": false,
+          "authored_interface_boundary": "Declared read scope for this authored fixture only; no native module API compatibility or execution is asserted.",
+          "observation_boundary": "Only the delivered report-received field is a declared module input. Undelivered UAV/person state is not directly observable here."
+        }
+      }
+    ],
+    "agents": [
+      {
+        "id": "demo.emergency_delivery.agent",
+        "label": "Mission agent",
+        "label_zh": "任务代理",
+        "type_id": "agent-type",
+        "controls": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.uav",
+              "demo.emergency_delivery.camera",
+              "demo.emergency_delivery.radio",
+              "demo.emergency_delivery.parcel"
+            ],
+            "mode": "exclusive",
+            "arbitration_id": null
+          }
+        ],
+        "observable_fact_ids": [
+          "demo.emergency_delivery.fact.incident",
+          "demo.emergency_delivery.fact.separation",
+          "demo.emergency_delivery.fact.energy",
+          "demo.emergency_delivery.fact.pose",
+          "demo.emergency_delivery.fact.target",
+          "demo.emergency_delivery.fact.paused",
+          "demo.emergency_delivery.fact.custody",
+          "demo.emergency_delivery.fact.attachment",
+          "demo.emergency_delivery.fact.capture",
+          "demo.emergency_delivery.fact.upload",
+          "demo.emergency_delivery.fact.after_energy",
+          "demo.emergency_delivery.fact.privacy",
+          "demo.emergency_delivery.fact.exercise_permission",
+          "demo.emergency_delivery.fact.capability_ready",
+          "demo.emergency_delivery.fact.incident_refresh",
+          "demo.emergency_delivery.fact.upload_failure",
+          "demo.emergency_delivery.fact.upload_unknown",
+          "demo.emergency_delivery.fact.delivery_active",
+          "demo.emergency_delivery.fact.delivery_returned",
+          "demo.emergency_delivery.fact.delivery_waiting",
+          "demo.emergency_delivery.fact.return_pose"
+        ],
+        "strategy_id": "demo.emergency_delivery.strategy"
+      },
+      {
+        "id": "demo.emergency_delivery.edge_agent",
+        "label": "Edge corridor-management agent",
+        "label_zh": "边缘航道管理代理",
+        "type_id": "agent-type",
+        "controls": [
+          {
+            "entity_ids": [
+              "demo.emergency_delivery.edge_server"
+            ],
+            "mode": "exclusive",
+            "arbitration_id": null
+          }
+        ],
+        "observable_fact_ids": [
+          "demo.emergency_delivery.fact.report_received"
+        ],
+        "strategy_id": "demo.emergency_delivery.edge_strategy"
+      }
+    ],
+    "strategies": [
+      {
+        "id": "demo.emergency_delivery.strategy",
+        "label": "Safety-first replanning",
+        "label_zh": "安全优先的任务重规划",
+        "type_id": "strategy-type",
+        "observable_fact_ids": [
+          "demo.emergency_delivery.fact.incident",
+          "demo.emergency_delivery.fact.separation",
+          "demo.emergency_delivery.fact.energy",
+          "demo.emergency_delivery.fact.pose",
+          "demo.emergency_delivery.fact.target",
+          "demo.emergency_delivery.fact.paused",
+          "demo.emergency_delivery.fact.custody",
+          "demo.emergency_delivery.fact.attachment",
+          "demo.emergency_delivery.fact.capture",
+          "demo.emergency_delivery.fact.upload",
+          "demo.emergency_delivery.fact.after_energy",
+          "demo.emergency_delivery.fact.privacy",
+          "demo.emergency_delivery.fact.exercise_permission",
+          "demo.emergency_delivery.fact.capability_ready",
+          "demo.emergency_delivery.fact.incident_refresh",
+          "demo.emergency_delivery.fact.upload_failure",
+          "demo.emergency_delivery.fact.upload_unknown",
+          "demo.emergency_delivery.fact.delivery_active",
+          "demo.emergency_delivery.fact.delivery_returned",
+          "demo.emergency_delivery.fact.delivery_waiting",
+          "demo.emergency_delivery.fact.return_pose"
+        ],
+        "request_ids": [
+          "demo.emergency_delivery.task_request"
+        ],
+        "objective_ids": [
+          "demo.emergency_delivery.goal"
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.incident",
+          "demo.emergency_delivery.constraint.safety",
+          "demo.emergency_delivery.constraint.privacy",
+          "demo.emergency_delivery.constraint.exercise_permission",
+          "demo.emergency_delivery.constraint.permission",
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease",
+          "demo.emergency_delivery.constraint.vehicle",
+          "demo.emergency_delivery.constraint.energy",
+          "demo.emergency_delivery.constraint.capacity"
+        ],
+        "input_fields": [
+          {
+            "field_id": "demo.emergency_delivery.state.confidence",
+            "value_type": "number",
+            "unit": "1",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.separation",
+            "value_type": "number",
+            "unit": "m",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.energy",
+            "value_type": "number",
+            "unit": "Wh",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.pose",
+            "value_type": "vector3",
+            "unit": "m",
+            "frame": "ENU"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.target",
+            "value_type": "entity_ref",
+            "unit": "1",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.task_state",
+            "value_type": "string",
+            "unit": "1",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.custody",
+            "value_type": "entity_ref",
+            "unit": "1",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.attachment",
+            "value_type": "entity_ref",
+            "unit": "1",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.media",
+            "value_type": "string",
+            "unit": "1",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.upload",
+            "value_type": "string",
+            "unit": "1",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.privacy",
+            "value_type": "boolean",
+            "unit": "1",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.exercise_permission",
+            "value_type": "boolean",
+            "unit": "1",
+            "frame": "none"
+          },
+          {
+            "field_id": "demo.emergency_delivery.state.capability_ready",
+            "value_type": "boolean",
+            "unit": "1",
+            "frame": "none"
+          }
+        ],
+        "decision_ids": [
+          "demo.emergency_delivery.decision",
+          "demo.emergency_delivery.decision.report",
+          "demo.emergency_delivery.decision.return_report",
+          "demo.emergency_delivery.outcome",
+          "demo.emergency_delivery.decision.return",
+          "demo.emergency_delivery.decision.wait"
+        ],
+        "output_command_ids": [
+          "demo.emergency_delivery.command.definition",
+          "demo.emergency_delivery.command.report.definition",
+          "demo.emergency_delivery.command.return_report.definition",
+          "demo.emergency_delivery.command.return.definition",
+          "demo.emergency_delivery.command.resume.definition",
+          "demo.emergency_delivery.command.hold.definition"
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "authored-decision-replay-only"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.edge_strategy",
+        "label": "Corridor-slot approval strategy",
+        "label_zh": "航道时隙审批策略",
+        "type_id": "strategy-type",
+        "observable_fact_ids": [
+          "demo.emergency_delivery.fact.report_received"
+        ],
+        "request_ids": [
+          "demo.emergency_delivery.task_request.airspace"
+        ],
+        "objective_ids": [
+          "demo.emergency_delivery.goal.airspace"
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.incident",
+          "demo.emergency_delivery.constraint.safety",
+          "demo.emergency_delivery.constraint.privacy",
+          "demo.emergency_delivery.constraint.exercise_permission",
+          "demo.emergency_delivery.constraint.permission",
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease",
+          "demo.emergency_delivery.constraint.vehicle",
+          "demo.emergency_delivery.constraint.energy",
+          "demo.emergency_delivery.constraint.capacity"
+        ],
+        "input_fields": [
+          {
+            "field_id": "demo.emergency_delivery.state.report_received",
+            "value_type": "boolean",
+            "unit": "1",
+            "frame": "none"
+          }
+        ],
+        "decision_ids": [
+          "demo.emergency_delivery.decision.edge_approval",
+          "demo.emergency_delivery.decision.return_approval"
+        ],
+        "output_command_ids": [
+          "demo.emergency_delivery.command.grant.definition",
+          "demo.emergency_delivery.command.return_grant.definition"
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "authored-decision-replay-only"
+        }
+      }
+    ],
+    "capabilities": [
+      {
+        "id": "demo.emergency_delivery.cap.motion",
+        "label": "Controlled motion",
+        "label_zh": "受控运动能力",
+        "type_id": "capability-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.px4",
+          "demo.emergency_delivery.gazebo"
+        ],
+        "description": "Declared fixture capability only; corresponding native modules are disconnected."
+      },
+      {
+        "id": "demo.emergency_delivery.cap.capture",
+        "label": "Camera capture",
+        "label_zh": "相机采集能力",
+        "type_id": "capability-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.camera"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.perception"
+        ],
+        "description": "Declared fixture capability only; corresponding native modules are disconnected."
+      },
+      {
+        "id": "demo.emergency_delivery.cap.upload",
+        "label": "Directed transport",
+        "label_zh": "定向传输能力",
+        "type_id": "capability-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.ns3"
+        ],
+        "description": "Declared fixture capability only; corresponding native modules are disconnected."
+      },
+      {
+        "id": "demo.emergency_delivery.cap.review",
+        "label": "Scoped corridor review",
+        "label_zh": "Scoped corridor review",
+        "type_id": "capability-type",
+        "entity_ids": [
+          "demo.emergency_delivery.edge_server"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.edge_compute",
+          "demo.emergency_delivery.ns3"
+        ],
+        "description": "Declared fixture capability only; corresponding native modules are disconnected."
+      }
+    ],
+    "behaviors": [
+      {
+        "id": "demo.emergency_delivery.behavior.approach",
+        "label": "Approach safe point · definition",
+        "label_zh": "前往安全观察点 · 定义",
+        "type_id": "behavior-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "capability_ids": [
+          "demo.emergency_delivery.cap.motion"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.px4",
+          "demo.emergency_delivery.gazebo"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.motion_slot",
+            "amount": 1,
+            "unit": "slot"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.energy_pool",
+            "amount": 3,
+            "unit": "Wh"
+          }
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease",
+          "demo.emergency_delivery.constraint.vehicle",
+          "demo.emergency_delivery.constraint.energy",
+          "demo.emergency_delivery.constraint.permission"
+        ],
+        "description": "Reusable behavior definition, with a separate record for a particular execution.",
+        "after_behavior_ids": [],
+        "required_allocation_ids": [
+          "demo.emergency_delivery.allocation"
+        ],
+        "required_receipt_ids": [
+          "demo.emergency_delivery.grant_receipt"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.behavior.capture",
+        "label": "Capture minimized evidence · definition",
+        "label_zh": "拍摄最小化记录 · 定义",
+        "type_id": "behavior-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.camera"
+        ],
+        "capability_ids": [
+          "demo.emergency_delivery.cap.capture"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.perception"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.camera_slot",
+            "amount": 1,
+            "unit": "slot"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.energy_pool",
+            "amount": 0.04,
+            "unit": "Wh"
+          }
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.incident",
+          "demo.emergency_delivery.constraint.safety",
+          "demo.emergency_delivery.constraint.privacy",
+          "demo.emergency_delivery.constraint.exercise_permission",
+          "demo.emergency_delivery.constraint.permission"
+        ],
+        "description": "Reusable behavior definition, with a separate record for a particular execution.",
+        "after_behavior_ids": [
+          "demo.emergency_delivery.behavior.approach"
+        ],
+        "required_receipt_ids": [
+          "demo.emergency_delivery.grant_receipt"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.behavior.hold",
+        "label": "Hold observation point · definition",
+        "label_zh": "保持观察位置 · 定义",
+        "type_id": "behavior-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "capability_ids": [
+          "demo.emergency_delivery.cap.motion"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.px4",
+          "demo.emergency_delivery.gazebo"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.motion_slot",
+            "amount": 1,
+            "unit": "slot"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.energy_pool",
+            "amount": 0.8,
+            "unit": "Wh"
+          }
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.safety",
+          "demo.emergency_delivery.constraint.vehicle",
+          "demo.emergency_delivery.constraint.energy"
+        ],
+        "description": "Reusable behavior definition, with a separate record for a particular execution.",
+        "after_behavior_ids": []
+      },
+      {
+        "id": "demo.emergency_delivery.behavior.upload",
+        "label": "Upload to exercise recipient · definition",
+        "label_zh": "上传至演练接收端 · 定义",
+        "type_id": "behavior-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "capability_ids": [
+          "demo.emergency_delivery.cap.upload"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.ns3"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.radio_slot",
+            "amount": 2,
+            "unit": "Mbps"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.energy_pool",
+            "amount": 0.06,
+            "unit": "Wh"
+          }
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.privacy",
+          "demo.emergency_delivery.constraint.exercise_permission",
+          "demo.emergency_delivery.constraint.permission"
+        ],
+        "description": "Reusable behavior definition, with a separate record for a particular execution.",
+        "after_behavior_ids": [
+          "demo.emergency_delivery.behavior.capture"
+        ],
+        "required_receipt_ids": [
+          "demo.emergency_delivery.grant_receipt"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.behavior.resume",
+        "label": "Resume delivery · definition",
+        "label_zh": "恢复配送 · 定义",
+        "type_id": "behavior-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "capability_ids": [
+          "demo.emergency_delivery.cap.motion"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.px4",
+          "demo.emergency_delivery.gazebo"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.motion_slot",
+            "amount": 1,
+            "unit": "slot"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.energy_pool",
+            "amount": 2,
+            "unit": "Wh"
+          }
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.vehicle",
+          "demo.emergency_delivery.constraint.energy",
+          "demo.emergency_delivery.constraint.permission"
+        ],
+        "description": "Reusable behavior definition, with a separate record for a particular execution.",
+        "after_behavior_ids": []
+      },
+      {
+        "id": "demo.emergency_delivery.behavior.return",
+        "label": "Return with parcel · definition",
+        "label_zh": "携包裹返航 · 定义",
+        "type_id": "behavior-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "capability_ids": [
+          "demo.emergency_delivery.cap.motion"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.px4",
+          "demo.emergency_delivery.gazebo"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.motion_slot",
+            "amount": 1,
+            "unit": "slot"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.energy_pool",
+            "amount": 5,
+            "unit": "Wh"
+          }
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease",
+          "demo.emergency_delivery.constraint.vehicle",
+          "demo.emergency_delivery.constraint.energy",
+          "demo.emergency_delivery.constraint.permission"
+        ],
+        "description": "Reusable behavior definition, with a separate record for a particular execution.",
+        "after_behavior_ids": [],
+        "required_allocation_ids": [
+          "demo.emergency_delivery.return_allocation"
+        ],
+        "required_receipt_ids": [
+          "demo.emergency_delivery.return_grant_receipt"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.behavior.report",
+        "label": "behavior.report",
+        "label_zh": "behavior.report",
+        "type_id": "behavior-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "capability_ids": [
+          "demo.emergency_delivery.cap.upload"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.ns3"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.radio_slot",
+            "amount": 1,
+            "unit": "Mbps"
+          }
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.privacy",
+          "demo.emergency_delivery.constraint.exercise_permission"
+        ],
+        "description": "Authored fixture behavior; execution is not connected.",
+        "after_behavior_ids": []
+      },
+      {
+        "id": "demo.emergency_delivery.behavior.review",
+        "label": "behavior.review",
+        "label_zh": "behavior.review",
+        "type_id": "behavior-type",
+        "entity_ids": [
+          "demo.emergency_delivery.edge_server"
+        ],
+        "capability_ids": [
+          "demo.emergency_delivery.cap.review"
+        ],
+        "module_ids": [
+          "demo.emergency_delivery.edge_compute",
+          "demo.emergency_delivery.ns3"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.edge_cpu",
+            "amount": 1,
+            "unit": "core"
+          }
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease",
+          "demo.emergency_delivery.constraint.capacity"
+        ],
+        "description": "Authored fixture behavior; execution is not connected.",
+        "after_behavior_ids": []
+      }
+    ],
+    "requests": [
+      {
+        "id": "demo.emergency_delivery.task_request",
+        "label": "Incident-recording task request",
+        "label_zh": "记录异常的任务请求",
+        "type_id": "request-type",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.parcel"
+        ],
+        "task_ids": [
+          "demo.emergency_delivery.task",
+          "demo.emergency_delivery.task.report",
+          "demo.emergency_delivery.task.return_report",
+          "demo.emergency_delivery.task.return",
+          "demo.emergency_delivery.task.resume",
+          "demo.emergency_delivery.task.hold"
+        ],
+        "source_id": "demo.emergency_delivery.policy"
+      },
+      {
+        "id": "demo.emergency_delivery.task_request.airspace",
+        "label": "Review scoped corridor requests",
+        "label_zh": "Review scoped corridor requests",
+        "type_id": "request-type",
+        "entity_ids": [
+          "demo.emergency_delivery.edge_server"
+        ],
+        "task_ids": [
+          "demo.emergency_delivery.task.review",
+          "demo.emergency_delivery.task.return_review"
+        ],
+        "source_id": "demo.emergency_delivery.policy"
+      }
+    ],
+    "objectives": [
+      {
+        "id": "demo.emergency_delivery.goal",
+        "label": "Delivery + safe incident capture",
+        "label_zh": "完成配送 + 安全记录异常",
+        "type_id": "objective-type",
+        "description": "Preserve parcel custody and delivery commitment while responding only within independent safety/privacy/permission bounds.",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.parcel",
+          "demo.emergency_delivery.person"
+        ],
+        "preference": "soft"
+      },
+      {
+        "id": "demo.emergency_delivery.goal.airspace",
+        "label": "Scoped corridor allocation",
+        "label_zh": "Scoped corridor allocation",
+        "type_id": "objective-type",
+        "description": "Review requests without automatic emergency priority; keep allocations bounded in time, altitude and direction.",
+        "entity_ids": [
+          "demo.emergency_delivery.edge_server"
+        ],
+        "preference": "soft"
+      }
+    ],
+    "decisions": [
+      {
+        "id": "demo.emergency_delivery.decision",
+        "label": "Pause delivery; observe safely",
+        "label_zh": "暂停配送，转向观察点",
+        "type_id": "decision-type",
+        "record_kind": "fixture_decision",
+        "strategy_id": "demo.emergency_delivery.strategy",
+        "agent_id": "demo.emergency_delivery.agent",
+        "task_id": "demo.emergency_delivery.task",
+        "command_ids": [
+          "demo.emergency_delivery.command.definition"
+        ],
+        "assessments": {
+          "feasibility": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "suitability": "UNKNOWN"
+        },
+        "rationale": "Authored proposed decision replay only. Scenario event does not establish actual authority, native truth or command effects."
+      },
+      {
+        "id": "demo.emergency_delivery.decision.report",
+        "label": "decision.report",
+        "label_zh": "decision.report",
+        "type_id": "decision-type",
+        "record_kind": "fixture_decision",
+        "strategy_id": "demo.emergency_delivery.strategy",
+        "agent_id": "demo.emergency_delivery.agent",
+        "task_id": "demo.emergency_delivery.task.report",
+        "command_ids": [
+          "demo.emergency_delivery.command.report.definition"
+        ],
+        "assessments": {
+          "feasibility": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "suitability": "UNKNOWN"
+        },
+        "rationale": "Authored proposed decision replay only. Scenario event does not establish actual authority, native truth or command effects."
+      },
+      {
+        "id": "demo.emergency_delivery.decision.edge_approval",
+        "label": "decision.edge_approval",
+        "label_zh": "decision.edge_approval",
+        "type_id": "decision-type",
+        "record_kind": "fixture_decision",
+        "strategy_id": "demo.emergency_delivery.edge_strategy",
+        "agent_id": "demo.emergency_delivery.edge_agent",
+        "task_id": "demo.emergency_delivery.task.review",
+        "command_ids": [
+          "demo.emergency_delivery.command.grant.definition"
+        ],
+        "assessments": {
+          "feasibility": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "suitability": "UNKNOWN"
+        },
+        "rationale": "Authored proposed decision replay only. Scenario event does not establish actual authority, native truth or command effects."
+      },
+      {
+        "id": "demo.emergency_delivery.decision.return_report",
+        "label": "decision.return_report",
+        "label_zh": "decision.return_report",
+        "type_id": "decision-type",
+        "record_kind": "fixture_decision",
+        "strategy_id": "demo.emergency_delivery.strategy",
+        "agent_id": "demo.emergency_delivery.agent",
+        "task_id": "demo.emergency_delivery.task.return_report",
+        "command_ids": [
+          "demo.emergency_delivery.command.return_report.definition"
+        ],
+        "assessments": {
+          "feasibility": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "suitability": "UNKNOWN"
+        },
+        "rationale": "Authored proposed decision replay only. Scenario event does not establish actual authority, native truth or command effects."
+      },
+      {
+        "id": "demo.emergency_delivery.decision.return_approval",
+        "label": "decision.return_approval",
+        "label_zh": "decision.return_approval",
+        "type_id": "decision-type",
+        "record_kind": "fixture_decision",
+        "strategy_id": "demo.emergency_delivery.edge_strategy",
+        "agent_id": "demo.emergency_delivery.edge_agent",
+        "task_id": "demo.emergency_delivery.task.return_review",
+        "command_ids": [
+          "demo.emergency_delivery.command.return_grant.definition"
+        ],
+        "assessments": {
+          "feasibility": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "suitability": "UNKNOWN"
+        },
+        "rationale": "Authored proposed decision replay only. Scenario event does not establish actual authority, native truth or command effects."
+      },
+      {
+        "id": "demo.emergency_delivery.outcome",
+        "label": "Resume after confirmed success",
+        "label_zh": "确认成功后恢复配送",
+        "type_id": "decision-type",
+        "record_kind": "fixture_decision",
+        "strategy_id": "demo.emergency_delivery.strategy",
+        "agent_id": "demo.emergency_delivery.agent",
+        "task_id": "demo.emergency_delivery.task.resume",
+        "command_ids": [
+          "demo.emergency_delivery.command.resume.definition"
+        ],
+        "assessments": {
+          "feasibility": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "suitability": "UNKNOWN"
+        },
+        "rationale": "Authored proposed decision replay only. Scenario event does not establish actual authority, native truth or command effects."
+      },
+      {
+        "id": "demo.emergency_delivery.decision.return",
+        "label": "decision.return",
+        "label_zh": "decision.return",
+        "type_id": "decision-type",
+        "record_kind": "fixture_decision",
+        "strategy_id": "demo.emergency_delivery.strategy",
+        "agent_id": "demo.emergency_delivery.agent",
+        "task_id": "demo.emergency_delivery.task.return",
+        "command_ids": [
+          "demo.emergency_delivery.command.return.definition"
+        ],
+        "assessments": {
+          "feasibility": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "suitability": "UNKNOWN"
+        },
+        "rationale": "Authored proposed decision replay only. Scenario event does not establish actual authority, native truth or command effects."
+      },
+      {
+        "id": "demo.emergency_delivery.decision.wait",
+        "label": "decision.wait",
+        "label_zh": "decision.wait",
+        "type_id": "decision-type",
+        "record_kind": "fixture_decision",
+        "strategy_id": "demo.emergency_delivery.strategy",
+        "agent_id": "demo.emergency_delivery.agent",
+        "task_id": "demo.emergency_delivery.task.hold",
+        "command_ids": [
+          "demo.emergency_delivery.command.hold.definition"
+        ],
+        "assessments": {
+          "feasibility": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "suitability": "UNKNOWN"
+        },
+        "rationale": "Authored proposed decision replay only. Scenario event does not establish actual authority, native truth or command effects."
+      }
+    ],
+    "tasks": [
+      {
+        "id": "demo.emergency_delivery.task",
+        "label": "Delivery task · pause/resume",
+        "label_zh": "配送任务 · 暂停/恢复",
+        "type_id": "task-type",
+        "executor_agent_id": "demo.emergency_delivery.agent",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.camera",
+          "demo.emergency_delivery.radio"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.definition"
+        ],
+        "objective_ids": [
+          "demo.emergency_delivery.goal"
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity",
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease",
+          "demo.emergency_delivery.constraint.vehicle",
+          "demo.emergency_delivery.constraint.energy",
+          "demo.emergency_delivery.constraint.permission",
+          "demo.emergency_delivery.constraint.incident",
+          "demo.emergency_delivery.constraint.safety",
+          "demo.emergency_delivery.constraint.privacy",
+          "demo.emergency_delivery.constraint.exercise_permission"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.motion_slot",
+            "amount": 1,
+            "unit": "slot"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.camera_slot",
+            "amount": 1,
+            "unit": "slot"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.radio_slot",
+            "amount": 2,
+            "unit": "Mbps"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.energy_pool",
+            "amount": 8,
+            "unit": "Wh"
+          }
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.task.report",
+        "label": "task.report",
+        "label_zh": "task.report",
+        "type_id": "task-type",
+        "executor_agent_id": "demo.emergency_delivery.agent",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.report.definition"
+        ],
+        "objective_ids": [
+          "demo.emergency_delivery.goal"
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity",
+          "demo.emergency_delivery.constraint.privacy",
+          "demo.emergency_delivery.constraint.exercise_permission"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.radio_slot",
+            "amount": 1,
+            "unit": "Mbps"
+          }
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.task.review",
+        "label": "task.review",
+        "label_zh": "task.review",
+        "type_id": "task-type",
+        "executor_agent_id": "demo.emergency_delivery.edge_agent",
+        "entity_ids": [
+          "demo.emergency_delivery.edge_server"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.grant.definition"
+        ],
+        "objective_ids": [
+          "demo.emergency_delivery.goal.airspace"
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity",
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.edge_cpu",
+            "amount": 1,
+            "unit": "core"
+          }
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.task.return_report",
+        "label": "task.return_report",
+        "label_zh": "task.return_report",
+        "type_id": "task-type",
+        "executor_agent_id": "demo.emergency_delivery.agent",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.return_report.definition"
+        ],
+        "objective_ids": [
+          "demo.emergency_delivery.goal"
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity",
+          "demo.emergency_delivery.constraint.privacy",
+          "demo.emergency_delivery.constraint.exercise_permission"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.radio_slot",
+            "amount": 1,
+            "unit": "Mbps"
+          }
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.task.return_review",
+        "label": "task.return_review",
+        "label_zh": "task.return_review",
+        "type_id": "task-type",
+        "executor_agent_id": "demo.emergency_delivery.edge_agent",
+        "entity_ids": [
+          "demo.emergency_delivery.edge_server"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.return_grant.definition"
+        ],
+        "objective_ids": [
+          "demo.emergency_delivery.goal.airspace"
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity",
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.edge_cpu",
+            "amount": 1,
+            "unit": "core"
+          }
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.task.return",
+        "label": "task.return",
+        "label_zh": "task.return",
+        "type_id": "task-type",
+        "executor_agent_id": "demo.emergency_delivery.agent",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.return.definition"
+        ],
+        "objective_ids": [
+          "demo.emergency_delivery.goal"
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity",
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease",
+          "demo.emergency_delivery.constraint.vehicle",
+          "demo.emergency_delivery.constraint.energy",
+          "demo.emergency_delivery.constraint.permission"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.motion_slot",
+            "amount": 1,
+            "unit": "slot"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.energy_pool",
+            "amount": 5,
+            "unit": "Wh"
+          }
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.task.resume",
+        "label": "task.resume",
+        "label_zh": "task.resume",
+        "type_id": "task-type",
+        "executor_agent_id": "demo.emergency_delivery.agent",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.resume.definition"
+        ],
+        "objective_ids": [
+          "demo.emergency_delivery.goal"
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity",
+          "demo.emergency_delivery.constraint.vehicle",
+          "demo.emergency_delivery.constraint.energy",
+          "demo.emergency_delivery.constraint.permission"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.motion_slot",
+            "amount": 1,
+            "unit": "slot"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.energy_pool",
+            "amount": 2,
+            "unit": "Wh"
+          }
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.task.hold",
+        "label": "task.hold",
+        "label_zh": "task.hold",
+        "type_id": "task-type",
+        "executor_agent_id": "demo.emergency_delivery.agent",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.hold.definition"
+        ],
+        "objective_ids": [
+          "demo.emergency_delivery.goal"
+        ],
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity",
+          "demo.emergency_delivery.constraint.safety",
+          "demo.emergency_delivery.constraint.vehicle",
+          "demo.emergency_delivery.constraint.energy"
+        ],
+        "resource_claims": [
+          {
+            "resource_id": "demo.emergency_delivery.res.motion_slot",
+            "amount": 1,
+            "unit": "slot"
+          },
+          {
+            "resource_id": "demo.emergency_delivery.res.energy_pool",
+            "amount": 0.8,
+            "unit": "Wh"
+          }
+        ]
+      }
+    ],
+    "resources": [
+      {
+        "id": "demo.emergency_delivery.res.motion_slot",
+        "label": "Exclusive motion slot",
+        "label_zh": "唯一运动控制槽",
+        "type_id": "resource-type",
+        "kind": "airspace",
+        "owner_entity_id": "demo.emergency_delivery.uav",
+        "capacity": 1,
+        "unit": "slot",
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.res.camera_slot",
+        "label": "Camera-use slot",
+        "label_zh": "相机使用槽",
+        "type_id": "resource-type",
+        "kind": "compute",
+        "owner_entity_id": "demo.emergency_delivery.camera",
+        "capacity": 1,
+        "unit": "slot",
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.res.radio_slot",
+        "label": "Radio-link capacity",
+        "label_zh": "无线链路容量",
+        "type_id": "resource-type",
+        "kind": "bandwidth",
+        "owner_entity_id": "demo.emergency_delivery.radio",
+        "capacity": 2,
+        "unit": "Mbps",
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.res.energy_pool",
+        "label": "Battery energy budget",
+        "label_zh": "电池能量预算",
+        "type_id": "resource-type",
+        "kind": "energy",
+        "owner_entity_id": "demo.emergency_delivery.uav",
+        "capacity": 60,
+        "unit": "Wh",
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.res.edge_cpu",
+        "label": "res.edge_cpu",
+        "label_zh": "res.edge_cpu",
+        "type_id": "resource-type",
+        "kind": "compute",
+        "owner_entity_id": "demo.emergency_delivery.edge_server",
+        "capacity": 2,
+        "unit": "core",
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.capacity"
+        ]
+      }
+    ],
+    "constraints": [
+      {
+        "id": "demo.emergency_delivery.constraint.incident",
+        "label": "Incident-capture requirement",
+        "label_zh": "异常记录要求",
+        "type_id": "constraint-type",
+        "kind": "operational",
+        "expression": "Synthetic confidence must meet exercise threshold; this is not a clinical finding.",
+        "entity_ids": [
+          "demo.emergency_delivery.person"
+        ],
+        "source_id": "demo.emergency_delivery.policy",
+        "enforcement": "hard",
+        "condition": {
+          "operator": "number_gte",
+          "expected": 0.85,
+          "expected_unit": "1"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.constraint.safety",
+        "label": "Safety + one motion target",
+        "label_zh": "安全与单一运动目标",
+        "type_id": "constraint-type",
+        "kind": "physical",
+        "expression": "Maintain authored separation >= 8 m; one exclusive motion slot.",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.person"
+        ],
+        "source_id": "demo.emergency_delivery.policy",
+        "enforcement": "hard",
+        "condition": {
+          "operator": "number_gte",
+          "expected": 8,
+          "expected_unit": "m"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.constraint.privacy",
+        "label": "Recipient + minimization",
+        "label_zh": "定向上传与数据最小化",
+        "type_id": "constraint-type",
+        "kind": "operational",
+        "expression": "Only zero-byte synthetic metadata is eligible; no actual child imagery or identity.",
+        "entity_ids": [
+          "demo.emergency_delivery.camera",
+          "demo.emergency_delivery.region"
+        ],
+        "source_id": "demo.emergency_delivery.policy",
+        "enforcement": "hard",
+        "condition": {
+          "operator": "boolean_equals",
+          "expected": true,
+          "expected_unit": "1"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.constraint.exercise_permission",
+        "label": "constraint.exercise_permission",
+        "label_zh": "constraint.exercise_permission",
+        "type_id": "constraint-type",
+        "kind": "operational",
+        "expression": "Exercise-scoped permission must be explicitly available; no real legal mandate.",
+        "entity_ids": [
+          "demo.emergency_delivery.region"
+        ],
+        "source_id": "demo.emergency_delivery.policy",
+        "enforcement": "hard",
+        "condition": {
+          "operator": "boolean_equals",
+          "expected": true,
+          "expected_unit": "1"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.constraint.permission",
+        "label": "constraint.permission",
+        "label_zh": "constraint.permission",
+        "type_id": "constraint-type",
+        "kind": "legal",
+        "expression": "Real recording/transmission permission has not been verified; actual permission remains UNKNOWN.",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.camera",
+          "demo.emergency_delivery.radio"
+        ],
+        "source_id": "demo.emergency_delivery.legal-unknown",
+        "enforcement": "hard",
+        "condition": null
+      },
+      {
+        "id": "demo.emergency_delivery.constraint.airspace",
+        "label": "No-fly / corridor geometry",
+        "label_zh": "禁飞区 / 航道几何检查",
+        "type_id": "constraint-type",
+        "kind": "operational",
+        "expression": "Declared corridor/no-fly geometry requires separate spatial verification; no physics engine is connected.",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "source_id": "demo.emergency_delivery.policy",
+        "enforcement": "hard",
+        "condition": null
+      },
+      {
+        "id": "demo.emergency_delivery.constraint.lease",
+        "label": "Grant received + inside window",
+        "label_zh": "批准已达 + 时窗内",
+        "type_id": "constraint-type",
+        "kind": "operational",
+        "expression": "Require matching received grant and half-open allocated time window before corridor entry.",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "source_id": "demo.emergency_delivery.policy",
+        "enforcement": "hard",
+        "condition": null
+      },
+      {
+        "id": "demo.emergency_delivery.constraint.vehicle",
+        "label": "Flight capability + return energy",
+        "label_zh": "飞行能力 + 返航能量",
+        "type_id": "constraint-type",
+        "kind": "physical",
+        "expression": "Declared readiness and return-energy reservation are independent of corridor approval.",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "source_id": "demo.emergency_delivery.policy",
+        "enforcement": "hard",
+        "condition": {
+          "operator": "boolean_equals",
+          "expected": true,
+          "expected_unit": "1"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.constraint.energy",
+        "label": "constraint.energy",
+        "label_zh": "constraint.energy",
+        "type_id": "constraint-type",
+        "kind": "physical",
+        "expression": "Keep at least 20 Wh in the authored energy account.",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "source_id": "demo.emergency_delivery.policy",
+        "enforcement": "hard",
+        "condition": {
+          "operator": "number_gte",
+          "expected": 20,
+          "expected_unit": "Wh"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.constraint.capacity",
+        "label": "constraint.capacity",
+        "label_zh": "constraint.capacity",
+        "type_id": "constraint-type",
+        "kind": "physical",
+        "expression": "Declared resource claims cannot exceed available capacity.",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.camera",
+          "demo.emergency_delivery.radio",
+          "demo.emergency_delivery.edge_server"
+        ],
+        "source_id": "demo.emergency_delivery.policy",
+        "enforcement": "hard",
+        "condition": null
+      }
+    ],
+    "predicates": [
+      {
+        "id": "demo.emergency_delivery.predicate.incident",
+        "label": "High-confidence suspected fall",
+        "label_zh": "高置信度疑似跌倒",
+        "type_id": "predicate-type",
+        "input_fact_ids": [
+          "demo.emergency_delivery.fact.incident",
+          "demo.emergency_delivery.fact.incident_refresh"
+        ],
+        "meaning": "Definition and exact fact bindings only; native predicate truth remains UNKNOWN.",
+        "truth": "UNKNOWN",
+        "binding": {
+          "mode": "stub",
+          "status": "declared",
+          "adapter": "atlas-not-connected"
+        },
+        "rule_ids": [
+          "demo.emergency_delivery.rule.incident"
+        ],
+        "subpredicate_ids": [],
+        "operator": "leaf"
+      },
+      {
+        "id": "demo.emergency_delivery.predicate.safety",
+        "label": "Observation distance requirement",
+        "label_zh": "观察距离满足要求",
+        "type_id": "predicate-type",
+        "input_fact_ids": [
+          "demo.emergency_delivery.fact.separation"
+        ],
+        "meaning": "Definition and exact fact bindings only; native predicate truth remains UNKNOWN.",
+        "truth": "UNKNOWN",
+        "binding": {
+          "mode": "stub",
+          "status": "declared",
+          "adapter": "atlas-not-connected"
+        },
+        "rule_ids": [
+          "demo.emergency_delivery.rule.safety"
+        ],
+        "subpredicate_ids": [],
+        "operator": "leaf"
+      },
+      {
+        "id": "demo.emergency_delivery.predicate.composite",
+        "label": "Safe capture eligibility",
+        "label_zh": "允许执行安全记录",
+        "type_id": "predicate-type",
+        "input_fact_ids": [
+          "demo.emergency_delivery.fact.incident_refresh",
+          "demo.emergency_delivery.fact.separation"
+        ],
+        "meaning": "Definition and exact fact bindings only; native predicate truth remains UNKNOWN.",
+        "truth": "UNKNOWN",
+        "binding": {
+          "mode": "stub",
+          "status": "declared",
+          "adapter": "atlas-not-connected"
+        },
+        "rule_ids": [
+          "demo.emergency_delivery.rule.composite"
+        ],
+        "subpredicate_ids": [
+          "demo.emergency_delivery.predicate.incident",
+          "demo.emergency_delivery.predicate.safety"
+        ],
+        "operator": "and"
+      }
+    ],
+    "rules": [
+      {
+        "id": "demo.emergency_delivery.rule.incident",
+        "label": "High-confidence suspected fall",
+        "label_zh": "高置信度疑似跌倒",
+        "type_id": "rule-type",
+        "kind": "predicate_definition_rule",
+        "operator": "identity",
+        "state_field_ids": [
+          "demo.emergency_delivery.state.confidence"
+        ],
+        "relation_definition_ids": [],
+        "parameter_ids": [
+          "demo.emergency_delivery.incident_threshold"
+        ],
+        "subpredicate_ids": [],
+        "output_predicate_id": "demo.emergency_delivery.predicate.incident",
+        "predicate_ids": [],
+        "event_ids": [],
+        "command_ids": [],
+        "constraint_ids": [],
+        "description": "Confirmed structural AST form only; native semantics execution unavailable.",
+        "definition_ast": {
+          "op": "gt",
+          "args": [
+            {
+              "state": "demo.emergency_delivery.state.confidence"
+            },
+            {
+              "param": "demo.emergency_delivery.incident_threshold"
+            }
+          ]
+        },
+        "applicability_ast": null
+      },
+      {
+        "id": "demo.emergency_delivery.rule.safety",
+        "label": "Observation distance requirement",
+        "label_zh": "观察距离满足要求",
+        "type_id": "rule-type",
+        "kind": "predicate_definition_rule",
+        "operator": "identity",
+        "state_field_ids": [
+          "demo.emergency_delivery.state.separation"
+        ],
+        "relation_definition_ids": [],
+        "parameter_ids": [],
+        "subpredicate_ids": [],
+        "output_predicate_id": "demo.emergency_delivery.predicate.safety",
+        "predicate_ids": [],
+        "event_ids": [],
+        "command_ids": [],
+        "constraint_ids": [],
+        "description": "Confirmed structural AST form only; native semantics execution unavailable.",
+        "definition_ast": {
+          "op": "gt",
+          "args": [
+            {
+              "state": "demo.emergency_delivery.state.separation"
+            },
+            {
+              "const": 8,
+              "unit": "m"
+            }
+          ]
+        },
+        "applicability_ast": null
+      },
+      {
+        "id": "demo.emergency_delivery.rule.composite",
+        "label": "Safe capture eligibility",
+        "label_zh": "允许执行安全记录",
+        "type_id": "rule-type",
+        "kind": "predicate_definition_rule",
+        "operator": "and",
+        "state_field_ids": [],
+        "relation_definition_ids": [],
+        "parameter_ids": [],
+        "subpredicate_ids": [
+          "demo.emergency_delivery.predicate.incident",
+          "demo.emergency_delivery.predicate.safety"
+        ],
+        "output_predicate_id": "demo.emergency_delivery.predicate.composite",
+        "predicate_ids": [],
+        "event_ids": [],
+        "command_ids": [],
+        "constraint_ids": [],
+        "description": "Confirmed structural AST form only; native semantics execution unavailable.",
+        "definition_ast": {
+          "op": "and",
+          "args": [
+            {
+              "predicate": "demo.emergency_delivery.predicate.incident"
+            },
+            {
+              "predicate": "demo.emergency_delivery.predicate.safety"
+            }
+          ]
+        },
+        "applicability_ast": null
+      }
+    ],
+    "events": [
+      {
+        "id": "demo.emergency_delivery.event_def",
+        "label": "New incident-report definition",
+        "label_zh": "新异常报告事件",
+        "type_id": "event-type",
+        "kind": "event",
+        "record_kind": "event_definition",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "fact_ids": [
+          "demo.emergency_delivery.fact.incident"
+        ],
+        "source_id": "demo.emergency_delivery.evidence",
+        "description": "Authored event definition; the occurrence is a separate derived fixture record, not native predicate truth.",
+        "trigger": null
+      },
+      {
+        "id": "demo.emergency_delivery.event.upload_success",
+        "label": "Synthetic upload acknowledged",
+        "label_zh": "Synthetic upload acknowledged",
+        "type_id": "event-type",
+        "kind": "event",
+        "record_kind": "event_definition",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "fact_ids": [
+          "demo.emergency_delivery.fact.upload"
+        ],
+        "source_id": "demo.emergency_delivery.evidence",
+        "description": "Authored event definition; the occurrence is a separate derived fixture record, not native predicate truth.",
+        "trigger": null
+      },
+      {
+        "id": "demo.emergency_delivery.event.upload_failure",
+        "label": "Synthetic upload failed",
+        "label_zh": "Synthetic upload failed",
+        "type_id": "event-type",
+        "kind": "event",
+        "record_kind": "event_definition",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "fact_ids": [
+          "demo.emergency_delivery.fact.upload_failure"
+        ],
+        "source_id": "demo.emergency_delivery.evidence",
+        "description": "Authored event definition; the occurrence is a separate derived fixture record, not native predicate truth.",
+        "trigger": null
+      },
+      {
+        "id": "demo.emergency_delivery.event.upload_unknown",
+        "label": "Upload acknowledgement UNKNOWN",
+        "label_zh": "Upload acknowledgement UNKNOWN",
+        "type_id": "event-type",
+        "kind": "event",
+        "record_kind": "event_definition",
+        "entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "fact_ids": [
+          "demo.emergency_delivery.fact.upload_unknown"
+        ],
+        "source_id": "demo.emergency_delivery.evidence",
+        "description": "Authored event definition; the occurrence is a separate derived fixture record, not native predicate truth.",
+        "trigger": null
+      }
+    ],
+    "commands": [
+      {
+        "id": "demo.emergency_delivery.command.definition",
+        "label": "command.definition",
+        "label_zh": "command.definition",
+        "type_id": "command-type",
+        "kind": "command",
+        "record_kind": "command_definition",
+        "agent_id": "demo.emergency_delivery.agent",
+        "target_entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.camera",
+          "demo.emergency_delivery.radio"
+        ],
+        "task_id": "demo.emergency_delivery.task",
+        "action": "command",
+        "parameters": {
+          "fixture_only": true,
+          "route_plan": {
+            "frame": "ENU",
+            "unit": "m",
+            "waypoints": [
+              [
+                0,
+                0,
+                15
+              ],
+              [
+                0,
+                15,
+                15
+              ],
+              [
+                30,
+                15,
+                15
+              ],
+              [
+                35,
+                12,
+                15
+              ]
+            ],
+            "planned_interval_ns": [
+              "16000000000",
+              "20000000000"
+            ],
+            "source_id": "demo.emergency_delivery.policy",
+            "spatial_verification": "not_executed"
+          },
+          "payload": {
+            "kind": "synthetic_metadata",
+            "bytes": 0,
+            "actual_imagery": false
+          },
+          "recipient_entity_id": "demo.emergency_delivery.endpoint"
+        },
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "authored-emergency-fixture"
+        },
+        "composition": {
+          "mode": "sequence",
+          "behavior_ids": [
+            "demo.emergency_delivery.behavior.approach",
+            "demo.emergency_delivery.behavior.capture",
+            "demo.emergency_delivery.behavior.hold",
+            "demo.emergency_delivery.behavior.upload"
+          ],
+          "conditions": []
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.command.report.definition",
+        "label": "command.report.definition",
+        "label_zh": "command.report.definition",
+        "type_id": "command-type",
+        "kind": "command",
+        "record_kind": "command_definition",
+        "agent_id": "demo.emergency_delivery.agent",
+        "target_entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "task_id": "demo.emergency_delivery.task.report",
+        "action": "command.report",
+        "parameters": {
+          "fixture_only": true,
+          "message_kind": "incident_report_and_lease_request",
+          "request_id": "demo.emergency_delivery.request"
+        },
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "authored-emergency-fixture"
+        },
+        "composition": {
+          "mode": "sequence",
+          "behavior_ids": [
+            "demo.emergency_delivery.behavior.report"
+          ],
+          "conditions": []
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.command.grant.definition",
+        "label": "command.grant.definition",
+        "label_zh": "command.grant.definition",
+        "type_id": "command-type",
+        "kind": "command",
+        "record_kind": "command_definition",
+        "agent_id": "demo.emergency_delivery.edge_agent",
+        "target_entity_ids": [
+          "demo.emergency_delivery.edge_server"
+        ],
+        "task_id": "demo.emergency_delivery.task.review",
+        "action": "command.grant",
+        "parameters": {
+          "fixture_only": true,
+          "message_kind": "scoped_lease_grant",
+          "approval_id": "demo.emergency_delivery.approval"
+        },
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "authored-emergency-fixture"
+        },
+        "composition": {
+          "mode": "sequence",
+          "behavior_ids": [
+            "demo.emergency_delivery.behavior.review"
+          ],
+          "conditions": []
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.command.return_report.definition",
+        "label": "command.return_report.definition",
+        "label_zh": "command.return_report.definition",
+        "type_id": "command-type",
+        "kind": "command",
+        "record_kind": "command_definition",
+        "agent_id": "demo.emergency_delivery.agent",
+        "target_entity_ids": [
+          "demo.emergency_delivery.uav",
+          "demo.emergency_delivery.radio"
+        ],
+        "task_id": "demo.emergency_delivery.task.return_report",
+        "action": "command.return_report",
+        "parameters": {
+          "fixture_only": true,
+          "message_kind": "return_lease_request",
+          "request_id": "demo.emergency_delivery.return_request"
+        },
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "authored-emergency-fixture"
+        },
+        "composition": {
+          "mode": "sequence",
+          "behavior_ids": [
+            "demo.emergency_delivery.behavior.report"
+          ],
+          "conditions": []
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.command.return_grant.definition",
+        "label": "command.return_grant.definition",
+        "label_zh": "command.return_grant.definition",
+        "type_id": "command-type",
+        "kind": "command",
+        "record_kind": "command_definition",
+        "agent_id": "demo.emergency_delivery.edge_agent",
+        "target_entity_ids": [
+          "demo.emergency_delivery.edge_server"
+        ],
+        "task_id": "demo.emergency_delivery.task.return_review",
+        "action": "command.return_grant",
+        "parameters": {
+          "fixture_only": true,
+          "message_kind": "return_lease_grant",
+          "approval_id": "demo.emergency_delivery.return_approval"
+        },
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "authored-emergency-fixture"
+        },
+        "composition": {
+          "mode": "sequence",
+          "behavior_ids": [
+            "demo.emergency_delivery.behavior.review"
+          ],
+          "conditions": []
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.command.return.definition",
+        "label": "command.return.definition",
+        "label_zh": "command.return.definition",
+        "type_id": "command-type",
+        "kind": "command",
+        "record_kind": "command_definition",
+        "agent_id": "demo.emergency_delivery.agent",
+        "target_entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "task_id": "demo.emergency_delivery.task.return",
+        "action": "command.return",
+        "parameters": {
+          "fixture_only": true
+        },
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "authored-emergency-fixture"
+        },
+        "composition": {
+          "mode": "sequence",
+          "behavior_ids": [
+            "demo.emergency_delivery.behavior.return"
+          ],
+          "conditions": []
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.command.resume.definition",
+        "label": "command.resume.definition",
+        "label_zh": "command.resume.definition",
+        "type_id": "command-type",
+        "kind": "command",
+        "record_kind": "command_definition",
+        "agent_id": "demo.emergency_delivery.agent",
+        "target_entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "task_id": "demo.emergency_delivery.task.resume",
+        "action": "command.resume",
+        "parameters": {
+          "fixture_only": true
+        },
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "authored-emergency-fixture"
+        },
+        "composition": {
+          "mode": "sequence",
+          "behavior_ids": [
+            "demo.emergency_delivery.behavior.resume"
+          ],
+          "conditions": []
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.command.hold.definition",
+        "label": "command.hold.definition",
+        "label_zh": "command.hold.definition",
+        "type_id": "command-type",
+        "kind": "command",
+        "record_kind": "command_definition",
+        "agent_id": "demo.emergency_delivery.agent",
+        "target_entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "task_id": "demo.emergency_delivery.task.hold",
+        "action": "command.hold",
+        "parameters": {
+          "fixture_only": true
+        },
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "authored-emergency-fixture"
+        },
+        "composition": {
+          "mode": "sequence",
+          "behavior_ids": [
+            "demo.emergency_delivery.behavior.hold"
+          ],
+          "conditions": []
+        }
+      }
+    ],
+    "arbitrations": [],
+    "sources": [
+      {
+        "id": "demo.emergency_delivery.policy",
+        "label": "Exercise policy v1",
+        "label_zh": "演练规则 v1",
+        "type_id": "source-type",
+        "kind": "authored_fixture",
+        "citation": "Synthetic scenario metadata only; no real observations or actual data transfer.",
+        "uri": null,
+        "jurisdiction": null,
+        "effective_date": null,
+        "verification": "unverified",
+        "issuer": null,
+        "applicable_entity_type_ids": [],
+        "activities": [],
+        "effective_from": null,
+        "effective_until": null,
+        "version": "fixture-v1",
+        "clause": null
+      },
+      {
+        "id": "demo.emergency_delivery.evidence",
+        "label": "Synthetic trace + proof scope",
+        "label_zh": "合成轨迹与来源范围",
+        "type_id": "source-type",
+        "kind": "authored_fixture",
+        "citation": "Synthetic scenario metadata only; no real observations or actual data transfer.",
+        "uri": null,
+        "jurisdiction": null,
+        "effective_date": null,
+        "verification": "unverified",
+        "issuer": null,
+        "applicable_entity_type_ids": [],
+        "activities": [],
+        "effective_from": null,
+        "effective_until": null,
+        "version": "fixture-v1",
+        "clause": null
+      },
+      {
+        "id": "demo.emergency_delivery.legal-unknown",
+        "label": "legal-unknown",
+        "label_zh": "legal-unknown",
+        "type_id": "source-type",
+        "kind": "legal_reference",
+        "citation": "No applicable real-world legal authority verified. This source never grants permission.",
+        "uri": null,
+        "jurisdiction": null,
+        "effective_date": null,
+        "verification": "unverified",
+        "issuer": null,
+        "applicable_entity_type_ids": [],
+        "activities": [],
+        "effective_from": null,
+        "effective_until": null,
+        "version": "fixture-v1",
+        "clause": null
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "demo.emergency_delivery.scenario.report",
+        "label": "Computed synthetic fall → communication report",
+        "label_zh": "Computed synthetic fall → communication report",
+        "type_id": "scenario-type",
+        "description": "Computed synthetic fall → communication report; authored decision replay and bounded fixture checks only. Actual modules, authority, delivery and native truth are not connected.",
+        "fact_ids": [
+          "demo.emergency_delivery.fact.incident",
+          "demo.emergency_delivery.fact.separation",
+          "demo.emergency_delivery.fact.energy",
+          "demo.emergency_delivery.fact.pose",
+          "demo.emergency_delivery.fact.target",
+          "demo.emergency_delivery.fact.paused",
+          "demo.emergency_delivery.fact.custody",
+          "demo.emergency_delivery.fact.attachment",
+          "demo.emergency_delivery.fact.capture",
+          "demo.emergency_delivery.fact.upload",
+          "demo.emergency_delivery.fact.after_energy",
+          "demo.emergency_delivery.fact.report_received",
+          "demo.emergency_delivery.fact.privacy",
+          "demo.emergency_delivery.fact.exercise_permission",
+          "demo.emergency_delivery.fact.capability_ready",
+          "demo.emergency_delivery.fact.incident_refresh"
+        ],
+        "decision_ids": [
+          "demo.emergency_delivery.decision.report"
+        ],
+        "task_ids": [
+          "demo.emergency_delivery.task.report"
+        ],
+        "event_ids": [
+          "demo.emergency_delivery.event_def"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.report.definition"
+        ],
+        "observed_at_ns": "12200000000",
+        "admission_timeline": [],
+        "lease_request_ids": [
+          "demo.emergency_delivery.request"
+        ],
+        "lease_approval_ids": [
+          "demo.emergency_delivery.approval"
+        ],
+        "allocation_ids": [
+          "demo.emergency_delivery.allocation"
+        ],
+        "delivery_receipt_ids": [
+          "demo.emergency_delivery.report_receipt"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.scenario.edge_review",
+        "label": "Edge corridor agent considers received report",
+        "label_zh": "Edge corridor agent considers received report",
+        "type_id": "scenario-type",
+        "description": "Edge corridor agent considers received report; authored decision replay and bounded fixture checks only. Actual modules, authority, delivery and native truth are not connected.",
+        "fact_ids": [
+          "demo.emergency_delivery.fact.incident",
+          "demo.emergency_delivery.fact.separation",
+          "demo.emergency_delivery.fact.energy",
+          "demo.emergency_delivery.fact.pose",
+          "demo.emergency_delivery.fact.target",
+          "demo.emergency_delivery.fact.paused",
+          "demo.emergency_delivery.fact.custody",
+          "demo.emergency_delivery.fact.attachment",
+          "demo.emergency_delivery.fact.capture",
+          "demo.emergency_delivery.fact.upload",
+          "demo.emergency_delivery.fact.after_energy",
+          "demo.emergency_delivery.fact.report_received",
+          "demo.emergency_delivery.fact.privacy",
+          "demo.emergency_delivery.fact.exercise_permission",
+          "demo.emergency_delivery.fact.capability_ready",
+          "demo.emergency_delivery.fact.incident_refresh"
+        ],
+        "decision_ids": [
+          "demo.emergency_delivery.decision.edge_approval"
+        ],
+        "task_ids": [
+          "demo.emergency_delivery.task.review"
+        ],
+        "event_ids": [],
+        "command_ids": [
+          "demo.emergency_delivery.command.grant.definition"
+        ],
+        "observed_at_ns": "14000000000",
+        "admission_timeline": [],
+        "lease_request_ids": [
+          "demo.emergency_delivery.request"
+        ],
+        "lease_approval_ids": [
+          "demo.emergency_delivery.approval"
+        ],
+        "allocation_ids": [
+          "demo.emergency_delivery.allocation"
+        ],
+        "delivery_receipt_ids": [
+          "demo.emergency_delivery.report_receipt",
+          "demo.emergency_delivery.grant_receipt"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.scenario.capture",
+        "label": "Received grant before gated approach, capture and upload",
+        "label_zh": "Received grant before gated approach, capture and upload",
+        "type_id": "scenario-type",
+        "description": "Received grant before gated approach, capture and upload; authored decision replay and bounded fixture checks only. Actual modules, authority, delivery and native truth are not connected.",
+        "fact_ids": [
+          "demo.emergency_delivery.fact.incident",
+          "demo.emergency_delivery.fact.separation",
+          "demo.emergency_delivery.fact.energy",
+          "demo.emergency_delivery.fact.pose",
+          "demo.emergency_delivery.fact.target",
+          "demo.emergency_delivery.fact.paused",
+          "demo.emergency_delivery.fact.custody",
+          "demo.emergency_delivery.fact.attachment",
+          "demo.emergency_delivery.fact.capture",
+          "demo.emergency_delivery.fact.upload",
+          "demo.emergency_delivery.fact.after_energy",
+          "demo.emergency_delivery.fact.report_received",
+          "demo.emergency_delivery.fact.privacy",
+          "demo.emergency_delivery.fact.exercise_permission",
+          "demo.emergency_delivery.fact.capability_ready",
+          "demo.emergency_delivery.fact.incident_refresh"
+        ],
+        "decision_ids": [
+          "demo.emergency_delivery.decision"
+        ],
+        "task_ids": [
+          "demo.emergency_delivery.task"
+        ],
+        "event_ids": [],
+        "command_ids": [
+          "demo.emergency_delivery.command.definition"
+        ],
+        "observed_at_ns": "21600000000",
+        "admission_timeline": [
+          {
+            "at_ns": "16000000000",
+            "check_ids": [
+              "demo.emergency_delivery.check.vehicle",
+              "demo.emergency_delivery.check.energy"
+            ],
+            "event_ids": [],
+            "updated_fact_ids": []
+          },
+          {
+            "at_ns": "21400000000",
+            "check_ids": [
+              "demo.emergency_delivery.check.incident",
+              "demo.emergency_delivery.check.safety",
+              "demo.emergency_delivery.check.privacy",
+              "demo.emergency_delivery.check.permission"
+            ],
+            "event_ids": [],
+            "updated_fact_ids": []
+          }
+        ],
+        "lease_request_ids": [
+          "demo.emergency_delivery.request"
+        ],
+        "lease_approval_ids": [
+          "demo.emergency_delivery.approval"
+        ],
+        "allocation_ids": [
+          "demo.emergency_delivery.allocation"
+        ],
+        "delivery_receipt_ids": [
+          "demo.emergency_delivery.report_receipt",
+          "demo.emergency_delivery.grant_receipt"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.scenario.success",
+        "label": "Confirmed fixture upload then proposed delivery resumption",
+        "label_zh": "Confirmed fixture upload then proposed delivery resumption",
+        "type_id": "scenario-type",
+        "description": "Confirmed fixture upload then proposed delivery resumption; authored decision replay and bounded fixture checks only. Actual modules, authority, delivery and native truth are not connected.",
+        "fact_ids": [
+          "demo.emergency_delivery.fact.incident",
+          "demo.emergency_delivery.fact.separation",
+          "demo.emergency_delivery.fact.energy",
+          "demo.emergency_delivery.fact.pose",
+          "demo.emergency_delivery.fact.target",
+          "demo.emergency_delivery.fact.paused",
+          "demo.emergency_delivery.fact.custody",
+          "demo.emergency_delivery.fact.attachment",
+          "demo.emergency_delivery.fact.capture",
+          "demo.emergency_delivery.fact.upload",
+          "demo.emergency_delivery.fact.after_energy",
+          "demo.emergency_delivery.fact.report_received",
+          "demo.emergency_delivery.fact.privacy",
+          "demo.emergency_delivery.fact.exercise_permission",
+          "demo.emergency_delivery.fact.capability_ready",
+          "demo.emergency_delivery.fact.incident_refresh",
+          "demo.emergency_delivery.fact.delivery_active"
+        ],
+        "decision_ids": [
+          "demo.emergency_delivery.outcome"
+        ],
+        "task_ids": [
+          "demo.emergency_delivery.task.resume"
+        ],
+        "event_ids": [
+          "demo.emergency_delivery.event.upload_success"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.resume.definition"
+        ],
+        "observed_at_ns": "45000000000",
+        "admission_timeline": [],
+        "lease_request_ids": [
+          "demo.emergency_delivery.request"
+        ],
+        "lease_approval_ids": [
+          "demo.emergency_delivery.approval"
+        ],
+        "allocation_ids": [
+          "demo.emergency_delivery.allocation"
+        ],
+        "delivery_receipt_ids": [
+          "demo.emergency_delivery.upload_success_receipt"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.scenario.failure",
+        "label": "Failed upload, new return request and independent approval",
+        "label_zh": "Failed upload, new return request and independent approval",
+        "type_id": "scenario-type",
+        "description": "Failed upload, new return request and independent approval; authored decision replay and bounded fixture checks only. Actual modules, authority, delivery and native truth are not connected.",
+        "fact_ids": [
+          "demo.emergency_delivery.fact.incident",
+          "demo.emergency_delivery.fact.separation",
+          "demo.emergency_delivery.fact.energy",
+          "demo.emergency_delivery.fact.pose",
+          "demo.emergency_delivery.fact.target",
+          "demo.emergency_delivery.fact.paused",
+          "demo.emergency_delivery.fact.custody",
+          "demo.emergency_delivery.fact.attachment",
+          "demo.emergency_delivery.fact.capture",
+          "demo.emergency_delivery.fact.after_energy",
+          "demo.emergency_delivery.fact.report_received",
+          "demo.emergency_delivery.fact.privacy",
+          "demo.emergency_delivery.fact.exercise_permission",
+          "demo.emergency_delivery.fact.capability_ready",
+          "demo.emergency_delivery.fact.incident_refresh",
+          "demo.emergency_delivery.fact.upload_failure"
+        ],
+        "decision_ids": [
+          "demo.emergency_delivery.decision.return_report",
+          "demo.emergency_delivery.decision.return_approval"
+        ],
+        "task_ids": [
+          "demo.emergency_delivery.task.return_report",
+          "demo.emergency_delivery.task.return_review"
+        ],
+        "event_ids": [
+          "demo.emergency_delivery.event.upload_failure"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.return_report.definition",
+          "demo.emergency_delivery.command.return_grant.definition"
+        ],
+        "observed_at_ns": "43000000000",
+        "admission_timeline": [],
+        "lease_request_ids": [
+          "demo.emergency_delivery.return_request"
+        ],
+        "lease_approval_ids": [
+          "demo.emergency_delivery.return_approval"
+        ],
+        "allocation_ids": [
+          "demo.emergency_delivery.return_allocation"
+        ],
+        "delivery_receipt_ids": [
+          "demo.emergency_delivery.upload_failure_receipt",
+          "demo.emergency_delivery.return_report_receipt",
+          "demo.emergency_delivery.return_grant_receipt"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.scenario.return",
+        "label": "Separate reverse allocation permits fixture return planning",
+        "label_zh": "Separate reverse allocation permits fixture return planning",
+        "type_id": "scenario-type",
+        "description": "Separate reverse allocation permits fixture return planning; authored decision replay and bounded fixture checks only. Actual modules, authority, delivery and native truth are not connected.",
+        "fact_ids": [
+          "demo.emergency_delivery.fact.incident",
+          "demo.emergency_delivery.fact.separation",
+          "demo.emergency_delivery.fact.energy",
+          "demo.emergency_delivery.fact.pose",
+          "demo.emergency_delivery.fact.target",
+          "demo.emergency_delivery.fact.paused",
+          "demo.emergency_delivery.fact.custody",
+          "demo.emergency_delivery.fact.attachment",
+          "demo.emergency_delivery.fact.capture",
+          "demo.emergency_delivery.fact.after_energy",
+          "demo.emergency_delivery.fact.report_received",
+          "demo.emergency_delivery.fact.privacy",
+          "demo.emergency_delivery.fact.exercise_permission",
+          "demo.emergency_delivery.fact.capability_ready",
+          "demo.emergency_delivery.fact.incident_refresh",
+          "demo.emergency_delivery.fact.upload_failure",
+          "demo.emergency_delivery.fact.delivery_returned",
+          "demo.emergency_delivery.fact.return_pose"
+        ],
+        "decision_ids": [
+          "demo.emergency_delivery.decision.return"
+        ],
+        "task_ids": [
+          "demo.emergency_delivery.task.return"
+        ],
+        "event_ids": [],
+        "command_ids": [
+          "demo.emergency_delivery.command.return.definition"
+        ],
+        "observed_at_ns": "78000000000",
+        "admission_timeline": [
+          {
+            "at_ns": "44000000000",
+            "check_ids": [
+              "demo.emergency_delivery.check.vehicle",
+              "demo.emergency_delivery.check.energy"
+            ],
+            "event_ids": [],
+            "updated_fact_ids": []
+          }
+        ],
+        "lease_request_ids": [
+          "demo.emergency_delivery.return_request"
+        ],
+        "lease_approval_ids": [
+          "demo.emergency_delivery.return_approval"
+        ],
+        "allocation_ids": [
+          "demo.emergency_delivery.return_allocation"
+        ],
+        "delivery_receipt_ids": [
+          "demo.emergency_delivery.return_grant_receipt"
+        ]
+      },
+      {
+        "id": "demo.emergency_delivery.scenario.unknown",
+        "label": "Unknown upload: hold and bounded wait until 50 s",
+        "label_zh": "Unknown upload: hold and bounded wait until 50 s",
+        "type_id": "scenario-type",
+        "description": "Unknown upload: hold and bounded wait until 50 s; authored decision replay and bounded fixture checks only. Actual modules, authority, delivery and native truth are not connected.",
+        "fact_ids": [
+          "demo.emergency_delivery.fact.incident",
+          "demo.emergency_delivery.fact.separation",
+          "demo.emergency_delivery.fact.energy",
+          "demo.emergency_delivery.fact.pose",
+          "demo.emergency_delivery.fact.target",
+          "demo.emergency_delivery.fact.paused",
+          "demo.emergency_delivery.fact.custody",
+          "demo.emergency_delivery.fact.attachment",
+          "demo.emergency_delivery.fact.capture",
+          "demo.emergency_delivery.fact.after_energy",
+          "demo.emergency_delivery.fact.report_received",
+          "demo.emergency_delivery.fact.privacy",
+          "demo.emergency_delivery.fact.exercise_permission",
+          "demo.emergency_delivery.fact.capability_ready",
+          "demo.emergency_delivery.fact.incident_refresh",
+          "demo.emergency_delivery.fact.upload_unknown",
+          "demo.emergency_delivery.fact.delivery_waiting"
+        ],
+        "decision_ids": [
+          "demo.emergency_delivery.decision.wait"
+        ],
+        "task_ids": [
+          "demo.emergency_delivery.task.hold"
+        ],
+        "event_ids": [
+          "demo.emergency_delivery.event.upload_unknown"
+        ],
+        "command_ids": [
+          "demo.emergency_delivery.command.hold.definition"
+        ],
+        "observed_at_ns": "46000000000",
+        "admission_timeline": [],
+        "lease_request_ids": [
+          "demo.emergency_delivery.request"
+        ],
+        "lease_approval_ids": [
+          "demo.emergency_delivery.approval"
+        ],
+        "allocation_ids": [
+          "demo.emergency_delivery.allocation"
+        ],
+        "delivery_receipt_ids": [
+          "demo.emergency_delivery.upload_unknown_receipt"
+        ]
+      }
+    ],
+    "admission_checks": [
+      {
+        "id": "demo.emergency_delivery.check.incident",
+        "label": "check.incident",
+        "label_zh": "check.incident",
+        "type_id": "admission-check-type",
+        "entity_id": "demo.emergency_delivery.person",
+        "field_id": "demo.emergency_delivery.state.confidence",
+        "constraint_id": "demo.emergency_delivery.constraint.incident",
+        "behavior_ids": [
+          "demo.emergency_delivery.behavior.capture"
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "bounded-fixture-admission-v1"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.check.safety",
+        "label": "check.safety",
+        "label_zh": "check.safety",
+        "type_id": "admission-check-type",
+        "entity_id": "demo.emergency_delivery.uav",
+        "field_id": "demo.emergency_delivery.state.separation",
+        "constraint_id": "demo.emergency_delivery.constraint.safety",
+        "behavior_ids": [
+          "demo.emergency_delivery.behavior.capture",
+          "demo.emergency_delivery.behavior.hold"
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "bounded-fixture-admission-v1"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.check.privacy",
+        "label": "check.privacy",
+        "label_zh": "check.privacy",
+        "type_id": "admission-check-type",
+        "entity_id": "demo.emergency_delivery.region",
+        "field_id": "demo.emergency_delivery.state.privacy",
+        "constraint_id": "demo.emergency_delivery.constraint.privacy",
+        "behavior_ids": [
+          "demo.emergency_delivery.behavior.capture",
+          "demo.emergency_delivery.behavior.upload"
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "bounded-fixture-admission-v1"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.check.permission",
+        "label": "check.permission",
+        "label_zh": "check.permission",
+        "type_id": "admission-check-type",
+        "entity_id": "demo.emergency_delivery.region",
+        "field_id": "demo.emergency_delivery.state.exercise_permission",
+        "constraint_id": "demo.emergency_delivery.constraint.exercise_permission",
+        "behavior_ids": [
+          "demo.emergency_delivery.behavior.capture",
+          "demo.emergency_delivery.behavior.upload"
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "bounded-fixture-admission-v1"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.check.vehicle",
+        "label": "check.vehicle",
+        "label_zh": "check.vehicle",
+        "type_id": "admission-check-type",
+        "entity_id": "demo.emergency_delivery.uav",
+        "field_id": "demo.emergency_delivery.state.capability_ready",
+        "constraint_id": "demo.emergency_delivery.constraint.vehicle",
+        "behavior_ids": [
+          "demo.emergency_delivery.behavior.approach",
+          "demo.emergency_delivery.behavior.hold",
+          "demo.emergency_delivery.behavior.return"
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "bounded-fixture-admission-v1"
+        }
+      },
+      {
+        "id": "demo.emergency_delivery.check.energy",
+        "label": "check.energy",
+        "label_zh": "check.energy",
+        "type_id": "admission-check-type",
+        "entity_id": "demo.emergency_delivery.uav",
+        "field_id": "demo.emergency_delivery.state.energy",
+        "constraint_id": "demo.emergency_delivery.constraint.energy",
+        "behavior_ids": [
+          "demo.emergency_delivery.behavior.approach",
+          "demo.emergency_delivery.behavior.hold",
+          "demo.emergency_delivery.behavior.return"
+        ],
+        "binding": {
+          "mode": "fixture",
+          "status": "declared",
+          "adapter": "bounded-fixture-admission-v1"
+        }
+      }
+    ],
+    "feedback_policies": [
+      {
+        "id": "demo.emergency_delivery.feedback_policy",
+        "label": "Incident feedback: pause + replan",
+        "label_zh": "异常反馈：暂停并重规划",
+        "type_id": "feedback-policy-type",
+        "event_ids": [
+          "demo.emergency_delivery.event_def"
+        ],
+        "agent_id": "demo.emergency_delivery.agent",
+        "behavior_ids": [
+          "demo.emergency_delivery.behavior.approach",
+          "demo.emergency_delivery.behavior.capture",
+          "demo.emergency_delivery.behavior.upload"
+        ],
+        "response": "replan",
+        "decision_ids": [
+          "demo.emergency_delivery.decision"
+        ],
+        "description": "Incident prompts an authored proposed replan; no event directly starts flight or camera."
+      },
+      {
+        "id": "demo.emergency_delivery.feedback.upload_failure",
+        "label": "feedback.upload_failure",
+        "label_zh": "feedback.upload_failure",
+        "type_id": "feedback-policy-type",
+        "event_ids": [
+          "demo.emergency_delivery.event.upload_failure"
+        ],
+        "agent_id": "demo.emergency_delivery.agent",
+        "behavior_ids": [
+          "demo.emergency_delivery.behavior.upload"
+        ],
+        "response": "replan",
+        "decision_ids": [
+          "demo.emergency_delivery.decision.return_report",
+          "demo.emergency_delivery.decision.return"
+        ],
+        "description": "Failure proposes a separately authorized return with parcel; old corridor grant is not reused."
+      },
+      {
+        "id": "demo.emergency_delivery.feedback.upload_unknown",
+        "label": "feedback.upload_unknown",
+        "label_zh": "feedback.upload_unknown",
+        "type_id": "feedback-policy-type",
+        "event_ids": [
+          "demo.emergency_delivery.event.upload_unknown"
+        ],
+        "agent_id": "demo.emergency_delivery.agent",
+        "behavior_ids": [
+          "demo.emergency_delivery.behavior.upload"
+        ],
+        "response": "pause",
+        "decision_ids": [
+          "demo.emergency_delivery.decision.wait"
+        ],
+        "description": "Unknown is not success: pause and reevaluate by authored deadline 50 s."
+      }
+    ],
+    "predicate_results": [
+      {
+        "id": "demo.emergency_delivery.predicate_result.incident",
+        "label": "predicate_result.incident",
+        "label_zh": "predicate_result.incident",
+        "type_id": "predicate-result-type",
+        "predicate_id": "demo.emergency_delivery.predicate.incident",
+        "input_fact_ids": [
+          "demo.emergency_delivery.fact.incident"
+        ],
+        "value": "UNKNOWN",
+        "valid_time_ns": "12100000000",
+        "source_id": "demo.emergency_delivery.evidence",
+        "record_kind": "fixture_predicate_result"
+      }
+    ],
+    "relation_definitions": [
+      {
+        "id": "demo.emergency_delivery.relation.custody",
+        "label": "Responsible custody relation",
+        "label_zh": "责任保管关系",
+        "type_id": "relation-definition-type",
+        "subject_type_id": "demo.emergency_delivery.type.parcel",
+        "object_type_id": "demo.emergency_delivery.type.uav",
+        "field_ids": [
+          "demo.emergency_delivery.state.custody"
+        ],
+        "description": "Parcel state points explicitly to the UAV; responsible custody and physical attachment remain different relations."
+      },
+      {
+        "id": "demo.emergency_delivery.relation.attachment",
+        "label": "Physical attachment relation",
+        "label_zh": "物理挂载关系",
+        "type_id": "relation-definition-type",
+        "subject_type_id": "demo.emergency_delivery.type.parcel",
+        "object_type_id": "demo.emergency_delivery.type.uav",
+        "field_ids": [
+          "demo.emergency_delivery.state.attachment"
+        ],
+        "description": "Parcel state points explicitly to the UAV; responsible custody and physical attachment remain different relations."
+      }
+    ],
+    "parameter_definitions": [
+      {
+        "id": "demo.emergency_delivery.incident_threshold",
+        "label": "Incident confidence threshold",
+        "label_zh": "Incident confidence threshold",
+        "type_id": "parameter-definition-type",
+        "value_type": "number",
+        "unit": "1",
+        "value": 0.85,
+        "source_id": "demo.emergency_delivery.policy"
+      }
+    ],
+    "spatial_zones": [
+      {
+        "id": "demo.emergency_delivery.corridor",
+        "label": "Corridor C · time allocated",
+        "label_zh": "航道 C · 分时使用",
+        "type_id": "spatial-zone-type",
+        "kind": "corridor",
+        "geometry": {
+          "frame": "ENU",
+          "axis_order": "east_north",
+          "unit": "m",
+          "geometry_type": "polygon",
+          "coordinates": [
+            [
+              -3,
+              -3
+            ],
+            [
+              3,
+              -3
+            ],
+            [
+              3,
+              12
+            ],
+            [
+              33,
+              12
+            ],
+            [
+              33,
+              18
+            ],
+            [
+              -3,
+              18
+            ],
+            [
+              -3,
+              -3
+            ]
+          ]
+        },
+        "altitude": {
+          "min_m": 12,
+          "max_m": 18
+        },
+        "time_windows": [
+          {
+            "start_ns": "0",
+            "end_ns": "120000000000"
+          }
+        ],
+        "direction": "bidirectional",
+        "access": "approval_required",
+        "authority_agent_ids": [
+          "demo.emergency_delivery.edge_agent"
+        ],
+        "capacity_slots": 1,
+        "source_id": "demo.emergency_delivery.policy"
+      },
+      {
+        "id": "demo.emergency_delivery.no_fly",
+        "label": "No-fly zone N · prohibited",
+        "label_zh": "禁飞区 N · 禁止进入",
+        "type_id": "spatial-zone-type",
+        "kind": "no_fly_zone",
+        "geometry": {
+          "frame": "ENU",
+          "axis_order": "east_north",
+          "unit": "m",
+          "geometry_type": "polygon",
+          "coordinates": [
+            [
+              15,
+              0
+            ],
+            [
+              23,
+              0
+            ],
+            [
+              23,
+              8
+            ],
+            [
+              15,
+              8
+            ],
+            [
+              15,
+              0
+            ]
+          ]
+        },
+        "altitude": {
+          "min_m": 0,
+          "max_m": 50
+        },
+        "time_windows": [
+          {
+            "start_ns": "0",
+            "end_ns": "120000000000"
+          }
+        ],
+        "direction": "bidirectional",
+        "access": "prohibited",
+        "authority_agent_ids": [
+          "demo.emergency_delivery.edge_agent"
+        ],
+        "capacity_slots": 0,
+        "source_id": "demo.emergency_delivery.policy"
+      }
+    ],
+    "lease_requests": [
+      {
+        "id": "demo.emergency_delivery.request",
+        "label": "Report incident + request reroute",
+        "label_zh": "上报异常 + 申请改道",
+        "type_id": "lease-request-type",
+        "record_kind": "fixture_lease_request",
+        "agent_id": "demo.emergency_delivery.agent",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "zone_id": "demo.emergency_delivery.corridor",
+        "requested_window": {
+          "start_ns": "16000000000",
+          "end_ns": "22000000000"
+        },
+        "requested_altitude": {
+          "min_m": 12,
+          "max_m": 18
+        },
+        "direction": "forward",
+        "issued_at_ns": "12200000000",
+        "purpose": "synthetic incident capture from safe region",
+        "source_id": "demo.emergency_delivery.policy"
+      },
+      {
+        "id": "demo.emergency_delivery.return_request",
+        "label": "Request return slot after failure",
+        "label_zh": "失败后申请返航时隙",
+        "type_id": "lease-request-type",
+        "record_kind": "fixture_lease_request",
+        "agent_id": "demo.emergency_delivery.agent",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "zone_id": "demo.emergency_delivery.corridor",
+        "requested_window": {
+          "start_ns": "44000000000",
+          "end_ns": "78000000000"
+        },
+        "requested_altitude": {
+          "min_m": 12,
+          "max_m": 18
+        },
+        "direction": "reverse",
+        "issued_at_ns": "42100000000",
+        "purpose": "return parcel after failed incident upload",
+        "source_id": "demo.emergency_delivery.policy"
+      }
+    ],
+    "lease_approvals": [
+      {
+        "id": "demo.emergency_delivery.approval",
+        "label": "Edge approval · 16–22 s",
+        "label_zh": "边缘批准 · 16–22 s",
+        "type_id": "lease-approval-type",
+        "record_kind": "fixture_lease_approval",
+        "request_id": "demo.emergency_delivery.request",
+        "authority_agent_id": "demo.emergency_delivery.edge_agent",
+        "decision": "approved",
+        "approved_window": {
+          "start_ns": "16000000000",
+          "end_ns": "22000000000"
+        },
+        "approved_altitude": {
+          "min_m": 12,
+          "max_m": 18
+        },
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease"
+        ],
+        "evidence_receipt_ids": [
+          "demo.emergency_delivery.report_receipt"
+        ],
+        "issued_at_ns": "14000000000",
+        "source_id": "demo.emergency_delivery.policy"
+      },
+      {
+        "id": "demo.emergency_delivery.return_approval",
+        "label": "Separate return approval",
+        "label_zh": "返航另获批准",
+        "type_id": "lease-approval-type",
+        "record_kind": "fixture_lease_approval",
+        "request_id": "demo.emergency_delivery.return_request",
+        "authority_agent_id": "demo.emergency_delivery.edge_agent",
+        "decision": "approved",
+        "approved_window": {
+          "start_ns": "44000000000",
+          "end_ns": "78000000000"
+        },
+        "approved_altitude": {
+          "min_m": 12,
+          "max_m": 18
+        },
+        "constraint_ids": [
+          "demo.emergency_delivery.constraint.airspace",
+          "demo.emergency_delivery.constraint.lease"
+        ],
+        "evidence_receipt_ids": [
+          "demo.emergency_delivery.return_report_receipt"
+        ],
+        "issued_at_ns": "42500000000",
+        "source_id": "demo.emergency_delivery.policy"
+      }
+    ],
+    "space_time_allocations": [
+      {
+        "id": "demo.emergency_delivery.allocation",
+        "label": "Space-time allocation · slot 1",
+        "label_zh": "空间-时间分配 · 槽 1",
+        "type_id": "space-time-allocation-type",
+        "record_kind": "fixture_space_time_allocation",
+        "approval_id": "demo.emergency_delivery.approval",
+        "zone_id": "demo.emergency_delivery.corridor",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "window": {
+          "start_ns": "16000000000",
+          "end_ns": "22000000000"
+        },
+        "altitude": {
+          "min_m": 12,
+          "max_m": 18
+        },
+        "direction": "forward",
+        "slots": 1,
+        "status": "declared",
+        "source_id": "demo.emergency_delivery.policy"
+      },
+      {
+        "id": "demo.emergency_delivery.return_allocation",
+        "label": "Return slot · 44–78 s",
+        "label_zh": "返航时隙 · 44–78 s",
+        "type_id": "space-time-allocation-type",
+        "record_kind": "fixture_space_time_allocation",
+        "approval_id": "demo.emergency_delivery.return_approval",
+        "zone_id": "demo.emergency_delivery.corridor",
+        "entity_ids": [
+          "demo.emergency_delivery.uav"
+        ],
+        "window": {
+          "start_ns": "44000000000",
+          "end_ns": "78000000000"
+        },
+        "altitude": {
+          "min_m": 12,
+          "max_m": 18
+        },
+        "direction": "reverse",
+        "slots": 1,
+        "status": "declared",
+        "source_id": "demo.emergency_delivery.policy"
+      }
+    ],
+    "delivery_receipts": [
+      {
+        "id": "demo.emergency_delivery.report_receipt",
+        "label": "Report delivered to edge",
+        "label_zh": "上报已到达边缘端",
+        "type_id": "delivery-receipt-type",
+        "record_kind": "fixture_delivery_receipt",
+        "receipt_kind": "message_delivery",
+        "command_id": "demo.emergency_delivery.command.report.definition",
+        "task_id": "demo.emergency_delivery.task.report",
+        "sender_entity_id": "demo.emergency_delivery.uav",
+        "receiver_entity_id": "demo.emergency_delivery.edge_server",
+        "status": "acknowledged",
+        "emitted_at_ns": "12200000000",
+        "received_at_ns": "13000000000",
+        "evidence_fact_ids": [
+          "demo.emergency_delivery.fact.incident"
+        ],
+        "source_id": "demo.emergency_delivery.evidence"
+      },
+      {
+        "id": "demo.emergency_delivery.grant_receipt",
+        "label": "Grant received @15 s",
+        "label_zh": "批准已收到 @15 s",
+        "type_id": "delivery-receipt-type",
+        "record_kind": "fixture_delivery_receipt",
+        "receipt_kind": "message_delivery",
+        "command_id": "demo.emergency_delivery.command.grant.definition",
+        "task_id": "demo.emergency_delivery.task.review",
+        "sender_entity_id": "demo.emergency_delivery.edge_server",
+        "receiver_entity_id": "demo.emergency_delivery.uav",
+        "status": "acknowledged",
+        "emitted_at_ns": "14100000000",
+        "received_at_ns": "15000000000",
+        "evidence_fact_ids": [],
+        "source_id": "demo.emergency_delivery.evidence"
+      },
+      {
+        "id": "demo.emergency_delivery.return_report_receipt",
+        "label": "return_report_receipt",
+        "label_zh": "return_report_receipt",
+        "type_id": "delivery-receipt-type",
+        "record_kind": "fixture_delivery_receipt",
+        "receipt_kind": "message_delivery",
+        "command_id": "demo.emergency_delivery.command.return_report.definition",
+        "task_id": "demo.emergency_delivery.task.return_report",
+        "sender_entity_id": "demo.emergency_delivery.uav",
+        "receiver_entity_id": "demo.emergency_delivery.edge_server",
+        "status": "acknowledged",
+        "emitted_at_ns": "42100000000",
+        "received_at_ns": "42300000000",
+        "evidence_fact_ids": [
+          "demo.emergency_delivery.fact.upload_failure"
+        ],
+        "source_id": "demo.emergency_delivery.evidence"
+      },
+      {
+        "id": "demo.emergency_delivery.return_grant_receipt",
+        "label": "Return grant received @43 s",
+        "label_zh": "返航批准收到 @43 s",
+        "type_id": "delivery-receipt-type",
+        "record_kind": "fixture_delivery_receipt",
+        "receipt_kind": "message_delivery",
+        "command_id": "demo.emergency_delivery.command.return_grant.definition",
+        "task_id": "demo.emergency_delivery.task.return_review",
+        "sender_entity_id": "demo.emergency_delivery.edge_server",
+        "receiver_entity_id": "demo.emergency_delivery.uav",
+        "status": "acknowledged",
+        "emitted_at_ns": "42600000000",
+        "received_at_ns": "43000000000",
+        "evidence_fact_ids": [],
+        "source_id": "demo.emergency_delivery.evidence"
+      },
+      {
+        "id": "demo.emergency_delivery.upload_success_receipt",
+        "label": "upload_success_receipt",
+        "label_zh": "upload_success_receipt",
+        "type_id": "delivery-receipt-type",
+        "record_kind": "fixture_delivery_receipt",
+        "receipt_kind": "message_delivery",
+        "command_id": "demo.emergency_delivery.command.definition",
+        "task_id": "demo.emergency_delivery.task",
+        "sender_entity_id": "demo.emergency_delivery.uav",
+        "receiver_entity_id": "demo.emergency_delivery.endpoint",
+        "status": "acknowledged",
+        "emitted_at_ns": "21600000000",
+        "received_at_ns": "38100000000",
+        "evidence_fact_ids": [
+          "demo.emergency_delivery.fact.upload"
+        ],
+        "source_id": "demo.emergency_delivery.evidence"
+      },
+      {
+        "id": "demo.emergency_delivery.upload_failure_receipt",
+        "label": "upload_failure_receipt",
+        "label_zh": "upload_failure_receipt",
+        "type_id": "delivery-receipt-type",
+        "record_kind": "fixture_delivery_receipt",
+        "receipt_kind": "message_delivery",
+        "command_id": "demo.emergency_delivery.command.definition",
+        "task_id": "demo.emergency_delivery.task",
+        "sender_entity_id": "demo.emergency_delivery.uav",
+        "receiver_entity_id": "demo.emergency_delivery.endpoint",
+        "status": "rejected",
+        "emitted_at_ns": "21600000000",
+        "received_at_ns": "42100000000",
+        "evidence_fact_ids": [
+          "demo.emergency_delivery.fact.upload_failure"
+        ],
+        "source_id": "demo.emergency_delivery.evidence"
+      },
+      {
+        "id": "demo.emergency_delivery.upload_unknown_receipt",
+        "label": "upload_unknown_receipt",
+        "label_zh": "upload_unknown_receipt",
+        "type_id": "delivery-receipt-type",
+        "record_kind": "fixture_delivery_receipt",
+        "receipt_kind": "message_delivery",
+        "command_id": "demo.emergency_delivery.command.definition",
+        "task_id": "demo.emergency_delivery.task",
+        "sender_entity_id": "demo.emergency_delivery.uav",
+        "receiver_entity_id": "demo.emergency_delivery.endpoint",
+        "status": "UNKNOWN",
+        "emitted_at_ns": "21600000000",
+        "received_at_ns": null,
+        "evidence_fact_ids": [
+          "demo.emergency_delivery.fact.upload_unknown"
+        ],
+        "source_id": "demo.emergency_delivery.evidence"
+      }
+    ],
+    "edges": [
+      {
+        "id": "demo.emergency_delivery.edge.incident-observation",
+        "source": "demo.emergency_delivery.fact.incident",
+        "target": "demo.emergency_delivery.strategy",
+        "relation": "INPUT_TO",
+        "role": "observable_fact",
+        "condition": null,
+        "time": "12100000000",
+        "scope": [
+          "demo.emergency_delivery.person"
+        ],
+        "version": 1,
+        "source_id": "demo.emergency_delivery.evidence"
+      },
+      {
+        "id": "demo.emergency_delivery.edge.incident-safety",
+        "source": "demo.emergency_delivery.fact.incident",
+        "target": "demo.emergency_delivery.strategy",
+        "relation": "INPUT_TO",
+        "role": "safety_observation",
+        "condition": "authored proposed replan only",
+        "time": "12100000000",
+        "scope": [
+          "demo.emergency_delivery.person"
+        ],
+        "version": 1,
+        "source_id": "demo.emergency_delivery.evidence"
+      }
+    ]
+  },
+  "provenance": {
+    "kind": "authored_synthetic",
+    "source": "independent-console-demo",
+    "note": "Synthetic authored values; no private source, maps, raw data, or actual server configuration included."
+  }
+}

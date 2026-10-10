@@ -1,0 +1,32 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> p08-typed-graph-explorer@0.1.0 test
+> node --test tests/*.test.mjs
+
+✔ default is a connected authored case, full counts and all 75 cases readable (2.202472ms)
+✔ select rule exposes exact native AST, source location and no evaluator claim (21.747351ms)
+✔ expression nodes expose native ast_value and exact source AST path (13.720501ms)
+✔ edge inspector shows true source to target, role and exact raw edge (2.835944ms)
+✔ step filter restricts node scene without inventing linked nodes (27.536796ms)
+✔ global index selection fetches target source case and preserves exact ID (46.079048ms)
+✔ global index pagination is independent of canvas projection (22.708496ms)
+✔ error on failed case load keeps previous complete graph (1.781569ms)
+✔ real accepted graph counts, kinds, edges and source IDs retained (0.878621ms)
+✔ real graph bounded scene contains only real source objects, no shortcut edges (28.002567ms)
+✔ every accepted node kind and relation remains individually selectable (92.987738ms)
+✔ fact literal false/null/UNKNOWN and nanosecond strings retained without coercion (0.328144ms)
+✔ camera projection and layout are finite for real nodes in both modes (28.547031ms)
+✔ data URL resolver rejects off-origin and executable schemes (0.661786ms)
+✔ offline HTML has no external scripts/styles and enforces connect-src none (65.565484ms)
+✔ every embedded gzip recovers byte-identically, including full graph and all 75 chunks (2144.640279ms)
+✔ offline transport supports graph queries, cancellation and missing-feature report without network fallback (3.888767ms)
+✔ double-click file bootstrap loads global index and authored scene in emulated DOM (no pixel evidence) (3953.587195ms)
+✔ loopback static server serves UI and canonical manifest, rejects unrelated paths (102.985592ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6396.094905

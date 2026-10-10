@@ -1,0 +1,59 @@
+{
+  "decision": "Static migration/data/schema and UI model/DOM acceptance passed; browser/native/live readiness remains unverified.",
+  "graph_sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de",
+  "source_coverage": {
+    "graph_nodes": 20201,
+    "graph_edges": 64978,
+    "quarantined_edges": 0,
+    "aliases": 85179,
+    "merged_node_groups": 0,
+    "independent_source_occurrences": 83874
+  },
+  "exhaustive_checks": {
+    "total": 13,
+    "failed": 0
+  },
+  "schema_errors": 0,
+  "rebuild_json_files": 94,
+  "rebuild_mismatches": [],
+  "independent_regressions": {
+    "javascript_model_dom_geometry": 18,
+    "all_pass": true,
+    "python_contract_query_reconstruction_projection": 31
+  },
+  "reviewed_code_sha256": {
+    "spec/contract.py": "34842b46c9fd65f222dfa9dffd057901141b41e1492fc5288ec5fa4f0cf411d4",
+    "spec/p08-graph.schema.json": "8be40b6594a5fe3c938dc9747bbbf1c34c6509fe9b774d80851821aaec7f6008",
+    "pipeline/import_catalogs.py": "9128a253b6bdb32acd860c05c8afc0c4d98dc587c4bb93b0efde2f4c525e665c",
+    "pipeline/reconstruct.py": "c7611fd38bd506a3bb78ee1fe553e5f7fea2da6ca5a01530844d6287a47ad656",
+    "pipeline/semantic_queries.py": "120d09b4bdb2e8e9fbd8d0627cd6a6df4cdbda0cd06a95bc06a4f25be3876856",
+    "ui/model.js": "f73e67100982b570ba091d9266e447ffda7ded6862e3ce37b41ef44cfbd8d54f",
+    "ui/app.js": "ab196500f60ed04c3b97ff4d5d7b4ff8a322a9c0a06892fa9a4d76440ff993a4",
+    "ui/renderer.js": "936adca42664501c40adaca54f6c0aeba5efd6010d6a1b8c19e858cd80592dec",
+    "ui/index.html": "3292129049298b80e6686d5c77c7041a6b533ac9aa2683c9dde1fb197ccb20ba",
+    "ui/offline-transport.js": "2539db75e14b54f793091ca2e9071d44a679614b1139d05e7575429f5adc1097",
+    "ui/build-offline.py": "5dcde292b5fa33da9c361f24e56ae8c7650f77ac257faf53961cdf0195e646d9"
+  },
+  "performance_scope": "Node.js model only; JSON file I/O, indexing, filtering and layout. No actual browser, canvas pixels, animation or interaction latency measured.",
+  "unrun": [
+    "Real browser/pixel visual QA",
+    "Real browser frame rate and pointer interaction performance",
+    "Native evaluator execution",
+    "Simulator behavior validation",
+    "Live system command delivery or physical effect",
+    "Real legal authorization or calibration validity"
+  ],
+  "evidence": [
+    "README.md",
+    "artifact-audit.json",
+    "schema-validation.json",
+    "rebuild-comparison.json",
+    "python-acceptance.log",
+    "javascript-acceptance.log",
+    "model-benchmark.json"
+  ],
+  "accepted_source_occurrences": 85179,
+  "normalization_caveat": "No actual definition occurrence merge is performed; safe merge/nonmerge policy is independently tested with explicit fixtures. Package-backed source snapshots are the reverse-export authority.",
+  "final_correction": "All2539 JSON literal projections use structural is_null; none classify structural null as semantic Unknown.",
+  "offline_evidence": "See separately generated offline-audit.json for packaged block integrity. Browser pixels remain unverified."
+}

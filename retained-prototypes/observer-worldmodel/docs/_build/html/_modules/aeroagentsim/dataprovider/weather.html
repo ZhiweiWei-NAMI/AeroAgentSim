@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.dataprovider.weather &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.weather</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.dataprovider.weather</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="c1"># import pandas as pd # No longer needed if only using API</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">import</span> <span class="nn">time</span> <span class="c1"># For potential API refresh logic</span>
+
+<span class="kn">from</span> <span class="nn">..core.dataprovider</span> <span class="kn">import</span> <span class="n">DataProvider</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">ResourceStatus</span>
+<span class="c1"># Import the adapter</span>
+<span class="kn">from</span> <span class="nn">.api_adapters.openweathermap_adapter</span> <span class="kn">import</span> <span class="n">fetch_and_convert_weather_data</span>
+
+<span class="c1"># Type hinting for Environment, Agent, Managers to avoid circular imports</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.core.agent</span> <span class="kn">import</span> <span class="n">Agent</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.manager.landing</span> <span class="kn">import</span> <span class="n">LandingManager</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.manager.frequency</span> <span class="kn">import</span> <span class="n">FrequencyManager</span>
+    <span class="c1"># Import other managers if needed for callbacks</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="WeatherDataProvider"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.weather.WeatherDataProvider">[docs]</a><span class="k">class</span> <span class="nc">WeatherDataProvider</span><span class="p">(</span><span class="n">DataProvider</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides weather data and triggers weather-related events in the simulation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">EVENT_WEATHER_CHANGED</span> <span class="o">=</span> <span class="s1">&#39;WeatherChanged&#39;</span>
+
+<div class="viewcode-block" id="WeatherDataProvider.__init__"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.weather.WeatherDataProvider.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="s1">&#39;Environment&#39;</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the WeatherDataProvider.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: The simulation environment instance.</span>
+<span class="sd">            config (dict, optional): Configuration specific to this provider.</span>
+<span class="sd">                                     Expected keys:</span>
+<span class="sd">                                     - &#39;api_key&#39;: Your OpenWeatherMap API key.</span>
+<span class="sd">                                     - &#39;location&#39;: Dict with &#39;lat&#39; and &#39;lon&#39;.</span>
+<span class="sd">                                     - &#39;update_interval&#39; (optional): How often the provider *checks* for the next event in sim time (default: 3600).</span>
+<span class="sd">                                     - &#39;api_refresh_interval&#39; (optional): How often to re-fetch data from the API in *real* seconds (default: 3600). Set to 0 or None to disable refresh.</span>
+<span class="sd">                                     Defaults to None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;api_key&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_interval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;update_interval&#39;</span><span class="p">,</span> <span class="mi">3600</span><span class="p">)</span> <span class="c1"># Sim time interval for internal checks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api_refresh_interval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;api_refresh_interval&#39;</span><span class="p">,</span> <span class="mi">3600</span><span class="p">)</span> <span class="c1"># Real time interval for API refresh</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;WeatherDataProvider requires &#39;api_key&#39; in config.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Missing &#39;api_key&#39; in WeatherDataProvider config&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="ow">or</span> <span class="s1">&#39;lat&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="ow">or</span> <span class="s1">&#39;lon&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;WeatherDataProvider requires &#39;location&#39; with &#39;lat&#39; and &#39;lon&#39; in config.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Missing or invalid &#39;location&#39; in WeatherDataProvider config&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Store weather data indexed by simulation time (relative to start or last refresh)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_api_refresh_sim_time</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span> <span class="c1"># Track sim time of last refresh</span></div>
+
+<div class="viewcode-block" id="WeatherDataProvider.load_data"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.weather.WeatherDataProvider.load_data">[docs]</a>    <span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load weather data by fetching from the OpenWeatherMap API using the adapter.</span>
+<span class="sd">        Populates the internal `_weather_schedule`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading weather data from OpenWeatherMap API for location: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">lat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">]</span>
+            <span class="n">lon</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">]</span>
+            <span class="c1"># Fetch and convert data using the adapter</span>
+            <span class="c1"># The adapter returns a schedule with keys as relative sim time (seconds from now)</span>
+            <span class="n">api_schedule</span> <span class="o">=</span> <span class="n">fetch_and_convert_weather_data</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">api_schedule</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed to fetch or convert weather data from API. Weather schedule will be empty.&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">return</span>
+
+            <span class="c1"># Store the fetched schedule. The keys are already relative simulation time offsets.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span> <span class="o">=</span> <span class="n">api_schedule</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_api_refresh_sim_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="c1"># Record sim time of this load/refresh</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully loaded and processed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="p">)</span><span class="si">}</span><span class="s2"> weather events from API.&quot;</span><span class="p">)</span>
+            <span class="c1"># Log the first few events for debugging</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">sim_time</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+                 <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Schedule item </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: Sim Time Key=</span><span class="si">{</span><span class="n">sim_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, Event Time UTC=</span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;timestamp_utc&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">, Severity=</span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;severity&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                 <span class="k">else</span><span class="p">:</span>
+                     <span class="k">break</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error during weather data loading from API: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span> <span class="o">=</span> <span class="p">{}</span> <span class="c1"># Ensure schedule is empty on error</span></div>
+
+<div class="viewcode-block" id="WeatherDataProvider.start_event_triggering"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.weather.WeatherDataProvider.start_event_triggering">[docs]</a>    <span class="k">def</span> <span class="nf">start_event_triggering</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start the SimPy process(es) to trigger WeatherChanged events based on the schedule</span>
+<span class="sd">        and optionally refresh data from the API periodically.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="p">:</span>
+            <span class="c1"># Attempt to load data if the schedule is empty (e.g., if load_data wasn&#39;t called explicitly)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Weather schedule is empty. Attempting to load data now.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_data</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="p">:</span>
+                 <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to load weather data. Cannot start event triggering.&quot;</span><span class="p">)</span>
+                 <span class="k">return</span>
+
+        <span class="c1"># Start the main event triggering loop</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weather_update_loop</span><span class="p">())</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> event triggering process started.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Start the API refresh loop if interval is set</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">api_refresh_interval</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">api_refresh_interval</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_refresh_loop</span><span class="p">())</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> API refresh process started with interval </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">api_refresh_interval</span><span class="si">}</span><span class="s2">s.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> API refresh is disabled.&quot;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_weather_update_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        SimPy process that triggers WeatherChanged events at scheduled times.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># The keys in _weather_schedule are relative simulation times from the last refresh</span>
+        <span class="c1"># We need to convert them to absolute simulation times</span>
+        <span class="n">base_sim_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_api_refresh_sim_time</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_api_refresh_sim_time</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="n">absolute_scheduled_times</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">base_sim_time</span> <span class="o">+</span> <span class="n">relative_time</span> <span class="k">for</span> <span class="n">relative_time</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="o">.</span><span class="n">keys</span><span class="p">()])</span>
+
+        <span class="n">last_triggered_abs_time</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="n">current_schedule_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span> <span class="c1"># Keep a reference to the schedule used at the start of this loop instance</span>
+
+        <span class="k">for</span> <span class="n">abs_trigger_time</span> <span class="ow">in</span> <span class="n">absolute_scheduled_times</span><span class="p">:</span>
+            <span class="c1"># Check if the schedule was refreshed while we were waiting</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">current_schedule_ref</span><span class="p">:</span>
+                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Weather schedule refreshed during update loop. Restarting loop.&quot;</span><span class="p">)</span>
+                 <span class="c1"># Restart the process to use the new schedule</span>
+                 <span class="c1"># Note: This might cause a slight delay or skip an event if refresh happens exactly when an event should trigger</span>
+                 <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weather_update_loop</span><span class="p">())</span>
+                 <span class="k">return</span> <span class="c1"># Exit this instance of the loop</span>
+
+            <span class="n">relative_trigger_time</span> <span class="o">=</span> <span class="n">abs_trigger_time</span> <span class="o">-</span> <span class="n">base_sim_time</span>
+
+            <span class="c1"># Ensure we only process future events relative to the current simulation time</span>
+            <span class="k">if</span> <span class="n">abs_trigger_time</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="ow">and</span> <span class="n">abs_trigger_time</span> <span class="o">&gt;</span> <span class="n">last_triggered_abs_time</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Wait until the absolute scheduled event time</span>
+                    <span class="n">wait_duration</span> <span class="o">=</span> <span class="n">abs_trigger_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                    <span class="k">if</span> <span class="n">wait_duration</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                         <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">wait_duration</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">wait_duration</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                         <span class="c1"># Should not happen if logic is correct, but log if it does</span>
+                         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Attempting to trigger event in the past? abs_trigger_time=</span><span class="si">{</span><span class="n">abs_trigger_time</span><span class="si">}</span><span class="s2">, env.now=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                         <span class="k">continue</span> <span class="c1"># Skip this event</span>
+
+                    <span class="c1"># Re-check if schedule was refreshed while waiting</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">current_schedule_ref</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Weather schedule refreshed while waiting for event at </span><span class="si">{</span><span class="n">abs_trigger_time</span><span class="si">}</span><span class="s2">. Restarting loop.&quot;</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weather_update_loop</span><span class="p">())</span>
+                        <span class="k">return</span>
+
+                    <span class="c1"># Get the event data using the original relative time key</span>
+                    <span class="k">if</span> <span class="n">relative_trigger_time</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="p">:</span>
+                        <span class="n">event_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="p">[</span><span class="n">relative_trigger_time</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="c1"># Use copy to avoid modification issues</span>
+                        <span class="n">event_data</span><span class="p">[</span><span class="s1">&#39;sim_timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="c1"># Add current sim time to the event payload</span>
+
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Triggering </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">EVENT_WEATHER_CHANGED</span><span class="si">}</span><span class="s2"> at sim_time </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> (scheduled for </span><span class="si">{</span><span class="n">abs_trigger_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Event Data: </span><span class="si">{</span><span class="n">event_data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                            <span class="n">source_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="c1"># Identify the source</span>
+                            <span class="n">event_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">EVENT_WEATHER_CHANGED</span><span class="p">,</span>
+                            <span class="n">event_value</span><span class="o">=</span><span class="n">event_data</span>
+                        <span class="p">)</span>
+                        <span class="n">last_triggered_abs_time</span> <span class="o">=</span> <span class="n">abs_trigger_time</span>
+                    <span class="k">else</span><span class="p">:</span>
+                         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scheduled relative time </span><span class="si">{</span><span class="n">relative_trigger_time</span><span class="si">}</span><span class="s2"> not found in current schedule after waiting. Skipping.&quot;</span><span class="p">)</span>
+
+                <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span><span class="p">:</span>
+                     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Weather update loop interrupted (likely due to API refresh). Restarting.&quot;</span><span class="p">)</span>
+                     <span class="c1"># The loop will be restarted by the refresh mechanism or manually if needed</span>
+                     <span class="k">return</span> <span class="c1"># Exit this instance</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                     <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in weather update loop: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                     <span class="c1"># Decide how to handle errors, e.g., retry or stop? For now, just log and continue if possible.</span>
+                     <span class="c1"># This might skip the problematic event.</span>
+                     <span class="n">last_triggered_abs_time</span> <span class="o">=</span> <span class="n">abs_trigger_time</span> <span class="c1"># Mark as processed to avoid infinite loops on error</span>
+
+            <span class="k">elif</span> <span class="n">abs_trigger_time</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">:</span>
+                 <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping past weather event scheduled for absolute time </span><span class="si">{</span><span class="n">abs_trigger_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> (current time </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="c1"># else: # abs_trigger_time &lt;= last_triggered_abs_time (already processed)</span>
+                 <span class="c1"># logger.debug(f&quot;Skipping already processed event at {abs_trigger_time}&quot;)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Weather update loop finished processing current schedule.&quot;</span><span class="p">)</span>
+
+
+    <span class="c1"># --- Standard Callback Method ---</span>
+
+<div class="viewcode-block" id="WeatherDataProvider.on_weather_changed"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.weather.WeatherDataProvider.on_weather_changed">[docs]</a>    <span class="k">def</span> <span class="nf">on_weather_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subscriber</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">event_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Standard callback for WeatherChanged events.</span>
+<span class="sd">        Modifies the subscriber&#39;s state based on weather conditions in their region.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            subscriber: The object that subscribed to the event (e.g., Agent, LandingManager).</span>
+<span class="sd">            event_data (dict): The data associated with the WeatherChanged event.</span>
+<span class="sd">                               Expected keys: &#39;timestamp&#39;, &#39;region&#39;, &#39;wind_speed&#39;, etc.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Import necessary classes locally to avoid top-level circular dependency issues if needed</span>
+        <span class="kn">from</span> <span class="nn">aeroagentsim.core.agent</span> <span class="kn">import</span> <span class="n">Agent</span>
+        <span class="kn">from</span> <span class="nn">aeroagentsim.manager.landing</span> <span class="kn">import</span> <span class="n">LandingManager</span>
+        <span class="kn">from</span> <span class="nn">aeroagentsim.manager.frequency</span> <span class="kn">import</span> <span class="n">FrequencyManager</span>
+
+        <span class="c1"># Region data from API is now {&#39;lat&#39;: float, &#39;lon&#39;: float, &#39;type&#39;: &#39;point&#39;}</span>
+        <span class="c1"># The is_in_region logic needs to handle this format.</span>
+        <span class="n">region_data</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;region&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># --- Handle Agent Subscribers ---</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">subscriber</span><span class="p">,</span> <span class="n">Agent</span><span class="p">):</span>
+            <span class="n">agent</span> <span class="o">=</span> <span class="n">subscriber</span>
+            <span class="n">agent_pos</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">)</span> <span class="c1"># Assuming position is (x, y, z) or similar</span>
+            <span class="c1"># Check if agent is affected by the weather event (based on location)</span>
+            <span class="c1"># The default is_in_region might need adjustment based on how agent position relates to lat/lon</span>
+            <span class="k">if</span> <span class="n">agent_pos</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_in_region</span><span class="p">(</span><span class="n">agent_pos</span><span class="p">,</span> <span class="n">region_data</span><span class="p">):</span>
+                <span class="n">external_force</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_external_force</span><span class="p">(</span><span class="n">event_data</span><span class="p">)</span>
+                <span class="n">agent</span><span class="o">.</span><span class="n">update_states</span><span class="p">({</span><span class="s1">&#39;external_force&#39;</span><span class="p">:</span> <span class="n">external_force</span><span class="p">})</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Agent </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> external_force updated to </span><span class="si">{</span><span class="n">external_force</span><span class="si">}</span><span class="s2"> due to weather at </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># --- Handle LandingManager Subscribers ---</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">subscriber</span><span class="p">,</span> <span class="n">LandingManager</span><span class="p">):</span>
+            <span class="n">landing_manager</span> <span class="o">=</span> <span class="n">subscriber</span>
+            <span class="c1"># Determine the appropriate status based on weather severity</span>
+            <span class="n">severity</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;severity&#39;</span><span class="p">,</span> <span class="s1">&#39;NORMAL&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+            <span class="n">new_status</span> <span class="o">=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span> <span class="c1"># Default</span>
+            <span class="k">if</span> <span class="n">severity</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;STORM&#39;</span><span class="p">,</span> <span class="s1">&#39;HEAVY_RAIN&#39;</span><span class="p">,</span> <span class="s1">&#39;HIGH_WINDS&#39;</span><span class="p">]:</span> <span class="c1"># Example severe conditions</span>
+                <span class="n">new_status</span> <span class="o">=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">UNAVAILABLE_WEATHER</span>
+            <span class="k">elif</span> <span class="n">severity</span> <span class="o">==</span> <span class="s1">&#39;NORMAL&#39;</span><span class="p">:</span>
+                 <span class="c1"># If weather becomes normal, potentially make resources available again</span>
+                 <span class="c1"># Careful: Only revert UNAVAILABLE_WEATHER, not other unavailable states.</span>
+                 <span class="c1"># LandingManager needs logic to handle this state transition safely.</span>
+                 <span class="k">pass</span> <span class="c1"># LandingManager needs a method like &#39;try_set_available_from_weather&#39;</span>
+
+            <span class="c1"># LandingManager needs a method to update resources in a region</span>
+            <span class="c1"># We pass the full event_data in case the manager needs more context</span>
+            <span class="n">landing_manager</span><span class="o">.</span><span class="n">update_resource_status_by_region</span><span class="p">(</span>
+                <span class="n">region_data</span><span class="p">,</span>
+                <span class="n">new_status</span><span class="o">=</span><span class="n">new_status</span><span class="p">,</span>
+                <span class="n">condition_data</span><span class="o">=</span><span class="n">event_data</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Landing resources potentially affected by weather update in region </span><span class="si">{</span><span class="n">region_data</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">. Status: </span><span class="si">{</span><span class="n">new_status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># --- Handle FrequencyManager Subscribers ---</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">subscriber</span><span class="p">,</span> <span class="n">FrequencyManager</span><span class="p">):</span>
+            <span class="n">frequency_manager</span> <span class="o">=</span> <span class="n">subscriber</span>
+            <span class="c1"># FrequencyManager needs a method to update its models based on weather</span>
+            <span class="c1"># Ensure the method can handle the event_data format from the API adapter</span>
+            <span class="n">frequency_manager</span><span class="o">.</span><span class="n">update_pathloss_parameters</span><span class="p">(</span><span class="n">event_data</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Frequency pathloss parameters potentially updated due to weather at </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+        <span class="c1"># --- Add other Manager types as needed ---</span>
+        <span class="c1"># elif isinstance(subscriber, SomeOtherManager):</span>
+        <span class="c1">#     pass</span>
+
+    <span class="c1"># --- Helper Methods ---</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_external_force</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weather_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Placeholder: Calculate external force vector based on weather data.&quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement realistic physics based on wind speed, direction, agent properties (e.g., cross-section)</span>
+        <span class="n">wind_speed</span> <span class="o">=</span> <span class="n">weather_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Simplified: Assume wind directly translates to force in x-direction</span>
+        <span class="n">force_x</span> <span class="o">=</span> <span class="n">wind_speed</span> <span class="o">*</span> <span class="mf">0.1</span> <span class="c1"># Needs proper scaling factor</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">force_x</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_convert_sim_coords_to_latlon</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert simulation coordinates (x, y, z) to latitude and longitude.</span>
+
+<span class="sd">        This implementation assumes a simple conversion where:</span>
+<span class="sd">        - The simulation origin (0, 0, 0) corresponds to the base location specified in config</span>
+<span class="sd">        - x and y coordinates are in meters from the origin</span>
+<span class="sd">        - 111,111 meters = 1 degree of latitude (approximate)</span>
+<span class="sd">        - 111,111 * cos(latitude) meters = 1 degree of longitude (approximate)</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            position: Agent&#39;s position (x, y, z) in simulation coordinates (meters)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple of (latitude, longitude) in degrees</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get the base location from config</span>
+        <span class="n">base_lat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">base_lon</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="c1"># Extract x and y from position</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">position</span>
+
+        <span class="c1"># Convert meters to degrees</span>
+        <span class="c1"># 1 degree of latitude is approximately 111,111 meters</span>
+        <span class="n">lat_offset</span> <span class="o">=</span> <span class="n">y</span> <span class="o">/</span> <span class="mf">111111.0</span>
+
+        <span class="c1"># 1 degree of longitude varies with latitude</span>
+        <span class="c1"># At the equator, 1 degree of longitude is approximately 111,111 meters</span>
+        <span class="c1"># At higher latitudes, the distance decreases by cos(latitude)</span>
+        <span class="kn">import</span> <span class="nn">math</span>
+        <span class="n">lon_offset</span> <span class="o">=</span> <span class="n">x</span> <span class="o">/</span> <span class="p">(</span><span class="mf">111111.0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">base_lat</span><span class="p">)))</span>
+
+        <span class="c1"># Calculate final latitude and longitude</span>
+        <span class="n">lat</span> <span class="o">=</span> <span class="n">base_lat</span> <span class="o">+</span> <span class="n">lat_offset</span>
+        <span class="n">lon</span> <span class="o">=</span> <span class="n">base_lon</span> <span class="o">+</span> <span class="n">lon_offset</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lat1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">lon1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">lat2</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">lon2</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the great-circle distance between two points on Earth.</span>
+<span class="sd">        Uses the Haversine formula.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            lat1, lon1: Latitude and longitude of first point in degrees</span>
+<span class="sd">            lat2, lon2: Latitude and longitude of second point in degrees</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Distance in meters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">math</span>
+
+        <span class="c1"># Convert degrees to radians</span>
+        <span class="n">lat1</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lat1</span><span class="p">)</span>
+        <span class="n">lon1</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lon1</span><span class="p">)</span>
+        <span class="n">lat2</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lat2</span><span class="p">)</span>
+        <span class="n">lon2</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lon2</span><span class="p">)</span>
+
+        <span class="c1"># Haversine formula</span>
+        <span class="n">dlon</span> <span class="o">=</span> <span class="n">lon2</span> <span class="o">-</span> <span class="n">lon1</span>
+        <span class="n">dlat</span> <span class="o">=</span> <span class="n">lat2</span> <span class="o">-</span> <span class="n">lat1</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlat</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">lat1</span><span class="p">)</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">lat2</span><span class="p">)</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlon</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">asin</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+
+        <span class="c1"># Earth radius in meters</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="mi">6371000</span>
+
+        <span class="c1"># Calculate distance</span>
+        <span class="k">return</span> <span class="n">c</span> <span class="o">*</span> <span class="n">r</span>
+
+<div class="viewcode-block" id="WeatherDataProvider.is_in_region"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.weather.WeatherDataProvider.is_in_region">[docs]</a>    <span class="k">def</span> <span class="nf">is_in_region</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">region_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if a 3D position (agent&#39;s position) is within the weather region.</span>
+<span class="sd">        Currently, the API adapter provides a point region {&#39;lat&#39;: ..., &#39;lon&#39;: ..., &#39;type&#39;: &#39;point&#39;}.</span>
+<span class="sd">        This implementation assumes the weather affects a certain radius around the point.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            position: Agent&#39;s position, e.g., (x, y, z) in simulation coordinates.</span>
+<span class="sd">            region_data: Weather event region data, e.g., {&#39;lat&#39;: ..., &#39;lon&#39;: ..., &#39;type&#39;: &#39;point&#39;}.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if the agent is considered within the affected region, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">region_data</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">region_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="s1">&#39;point&#39;</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;No valid point region data in weather event, assuming agent is not affected.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Convert simulation coordinates to latitude and longitude</span>
+        <span class="n">sim_lat</span><span class="p">,</span> <span class="n">sim_lon</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_sim_coords_to_latlon</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+
+        <span class="c1"># Get region coordinates</span>
+        <span class="n">region_lat</span> <span class="o">=</span> <span class="n">region_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">)</span>
+        <span class="n">region_lon</span> <span class="o">=</span> <span class="n">region_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lon&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">region_lat</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">region_lon</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Region data missing latitude or longitude. Assuming agent is not affected.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Calculate distance between agent and region center</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_distance</span><span class="p">(</span><span class="n">sim_lat</span><span class="p">,</span> <span class="n">sim_lon</span><span class="p">,</span> <span class="n">region_lat</span><span class="p">,</span> <span class="n">region_lon</span><span class="p">)</span>
+
+        <span class="c1"># Define the affected radius (in meters)</span>
+        <span class="c1"># This could be made configurable or based on weather severity</span>
+        <span class="n">AFFECTED_RADIUS_METERS</span> <span class="o">=</span> <span class="mi">10000</span>  <span class="c1"># 10 km radius</span>
+
+        <span class="c1"># Check if agent is within the affected radius</span>
+        <span class="k">return</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="n">AFFECTED_RADIUS_METERS</span></div>
+
+<div class="viewcode-block" id="WeatherDataProvider.get_weather_at"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.weather.WeatherDataProvider.get_weather_at">[docs]</a>    <span class="k">def</span> <span class="nf">get_weather_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the current weather conditions at a specific position in the simulation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            position: A tuple (x, y, z) representing the position in simulation coordinates.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A dictionary containing weather data for the specified position.</span>
+<span class="sd">            If no weather data is available, returns a default weather data dictionary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check if we have any weather data</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No weather data available. Returning default weather conditions.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_default_weather</span><span class="p">()</span>
+
+        <span class="c1"># Convert simulation coordinates to latitude and longitude</span>
+        <span class="n">sim_lat</span><span class="p">,</span> <span class="n">sim_lon</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_sim_coords_to_latlon</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+
+        <span class="c1"># Get the current simulation time</span>
+        <span class="n">current_sim_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+        <span class="c1"># Find the most recent weather event in the schedule</span>
+        <span class="n">base_sim_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_api_refresh_sim_time</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_api_refresh_sim_time</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+        <span class="c1"># Convert schedule keys to absolute simulation times</span>
+        <span class="n">absolute_times</span> <span class="o">=</span> <span class="p">{</span><span class="n">base_sim_time</span> <span class="o">+</span> <span class="n">rel_time</span><span class="p">:</span> <span class="n">rel_time</span> <span class="k">for</span> <span class="n">rel_time</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+
+        <span class="c1"># Find the most recent weather event time that is less than or equal to current_sim_time</span>
+        <span class="n">most_recent_time</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">abs_time</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">absolute_times</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">abs_time</span> <span class="o">&lt;=</span> <span class="n">current_sim_time</span><span class="p">:</span>
+                <span class="n">most_recent_time</span> <span class="o">=</span> <span class="n">abs_time</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">if</span> <span class="n">most_recent_time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No weather data available for the current simulation time. Returning default weather conditions.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_default_weather</span><span class="p">()</span>
+
+        <span class="c1"># Get the relative time key for the most recent weather event</span>
+        <span class="n">rel_time_key</span> <span class="o">=</span> <span class="n">absolute_times</span><span class="p">[</span><span class="n">most_recent_time</span><span class="p">]</span>
+
+        <span class="c1"># Get the weather data for the most recent event</span>
+        <span class="n">weather_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="p">[</span><span class="n">rel_time_key</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Check if the position is within the region affected by this weather event</span>
+        <span class="n">region_data</span> <span class="o">=</span> <span class="n">weather_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;region&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_in_region</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">region_data</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Position </span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2"> is outside the affected region of the current weather event. Returning default weather conditions.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_default_weather</span><span class="p">()</span>
+
+        <span class="c1"># Add position information to the weather data</span>
+        <span class="n">weather_data</span><span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">position</span>
+        <span class="n">weather_data</span><span class="p">[</span><span class="s1">&#39;sim_position_lat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sim_lat</span>
+        <span class="n">weather_data</span><span class="p">[</span><span class="s1">&#39;sim_position_lon&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sim_lon</span>
+
+        <span class="k">return</span> <span class="n">weather_data</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_default_weather</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return default weather conditions when no data is available.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A dictionary with default weather data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;condition&#39;</span><span class="p">:</span> <span class="s1">&#39;Clear&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;clear sky&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;severity&#39;</span><span class="p">:</span> <span class="s1">&#39;NORMAL&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;wind_speed&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s1">&#39;wind_direction&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;temperature&#39;</span><span class="p">:</span> <span class="mf">20.0</span><span class="p">,</span>  <span class="c1"># Celsius</span>
+            <span class="s1">&#39;humidity&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>       <span class="c1"># %</span>
+            <span class="s1">&#39;pressure&#39;</span><span class="p">:</span> <span class="mf">1013.25</span><span class="p">,</span>  <span class="c1"># hPa (standard atmospheric pressure)</span>
+            <span class="s1">&#39;precipitation_rate&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s1">&#39;data_source&#39;</span><span class="p">:</span> <span class="s1">&#39;default&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;sim_timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">}</span>
+
+    <span class="c1"># _parse_polygon is likely no longer needed if using API point data</span>
+
+    <span class="c1"># --- API Refresh Loop ---</span>
+    <span class="k">def</span> <span class="nf">_api_refresh_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        SimPy process that periodically re-fetches weather data from the API.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">api_refresh_interval</span><span class="p">)</span>
+
+            <span class="n">current_sim_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;API Refresh Triggered at sim_time </span><span class="si">{</span><span class="n">current_sim_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">. Fetching new data...&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Store the old schedule temporarily</span>
+            <span class="n">old_schedule</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span>
+
+            <span class="c1"># Fetch new data - this replaces self._weather_schedule</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_data</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span> <span class="o">!=</span> <span class="n">old_schedule</span><span class="p">:</span>
+                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;API data refreshed. The _weather_update_loop will detect the change.&quot;</span><span class="p">)</span>
+                 <span class="c1"># The update loop should handle the restart internally.</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span><span class="p">:</span>
+                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;API refresh failed to load new data. Continuing with old schedule (if any).&quot;</span><span class="p">)</span>
+                 <span class="bp">self</span><span class="o">.</span><span class="n">_weather_schedule</span> <span class="o">=</span> <span class="n">old_schedule</span> <span class="c1"># Restore old schedule if refresh failed</span>
+            <span class="k">else</span><span class="p">:</span>
+                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;API data refreshed, but schedule content is the same.&quot;</span><span class="p">)</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.weather</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

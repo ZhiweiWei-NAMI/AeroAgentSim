@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "source_root": "bundled_data/inputs",
+  "primary_source": "bundled_data/inputs/primary/emergency-delivery-graph.config.json",
+  "mismatches": [],
+  "graph_sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de",
+  "compared_files": 7,
+  "external_primary_source_not_required": true
+}

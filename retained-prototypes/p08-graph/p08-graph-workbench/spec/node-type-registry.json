@@ -1,0 +1,2513 @@
+{
+  "schema_version": "p08.node-type-registry/v1",
+  "contract_version": "1.0.0",
+  "kinds": [
+    {
+      "kind": "node_type",
+      "source_collections": [
+        "node_types"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Legacy meta-type declaration; its represented collection is not the enclosing storage collection.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "entity_type",
+      "source_collections": [
+        "entity_types"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Reusable entity class with applicability; separate from entity identity.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "entity",
+      "source_collections": [
+        "entities"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Identified physical, social, informational or infrastructural subject. Its agent is not an identity member.",
+      "semantic_obligations": [
+        "exact_lifecycle_ref",
+        "entity_type",
+        "lifecycle_interval",
+        "capability_claims"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "state_specification",
+      "source_collections": [
+        "fields"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Typed attribute or relation field. Defines quantity/unit/frame/subject and temporal semantics, not a runtime value.",
+      "semantic_obligations": [
+        "value_type",
+        "quantity",
+        "unit_if_quantified",
+        "frame_if_spatial",
+        "subject_applicability",
+        "temporal_validity",
+        "authority_selection_scope"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "fact",
+      "source_collections": [
+        "facts"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "Immutable value record for one exact subject, state specification and validity/availability context.",
+      "semantic_obligations": [
+        "subject_ref",
+        "state_specification_ref",
+        "typed_value_or_unavailable_reason",
+        "valid_time",
+        "availability_time",
+        "clock_domains",
+        "source_record_and_revision",
+        "computing_authority",
+        "quality_and_uncertainty"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "module",
+      "source_collections": [
+        "modules"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Configured reusable computation or execution boundary; runtime execution has its own kind.",
+      "semantic_obligations": [
+        "interface",
+        "backend_mode",
+        "input_signature",
+        "output_fields",
+        "selected_authority_scope"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "agent",
+      "source_collections": [
+        "agents"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Independent decision participant with explicit observations, strategy, authority and target relations.",
+      "semantic_obligations": [
+        "observation_scope",
+        "strategy_references",
+        "authority_operation_target_validity",
+        "arbitration_if_overlapping"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "strategy_definition",
+      "source_collections": [
+        "strategies"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Versioned decision procedure signature; invocation is a separate record.",
+      "semantic_obligations": [
+        "version",
+        "input_output_signature",
+        "parameter_signature",
+        "allowed_observations"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "capability_declaration",
+      "source_collections": [
+        "capabilities"
+      ],
+      "semantic_levels": [
+        "definition",
+        "configured_instance"
+      ],
+      "definition": "Frozen capability-family declaration. Source definition versus scoped configured claim is retained in semantic_level and payload; neither grants permission.",
+      "semantic_obligations": [
+        "capability_meaning",
+        "applicability_or_claim_subject",
+        "version",
+        "verification_status"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "behavior_definition",
+      "source_collections": [
+        "behaviors"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Reusable execution process and declared composition requirements; no execution is inferred from a source level label.",
+      "semantic_obligations": [
+        "capability_requirements",
+        "resources_with_dimension_amount_interval",
+        "modules",
+        "constraint_bindings",
+        "composition"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "request",
+      "source_collections": [
+        "requests"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Identified work or information request, separate from acceptance and outcome.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "objective",
+      "source_collections": [
+        "objectives"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Desired outcome, deadline or quality, separate from hard constraints and actual result.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "decision",
+      "source_collections": [
+        "decisions"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "Authored or recorded decision output for an explicit context; no automatic command authority.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "task",
+      "source_collections": [
+        "tasks"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Scoped task/attempt with objectives, participants, lifecycle and completion evidence.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "resource",
+      "source_collections": [
+        "resources"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Identified capacity-bearing, consumable or reservable supply; capacity, reservation and occupancy are separate.",
+      "semantic_obligations": [
+        "capacity_dimensions",
+        "unit",
+        "ownership",
+        "reservation_semantics",
+        "occupancy_source",
+        "valid_scope"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "constraint_definition",
+      "source_collections": [
+        "constraints"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Declarative physical/resource/permission/suitability restriction with applicability and separate enforcement binding.",
+      "semantic_obligations": [
+        "requirement",
+        "assessment_axis",
+        "hard_or_soft",
+        "applicability",
+        "version",
+        "source",
+        "enforcement_binding_or_gap"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "predicate_definition",
+      "source_collections": [
+        "predicates"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Named proposition computed by its fixed rule under exact bindings. Not a result.",
+      "semantic_obligations": [
+        "rule_reference",
+        "binding_signature",
+        "three_valued_result_signature"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "rule_definition",
+      "source_collections": [
+        "rules"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Versioned full expression, main/applicability roots, parameters and native semantics requirements.",
+      "semantic_obligations": [
+        "version",
+        "main_ast",
+        "separate_applicability_ast_if_present",
+        "parameter_scope",
+        "native_evaluator_requirement",
+        "all_temporal_controls"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "event_definition",
+      "source_collections": [
+        "events"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Definition of change/occurrence with temporal and duplicate policy; truth alone is not an occurrence.",
+      "semantic_obligations": [
+        "rule_reference",
+        "occurrence_policy",
+        "participant_signature",
+        "evidence_and_time_requirements"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "command_definition",
+      "source_collections": [
+        "commands"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Reusable interface/request template and composition; separate from each issued or hypothetical attempt.",
+      "semantic_obligations": [
+        "target_signature",
+        "argument_signature",
+        "receipt_contract",
+        "effect_contract",
+        "behavior_composition"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "arbitration_policy",
+      "source_collections": [
+        "arbitrations"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Explicit scope-conflict policy declaration; does not invent priority or a grant.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "evidence_source",
+      "source_collections": [
+        "sources"
+      ],
+      "semantic_levels": [
+        "source_record"
+      ],
+      "definition": "Traceable source with version and proof scope. May be synthetic, documentary, measured or simulated.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "scenario_definition",
+      "source_collections": [
+        "scenarios"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Versioned authoring/fixture configuration and replay selection; not a live run.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "check_binding",
+      "source_collections": [
+        "admission_checks"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Configured start/continue/effect/review check context. The check scope determines semantics; not all checks admit execution.",
+      "semantic_obligations": [
+        "check_scope",
+        "constraint_refs",
+        "required_input_slots",
+        "query_and_cutoff",
+        "enforcement_module",
+        "unknown_false_conflict_policy"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "feedback_policy",
+      "source_collections": [
+        "feedback_policies"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Declared response to evidence; graph traversal/replay does not dispatch responses.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "predicate_result",
+      "source_collections": [
+        "predicate_results"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "A target result record, retaining executed/not-executed/expected provenance and diagnostic status.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "relation_definition",
+      "source_collections": [
+        "relation_definitions"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Declared relation schema with ordered roles, direction and permitted endpoints; not a relation occurrence.",
+      "semantic_obligations": [
+        "role_schema",
+        "endpoint_types",
+        "direction",
+        "validity_and_authority_requirements",
+        "role_local_cardinality"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "parameter_definition",
+      "source_collections": [
+        "parameter_definitions"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Declared parameter identity, lexical scope, type/unit and explicit source default, if any.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "spatial_zone",
+      "source_collections": [
+        "spatial_zones"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Identified geometry and coordinate/altitude datum; not a universal permission.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "lease_request",
+      "source_collections": [
+        "lease_requests"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Scoped request for resource/airspace use; separate from an approval.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "lease_approval",
+      "source_collections": [
+        "lease_approvals"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "Versioned decision about a lease request with authority and evidence status; synthetic grants have no real legal effect.",
+      "semantic_obligations": [
+        "exact_request",
+        "granting_authority",
+        "validity",
+        "version",
+        "status",
+        "revocation"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "space_time_allocation",
+      "source_collections": [
+        "space_time_allocations"
+      ],
+      "semantic_levels": [
+        "configured_instance"
+      ],
+      "definition": "Explicit zone/resource/time allocation declaration; not observed occupancy or physical exclusivity.",
+      "semantic_obligations": [
+        "approval",
+        "zone",
+        "participant",
+        "interval",
+        "coordinate_and_clock_domains",
+        "status"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "delivery_receipt",
+      "source_collections": [
+        "delivery_receipts"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "Information delivery record with exact sender, receiver, message/attempt and proof scope; no custody or effect implication.",
+      "semantic_obligations": [
+        "message_or_command_attempt",
+        "sender",
+        "receiver",
+        "phase_or_delivery_status",
+        "proof_scope",
+        "actual_time_or_missing_reason"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "expression_type",
+      "source_collections": [
+        "expression_types"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Expression-kind declaration used by the inspection projection; not a verified native operator inventory.",
+      "semantic_obligations": [
+        "identity",
+        "scope",
+        "version_or_missing",
+        "provenance"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "expression",
+      "source_collections": [
+        "expressions"
+      ],
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Source-derived AST expression including scalar, constant, parameter, state, target, operator, temporal and unknown forms.",
+      "semantic_obligations": [
+        "source_rule_identity",
+        "source_ast_path",
+        "unchanged_source_form",
+        "ordered_operands",
+        "operator_support_status"
+      ],
+      "missing_obligation_policy": "Preserve source and emit readiness gap. Missing semantic evidence does not corrupt otherwise lossless authoring import."
+    },
+    {
+      "kind": "accounting_record",
+      "source_runtime_kinds": [
+        "accounting_record"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "能量或资源核算条目与区间，保存贡献者和计算假设，区别于实测电量/实际消费。",
+      "semantic_obligations": [
+        "assumptions",
+        "contributor_ids",
+        "counting_rule",
+        "intervals",
+        "measurement_status",
+        "quantity_units"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "accounting_record",
+          "occurrence_count": 2,
+          "observed_common_fields": [
+            "catalog_record_pointer"
+          ],
+          "observed_variant_fields": [
+            "counting_rule",
+            "duration_s",
+            "efficiency",
+            "end_wh",
+            "entries",
+            "interval",
+            "measured",
+            "native_coupling",
+            "power_w",
+            "price",
+            "start_wh",
+            "stored_wh",
+            "supply_wh",
+            "total_draw_wh"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "artifact_change_record",
+      "source_runtime_kinds": [
+        "artifact_change_record"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "经指定审核把输入版本变为输出版本的变更记录；缺失变更集或批准不得视为已发布。",
+      "semantic_obligations": [
+        "approval_status",
+        "change_set_or_missing_reason",
+        "input_version",
+        "output_version",
+        "publication_status",
+        "review"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "artifact_change_record",
+          "occurrence_count": 1,
+          "observed_common_fields": [
+            "approved_by",
+            "change_set",
+            "id",
+            "input_entity_id",
+            "input_version",
+            "kind",
+            "output_entity_id",
+            "output_version",
+            "provenance",
+            "published_at_ns",
+            "review_id",
+            "status"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "artifact_version_binding",
+      "source_runtime_kinds": [
+        "artifact_version_binding"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "相关计划、模型与采集工件的精确版本绑定，声明对齐和审核的输入上下文。",
+      "semantic_obligations": [
+        "alignment_scope",
+        "exact_artifact_versions",
+        "input_digests_or_missing_reason"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "artifact_version_binding",
+          "occurrence_count": 1,
+          "observed_common_fields": [
+            "alignment_entity_id",
+            "alignment_version",
+            "bim_input_entity_id",
+            "bim_input_version",
+            "capture_entity_id",
+            "capture_version",
+            "comparison_entity_id",
+            "comparison_version",
+            "id",
+            "input_digests",
+            "kind",
+            "plan_id",
+            "provenance",
+            "status"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "authority_record",
+      "source_runtime_kinds": [
+        "authority_record"
+      ],
+      "semantic_levels": [
+        "definition",
+        "runtime_record"
+      ],
+      "definition": "面向具体行为参与方、目标、操作与有效范围的权利声明；合成声明不建立真实权限。",
+      "semantic_obligations": [
+        "actor",
+        "issuer_or_missing_reason",
+        "operations",
+        "synthetic_or_real_status",
+        "target",
+        "valid_scope"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "authority_record",
+          "occurrence_count": 27,
+          "observed_common_fields": [
+            "real_authority",
+            "scope"
+          ],
+          "observed_variant_fields": [
+            "catalog_record_pointer"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "baseline_revision_acceptance_requirement",
+      "source_runtime_kinds": [
+        "baseline_revision_acceptance_requirement"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "基线选择必须满足的身份、修订、摘要、批准、有效范围、坐标与撤销条件；年龄仅是独立偏好。",
+      "semantic_obligations": [
+        "age_preference_separate",
+        "approval",
+        "effective_scope",
+        "frame_and_datum",
+        "revision_and_digest",
+        "revocation_status",
+        "target"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "baseline_revision_acceptance_requirement",
+          "occurrence_count": 1,
+          "observed_common_fields": [
+            "acceptance",
+            "age_example",
+            "approval_record",
+            "approving_actor_entity_id",
+            "approving_role",
+            "coordinate_frame_match",
+            "effective_interval",
+            "execution",
+            "expected_revision",
+            "geographic_boundary_match",
+            "id",
+            "kind",
+            "provenance",
+            "source_digest",
+            "superseded_or_revoked_status",
+            "supplied_source_revision",
+            "target_entity_id",
+            "vertical_datum_match"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "behavior_execution",
+      "source_runtime_kinds": [
+        "behavior_execution"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "行为定义的一次执行上下文，保留命令、模块、检查和完成证据要求；未执行状态保持明确。",
+      "semantic_obligations": [
+        "actual_start_finish_or_missing",
+        "attempt",
+        "completion_evidence",
+        "definition",
+        "module_route",
+        "requesting_command",
+        "required_checks",
+        "status"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "behavior_execution",
+          "occurrence_count": 386,
+          "observed_common_fields": [
+            "status"
+          ],
+          "observed_variant_fields": [
+            "actual_completed_at_ns",
+            "actual_consumption_records",
+            "actual_reservation_records",
+            "actual_started_at_ns",
+            "attempt",
+            "behavior_definition_ref",
+            "branch_scope",
+            "catalog_record_pointer",
+            "command_attempt_ref",
+            "command_ref",
+            "definition_id",
+            "definition_ref",
+            "execution",
+            "frozen_collection",
+            "id",
+            "interval_s",
+            "kind",
+            "module_ref",
+            "operation",
+            "physical_execution_ref_as_evidence_context_only",
+            "proposed_record_kind",
+            "protocol_context_ref",
+            "provenance",
+            "record_level",
+            "required_check_refs",
+            "required_completion_fact_refs",
+            "required_resources",
+            "resource_consumption",
+            "schema_status",
+            "source_step",
+            "task_attempt_id"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "business_order",
+      "source_runtime_kinds": [
+        "business_order"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "业务订单/工作请求的范围、参与者、任务尝试与截止要求；独立于执行效果。",
+      "semantic_obligations": [
+        "attempt",
+        "deadline",
+        "participants",
+        "release",
+        "request",
+        "task"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "business_order",
+          "occurrence_count": 8,
+          "observed_common_fields": [
+            "attempt_id",
+            "deadline_s",
+            "order_id",
+            "record_scope",
+            "release_time_s",
+            "request_ref",
+            "task_ref"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "capability_claim",
+      "source_runtime_kinds": [
+        "capability_claim"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "某实体在明确范围的能力声明，保持未认证/不可用状态；不是指令权限。",
+      "semantic_obligations": [
+        "capability",
+        "capacity_if_claimed",
+        "entity",
+        "validity",
+        "verification"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "capability_claim",
+          "occurrence_count": 8,
+          "observed_common_fields": [
+            "capability_ref",
+            "capacity_kg",
+            "entity_ref",
+            "valid_interval_s",
+            "verification"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "check_result",
+      "source_runtime_kinds": [
+        "check_result"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "检查上下文的预期或运行结果，明确结果范围、证据与未知/阻塞的区别。",
+      "semantic_obligations": [
+        "check",
+        "evidence_or_missing",
+        "executed_or_expectation",
+        "policy",
+        "proof_scope",
+        "verdict"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "check_result",
+          "occurrence_count": 171,
+          "observed_common_fields": [
+            "verdict"
+          ],
+          "observed_variant_fields": [
+            "actual_charge_result",
+            "catalog_record_pointer",
+            "check_ref",
+            "delivery_result",
+            "effect_status",
+            "execution",
+            "gpu_capacity_result",
+            "hard_capacity_result",
+            "inputs",
+            "latency_result",
+            "memory_capacity_result",
+            "policy",
+            "reason",
+            "slot_capacity_result",
+            "status",
+            "unknown_conflict_policy"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "command_attempt",
+      "source_runtime_kinds": [
+        "command",
+        "command_attempt",
+        "command_instance"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "此候选类型仅表示运行时命令尝试，不能当作冻结commands集合中的command_definition。 某命令定义的一次具体请求，绑定目标、任务尝试、参数与发出时刻；不等于已接受或已执行。 具体命令请求实例，绑定定义、任务尝试与目标；与接口回执、物理结果分离。",
+      "semantic_obligations": [
+        "arguments",
+        "attempt",
+        "definition",
+        "issue_time_or_missing",
+        "issuer",
+        "operation",
+        "status",
+        "target",
+        "task"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "command",
+          "occurrence_count": 129,
+          "observed_common_fields": [
+            "issued_at_ns",
+            "issuer_ref",
+            "status",
+            "target_ref"
+          ],
+          "observed_variant_fields": [
+            "attempt",
+            "catalog_record_pointer",
+            "operation",
+            "protocol_context",
+            "record_kind",
+            "task_ref"
+          ]
+        },
+        {
+          "raw_kind": "command_attempt",
+          "occurrence_count": 67,
+          "observed_common_fields": [
+            "attempt",
+            "command_definition_ref",
+            "frozen_collection",
+            "id",
+            "issued_time_ns",
+            "proposed_record_kind",
+            "provenance",
+            "schema_status",
+            "source_step",
+            "status",
+            "target_ref"
+          ],
+          "observed_variant_fields": []
+        },
+        {
+          "raw_kind": "command_instance",
+          "occurrence_count": 144,
+          "observed_common_fields": [
+            "arguments",
+            "target_ref"
+          ],
+          "observed_variant_fields": [
+            "actor_id",
+            "definition_id",
+            "definition_ref",
+            "execution",
+            "id",
+            "issued_at_ns",
+            "issued_at_s",
+            "kind",
+            "lifecycle",
+            "provenance",
+            "real_dispatch",
+            "record_level",
+            "schema_status",
+            "status",
+            "task_attempt_id",
+            "task_ref"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "command_lifecycle_receipt",
+      "source_runtime_kinds": [
+        "command_lifecycle_receipt"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "针对具体命令尝试的请求、接受等生命周期回执；只证明明示的控制接口阶段。",
+      "semantic_obligations": [
+        "command_attempt",
+        "evidence_or_missing",
+        "ordered_lifecycle_states",
+        "physical_completion_status",
+        "proof_scope"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "command_lifecycle_receipt",
+          "occurrence_count": 67,
+          "observed_common_fields": [
+            "command_attempt_ref",
+            "evidence_refs",
+            "frozen_collection",
+            "id",
+            "physical_completion_status",
+            "proof_scope",
+            "proposed_record_kind",
+            "provenance",
+            "schema_status",
+            "source_step",
+            "states"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "command_receipt",
+      "source_runtime_kinds": [
+        "command_receipt"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "某次具体命令的生命周期记录及证明范围；接受或已记录并不证明任务完成。",
+      "semantic_obligations": [
+        "command_attempt",
+        "phase",
+        "proof_scope",
+        "receipt_time_or_missing",
+        "source",
+        "status"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "command_receipt",
+          "occurrence_count": 273,
+          "observed_common_fields": [],
+          "observed_variant_fields": [
+            "accepted_at_ns",
+            "at_s",
+            "catalog_record_pointer",
+            "command_id",
+            "command_ref",
+            "effect_established",
+            "effect_proven",
+            "execution",
+            "id",
+            "kind",
+            "phase",
+            "proof_scope",
+            "provenance",
+            "proves_effect",
+            "provider_id",
+            "received_at_ns",
+            "record_level",
+            "schema_status",
+            "source_record",
+            "status"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "compute_job_resource_binding",
+      "source_runtime_kinds": [
+        "compute_job_resource_binding"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "计算任务、输入输出工件、模型版本与多维资源要求的绑定；预留和实际占用分别记录。",
+      "semantic_obligations": [
+        "actual_occupancy_separate",
+        "enqueue_finish_or_missing",
+        "input_artifacts_and_digests",
+        "job_and_attempt",
+        "model_version",
+        "multi_dimension_resource_requests",
+        "output_artifact"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "compute_job_resource_binding",
+          "occurrence_count": 11,
+          "observed_common_fields": [
+            "actual_occupancy",
+            "algorithm_model_id",
+            "algorithm_model_version",
+            "enqueue_time_ns",
+            "execution",
+            "finish_time_ns",
+            "id",
+            "input_artifact_digests",
+            "input_artifact_entity_ids",
+            "job_id",
+            "kind",
+            "output_artifact_entity_id",
+            "provenance",
+            "resource_requests",
+            "status",
+            "task_attempt_id"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "constraint_check",
+      "source_runtime_kinds": [
+        "constraint_check"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "具体开始或继续执行条件检查上下文，保留检查时刻、负责模块与当前所需证据。",
+      "semantic_obligations": [
+        "check_scope",
+        "constraint_refs",
+        "cutoff",
+        "enforcement_module",
+        "execution_status",
+        "query_time",
+        "required_input_slots"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "constraint_check",
+          "occurrence_count": 132,
+          "observed_common_fields": [
+            "query_time_ns",
+            "scope"
+          ],
+          "observed_variant_fields": [
+            "actual_fact_ids",
+            "authored_probe_time_ns",
+            "available_cutoff_ns",
+            "behavior_execution_id",
+            "behavior_ref",
+            "constraint_ids",
+            "constraint_ref",
+            "enforcement_module_ref",
+            "execution",
+            "id",
+            "kind",
+            "missing_reason",
+            "provenance",
+            "record_level",
+            "required_input_slots",
+            "schema_status",
+            "selected_input_fact_refs",
+            "timing_status",
+            "trigger"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "constraint_check_result",
+      "source_runtime_kinds": [
+        "constraint_check_result"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "一次精确检查的结果记录，保留检查定义、执行对象、输入证据、三项评估及未知或冲突处理；结果不自行授权动作。",
+      "semantic_obligations": [
+        "actual_enforcement_status",
+        "assessment_axis_or_separate_physical_permission_suitability",
+        "behavior_attempt",
+        "check",
+        "check_scope",
+        "evidence_or_missing",
+        "unknown_conflict_policy",
+        "verdict"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "constraint_check_result",
+          "occurrence_count": 937,
+          "observed_common_fields": [],
+          "observed_variant_fields": [
+            "action_policy",
+            "actual_enforcement",
+            "applies_to",
+            "available_cutoff_s",
+            "axis",
+            "behavior_definition_ref",
+            "behavior_execution_id",
+            "behavior_execution_ref",
+            "check_id",
+            "check_ref",
+            "conflict_policy",
+            "constraint_id",
+            "declared_fixture_expectation",
+            "diagnostic",
+            "enforcement",
+            "enforcement_module_ref",
+            "enforcement_policy",
+            "evidence_refs",
+            "execution",
+            "frozen_collection",
+            "id",
+            "input_fact_ids",
+            "input_fact_refs",
+            "kind",
+            "permission",
+            "physical",
+            "proposed_record_kind",
+            "provenance",
+            "query_time_s",
+            "reason",
+            "record_level",
+            "required_input_slots",
+            "result",
+            "schema_status",
+            "scope",
+            "semantic_coverage",
+            "source_step",
+            "suitability",
+            "verdict"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "custody_and_responsibility_handover",
+      "source_runtime_kinds": [
+        "custody_and_responsibility_handover"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "责任或样品保管交接，绑定发送者、接收者、对象和证据；报告送达不等于样品保管转移。",
+      "semantic_obligations": [
+        "custody_status",
+        "independent_transfer_evidence",
+        "investigation_responsibility",
+        "legal_liability_status",
+        "physical_sample_location",
+        "recipient",
+        "sample_subject",
+        "sender"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "custody_and_responsibility_handover",
+          "occurrence_count": 1,
+          "observed_common_fields": [
+            "frozen_collection",
+            "id",
+            "investigation_responsibility",
+            "note",
+            "physical_sample_location",
+            "pollution_legal_liability",
+            "proposed_record_kind",
+            "provenance",
+            "receipt_ref",
+            "recipient_ref",
+            "sample_custody",
+            "sample_subject_ref",
+            "schema_status",
+            "sender_ref",
+            "source_step"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "effect_evaluation_result",
+      "source_runtime_kinds": [
+        "effect_evaluation_result"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "针对某任务尝试的效果核验，分别保留期望目标、接受目标和实际效果证据。",
+      "semantic_obligations": [
+        "accepted_target",
+        "actual_effect_evidence_or_missing",
+        "desired_target",
+        "task_attempt",
+        "verdict"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "effect_evaluation_result",
+          "occurrence_count": 90,
+          "observed_common_fields": [
+            "accepted_command_target",
+            "actual_observed_effect",
+            "desired_target",
+            "execution",
+            "id",
+            "kind",
+            "missing_evidence",
+            "provenance",
+            "record_level",
+            "schema_status",
+            "task_id",
+            "verdict"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "engineering_review_record",
+      "source_runtime_kinds": [
+        "engineering_review_record"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "工程审核人对指定版本计算产物的专业审核记录；数值非负不替代审核批准。",
+      "semantic_obligations": [
+        "approval_status",
+        "quantity_uncertainty",
+        "reviewed_artifact_and_version",
+        "reviewer_role",
+        "signature_or_missing"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "engineering_review_record",
+          "occurrence_count": 1,
+          "observed_common_fields": [
+            "approval",
+            "artifact_version",
+            "execution",
+            "id",
+            "kind",
+            "provenance",
+            "record_level",
+            "reviewed_artifact_id",
+            "reviewer_entity_id",
+            "reviewer_role",
+            "signed_at_ns",
+            "standard_uncertainty",
+            "status",
+            "volume_estimate"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "evaluation_binding",
+      "source_runtime_kinds": [
+        "evaluation_binding",
+        "rule_evaluation_binding"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "具体规则/谓词评估的主体角色、字段投影、参数和时间上下文。 规则求值绑定，将具体主体、字段事实、参数、历史与时刻连接到固定规则和结果。",
+      "semantic_obligations": [
+        "field_map",
+        "history",
+        "history_context",
+        "parameter_scope",
+        "parameters",
+        "query_and_cutoff",
+        "result_reference_not_execution",
+        "role_bindings",
+        "subject_roles",
+        "target_rule"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "evaluation_binding",
+          "occurrence_count": 160,
+          "observed_common_fields": [],
+          "observed_variant_fields": [
+            "available_cutoff_s",
+            "catalog_record_pointer",
+            "clock_domain",
+            "epoch",
+            "execution",
+            "fact_refs",
+            "field_map",
+            "field_ref",
+            "generation",
+            "history_refs",
+            "history_requirement",
+            "id",
+            "kind",
+            "native_binding_status",
+            "parameter_bindings",
+            "parameters",
+            "predicate_id",
+            "predicate_ref",
+            "provenance",
+            "query_time_s",
+            "record_level",
+            "roles",
+            "rule_ref",
+            "schema_status",
+            "subject_ref"
+          ]
+        },
+        {
+          "raw_kind": "rule_evaluation_binding",
+          "occurrence_count": 67,
+          "observed_common_fields": [
+            "availability_cutoff_ns",
+            "field_map",
+            "frozen_collection",
+            "history",
+            "id",
+            "parameter_values",
+            "predicate_ref",
+            "proposed_record_kind",
+            "provenance",
+            "query_time_ns",
+            "result_ref",
+            "rule_ref",
+            "schema_status",
+            "source_step",
+            "status",
+            "subject_ref"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "event_occurrence",
+      "source_runtime_kinds": [
+        "event_occurrence"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "事件定义的一次候选或发生记录；是否发出、发生策略、参与者、时间及证据必须保持，不由真值自动推断。",
+      "semantic_obligations": [
+        "availability",
+        "emitted_status",
+        "event_definition",
+        "evidence_or_missing",
+        "occurrence_policy",
+        "occurrence_time_or_missing",
+        "participants"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "event_occurrence",
+          "occurrence_count": 340,
+          "observed_common_fields": [],
+          "observed_variant_fields": [
+            "actual_occurrence",
+            "at_ns",
+            "available_time_ns",
+            "available_time_s",
+            "catalog_record_pointer",
+            "definition_id",
+            "emitted",
+            "event_definition_ref",
+            "evidence_refs",
+            "execution",
+            "expected_condition",
+            "expected_transition",
+            "frozen_collection",
+            "hypothetical_time_ns",
+            "id",
+            "kind",
+            "native_executed",
+            "occurrence_key",
+            "occurrence_policy",
+            "occurrence_policy_ref",
+            "occurrence_time_ns",
+            "occurrence_time_s",
+            "participant_refs",
+            "proof_scope",
+            "proposed_record_kind",
+            "protocol_context_ref",
+            "provenance",
+            "reason",
+            "record_level",
+            "required_evidence_refs",
+            "schema_status",
+            "source_step",
+            "status",
+            "supporting_fact_ids",
+            "task_attempt_id"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "future_followup_attempt",
+      "source_runtime_kinds": [
+        "future_followup_attempt"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "未来时窗内的新随访尝试，引用既有任务，但需要当前授权、检查与新证据。",
+      "semantic_obligations": [
+        "current_permission",
+        "fresh_checks",
+        "new_time_window",
+        "no_implicit_reuse_of_old_grant",
+        "subject",
+        "task"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "future_followup_attempt",
+          "occurrence_count": 1,
+          "observed_common_fields": [
+            "frozen_collection",
+            "id",
+            "permission",
+            "proposed_record_kind",
+            "provenance",
+            "query_time_ns",
+            "reason",
+            "required_fresh_checks",
+            "reuses_earlier_grants",
+            "schema_status",
+            "source_step",
+            "status",
+            "subject_ref",
+            "task_ref"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "human_actor",
+      "source_runtime_kinds": [
+        "human_actor"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "实际人员的决策/操作角色声明，区别于软件智能体；资格、认证和权利仍需具体来源。",
+      "semantic_obligations": [
+        "authentication_status",
+        "authorization_status",
+        "no_agent_token_borrowing",
+        "person_entity",
+        "role"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "human_actor",
+          "occurrence_count": 14,
+          "observed_common_fields": [
+            "actor_kind",
+            "authentication_id",
+            "authorization",
+            "entity_id",
+            "execution",
+            "id",
+            "kind",
+            "may_borrow_agent_token",
+            "provenance",
+            "record_level",
+            "schema_status",
+            "tool_api_status"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "human_review_record",
+      "source_runtime_kinds": [
+        "human_review_record"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "具体审核者对指定候选与输入版本的审核结果要求，未签署结果保持未知。",
+      "semantic_obligations": [
+        "authentication_status",
+        "candidate_and_version",
+        "decision_or_missing",
+        "input_binding",
+        "reviewer"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "human_review_record",
+          "occurrence_count": 1,
+          "observed_common_fields": [
+            "authentication_id",
+            "candidate_id",
+            "candidate_version",
+            "decision",
+            "id",
+            "input_binding_id",
+            "kind",
+            "provenance",
+            "reviewer_entity_id",
+            "status"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "longitudinal_observation",
+      "source_runtime_kinds": [
+        "longitudinal_observation"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "跨日随访观测，保持样本身份、各观测时窗和指标的区别。",
+      "semantic_obligations": [
+        "distinct_time_windows",
+        "fact_refs",
+        "no_implicit_causal_attribution",
+        "sample_identity"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "longitudinal_observation",
+          "occurrence_count": 1,
+          "observed_common_fields": [
+            "causal_attribution",
+            "distinct_observation_times_s",
+            "fact_refs",
+            "frozen_collection",
+            "id",
+            "not_equivalent_to",
+            "proposed_record_kind",
+            "provenance",
+            "sampling_key",
+            "schema_status",
+            "source_step",
+            "subject_ref"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "material_transformation",
+      "source_runtime_kinds": [
+        "material_transformation"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "混合或过滤等物料转换，绑定输入批次、输出批次、中间批次、设备和数量证据；不凭批次名推导守恒或化学效果。",
+      "semantic_obligations": [
+        "equipment",
+        "input_lots",
+        "input_output_evidence",
+        "mass_balance_status",
+        "material_fate",
+        "output_lots",
+        "process",
+        "quantity_units"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "material_transformation",
+          "occurrence_count": 2,
+          "observed_common_fields": [
+            "definition_ref",
+            "equipment_refs",
+            "frozen_collection",
+            "id",
+            "input_fact_refs",
+            "input_lot_refs",
+            "output_fact_refs",
+            "output_lot_refs",
+            "process",
+            "proposed_record_kind",
+            "provenance",
+            "schema_status",
+            "source_step",
+            "status"
+          ],
+          "observed_variant_fields": [
+            "mass_conservation",
+            "material_fate",
+            "previous_process_ref"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "migration_record",
+      "source_runtime_kinds": [
+        "migration_record"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "任务从源执行器到目标执行器的检查点、尝试、提交和清理上下文；传输回执不足以证明迁移完成。",
+      "semantic_obligations": [
+        "attempt_generation",
+        "checkpoint_commit",
+        "cleanup",
+        "destination_executor",
+        "job",
+        "source_executor",
+        "status"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "migration_record",
+          "occurrence_count": 1,
+          "observed_common_fields": [
+            "at_ns",
+            "catalog_record_pointer",
+            "destination_ref",
+            "generation",
+            "job_ref",
+            "source_fault_after_commit_does_not_imply_job_failure",
+            "source_ref",
+            "status"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "module_execution",
+      "source_runtime_kinds": [
+        "module_execution"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "模块定义的一次计算或执行上下文，引用输入与输出事实；合成记录不证明后端曾运行。",
+      "semantic_obligations": [
+        "behavior_context",
+        "execution_status",
+        "input_facts",
+        "module",
+        "output_facts",
+        "source_or_missing"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "module_execution",
+          "occurrence_count": 525,
+          "observed_common_fields": [],
+          "observed_variant_fields": [
+            "behavior_execution_id",
+            "behavior_execution_ref",
+            "catalog_record_pointer",
+            "clock_domain",
+            "command_instance_id",
+            "executed",
+            "execution",
+            "expected_effect_fact_ids",
+            "frozen_collection",
+            "history_policy",
+            "id",
+            "input_fact_refs",
+            "interval_s",
+            "kind",
+            "module_id",
+            "module_ref",
+            "note",
+            "output_fact_refs",
+            "produced_fact_ids",
+            "proposed_record_kind",
+            "provenance",
+            "read_fact_ids",
+            "reason",
+            "record_level",
+            "required_fresh_checks",
+            "schema_status",
+            "source_record",
+            "source_step",
+            "status"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "paired_observation",
+      "source_runtime_kinds": [
+        "paired_observation"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "同对象或匹配样点的前后测量，保存配对键、时间与对照证据；不自动推断因果。",
+      "semantic_obligations": [
+        "before_after_facts",
+        "before_after_times",
+        "controls_if_claimed",
+        "no_implicit_causality",
+        "stable_pair_identity",
+        "uncertainty"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "paired_observation",
+          "occurrence_count": 3,
+          "observed_common_fields": [
+            "frozen_collection",
+            "id",
+            "proposed_record_kind",
+            "provenance",
+            "schema_status",
+            "source_step"
+          ],
+          "observed_variant_fields": [
+            "after_fact_ref",
+            "baseline_fact_ref",
+            "before_fact_ref",
+            "causal_attribution",
+            "causal_claim",
+            "confounders",
+            "control_fact_ref",
+            "followup_fact_ref",
+            "interval_s",
+            "pair_identity_status",
+            "pollen_assay_refs",
+            "stable_sample_key",
+            "subject_ref",
+            "uncertainty"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "passenger_itinerary",
+      "source_runtime_kinds": [
+        "passenger_itinerary"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "同一乘客行程的预定、航段、备降与接续结构，保留任务和尝试身份。",
+      "semantic_obligations": [
+        "attempt",
+        "itinerary",
+        "legs",
+        "original_route",
+        "passenger_scope",
+        "status"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "passenger_itinerary",
+          "occurrence_count": 2,
+          "observed_common_fields": [
+            "attempt_id",
+            "itinerary_id",
+            "original_destination_ref",
+            "original_leg_id",
+            "original_origin_ref",
+            "status"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "passenger_leg",
+      "source_runtime_kinds": [
+        "passenger_leg"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "行程中的具体航段或接续段，绑定起讫、参与者和尝试；备降不等于原联程完成。",
+      "semantic_obligations": [
+        "attempt",
+        "diversion_or_onward_role",
+        "itinerary",
+        "leg",
+        "origin_destination",
+        "participants",
+        "transfer_evidence"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "passenger_leg",
+          "occurrence_count": 2,
+          "observed_common_fields": [
+            "attempt_id",
+            "itinerary_ref",
+            "leg_id",
+            "status"
+          ],
+          "observed_variant_fields": [
+            "carrier_ref",
+            "destination_ref",
+            "diversion_destination_ref",
+            "handover_receipt_ref",
+            "operating_permission_ref",
+            "origin_ref",
+            "original_destination_ref",
+            "passenger_refs"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "passenger_manifest_entry",
+      "source_runtime_kinds": [
+        "passenger_manifest_entry"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "一名乘客与飞机、座位、行程、航段、尝试的绑定；人数统计不替代登乘证据。",
+      "semantic_obligations": [
+        "aircraft",
+        "attempt",
+        "individual_boarding_evidence",
+        "itinerary",
+        "leg",
+        "passenger",
+        "seat"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "passenger_manifest_entry",
+          "occurrence_count": 3,
+          "observed_common_fields": [
+            "aircraft_ref",
+            "boarding_evidence_ref",
+            "booking_evidence_ref",
+            "itinerary_ref",
+            "leg_id",
+            "passenger_ref",
+            "seat_resource_ref",
+            "status",
+            "task_attempt_id"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "predicate_evaluation",
+      "source_runtime_kinds": [
+        "predicate_evaluation"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "在明确绑定和时间截断下的一次谓词评估上下文；未连接引擎时保持未执行。",
+      "semantic_obligations": [
+        "binding",
+        "engine_revision_or_missing",
+        "executed_status",
+        "prepared_inputs",
+        "query_and_cutoff",
+        "target_rule_revision",
+        "truth_and_applicability_separate"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "predicate_evaluation",
+          "occurrence_count": 252,
+          "observed_common_fields": [],
+          "observed_variant_fields": [
+            "applicability_status",
+            "at_ns",
+            "availability_cutoff_ns",
+            "available_cutoff_s",
+            "binding_id",
+            "binding_ref",
+            "binding_status",
+            "catalog_record_pointer",
+            "engine_revision",
+            "execution",
+            "id",
+            "kind",
+            "main_truth",
+            "native_executed",
+            "prepared_input_ids",
+            "provenance",
+            "query_time_ns",
+            "query_time_s",
+            "record_level",
+            "rule_id",
+            "rule_revision",
+            "schema_status",
+            "status"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "predicate_expectation",
+      "source_runtime_kinds": [
+        "predicate_result"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "此候选类型保存明示的合成预期真值，不冒充冻结集合中的原生求值结果。",
+      "semantic_obligations": [
+        "expected_truth",
+        "input_fact_refs",
+        "native_executed_false",
+        "truth_scope"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "predicate_result",
+          "occurrence_count": 108,
+          "observed_common_fields": [
+            "at_ns",
+            "input_fact_refs",
+            "native_executed",
+            "record_kind",
+            "value"
+          ],
+          "observed_variant_fields": [
+            "catalog_record_pointer",
+            "proof_scope",
+            "truth_scope"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "prepared_input",
+      "source_runtime_kinds": [
+        "prepared_input"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "规则调用所准备的事实快照，记录输入身份、投影、可用性与缺失原因。",
+      "semantic_obligations": [
+        "available_at_query",
+        "binding",
+        "fact_or_missing",
+        "history_coverage",
+        "projection",
+        "slot"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "prepared_input",
+          "occurrence_count": 90,
+          "observed_common_fields": [
+            "available_at_query",
+            "binding_id",
+            "execution",
+            "fact_id",
+            "history",
+            "history_coverage",
+            "id",
+            "kind",
+            "provenance",
+            "record_level",
+            "schema_status",
+            "slot"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "relation_instance",
+      "source_runtime_kinds": [
+        "relation_instance"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "带有序角色端点、定义引用、时空或有效范围的关系实例；保管、物理连接等不可互换。",
+      "semantic_obligations": [
+        "authority_or_missing",
+        "claim_status",
+        "definition",
+        "exact_scope",
+        "ordered_role_endpoints",
+        "validity"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "relation_instance",
+          "occurrence_count": 49,
+          "observed_common_fields": [
+            "definition_ref"
+          ],
+          "observed_variant_fields": [
+            "authority_ref",
+            "candidate_holder_refs",
+            "catalog_record_pointer",
+            "claim_exists",
+            "endpoints",
+            "epoch",
+            "fact_ref",
+            "frozen_collection",
+            "generation",
+            "holder_role",
+            "id",
+            "notes",
+            "ordered_endpoints",
+            "proposed_record_kind",
+            "provenance",
+            "roles",
+            "schema_status",
+            "source_step",
+            "status",
+            "valid_interval_s",
+            "validity_note",
+            "validity_ns"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "review_signature_record",
+      "source_runtime_kinds": [
+        "review_signature_record"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "某版本工件的审核与签名证据要求，明确审核人、版本与摘要；未签署不能变为已批准。",
+      "semantic_obligations": [
+        "artifact",
+        "authority_status",
+        "digest_evidence",
+        "reviewer",
+        "signature_or_missing",
+        "version_evidence"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "review_signature_record",
+          "occurrence_count": 3,
+          "observed_common_fields": [
+            "action",
+            "authority_status",
+            "digest_fact_ref",
+            "frozen_collection",
+            "id",
+            "proposed_record_kind",
+            "provenance",
+            "reviewer_ref",
+            "schema_status",
+            "source_signature_ref",
+            "source_step",
+            "status",
+            "version_fact_ref",
+            "work_product_ref"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "sample_collection_record",
+      "source_runtime_kinds": [
+        "sample_collection_record"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "一次采样操作记录，区分样品内容与容器、封签、体积、来源位置时间和保管责任。",
+      "semantic_obligations": [
+        "container",
+        "custody_evidence",
+        "sample_contents",
+        "sample_time",
+        "sampling_point",
+        "seal_evidence",
+        "source_water_area",
+        "volume_evidence"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "sample_collection_record",
+          "occurrence_count": 9,
+          "observed_common_fields": [
+            "actual_chain_of_custody_verified",
+            "availability_time_ns",
+            "container_ref",
+            "custodian_fact_ref",
+            "frozen_collection",
+            "id",
+            "method",
+            "proposed_record_kind",
+            "provenance",
+            "sample_ref",
+            "sample_time_ns",
+            "sampling_point",
+            "schema_status",
+            "seal_fact_ref",
+            "source_step",
+            "source_water_area_ref",
+            "volume_fact_ref"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "strategy_invocation",
+      "source_runtime_kinds": [
+        "strategy_invocation"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "一次策略调用上下文，绑定智能体、策略修订、可见事实、请求、目标、约束和时间截断；与策略定义分开。",
+      "semantic_obligations": [
+        "agent",
+        "constraints",
+        "decision_or_missing",
+        "execution_status",
+        "objectives",
+        "permitted_observations",
+        "query_and_cutoff",
+        "request",
+        "strategy_revision"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "strategy_invocation",
+          "occurrence_count": 340,
+          "observed_common_fields": [],
+          "observed_variant_fields": [
+            "action_proposed",
+            "agent_id",
+            "agent_ref",
+            "at_s",
+            "availability_cutoff_ns",
+            "available_cutoff_ns",
+            "available_cutoff_s",
+            "called_by",
+            "catalog_record_pointer",
+            "constraint_ids",
+            "constraint_refs",
+            "decision_ref",
+            "evaluation_cutoff_ns",
+            "execution",
+            "frozen_collection",
+            "id",
+            "input_fact_ids",
+            "input_fact_refs",
+            "input_refs",
+            "input_status",
+            "kind",
+            "missing_inputs",
+            "objective_ids",
+            "objective_ref",
+            "objective_refs",
+            "observation_refs",
+            "own_step_output_excluded",
+            "permitted_fact_refs",
+            "permitted_visibility",
+            "proposed_record_kind",
+            "provenance",
+            "query_time_ns",
+            "record_level",
+            "request_ids",
+            "request_ref",
+            "revision",
+            "schema_status",
+            "source_step",
+            "status",
+            "strategy_id",
+            "strategy_ref",
+            "strategy_revision"
+          ]
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "time_context",
+      "source_runtime_kinds": [
+        "time_context"
+      ],
+      "semantic_levels": [
+        "runtime_record"
+      ],
+      "definition": "求值或历史所需的查询时间、时间域、窗口和可用性截断上下文。",
+      "semantic_obligations": [
+        "availability_cutoff",
+        "clock_domain",
+        "history_requirement",
+        "history_samples_or_missing",
+        "query_time"
+      ],
+      "raw_profiles": [
+        {
+          "raw_kind": "time_context",
+          "occurrence_count": 16,
+          "observed_common_fields": [
+            "available_cutoff_ns",
+            "catalog_record_pointer",
+            "clock_domain",
+            "history_required",
+            "history_samples",
+            "query_ns"
+          ],
+          "observed_variant_fields": []
+        }
+      ],
+      "missing_obligation_policy": "No inferred metadata or status promotion; diagnose unresolved execution/evidence requirements."
+    },
+    {
+      "kind": "link_configuration",
+      "semantic_levels": [
+        "source_record"
+      ],
+      "definition": "Preserved source network link configuration; not per-link telemetry or proof of message delivery.",
+      "semantic_obligations": [
+        "source_pointer",
+        "exact_payload"
+      ]
+    },
+    {
+      "kind": "source_record",
+      "semantic_levels": [
+        "source_record"
+      ],
+      "definition": "Opaque preserved source object; no invented ontology or execution semantics.",
+      "semantic_obligations": [
+        "source_pointer",
+        "exact_payload"
+      ]
+    },
+    {
+      "kind": "rule_ast_expression",
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Derived complete AST inspection node, not an authored alternative rule.",
+      "semantic_obligations": [
+        "source_rule_id",
+        "source_ast_pointer",
+        "unchanged_value",
+        "root_role"
+      ]
+    },
+    {
+      "kind": "activity",
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "Source-backed business workflow with exact ordered steps and authored scenario mappings.",
+      "semantic_obligations": [
+        "catalog_index",
+        "source_name",
+        "ordered_steps",
+        "source_pointer"
+      ]
+    },
+    {
+      "kind": "activity_step",
+      "semantic_levels": [
+        "definition"
+      ],
+      "definition": "One exact source workflow step and ordered position; mapping is not completion.",
+      "semantic_obligations": [
+        "activity",
+        "step_index",
+        "exact_name",
+        "source_pointer"
+      ]
+    }
+  ]
+}

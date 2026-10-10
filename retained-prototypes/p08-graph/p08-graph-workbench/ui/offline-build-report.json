@@ -1,0 +1,10 @@
+{
+  "file": "P08-graph-explorer-offline.html",
+  "bytes": 35236782,
+  "sha256": "cfa6fc4c010d05781b864906b8d819d4053b26c7273f0ecda820326908bc11f1",
+  "embedded_files": 103,
+  "source_graph_sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de",
+  "network_requests": "none; connect-src none; embedded transport only",
+  "runtime_requirement": "native DecompressionStream(gzip); feature-detected; no CDN fallback",
+  "visual_verification": "not_run"
+}

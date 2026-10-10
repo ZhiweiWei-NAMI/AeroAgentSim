@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.dataprovider.signal &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.signal</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.dataprovider.signal</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim 信号数据提供者模块</span>
+
+<span class="sd">该模块实现了一个信号数据提供者，用于模拟电磁环境中的信号传播。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 跟踪所有已知的活跃辐射源（发射机）</span>
+<span class="sd">2. 计算信号传播和接收功率</span>
+<span class="sd">3. 提供查询API，用于获取特定位置可检测到的信号</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.dataprovider</span> <span class="kn">import</span> <span class="n">DataProvider</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.frequency</span> <span class="kn">import</span> <span class="n">FrequencyManager</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SignalSource"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource">[docs]</a><span class="k">class</span> <span class="nc">SignalSource</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    信号源类，表示一个电磁辐射源</span>
+
+<span class="sd">    属性:</span>
+<span class="sd">        source_id: 信号源唯一标识符</span>
+<span class="sd">        position: 信号源位置 (x, y, z)</span>
+<span class="sd">        transmit_power_dbm: 发射功率 (dBm)</span>
+<span class="sd">        center_frequency: 中心频率 (MHz)</span>
+<span class="sd">        bandwidth: 带宽 (MHz)</span>
+<span class="sd">        signal_type: 信号类型 (如 &#39;communication&#39;, &#39;radar&#39;, &#39;jammer&#39;)</span>
+<span class="sd">        is_active: 信号源是否活跃</span>
+<span class="sd">        modulation: 调制方式 (可选)</span>
+<span class="sd">        polarization: 极化方式 (可选)</span>
+<span class="sd">        antenna_gain: 天线增益 (dBi) (可选)</span>
+<span class="sd">        antenna_pattern: 天线方向图 (可选)</span>
+<span class="sd">        target_id: 目标ID (可选，用于定向通信)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SignalSource.__init__"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+                 <span class="n">transmit_power_dbm</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">center_frequency</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">bandwidth</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                 <span class="n">signal_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;communication&#39;</span><span class="p">,</span> <span class="n">is_active</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                 <span class="n">modulation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">polarization</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">antenna_gain</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">antenna_pattern</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">target_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化信号源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 信号源唯一标识符</span>
+<span class="sd">            position: 信号源位置 (x, y, z)</span>
+<span class="sd">            transmit_power_dbm: 发射功率 (dBm)</span>
+<span class="sd">            center_frequency: 中心频率 (MHz)</span>
+<span class="sd">            bandwidth: 带宽 (MHz)</span>
+<span class="sd">            signal_type: 信号类型 (默认为&#39;communication&#39;)</span>
+<span class="sd">            is_active: 信号源是否活跃 (默认为True)</span>
+<span class="sd">            modulation: 调制方式 (可选)</span>
+<span class="sd">            polarization: 极化方式 (可选)</span>
+<span class="sd">            antenna_gain: 天线增益 (dBi) (可选)</span>
+<span class="sd">            antenna_pattern: 天线方向图 (可选)</span>
+<span class="sd">            target_id: 目标ID (可选，用于定向通信)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_id</span> <span class="o">=</span> <span class="n">source_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="n">position</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transmit_power_dbm</span> <span class="o">=</span> <span class="n">transmit_power_dbm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">center_frequency</span> <span class="o">=</span> <span class="n">center_frequency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bandwidth</span> <span class="o">=</span> <span class="n">bandwidth</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_type</span> <span class="o">=</span> <span class="n">signal_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="n">is_active</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">modulation</span> <span class="o">=</span> <span class="n">modulation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">polarization</span> <span class="o">=</span> <span class="n">polarization</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">antenna_gain</span> <span class="o">=</span> <span class="n">antenna_gain</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">antenna_pattern</span> <span class="o">=</span> <span class="n">antenna_pattern</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_id</span> <span class="o">=</span> <span class="n">target_id</span></div>
+
+<div class="viewcode-block" id="SignalSource.to_dict"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource.to_dict">[docs]</a>    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        将信号源转换为字典</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict: 包含信号源信息的字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span>
+            <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">,</span>
+            <span class="s1">&#39;transmit_power_dbm&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmit_power_dbm</span><span class="p">,</span>
+            <span class="s1">&#39;center_frequency&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">center_frequency</span><span class="p">,</span>
+            <span class="s1">&#39;bandwidth&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bandwidth</span><span class="p">,</span>
+            <span class="s1">&#39;signal_type&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_type</span><span class="p">,</span>
+            <span class="s1">&#39;is_active&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">,</span>
+            <span class="s1">&#39;modulation&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modulation</span><span class="p">,</span>
+            <span class="s1">&#39;polarization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">polarization</span><span class="p">,</span>
+            <span class="s1">&#39;antenna_gain&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">antenna_gain</span><span class="p">,</span>
+            <span class="s1">&#39;antenna_pattern&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">antenna_pattern</span><span class="p">,</span>
+            <span class="s1">&#39;target_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_id</span>
+        <span class="p">}</span></div>
+
+<div class="viewcode-block" id="SignalSource.from_dict"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;SignalSource&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        从字典创建信号源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 包含信号源信息的字典</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            SignalSource: 创建的信号源对象</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">source_id</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">],</span>
+            <span class="n">position</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">],</span>
+            <span class="n">transmit_power_dbm</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;transmit_power_dbm&#39;</span><span class="p">],</span>
+            <span class="n">center_frequency</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;center_frequency&#39;</span><span class="p">],</span>
+            <span class="n">bandwidth</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;bandwidth&#39;</span><span class="p">],</span>
+            <span class="n">signal_type</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;signal_type&#39;</span><span class="p">,</span> <span class="s1">&#39;communication&#39;</span><span class="p">),</span>
+            <span class="n">is_active</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_active&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="n">modulation</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;modulation&#39;</span><span class="p">),</span>
+            <span class="n">polarization</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;polarization&#39;</span><span class="p">),</span>
+            <span class="n">antenna_gain</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;antenna_gain&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="n">antenna_pattern</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;antenna_pattern&#39;</span><span class="p">),</span>
+            <span class="n">target_id</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_id&#39;</span><span class="p">)</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="SignalDataProvider"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider">[docs]</a><span class="k">class</span> <span class="nc">SignalDataProvider</span><span class="p">(</span><span class="n">DataProvider</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    信号数据提供者，用于模拟电磁环境中的信号传播</span>
+
+<span class="sd">    该提供者维护所有已知的活跃辐射源（发射机），并提供查询API，</span>
+<span class="sd">    用于获取特定位置可检测到的信号。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># 定义事件名称</span>
+    <span class="n">EVENT_SIGNAL_SOURCE_ADDED</span> <span class="o">=</span> <span class="s1">&#39;SignalSourceAdded&#39;</span>
+    <span class="n">EVENT_SIGNAL_SOURCE_REMOVED</span> <span class="o">=</span> <span class="s1">&#39;SignalSourceRemoved&#39;</span>
+    <span class="n">EVENT_SIGNAL_SOURCE_UPDATED</span> <span class="o">=</span> <span class="s1">&#39;SignalSourceUpdated&#39;</span>
+
+<div class="viewcode-block" id="SignalDataProvider.__init__"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化信号数据提供者</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            config: 配置字典，可能包含以下字段:</span>
+<span class="sd">                - propagation_model: 传播模型 (&#39;free_space&#39;, &#39;two_ray&#39;, &#39;log_distance&#39;)</span>
+<span class="sd">                - default_noise_floor: 默认噪声底 (dBm)</span>
+<span class="sd">                - weather_enabled: 是否启用天气影响</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+        <span class="c1"># 配置参数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">propagation_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;propagation_model&#39;</span><span class="p">,</span> <span class="s1">&#39;free_space&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_noise_floor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;default_noise_floor&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">100.0</span><span class="p">)</span>  <span class="c1"># dBm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_enabled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;weather_enabled&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_fast_fading</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;use_fast_fading&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># 信号源字典，键为信号源ID，值为SignalSource对象</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SignalSource</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 频率管理器引用</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frequency_manager</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;frequency_manager&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># 位置更新订阅字典，键为订阅ID，值为包含agent_id和signal_source_id的字典</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position_subscriptions</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 注册事件处理器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_event_handlers</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SignalDataProvider initialized with model: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">propagation_model</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SignalDataProvider.load_data"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.load_data">[docs]</a>    <span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        加载外部信号源数据</span>
+
+<span class="sd">        此方法可以从配置文件或数据库加载预定义的信号源。</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 从配置加载预定义信号源</span>
+        <span class="n">predefined_sources</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;predefined_sources&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">for</span> <span class="n">source_data</span> <span class="ow">in</span> <span class="n">predefined_sources</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">SignalSource</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">source_data</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_signal_source</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">predefined_sources</span><span class="p">)</span><span class="si">}</span><span class="s2"> predefined signal sources&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SignalDataProvider.start_event_triggering"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.start_event_triggering">[docs]</a>    <span class="k">def</span> <span class="nf">start_event_triggering</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        启动事件触发进程</span>
+
+<span class="sd">        此方法可以启动定期更新信号源状态的进程。</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 目前没有需要定期触发的事件</span>
+        <span class="k">pass</span></div>
+
+    <span class="k">def</span> <span class="nf">_register_event_handlers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册事件处理器</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 如果有频率管理器，订阅频率链路活动更新事件</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frequency_manager</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">frequency_manager</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;FrequencyLinkActivityUpdate&#39;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">_frequency_link_handler&quot;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_handle_frequency_link_update</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Subscribed to FrequencyLinkActivityUpdate events&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 订阅所有代理的位置更新事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position_subscriptions</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 存储位置更新订阅的ID，用于后续取消订阅</span>
+
+    <span class="k">def</span> <span class="nf">_handle_frequency_link_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理频率链路活动更新事件</span>
+
+<span class="sd">        当频率管理器分配或释放频率资源时，更新信号源信息。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event_data: 事件数据，包含以下字段:</span>
+<span class="sd">                - source_id: 源代理ID</span>
+<span class="sd">                - target_id: 目标代理ID</span>
+<span class="sd">                - resource_id: 资源ID</span>
+<span class="sd">                - center_frequency: 中心频率</span>
+<span class="sd">                - bandwidth: 带宽</span>
+<span class="sd">                - transmit_power_dbm: 发射功率</span>
+<span class="sd">                - status: 状态 (&#39;allocated&#39; 或 &#39;released&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_id&#39;</span><span class="p">)</span>
+        <span class="n">target_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_id&#39;</span><span class="p">)</span>
+        <span class="n">resource_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;resource_id&#39;</span><span class="p">)</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="n">source_id</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">,</span> <span class="n">status</span><span class="p">]):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Incomplete frequency link update event: </span><span class="si">{</span><span class="n">event_data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 构造信号源ID</span>
+        <span class="n">signal_source_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s1">&#39;allocated&#39;</span><span class="p">:</span>
+            <span class="c1"># 获取源代理位置</span>
+            <span class="n">source_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_agent_position</span><span class="p">(</span><span class="n">source_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">source_position</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot get position for agent </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="c1"># 创建或更新信号源</span>
+            <span class="n">center_frequency</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;center_frequency&#39;</span><span class="p">)</span>
+            <span class="n">bandwidth</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;bandwidth&#39;</span><span class="p">)</span>
+            <span class="n">transmit_power_dbm</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transmit_power_dbm&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">signal_source_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">:</span>
+                <span class="c1"># 更新现有信号源</span>
+                <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">[</span><span class="n">signal_source_id</span><span class="p">]</span>
+                <span class="n">source</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="n">source_position</span>
+                <span class="n">source</span><span class="o">.</span><span class="n">center_frequency</span> <span class="o">=</span> <span class="n">center_frequency</span>
+                <span class="n">source</span><span class="o">.</span><span class="n">bandwidth</span> <span class="o">=</span> <span class="n">bandwidth</span>
+                <span class="n">source</span><span class="o">.</span><span class="n">transmit_power_dbm</span> <span class="o">=</span> <span class="n">transmit_power_dbm</span>
+                <span class="n">source</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">source</span><span class="o">.</span><span class="n">target_id</span> <span class="o">=</span> <span class="n">target_id</span>
+
+                <span class="c1"># 触发信号源更新事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">EVENT_SIGNAL_SOURCE_UPDATED</span><span class="p">,</span>
+                    <span class="p">{</span><span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">signal_source_id</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()}</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># 创建新信号源</span>
+                <span class="n">source</span> <span class="o">=</span> <span class="n">SignalSource</span><span class="p">(</span>
+                    <span class="n">source_id</span><span class="o">=</span><span class="n">signal_source_id</span><span class="p">,</span>
+                    <span class="n">position</span><span class="o">=</span><span class="n">source_position</span><span class="p">,</span>
+                    <span class="n">transmit_power_dbm</span><span class="o">=</span><span class="n">transmit_power_dbm</span><span class="p">,</span>
+                    <span class="n">center_frequency</span><span class="o">=</span><span class="n">center_frequency</span><span class="p">,</span>
+                    <span class="n">bandwidth</span><span class="o">=</span><span class="n">bandwidth</span><span class="p">,</span>
+                    <span class="n">signal_type</span><span class="o">=</span><span class="s1">&#39;communication&#39;</span><span class="p">,</span>
+                    <span class="n">is_active</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">target_id</span><span class="o">=</span><span class="n">target_id</span>
+                <span class="p">)</span>
+
+                <span class="c1"># 添加信号源</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">[</span><span class="n">signal_source_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">source</span>
+
+                <span class="c1"># 触发信号源添加事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">EVENT_SIGNAL_SOURCE_ADDED</span><span class="p">,</span>
+                    <span class="p">{</span><span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">signal_source_id</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()}</span>
+                <span class="p">)</span>
+
+                <span class="c1"># 订阅源代理的位置更新事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_subscribe_to_agent_position_updates</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">signal_source_id</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal source </span><span class="si">{</span><span class="n">signal_source_id</span><span class="si">}</span><span class="s2"> added/updated for frequency allocation&quot;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">status</span> <span class="o">==</span> <span class="s1">&#39;released&#39;</span><span class="p">:</span>
+            <span class="c1"># 如果信号源存在，将其标记为非活跃或移除</span>
+            <span class="k">if</span> <span class="n">signal_source_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">:</span>
+                <span class="c1"># 将信号源标记为非活跃</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">[</span><span class="n">signal_source_id</span><span class="p">]</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="c1"># 触发信号源更新事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">EVENT_SIGNAL_SOURCE_UPDATED</span><span class="p">,</span>
+                    <span class="p">{</span><span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">signal_source_id</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">[</span><span class="n">signal_source_id</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()}</span>
+                <span class="p">)</span>
+
+                <span class="c1"># 取消订阅源代理的位置更新事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_unsubscribe_from_agent_position_updates</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">signal_source_id</span><span class="p">)</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal source </span><span class="si">{</span><span class="n">signal_source_id</span><span class="si">}</span><span class="s2"> marked as inactive&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_subscribe_to_agent_position_updates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">signal_source_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        订阅代理位置更新事件</span>
+
+<span class="sd">        当代理位置发生变化时，更新对应的信号源位置。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+<span class="sd">            signal_source_id: 信号源ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 创建订阅ID</span>
+        <span class="n">subscription_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">_position_update_</span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">signal_source_id</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># 如果已经订阅，先取消订阅</span>
+        <span class="k">if</span> <span class="n">subscription_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_subscriptions</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_unsubscribe_from_agent_position_updates</span><span class="p">(</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">signal_source_id</span><span class="p">)</span>
+
+        <span class="c1"># 订阅代理的状态变化事件</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+                <span class="n">agent_id</span><span class="p">,</span>
+                <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span>
+                <span class="n">subscription_id</span><span class="p">,</span>
+                <span class="k">lambda</span> <span class="n">event_data</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_agent_position_update</span><span class="p">(</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">signal_source_id</span><span class="p">,</span> <span class="n">event_data</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 记录订阅ID</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_subscriptions</span><span class="p">[</span><span class="n">subscription_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="n">agent_id</span><span class="p">,</span>
+                <span class="s1">&#39;signal_source_id&#39;</span><span class="p">:</span> <span class="n">signal_source_id</span>
+            <span class="p">}</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Subscribed to position updates for agent </span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> for signal source </span><span class="si">{</span><span class="n">signal_source_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to subscribe to position updates for agent </span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_unsubscribe_from_agent_position_updates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">signal_source_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        取消订阅代理位置更新事件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+<span class="sd">            signal_source_id: 信号源ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 创建订阅ID</span>
+        <span class="n">subscription_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">_position_update_</span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">signal_source_id</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># 如果已订阅，取消订阅</span>
+        <span class="k">if</span> <span class="n">subscription_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_subscriptions</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">unsubscribe</span><span class="p">(</span>
+                    <span class="n">agent_id</span><span class="p">,</span>
+                    <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span>
+                    <span class="n">subscription_id</span>
+                <span class="p">)</span>
+
+                <span class="c1"># 移除订阅记录</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_subscriptions</span><span class="p">[</span><span class="n">subscription_id</span><span class="p">]</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsubscribed from position updates for agent </span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> for signal source </span><span class="si">{</span><span class="n">signal_source_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to unsubscribe from position updates for agent </span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_agent_position_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">signal_source_id</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理代理位置更新事件</span>
+
+<span class="sd">        当代理位置发生变化时，更新对应的信号源位置。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+<span class="sd">            signal_source_id: 信号源ID</span>
+<span class="sd">            event_data: 事件数据</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 检查是否是位置更新事件</span>
+        <span class="k">if</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;state_name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;position&#39;</span><span class="p">:</span>
+            <span class="c1"># 获取新位置</span>
+            <span class="n">new_position</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;new_value&#39;</span><span class="p">)</span>
+
+            <span class="c1"># 检查信号源是否存在且活跃</span>
+            <span class="k">if</span> <span class="n">signal_source_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">[</span><span class="n">signal_source_id</span><span class="p">]</span><span class="o">.</span><span class="n">is_active</span><span class="p">:</span>
+                <span class="c1"># 更新信号源位置</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_signal_source</span><span class="p">(</span><span class="n">signal_source_id</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="n">new_position</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated position of signal source </span><span class="si">{</span><span class="n">signal_source_id</span><span class="si">}</span><span class="s2"> (from agent </span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">) to </span><span class="si">{</span><span class="n">new_position</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_agent_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取代理的位置</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[float, float, float] or None: 代理位置，如果找不到则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 尝试从环境中获取代理</span>
+        <span class="n">agent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">agent</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 如果有空域管理器，尝试从中获取位置</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;airspace_manager&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_object_position</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="SignalDataProvider.add_signal_source"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.add_signal_source">[docs]</a>    <span class="k">def</span> <span class="nf">add_signal_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">SignalSource</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        添加信号源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source: 要添加的信号源</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功添加</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">source</span><span class="o">.</span><span class="n">source_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal source </span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> already exists&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">[</span><span class="n">source</span><span class="o">.</span><span class="n">source_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">source</span>
+
+        <span class="c1"># 触发信号源添加事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">EVENT_SIGNAL_SOURCE_ADDED</span><span class="p">,</span>
+            <span class="p">{</span><span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()}</span>
+        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal source </span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> added&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="SignalDataProvider.remove_signal_source"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.remove_signal_source">[docs]</a>    <span class="k">def</span> <span class="nf">remove_signal_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        移除信号源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 要移除的信号源ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功移除</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">source_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal source </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> does not exist&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">source_id</span><span class="p">)</span>
+
+        <span class="c1"># 触发信号源移除事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">EVENT_SIGNAL_SOURCE_REMOVED</span><span class="p">,</span>
+            <span class="p">{</span><span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 取消所有与该信号源相关的位置更新订阅</span>
+        <span class="c1"># 查找所有包含该信号源ID的订阅</span>
+        <span class="n">subscriptions_to_remove</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">sub_id</span><span class="p">,</span> <span class="n">sub_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_subscriptions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">sub_info</span><span class="p">[</span><span class="s1">&#39;signal_source_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">source_id</span><span class="p">:</span>
+                <span class="n">subscriptions_to_remove</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sub_id</span><span class="p">,</span> <span class="n">sub_info</span><span class="p">[</span><span class="s1">&#39;agent_id&#39;</span><span class="p">]))</span>
+
+        <span class="c1"># 取消这些订阅</span>
+        <span class="k">for</span> <span class="n">sub_id</span><span class="p">,</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="n">subscriptions_to_remove</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">unsubscribe</span><span class="p">(</span>
+                    <span class="n">agent_id</span><span class="p">,</span>
+                    <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span>
+                    <span class="n">sub_id</span>
+                <span class="p">)</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_subscriptions</span><span class="p">[</span><span class="n">sub_id</span><span class="p">]</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsubscribed from position updates for agent </span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> for removed signal source </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to unsubscribe from position updates for agent </span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal source </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> removed&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="SignalDataProvider.update_signal_source"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.update_signal_source">[docs]</a>    <span class="k">def</span> <span class="nf">update_signal_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        更新信号源属性</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 要更新的信号源ID</span>
+<span class="sd">            **kwargs: 要更新的属性</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功更新</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">source_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal source </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> does not exist&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span>
+
+        <span class="c1"># 更新属性</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># 触发信号源更新事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">EVENT_SIGNAL_SOURCE_UPDATED</span><span class="p">,</span>
+            <span class="p">{</span><span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()}</span>
+        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal source </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> updated&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="SignalDataProvider.get_signal_source"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.get_signal_source">[docs]</a>    <span class="k">def</span> <span class="nf">get_signal_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">SignalSource</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取信号源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 信号源ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            SignalSource or None: 信号源对象，如果不存在则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">source_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SignalDataProvider.get_all_signal_sources"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.get_all_signal_sources">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_signal_sources</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SignalSource</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有信号源</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, SignalSource]: 信号源字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="SignalDataProvider.get_active_signal_sources"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.get_active_signal_sources">[docs]</a>    <span class="k">def</span> <span class="nf">get_active_signal_sources</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SignalSource</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有活跃的信号源</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, SignalSource]: 活跃信号源字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="nb">id</span><span class="p">:</span> <span class="n">source</span> <span class="k">for</span> <span class="nb">id</span><span class="p">,</span> <span class="n">source</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_sources</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">source</span><span class="o">.</span><span class="n">is_active</span><span class="p">}</span></div>
+
+    <span class="k">def</span> <span class="nf">_calculate_received_power</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">SignalSource</span><span class="p">,</span> <span class="n">receiver_position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算接收功率</span>
+
+<span class="sd">        使用选定的传播模型计算从信号源到接收机位置的接收功率。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source: 信号源</span>
+<span class="sd">            receiver_position: 接收机位置 (x, y, z)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: 接收功率 (dBm)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 计算距离</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_distance</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">position</span><span class="p">,</span> <span class="n">receiver_position</span><span class="p">)</span>
+
+        <span class="c1"># 避免距离为0导致的计算错误</span>
+        <span class="k">if</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">:</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="mf">0.1</span>
+
+        <span class="c1"># 基础发射功率 (dBm)</span>
+        <span class="n">tx_power</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">transmit_power_dbm</span>
+
+        <span class="c1"># 天线增益 (dBi)</span>
+        <span class="n">antenna_gain</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">antenna_gain</span>
+
+        <span class="c1"># 根据传播模型计算路径损耗</span>
+        <span class="n">path_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_path_loss</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="n">source</span><span class="o">.</span><span class="n">center_frequency</span><span class="p">)</span>
+
+        <span class="c1"># 计算接收功率 (dBm)</span>
+        <span class="n">rx_power</span> <span class="o">=</span> <span class="n">tx_power</span> <span class="o">+</span> <span class="n">antenna_gain</span> <span class="o">-</span> <span class="n">path_loss</span>
+
+        <span class="c1"># 应用环境因素</span>
+        <span class="n">rx_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_environmental_factors</span><span class="p">(</span><span class="n">rx_power</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">receiver_position</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">rx_power</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos1</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">pos2</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算两点之间的欧几里得距离</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            pos1: 第一个位置 (x, y, z)</span>
+<span class="sd">            pos2: 第二个位置 (x, y, z)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: 距离 (米)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">sum</span><span class="p">((</span><span class="n">a</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pos1</span><span class="p">,</span> <span class="n">pos2</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_path_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distance</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">frequency</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算路径损耗</span>
+
+<span class="sd">        根据选定的传播模型计算路径损耗。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            distance: 距离 (米)</span>
+<span class="sd">            frequency: 频率 (MHz)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: 路径损耗 (dB)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 将频率转换为GHz</span>
+        <span class="n">freq_ghz</span> <span class="o">=</span> <span class="n">frequency</span> <span class="o">/</span> <span class="mf">1000.0</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">propagation_model</span> <span class="o">==</span> <span class="s1">&#39;free_space&#39;</span><span class="p">:</span>
+            <span class="c1"># 自由空间路径损耗模型</span>
+            <span class="c1"># PL(dB) = 20*log10(d) + 20*log10(f) + 32.44</span>
+            <span class="c1"># 其中d为距离(km)，f为频率(MHz)</span>
+            <span class="n">distance_km</span> <span class="o">=</span> <span class="n">distance</span> <span class="o">/</span> <span class="mf">1000.0</span>
+            <span class="k">return</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">distance_km</span><span class="p">)</span> <span class="o">+</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">frequency</span><span class="p">)</span> <span class="o">+</span> <span class="mf">32.45</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">propagation_model</span> <span class="o">==</span> <span class="s1">&#39;two_ray&#39;</span><span class="p">:</span>
+            <span class="c1"># 两射线地面反射模型</span>
+            <span class="c1"># 对于较远距离: PL(dB) = 40*log10(d) - 10*log10(ht*hr)</span>
+            <span class="c1"># 其中ht和hr为发射机和接收机的高度</span>
+            <span class="c1"># 简化版本，假设高度为2米</span>
+            <span class="k">if</span> <span class="n">distance</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">40</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">distance</span> <span class="o">/</span> <span class="mf">1000.0</span><span class="p">)</span> <span class="o">-</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># 近距离使用自由空间模型</span>
+                <span class="n">distance_km</span> <span class="o">=</span> <span class="n">distance</span> <span class="o">/</span> <span class="mf">1000.0</span>
+                <span class="k">return</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">distance_km</span><span class="p">)</span> <span class="o">+</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">frequency</span><span class="p">)</span> <span class="o">+</span> <span class="mf">32.45</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">propagation_model</span> <span class="o">==</span> <span class="s1">&#39;log_distance&#39;</span><span class="p">:</span>
+            <span class="c1"># 对数距离路径损耗模型</span>
+            <span class="c1"># PL(dB) = PL(d0) + 10*n*log10(d/d0)</span>
+            <span class="c1"># 其中n为路径损耗指数，d0为参考距离</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="mf">3.0</span>  <span class="c1"># 城市环境的典型值</span>
+            <span class="n">d0</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># 参考距离1米</span>
+            <span class="n">pl_d0</span> <span class="o">=</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">d0</span> <span class="o">*</span> <span class="n">freq_ghz</span> <span class="o">/</span> <span class="mf">0.3</span><span class="p">)</span>  <span class="c1"># 参考距离处的路径损耗</span>
+            <span class="k">return</span> <span class="n">pl_d0</span> <span class="o">+</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">n</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">distance</span> <span class="o">/</span> <span class="n">d0</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 默认使用自由空间模型</span>
+            <span class="n">distance_km</span> <span class="o">=</span> <span class="n">distance</span> <span class="o">/</span> <span class="mf">1000.0</span>
+            <span class="k">return</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">distance_km</span><span class="p">)</span> <span class="o">+</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">frequency</span><span class="p">)</span> <span class="o">+</span> <span class="mf">32.45</span>
+
+    <span class="k">def</span> <span class="nf">_apply_environmental_factors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rx_power</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">SignalSource</span><span class="p">,</span>
+                                    <span class="n">receiver_position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        应用环境因素对接收功率的影响</span>
+
+<span class="sd">        考虑天气、地形等环境因素对信号传播的影响。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rx_power: 基础接收功率 (dBm)</span>
+<span class="sd">            source: 信号源</span>
+<span class="sd">            receiver_position: 接收机位置（模拟的位置坐标）</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: 修正后的接收功率 (dBm)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">modified_rx_power</span> <span class="o">=</span> <span class="n">rx_power</span>
+
+        <span class="n">weather_data_provider</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">get_data_provider</span><span class="p">(</span><span class="s1">&#39;weather&#39;</span><span class="p">)</span>
+        <span class="c1"># 应用天气影响</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_enabled</span> <span class="ow">and</span> <span class="n">weather_data_provider</span><span class="p">:</span>
+            <span class="n">weather_provider</span> <span class="o">=</span> <span class="n">weather_data_provider</span>
+            <span class="c1"># 获取接收机位置的天气条件</span>
+            <span class="n">weather</span> <span class="o">=</span> <span class="n">weather_provider</span><span class="o">.</span><span class="n">get_weather_at</span><span class="p">(</span><span class="n">receiver_position</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">weather</span><span class="p">:</span>
+                <span class="c1"># 雨衰减</span>
+                <span class="k">if</span> <span class="s1">&#39;precipitation_rate&#39;</span> <span class="ow">in</span> <span class="n">weather</span><span class="p">:</span>
+                    <span class="n">rain_rate</span> <span class="o">=</span> <span class="n">weather</span><span class="p">[</span><span class="s1">&#39;precipitation_rate&#39;</span><span class="p">]</span>  <span class="c1"># mm/h</span>
+                    <span class="k">if</span> <span class="n">rain_rate</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="c1"># 简化的雨衰减模型</span>
+                        <span class="c1"># 频率越高，雨衰减越严重</span>
+                        <span class="n">freq_ghz</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">center_frequency</span> <span class="o">/</span> <span class="mf">1000.0</span>
+                        <span class="n">rain_attenuation</span> <span class="o">=</span> <span class="mf">0.01</span> <span class="o">*</span> <span class="n">rain_rate</span> <span class="o">*</span> <span class="n">freq_ghz</span>
+                        <span class="n">modified_rx_power</span> <span class="o">-=</span> <span class="n">rain_attenuation</span>
+
+                <span class="c1"># 雾衰减</span>
+                <span class="k">if</span> <span class="s1">&#39;visibility&#39;</span> <span class="ow">in</span> <span class="n">weather</span><span class="p">:</span>
+                    <span class="n">visibility</span> <span class="o">=</span> <span class="n">weather</span><span class="p">[</span><span class="s1">&#39;visibility&#39;</span><span class="p">]</span>  <span class="c1"># km</span>
+                    <span class="k">if</span> <span class="n">visibility</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
+                        <span class="c1"># 简化的雾衰减模型</span>
+                        <span class="n">fog_attenuation</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">visibility</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">center_frequency</span> <span class="o">/</span> <span class="mf">1000.0</span><span class="p">)</span>
+                        <span class="n">modified_rx_power</span> <span class="o">-=</span> <span class="n">fog_attenuation</span>
+
+        <span class="c1"># 应用随机衰落</span>
+        <span class="c1"># 简化的快速衰落模型</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_fast_fading</span><span class="p">:</span>
+            <span class="n">fast_fading</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>  <span class="c1"># 均值0，标准差3dB的高斯分布</span>
+            <span class="n">modified_rx_power</span> <span class="o">+=</span> <span class="n">fast_fading</span>
+
+        <span class="k">return</span> <span class="n">modified_rx_power</span>
+
+<div class="viewcode-block" id="SignalDataProvider.get_detectable_signals_at_location"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.get_detectable_signals_at_location">[docs]</a>    <span class="k">def</span> <span class="nf">get_detectable_signals_at_location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sensor_location</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+                                          <span class="n">frequency_bands_of_interest</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span>
+                                          <span class="n">sensor_sensitivity_threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取特定位置可检测到的信号</span>
+
+<span class="sd">        此方法是组件（如EMSensingComponent）获取电磁环境信息的主要API。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sensor_location: 传感器位置 (x, y, z)</span>
+<span class="sd">            frequency_bands_of_interest: 感兴趣的频段列表，每个频段为 (min_freq, max_freq) (MHz)</span>
+<span class="sd">            sensor_sensitivity_threshold: 传感器灵敏度阈值 (dBm)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Dict]: 可检测到的信号列表，每个信号包含以下字段:</span>
+<span class="sd">                - source_id: 信号源ID</span>
+<span class="sd">                - position: 信号源位置</span>
+<span class="sd">                - center_frequency: 中心频率</span>
+<span class="sd">                - bandwidth: 带宽</span>
+<span class="sd">                - received_power: 接收功率</span>
+<span class="sd">                - signal_type: 信号类型</span>
+<span class="sd">                - snr: 信噪比</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 获取所有活跃的信号源</span>
+        <span class="n">active_sources</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_active_signal_sources</span><span class="p">()</span>
+
+        <span class="c1"># 过滤出感兴趣频段内的信号源</span>
+        <span class="n">filtered_sources</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">source</span> <span class="ow">in</span> <span class="n">active_sources</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># 检查信号源频率是否在感兴趣频段内</span>
+            <span class="n">source_min_freq</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">center_frequency</span> <span class="o">-</span> <span class="n">source</span><span class="o">.</span><span class="n">bandwidth</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="n">source_max_freq</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">center_frequency</span> <span class="o">+</span> <span class="n">source</span><span class="o">.</span><span class="n">bandwidth</span> <span class="o">/</span> <span class="mi">2</span>
+
+            <span class="k">for</span> <span class="n">min_freq</span><span class="p">,</span> <span class="n">max_freq</span> <span class="ow">in</span> <span class="n">frequency_bands_of_interest</span><span class="p">:</span>
+                <span class="c1"># 检查频段是否重叠</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">source_max_freq</span> <span class="o">&lt;</span> <span class="n">min_freq</span> <span class="ow">or</span> <span class="n">source_min_freq</span> <span class="o">&gt;</span> <span class="n">max_freq</span><span class="p">):</span>
+                    <span class="n">filtered_sources</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">source</span>
+                    <span class="k">break</span>
+
+        <span class="c1"># 计算每个信号源的接收功率</span>
+        <span class="n">detectable_signals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">source</span> <span class="ow">in</span> <span class="n">filtered_sources</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># 计算接收功率</span>
+            <span class="n">received_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_received_power</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">sensor_location</span><span class="p">)</span>
+
+            <span class="c1"># 检查是否超过灵敏度阈值</span>
+            <span class="k">if</span> <span class="n">received_power</span> <span class="o">&gt;=</span> <span class="n">sensor_sensitivity_threshold</span><span class="p">:</span>
+                <span class="c1"># 计算信噪比</span>
+                <span class="n">snr</span> <span class="o">=</span> <span class="n">received_power</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_noise_floor</span>
+
+                <span class="c1"># 添加到可检测信号列表</span>
+                <span class="n">detectable_signals</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+                    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">position</span><span class="p">,</span>
+                    <span class="s1">&#39;center_frequency&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">center_frequency</span><span class="p">,</span>
+                    <span class="s1">&#39;bandwidth&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">bandwidth</span><span class="p">,</span>
+                    <span class="s1">&#39;received_power&#39;</span><span class="p">:</span> <span class="n">received_power</span><span class="p">,</span>
+                    <span class="s1">&#39;signal_type&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">signal_type</span><span class="p">,</span>
+                    <span class="s1">&#39;snr&#39;</span><span class="p">:</span> <span class="n">snr</span><span class="p">,</span>
+                    <span class="s1">&#39;modulation&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">modulation</span><span class="p">,</span>
+                    <span class="s1">&#39;target_id&#39;</span><span class="p">:</span> <span class="n">source</span><span class="o">.</span><span class="n">target_id</span>
+                <span class="p">})</span>
+
+        <span class="k">return</span> <span class="n">detectable_signals</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.signal</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.dataprovider.traffic.TrafficDataProvider &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.traffic.TrafficDataProvider</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-dataprovider-traffic-trafficdataprovider">
+<h1>aeroagentsim.dataprovider.traffic.TrafficDataProvider<a class="headerlink" href="#aeroagentsim-dataprovider-traffic-trafficdataprovider" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.traffic.TrafficDataProvider">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.dataprovider.traffic.</span></span><span class="sig-name descname"><span class="pre">TrafficDataProvider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/traffic.html#TrafficDataProvider"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider" title="Permalink to this definition">¶</a></dt>
+<dd><p>提供地面车辆交通数据，触发车辆位置更新事件。</p>
+<p>支持两种数据源：
+1. SUMO 交通仿真器（通过 TraCI 接口）
+2. 轨迹文件（CSV 格式）</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.traffic.TrafficDataProvider.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/traffic.html#TrafficDataProvider.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化 TrafficDataProvider。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境实例。</p></li>
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – <p>配置字典，支持以下键：
+- ‘source’: 数据源类型，’sumo’ 或 ‘file’。
+- ‘update_interval’ (float, optional): 更新间隔（秒），主要用于 SUMO 数据源。默认为 1.0 秒。
+- ‘sumo_config’ (dict, 当 source=’sumo’ 时必需):</p>
+<blockquote>
+<div><ul>
+<li><p>’host’: (str, 默认=’localhost’) SUMO TraCI 服务器主机。</p></li>
+<li><p>’port’: (int, 默认=8813) SUMO TraCI 服务器端口。</p></li>
+<li><p>’vehicle_filter’ (dict, 可选): 过滤 SUMO 车辆（例如，{‘type’: ‘passenger’}）。</p></li>
+</ul>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>’file_config’ (dict, 当 source=’file’ 时必需):</dt><dd><ul>
+<li><p>’path’: (str) 轨迹文件路径。</p></li>
+<li><p>’format’: (str, 默认=’csv’) 文件格式（目前支持 ‘csv’）。</p></li>
+<li><p>’time_column’: (str, 默认=’timestamp’) 时间列名。</p></li>
+<li><p>’id_column’: (str, 默认=’vehicle_id’) 车辆 ID 列名。</p></li>
+<li><p>’pos_columns’: (list[str], 默认=[‘x’, ‘y’, ‘z’]) 位置列名。</p></li>
+<li><p>’speed_column’: (str, 可选) 速度列名（米/秒）。</p></li>
+<li><p>’angle_column’: (str, 可选) 方向角列名（度）。</p></li>
+<li><p>’type_column’: (str, 可选) 车辆类型列名。</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>’center_coordinates’ (dict, 可选，但推荐用于SUMO坐标转换):</dt><dd><ul>
+<li><p>’lat’: (float) 地图中心点纬度。</p></li>
+<li><p>’lon’: (float) 地图中心点经度。</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.__init__" title="aeroagentsim.dataprovider.traffic.TrafficDataProvider.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(env[, config])</p></td>
+<td><p>初始化 TrafficDataProvider。</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">block</span></code>(duration)</p></td>
+<td><p>Block this data provider for a specified duration.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.close" title="aeroagentsim.dataprovider.traffic.TrafficDataProvider.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a>()</p></td>
+<td><p>清理资源，如关闭 TraCI 连接。</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_dynamics" title="aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_dynamics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_all_vehicle_dynamics</span></code></a>()</p></td>
+<td><p>获取所有车辆的速度和角度信息</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_states" title="aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_states"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_all_vehicle_states</span></code></a>()</p></td>
+<td><p>获取所有车辆的完整状态（位置、速度和角度）</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_registered_sources</span></code>([provider_type])</p></td>
+<td><p>Get all registered sources, optionally filtered by type.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_dynamics" title="aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_dynamics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_vehicle_dynamics</span></code></a>(vehicle_id)</p></td>
+<td><p>获取车辆的速度和角度信息</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_state" title="aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_vehicle_state</span></code></a>(vehicle_id)</p></td>
+<td><p>获取车辆的完整状态（位置、速度和角度）</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.load_data" title="aeroagentsim.dataprovider.traffic.TrafficDataProvider.load_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_data</span></code></a>()</p></td>
+<td><p>根据配置的数据源加载交通数据。</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_source</span></code>(provider)</p></td>
+<td><p>Register another data provider as a source for this provider.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider.start_event_triggering" title="aeroagentsim.dataprovider.traffic.TrafficDataProvider.start_event_triggering"><code class="xref py py-obj docutils literal notranslate"><span class="pre">start_event_triggering</span></code></a>()</p></td>
+<td><p>启动 SimPy 进程以触发 TrafficUpdate 事件。</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unblock</span></code>()</p></td>
+<td><p>Unblock this data provider.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/traffic.html#TrafficDataProvider.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化 TrafficDataProvider。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境实例。</p></li>
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – <p>配置字典，支持以下键：
+- ‘source’: 数据源类型，’sumo’ 或 ‘file’。
+- ‘update_interval’ (float, optional): 更新间隔（秒），主要用于 SUMO 数据源。默认为 1.0 秒。
+- ‘sumo_config’ (dict, 当 source=’sumo’ 时必需):</p>
+<blockquote>
+<div><ul>
+<li><p>’host’: (str, 默认=’localhost’) SUMO TraCI 服务器主机。</p></li>
+<li><p>’port’: (int, 默认=8813) SUMO TraCI 服务器端口。</p></li>
+<li><p>’vehicle_filter’ (dict, 可选): 过滤 SUMO 车辆（例如，{‘type’: ‘passenger’}）。</p></li>
+</ul>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>’file_config’ (dict, 当 source=’file’ 时必需):</dt><dd><ul>
+<li><p>’path’: (str) 轨迹文件路径。</p></li>
+<li><p>’format’: (str, 默认=’csv’) 文件格式（目前支持 ‘csv’）。</p></li>
+<li><p>’time_column’: (str, 默认=’timestamp’) 时间列名。</p></li>
+<li><p>’id_column’: (str, 默认=’vehicle_id’) 车辆 ID 列名。</p></li>
+<li><p>’pos_columns’: (list[str], 默认=[‘x’, ‘y’, ‘z’]) 位置列名。</p></li>
+<li><p>’speed_column’: (str, 可选) 速度列名（米/秒）。</p></li>
+<li><p>’angle_column’: (str, 可选) 方向角列名（度）。</p></li>
+<li><p>’type_column’: (str, 可选) 车辆类型列名。</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>’center_coordinates’ (dict, 可选，但推荐用于SUMO坐标转换):</dt><dd><ul>
+<li><p>’lat’: (float) 地图中心点纬度。</p></li>
+<li><p>’lon’: (float) 地图中心点经度。</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.traffic.TrafficDataProvider.load_data">
+<span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/traffic.html#TrafficDataProvider.load_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.load_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>根据配置的数据源加载交通数据。</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.traffic.TrafficDataProvider.start_event_triggering">
+<span class="sig-name descname"><span class="pre">start_event_triggering</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/traffic.html#TrafficDataProvider.start_event_triggering"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.start_event_triggering" title="Permalink to this definition">¶</a></dt>
+<dd><p>启动 SimPy 进程以触发 TrafficUpdate 事件。</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.traffic.TrafficDataProvider.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/traffic.html#TrafficDataProvider.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>清理资源，如关闭 TraCI 连接。</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_dynamics">
+<span class="sig-name descname"><span class="pre">get_vehicle_dynamics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/traffic.html#TrafficDataProvider.get_vehicle_dynamics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_dynamics" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取车辆的速度和角度信息</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>vehicle_id</strong> – 车辆ID（注意：需要包含’<a href="#id1"><span class="problematic" id="id2">vehicle_</span></a>’前缀）</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>包含速度和角度的字典，如果车辆不存在则返回None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_dynamics">
+<span class="sig-name descname"><span class="pre">get_all_vehicle_dynamics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/traffic.html#TrafficDataProvider.get_all_vehicle_dynamics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_dynamics" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取所有车辆的速度和角度信息</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>所有车辆的ID到速度和角度信息的映射</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_state">
+<span class="sig-name descname"><span class="pre">get_vehicle_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vehicle_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/traffic.html#TrafficDataProvider.get_vehicle_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取车辆的完整状态（位置、速度和角度）</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>vehicle_id</strong> – 车辆ID（注意：需要包含’<a href="#id3"><span class="problematic" id="id4">vehicle_</span></a>’前缀）</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>包含位置、速度和角度的完整状态字典，如果车辆不存在则返回None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_states">
+<span class="sig-name descname"><span class="pre">get_all_vehicle_states</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/traffic.html#TrafficDataProvider.get_all_vehicle_states"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_states" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取所有车辆的完整状态（位置、速度和角度）</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>所有车辆的完整状态列表</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.dataprovider.traffic.TrafficDataProvider</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider"><code class="docutils literal notranslate"><span class="pre">TrafficDataProvider</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.__init__"><code class="docutils literal notranslate"><span class="pre">TrafficDataProvider.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">TrafficDataProvider.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.load_data"><code class="docutils literal notranslate"><span class="pre">TrafficDataProvider.load_data()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.start_event_triggering"><code class="docutils literal notranslate"><span class="pre">TrafficDataProvider.start_event_triggering()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.close"><code class="docutils literal notranslate"><span class="pre">TrafficDataProvider.close()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_dynamics"><code class="docutils literal notranslate"><span class="pre">TrafficDataProvider.get_vehicle_dynamics()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_dynamics"><code class="docutils literal notranslate"><span class="pre">TrafficDataProvider.get_all_vehicle_dynamics()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_vehicle_state"><code class="docutils literal notranslate"><span class="pre">TrafficDataProvider.get_vehicle_state()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.traffic.TrafficDataProvider.get_all_vehicle_states"><code class="docutils literal notranslate"><span class="pre">TrafficDataProvider.get_all_vehicle_states()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.dataprovider.traffic.TrafficDataProvider.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.traffic.TrafficDataProvider</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

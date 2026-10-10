@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.manager.workflow.WorkflowManager &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.workflow.WorkflowManager</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-manager-workflow-workflowmanager">
+<h1>aeroagentsim.manager.workflow.WorkflowManager<a class="headerlink" href="#aeroagentsim-manager-workflow-workflowmanager" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.manager.workflow.WorkflowManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.manager.workflow.</span></span><span class="sig-name descname"><span class="pre">WorkflowManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.workflow.WorkflowManager" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.workflow.WorkflowManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.workflow.WorkflowManager.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.workflow.WorkflowManager.__init__" title="aeroagentsim.manager.workflow.WorkflowManager.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(env)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.workflow.WorkflowManager.add_workflow_trigger" title="aeroagentsim.manager.workflow.WorkflowManager.add_workflow_trigger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_workflow_trigger</span></code></a>(workflow_id, trigger)</p></td>
+<td><p>为工作流添加额外的触发器（不用于启动）</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.workflow.WorkflowManager.cancel_workflow" title="aeroagentsim.manager.workflow.WorkflowManager.cancel_workflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cancel_workflow</span></code></a>(workflow_id[, reason])</p></td>
+<td><p>取消工作流</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.workflow.WorkflowManager.get_agent_workflows" title="aeroagentsim.manager.workflow.WorkflowManager.get_agent_workflows"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_agent_workflows</span></code></a>(agent_id)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.workflow.WorkflowManager.get_all_workflows" title="aeroagentsim.manager.workflow.WorkflowManager.get_all_workflows"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_all_workflows</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.workflow.WorkflowManager.get_workflow" title="aeroagentsim.manager.workflow.WorkflowManager.get_workflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_workflow</span></code></a>(workflow_id)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.workflow.WorkflowManager.register_workflow" title="aeroagentsim.manager.workflow.WorkflowManager.register_workflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_workflow</span></code></a>(workflow[, start_trigger, ...])</p></td>
+<td><p>注册工作流，可以使用简单的事件触发器或高级触发器</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.workflow.WorkflowManager.start_workflow" title="aeroagentsim.manager.workflow.WorkflowManager.start_workflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">start_workflow</span></code></a>(workflow_id)</p></td>
+<td><p>手动启动工作流</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.workflow.WorkflowManager.get_all_workflows">
+<span class="sig-name descname"><span class="pre">get_all_workflows</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager.get_all_workflows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.workflow.WorkflowManager.get_all_workflows" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.workflow.WorkflowManager.register_workflow">
+<span class="sig-name descname"><span class="pre">register_workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">workflow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow" title="aeroagentsim.core.workflow.Workflow"><span class="pre">Workflow</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_trigger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../core.html#aeroagentsim.core.trigger.Trigger" title="aeroagentsim.core.trigger.Trigger"><span class="pre">Trigger</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_starts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager.register_workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.workflow.WorkflowManager.register_workflow" title="Permalink to this definition">¶</a></dt>
+<dd><p>注册工作流，可以使用简单的事件触发器或高级触发器</p>
+<dl class="simple">
+<dt>参数:</dt><dd><p>workflow: 要注册的工作流
+start_trigger: 启动触发器，可以是(source_id, event_name)元组或Trigger对象
+max_starts: 最大启动次数，None表示无限次</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.workflow.WorkflowManager.start_workflow">
+<span class="sig-name descname"><span class="pre">start_workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">workflow_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager.start_workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.workflow.WorkflowManager.start_workflow" title="Permalink to this definition">¶</a></dt>
+<dd><p>手动启动工作流</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.workflow.WorkflowManager.get_active_workflows">
+<span class="sig-name descname"><span class="pre">get_active_workflows</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager.get_active_workflows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.workflow.WorkflowManager.get_active_workflows" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取所有活跃的工作流字典</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.workflow.WorkflowManager.cancel_workflow">
+<span class="sig-name descname"><span class="pre">cancel_workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">workflow_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reason</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'canceled_by_manager'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager.cancel_workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.workflow.WorkflowManager.cancel_workflow" title="Permalink to this definition">¶</a></dt>
+<dd><p>取消工作流</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.workflow.WorkflowManager.get_workflow">
+<span class="sig-name descname"><span class="pre">get_workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">workflow_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager.get_workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.workflow.WorkflowManager.get_workflow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.workflow.WorkflowManager.get_agent_workflows">
+<span class="sig-name descname"><span class="pre">get_agent_workflows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager.get_agent_workflows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.workflow.WorkflowManager.get_agent_workflows" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.workflow.WorkflowManager.add_workflow_trigger">
+<span class="sig-name descname"><span class="pre">add_workflow_trigger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">workflow_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">trigger</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/workflow.html#WorkflowManager.add_workflow_trigger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.workflow.WorkflowManager.add_workflow_trigger" title="Permalink to this definition">¶</a></dt>
+<dd><p>为工作流添加额外的触发器（不用于启动）</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.manager.workflow.WorkflowManager</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.manager.workflow.WorkflowManager"><code class="docutils literal notranslate"><span class="pre">WorkflowManager</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.manager.workflow.WorkflowManager.__init__"><code class="docutils literal notranslate"><span class="pre">WorkflowManager.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">WorkflowManager.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.workflow.WorkflowManager.get_all_workflows"><code class="docutils literal notranslate"><span class="pre">WorkflowManager.get_all_workflows()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.workflow.WorkflowManager.register_workflow"><code class="docutils literal notranslate"><span class="pre">WorkflowManager.register_workflow()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.workflow.WorkflowManager.start_workflow"><code class="docutils literal notranslate"><span class="pre">WorkflowManager.start_workflow()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.workflow.WorkflowManager.get_active_workflows"><code class="docutils literal notranslate"><span class="pre">WorkflowManager.get_active_workflows()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.workflow.WorkflowManager.cancel_workflow"><code class="docutils literal notranslate"><span class="pre">WorkflowManager.cancel_workflow()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.workflow.WorkflowManager.get_workflow"><code class="docutils literal notranslate"><span class="pre">WorkflowManager.get_workflow()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.workflow.WorkflowManager.get_agent_workflows"><code class="docutils literal notranslate"><span class="pre">WorkflowManager.get_agent_workflows()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.workflow.WorkflowManager.add_workflow_trigger"><code class="docutils literal notranslate"><span class="pre">WorkflowManager.add_workflow_trigger()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.manager.workflow.WorkflowManager.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.workflow.WorkflowManager</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

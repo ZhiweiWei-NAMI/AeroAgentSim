@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.manager.agent &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.agent</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.manager.agent</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AeroAgentSim代理管理器模块</span>
+
+<span class="sd">该模块定义了代理管理器，负责管理和筛选不同类型的代理。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 根据状态需求筛选合适的代理类</span>
+<span class="sd">2. 为工作流推荐最合适的代理类型</span>
+<span class="sd">3. 管理代理类的注册和查询</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">importlib</span>
+<span class="kn">import</span> <span class="nn">pkgutil</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="c1"># 获取logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.agent</span> <span class="kn">import</span> <span class="n">Agent</span><span class="p">,</span> <span class="n">AgentMeta</span>
+
+
+<div class="viewcode-block" id="AgentManager"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.agent.AgentManager">[docs]</a><span class="k">class</span> <span class="nc">AgentManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    代理管理器：负责管理和筛选不同类型的代理</span>
+
+<span class="sd">    主要功能：</span>
+<span class="sd">    1. 根据状态需求筛选合适的代理类</span>
+<span class="sd">    2. 为工作流推荐最合适的代理类型</span>
+<span class="sd">    3. 管理代理类的注册和查询</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AgentManager.__init__"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.agent.AgentManager.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化代理管理器</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;agent_manager_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">registered_agent_classes</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Type</span><span class="p">[</span><span class="n">Agent</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 代理类型名称 -&gt; 代理类</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_states_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 代理类型名称 -&gt; 支持的状态集合</span>
+
+        <span class="c1"># 确保事件存在</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;agent_recommended&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;agent_selected&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 自动发现并注册代理类</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_discover_agent_classes</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="AgentManager.get_all_agents"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.agent.AgentManager.get_all_agents">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_agents</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">values</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_discover_agent_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;自动发现并注册代理类&quot;&quot;&quot;</span>
+        <span class="c1"># 获取 aeroagentsim.agent 包的路径</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">aeroagentsim.agent</span> <span class="k">as</span> <span class="nn">agent_pkg</span>
+            <span class="n">agent_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">agent_pkg</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span>
+
+            <span class="c1"># 遍历agent目录下的所有模块</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">module_name</span><span class="p">,</span> <span class="n">is_pkg</span> <span class="ow">in</span> <span class="n">pkgutil</span><span class="o">.</span><span class="n">iter_modules</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">agent_path</span><span class="p">)]):</span>
+                <span class="k">if</span> <span class="n">is_pkg</span><span class="p">:</span>
+                    <span class="k">continue</span>  <span class="c1"># 跳过子包</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># 导入模块</span>
+                    <span class="n">module</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;aeroagentsim.agent.</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                    <span class="c1"># 查找模块中的所有Agent子类</span>
+                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">module</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="ow">and</span>
+                            <span class="nb">issubclass</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Agent</span><span class="p">)</span> <span class="ow">and</span>
+                            <span class="n">obj</span> <span class="o">!=</span> <span class="n">Agent</span> <span class="ow">and</span>
+                            <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;__mro__&#39;</span><span class="p">)</span> <span class="ow">and</span>
+                            <span class="n">AgentMeta</span> <span class="ow">in</span> <span class="p">[</span><span class="n">base</span><span class="o">.</span><span class="vm">__class__</span> <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="vm">__mro__</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s1">&#39;__class__&#39;</span><span class="p">)]):</span>
+
+                            <span class="c1"># 注册找到的代理类</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">register_agent_class</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+                <span class="k">except</span> <span class="p">(</span><span class="ne">ImportError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error: 加载模块 </span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2"> 时出错: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Error: 无法导入 aeroagentsim.agent 包&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AgentManager.register_agent_class"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.agent.AgentManager.register_agent_class">[docs]</a>    <span class="k">def</span> <span class="nf">register_agent_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_class</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Agent</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册代理类</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_class: 代理类</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">agent_name</span> <span class="o">=</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">registered_agent_classes</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_class</span>
+
+        <span class="c1"># 收集代理类支持的状态</span>
+        <span class="n">states</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;_state_templates&#39;</span><span class="p">):</span>
+                <span class="n">states</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_state_templates</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_states_map</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">states</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理管理器注册代理类 </span><span class="si">{</span><span class="n">agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AgentManager.get_agent_class"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.agent.AgentManager.get_agent_class">[docs]</a>    <span class="k">def</span> <span class="nf">get_agent_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_class_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">Agent</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取代理类</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_class_name: 代理类名称</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            代理类或None（如果未找到）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">registered_agent_classes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_class_name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AgentManager.get_all_agent_classes"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.agent.AgentManager.get_all_agent_classes">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_agent_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">Agent</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有注册的代理类</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            代理类列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registered_agent_classes</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="AgentManager.find_compatible_agents"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.agent.AgentManager.find_compatible_agents">[docs]</a>    <span class="k">def</span> <span class="nf">find_compatible_agents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">required_states</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">Agent</span><span class="p">],</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        查找支持指定状态的代理类</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            required_states: 需要的状态列表</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            兼容代理类及其兼容性分数的列表，按分数降序排序</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">required_states_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">required_states</span><span class="p">)</span>
+        <span class="n">compatible_agents</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">Agent</span><span class="p">],</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">agent_class</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registered_agent_classes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># 获取代理类支持的状态</span>
+            <span class="n">supported_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_states_map</span><span class="p">[</span><span class="n">agent_name</span><span class="p">]</span>
+
+            <span class="c1"># 检查代理类是否支持所有需要的状态</span>
+            <span class="k">if</span> <span class="n">required_states_set</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">supported_states</span><span class="p">):</span>
+                <span class="c1"># 计算兼容性分数：支持的状态与需要的状态的比例</span>
+                <span class="c1"># 分数越高表示代理类越专注于所需的状态</span>
+                <span class="n">compatibility_score</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">required_states_set</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">supported_states</span><span class="p">))</span>
+                <span class="n">compatible_agents</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">agent_class</span><span class="p">,</span> <span class="n">compatibility_score</span><span class="p">))</span>
+
+        <span class="c1"># 按兼容性分数降序排序</span>
+        <span class="n">compatible_agents</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">compatible_agents</span></div>
+
+<div class="viewcode-block" id="AgentManager.recommend_agents"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.agent.AgentManager.recommend_agents">[docs]</a>    <span class="k">def</span> <span class="nf">recommend_agents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">required_states</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">top_n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        推荐支持指定状态的代理类</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            required_states: 需要的状态列表</span>
+<span class="sd">            top_n: 返回的推荐代理数量</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            推荐代理的详细信息列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">compatible_agents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_compatible_agents</span><span class="p">(</span><span class="n">required_states</span><span class="p">)</span>
+
+        <span class="c1"># 限制返回数量</span>
+        <span class="n">top_agents</span> <span class="o">=</span> <span class="n">compatible_agents</span><span class="p">[:</span><span class="n">top_n</span><span class="p">]</span>
+
+        <span class="c1"># 构建推荐结果</span>
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">agent_class</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">top_agents</span><span class="p">:</span>
+            <span class="n">agent_info</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;agent_class&#39;</span><span class="p">:</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="s1">&#39;compatibility_score&#39;</span><span class="p">:</span> <span class="n">score</span><span class="p">,</span>
+                <span class="s1">&#39;supported_states&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_states_map</span><span class="p">[</span><span class="n">agent_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">]),</span>
+                <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">agent_class</span><span class="o">.</span><span class="n">get_description</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">agent_class</span><span class="p">,</span> <span class="s1">&#39;get_description&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;无描述&quot;</span>
+            <span class="p">}</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">agent_info</span><span class="p">)</span>
+
+        <span class="c1"># 触发推荐事件</span>
+        <span class="k">if</span> <span class="n">recommendations</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;agent_recommended&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;required_states&#39;</span><span class="p">:</span> <span class="n">required_states</span><span class="p">,</span>
+                <span class="s1">&#39;recommendations&#39;</span><span class="p">:</span> <span class="n">recommendations</span>
+            <span class="p">})</span>
+
+        <span class="k">return</span> <span class="n">recommendations</span></div>
+
+<div class="viewcode-block" id="AgentManager.create_agent"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.agent.AgentManager.create_agent">[docs]</a>    <span class="k">def</span> <span class="nf">create_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_class_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Agent</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建代理实例</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_class_name: 代理类名称</span>
+<span class="sd">            agent_name: 代理名称</span>
+<span class="sd">            properties: 代理属性</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            创建的代理实例，如果创建失败则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">agent_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_agent_class</span><span class="p">(</span><span class="n">agent_class_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">agent_class</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 找不到代理类 </span><span class="si">{</span><span class="n">agent_class_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 创建代理实例</span>
+            <span class="n">agent</span> <span class="o">=</span> <span class="n">agent_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{})</span>
+
+            <span class="c1"># 触发代理选择事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;agent_selected&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;agent_class&#39;</span><span class="p">:</span> <span class="n">agent_class_name</span><span class="p">,</span>
+                <span class="s1">&#39;agent_name&#39;</span><span class="p">:</span> <span class="n">agent_name</span><span class="p">,</span>
+                <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span>
+            <span class="p">})</span>
+
+            <span class="k">return</span> <span class="n">agent</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error: 创建代理 </span><span class="si">{</span><span class="n">agent_class_name</span><span class="si">}</span><span class="s2"> 实例时出错: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="AgentManager.get_agent_state_templates"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.agent.AgentManager.get_agent_state_templates">[docs]</a>    <span class="k">def</span> <span class="nf">get_agent_state_templates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_class_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取代理类的状态模板</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_class_name: 代理类名称</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            状态模板字典，如果找不到代理类则返回空字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">agent_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_agent_class</span><span class="p">(</span><span class="n">agent_class_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">agent_class</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="c1"># 收集代理类的状态模板</span>
+        <span class="n">templates</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="n">agent_class</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;_state_templates&#39;</span><span class="p">):</span>
+                <span class="n">templates</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_state_templates</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">templates</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.agent</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

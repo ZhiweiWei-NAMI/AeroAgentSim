@@ -1,0 +1,65 @@
+{
+  "input_artifacts": 7,
+  "authored_cases": 64,
+  "source_cases": 10,
+  "contract_cases": 1,
+  "source_activities": 35,
+  "source_steps": 226,
+  "machine_examples": 20,
+  "before_node_occurrences": 20201,
+  "node_count": 20201,
+  "edge_count": 64978,
+  "after_canonical_nodes": 20201,
+  "merged_definition_occurrences": 0,
+  "before_edge_occurrences": 64978,
+  "after_resolved_edges": 64978,
+  "quarantined_edges": 0,
+  "deduplicated_edges": 0,
+  "conflict_records": 108,
+  "by_domain": [
+    {
+      "domain": "agriculture",
+      "source_counts": {
+        "authoring_node_occurrences": 6427,
+        "runtime_record_occurrences": 1057,
+        "frozen_signature_edge_occurrences": 32442,
+        "proposed_runtime_edge_occurrences": 5899
+      },
+      "accepted_sha256_match": true,
+      "count_mismatches": {}
+    },
+    {
+      "domain": "delivery",
+      "source_counts": {
+        "authoring_node_occurrences": 1705,
+        "runtime_record_occurrences": 577,
+        "frozen_signature_edge_occurrences": 4237,
+        "proposed_runtime_edge_occurrences": 1112
+      },
+      "accepted_sha256_match": true,
+      "count_mismatches": {}
+    },
+    {
+      "domain": "city",
+      "source_counts": {
+        "authoring_node_occurrences": 3464,
+        "runtime_record_occurrences": 1380,
+        "frozen_signature_edge_occurrences": 8244,
+        "proposed_runtime_edge_occurrences": 1696
+      },
+      "accepted_sha256_match": true,
+      "count_mismatches": {}
+    },
+    {
+      "domain": "network",
+      "source_counts": {
+        "authoring_node_occurrences": 2507,
+        "runtime_record_occurrences": 1432,
+        "frozen_signature_edge_occurrences": 4508,
+        "proposed_runtime_edge_occurrences": 3450
+      },
+      "accepted_sha256_match": true,
+      "count_mismatches": {}
+    }
+  ]
+}

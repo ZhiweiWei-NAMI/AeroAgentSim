@@ -1,0 +1,137 @@
+{
+  "schema_version": "p08.ambiguity-ledger/v1",
+  "entries": [
+    {
+      "id": "AMB-001",
+      "topic": "ARGUMENT direction differs",
+      "status": "resolved_by_explicit_variant",
+      "decision": "Delivery source stores parent→child; agriculture/city/network store child→parent. Preserve endpoints, map to has_argument/argument_of and verify AST order. Source bytes remain unchanged."
+    },
+    {
+      "id": "AMB-002",
+      "topic": "Runtime command spelling overlaps definition family",
+      "status": "resolved_by_semantic_profile",
+      "decision": "Runtime command, command_instance and command_attempt map to command_attempt only in runtime namespace. Frozen commands stay command_definition."
+    },
+    {
+      "id": "AMB-003",
+      "topic": "Predicate expected truth vs evaluated result",
+      "status": "resolved_by_distinct_kind",
+      "decision": "Raw runtime predicate_result becomes predicate_expectation. Frozen predicate_results remains predicate_result with execution provenance. Neither may gain native-executed status."
+    },
+    {
+      "id": "AMB-004",
+      "topic": "Generic INSTANCE_OF signature was too broad",
+      "status": "resolved_by_typed_variants",
+      "decision": "Meta-type classification is classified_as, fact→field is instantiates_state, expression→expression_type is expression_kind_of. Instance/definition family compatibility is checked separately."
+    },
+    {
+      "id": "AMB-005",
+      "topic": "Unspecified or conflicting AST controls",
+      "status": "unresolved_native_semantics",
+      "decision": "Preserve both window_s and duration_seconds when present, all control values and absence. No alias precedence or native temporal interpretation is invented."
+    },
+    {
+      "id": "AMB-006",
+      "topic": "Missing native Atlas source and evaluator",
+      "status": "unresolved_source_gap",
+      "decision": "The exact full catalog, operator registry, rule IDs, grammar and native round-trip/evaluation parity remain unverified. Source AST preservation is still testable."
+    },
+    {
+      "id": "AMB-007",
+      "topic": "Legacy capability declarations mix templates and claims",
+      "status": "resolved_without_forced_merge",
+      "decision": "Use capability_declaration for frozen family and preserve semantic_level. Explicit runtime capability_claim remains distinct. Authored claim scope does not prove a reusable verified capability or authority."
+    },
+    {
+      "id": "AMB-008",
+      "topic": "Admission collection includes effect/review checks",
+      "status": "resolved_by_scope",
+      "decision": "check_binding preserves original scope and not_admission. Start, continue, effect_confirmation and review checks cannot be substituted for each other."
+    },
+    {
+      "id": "AMB-009",
+      "topic": "Collection name inside city node-type record",
+      "status": "resolved_by_container",
+      "decision": "Actual enclosing collections.node_types determines node_type. Internal collection denotes represented family and remains unchanged in payload."
+    },
+    {
+      "id": "AMB-010",
+      "topic": "Resource and control cardinality depends on role",
+      "status": "resolved_by_scoped_validation",
+      "decision": "No blanket one-per-node degree constraint. Exact attempt/binding/role/interval defines local cardinality; parallel operations and repeated receipts remain possible."
+    },
+    {
+      "id": "AMB-011",
+      "topic": "Absent real permission/legal evidence",
+      "status": "unresolved_evidence_gap",
+      "decision": "Synthetic grants, legal placeholders and engineering thresholds are retained as source examples, never a verified real permission or legal rule."
+    },
+    {
+      "id": "AMB-012",
+      "topic": "Graph canonical ID vs structured lifecycle Ref",
+      "status": "resolved_by_separation",
+      "decision": "Storage IDs do not repair or replace missing lifecycle members. Preserve typed epoch/generation and source precision."
+    },
+    {
+      "id": "AMB-013",
+      "topic": "Cross-source definition equivalence",
+      "status": "conservative_nonmerge",
+      "decision": "Matching name or type is insufficient. Require explicit same namespace/id/revision/scope and exact semantic body. Missing revision blocks semantic cross-source merge."
+    },
+    {
+      "id": "AMB-014",
+      "topic": "Source-only emergency reference edges",
+      "status": "resolved_as_evidence_only",
+      "decision": "source_field_reference preserves exact source field/path/index. It cannot imply authority, causal execution, legal applicability or physical effect."
+    },
+    {
+      "id": "AMB-015",
+      "topic": "Bindings containing result references",
+      "status": "resolved_without_execution_claim",
+      "decision": "rule_evaluation_binding is compatible with evaluation_binding, but result_ref is a lineage reference, not evidence that native evaluation occurred."
+    },
+    {
+      "id": "AMB-016",
+      "topic": "Lifecycle aggregate vs single receipt",
+      "status": "resolved_without_merge",
+      "decision": "command_lifecycle_receipt contains an ordered state sequence. It stays separate from command_receipt; neither proves task completion."
+    },
+    {
+      "id": "AMB-017",
+      "topic": "Material transformation relation typing",
+      "status": "resolved_by_distinct_relation",
+      "decision": "A transformation references a relation schema via conforms_to_transformation_relation; it is not cast into a generic physical custody relation instance."
+    },
+    {
+      "id": "AMB-019",
+      "topic": "Legacy emergency check field labelled INSTANCE_OF",
+      "status": "resolved_as_evidence_only",
+      "decision": "Network source extraction contains 42 check_binding→state_specification state_field references labelled INSTANCE_OF. Retain endpoints and source payload, map only that precise role/signature to legacy_field_reference; never a type cast."
+    },
+    {
+      "id": "AMB-022",
+      "topic": "JSON null versus semantic Unknown",
+      "status": "resolved_by_structural_projection",
+      "decision": "Literal is_null describes JSON structure only. Unknown truth and missing/unavailable evidence require explicit semantic statuses; neither null, false nor zero may substitute for one another."
+    },
+    {
+      "id": "AMB-021",
+      "topic": "Authority record includes declared scope",
+      "status": "resolved_by_semantic_level",
+      "decision": "The 27 network authority_record entries explicitly have definition level and real_authority=false. Retain their declared level; they are scoped authorization declarations, not observed grants. Runtime authority records remain independently typed by semantic_level."
+    },
+    {
+      "id": "AMB-020",
+      "topic": "Unmodelled source link configuration",
+      "status": "resolved_as_preservation_kind",
+      "decision": "Source D02 link_configuration is preserved as source-record configuration, not coerced into a link entity or observed link fact."
+    },
+    {
+      "id": "AMB-018",
+      "topic": "Validity and availability clocks",
+      "status": "unresolved_where_source_missing",
+      "decision": "No clock mapping, commit cutoff, freshness, interpolation or future-evidence admission is fabricated. Explicit unavailable diagnostics block execution readiness."
+    }
+  ]
+}

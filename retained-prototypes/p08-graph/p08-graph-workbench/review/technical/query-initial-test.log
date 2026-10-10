@@ -1,0 +1,38 @@
+test_complete_exact_ref_required_for_exact_identity_query (__main__.QueryAcceptance.test_complete_exact_ref_required_for_exact_identity_query) ... FAIL
+test_conflicting_type_values_never_last_arrival_win (__main__.QueryAcceptance.test_conflicting_type_values_never_last_arrival_win) ... ok
+test_exact_nanoseconds_never_float (__main__.QueryAcceptance.test_exact_nanoseconds_never_float) ... ok
+test_explicit_false_value_survives_without_becoming_unknown (__main__.QueryAcceptance.test_explicit_false_value_survives_without_becoming_unknown) ... ok
+test_generation_and_epoch_type_changes_do_not_match (__main__.QueryAcceptance.test_generation_and_epoch_type_changes_do_not_match) ... ok
+test_malformed_time_produces_unknown_without_exception (__main__.QueryAcceptance.test_malformed_time_produces_unknown_without_exception) ... ERROR
+test_missing_null_unknown_are_not_false (__main__.QueryAcceptance.test_missing_null_unknown_are_not_false) ... ok
+test_missing_value_end_or_clock_is_unknown (__main__.QueryAcceptance.test_missing_value_end_or_clock_is_unknown) ... ok
+test_stale_future_and_late_arrivals_are_unknown (__main__.QueryAcceptance.test_stale_future_and_late_arrivals_are_unknown) ... ok
+test_unknown_conjunction_does_not_assert_truth (__main__.QueryAcceptance.test_unknown_conjunction_does_not_assert_truth) ... ok
+
+======================================================================
+ERROR: test_malformed_time_produces_unknown_without_exception (__main__.QueryAcceptance.test_malformed_time_produces_unknown_without_exception)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/shared/p08-graph-workbench/review/technical/test_query_acceptance.py", line 18, in test_malformed_time_produces_unknown_without_exception
+    self.assertIsNone(q.ns(v),v)
+                      ^^^^^^^
+  File "/workspace/shared/p08-graph-workbench/pipeline/semantic_queries.py", line 38, in ns
+    if isinstance(value,str) and value.lstrip('-').isdigit():return int(value)
+                                                                    ^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '--1'
+
+======================================================================
+FAIL: test_complete_exact_ref_required_for_exact_identity_query (__main__.QueryAcceptance.test_complete_exact_ref_required_for_exact_identity_query)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/shared/p08-graph-workbench/review/technical/test_query_acceptance.py", line 34, in test_complete_exact_ref_required_for_exact_identity_query
+    self.assertEqual(self.select([self.fact()],exact_identity={})['status'],'UNKNOWN')
+AssertionError: 'AVAILABLE_VALUE' != 'UNKNOWN'
+- AVAILABLE_VALUE
++ UNKNOWN
+
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.002s
+
+FAILED (failures=1, errors=1)

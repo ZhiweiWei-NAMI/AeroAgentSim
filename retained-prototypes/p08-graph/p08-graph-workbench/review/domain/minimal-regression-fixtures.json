@@ -1,0 +1,248 @@
+{
+  "schema": "p08.domain-minimal-fixtures/v1",
+  "fixtures": [
+    {
+      "id": "F-CUSTODY",
+      "description": "Physical unloading does not prove custody/quality.",
+      "baseline": {
+        "ground_contact": true,
+        "sling_supports_load": true,
+        "sender": "sender26",
+        "receiver": "carrier26",
+        "quality": "Unknown"
+      },
+      "mutation": {
+        "derived_custody": "receiver26",
+        "derived_quality": "True"
+      },
+      "required_outcome": "Reject unsupported derivation; preserve support/contact/custody/professional evidence separately.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-APPROVAL",
+      "description": "Numeric suitability is not engineering approval.",
+      "baseline": {
+        "uncertainty_m3": 4,
+        "illustrative_limit_m3": 5,
+        "engineering_approval": null
+      },
+      "mutation": {
+        "engineering_approval": true
+      },
+      "required_outcome": "Reject inferred approval; retain missing signed review.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-MATERIAL",
+      "description": "Residual cannot be copied after a quantity changes.",
+      "baseline": {
+        "loaded": 20,
+        "released": 19.6,
+        "remaining": 0.3,
+        "cleanout": 0.1
+      },
+      "mutation": {
+        "released": 19.9,
+        "declared_residual": 0
+      },
+      "required_outcome": "Recompute 20-(19.9+0.3+0.1)=-0.3 kg; flag inconsistent authored balance. Do not claim a native validator ran.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-POSE",
+      "description": "Commanded formation does not fabricate observed pose.",
+      "baseline": {
+        "desired_pose": [
+          5,
+          20,
+          25
+        ],
+        "actual_pose": null,
+        "takeoff_ack": true
+      },
+      "mutation": {
+        "actual_pose": [
+          5,
+          20,
+          25
+        ]
+      },
+      "required_outcome": "Reject copy-from-goal derivation; unknown actual telemetry remains unknown.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-SLOT",
+      "description": "Direction/time are part of permission scope.",
+      "baseline": {
+        "grant": {
+          "direction": "outbound",
+          "window_s": [
+            16,
+            22
+          ]
+        }
+      },
+      "mutation": {
+        "request": {
+          "direction": "return",
+          "window_s": [
+            44,
+            78
+          ]
+        }
+      },
+      "required_outcome": "Grant not applicable to requested direction/time; absence of a matching grant is not invented legal prohibition.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-NETWORK",
+      "description": "Provider pending aggregate cannot be summed per link.",
+      "baseline": {
+        "provider_pending": 3,
+        "links": [
+          "L1",
+          "L2"
+        ]
+      },
+      "mutation": {
+        "link_pending": [
+          3,
+          3
+        ],
+        "sum": 6
+      },
+      "required_outcome": "Preserve aggregate scope and mark per-link source missing.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-COMPUTE",
+      "description": "CPU/GPU capacity cannot stand in for full bundle.",
+      "baseline": {
+        "free_cpu": 4,
+        "free_gpu": 1,
+        "free_memory_gb": 0,
+        "request_memory_gb": 8
+      },
+      "mutation": {
+        "admit": true
+      },
+      "required_outcome": "Known memory deficit blocks resource admission while unrelated effect may remain Unknown.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-ARBITRATION",
+      "description": "Conflicting systems need scoped command authority.",
+      "baseline": {
+        "target": "uav1",
+        "scope": "flight-controller",
+        "time_window": [
+          10,
+          12
+        ],
+        "commands": [
+          "land",
+          "continue"
+        ]
+      },
+      "mutation": {
+        "winner": "latest_arrival"
+      },
+      "required_outcome": "No latest-arrival winner without explicit scoped arbitration policy/evidence.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-UNCERTAINTY",
+      "description": "A candidate estimate does not erase uncertainty.",
+      "baseline": {
+        "candidate_confidence": 0.91,
+        "person_identity": null,
+        "location_error_m": 3
+      },
+      "mutation": {
+        "person_verified": true
+      },
+      "required_outcome": "Keep identification/position/authorization separate; do not threshold into identity truth.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-LEGAL",
+      "description": "Authored site policy is not verified applicable law.",
+      "baseline": {
+        "capability": true,
+        "site_policy": "synthetic",
+        "legal_source": null
+      },
+      "mutation": {
+        "law_compliant": true
+      },
+      "required_outcome": "Preserve legal evidence gap; do not invent legal prohibition or compliance.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-RETRY",
+      "description": "Cancellation and late result must retain attempt identity.",
+      "baseline": {
+        "current_attempt": 2,
+        "cancelled_attempt": 1
+      },
+      "mutation": {
+        "late_result_attempt": 1,
+        "current_complete": true
+      },
+      "required_outcome": "Record late result for attempt1; do not complete attempt2 or overwrite cancellation.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-IDENTITY",
+      "description": "Equal display name and raw ID do not establish lifecycle identity.",
+      "baseline": {
+        "run_id": "run1",
+        "epoch": 0,
+        "id": "sensor1",
+        "generation": 1,
+        "ref_type": "entity"
+      },
+      "mutation": {
+        "run_id": "run1",
+        "epoch": 0,
+        "id": "sensor1",
+        "generation": "1",
+        "ref_type": "entity"
+      },
+      "required_outcome": "Do not merge integer generation1 with string generation\"1\"; null or incomplete identity cannot prove equality.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    },
+    {
+      "id": "F-DEF-SCOPE",
+      "description": "Identical definition bytes without known scope/revision are not semantic equivalence.",
+      "baseline": {
+        "semantic_level": "definition",
+        "kind": "state_specification",
+        "semantic_identity": {
+          "namespace": "a",
+          "id": "f",
+          "revision": "v1",
+          "scope": null,
+          "definition": {
+            "unit": "m"
+          }
+        }
+      },
+      "mutation": {
+        "semantic_level": "definition",
+        "kind": "state_specification",
+        "semantic_identity": {
+          "namespace": "a",
+          "id": "f",
+          "revision": "v1",
+          "scope": null,
+          "definition": {
+            "unit": "m"
+          }
+        }
+      },
+      "required_outcome": "Keep occurrences distinct or explicitly source-occurrence aliases; no proven semantic merge.",
+      "execution_scope": "static oracle only; not native runtime evaluation"
+    }
+  ]
+}

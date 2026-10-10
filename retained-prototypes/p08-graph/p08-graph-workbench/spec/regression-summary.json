@@ -1,0 +1,12 @@
+{
+  "schema_version": "p08.contract-regression-summary/v1",
+  "command": "python spec/test_contract.py",
+  "passed": true,
+  "test_count": 12,
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "test_aliases_only_runtime (__main__.ContractTests.test_aliases_only_runtime) ... ok\ntest_all_relation_names_accounted (__main__.ContractTests.test_all_relation_names_accounted) ... ok\ntest_all_source_kind_mappings (__main__.ContractTests.test_all_source_kind_mappings) ... ok\ntest_argument_direction (__main__.ContractTests.test_argument_direction) ... ok\ntest_city_meta_collection (__main__.ContractTests.test_city_meta_collection) ... ok\ntest_definition_scope_never_guessed (__main__.ContractTests.test_definition_scope_never_guessed) ... ok\ntest_exact_runtime_ref (__main__.ContractTests.test_exact_runtime_ref) ... ok\ntest_legacy_field_not_class_cast (__main__.ContractTests.test_legacy_field_not_class_cast) ... ok\ntest_module_execution_not_definition_cast (__main__.ContractTests.test_module_execution_not_definition_cast) ... ok\ntest_native_ast_all_forms_lossless (__main__.ContractTests.test_native_ast_all_forms_lossless) ... ok\ntest_null_fact_value_not_missing_slot (__main__.ContractTests.test_null_fact_value_not_missing_slot) ... ok\ntest_schema_documents_well_formed (__main__.ContractTests.test_schema_documents_well_formed) ... ok\n\n----------------------------------------------------------------------\nRan 12 tests in 0.622s\n\nOK\n",
+  "test_source_sha256": "fdd74101d966d15e9842bdf632388ecd8e270f029e6ce9d29ad1976fd6ad3dee",
+  "contract_sha256": "34842b46c9fd65f222dfa9dffd057901141b41e1492fc5288ec5fa4f0cf411d4",
+  "claim_limit": "Offline contract/schema and preservation tests only; no native evaluator or real backend."
+}

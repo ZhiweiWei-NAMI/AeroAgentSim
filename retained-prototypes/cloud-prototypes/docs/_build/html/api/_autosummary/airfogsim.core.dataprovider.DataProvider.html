@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.core.dataprovider.DataProvider &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.dataprovider.DataProvider</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-core-dataprovider-dataprovider">
+<h1>aeroagentsim.core.dataprovider.DataProvider<a class="headerlink" href="#aeroagentsim-core-dataprovider-dataprovider" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.dataprovider.DataProvider">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.dataprovider.</span></span><span class="sig-name descname"><span class="pre">DataProvider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/dataprovider.html#DataProvider"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.dataprovider.DataProvider" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract base class for external data providers (e.g., weather, traffic).</p>
+<p>DataProviders load external data and trigger events within the simulation
+environment based on that data at appropriate times. They also provide
+standard callback functions that Agents or Managers can subscribe to,
+allowing the external data to passively influence the simulation state.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.dataprovider.DataProvider.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/dataprovider.html#DataProvider.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.dataprovider.DataProvider.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the DataProvider.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – The simulation environment instance.</p></li>
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Configuration specific to this provider. Defaults to None.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider.__init__" title="aeroagentsim.core.dataprovider.DataProvider.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(env[, config])</p></td>
+<td><p>Initialize the DataProvider.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider.block" title="aeroagentsim.core.dataprovider.DataProvider.block"><code class="xref py py-obj docutils literal notranslate"><span class="pre">block</span></code></a>(duration)</p></td>
+<td><p>Block this data provider for a specified duration.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider.get_registered_sources" title="aeroagentsim.core.dataprovider.DataProvider.get_registered_sources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_registered_sources</span></code></a>([provider_type])</p></td>
+<td><p>Get all registered sources, optionally filtered by type.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider.load_data" title="aeroagentsim.core.dataprovider.DataProvider.load_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_data</span></code></a>()</p></td>
+<td><p>Load the external data required by this provider.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider.register_source" title="aeroagentsim.core.dataprovider.DataProvider.register_source"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_source</span></code></a>(provider)</p></td>
+<td><p>Register another data provider as a source for this provider.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider.start_event_triggering" title="aeroagentsim.core.dataprovider.DataProvider.start_event_triggering"><code class="xref py py-obj docutils literal notranslate"><span class="pre">start_event_triggering</span></code></a>()</p></td>
+<td><p>Start the process(es) that will trigger events based on the loaded data at the appropriate simulation times.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider.unblock" title="aeroagentsim.core.dataprovider.DataProvider.unblock"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unblock</span></code></a>()</p></td>
+<td><p>Unblock this data provider.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/dataprovider.html#DataProvider.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the DataProvider.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – The simulation environment instance.</p></li>
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Configuration specific to this provider. Defaults to None.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.dataprovider.DataProvider.load_data">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/dataprovider.html#DataProvider.load_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.dataprovider.DataProvider.load_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the external data required by this provider.
+This could involve reading from files, databases, or APIs.
+This method should be called before the simulation starts.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.dataprovider.DataProvider.start_event_triggering">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">start_event_triggering</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/dataprovider.html#DataProvider.start_event_triggering"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.dataprovider.DataProvider.start_event_triggering" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start the process(es) that will trigger events based on the loaded data
+at the appropriate simulation times.
+This method is typically called after <cite>load_data</cite> and before <cite>env.run()</cite>.
+It might start one or more SimPy processes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.dataprovider.DataProvider.block">
+<span class="sig-name descname"><span class="pre">block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">duration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/dataprovider.html#DataProvider.block"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.dataprovider.DataProvider.block" title="Permalink to this definition">¶</a></dt>
+<dd><p>Block this data provider for a specified duration.
+When blocked, the provider should not trigger events or provide data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>duration</strong> – The duration (in simulation time) to block the provider.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.dataprovider.DataProvider.unblock">
+<span class="sig-name descname"><span class="pre">unblock</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/dataprovider.html#DataProvider.unblock"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.dataprovider.DataProvider.unblock" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unblock this data provider.
+After unblocking, the provider can resume triggering events and providing data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.dataprovider.DataProvider.register_source">
+<span class="sig-name descname"><span class="pre">register_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/dataprovider.html#DataProvider.register_source"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.dataprovider.DataProvider.register_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register another data provider as a source for this provider.
+This allows providers to interact with each other.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>provider</strong> – The data provider to register as a source.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.dataprovider.DataProvider.get_registered_sources">
+<span class="sig-name descname"><span class="pre">get_registered_sources</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/dataprovider.html#DataProvider.get_registered_sources"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.dataprovider.DataProvider.get_registered_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get all registered sources, optionally filtered by type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>provider_type</strong> – Optional type to filter sources by.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of registered sources, filtered by type if specified.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.core.dataprovider.DataProvider</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.dataprovider.DataProvider"><code class="docutils literal notranslate"><span class="pre">DataProvider</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.dataprovider.DataProvider.__init__"><code class="docutils literal notranslate"><span class="pre">DataProvider.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">DataProvider.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.dataprovider.DataProvider.load_data"><code class="docutils literal notranslate"><span class="pre">DataProvider.load_data()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.dataprovider.DataProvider.start_event_triggering"><code class="docutils literal notranslate"><span class="pre">DataProvider.start_event_triggering()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.dataprovider.DataProvider.block"><code class="docutils literal notranslate"><span class="pre">DataProvider.block()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.dataprovider.DataProvider.unblock"><code class="docutils literal notranslate"><span class="pre">DataProvider.unblock()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.dataprovider.DataProvider.register_source"><code class="docutils literal notranslate"><span class="pre">DataProvider.register_source()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.dataprovider.DataProvider.get_registered_sources"><code class="docutils literal notranslate"><span class="pre">DataProvider.get_registered_sources()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.core.dataprovider.DataProvider.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.dataprovider.DataProvider</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,3339 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aeroagentsim:unified-graph:v1",
+  "title": "AeroAgentSim unified desired graph v1",
+  "description": "Local authoring contract. Static shape/reference validation and deterministic fixture execution do not establish physical, legal, or native semantic truth.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "aeroagentsim.unified-graph/v1"
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "authored_fixture"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "kind",
+        "note"
+      ],
+      "additionalProperties": false
+    },
+    "node_types": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node_type"
+      },
+      "maxItems": 2000
+    },
+    "entity_types": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entity_type"
+      },
+      "maxItems": 2000
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entity"
+      },
+      "maxItems": 2000
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/field"
+      },
+      "maxItems": 2000
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fact"
+      },
+      "maxItems": 2000
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/module"
+      },
+      "maxItems": 2000
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/agent"
+      },
+      "maxItems": 2000
+    },
+    "strategies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/strategy"
+      },
+      "maxItems": 2000
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/capability"
+      },
+      "maxItems": 2000
+    },
+    "behaviors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/behavior"
+      },
+      "maxItems": 2000
+    },
+    "requests": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/request"
+      },
+      "maxItems": 2000
+    },
+    "objectives": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/objective"
+      },
+      "maxItems": 2000
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/decision"
+      },
+      "maxItems": 2000
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/task"
+      },
+      "maxItems": 2000
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/resource"
+      },
+      "maxItems": 2000
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/constraint"
+      },
+      "maxItems": 2000
+    },
+    "predicates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/predicate"
+      },
+      "maxItems": 2000
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      },
+      "maxItems": 2000
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      },
+      "maxItems": 2000
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/command"
+      },
+      "maxItems": 2000
+    },
+    "arbitrations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/arbitration"
+      },
+      "maxItems": 2000
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      },
+      "maxItems": 2000
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/scenario"
+      },
+      "maxItems": 2000
+    },
+    "admission_checks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/admission_check"
+      },
+      "maxItems": 2000
+    },
+    "feedback_policies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/feedback_policy"
+      },
+      "maxItems": 2000
+    },
+    "predicate_results": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/predicate_result"
+      },
+      "maxItems": 2000
+    },
+    "relation_definitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relation_definition"
+      },
+      "maxItems": 2000
+    },
+    "parameter_definitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/parameter_definition"
+      },
+      "maxItems": 2000
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      },
+      "maxItems": 10000
+    },
+    "spatial_zones": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/spatial_zone"
+      },
+      "maxItems": 2000
+    },
+    "lease_requests": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/lease_request"
+      },
+      "maxItems": 2000
+    },
+    "lease_approvals": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/lease_approval"
+      },
+      "maxItems": 2000
+    },
+    "space_time_allocations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/space_time_allocation"
+      },
+      "maxItems": 2000
+    },
+    "delivery_receipts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/delivery_receipt"
+      },
+      "maxItems": 2000
+    }
+  },
+  "required": [
+    "schema_version",
+    "provenance",
+    "node_types",
+    "entity_types",
+    "entities",
+    "fields",
+    "facts",
+    "modules",
+    "agents",
+    "strategies",
+    "capabilities",
+    "behaviors",
+    "requests",
+    "objectives",
+    "decisions",
+    "tasks",
+    "resources",
+    "constraints",
+    "predicates",
+    "rules",
+    "events",
+    "commands",
+    "arbitrations",
+    "sources",
+    "scenarios",
+    "admission_checks",
+    "feedback_policies",
+    "predicate_results",
+    "relation_definitions",
+    "parameter_definitions",
+    "edges",
+    "spatial_zones",
+    "lease_requests",
+    "lease_approvals",
+    "space_time_allocations",
+    "delivery_receipts"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "binding": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "fixture",
+            "stub"
+          ]
+        },
+        "status": {
+          "enum": [
+            "declared",
+            "static_checked",
+            "fixture_executed"
+          ]
+        },
+        "adapter": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "mode",
+        "status",
+        "adapter"
+      ],
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "field_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "entity_ids",
+        "field_ids"
+      ],
+      "additionalProperties": false
+    },
+    "assessments": {
+      "type": "object",
+      "properties": {
+        "feasibility": {
+          "enum": [
+            "TRUE",
+            "FALSE",
+            "UNKNOWN"
+          ]
+        },
+        "permission": {
+          "enum": [
+            "TRUE",
+            "FALSE",
+            "UNKNOWN"
+          ]
+        },
+        "suitability": {
+          "enum": [
+            "TRUE",
+            "FALSE",
+            "UNKNOWN"
+          ]
+        }
+      },
+      "required": [
+        "feasibility",
+        "permission",
+        "suitability"
+      ],
+      "additionalProperties": false
+    },
+    "entity_type": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "field_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "compatible_config_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "field_ids",
+        "compatible_config_types",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "entity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "scene_entity_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_.-]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "field": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value_type": {
+          "enum": [
+            "number",
+            "integer",
+            "string",
+            "boolean",
+            "vector3",
+            "entity_ref"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frame": {
+          "type": "string",
+          "minLength": 1
+        },
+        "temporal": {
+          "enum": [
+            "static",
+            "dynamic"
+          ]
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "value_type",
+        "unit",
+        "frame",
+        "temporal",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "fact": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entity_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "field_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "value": {},
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frame": {
+          "type": "string",
+          "minLength": 1
+        },
+        "valid_time_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "available_time_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "producer_module_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "valid_until_ns": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "record_kind": {
+          "const": "fixture_fact"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "entity_id",
+        "field_id",
+        "value",
+        "unit",
+        "frame",
+        "valid_time_ns",
+        "available_time_ns",
+        "producer_module_id",
+        "source_id",
+        "valid_until_ns",
+        "record_kind",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "module": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "dynamics",
+            "network",
+            "compute",
+            "environment",
+            "cargo",
+            "energy",
+            "fixture"
+          ]
+        },
+        "reads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entity_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "uniqueItems": true
+              },
+              "field_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "entity_ids",
+              "field_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "writes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entity_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "uniqueItems": true
+              },
+              "field_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "entity_ids",
+              "field_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "reads",
+        "writes",
+        "binding",
+        "parameters",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "controls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entity_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "uniqueItems": true
+              },
+              "mode": {
+                "enum": [
+                  "exclusive",
+                  "shared"
+                ]
+              },
+              "arbitration_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_.-]*$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "entity_ids",
+              "mode",
+              "arbitration_id"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "observable_fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "strategy_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "controls",
+        "observable_fact_ids",
+        "strategy_id",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "strategy": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observable_fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "request_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "objective_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "constraint_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "input_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_.-]*$"
+              },
+              "value_type": {
+                "enum": [
+                  "number",
+                  "integer",
+                  "string",
+                  "boolean",
+                  "vector3",
+                  "entity_ref"
+                ]
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              },
+              "frame": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "field_id",
+              "value_type",
+              "unit",
+              "frame"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "decision_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "output_command_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "observable_fact_ids",
+        "request_ids",
+        "objective_ids",
+        "constraint_ids",
+        "input_fields",
+        "decision_ids",
+        "output_command_ids",
+        "binding",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "request": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "task_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "entity_ids",
+        "task_ids",
+        "source_id",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "objective": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "preference": {
+          "enum": [
+            "soft"
+          ]
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "description",
+        "entity_ids",
+        "type_id",
+        "preference"
+      ],
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "strategy_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "agent_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "command_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "assessments": {
+          "$ref": "#/$defs/assessments"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "record_kind": {
+          "const": "fixture_decision"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "strategy_id",
+        "agent_id",
+        "task_id",
+        "command_ids",
+        "assessments",
+        "rationale",
+        "record_kind",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "executor_agent_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "command_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "objective_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "constraint_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "resource_claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "resource_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_.-]*$"
+              },
+              "amount": {
+                "type": "number",
+                "minimum": 0
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "resource_id",
+              "amount",
+              "unit"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "executor_agent_id",
+        "entity_ids",
+        "command_ids",
+        "objective_ids",
+        "constraint_ids",
+        "resource_claims",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "resource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "charging_slot",
+            "energy",
+            "cargo_capacity",
+            "bandwidth",
+            "compute",
+            "airspace"
+          ]
+        },
+        "owner_entity_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "capacity": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "constraint_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "owner_entity_id",
+        "capacity",
+        "unit",
+        "constraint_ids",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "constraint": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "physical",
+            "operational",
+            "legal"
+          ]
+        },
+        "expression": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "enforcement": {
+          "enum": [
+            "hard"
+          ]
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "operator": {
+                  "enum": [
+                    "boolean_equals",
+                    "number_lte",
+                    "number_gte"
+                  ]
+                },
+                "expected": {
+                  "type": [
+                    "boolean",
+                    "number"
+                  ]
+                },
+                "expected_unit": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "operator",
+                "expected",
+                "expected_unit"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "expression",
+        "entity_ids",
+        "source_id",
+        "type_id",
+        "enforcement",
+        "condition"
+      ],
+      "additionalProperties": false
+    },
+    "predicate": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "meaning": {
+          "type": "string",
+          "minLength": 1
+        },
+        "truth": {
+          "enum": [
+            "UNKNOWN"
+          ]
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "rule_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "subpredicate_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "operator": {
+          "enum": [
+            "leaf",
+            "and",
+            "or",
+            "not"
+          ]
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "input_fact_ids",
+        "meaning",
+        "truth",
+        "binding",
+        "type_id",
+        "rule_ids",
+        "subpredicate_ids",
+        "operator"
+      ],
+      "additionalProperties": false
+    },
+    "rule": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "predicate_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "event_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "command_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "constraint_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "kind": {
+          "enum": [
+            "policy_rule",
+            "predicate_definition_rule",
+            "event_definition_rule"
+          ]
+        },
+        "operator": {
+          "enum": [
+            "declared_policy",
+            "lt",
+            "and",
+            "or",
+            "not",
+            "identity"
+          ]
+        },
+        "state_field_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "relation_definition_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "parameter_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "subpredicate_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "output_predicate_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_.-]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "definition_ast": {
+          "$ref": "#/$defs/expression"
+        },
+        "applicability_ast": {
+          "$ref": "#/$defs/expression"
+        },
+        "label_zh": {
+          "type": "string"
+        },
+        "output_event_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_.-]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "predicate_ids",
+        "event_ids",
+        "command_ids",
+        "constraint_ids",
+        "description",
+        "type_id",
+        "kind",
+        "operator",
+        "state_field_ids",
+        "relation_definition_ids",
+        "parameter_ids",
+        "subpredicate_ids",
+        "output_predicate_id"
+      ],
+      "additionalProperties": false
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "event"
+        },
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "record_kind": {
+          "const": "event_definition"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "trigger": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "check_id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "outcome": {
+                  "enum": [
+                    "PERMIT",
+                    "BLOCK",
+                    "UNKNOWN"
+                  ]
+                }
+              },
+              "required": [
+                "check_id",
+                "outcome"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "entity_ids",
+        "fact_ids",
+        "source_id",
+        "description",
+        "record_kind",
+        "type_id",
+        "trigger"
+      ],
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "command"
+        },
+        "agent_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "target_entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "composition": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "enum": [
+                "sequence",
+                "parallel",
+                "conditional"
+              ]
+            },
+            "behavior_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_.-]*$"
+              },
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "conditions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "behavior_id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_.-]*$"
+                  },
+                  "predicate_id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_.-]*$"
+                  },
+                  "expected": {
+                    "enum": [
+                      "TRUE",
+                      "FALSE"
+                    ]
+                  }
+                },
+                "required": [
+                  "behavior_id",
+                  "predicate_id",
+                  "expected"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "mode",
+            "behavior_ids",
+            "conditions"
+          ],
+          "additionalProperties": false
+        },
+        "record_kind": {
+          "const": "command_definition"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "agent_id",
+        "target_entity_ids",
+        "task_id",
+        "action",
+        "parameters",
+        "binding",
+        "composition",
+        "record_kind",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "arbitration": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "policy": {
+          "enum": [
+            "priority",
+            "round_robin",
+            "manual"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "agent_ids",
+        "entity_ids",
+        "policy",
+        "description",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "authored_fixture",
+            "legal_reference"
+          ]
+        },
+        "citation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uri": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "jurisdiction": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effective_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verification": {
+          "enum": [
+            "unverified",
+            "reference_only"
+          ]
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "issuer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "applicable_entity_type_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "activities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "effective_from": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effective_until": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "clause": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "citation",
+        "uri",
+        "jurisdiction",
+        "effective_date",
+        "verification",
+        "type_id",
+        "issuer",
+        "applicable_entity_type_ids",
+        "activities",
+        "effective_from",
+        "effective_until",
+        "version",
+        "clause"
+      ],
+      "additionalProperties": false
+    },
+    "scenario": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "decision_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "task_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "event_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "command_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "observed_at_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "admission_timeline": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at_ns": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "check_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "uniqueItems": true
+              },
+              "event_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "uniqueItems": true
+              },
+              "updated_fact_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "at_ns",
+              "check_ids",
+              "event_ids",
+              "updated_fact_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "label_zh": {
+          "type": "string"
+        },
+        "lease_request_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "lease_approval_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "allocation_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "delivery_receipt_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "description",
+        "fact_ids",
+        "decision_ids",
+        "task_ids",
+        "event_ids",
+        "command_ids",
+        "observed_at_ns",
+        "type_id",
+        "admission_timeline"
+      ],
+      "additionalProperties": false
+    },
+    "node_type": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "collection": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "collection"
+      ],
+      "additionalProperties": false
+    },
+    "capability": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "module_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "entity_ids",
+        "module_ids",
+        "description",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "behavior": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "capability_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "module_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "resource_claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "resource_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_.-]*$"
+              },
+              "amount": {
+                "type": "number",
+                "minimum": 0
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "resource_id",
+              "amount",
+              "unit"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "constraint_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "after_behavior_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "label_zh": {
+          "type": "string"
+        },
+        "required_allocation_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "required_receipt_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "entity_ids",
+        "capability_ids",
+        "module_ids",
+        "resource_claims",
+        "constraint_ids",
+        "description",
+        "type_id",
+        "after_behavior_ids"
+      ],
+      "additionalProperties": false
+    },
+    "admission_check": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entity_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "field_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "constraint_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "behavior_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "entity_id",
+        "field_id",
+        "constraint_id",
+        "behavior_ids",
+        "binding",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "feedback_policy": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "agent_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "behavior_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "response": {
+          "enum": [
+            "pause",
+            "abort",
+            "replan"
+          ]
+        },
+        "decision_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "event_ids",
+        "agent_id",
+        "behavior_ids",
+        "response",
+        "decision_ids",
+        "description",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "predicate_result": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "predicate_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "input_fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "value": {
+          "enum": [
+            "UNKNOWN"
+          ]
+        },
+        "valid_time_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "record_kind": {
+          "const": "fixture_predicate_result"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "predicate_id",
+        "input_fact_ids",
+        "value",
+        "valid_time_ns",
+        "source_id",
+        "record_kind",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "target": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "relation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "condition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "time": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "version": {
+          "const": 1
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "target",
+        "relation",
+        "role",
+        "condition",
+        "time",
+        "scope",
+        "version",
+        "source_id"
+      ],
+      "additionalProperties": false
+    },
+    "relation_definition": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject_type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "object_type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "field_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "subject_type_id",
+        "object_type_id",
+        "field_ids",
+        "description",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "parameter_definition": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value_type": {
+          "enum": [
+            "number",
+            "boolean",
+            "string"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {},
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "value_type",
+        "unit",
+        "value",
+        "source_id",
+        "type_id"
+      ],
+      "additionalProperties": false
+    },
+    "expression": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "literal"
+            },
+            "value": {},
+            "unit": {
+              "type": "string"
+            },
+            "value_type": {
+              "enum": [
+                "number",
+                "boolean",
+                "string",
+                "UNKNOWN"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "unknown"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": [
+            "number",
+            "boolean",
+            "string",
+            "null"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_.-]*$"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "param": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_.-]*$"
+            }
+          },
+          "required": [
+            "param"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "const": {},
+            "unit": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "const"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unknown": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "unknown"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "predicate": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_.-]*$"
+            },
+            "parameters": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "predicate"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_.-]*$"
+            },
+            "parameters": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "event"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "minLength": 1
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/expression"
+              }
+            },
+            "window_s": {
+              "$ref": "#/$defs/expression"
+            },
+            "duration_seconds": {
+              "$ref": "#/$defs/expression"
+            },
+            "max_gap_s": {
+              "$ref": "#/$defs/expression"
+            },
+            "scope": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/expression"
+              }
+            },
+            "enter_s": {
+              "$ref": "#/$defs/expression"
+            },
+            "clear_s": {
+              "$ref": "#/$defs/expression"
+            }
+          },
+          "required": [
+            "op",
+            "args"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "time_window": {
+      "type": "object",
+      "properties": {
+        "start_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "end_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "start_ns",
+        "end_ns"
+      ],
+      "additionalProperties": false
+    },
+    "altitude_envelope": {
+      "type": "object",
+      "properties": {
+        "min_m": {
+          "type": "number"
+        },
+        "max_m": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "min_m",
+        "max_m"
+      ],
+      "additionalProperties": false
+    },
+    "spatial_zone": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "kind": {
+          "enum": [
+            "corridor",
+            "no_fly_zone"
+          ]
+        },
+        "geometry": {
+          "type": "object",
+          "properties": {
+            "frame": {
+              "enum": [
+                "ENU",
+                "WGS84"
+              ]
+            },
+            "axis_order": {
+              "enum": [
+                "east_north",
+                "longitude_latitude"
+              ]
+            },
+            "unit": {
+              "enum": [
+                "m",
+                "deg"
+              ]
+            },
+            "geometry_type": {
+              "enum": [
+                "polygon",
+                "polyline"
+              ]
+            },
+            "coordinates": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "minItems": 2
+            }
+          },
+          "required": [
+            "frame",
+            "axis_order",
+            "unit",
+            "geometry_type",
+            "coordinates"
+          ],
+          "additionalProperties": false
+        },
+        "altitude": {
+          "$ref": "#/$defs/altitude_envelope"
+        },
+        "time_windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/time_window"
+          },
+          "minItems": 1
+        },
+        "direction": {
+          "enum": [
+            "bidirectional",
+            "forward",
+            "reverse"
+          ]
+        },
+        "access": {
+          "enum": [
+            "approval_required",
+            "restricted",
+            "prohibited"
+          ]
+        },
+        "authority_agent_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "capacity_slots": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "type_id",
+        "kind",
+        "geometry",
+        "altitude",
+        "time_windows",
+        "direction",
+        "access",
+        "authority_agent_ids",
+        "capacity_slots",
+        "source_id"
+      ],
+      "additionalProperties": false
+    },
+    "lease_request": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "record_kind": {
+          "const": "fixture_lease_request"
+        },
+        "agent_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "zone_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "requested_window": {
+          "$ref": "#/$defs/time_window"
+        },
+        "requested_altitude": {
+          "$ref": "#/$defs/altitude_envelope"
+        },
+        "direction": {
+          "enum": [
+            "forward",
+            "reverse"
+          ]
+        },
+        "issued_at_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "type_id",
+        "record_kind",
+        "agent_id",
+        "entity_ids",
+        "zone_id",
+        "requested_window",
+        "requested_altitude",
+        "direction",
+        "issued_at_ns",
+        "purpose",
+        "source_id"
+      ],
+      "additionalProperties": false
+    },
+    "lease_approval": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "record_kind": {
+          "const": "fixture_lease_approval"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "authority_agent_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "decision": {
+          "enum": [
+            "approved",
+            "rejected",
+            "pending"
+          ]
+        },
+        "approved_window": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/time_window"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approved_altitude": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/altitude_envelope"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "constraint_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "evidence_receipt_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "issued_at_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "type_id",
+        "record_kind",
+        "request_id",
+        "authority_agent_id",
+        "decision",
+        "approved_window",
+        "approved_altitude",
+        "constraint_ids",
+        "evidence_receipt_ids",
+        "issued_at_ns",
+        "source_id"
+      ],
+      "additionalProperties": false
+    },
+    "space_time_allocation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "record_kind": {
+          "const": "fixture_space_time_allocation"
+        },
+        "approval_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "zone_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "window": {
+          "$ref": "#/$defs/time_window"
+        },
+        "altitude": {
+          "$ref": "#/$defs/altitude_envelope"
+        },
+        "direction": {
+          "enum": [
+            "forward",
+            "reverse"
+          ]
+        },
+        "slots": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "declared",
+            "cancelled"
+          ]
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "type_id",
+        "record_kind",
+        "approval_id",
+        "zone_id",
+        "entity_ids",
+        "window",
+        "altitude",
+        "direction",
+        "slots",
+        "status",
+        "source_id"
+      ],
+      "additionalProperties": false
+    },
+    "delivery_receipt": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "record_kind": {
+          "const": "fixture_delivery_receipt"
+        },
+        "command_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "sender_entity_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "receiver_entity_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "status": {
+          "enum": [
+            "acknowledged",
+            "rejected",
+            "UNKNOWN"
+          ]
+        },
+        "emitted_at_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "received_at_ns": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "uniqueItems": true
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "label_zh": {
+          "type": "string"
+        },
+        "receipt_kind": {
+          "enum": [
+            "message_delivery",
+            "command_acceptance",
+            "parcel_custody"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "type_id",
+        "record_kind",
+        "command_id",
+        "task_id",
+        "sender_entity_id",
+        "receiver_entity_id",
+        "status",
+        "emitted_at_ns",
+        "received_at_ns",
+        "evidence_fact_ids",
+        "source_id",
+        "receipt_kind"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

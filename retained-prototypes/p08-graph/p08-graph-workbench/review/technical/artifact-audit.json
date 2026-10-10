@@ -1,0 +1,120 @@
+{
+  "scope": "Independent code/data acceptance; browser rendering not asserted.",
+  "graph_sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de",
+  "counts": {
+    "graph_nodes": 20201,
+    "graph_edges": 64978,
+    "quarantined_edges": 0,
+    "aliases": 85179,
+    "merged_node_groups": 0,
+    "independent_source_occurrences": 83874
+  },
+  "checks": [
+    {
+      "name": "immutable_source_documents_byte_exact",
+      "status": "pass",
+      "covered": 7,
+      "failures": 0,
+      "examples": [],
+      "note": "Snapshot-backed reverse export, not a claim that normalized graph alone reconstructs omitted metadata."
+    },
+    {
+      "name": "exhaustive_independent_stage1_occurrence_coverage",
+      "status": "pass",
+      "covered": 83874,
+      "failures": 0,
+      "examples": [],
+      "note": "20,004 node + 63,870 edge occurrences in four accepted inventories; extra extracted-source artifacts assessed separately."
+    },
+    {
+      "name": "all_alias_pointers_resolve_and_reverse_exactly",
+      "status": "pass",
+      "covered": 85179,
+      "failures": 0,
+      "examples": [],
+      "note": "Every occurrence reconstructable from packaged source snapshots using alias artifact/pointer; snapshot SHA verified."
+    },
+    {
+      "name": "canonical_payloads_preserve_raw_record_exactly",
+      "status": "pass",
+      "covered": 85179,
+      "failures": 0,
+      "examples": [],
+      "note": "Exact JSON structure comparison includes AST child order/literals, time domains, nanosecond strings, null/false/unknown, generation and roles."
+    },
+    {
+      "name": "raw_edge_direction_and_endpoints_preserved",
+      "status": "pass",
+      "covered": 64978,
+      "failures": 0,
+      "examples": [],
+      "note": ""
+    },
+    {
+      "name": "parallel_edge_occurrences_not_deduplicated",
+      "status": "pass",
+      "covered": 64978,
+      "failures": 0,
+      "examples": [],
+      "note": ""
+    },
+    {
+      "name": "merged_definition_aliases_have_explicit_revision",
+      "status": "pass",
+      "covered": 0,
+      "failures": 0,
+      "examples": [],
+      "note": "No revision is inferred from repeated labels, equal bytes, or shared enclosing artifact alone."
+    },
+    {
+      "name": "exact_35_activity_226_step_coverage",
+      "status": "pass",
+      "covered": 226,
+      "failures": 0,
+      "examples": [],
+      "note": ""
+    },
+    {
+      "name": "argument_direction_semantics_mapped_by_verified_source_profile",
+      "status": "pass",
+      "covered": 878,
+      "failures": 0,
+      "examples": [],
+      "note": ""
+    },
+    {
+      "name": "state_fact_and_definition_instance_type_distinction",
+      "status": "pass",
+      "covered": 4616,
+      "failures": 0,
+      "examples": [],
+      "note": ""
+    },
+    {
+      "name": "normalized_json_null_is_not_semantic_unknown",
+      "status": "pass",
+      "covered": 2539,
+      "failures": 0,
+      "examples": [],
+      "note": "Structural is_null flag only; source truth fields retain their independently declared values."
+    },
+    {
+      "name": "hyperedge_named_roles_and_nary_arity_preserved",
+      "status": "pass",
+      "covered": 51,
+      "failures": 0,
+      "examples": [],
+      "note": "Checks all declared role bindings and transformation member multiplicity; source list ordering separately covered by exact raw payload checks."
+    },
+    {
+      "name": "cross_artifact_endpoint_closures_have_exact_primary_proof",
+      "status": "pass",
+      "covered": 63,
+      "failures": 0,
+      "examples": [],
+      "note": "Closure uses existing source-exact records; it does not create new runtime entities or equate authored scenarios."
+    }
+  ],
+  "all_data_checks_pass": true,
+  "elapsed_seconds": 9.365
+}

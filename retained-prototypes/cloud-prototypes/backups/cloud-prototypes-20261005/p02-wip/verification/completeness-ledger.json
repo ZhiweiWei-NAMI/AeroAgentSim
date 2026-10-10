@@ -1,0 +1,403 @@
+{
+  "schema_version": "aeroagentsim.completeness-ledger/v1",
+  "scope": "Confirmed authoring/fixture contracts only; not a complete native Atlas catalog or real-backend coverage statement.",
+  "reviewed_source_revision": "ed2dc9a11873971774b0b4dbdf097efefe2cb128",
+  "implementation_baseline": "68b3d4a65799008e8d3ae0f175faf64d9ef60b44",
+  "source_contracts": [
+    {
+      "name": "ARCHITECTURE.md",
+      "sha256": "a5cdc5d66f9157951cf1e0d12637ec9825c11f77e8875472a887bcf25428d3ac"
+    },
+    {
+      "name": "CONFIGURATION_UI_PLAN.md",
+      "sha256": "4c60c634c8475a489bb5964ca05299ee7701709361c72e5611269c272c09bcfd"
+    },
+    {
+      "name": "DESIGN_COMPLETENESS_REVIEW.md",
+      "sha256": "75f1c6721f8a382aa99d07c588b25882d88a5bad262474edbb91bcb0ae57bf98"
+    },
+    {
+      "name": "MAPPING_AUDIT.md",
+      "sha256": "49a05cdeb8ef527b1b1c42fbef5a3532a09eb5a61350db1e506a1c4dccfdb674"
+    },
+    {
+      "name": "MODULE_STATE_INVENTORY.md",
+      "sha256": "c9790e22cfce19e247a1dcecd7003c9da60ee47e04a6ad9a225784a4098d099c"
+    },
+    {
+      "name": "RULE_AST_CONTRACT.md",
+      "sha256": "7180d99214182827a04889ceff12013cb2fb0945c40225d228cd1f741a66d5f5"
+    },
+    {
+      "name": "TERMINOLOGY.md",
+      "sha256": "16e4d912fe988474bce46c65ab7138d3ff5fd6029f51a1e3d5705d9974545506"
+    },
+    {
+      "name": "TYPED_GRAPH_RELATIONS.md",
+      "sha256": "4fdb7c82d86ded8667d55fa752adecab3cfddcf0e1bce3ba37e5239fed463e07"
+    }
+  ],
+  "evidence_dimensions": [
+    "declared",
+    "implemented",
+    "tested",
+    "real_connected"
+  ],
+  "relation_review_layers": {
+    "business_semantics": 38,
+    "authoring_configuration_references": 27,
+    "definition_instance_structure": 11,
+    "ast_operand_structure": 8,
+    "evidence_and_runtime_records": 8
+  },
+  "catalog_boundary": {
+    "status": "blocked_source_access",
+    "independently_recounted": false,
+    "catalog_denominator": null,
+    "native_rule_parity": "not_verified",
+    "policy": "Continue confirmed type/rule/relationship authoring; never invent unavailable catalog entries or a coverage percentage."
+  },
+  "next_batch": {
+    "purpose": "Close competing-writer and fixture resource-admission defects, and complete safe typed-record authoring.",
+    "public_publication": "blocked; no public Git writes",
+    "browser_verification": "deferred; do not wait or bypass denied preview access"
+  },
+  "items": [
+    {
+      "id": "AUTH-001",
+      "priority": "P0",
+      "status": "in_progress",
+      "sources": [
+        "TERMINOLOGY.md#One field, one computing authority",
+        "DESIGN_COMPLETENESS_REVIEW.md#Decisions sharpened now"
+      ],
+      "requirement": "One selected writer for every exact entity/field scope.",
+      "observed": "Validator checks that a writer exists but permits two modules to declare the same field scope.",
+      "bounded_action": "Reject conflicting writer declarations before saving or fixture execution. Preserve distinct observation fields and disjoint scopes.",
+      "acceptance": [
+        "Duplicate writers rejected even without a sampled fact",
+        "Distinct entity/field scopes remain valid",
+        "Fact producer must match the selected writer"
+      ],
+      "implementation_files": [
+        "src/graph-config.js",
+        "tests/graph-config.test.js"
+      ],
+      "remaining_limits": []
+    },
+    {
+      "id": "RES-001",
+      "priority": "P0",
+      "status": "in_progress",
+      "sources": [
+        "ARCHITECTURE.md#Ownership and coupling",
+        "MODULE_STATE_INVENTORY.md#Inspected source groups (13)",
+        "CONFIGURATION_UI_PLAN.md#Controlled fixture execution"
+      ],
+      "requirement": "Capacity, observed availability and atomic reservation are different.",
+      "observed": "Static capacity checks and declared allocations cannot exercise two independent agents contending for one currently available slot.",
+      "bounded_action": "Add explicitly configured fixture-only admission using timed available-capacity evidence and authored request order, with a charging contention case.",
+      "acceptance": [
+        "One slot admits at most one simultaneous request",
+        "Missing/stale/conflicting availability stays UNKNOWN",
+        "No implicit control arbitration, real charger actuation or physical charging success"
+      ],
+      "implementation_files": [
+        "src/graph-config.js",
+        "src/graph-runtime.js"
+      ],
+      "remaining_limits": [
+        "Fixture-only; no authenticated durable live resource authority"
+      ]
+    },
+    {
+      "id": "EDIT-001",
+      "priority": "P1",
+      "status": "in_progress",
+      "sources": [
+        "CONFIGURATION_UI_PLAN.md#Review interactions"
+      ],
+      "requirement": "Create/edit/remove/reference selection with dependent-reference review.",
+      "observed": "Existing UI only edits existing authored records.",
+      "bounded_action": "Add validated create/duplicate/remove and explicit typed-edge transactions, without cascade deletion.",
+      "acceptance": [
+        "New IDs and required types validated",
+        "Removal lists incoming references and blocks broken commits",
+        "Locale/navigation preserve pending edits",
+        "Derived AST records remain read-only"
+      ],
+      "implementation_files": [
+        "src/graph-workbench.js",
+        "tests/graph-ui.test.js"
+      ],
+      "remaining_limits": []
+    },
+    {
+      "id": "REVIEW-001",
+      "priority": "P1",
+      "status": "in_progress",
+      "sources": [
+        "CONFIGURATION_UI_PLAN.md#Review interactions",
+        "TYPED_GRAPH_RELATIONS.md#Core semantic edge registry"
+      ],
+      "requirement": "Task, authority/source and lease review should expose explicit references.",
+      "observed": "Some records rely on raw JSON rather than concise linked review panels.",
+      "bounded_action": "Add source/authority, task and space-time lease inspectors using canonical references.",
+      "acceptance": [
+        "Exact source and authority IDs remain inspectable",
+        "Request/approval/allocation/receipt distinctions remain visible",
+        "No action occurs on graph click"
+      ],
+      "implementation_files": [
+        "src/graph-workbench.js"
+      ],
+      "remaining_limits": []
+    },
+    {
+      "id": "IDENTITY-001",
+      "priority": "P1",
+      "status": "deferred",
+      "sources": [
+        "TERMINOLOGY.md#Identity and fact envelope",
+        "RULE_AST_CONTRACT.md#Definition graph versus runtime graph"
+      ],
+      "requirement": "Exact run/epoch/generation/lifecycle and availability-domain identity.",
+      "observed": "Graph fixture identity uses stable authored IDs and exact valid/available nanoseconds; full typed Ref and cross-domain cutoff contract is not implemented in this graph. Existing Python observation boundary is narrower and separately tested.",
+      "bounded_action": "Design an explicit versioned authoring declaration and adapter mapping before accepting real records; do not infer metadata from IDs or timestamps.",
+      "acceptance": [
+        "Future mapping rejects cross-generation/domain joins",
+        "Declared hypothetical metadata is separate from source-recovered metadata"
+      ],
+      "implementation_files": [
+        "src/graph-config.js",
+        "src/graph-runtime.js"
+      ],
+      "remaining_limits": [
+        "Native Ref parity not established"
+      ]
+    },
+    {
+      "id": "ENFORCEMENT-001",
+      "priority": "P1",
+      "status": "deferred",
+      "sources": [
+        "TERMINOLOGY.md#Strategy, constraint and source interfaces",
+        "CONFIGURATION_UI_PLAN.md#Static validation (12)"
+      ],
+      "requirement": "Constraint enforcement names a responsible execution module and evidence.",
+      "observed": "Bounded fixture checker is explicit, but general physical/regulatory enforcement-module receipts are not modeled or connected.",
+      "bounded_action": "Add a versioned enforcement binding and missing-binding diagnostics in a subsequent bounded batch.",
+      "acceptance": [
+        "Declared constraint cannot appear enforced without binding/evidence",
+        "Unknown/conflict response must remain declared"
+      ],
+      "implementation_files": [
+        "src/graph-config.js",
+        "src/graph-runtime.js"
+      ],
+      "remaining_limits": [
+        "No real safety or legal admission claim"
+      ]
+    },
+    {
+      "id": "COUPLING-001",
+      "priority": "P1",
+      "status": "deferred",
+      "sources": [
+        "ARCHITECTURE.md#Ownership and coupling",
+        "CONFIGURATION_UI_PLAN.md#Static validation (9)"
+      ],
+      "requirement": "Cyclic module dependencies require an explicit scheduler/coupling policy.",
+      "observed": "Read/write dependencies are declared; the graph does not implement general previous-tick/substep/fixed-point scheduler contracts.",
+      "bounded_action": "Add coupling metadata and cycle diagnostics without replacing BENCH stage scheduling.",
+      "acceptance": [
+        "Cycles expose the required policy",
+        "No silent topological edge dropping"
+      ],
+      "implementation_files": [
+        "src/graph-config.js"
+      ],
+      "remaining_limits": [
+        "No co-simulation solver implemented"
+      ]
+    },
+    {
+      "id": "SOURCE-001",
+      "priority": "P1",
+      "status": "partial",
+      "sources": [
+        "MAPPING_AUDIT.md#Required per-state audit record",
+        "DESIGN_COMPLETENESS_REVIEW.md#Already in the original design"
+      ],
+      "requirement": "Source quantity, uncertainty and conversion meaning remain explicit.",
+      "observed": "Fixture facts preserve types/units/frames/times/source IDs; native field paths, calibration/covariance, availability domains and conversion contracts remain incomplete.",
+      "bounded_action": "Keep precise mapping statuses and unavailable reasons; add fields only from verified source contracts.",
+      "acceptance": [
+        "Unverified source/conversion remains unavailable",
+        "Observation, estimate and physical truth are not silently merged"
+      ],
+      "implementation_files": [
+        "src/graph-config.js",
+        "src/graph-runtime.js"
+      ],
+      "remaining_limits": [
+        "Full native catalog unavailable"
+      ]
+    },
+    {
+      "id": "TASK-001",
+      "priority": "P2",
+      "status": "partial",
+      "sources": [
+        "TERMINOLOGY.md#Fixed vocabulary",
+        "DESIGN_COMPLETENESS_REVIEW.md#Already in the original design"
+      ],
+      "requirement": "Task attempt, lifecycle, cancellation/retry and effect evidence are distinct.",
+      "observed": "Fixture task/command/receipt definitions and authored branches exist; general attempt/lifecycle transactions and independent completion evidence remain incomplete.",
+      "bounded_action": "Retain authored fixture labels; add explicit lifecycle transitions only as a separate verified execution contract.",
+      "acceptance": [
+        "Acceptance never implies physical completion",
+        "Retry/attempt identities cannot alias older receipts"
+      ],
+      "implementation_files": [
+        "src/graph-config.js",
+        "src/graph-runtime.js"
+      ],
+      "remaining_limits": []
+    },
+    {
+      "id": "AST-001",
+      "priority": "P1",
+      "status": "verified_fixture",
+      "sources": [
+        "RULE_AST_CONTRACT.md",
+        "TYPED_GRAPH_RELATIONS.md#Definition and evaluation matrix"
+      ],
+      "requirement": "One canonical AST projection, ordered operands, parameter/constants/references, temporal control roles and definition/result separation.",
+      "observed": "Canonical generated AST nodes/edges, event outputs, cycle validation, reversible IDs and import/export preservation are implemented and independently reviewed.",
+      "bounded_action": "Retain regressions while adding source-backed grammar only.",
+      "acceptance": [
+        "Known scalar/temporal controls and alias precedence preserved",
+        "Unsupported operators remain explicit",
+        "Native truth stays UNKNOWN"
+      ],
+      "implementation_files": [
+        "src/graph-config.js",
+        "tests/graph-config.test.js"
+      ],
+      "remaining_limits": [
+        "Native catalog/engine parity unavailable"
+      ]
+    },
+    {
+      "id": "GRAPH-001",
+      "priority": "P1",
+      "status": "verified_fixture",
+      "sources": [
+        "TYPED_GRAPH_RELATIONS.md#Multi-edge identity and metadata"
+      ],
+      "requirement": "Multiedges preserve role, scope, time and origin.",
+      "observed": "Five review layers preserve92 relation meanings. Only proven reciprocal PRODUCES displays are bundled; all source edges remain. Nested scheduled-check times are preserved.",
+      "bounded_action": "Keep lossless projection tests; no cosmetic denominator reductions.",
+      "acceptance": [
+        "Display expansion exactly reproduces canonical edges",
+        "Different time/role/scope never deduplicated"
+      ],
+      "implementation_files": [
+        "src/graph-config.js",
+        "src/graph-display.js",
+        "tests/graph-display.test.js"
+      ],
+      "remaining_limits": []
+    },
+    {
+      "id": "LOOP-001",
+      "priority": "P1",
+      "status": "verified_fixture",
+      "sources": [
+        "ARCHITECTURE.md#Separate control chain",
+        "CONFIGURATION_UI_PLAN.md#Controlled fixture execution"
+      ],
+      "requirement": "Constraint checks and declared feedback belong to the main loop.",
+      "observed": "Fixture admission produces exact PERMIT/BLOCK/UNKNOWN evidence; aggregate hard constraints and prerequisites are combined; pause/abort/replan uses only declared policy.",
+      "bounded_action": "Preserve targeted time-step checks and phase-specific evidence.",
+      "acceptance": [
+        "Unchecked hard constraints keep aggregate UNKNOWN",
+        "Lease expiry cannot be overridden by unrelated PERMIT",
+        "Policy actions remain sticky"
+      ],
+      "implementation_files": [
+        "src/graph-runtime.js",
+        "tests/graph-runtime.test.js",
+        "tests/graph-spatial.test.js"
+      ],
+      "remaining_limits": [
+        "Authored decision replay; no physical module execution"
+      ]
+    },
+    {
+      "id": "SPACE-001",
+      "priority": "P1",
+      "status": "verified_fixture",
+      "sources": [
+        "ARCHITECTURE.md#Separate control chain",
+        "CONFIGURATION_UI_PLAN.md#Constraints and sources"
+      ],
+      "requirement": "Corridor request, approval, allocation and delivery receipt are distinct.",
+      "observed": "Canonical emergency case validates separate outbound/return windows, no-fly declarations, receipt availability and independent gates.",
+      "bounded_action": "Retain the same imported configuration as all view/runtime projections.",
+      "acceptance": [
+        "Before/missing/rejected/expired grant cannot admit fixture behavior",
+        "Parcel custody remains unchanged across upload branches",
+        "Configuration roundtrip and digest stable"
+      ],
+      "implementation_files": [
+        "examples/emergency-delivery.config.json",
+        "scripts/emit-emergency-graph.mjs",
+        "tests/emergency-graph.test.js"
+      ],
+      "remaining_limits": [
+        "No spatial-intersection solver or real authority verification"
+      ]
+    },
+    {
+      "id": "NATIVE-001",
+      "priority": "P0",
+      "status": "blocked_source_access",
+      "sources": [
+        "MAPPING_AUDIT.md#Available evidence and blocked source",
+        "MODULE_STATE_INVENTORY.md#Pinned evidence"
+      ],
+      "requirement": "Native catalog mapping and live module readiness require actual source/evidence.",
+      "observed": "Original full catalog is inaccessible; no source-recounted denominator, native evaluator or current authenticated backend connection is available.",
+      "bounded_action": "Do not retry denied source routes or fabricate catalog bindings. Continue independent authoring/fixture work.",
+      "acceptance": [
+        "No1000+catalog completeness claim",
+        "Native semantic/real-connected statuses remain separate and unavailable"
+      ],
+      "implementation_files": [],
+      "remaining_limits": [
+        "No real-backend execution in this batch"
+      ]
+    },
+    {
+      "id": "VISUAL-001",
+      "priority": "P2",
+      "status": "deferred",
+      "sources": [
+        "CONFIGURATION_UI_PLAN.md#Acceptance tests for the implementation"
+      ],
+      "requirement": "Actual rendered visual acceptance is separate from DOM behavior.",
+      "observed": "Light theme and responsive CSS have DOM regression coverage; current browser access is blocked.",
+      "bounded_action": "Continue code work as requested; keep browser QA runner for an authorized future environment.",
+      "acceptance": [
+        "Never report DOM emulation as visual acceptance",
+        "No access-restriction bypass"
+      ],
+      "implementation_files": [
+        "scripts/graph-browser-qa.cjs"
+      ],
+      "remaining_limits": []
+    }
+  ]
+}

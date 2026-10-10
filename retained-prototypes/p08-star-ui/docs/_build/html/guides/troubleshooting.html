@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Troubleshooting Guide &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Contributing to AeroAgentSim" href="../contributing.html" />
+    <link rel="prev" title="Performance Tuning Guide" href="performance_tuning.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../contributing.html" title="Contributing to AeroAgentSim"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="performance_tuning.html" title="Performance Tuning Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Troubleshooting Guide</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="troubleshooting-guide">
+<h1>Troubleshooting Guide<a class="headerlink" href="#troubleshooting-guide" title="Permalink to this heading">¶</a></h1>
+<p>This guide helps you diagnose and resolve common issues when working with
+<code class="docutils literal notranslate"><span class="pre">aeroagentsim</span></code> and the AeroAgentSim workbench.</p>
+<section id="common-issues-and-solutions">
+<h2>Common Issues and Solutions<a class="headerlink" href="#common-issues-and-solutions" title="Permalink to this heading">¶</a></h2>
+<section id="installation-problems">
+<h3>Installation Problems<a class="headerlink" href="#installation-problems" title="Permalink to this heading">¶</a></h3>
+<p><strong>Issue: ImportError when importing AeroAgentSim</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ImportError: No module named &#39;aeroagentsim&#39;
+</pre></div>
+</div>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic">
+<li><p>Verify installation:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>list<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>aeroagentsim
+</pre></div>
+</div>
+</li>
+<li><p>Reinstall AeroAgentSim:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>uninstall<span class="w"> </span>aeroagentsim
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="o">[</span>dev<span class="o">]</span>
+</pre></div>
+</div>
+</li>
+<li><p>Check Python path:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Issue: Missing dependencies</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ModuleNotFoundError: No module named &#39;simpy&#39;
+</pre></div>
+</div>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[dev]&quot;</span><span class="w">  </span><span class="c1"># Install all dependencies</span>
+</pre></div>
+</div>
+</section>
+<section id="simulation-runtime-errors">
+<h3>Simulation Runtime Errors<a class="headerlink" href="#simulation-runtime-errors" title="Permalink to this heading">¶</a></h3>
+<p><strong>Issue: Agent creation fails</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ValueError: Agent with id &#39;drone1&#39; already exists
+</pre></div>
+</div>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic">
+<li><p>Use unique agent IDs:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Generate unique IDs</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="n">agent_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;drone_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p>Check existing agents:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">existing_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">agent</span> <span class="ow">in</span> <span class="n">env</span><span class="o">.</span><span class="n">agents</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Existing agents: </span><span class="si">{</span><span class="n">existing_ids</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Issue: Component execution fails</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ComponentError: Required metrics not available
+</pre></div>
+</div>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic">
+<li><p>Check component dependencies:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Verify component has required metrics</span>
+<span class="n">component</span> <span class="o">=</span> <span class="n">drone</span><span class="o">.</span><span class="n">get_component</span><span class="p">(</span><span class="s1">&#39;MoveToComponent&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Available metrics: </span><span class="si">{</span><span class="n">component</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Initialize components properly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ensure components are added before use</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">initialize_components</span><span class="p">()</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Issue: Workflow state machine errors</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>WorkflowError: Invalid transition from &#39;idle&#39; to &#39;completed&#39;
+</pre></div>
+</div>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic">
+<li><p>Check workflow state transitions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Debug workflow state</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Current state: </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">current_status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Valid transitions: </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">get_valid_transitions</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Verify trigger conditions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check trigger status</span>
+<span class="k">for</span> <span class="n">trigger</span> <span class="ow">in</span> <span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">triggers</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Trigger </span><span class="si">{</span><span class="n">trigger</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">trigger</span><span class="o">.</span><span class="n">is_active</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Issue: ``runtime_preflight`` reports skipped ``create_airspace`` or ``create_frequency``</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>warning runtime_preflight AirspaceManager: 当前运行时未暴露 create_airspace，跳过默认空域注入。
+warning runtime_preflight FrequencyManager: 当前运行时未暴露 create_frequency，跳过默认频率注入。
+</pre></div>
+</div>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic simple">
+<li><p>Treat these as compatibility warnings when no explicit airspace/frequency config is required.</p></li>
+<li><p>If your draft explicitly configures airspaces or frequencies, fix the runtime support gap first because preflight will escalate to an error and block run start.</p></li>
+<li><p>Check preflight results rather than warning count alone: only preflight errors block <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/runs</span></code>.</p></li>
+</ol>
+<p><strong>Issue: ``/api/runs/{run_id}/pause|resume|reset`` returns ``409``</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>409 Only the active run can be paused/resumed/reset.
+</pre></div>
+</div>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic simple">
+<li><p>Use run control endpoints only for the active run shown in the workbench header.</p></li>
+<li><p>Use historical runs for inspection and deletion only; they cannot be resumed after they become inactive.</p></li>
+</ol>
+<p><strong>Issue: Legacy ``/api/simulation/*`` endpoints return ``410``</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>410 Legacy /api/simulation endpoints are disabled.
+</pre></div>
+</div>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic simple">
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">/api/configs/*</span></code> for draft editing, validation, graph preview, and preflight.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">/api/runs/*</span></code> for start, pause, resume, reset, and historical run access.</p></li>
+</ol>
+</section>
+<section id="performance-issues">
+<h3>Performance Issues<a class="headerlink" href="#performance-issues" title="Permalink to this heading">¶</a></h3>
+<p><strong>Issue: Simulation runs slowly</strong></p>
+<p><strong>Diagnostic steps:</strong></p>
+<ol class="arabic">
+<li><p>Enable performance profiling:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.utils.profiler</span> <span class="kn">import</span> <span class="n">SimulationProfiler</span>
+
+<span class="n">profiler</span> <span class="o">=</span> <span class="n">SimulationProfiler</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+<span class="n">profiler</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+<span class="c1"># Run simulation</span>
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+
+<span class="c1"># Get performance report</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">profiler</span><span class="o">.</span><span class="n">get_report</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Check event queue size:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Event queue size: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">_queue</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Events per second: </span><span class="si">{</span><span class="n">env</span><span class="o">.</span><span class="n">event_count</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic">
+<li><p>Reduce event frequency:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Increase agent decision intervals</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">decision_interval</span> <span class="o">=</span> <span class="mf">60.0</span>  <span class="c1"># Reduce from default</span>
+</pre></div>
+</div>
+</li>
+<li><p>Reduce visualization and logging overhead:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use explicit public knobs rather than env.config mutation.</span>
+<span class="n">env</span><span class="o">.</span><span class="n">visual_interval</span> <span class="o">=</span> <span class="mi">15</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">decision_interval</span> <span class="o">=</span> <span class="mf">60.0</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Issue: Memory usage grows continuously</strong></p>
+<p><strong>Diagnostic steps:</strong></p>
+<ol class="arabic">
+<li><p>Monitor memory usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">psutil</span>
+<span class="kn">import</span> <span class="nn">gc</span>
+
+<span class="k">def</span> <span class="nf">check_memory</span><span class="p">():</span>
+    <span class="n">process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">()</span>
+    <span class="n">memory_mb</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Memory usage: </span><span class="si">{</span><span class="n">memory_mb</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Objects in memory: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">gc</span><span class="o">.</span><span class="n">get_objects</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic">
+<li><p>Limit state history:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Configure agents to limit history</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">max_state_history</span> <span class="o">=</span> <span class="mi">100</span>
+</pre></div>
+</div>
+</li>
+<li><p>Reduce retained debug/runtime history:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Prefer writing logs/trajectories to run artifacts and trimming</span>
+<span class="c1"># custom in-memory caches maintained by your own agents/components.</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">max_state_history</span> <span class="o">=</span> <span class="mi">100</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="data-provider-issues">
+<h3>Data Provider Issues<a class="headerlink" href="#data-provider-issues" title="Permalink to this heading">¶</a></h3>
+<p><strong>Issue: External API failures</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ConnectionError: Failed to connect to weather API
+</pre></div>
+</div>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic">
+<li><p>Implement fallback data:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">RobustWeatherProvider</span><span class="p">(</span><span class="n">WeatherDataProvider</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_fetch_weather_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_fetch_weather_data</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;API failed, using fallback: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_fallback_data</span><span class="p">()</span>
+</pre></div>
+</div>
+</li>
+<li><p>Add retry logic:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">time</span>
+
+<span class="k">def</span> <span class="nf">fetch_with_retry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_retries</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fetch_data</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">attempt</span> <span class="o">==</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="n">attempt</span><span class="p">)</span>  <span class="c1"># Exponential backoff</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Issue: Data synchronization problems</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>DataError: Timestamp mismatch in weather data
+</pre></div>
+</div>
+<p><strong>Solutions:</strong></p>
+<ol class="arabic">
+<li><p>Synchronize data timestamps:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">normalize_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="c1"># Convert to simulation time</span>
+    <span class="n">data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+    <span class="k">return</span> <span class="n">data</span>
+</pre></div>
+</div>
+</li>
+<li><p>Validate data consistency:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">validate_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="n">required_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="s1">&#39;temperature&#39;</span><span class="p">,</span> <span class="s1">&#39;humidity&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">required_fields</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing field: </span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="debugging-techniques">
+<h2>Debugging Techniques<a class="headerlink" href="#debugging-techniques" title="Permalink to this heading">¶</a></h2>
+<section id="logging-and-diagnostics">
+<h3>Logging and Diagnostics<a class="headerlink" href="#logging-and-diagnostics" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic">
+<li><p><strong>Enable detailed logging:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;aeroagentsim&#39;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Add custom debug information:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">DebuggableAgent</span><span class="p">(</span><span class="n">Agent</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_decision_logic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Agent </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> making decision at </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Current state: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_all_states</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Decision logic here</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Use simulation checkpoints:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_checkpoint</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save simulation state for debugging.&quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">pickle</span>
+
+    <span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+        <span class="s1">&#39;agents&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="n">a</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">get_all_states</span><span class="p">())</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">env</span><span class="o">.</span><span class="n">agents</span><span class="p">],</span>
+        <span class="s1">&#39;events&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">_queue</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="interactive-debugging">
+<h3>Interactive Debugging<a class="headerlink" href="#interactive-debugging" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic">
+<li><p><strong>Use simulation stepping:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">debug_simulation</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">step_size</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run simulation in debug mode with stepping.&quot;&quot;&quot;</span>
+    <span class="n">current_time</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">while</span> <span class="n">current_time</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Time: </span><span class="si">{</span><span class="n">current_time</span><span class="si">}</span><span class="s2"> ---&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Print agent states</span>
+        <span class="k">for</span> <span class="n">agent</span> <span class="ow">in</span> <span class="n">env</span><span class="o">.</span><span class="n">agents</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Agent </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Run for step_size time units</span>
+        <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="n">current_time</span> <span class="o">+</span> <span class="n">step_size</span><span class="p">)</span>
+        <span class="n">current_time</span> <span class="o">+=</span> <span class="n">step_size</span>
+
+        <span class="c1"># Wait for user input</span>
+        <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Press Enter to continue...&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Add breakpoints in workflows:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">DebuggableWorkflow</span><span class="p">(</span><span class="n">Workflow</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_setup_transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_setup_transitions</span><span class="p">()</span>
+
+        <span class="c1"># Add debug callback to all transitions</span>
+        <span class="k">for</span> <span class="n">transition</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">transitions</span><span class="p">:</span>
+            <span class="n">original_callback</span> <span class="o">=</span> <span class="n">transition</span><span class="o">.</span><span class="n">callback</span>
+            <span class="n">transition</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">ctx</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_debug_transition</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">original_callback</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_debug_transition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">original_callback</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Workflow </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> transitioning: </span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">original_callback</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">original_callback</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="testing-and-validation">
+<h2>Testing and Validation<a class="headerlink" href="#testing-and-validation" title="Permalink to this heading">¶</a></h2>
+<section id="unit-testing">
+<h3>Unit Testing<a class="headerlink" href="#unit-testing" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic">
+<li><p><strong>Test agent behavior:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+
+<span class="k">def</span> <span class="nf">test_agent_creation</span><span class="p">():</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+    <span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">&quot;test_drone&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+    <span class="p">})</span>
+
+    <span class="k">assert</span> <span class="n">drone</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="s2">&quot;test_drone&quot;</span>
+    <span class="k">assert</span> <span class="n">drone</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">drone</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">100</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Test component functionality:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_component_execution</span><span class="p">():</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+    <span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">&quot;test_drone&quot;</span><span class="p">)</span>
+    <span class="n">component</span> <span class="o">=</span> <span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">)</span>
+
+    <span class="c1"># Test component metrics</span>
+    <span class="k">assert</span> <span class="s1">&#39;speed&#39;</span> <span class="ow">in</span> <span class="n">component</span><span class="o">.</span><span class="n">PRODUCED_METRICS</span>
+
+    <span class="c1"># Test task execution</span>
+    <span class="n">task</span> <span class="o">=</span> <span class="n">MoveToTask</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;target_position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)})</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">component</span><span class="o">.</span><span class="n">execute_task</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">task</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="integration-testing">
+<h3>Integration Testing<a class="headerlink" href="#integration-testing" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic">
+<li><p><strong>Test complete workflows:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_inspection_workflow</span><span class="p">():</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="c1"># Setup complete scenario</span>
+    <span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">&quot;test_drone&quot;</span><span class="p">)</span>
+    <span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+    <span class="c1"># Create workflow</span>
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">InspectionWorkflow</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="s2">&quot;test_inspection&quot;</span><span class="p">,</span> <span class="n">drone</span><span class="p">,</span>
+        <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;inspection_points&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)]}</span>
+    <span class="p">)</span>
+    <span class="n">workflow</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="c1"># Run simulation</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+
+    <span class="c1"># Verify results</span>
+    <span class="k">assert</span> <span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">current_status</span> <span class="o">==</span> <span class="s1">&#39;completed&#39;</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="common-error-messages">
+<h2>Common Error Messages<a class="headerlink" href="#common-error-messages" title="Permalink to this heading">¶</a></h2>
+<dl class="simple">
+<dt><strong>“Agent not found in environment”</strong></dt><dd><ul class="simple">
+<li><p>Ensure agent is registered: <code class="docutils literal notranslate"><span class="pre">env.register_agent(agent)</span></code></p></li>
+</ul>
+</dd>
+<dt><strong>“Component not available for agent”</strong></dt><dd><ul class="simple">
+<li><p>Add component: <code class="docutils literal notranslate"><span class="pre">agent.add_component(component)</span></code></p></li>
+</ul>
+</dd>
+<dt><strong>“Invalid workflow state transition”</strong></dt><dd><ul class="simple">
+<li><p>Check workflow state machine definition</p></li>
+<li><p>Verify trigger conditions are met</p></li>
+</ul>
+</dd>
+<dt><strong>“Resource allocation failed”</strong></dt><dd><ul class="simple">
+<li><p>Check resource availability</p></li>
+<li><p>Verify resource manager configuration</p></li>
+</ul>
+</dd>
+<dt><strong>“Task execution timeout”</strong></dt><dd><ul class="simple">
+<li><p>Increase task timeout values</p></li>
+<li><p>Check for infinite loops in task logic</p></li>
+</ul>
+</dd>
+<dt><strong>“Memory allocation error”</strong></dt><dd><ul class="simple">
+<li><p>Reduce simulation scale</p></li>
+<li><p>Enable memory optimization settings</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="getting-help">
+<h2>Getting Help<a class="headerlink" href="#getting-help" title="Permalink to this heading">¶</a></h2>
+<p>When reporting issues:</p>
+<ol class="arabic">
+<li><p><strong>Provide minimal reproduction case:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Minimal example that reproduces the issue</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+<span class="c1"># Add minimal code that causes the problem</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Include system information:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">aeroagentsim</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Python version: </span><span class="si">{</span><span class="n">sys</span><span class="o">.</span><span class="n">version</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;AeroAgentSim version: </span><span class="si">{</span><span class="n">aeroagentsim</span><span class="o">.</span><span class="n">__version__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Platform: </span><span class="si">{</span><span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Provide error logs:</strong>
+- Include complete error traceback
+- Add relevant log messages
+- Specify when the error occurs</p></li>
+<li><p><strong>Check existing resources:</strong>
+- Search GitHub issues
+- Review documentation
+- Check examples for similar use cases</p></li>
+</ol>
+<p>For more help:</p>
+<ul class="simple">
+<li><p><strong>GitHub Issues</strong>: <a class="reference external" href="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/issues">https://github.com/ZhiweiWei-NAMI/AeroAgentSim/issues</a></p></li>
+<li><p><strong>Documentation</strong>: <a class="reference internal" href="../index.html"><span class="doc">AeroAgentSim Documentation</span></a></p></li>
+<li><p><strong>Examples</strong>: <a class="reference internal" href="../examples.html"><span class="doc">Examples</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Troubleshooting Guide</a><ul>
+<li><a class="reference internal" href="#common-issues-and-solutions">Common Issues and Solutions</a><ul>
+<li><a class="reference internal" href="#installation-problems">Installation Problems</a></li>
+<li><a class="reference internal" href="#simulation-runtime-errors">Simulation Runtime Errors</a></li>
+<li><a class="reference internal" href="#performance-issues">Performance Issues</a></li>
+<li><a class="reference internal" href="#data-provider-issues">Data Provider Issues</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#debugging-techniques">Debugging Techniques</a><ul>
+<li><a class="reference internal" href="#logging-and-diagnostics">Logging and Diagnostics</a></li>
+<li><a class="reference internal" href="#interactive-debugging">Interactive Debugging</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#testing-and-validation">Testing and Validation</a><ul>
+<li><a class="reference internal" href="#unit-testing">Unit Testing</a></li>
+<li><a class="reference internal" href="#integration-testing">Integration Testing</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#common-error-messages">Common Error Messages</a></li>
+<li><a class="reference internal" href="#getting-help">Getting Help</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="performance_tuning.html"
+                          title="previous chapter">Performance Tuning Guide</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="../contributing.html"
+                          title="next chapter">Contributing to AeroAgentSim</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guides/troubleshooting.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../contributing.html" title="Contributing to AeroAgentSim"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="performance_tuning.html" title="Performance Tuning Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Troubleshooting Guide</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

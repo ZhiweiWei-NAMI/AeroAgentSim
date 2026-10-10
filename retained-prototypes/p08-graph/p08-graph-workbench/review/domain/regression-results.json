@@ -1,0 +1,757 @@
+{
+  "schema": "p08.independent-domain-regressions/v1",
+  "scope": "Static structure/identity/source semantics. No fixture was executed by a native simulator/rule engine.",
+  "unrun_validation_stages": {
+    "native_predicate_engine": "not_run",
+    "simulator_domain_execution": "not_run",
+    "live_host_physical_evidence": "not_run",
+    "real_legal_applicability": "not_verified"
+  },
+  "status": "PASS_WITH_UNRUN_NATIVE_DOMAIN_TESTS",
+  "artifact_sha256": {
+    "review/domain/test_domain_invariants.py": "2b838bcb2f764e1533bd88b185e911d2444b8d868d883e60ac02587edcc483f9",
+    "spec/contract.py": "34842b46c9fd65f222dfa9dffd057901141b41e1492fc5288ec5fa4f0cf411d4",
+    "pipeline/import_catalogs.py": "9128a253b6bdb32acd860c05c8afc0c4d98dc587c4bb93b0efde2f4c525e665c",
+    "data/graph.json": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de"
+  },
+  "tests": [
+    {
+      "id": "D01_physical_mixing_not_terminal",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "requester": "ag.a01.entity.operator_person",
+        "decision_participant": "ag.a01.agent.operation",
+        "executor_person": "ag.a01.entity.operator_person",
+        "independent_reviewer": "ag.a01.agent.review",
+        "affected_area": "ag.a01.entity.site",
+        "controlled_device": "ag.a01.s03.entity.hardware.mixer",
+        "request_interface": "ag.a01.entity.terminal"
+      }
+    },
+    {
+      "id": "D02_readonly_review_does_not_reconsume_material",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "steps_inspected": 67,
+        "violating_edges": []
+      }
+    },
+    {
+      "id": "D03_no_blanket_city_pad_energy_resources",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "steps_inspected": 90,
+        "violating_edges": []
+      }
+    },
+    {
+      "id": "D04_medical_loading_direction",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "receipt_kind": "business_handover_or_ack",
+        "sender_ref": "DLV-A26-001.entity.sender_26",
+        "receiver_ref": "DLV-A26-001.entity.med_uav_26",
+        "author_entity_ref": "DLV-A26-001.entity.sender_26",
+        "task_ref": "DLV-A26-001.step03.task",
+        "artifact_or_item_ref": "DLV-A26-001.entity.package_26",
+        "status": "authored_acknowledged",
+        "received_at_s": 90.01,
+        "checked_at_s": 90.01,
+        "evidence_fact_refs": [
+          "DLV-A26-001.step03.fact"
+        ],
+        "proof_scope": "装载后责任保管方",
+        "not_proven": "physical unloading/custody/quality unless separately typed and evidenced"
+      }
+    },
+    {
+      "id": "D05_professional_quality_remains_unknown",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "receipt_kind": "professional_acceptance",
+        "sender_ref": "DLV-A26-001.entity.receiver_26",
+        "receiver_ref": "DLV-A26-001.entity.medical_business_26",
+        "author_entity_ref": "DLV-A26-001.entity.receiver_26",
+        "task_ref": "DLV-A26-001.step06.task",
+        "artifact_or_item_ref": "DLV-A26-001.entity.package_26",
+        "status": "Unknown",
+        "received_at_s": null,
+        "checked_at_s": 180.01,
+        "evidence_fact_refs": [
+          "DLV-A26-001.step06.fact"
+        ],
+        "proof_scope": "专业质量结论未提供",
+        "not_proven": "physical unloading/custody/quality unless separately typed and evidenced"
+      }
+    },
+    {
+      "id": "D06_positive_support_distinct_ground_contact",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": [
+        "DLV-A07-001.boundary.field.crate_7.sling_supports_load",
+        "DLV-A07-001.step05.field",
+        "DLV-A07-001.boundary.field.crate_7.ground_contact"
+      ]
+    },
+    {
+      "id": "D07_threshold_not_engineer_approval",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "id": "city.w15.review.engineer15.vol15-v2",
+        "kind": "engineering_review_record",
+        "record_level": "authored_required_record",
+        "reviewer_entity_id": "city.w15.entity.human",
+        "reviewer_role": "qualified_engineer; qualification evidence missing",
+        "reviewed_artifact_id": "city.w15.entity.volume-VOL15-02",
+        "artifact_version": "authored-volume-v2",
+        "volume_estimate": {
+          "value": 128,
+          "unit": "m3",
+          "provenance": "authored estimate"
+        },
+        "standard_uncertainty": {
+          "value": 4,
+          "unit": "m3",
+          "provenance": "authored estimate"
+        },
+        "approval": null,
+        "signed_at_ns": null,
+        "status": "missing_source",
+        "execution": "not_executed",
+        "provenance": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "source_url": "https://chatgpt.com/space/page_925e13a0cc34819194af35bb99778994",
+          "section": "Appendix B / 15",
+          "catalog_json_pointer": "/activities/14/steps/4"
+        }
+      }
+    },
+    {
+      "id": "D08_material_input_intermediate_output_lineage",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": [
+        {
+          "id": "ag.a01.s03.mix-lineage",
+          "proposed_record_kind": "material_transformation",
+          "frozen_collection": null,
+          "schema_status": "unrepresented_runtime_record",
+          "source_step": "/activities/0/steps/2",
+          "provenance": "authored_synthetic_not_executed",
+          "definition_ref": "ag.a01.s03.relation.material-lineage",
+          "input_lot_refs": [
+            "ag.a01.s03.entity.lot.powder",
+            "ag.a01.s03.entity.lot.water"
+          ],
+          "output_lot_refs": [
+            "ag.a01.s03.entity.lot.mixed"
+          ],
+          "equipment_refs": [
+            "ag.a01.s03.entity.hardware.mixer"
+          ],
+          "input_fact_refs": [
+            "ag.a01.s03.fact.domain-powder-input",
+            "ag.a01.s03.fact.domain-carrier-input"
+          ],
+          "output_fact_refs": [
+            "ag.a01.s03.fact.domain-mixed-lot"
+          ],
+          "process": "mixing",
+          "status": "authored_not_executed",
+          "mass_conservation": "No derived mass/volume law asserted; density, temperature and measured output contract remain needed."
+        },
+        {
+          "id": "ag.a01.s03.filter-lineage",
+          "proposed_record_kind": "material_transformation",
+          "frozen_collection": null,
+          "schema_status": "unrepresented_runtime_record",
+          "source_step": "/activities/0/steps/2",
+          "provenance": "authored_synthetic_not_executed",
+          "definition_ref": "ag.a01.s03.relation.material-lineage",
+          "input_lot_refs": [
+            "ag.a01.s03.entity.lot.mixed"
+          ],
+          "output_lot_refs": [
+            "ag.a01.s03.entity.lot.filtered",
+            "ag.a01.s03.entity.lot.retentate"
+          ],
+          "equipment_refs": [
+            "ag.a01.s03.entity.hardware.pump",
+            "ag.a01.s03.entity.hardware.filter",
+            "ag.a01.s03.entity.hardware.scale"
+          ],
+          "input_fact_refs": [
+            "ag.a01.s03.fact.domain-mixed-lot"
+          ],
+          "output_fact_refs": [
+            "ag.a01.s03.fact.domain-filtered-lot",
+            "ag.a01.s03.fact.domain-retained-lot"
+          ],
+          "process": "filtration",
+          "previous_process_ref": "ag.a01.s03.mix-lineage",
+          "status": "authored_not_executed",
+          "material_fate": "Volume split only, no chemical degradation/adsorption or efficacy inferred."
+        }
+      ]
+    },
+    {
+      "id": "D09_authored_feed_balance_only",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "values_kg": {
+          "loaded": 20,
+          "released": 19.6,
+          "remaining": 0.3,
+          "cleanout": 0.1
+        },
+        "residual_kg": 0.0,
+        "scope": "Arithmetic consistency of authored quantities, not observed conservation or fish consumption."
+      }
+    },
+    {
+      "id": "D10_sample_content_container_are_independent",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "specimens": [
+          "ag.a13.s03.entity.specimen.1",
+          "ag.a13.s03.entity.specimen.2",
+          "ag.a13.s03.entity.specimen.3",
+          "ag.a13.s03.entity.specimen.4",
+          "ag.a13.s03.entity.specimen.5",
+          "ag.a13.s03.entity.specimen.6",
+          "ag.a13.s03.entity.specimen.7",
+          "ag.a13.s05.entity.specimen.1",
+          "ag.a13.s05.entity.specimen.2"
+        ],
+        "bottles": [
+          "ag.a13.s03.entity.bottle.1",
+          "ag.a13.s03.entity.bottle.2",
+          "ag.a13.s03.entity.bottle.3",
+          "ag.a13.s03.entity.bottle.4",
+          "ag.a13.s03.entity.bottle.5",
+          "ag.a13.s03.entity.bottle.6",
+          "ag.a13.s03.entity.bottle.7",
+          "ag.a13.s05.entity.bottle.1",
+          "ag.a13.s05.entity.bottle.2"
+        ]
+      }
+    },
+    {
+      "id": "D11_desired_pose_not_actual_pose",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": [
+        "city.branch.show-concurrency.fact.U1_actual_position",
+        "city.branch.show-concurrency.fact.U2_actual_position",
+        "city.branch.show-concurrency.fact.U3_actual_position",
+        "city.branch.show-concurrency.fact.U1_desired_formation_position",
+        "city.branch.show-concurrency.fact.U2_desired_formation_position",
+        "city.branch.show-concurrency.fact.U3_desired_formation_position"
+      ]
+    },
+    {
+      "id": "D12_occupancy_contact_custody_power_separate",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "physical_attachment": {
+          "id": "city.branch.facility-contention.fact.physical_attachment",
+          "collection": "facts",
+          "record_level": "authored_instance",
+          "provenance": "authored_fixture",
+          "execution": "not_executed",
+          "entity_id": "city.branch.facility-contention.parcel",
+          "field_id": "city.branch.facility-contention.field.physical_attachment",
+          "value": null,
+          "unit": "entity_ref",
+          "producer_module_id": "city.branch.facility-contention.facility",
+          "valid_time_ns": "145000000000",
+          "available_time_ns": "145100000000",
+          "valid_until_ns": "146000000000",
+          "source_kind": "authored_fixture",
+          "availability_domain": "city.branch.facility-contention.authored-visibility",
+          "identity_metadata": {
+            "run_id": "city.branch.facility-contention.authored-run",
+            "epoch": "fixture-epoch",
+            "generation": 1,
+            "synthetic": true
+          },
+          "availability_commit_cutoff": null,
+          "value_status": "unavailable",
+          "unavailable_reason": "No actual owner measurement, permission source or received evidence; null is not false or zero."
+        },
+        "custody": {
+          "id": "city.branch.facility-contention.fact.custodian",
+          "collection": "facts",
+          "record_level": "authored_instance",
+          "provenance": "authored_fixture",
+          "execution": "not_executed",
+          "entity_id": "city.branch.facility-contention.parcel",
+          "field_id": "city.branch.facility-contention.field.custodian",
+          "value": "city.branch.facility-contention.uav.delivery",
+          "unit": "entity_ref",
+          "producer_module_id": "city.branch.facility-contention.facility",
+          "valid_time_ns": "145000000000",
+          "available_time_ns": "145100000000",
+          "valid_until_ns": "200000000000",
+          "source_kind": "authored_fixture",
+          "availability_domain": "city.branch.facility-contention.authored-visibility",
+          "identity_metadata": {
+            "run_id": "city.branch.facility-contention.authored-run",
+            "epoch": "fixture-epoch",
+            "generation": 1,
+            "synthetic": true
+          },
+          "availability_commit_cutoff": null
+        },
+        "power": {
+          "id": "city.branch.facility-contention.fact.available_power_outage",
+          "collection": "facts",
+          "record_level": "authored_instance",
+          "provenance": "authored_fixture",
+          "execution": "not_executed",
+          "entity_id": "city.branch.facility-contention.charger",
+          "field_id": "city.branch.facility-contention.field.available_power",
+          "value": 0,
+          "unit": "W",
+          "producer_module_id": "city.branch.facility-contention.facility",
+          "valid_time_ns": "150000000000",
+          "available_time_ns": "150100000000",
+          "valid_until_ns": "190000000000",
+          "source_kind": "authored_fixture",
+          "availability_domain": "city.branch.facility-contention.authored-visibility",
+          "identity_metadata": {
+            "run_id": "city.branch.facility-contention.authored-run",
+            "epoch": "fixture-epoch",
+            "generation": 1,
+            "synthetic": true
+          },
+          "availability_commit_cutoff": null,
+          "supersedes_fact_id": "city.branch.facility-contention.fact.available_power",
+          "same_quantity_note": "Same charger available_power field; timed600W→0W transition, not a new state kind."
+        }
+      }
+    },
+    {
+      "id": "D13_delayed_close_cannot_close_new_generation",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "current_generation": 2,
+        "received_close_generation": 1,
+        "close_applies": false,
+        "source_ref": "MI04.source_device01",
+        "target_ref": "MI04.target_device01",
+        "session_ref": "MI04.session02",
+        "process_ref": "MI04.process01",
+        "attempt": 3,
+        "context_record_id": "MI04.conflict.protocol_record01",
+        "session_generation": 2,
+        "protocol_alias_binding": {
+          "source_protocol_id": "session01",
+          "exact_entity_ref": {
+            "run_id": "MI04.synthetic-run",
+            "epoch": 0,
+            "id": "session02",
+            "generation": 2,
+            "ref_type": "entity"
+          }
+        },
+        "received_close_exact_ref": {
+          "run_id": "MI04.synthetic-run",
+          "epoch": 0,
+          "id": "session01",
+          "generation": 1,
+          "ref_type": "entity"
+        }
+      }
+    },
+    {
+      "id": "D14_authentication_recovery_session_new",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": "MI03.recovery.context_fact01"
+    },
+    {
+      "id": "D15_all_machine_phases_concrete_unexecuted",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "machine_cases": 20
+      }
+    },
+    {
+      "id": "D16_branch_template_does_not_count_as_domain_test",
+      "status": "PASS",
+      "scope": "static_source_semantics",
+      "evidence": {
+        "city_steps": 90,
+        "unique_normal_descriptions": 1,
+        "classification": "generic_template; independent domain challenge designs supplied separately"
+      }
+    },
+    {
+      "id": "C01_identity_preserves_generation_type",
+      "status": "PASS",
+      "scope": "contract_helper_unit",
+      "evidence": [
+        {
+          "run_id": "run1",
+          "epoch": 0,
+          "id": "sensor1",
+          "generation": 1,
+          "ref_type": "entity"
+        },
+        {
+          "run_id": "run1",
+          "epoch": 0,
+          "id": "sensor1",
+          "generation": "1",
+          "ref_type": "entity"
+        },
+        {
+          "run_id": "run1",
+          "epoch": 0,
+          "id": "sensor1",
+          "generation": true,
+          "ref_type": "entity"
+        }
+      ]
+    },
+    {
+      "id": "C02_unknown_identity_is_not_equivalence",
+      "status": "PASS",
+      "scope": "contract_helper_unit",
+      "evidence": [
+        {
+          "run_id": null,
+          "epoch": null,
+          "id": null,
+          "generation": null,
+          "ref_type": null
+        }
+      ]
+    },
+    {
+      "id": "C03_definition_revision_scope_units_exact",
+      "status": "PASS",
+      "scope": "contract_helper_unit",
+      "evidence": [
+        {
+          "semantic_level": "definition",
+          "kind": "state_specification",
+          "semantic_identity": {
+            "namespace": "a",
+            "id": "f",
+            "revision": "v1",
+            "scope": {
+              "global": true
+            },
+            "definition": {
+              "unit": "m"
+            }
+          }
+        },
+        {
+          "semantic_level": "definition",
+          "kind": "state_specification",
+          "semantic_identity": {
+            "namespace": "a",
+            "id": "f",
+            "revision": "v1",
+            "scope": {
+              "global": true
+            },
+            "definition": {
+              "unit": "cm"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "C04_unknown_scope_prevents_definition_merge",
+      "status": "PASS",
+      "scope": "contract_helper_unit",
+      "evidence": [
+        {
+          "semantic_level": "definition",
+          "kind": "state_specification",
+          "semantic_identity": {
+            "namespace": "a",
+            "id": "f",
+            "revision": "v1",
+            "scope": null,
+            "definition": {
+              "unit": "m"
+            }
+          }
+        },
+        {
+          "semantic_level": "definition",
+          "kind": "state_specification",
+          "semantic_identity": {
+            "namespace": "a",
+            "id": null,
+            "revision": "v1",
+            "scope": {
+              "global": true
+            },
+            "definition": {
+              "unit": "m"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "C05_metatype_container_authoritative",
+      "status": "PASS",
+      "scope": "contract_helper_unit",
+      "evidence": {
+        "raw_kind": "entity",
+        "source_collection": "node_types"
+      }
+    },
+    {
+      "id": "G-kind-ag.a01.s03.command",
+      "status": "PASS",
+      "scope": "normalized_graph_semantics",
+      "evidence": {
+        "original_id": "ag.a01.s03.command",
+        "expected_kind": "command_definition",
+        "actual": [
+          "command_definition"
+        ]
+      }
+    },
+    {
+      "id": "G-kind-ag.a01.s03.command-attempt",
+      "status": "PASS",
+      "scope": "normalized_graph_semantics",
+      "evidence": {
+        "original_id": "ag.a01.s03.command-attempt",
+        "expected_kind": "command_attempt",
+        "actual": [
+          "command_attempt"
+        ]
+      }
+    },
+    {
+      "id": "G-kind-ag.a01.s03.mix-lineage",
+      "status": "PASS",
+      "scope": "normalized_graph_semantics",
+      "evidence": {
+        "original_id": "ag.a01.s03.mix-lineage",
+        "expected_kind": "material_transformation",
+        "actual": [
+          "material_transformation"
+        ]
+      }
+    },
+    {
+      "id": "G-kind-city.w15.review.engineer15.vol15-v2",
+      "status": "PASS",
+      "scope": "normalized_graph_semantics",
+      "evidence": {
+        "original_id": "city.w15.review.engineer15.vol15-v2",
+        "expected_kind": "engineering_review_record",
+        "actual": [
+          "engineering_review_record"
+        ]
+      }
+    },
+    {
+      "id": "G-kind-DLV-A26-001.step06.delivery_receipt",
+      "status": "PASS",
+      "scope": "normalized_graph_semantics",
+      "evidence": {
+        "original_id": "DLV-A26-001.step06.delivery_receipt",
+        "expected_kind": "delivery_receipt",
+        "actual": [
+          "delivery_receipt"
+        ]
+      }
+    },
+    {
+      "id": "G-kind-A29.step01.command01",
+      "status": "PASS",
+      "scope": "normalized_graph_semantics",
+      "evidence": {
+        "original_id": "A29.step01.command01",
+        "expected_kind": "command_attempt",
+        "actual": [
+          "command_attempt"
+        ]
+      }
+    },
+    {
+      "id": "G-preserve-ag.a12.s04.fact.domain-loaded",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "agriculture/agriculture-instances.json",
+          "pointer": "/activities/9/steps/3/nodes/85",
+          "source_id": "ag.a12.s04.fact.domain-loaded",
+          "case_id": "ag.a12",
+          "sha256": "9969daf32ac8cfac730d15a241832eaf4683bd70753a6a5f85c752d5a6fb28b7"
+        }
+      ]
+    },
+    {
+      "id": "G-preserve-ag.a12.s04.fact.domain-released",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "agriculture/agriculture-instances.json",
+          "pointer": "/activities/9/steps/3/nodes/87",
+          "source_id": "ag.a12.s04.fact.domain-released",
+          "case_id": "ag.a12",
+          "sha256": "9969daf32ac8cfac730d15a241832eaf4683bd70753a6a5f85c752d5a6fb28b7"
+        }
+      ]
+    },
+    {
+      "id": "G-preserve-ag.a12.s04.fact.domain-remaining",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "agriculture/agriculture-instances.json",
+          "pointer": "/activities/9/steps/3/nodes/89",
+          "source_id": "ag.a12.s04.fact.domain-remaining",
+          "case_id": "ag.a12",
+          "sha256": "9969daf32ac8cfac730d15a241832eaf4683bd70753a6a5f85c752d5a6fb28b7"
+        }
+      ]
+    },
+    {
+      "id": "G-preserve-ag.a12.s04.fact.domain-cleanout",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "agriculture/agriculture-instances.json",
+          "pointer": "/activities/9/steps/3/nodes/91",
+          "source_id": "ag.a12.s04.fact.domain-cleanout",
+          "case_id": "ag.a12",
+          "sha256": "9969daf32ac8cfac730d15a241832eaf4683bd70753a6a5f85c752d5a6fb28b7"
+        }
+      ]
+    },
+    {
+      "id": "G-preserve-ag.a01.s03.mix-lineage",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "agriculture/agriculture-instances.json",
+          "pointer": "/activities/0/proposed_runtime_records/45",
+          "source_id": "ag.a01.s03.mix-lineage",
+          "case_id": "ag.a01",
+          "sha256": "9969daf32ac8cfac730d15a241832eaf4683bd70753a6a5f85c752d5a6fb28b7"
+        }
+      ]
+    },
+    {
+      "id": "G-preserve-DLV-A26-001.step03.delivery_receipt",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "delivery/delivery-activity-instances.json",
+          "pointer": "/scenarios/2/nodes/95",
+          "source_id": "DLV-A26-001.step03.delivery_receipt",
+          "case_id": "DLV-A26-001",
+          "sha256": "d72a0c2d2bf27afbb043a349cd7081b9dea9dec5b7d6f4bb2826e9dedb2e174f"
+        }
+      ]
+    },
+    {
+      "id": "G-preserve-DLV-A26-001.step06.delivery_receipt",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "delivery/delivery-activity-instances.json",
+          "pointer": "/scenarios/2/nodes/157",
+          "source_id": "DLV-A26-001.step06.delivery_receipt",
+          "case_id": "DLV-A26-001",
+          "sha256": "d72a0c2d2bf27afbb043a349cd7081b9dea9dec5b7d6f4bb2826e9dedb2e174f"
+        }
+      ]
+    },
+    {
+      "id": "G-preserve-city.w15.review.engineer15.vol15-v2",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/1/supplemental_records/76",
+          "source_id": "city.w15.review.engineer15.vol15-v2",
+          "case_id": "city.w15",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ]
+    },
+    {
+      "id": "G-preserve-MI04.conflict.context_fact01",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "network/network-instance-catalog.json",
+          "pointer": "/machine_activity_cases/3/nodes/94",
+          "source_id": "MI04.conflict.context_fact01",
+          "case_id": "MI04",
+          "sha256": "3daf1dbdd08ccede5ded7cd7be39a1e9ea984021efb8e698eefcce9804a3bfaf"
+        }
+      ]
+    },
+    {
+      "id": "G-preserve-city.branch.show-concurrency.fact.U3_actual_position",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/crosscutting_city_scenarios/3/nodes/26",
+          "source_id": "city.branch.show-concurrency.fact.U3_actual_position",
+          "case_id": "city.branch.show-concurrency",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ]
+    },
+    {
+      "id": "G-preserve-city.branch.facility-contention.fact.available_power_outage",
+      "status": "PASS",
+      "scope": "normalized_graph_payload_preservation",
+      "evidence": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/crosscutting_city_scenarios/2/nodes/22",
+          "source_id": "city.branch.facility-contention.fact.available_power_outage",
+          "case_id": "city.branch.facility-contention",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "PASS": 38,
+    "FAIL": 0,
+    "NOT_RUN": 0
+  }
+}

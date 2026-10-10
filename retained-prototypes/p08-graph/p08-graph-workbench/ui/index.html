@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="P08 accepted-instance graph explorer: exact typed edges, source-native AST and provenance.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+<title>P08 · 实例关系图工作台</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="masthead">
+  <div><p class="eyebrow">AEROAGENTSIM · P08 / INSTANCE GRAPH</p><h1>实例关系图工作台</h1><p class="subtitle">从场景实例进入，沿真实关系追到状态、规则 AST、谓词与事件。</p></div>
+  <div class="header-actions"><span class="status-pill">只读 · 私有原型</span><button id="coverage">覆盖与缺口</button><button id="export">导出当前图 JSON</button></div>
+</header>
+<div id="load-status" class="load-status" role="status" aria-live="polite">正在读取数据清单…</div>
+<div id="error" class="error" role="alert" hidden></div>
+<main class="workspace">
+  <aside class="navigator" aria-label="场景与过滤">
+    <div class="section-label">01 / 选择数据范围</div>
+    <label for="domain">领域</label><select id="domain"><option value="">所有领域</option></select>
+    <label for="activity">活动 / 工作流</label><input id="activity" placeholder="按活动、场景 ID 筛选" autocomplete="off">
+    <label for="scenario">实例场景</label><select id="scenario" size="8" aria-label="实例场景"></select>
+    <p id="scenario-summary" class="muted"></p><p id="catalog-counts" class="fine"></p>
+    <div class="button-row"><button id="load-all">加载全部实例</button><button id="cancel-load" hidden>取消加载</button></div>
+    <p class="fine">按场景加载真实记录。跨场景索引检索不要求先绘制全部节点。</p>
+    <div class="section-label space">02 / 收窄图谱</div>
+    <label for="step">源工作流步骤</label><select id="step"><option value="">当前场景全部步骤</option></select>
+    <label for="type">节点类型 <span id="type-count"></span></label><select id="type"><option value="">所有已加载类型</option></select>
+    <label for="level">语义层</label><select id="level"><option value="">所有语义层</option></select>
+    <label for="relation">关系</label><select id="relation"><option value="">所有原始关系</option></select>
+    <label for="search">查找实例 / 类型 / 别名</label><input id="search" type="search" placeholder="输入 ID、名称、类型或别名" autocomplete="off">
+    <label class="check"><input id="global-search" type="checkbox" checked> 跨全部已接受实例检索</label>
+    <button id="clear-filters">清除过滤与焦点</button>
+    <p id="index-status" class="fine">全局索引待加载</p>
+    <div class="section-label space">数据边界</div>
+    <p class="fine">配置、夹具期望与实际效果分别保留。UNKNOWN、缺失、未支持字段不会被当成 FALSE 或自动补齐。</p>
+  </aside>
+  <section class="main-column" aria-label="关系图与实例索引">
+    <section class="scene-shell">
+      <div class="scene-heading"><div><p class="section-label">TYPED MULTIGRAPH</p><h2 id="scene-title">选择场景，展开实例关系</h2></div><div class="mode-switch"><button id="mode-3d" aria-pressed="true">3D 旋转</button><button id="mode-flat" aria-pressed="false">平面核对</button></div></div>
+      <div class="graph-toolbar">
+        <label for="hops">邻域 <select id="hops"><option value="1">1 跳</option><option value="2">2 跳</option><option value="3">3 跳</option><option value="0">仅焦点</option></select></label>
+        <label for="budget">节点上限 <select id="budget"><option>60</option><option selected>120</option><option>240</option><option>480</option></select></label>
+        <label class="check"><input id="edge-labels" type="checkbox">显示关系标签</label>
+        <button id="fit">适应范围</button><button id="zoom-in" aria-label="放大">＋</button><button id="zoom-out" aria-label="缩小">−</button>
+      </div>
+      <div id="canvas-wrap" class="canvas-wrap"><canvas id="graph" role="img" aria-label="可旋转的类型关系图。全部节点和关系也可通过下方索引与右侧详情的按钮访问。"></canvas><div id="tooltip" class="tooltip" role="tooltip" hidden></div><div id="empty-scene" class="empty-scene" hidden>当前过滤下没有节点。请清除过滤或换一个场景。</div><div class="canvas-instruction">拖动旋转 · Shift 拖动平移 · 滚轮缩放 · 点击锁定</div></div>
+      <div class="graph-footer"><div id="legend" class="legend"></div><p id="render-status" class="fine"></p></div>
+      <div class="scope-strip"><div><span>已接受全集</span><strong id="accepted-count">—</strong></div><div><span>当前载入</span><strong id="loaded-count">—</strong></div><div><span>画布范围</span><strong id="visible-count">—</strong></div></div>
+      <p id="omissions" class="omissions" aria-live="polite"></p><details class="scenario-evidence"><summary>当前场景来源、步骤与未执行状态</summary><div id="scenario-evidence"></div></details>
+    </section>
+    <section class="results-shell" aria-label="全部可检索实例">
+      <div class="results-heading"><div><p class="section-label">INSTANCE INDEX</p><h2>实例索引 <span id="results-count"></span></h2></div><div class="button-row"><button id="previous-page">上一页</button><span id="page-info"></span><button id="next-page">下一页</button></div></div>
+      <p id="results-scope" class="fine"></p><div id="results" class="results-list"></div>
+    </section>
+  </section>
+  <aside class="inspector" aria-label="实例与关系详情">
+    <div class="inspector-top"><p class="section-label">INSPECT / TRACE</p><div class="button-row"><button id="back-selection" disabled>上一项</button><button id="clear-selection">清除</button></div></div>
+    <div id="detail"><h2>点击任一节点或关系</h2><p class="muted">节点类型、原始字段、关系角色与来源会在这里展开。也可以通过实例索引使用键盘访问。</p></div>
+  </aside>
+</main>
+<dialog id="coverage-dialog"><div class="dialog-heading"><h2>覆盖、来源与未支持内容</h2><button id="close-coverage">关闭</button></div><div id="coverage-content"></div></dialog>
+<div id="live" class="sr-only" role="status" aria-live="polite"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

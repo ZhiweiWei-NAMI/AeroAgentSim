@@ -1,0 +1,2036 @@
+{
+  "schema_version": "integration.public-source-excerpt/v1",
+  "handoff_version": "0.2.0",
+  "source_status": "authored_not_executed",
+  "case_id": "city.w17.s03",
+  "scope": "15 selected source nodes and only edges whose two endpoints are selected. Other referenced records remain in the original P08 catalog. Not a standalone graph or runtime evidence. Private origin-page URLs omitted; source IDs, JSON pointers and artifact hashes retained.",
+  "original_excerpt_counts": {
+    "nodes": 44,
+    "edges": 65
+  },
+  "nodes": [
+    {
+      "id": "n:0300bf119645bada34355930",
+      "kind": "entity",
+      "semantic_level": "configured_instance",
+      "label": "capture-B17-P2",
+      "raw_kind": null,
+      "source_collection": "entities",
+      "original_id": "city.w17.entity.capture-B17-P2",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/entities/7",
+          "source_id": "city.w17.entity.capture-B17-P2",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.entity.capture-B17-P2",
+        "collection": "entities",
+        "record_level": "authored_instance",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "label": "capture-B17-P2",
+        "type_ref": "city.w17.type.artifact",
+        "source_step": "多视角采集"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {},
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:bc0599e1b74a4cc1f1254572"
+      ]
+    },
+    {
+      "id": "n:0fac415b252bb06e01622760",
+      "kind": "evaluation_binding",
+      "semantic_level": "runtime_record",
+      "label": "city.w17.s03.binding",
+      "raw_kind": "evaluation_binding",
+      "source_collection": null,
+      "original_id": "city.w17.s03.binding",
+      "provenance": {
+        "source_id": "source:p02_plan_2026-10-04.md",
+        "section": "Appendix B / 17",
+        "catalog_json_pointer": "/activities/16/steps/2"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/supplemental_records/64",
+          "source_id": "city.w17.s03.binding",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.binding",
+        "kind": "evaluation_binding",
+        "record_level": "authored_fixture_record",
+        "schema_status": "not_in_frozen_collection; proposed_typed_record",
+        "execution": "not_executed",
+        "provenance": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16/steps/2"
+        },
+        "predicate_id": "city.w17.s03.predicate.requirement",
+        "subject_ref": {
+          "run_id": "city.w17.authored-run",
+          "epoch": "fixture-epoch",
+          "id": "city.w17.entity.capture-B17-P2",
+          "generation": 1,
+          "ref_type": "entity"
+        },
+        "field_map": {
+          "city.w17.s03.field.view_count": "prepared_input_0"
+        },
+        "parameters": {
+          "city.w17.s03.parameter": 3
+        },
+        "native_binding_status": "missing_native_catalog"
+      },
+      "identity": {
+        "declared": {
+          "subject_ref": {
+            "run_id": "city.w17.authored-run",
+            "epoch": "fixture-epoch",
+            "id": "city.w17.entity.capture-B17-P2",
+            "generation": 1,
+            "ref_type": "entity"
+          }
+        },
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {
+          "subject_ref": {
+            "run_id": "city.w17.authored-run",
+            "epoch": "fixture-epoch",
+            "id": "city.w17.entity.capture-B17-P2",
+            "generation": 1,
+            "ref_type": "entity"
+          }
+        },
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:b71cf84a8124264a771a0837"
+      ]
+    },
+    {
+      "id": "n:1ca36bcb1a1dbead344d5562",
+      "kind": "command_definition",
+      "semantic_level": "definition",
+      "label": "city.w17.s03.command.definition",
+      "raw_kind": "command_definition",
+      "source_collection": "commands",
+      "original_id": "city.w17.s03.command.definition",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/commands/2",
+          "source_id": "city.w17.s03.command.definition",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.command.definition",
+        "collection": "commands",
+        "record_level": "definition",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "record_kind": "command_definition",
+        "target_entity_ids": [
+          "city.w17.entity.capture-B17-P2"
+        ],
+        "interface_name": "authored.sensor.view_count",
+        "argument_signature": {
+          "target_ref": "entity_ref",
+          "task_attempt": "integer",
+          "source_fact_ids": "fact_ref[]"
+        },
+        "composition": {
+          "mode": "sequence",
+          "behavior_ids": [
+            "city.w17.s03.behavior.definition"
+          ]
+        },
+        "type_id": "command-type"
+      },
+      "identity": {
+        "declared": {
+          "record_kind": "command_definition"
+        },
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {},
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:78c310b02b2bac27813d1f38"
+      ]
+    },
+    {
+      "id": "n:581bc7643f3809b9c25989c2",
+      "kind": "event_definition",
+      "semantic_level": "definition",
+      "label": "多视角采集 unavailable/stale input or failed criterion",
+      "raw_kind": "event_definition",
+      "source_collection": "events",
+      "original_id": "city.w17.s03.event.interruption",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/events/2",
+          "source_id": "city.w17.s03.event.interruption",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.event.interruption",
+        "collection": "events",
+        "record_level": "definition",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "record_kind": "event_definition",
+        "label": "多视角采集 unavailable/stale input or failed criterion",
+        "entity_ids": [
+          "city.w17.entity.capture-B17-P2",
+          "city.w17.entity.UAV"
+        ],
+        "dependency_fact_ids": [
+          "city.w17.s03.fact.input"
+        ],
+        "occurrence_policy": {
+          "onset": "first failed/unknown criterion in this task attempt",
+          "repeat": "one per episode",
+          "clear": "fresh owner evidence plus reassessment",
+          "history_required": true
+        },
+        "source_id": "city.w17.source.policy",
+        "type_id": "event-type"
+      },
+      "identity": {
+        "declared": {
+          "record_kind": "event_definition"
+        },
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {
+          "source_id": "city.w17.source.policy"
+        },
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:dc7a124e23163c4bcea353c6"
+      ]
+    },
+    {
+      "id": "n:582e5e72a4c03b8b073aff31",
+      "kind": "predicate_definition",
+      "semantic_level": "definition",
+      "label": "多视角采集 specific input criterion",
+      "raw_kind": null,
+      "source_collection": "predicates",
+      "original_id": "city.w17.s03.predicate.requirement",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/predicates/2",
+          "source_id": "city.w17.s03.predicate.requirement",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.predicate.requirement",
+        "collection": "predicates",
+        "record_level": "definition",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "label": "多视角采集 specific input criterion",
+        "field_ids": [
+          "city.w17.s03.field.view_count"
+        ],
+        "rule_id": "city.w17.s03.rule",
+        "binding_scope": {
+          "entity_id": "city.w17.entity.capture-B17-P2",
+          "task_id": "city.w17.s03.task.attempt1"
+        },
+        "native_id": null,
+        "type_id": "predicate-type",
+        "criterion_role": "authored input condition only, not full workflow acceptance"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {},
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:03935baced4d5c9c56659ab1"
+      ]
+    },
+    {
+      "id": "n:5c61bfa5e3043707c518e0ab",
+      "kind": "expression",
+      "semantic_level": "definition",
+      "label": "city.w17.s03.expression.state",
+      "raw_kind": "state_reference",
+      "source_collection": "expressions",
+      "original_id": "city.w17.s03.expression.state",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/expressions/7",
+          "source_id": "city.w17.s03.expression.state",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.expression.state",
+        "collection": "expressions",
+        "record_level": "definition",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "kind": "state_reference",
+        "state_id": "city.w17.s03.field.view_count"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {},
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:5cef988c9081e8b4df849db7"
+      ]
+    },
+    {
+      "id": "n:5d8df68898f5ae37c65ed1aa",
+      "kind": "agent",
+      "semantic_level": "configured_instance",
+      "label": "Mission agent MA17",
+      "raw_kind": null,
+      "source_collection": "agents",
+      "original_id": "city.w17.agent.mission",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/agents/0",
+          "source_id": "city.w17.agent.mission",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.agent.mission",
+        "collection": "agents",
+        "record_level": "authored_instance",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "label": "Mission agent MA17",
+        "strategy_ref": "city.w17.strategy.mission",
+        "observable_fact_ids": [],
+        "authority": {
+          "source_id": "city.w17.source.policy",
+          "scope": [
+            "candidate planning",
+            "request observations",
+            "request UAV operations"
+          ],
+          "real_authorization": "unverified"
+        },
+        "type_id": "agent-type"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {},
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:83ba294dcca77b30e0be2b0e"
+      ]
+    },
+    {
+      "id": "n:5da387d8aa737ee9d526f8c4",
+      "kind": "expression",
+      "semantic_level": "definition",
+      "label": "city.w17.s03.expression.param",
+      "raw_kind": "parameter_reference",
+      "source_collection": "expressions",
+      "original_id": "city.w17.s03.expression.param",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/expressions/8",
+          "source_id": "city.w17.s03.expression.param",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.expression.param",
+        "collection": "expressions",
+        "record_level": "definition",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "kind": "parameter_reference",
+        "parameter_id": "city.w17.s03.parameter"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {},
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:6938caafe455fa5c5a1e4eab"
+      ]
+    },
+    {
+      "id": "n:802fea9aec43233df2925a48",
+      "kind": "rule_definition",
+      "semantic_level": "definition",
+      "label": "view_count criterion",
+      "raw_kind": null,
+      "source_collection": "rules",
+      "original_id": "city.w17.s03.rule",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/rules/2",
+          "source_id": "city.w17.s03.rule",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.rule",
+        "collection": "rules",
+        "record_level": "definition",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "label": "view_count criterion",
+        "definition_ast": {
+          "op": "gte",
+          "args": [
+            {
+              "state": "city.w17.s03.field.view_count"
+            },
+            {
+              "param": "city.w17.s03.parameter"
+            }
+          ]
+        },
+        "applicability_ast": {
+          "const": true,
+          "note": "Authored worksite-step scope only, not real law applicability"
+        },
+        "output_predicate_id": "city.w17.s03.predicate.requirement",
+        "engine_status": "native_not_connected",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16/steps/2"
+        },
+        "type_id": "rule-type"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {},
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:34a3d4663cdfeda07ae199f5"
+      ]
+    },
+    {
+      "id": "n:af843e7962d348850f0b9466",
+      "kind": "behavior_definition",
+      "semantic_level": "definition",
+      "label": "Acquire three independently positioned views of pier P2",
+      "raw_kind": null,
+      "source_collection": "behaviors",
+      "original_id": "city.w17.s03.behavior.definition",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/behaviors/2",
+          "source_id": "city.w17.s03.behavior.definition",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.behavior.definition",
+        "collection": "behaviors",
+        "record_level": "definition",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "label": "Acquire three independently positioned views of pier P2",
+        "module_id": "city.w17.module.sensor",
+        "entity_ids": [
+          "city.w17.entity.capture-B17-P2"
+        ],
+        "operation_kind": "sensor",
+        "required_resource_ids": [
+          "city.w17.resource.sensor_capture_channel"
+        ],
+        "constraint_ids": [
+          "city.w17.s03.constraint.physical",
+          "city.w17.s03.constraint.permission",
+          "city.w17.s03.constraint.suitability"
+        ],
+        "type_id": "behavior-type"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {},
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:2c3dfd2e7647a40d6421a098"
+      ]
+    },
+    {
+      "id": "n:cc56d96e6f555a7d8a694b55",
+      "kind": "feedback_policy",
+      "semantic_level": "definition",
+      "label": "city.w17.s03.feedback",
+      "raw_kind": null,
+      "source_collection": "feedback_policies",
+      "original_id": "city.w17.s03.feedback",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/feedback_policies/2",
+          "source_id": "city.w17.s03.feedback",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.feedback",
+        "collection": "feedback_policies",
+        "record_level": "authored_instance",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "event_ids": [
+          "city.w17.s03.event.interruption"
+        ],
+        "agent_id": "city.w17.agent.mission",
+        "behavior_ids": [
+          "city.w17.s03.behavior.definition"
+        ],
+        "response": "pause_then_replan",
+        "decision_ids": [
+          "city.w17.s03.decision"
+        ],
+        "source_id": "city.w17.source.policy",
+        "automatic_actuation": false,
+        "type_id": "feedback-policy-type"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {
+          "source_id": "city.w17.source.policy"
+        },
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:9592d4f85e984582857b183f"
+      ]
+    },
+    {
+      "id": "n:d2a94640cd5e518615271366",
+      "kind": "expression",
+      "semantic_level": "definition",
+      "label": "city.w17.s03.expression.op",
+      "raw_kind": "operator_expression",
+      "source_collection": "expressions",
+      "original_id": "city.w17.s03.expression.op",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/expressions/6",
+          "source_id": "city.w17.s03.expression.op",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.expression.op",
+        "collection": "expressions",
+        "record_level": "definition",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "kind": "operator_expression",
+        "operator": "gte",
+        "ast_pointer": "/rules/2/definition_ast"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {},
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:118f5b3917526325c9e7498e"
+      ]
+    },
+    {
+      "id": "n:ec0befc075c8973f90f7fec2",
+      "kind": "state_specification",
+      "semantic_level": "definition",
+      "label": "view_count",
+      "raw_kind": null,
+      "source_collection": "fields",
+      "original_id": "city.w17.s03.field.view_count",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/fields/2",
+          "source_id": "city.w17.s03.field.view_count",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.field.view_count",
+        "collection": "fields",
+        "record_level": "definition",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "label": "view_count",
+        "subject_type_id": "city.w17.type.artifact",
+        "value_type": "number",
+        "quantity": "view_count",
+        "unit": "view",
+        "frame": "none",
+        "temporal": "dynamic",
+        "computing_authority": "city.w17.module.sensor",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16/steps/2"
+        },
+        "type_id": "field-type"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {
+          "value_type": "number",
+          "quantity": "view_count",
+          "unit": "view",
+          "frame": "none"
+        },
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:5ef559ee34b891a2706388ba"
+      ]
+    },
+    {
+      "id": "n:ec447c07e7916619755705c3",
+      "kind": "entity",
+      "semantic_level": "configured_instance",
+      "label": "UAV U17",
+      "raw_kind": null,
+      "source_collection": "entities",
+      "original_id": "city.w17.entity.UAV",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/entities/0",
+          "source_id": "city.w17.entity.UAV",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.entity.UAV",
+        "collection": "entities",
+        "record_level": "authored_instance",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "label": "UAV U17",
+        "type_ref": "city.w17.type.aircraft",
+        "lifecycle": {
+          "run_id": "city.w17.authored-run",
+          "epoch": "fixture-epoch",
+          "generation": 1,
+          "status": "declared"
+        }
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {},
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:925706045047a419e3908ea5"
+      ]
+    },
+    {
+      "id": "n:f12a2ef5e85e2f7193682626",
+      "kind": "parameter_definition",
+      "semantic_level": "definition",
+      "label": "city.w17.s03.parameter",
+      "raw_kind": null,
+      "source_collection": "parameter_definitions",
+      "original_id": "city.w17.s03.parameter",
+      "provenance": {
+        "source_basis": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "authored_instance_values": true,
+        "native_catalog_id": false
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/collections/parameter_definitions/2",
+          "source_id": "city.w17.s03.parameter",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.s03.parameter",
+        "collection": "parameter_definitions",
+        "record_level": "definition",
+        "evidence_status": "authored_scenario_expansion_not_executed",
+        "provenance": {
+          "source_basis": {
+            "source_id": "source:p02_plan_2026-10-04.md",
+            "section": "Appendix B / 17",
+            "catalog_json_pointer": "/activities/16"
+          },
+          "authored_instance_values": true,
+          "native_catalog_id": false
+        },
+        "value": 3,
+        "unit": "view",
+        "value_type": "number",
+        "source_id": "city.w17.source.policy",
+        "threshold_kind": "authored_engineering_example_not_regulation",
+        "type_id": "parameter-definition-type"
+      },
+      "identity": {
+        "declared": {},
+        "missing_policy": "No identity, generation, version, role or scope is inferred from a label."
+      },
+      "semantics": {
+        "evidence_status": "authored_or_source_preserved_not_runtime_verified",
+        "execution_status": "not_executed_by_importer",
+        "declared": {
+          "value_type": "number",
+          "unit": "view",
+          "source_id": "city.w17.source.policy"
+        },
+        "literal": {
+          "value": 3,
+          "json_type": "integer",
+          "declared_type": "number",
+          "unit": "view",
+          "quantity": null,
+          "frame": null,
+          "is_null": false,
+          "type_is_inferred": false,
+          "json_type_is_structural": true
+        },
+        "time": {}
+      },
+      "occurrence_ids": [
+        "occ:67742b7fed49ef487ec4cf72"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e:b1fd7135a08964a26c46e22f",
+      "relation": "controls",
+      "raw_relation": "CONTROLS",
+      "source": "n:5d8df68898f5ae37c65ed1aa",
+      "target": "n:ec447c07e7916619755705c3",
+      "source_kind": "agent",
+      "target_kind": "entity",
+      "role": "flight request scope",
+      "semantic_level": "configuration",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/0",
+          "source_id": "city.w17.edge.0001",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0001",
+        "relation": "CONTROLS",
+        "source": "city.w17.agent.mission",
+        "target": "city.w17.entity.UAV",
+        "role": "flight request scope",
+        "definition_instance_level": "instance",
+        "layer": "business_semantics",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null,
+        "authority_ref": "city.w17.source.policy",
+        "permission_status": "authored_only"
+      },
+      "original_id": "city.w17.edge.0001",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:336613e090cc98e6ad02cb7e"
+      ]
+    },
+    {
+      "id": "e:4325bd6a3fcd0ab9ce8d6082",
+      "relation": "owns_state",
+      "raw_relation": "OWNS",
+      "source": "n:0300bf119645bada34355930",
+      "target": "n:ec0befc075c8973f90f7fec2",
+      "source_kind": "entity",
+      "target_kind": "state_specification",
+      "role": "field subject",
+      "semantic_level": "cross_level",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/135",
+          "source_id": "city.w17.edge.0158",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0158",
+        "relation": "OWNS",
+        "source": "city.w17.entity.capture-B17-P2",
+        "target": "city.w17.s03.field.view_count",
+        "role": "field subject",
+        "definition_instance_level": "definition",
+        "layer": "definition_instance_structure",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0158",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:83e11fcb3f01fc68f6e733cf"
+      ]
+    },
+    {
+      "id": "e:758b3d7062b1ebcafa6e6732",
+      "relation": "composes_behavior_definition",
+      "raw_relation": "COMPOSES",
+      "source": "n:1ca36bcb1a1dbead344d5562",
+      "target": "n:af843e7962d348850f0b9466",
+      "source_kind": "command_definition",
+      "target_kind": "behavior_definition",
+      "role": "ordered element 0",
+      "semantic_level": "definition",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/143",
+          "source_id": "city.w17.edge.0168",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0168",
+        "relation": "COMPOSES",
+        "source": "city.w17.s03.command.definition",
+        "target": "city.w17.s03.behavior.definition",
+        "role": "ordered element 0",
+        "definition_instance_level": "definition",
+        "layer": "business_semantics",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0168",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:44587546270db083be3d06f2"
+      ]
+    },
+    {
+      "id": "e:53a028cc9fcc1031a466b1cd",
+      "relation": "behavior_subject",
+      "raw_relation": "ACTS_ON",
+      "source": "n:af843e7962d348850f0b9466",
+      "target": "n:0300bf119645bada34355930",
+      "source_kind": "behavior_definition",
+      "target_kind": "entity",
+      "role": "operation target",
+      "semantic_level": "cross_level",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/146",
+          "source_id": "city.w17.edge.0172",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0172",
+        "relation": "ACTS_ON",
+        "source": "city.w17.s03.behavior.definition",
+        "target": "city.w17.entity.capture-B17-P2",
+        "role": "operation target",
+        "definition_instance_level": "definition_to_configured_instance",
+        "layer": "business_semantics",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0172",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:7c54079bedde43bfa60c1702"
+      ]
+    },
+    {
+      "id": "e:ceb368c25e1c53988fce1c9f",
+      "relation": "uses_rule",
+      "raw_relation": "USES_RULE",
+      "source": "n:582e5e72a4c03b8b073aff31",
+      "target": "n:802fea9aec43233df2925a48",
+      "source_kind": "predicate_definition",
+      "target_kind": "rule_definition",
+      "role": "main",
+      "semantic_level": "definition",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/147",
+          "source_id": "city.w17.edge.0173",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0173",
+        "relation": "USES_RULE",
+        "source": "city.w17.s03.predicate.requirement",
+        "target": "city.w17.s03.rule",
+        "role": "main",
+        "definition_instance_level": "definition",
+        "layer": "definition_instance_structure",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0173",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:b9518022a487e23e995bec46"
+      ]
+    },
+    {
+      "id": "e:103296a89f4bd57796d63dd7",
+      "relation": "depends_on_definition",
+      "raw_relation": "DEPENDS_ON",
+      "source": "n:582e5e72a4c03b8b073aff31",
+      "target": "n:ec0befc075c8973f90f7fec2",
+      "source_kind": "predicate_definition",
+      "target_kind": "state_specification",
+      "role": "state",
+      "semantic_level": "definition",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/148",
+          "source_id": "city.w17.edge.0174",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0174",
+        "relation": "DEPENDS_ON",
+        "source": "city.w17.s03.predicate.requirement",
+        "target": "city.w17.s03.field.view_count",
+        "role": "state",
+        "definition_instance_level": "definition",
+        "layer": "definition_instance_structure",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0174",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:250be51540c9dc6522793b89"
+      ]
+    },
+    {
+      "id": "e:002dd18cdcf04f7b4e76a703",
+      "relation": "has_expression",
+      "raw_relation": "HAS_EXPRESSION",
+      "source": "n:802fea9aec43233df2925a48",
+      "target": "n:d2a94640cd5e518615271366",
+      "source_kind": "rule_definition",
+      "target_kind": "expression",
+      "role": "main root",
+      "semantic_level": "definition",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/149",
+          "source_id": "city.w17.edge.0175",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0175",
+        "relation": "HAS_EXPRESSION",
+        "source": "city.w17.s03.rule",
+        "target": "city.w17.s03.expression.op",
+        "role": "main root",
+        "definition_instance_level": "definition",
+        "layer": "ast_operand_structure",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0175",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:9b6bd809c3f52f2d08756498"
+      ]
+    },
+    {
+      "id": "e:9dc87d8c6e3ec66119cb1b31",
+      "relation": "state_input_to",
+      "raw_relation": "STATE_INPUT",
+      "source": "n:ec0befc075c8973f90f7fec2",
+      "target": "n:5c61bfa5e3043707c518e0ab",
+      "source_kind": "state_specification",
+      "target_kind": "expression",
+      "role": "state leaf",
+      "semantic_level": "definition",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/150",
+          "source_id": "city.w17.edge.0176",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0176",
+        "relation": "STATE_INPUT",
+        "source": "city.w17.s03.field.view_count",
+        "target": "city.w17.s03.expression.state",
+        "role": "state leaf",
+        "definition_instance_level": "definition",
+        "layer": "ast_operand_structure",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0176",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:d6c915c4509d7c519ea42bf4"
+      ]
+    },
+    {
+      "id": "e:5e049309ce4d11c3bd6d7ebe",
+      "relation": "parameter_input_to",
+      "raw_relation": "PARAMETER_INPUT",
+      "source": "n:f12a2ef5e85e2f7193682626",
+      "target": "n:5da387d8aa737ee9d526f8c4",
+      "source_kind": "parameter_definition",
+      "target_kind": "expression",
+      "role": "parameter leaf",
+      "semantic_level": "definition",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/151",
+          "source_id": "city.w17.edge.0177",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0177",
+        "relation": "PARAMETER_INPUT",
+        "source": "city.w17.s03.parameter",
+        "target": "city.w17.s03.expression.param",
+        "role": "parameter leaf",
+        "definition_instance_level": "definition",
+        "layer": "ast_operand_structure",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0177",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:522458b7628ec550a5c5464d"
+      ]
+    },
+    {
+      "id": "e:bc879871e2a7be7b8dda9d96",
+      "relation": "argument_of",
+      "raw_relation": "ARGUMENT",
+      "source": "n:5c61bfa5e3043707c518e0ab",
+      "target": "n:d2a94640cd5e518615271366",
+      "source_kind": "expression",
+      "target_kind": "expression",
+      "role": "0",
+      "semantic_level": "definition",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/152",
+          "source_id": "city.w17.edge.0178",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0178",
+        "relation": "ARGUMENT",
+        "source": "city.w17.s03.expression.state",
+        "target": "city.w17.s03.expression.op",
+        "role": "0",
+        "definition_instance_level": "definition",
+        "layer": "ast_operand_structure",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0178",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:851c1cdb910619a2307c7b17"
+      ]
+    },
+    {
+      "id": "e:f024fd1c16da1a406e779cd9",
+      "relation": "argument_of",
+      "raw_relation": "ARGUMENT",
+      "source": "n:5da387d8aa737ee9d526f8c4",
+      "target": "n:d2a94640cd5e518615271366",
+      "source_kind": "expression",
+      "target_kind": "expression",
+      "role": "1",
+      "semantic_level": "definition",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/153",
+          "source_id": "city.w17.edge.0179",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0179",
+        "relation": "ARGUMENT",
+        "source": "city.w17.s03.expression.param",
+        "target": "city.w17.s03.expression.op",
+        "role": "1",
+        "definition_instance_level": "definition",
+        "layer": "ast_operand_structure",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0179",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:851c1cdb910619a2307c7b17"
+      ]
+    },
+    {
+      "id": "e:3dbfc72a2f3a8ca3667be9df",
+      "relation": "declares_event_feedback",
+      "raw_relation": "FEEDS_BACK",
+      "source": "n:581bc7643f3809b9c25989c2",
+      "target": "n:5d8df68898f5ae37c65ed1aa",
+      "source_kind": "event_definition",
+      "target_kind": "agent",
+      "role": "permitted event routing; no automatic dispatch",
+      "semantic_level": "cross_level",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/157",
+          "source_id": "city.w17.edge.0183",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0183",
+        "relation": "FEEDS_BACK",
+        "source": "city.w17.s03.event.interruption",
+        "target": "city.w17.agent.mission",
+        "role": "permitted event routing; no automatic dispatch",
+        "definition_instance_level": "definition_to_configured_instance",
+        "layer": "business_semantics",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0183",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:9415bea261c69743267ba837"
+      ]
+    },
+    {
+      "id": "e:4476ec9ac89c385dd0ce6101",
+      "relation": "command_target_binding",
+      "raw_relation": "TARGETS",
+      "source": "n:1ca36bcb1a1dbead344d5562",
+      "target": "n:0300bf119645bada34355930",
+      "source_kind": "command_definition",
+      "target_kind": "entity",
+      "role": "target signature",
+      "semantic_level": "cross_level",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/162",
+          "source_id": "city.w17.edge.0189",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0189",
+        "relation": "TARGETS",
+        "source": "city.w17.s03.command.definition",
+        "target": "city.w17.entity.capture-B17-P2",
+        "role": "target signature",
+        "definition_instance_level": "definition_to_configured_instance",
+        "layer": "business_semantics",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0189",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:9467cd445f31fd921e5a08e1"
+      ]
+    },
+    {
+      "id": "e:dd893f1d32f3092af41143d1",
+      "relation": "handles_event_definition",
+      "raw_relation": "HANDLES",
+      "source": "n:cc56d96e6f555a7d8a694b55",
+      "target": "n:581bc7643f3809b9c25989c2",
+      "source_kind": "feedback_policy",
+      "target_kind": "event_definition",
+      "role": "interruption definition",
+      "semantic_level": "definition",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/163",
+          "source_id": "city.w17.edge.0190",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0190",
+        "relation": "HANDLES",
+        "source": "city.w17.s03.feedback",
+        "target": "city.w17.s03.event.interruption",
+        "role": "interruption definition",
+        "definition_instance_level": "definition",
+        "layer": "authoring_configuration_references",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0190",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:9bf29a2d697dd471652216e6"
+      ]
+    },
+    {
+      "id": "e:c7436fbb2a7e5ce11f191862",
+      "relation": "feedback_agent_binding",
+      "raw_relation": "RESPONDS_AS",
+      "source": "n:cc56d96e6f555a7d8a694b55",
+      "target": "n:5d8df68898f5ae37c65ed1aa",
+      "source_kind": "feedback_policy",
+      "target_kind": "agent",
+      "role": "authorized feedback recipient",
+      "semantic_level": "cross_level",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/164",
+          "source_id": "city.w17.edge.0191",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0191",
+        "relation": "RESPONDS_AS",
+        "source": "city.w17.s03.feedback",
+        "target": "city.w17.agent.mission",
+        "role": "authorized feedback recipient",
+        "definition_instance_level": "definition_to_configured_instance",
+        "layer": "authoring_configuration_references",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0191",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:addb2b6b6de1c6ea42d985c1"
+      ]
+    },
+    {
+      "id": "e:2d22aba72ed5e0986cde8336",
+      "relation": "feedback_behavior_binding",
+      "raw_relation": "AFFECTS",
+      "source": "n:cc56d96e6f555a7d8a694b55",
+      "target": "n:af843e7962d348850f0b9466",
+      "source_kind": "feedback_policy",
+      "target_kind": "behavior_definition",
+      "role": "pause/replan definition",
+      "semantic_level": "definition",
+      "provenance": {
+        "status": "see_immutable_source_context"
+      },
+      "source_records": [
+        {
+          "artifact": "city/city-activity-instances.json",
+          "pointer": "/workflow_instances/3/edges/165",
+          "source_id": "city.w17.edge.0192",
+          "case_id": "city.w17",
+          "sha256": "48958fe0e7939aa34be50ecb02cc47fe40697e2744eecb24ab70513c80b22b50"
+        }
+      ],
+      "payload": {
+        "id": "city.w17.edge.0192",
+        "relation": "AFFECTS",
+        "source": "city.w17.s03.feedback",
+        "target": "city.w17.s03.behavior.definition",
+        "role": "pause/replan definition",
+        "definition_instance_level": "definition",
+        "layer": "authoring_configuration_references",
+        "validity": {
+          "clock": "simulation_elapsed",
+          "start_ns": "0",
+          "end_ns": "600000000000",
+          "interval": "half_open"
+        },
+        "scope": [
+          "city.w17"
+        ],
+        "version": "authored-v1",
+        "source_ref": {
+          "source_id": "source:p02_plan_2026-10-04.md",
+          "section": "Appendix B / 17",
+          "catalog_json_pointer": "/activities/16"
+        },
+        "condition": null
+      },
+      "original_id": "city.w17.edge.0192",
+      "condition": null,
+      "order": null,
+      "declared_time": {
+        "clock": "simulation_elapsed",
+        "start_ns": "0",
+        "end_ns": "600000000000",
+        "interval": "half_open"
+      },
+      "case_id": "city.w17",
+      "contract_status": "typed_signature_valid",
+      "contract_variant_ids": [
+        "p08:rv:42902d3b6e472b6e8b1dfb58"
+      ]
+    }
+  ]
+}

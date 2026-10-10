@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.dataprovider.weather_integration &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.weather_integration</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.dataprovider.weather_integration</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim天气集成模块</span>
+
+<span class="sd">该模块提供了天气数据集成功能，包括：</span>
+<span class="sd">1. 天气数据提供者的配置和初始化</span>
+<span class="sd">2. 天气数据从真实时间到仿真时间的转换</span>
+<span class="sd">3. 天气变化事件的处理</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.dataprovider</span> <span class="kn">import</span> <span class="n">DataIntegration</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.dataprovider.weather</span> <span class="kn">import</span> <span class="n">WeatherDataProvider</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="WeatherIntegration"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.weather_integration.WeatherIntegration">[docs]</a><span class="k">class</span> <span class="nc">WeatherIntegration</span><span class="p">(</span><span class="n">DataIntegration</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    天气集成类</span>
+<span class="sd">    </span>
+<span class="sd">    负责集成天气数据到仿真系统，并处理天气变化事件</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="WeatherIntegration.__init__"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.weather_integration.WeatherIntegration.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化天气集成</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            config: 天气配置</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 默认配置</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;location&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="mf">31.2304</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="mf">121.4737</span><span class="p">},</span>  <span class="c1"># 上海</span>
+            <span class="s1">&#39;api_refresh_interval&#39;</span><span class="p">:</span> <span class="mi">1800</span><span class="p">,</span>  <span class="c1"># 30分钟刷新一次</span>
+            <span class="s1">&#39;simulation_start_time&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># 仿真开始时间（真实时间）</span>
+            <span class="s1">&#39;time_scale&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># 时间缩放比例（仿真时间/真实时间）</span>
+            <span class="s1">&#39;use_mock_data&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>  <span class="c1"># 是否使用模拟数据</span>
+        <span class="p">}</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        
+        <span class="c1"># 调用父类初始化方法</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_config</span><span class="p">)</span></div>
+    
+    <span class="k">def</span> <span class="nf">_initialize_provider</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;初始化天气数据提供者&quot;&quot;&quot;</span>
+        <span class="c1"># 获取API密钥</span>
+        <span class="n">api_key</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OPENWEATHERMAP_API_KEY&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># 如果没有API密钥且不使用模拟数据，打印警告</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;use_mock_data&#39;</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;警告: 没有设置OpenWeatherMap API密钥，将使用模拟数据&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;use_mock_data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        
+        <span class="c1"># 如果使用模拟数据，创建模拟天气数据</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;use_mock_data&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_provider</span> <span class="o">=</span> <span class="n">MockWeatherProvider</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;使用模拟天气数据，位置: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;location&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 创建天气数据提供者配置</span>
+            <span class="n">weather_config</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;api_key&#39;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">,</span>
+                <span class="s1">&#39;location&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;location&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;api_refresh_interval&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;api_refresh_interval&#39;</span><span class="p">]</span>
+            <span class="p">}</span>
+            
+            <span class="c1"># 创建天气数据提供者</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_provider</span> <span class="o">=</span> <span class="n">WeatherDataProvider</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">weather_config</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;使用OpenWeatherMap API获取天气数据，位置: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;location&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># 启动天气事件触发</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_provider</span><span class="o">.</span><span class="n">start_event_triggering</span><span class="p">()</span>
+        
+        <span class="c1"># 在env注册天气数据提供者</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">add_data_provider</span><span class="p">(</span><span class="s1">&#39;weather&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_provider</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_register_event_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;注册天气变化事件监听器&quot;&quot;&quot;</span>
+        <span class="c1"># 注册天气变化事件监听器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+            <span class="n">source_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weather_provider</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> 
+            <span class="n">listener_id</span><span class="o">=</span><span class="s1">&#39;weather_integration&#39;</span><span class="p">,</span>
+            <span class="n">event_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weather_provider</span><span class="o">.</span><span class="n">EVENT_WEATHER_CHANGED</span><span class="p">,</span>
+            <span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_weather_changed</span>
+        <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_on_weather_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理天气变化事件</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            event_data: 事件数据</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 打印天气变化信息</span>
+        <span class="n">sim_time</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sim_timestamp&#39;</span><span class="p">,</span> <span class="s1">&#39;N/A&#39;</span><span class="p">)</span>
+        <span class="n">severity</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;severity&#39;</span><span class="p">,</span> <span class="s1">&#39;N/A&#39;</span><span class="p">)</span>
+        <span class="n">condition</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;condition&#39;</span><span class="p">,</span> <span class="s1">&#39;N/A&#39;</span><span class="p">)</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;temperature&#39;</span><span class="p">,</span> <span class="s1">&#39;N/A&#39;</span><span class="p">)</span>
+        <span class="n">wind_speed</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">,</span> <span class="s1">&#39;N/A&#39;</span><span class="p">)</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="n">sim_time</span><span class="si">}</span><span class="s2">: 天气变化 - 严重程度: </span><span class="si">{</span><span class="n">severity</span><span class="si">}</span><span class="s2">, 状况: </span><span class="si">{</span><span class="n">condition</span><span class="si">}</span><span class="s2">, 温度: </span><span class="si">{</span><span class="n">temp</span><span class="si">}</span><span class="s2">°C, 风速: </span><span class="si">{</span><span class="n">wind_speed</span><span class="si">}</span><span class="s2">m/s&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># 更新所有代理的外部力</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_agents_external_force</span><span class="p">(</span><span class="n">event_data</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_update_agents_external_force</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weather_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        更新所有代理的外部力</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            weather_data: 天气数据</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 计算外部力</span>
+        <span class="n">external_force</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_external_force</span><span class="p">(</span><span class="n">weather_data</span><span class="p">)</span>
+        
+        <span class="c1"># 更新所有代理的外部力</span>
+        <span class="k">for</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">agent</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s1">&#39;update_state&#39;</span><span class="p">):</span>
+                <span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;external_force&#39;</span><span class="p">,</span> <span class="n">external_force</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_calculate_external_force</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weather_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算外部力</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            weather_data: 天气数据</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            外部力向量 [fx, fy, fz]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 获取风速和风向</span>
+        <span class="n">wind_speed</span> <span class="o">=</span> <span class="n">weather_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">wind_direction</span> <span class="o">=</span> <span class="n">weather_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;wind_direction&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        
+        <span class="c1"># 将风向转换为弧度</span>
+        <span class="n">wind_direction_rad</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">wind_direction</span><span class="p">)</span>
+        
+        <span class="c1"># 计算风力分量</span>
+        <span class="n">force_x</span> <span class="o">=</span> <span class="n">wind_speed</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">wind_direction_rad</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span>
+        <span class="n">force_y</span> <span class="o">=</span> <span class="n">wind_speed</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">wind_direction_rad</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span>
+        <span class="n">force_z</span> <span class="o">=</span> <span class="mf">0.0</span>
+        
+        <span class="k">return</span> <span class="p">[</span><span class="n">force_x</span><span class="p">,</span> <span class="n">force_y</span><span class="p">,</span> <span class="n">force_z</span><span class="p">]</span></div>
+
+
+<span class="k">class</span> <span class="nc">MockWeatherProvider</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    模拟天气数据提供者</span>
+<span class="sd">    </span>
+<span class="sd">    用于在没有API密钥的情况下提供模拟天气数据</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># 天气变化事件名称</span>
+    <span class="n">EVENT_WEATHER_CHANGED</span> <span class="o">=</span> <span class="s1">&#39;weather_changed&#39;</span>
+    
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化模拟天气数据提供者</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            config: 配置</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="p">{}</span>
+        
+        <span class="c1"># 天气状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;temperature&#39;</span><span class="p">:</span> <span class="mf">25.0</span><span class="p">,</span>
+            <span class="s1">&#39;wind_speed&#39;</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">,</span>
+            <span class="s1">&#39;wind_direction&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;condition&#39;</span><span class="p">:</span> <span class="s1">&#39;CLEAR&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;severity&#39;</span><span class="p">:</span> <span class="s1">&#39;NORMAL&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;precipitation_rate&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s1">&#39;humidity&#39;</span><span class="p">:</span> <span class="mf">50.0</span><span class="p">,</span>
+            <span class="s1">&#39;pressure&#39;</span><span class="p">:</span> <span class="mf">1013.0</span><span class="p">,</span>
+            <span class="s1">&#39;visibility&#39;</span><span class="p">:</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="s1">&#39;cloud_cover&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s1">&#39;region&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="mf">31.2304</span><span class="p">),</span>
+                <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="mf">121.4737</span><span class="p">),</span>
+                <span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="mf">50.0</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        
+        <span class="c1"># 天气变化间隔（仿真时间）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_change_interval</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># 1分钟</span>
+    
+    <span class="k">def</span> <span class="nf">start_event_triggering</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;启动天气事件触发&quot;&quot;&quot;</span>
+        <span class="c1"># 启动天气变化进程</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weather_change_process</span><span class="p">())</span>
+    
+    <span class="k">def</span> <span class="nf">_weather_change_process</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;天气变化进程&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># 等待指定时间</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weather_change_interval</span><span class="p">)</span>
+            
+            <span class="c1"># 更新天气状态</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_weather_state</span><span class="p">()</span>
+            
+            <span class="c1"># 触发天气变化事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_weather_changed_event</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">_update_weather_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;更新天气状态&quot;&quot;&quot;</span>
+        <span class="c1"># 随机更新天气状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;temperature&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;temperature&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;wind_direction&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;wind_direction&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">45</span><span class="p">,</span> <span class="mi">45</span><span class="p">))</span> <span class="o">%</span> <span class="mi">360</span>
+        
+        <span class="c1"># 随机更新天气状况</span>
+        <span class="n">conditions</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;CLEAR&#39;</span><span class="p">,</span> <span class="s1">&#39;CLOUDY&#39;</span><span class="p">,</span> <span class="s1">&#39;RAIN&#39;</span><span class="p">,</span> <span class="s1">&#39;SNOW&#39;</span><span class="p">,</span> <span class="s1">&#39;FOG&#39;</span><span class="p">,</span> <span class="s1">&#39;THUNDERSTORM&#39;</span><span class="p">]</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;condition&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span><span class="n">conditions</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="c1"># 根据天气状况设置严重程度</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;condition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;CLEAR&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;NORMAL&#39;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;condition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;CLOUDY&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;NORMAL&#39;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;condition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;RAIN&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;MODERATE&#39;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;HEAVY_RAIN&#39;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;condition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;SNOW&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;MODERATE&#39;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;HEAVY_SNOW&#39;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;condition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;FOG&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;MODERATE&#39;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;condition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;THUNDERSTORM&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;STORM&#39;</span>
+        
+        <span class="c1"># 根据风速设置严重程度</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">15</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;HIGH_WINDS&#39;</span>
+        
+        <span class="c1"># 更新其他天气参数</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;condition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;RAIN&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;precipitation_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;condition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;SNOW&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;precipitation_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;precipitation_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;humidity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;pressure&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">990</span><span class="p">,</span> <span class="mi">1030</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;visibility&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="p">[</span><span class="s1">&#39;cloud_cover&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_trigger_weather_changed_event</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;触发天气变化事件&quot;&quot;&quot;</span>
+        <span class="c1"># 创建事件数据</span>
+        <span class="n">event_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather_state</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">event_data</span><span class="p">[</span><span class="s1">&#39;sim_timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        
+        <span class="c1"># 触发事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+            <span class="n">source_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="n">event_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">EVENT_WEATHER_CHANGED</span><span class="p">,</span>
+            <span class="n">event_value</span><span class="o">=</span><span class="n">event_data</span>
+        <span class="p">)</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.weather_integration</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

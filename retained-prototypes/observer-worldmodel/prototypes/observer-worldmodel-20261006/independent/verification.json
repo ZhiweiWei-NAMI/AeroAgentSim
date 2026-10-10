@@ -1,0 +1,71 @@
+{
+  "date_utc": "2026-10-06",
+  "review": "Final available-runtime and static-source verification",
+  "dependencies": {
+    "numpy": true,
+    "torch": false,
+    "torch_geometric": false,
+    "transformers": false
+  },
+  "independent_numpy_tests": {
+    "passed": 14,
+    "failed": 0
+  },
+  "author_suite": {
+    "numpy_passed": 26,
+    "torch_skipped": 11,
+    "failed": 0
+  },
+  "torch_execution": "NOT RUN",
+  "frozen_mask_clamp_parity": "UNVERIFIED",
+  "files": {
+    "observer_proto/contracts.py": {
+      "sha256": "0e2a527ec4ace7ed1d54bf50ba1e7f3b5546abe321e3445107f6f95550dc0b9f",
+      "bytes": 14821
+    },
+    "observer_proto/reference.py": {
+      "sha256": "cd76e7fe25138eca75d9469e789ac11b64969ca483d225f7f1dd82034716ffb2",
+      "bytes": 13753
+    },
+    "observer_proto/torch_model.py": {
+      "sha256": "3aa64898a6bdcece56238297f02147e9f2767feeee4d4c35d5154d4601f0e426",
+      "bytes": 16686
+    },
+    "observer_proto/fixtures.py": {
+      "sha256": "46b31e6c12394ad5e233ef3856933b4715a5c58c865932d98d6cd6791fe2ec9d",
+      "bytes": 1702
+    },
+    "tests/test_contracts.py": {
+      "sha256": "4b452694a9f102709d591990ee9a1b02d96a8f9b7c313cb6ba989736f3b2da85",
+      "bytes": 9491
+    },
+    "tests/test_torch.py": {
+      "sha256": "29b15f7cd3d90cdfe05880a86bd279ebf2461a2b37a57a28ee077da96cfeabf5",
+      "bytes": 5964
+    },
+    "independent/test_independent.py": {
+      "sha256": "2973949229a14f64516e61ecf7e0805e49c22e2da3ff20edded838e853080c32",
+      "bytes": 8614
+    },
+    "smoke.py": {
+      "sha256": "f93621ba5eab4bc63504ee51de28d6a749c7e18e397eaad5332166a032bd4744",
+      "bytes": 2540
+    },
+    "README.md": {
+      "sha256": "4bbbe856d0e433f342fd4c7ab22e94c9320354d36f51a7d159beee131e5382ec",
+      "bytes": 11378
+    },
+    "torch_smoke.py": {
+      "sha256": "3a9eaa7fdeb059e0f3030930f5818b84baada98b0ec705ca696508ed5522b859",
+      "bytes": 2833
+    },
+    "run_tests.py": {
+      "sha256": "5ef82885188e453ec19540eca7e4711ec4e4037e8e8cad5e856d916d5f64c9a9",
+      "bytes": 1111
+    },
+    "independent/review.md": {
+      "sha256": "1ba8035ebda29f17c4985647056a822f597a59f839886c238356ac5c1d49538c",
+      "bytes": 7759
+    }
+  }
+}

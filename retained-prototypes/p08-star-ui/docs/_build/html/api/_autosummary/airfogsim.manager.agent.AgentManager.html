@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.manager.agent.AgentManager &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.agent.AgentManager</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-manager-agent-agentmanager">
+<h1>aeroagentsim.manager.agent.AgentManager<a class="headerlink" href="#aeroagentsim-manager-agent-agentmanager" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.manager.agent.AgentManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.manager.agent.</span></span><span class="sig-name descname"><span class="pre">AgentManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.agent.AgentManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>代理管理器：负责管理和筛选不同类型的代理</p>
+<p>主要功能：
+1. 根据状态需求筛选合适的代理类
+2. 为工作流推荐最合适的代理类型
+3. 管理代理类的注册和查询</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.agent.AgentManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.agent.AgentManager.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化代理管理器</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>env</strong> – 仿真环境</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.agent.AgentManager.__init__" title="aeroagentsim.manager.agent.AgentManager.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(env)</p></td>
+<td><p>初始化代理管理器</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.agent.AgentManager.create_agent" title="aeroagentsim.manager.agent.AgentManager.create_agent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_agent</span></code></a>(agent_class_name, agent_name[, ...])</p></td>
+<td><p>创建代理实例</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.agent.AgentManager.find_compatible_agents" title="aeroagentsim.manager.agent.AgentManager.find_compatible_agents"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_compatible_agents</span></code></a>(required_states)</p></td>
+<td><p>查找支持指定状态的代理类</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.agent.AgentManager.get_agent_class" title="aeroagentsim.manager.agent.AgentManager.get_agent_class"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_agent_class</span></code></a>(agent_class_name)</p></td>
+<td><p>获取代理类</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.agent.AgentManager.get_agent_state_templates" title="aeroagentsim.manager.agent.AgentManager.get_agent_state_templates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_agent_state_templates</span></code></a>(agent_class_name)</p></td>
+<td><p>获取代理类的状态模板</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.agent.AgentManager.get_all_agent_classes" title="aeroagentsim.manager.agent.AgentManager.get_all_agent_classes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_all_agent_classes</span></code></a>()</p></td>
+<td><p>获取所有注册的代理类</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.agent.AgentManager.get_all_agents" title="aeroagentsim.manager.agent.AgentManager.get_all_agents"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_all_agents</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.agent.AgentManager.recommend_agents" title="aeroagentsim.manager.agent.AgentManager.recommend_agents"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recommend_agents</span></code></a>(required_states[, top_n])</p></td>
+<td><p>推荐支持指定状态的代理类</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.agent.AgentManager.register_agent_class" title="aeroagentsim.manager.agent.AgentManager.register_agent_class"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_agent_class</span></code></a>(agent_class)</p></td>
+<td><p>注册代理类</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化代理管理器</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>env</strong> – 仿真环境</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.agent.AgentManager.get_all_agents">
+<span class="sig-name descname"><span class="pre">get_all_agents</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager.get_all_agents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.agent.AgentManager.get_all_agents" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.agent.AgentManager.register_agent_class">
+<span class="sig-name descname"><span class="pre">register_agent_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager.register_agent_class"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.agent.AgentManager.register_agent_class" title="Permalink to this definition">¶</a></dt>
+<dd><p>注册代理类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>agent_class</strong> – 代理类</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.agent.AgentManager.get_agent_class">
+<span class="sig-name descname"><span class="pre">get_agent_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager.get_agent_class"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.agent.AgentManager.get_agent_class" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取代理类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>agent_class_name</strong> – 代理类名称</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>代理类或None（如果未找到）</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.agent.AgentManager.get_all_agent_classes">
+<span class="sig-name descname"><span class="pre">get_all_agent_classes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager.get_all_agent_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.agent.AgentManager.get_all_agent_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取所有注册的代理类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>代理类列表</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.agent.AgentManager.find_compatible_agents">
+<span class="sig-name descname"><span class="pre">find_compatible_agents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">required_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager.find_compatible_agents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.agent.AgentManager.find_compatible_agents" title="Permalink to this definition">¶</a></dt>
+<dd><p>查找支持指定状态的代理类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>required_states</strong> – 需要的状态列表</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>兼容代理类及其兼容性分数的列表，按分数降序排序</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.agent.AgentManager.recommend_agents">
+<span class="sig-name descname"><span class="pre">recommend_agents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">required_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top_n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager.recommend_agents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.agent.AgentManager.recommend_agents" title="Permalink to this definition">¶</a></dt>
+<dd><p>推荐支持指定状态的代理类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>required_states</strong> – 需要的状态列表</p></li>
+<li><p><strong>top_n</strong> – 返回的推荐代理数量</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>推荐代理的详细信息列表</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.agent.AgentManager.create_agent">
+<span class="sig-name descname"><span class="pre">create_agent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager.create_agent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.agent.AgentManager.create_agent" title="Permalink to this definition">¶</a></dt>
+<dd><p>创建代理实例</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>agent_class_name</strong> – 代理类名称</p></li>
+<li><p><strong>agent_name</strong> – 代理名称</p></li>
+<li><p><strong>properties</strong> – 代理属性</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>创建的代理实例，如果创建失败则返回None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.agent.AgentManager.get_agent_state_templates">
+<span class="sig-name descname"><span class="pre">get_agent_state_templates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/agent.html#AgentManager.get_agent_state_templates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.agent.AgentManager.get_agent_state_templates" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取代理类的状态模板</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>agent_class_name</strong> – 代理类名称</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>状态模板字典，如果找不到代理类则返回空字典</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.manager.agent.AgentManager</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.manager.agent.AgentManager"><code class="docutils literal notranslate"><span class="pre">AgentManager</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.manager.agent.AgentManager.__init__"><code class="docutils literal notranslate"><span class="pre">AgentManager.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">AgentManager.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.agent.AgentManager.get_all_agents"><code class="docutils literal notranslate"><span class="pre">AgentManager.get_all_agents()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.agent.AgentManager.register_agent_class"><code class="docutils literal notranslate"><span class="pre">AgentManager.register_agent_class()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.agent.AgentManager.get_agent_class"><code class="docutils literal notranslate"><span class="pre">AgentManager.get_agent_class()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.agent.AgentManager.get_all_agent_classes"><code class="docutils literal notranslate"><span class="pre">AgentManager.get_all_agent_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.agent.AgentManager.find_compatible_agents"><code class="docutils literal notranslate"><span class="pre">AgentManager.find_compatible_agents()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.agent.AgentManager.recommend_agents"><code class="docutils literal notranslate"><span class="pre">AgentManager.recommend_agents()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.agent.AgentManager.create_agent"><code class="docutils literal notranslate"><span class="pre">AgentManager.create_agent()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.agent.AgentManager.get_agent_state_templates"><code class="docutils literal notranslate"><span class="pre">AgentManager.get_agent_state_templates()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.manager.agent.AgentManager.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.agent.AgentManager</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

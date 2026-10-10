@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.statistics.stats_analyzer &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.statistics.stats_analyzer</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.statistics.stats_analyzer</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim统计数据分析器</span>
+
+<span class="sd">该模块提供了统计数据分析功能，用于分析仿真数据并生成统计报告。</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">csv</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="StatsAnalyzer"><a class="viewcode-back" href="../../../api/statistics.html#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer">[docs]</a><span class="k">class</span> <span class="nc">StatsAnalyzer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    统计数据分析器</span>
+
+<span class="sd">    负责分析仿真数据并生成统计报告，包括工作流完成率、电池消耗率、任务执行时间等。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="StatsAnalyzer.__init__"><a class="viewcode-back" href="../../../api/statistics.html#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stats_dir</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化统计数据分析器</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            stats_dir: 统计数据目录</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stats_dir</span> <span class="o">=</span> <span class="n">stats_dir</span>
+
+        <span class="c1"># 加载统计数据</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_json_file</span><span class="p">(</span><span class="s2">&quot;metadata.json&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_json_file</span><span class="p">(</span><span class="s2">&quot;agent_states.json&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflow_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_json_file</span><span class="p">(</span><span class="s2">&quot;workflow_states.json&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_json_file</span><span class="p">(</span><span class="s2">&quot;events.json&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 加载CSV数据</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_csv_file</span><span class="p">(</span><span class="s2">&quot;agent_positions.csv&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_battery</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_csv_file</span><span class="p">(</span><span class="s2">&quot;agent_battery.csv&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_csv_file</span><span class="p">(</span><span class="s2">&quot;agent_status.csv&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflow_states_csv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_csv_file</span><span class="p">(</span><span class="s2">&quot;workflow_states.csv&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weather</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_csv_file</span><span class="p">(</span><span class="s2">&quot;weather.csv&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 如果工作流状态数据为空，尝试从基准测试数据中加载</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_states</span><span class="p">:</span>
+            <span class="c1"># 查找最新的基准测试数据目录</span>
+            <span class="n">benchmark_dirs</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats_dir</span><span class="p">))</span>
+                             <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;benchmark_&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats_dir</span><span class="p">),</span> <span class="n">d</span><span class="p">))]</span>
+            <span class="k">if</span> <span class="n">benchmark_dirs</span><span class="p">:</span>
+                <span class="c1"># 按时间戳排序</span>
+                <span class="n">benchmark_dirs</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">latest_benchmark_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats_dir</span><span class="p">),</span> <span class="n">benchmark_dirs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="c1"># 加载基准测试数据中的工作流状态数据</span>
+                <span class="n">benchmark_workflow_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_json_file_from_dir</span><span class="p">(</span><span class="n">latest_benchmark_dir</span><span class="p">,</span> <span class="s2">&quot;workflow_states.json&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">benchmark_workflow_states</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">workflow_states</span> <span class="o">=</span> <span class="n">benchmark_workflow_states</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;从基准测试数据中加载工作流状态数据: </span><span class="si">{</span><span class="n">latest_benchmark_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_load_json_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        加载JSON文件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            filename: 文件名</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            加载的JSON数据</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_json_file_from_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_load_json_file_from_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directory</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        从指定目录加载JSON文件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            directory: 目录路径</span>
+<span class="sd">            filename: 文件名</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            加载的JSON数据</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">_load_csv_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        加载CSV文件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            filename: 文件名</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            加载的CSV数据</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictReader</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">reader</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="StatsAnalyzer.analyze_workflow_completion"><a class="viewcode-back" href="../../../api/statistics.html#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_workflow_completion">[docs]</a>    <span class="k">def</span> <span class="nf">analyze_workflow_completion</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        分析工作流完成率</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            工作流完成率统计</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 统计工作流状态</span>
+        <span class="n">workflow_status</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">workflow_types</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+
+        <span class="c1"># 获取每个工作流的最终状态</span>
+        <span class="n">final_states</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">workflow_id</span><span class="p">,</span> <span class="n">states</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_states</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">states</span><span class="p">:</span>
+                <span class="c1"># 按时间戳排序</span>
+                <span class="n">sorted_states</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">states</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+                <span class="c1"># 获取最后一个状态</span>
+                <span class="n">final_state</span> <span class="o">=</span> <span class="n">sorted_states</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="n">final_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;new_status&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">final_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span>
+                <span class="n">workflow_type</span> <span class="o">=</span> <span class="n">final_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;workflow_type&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+
+                <span class="c1"># 记录最终状态</span>
+                <span class="n">final_states</span><span class="p">[</span><span class="n">workflow_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
+                    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">workflow_type</span>
+                <span class="p">}</span>
+
+                <span class="c1"># 统计状态</span>
+                <span class="n">workflow_status</span><span class="p">[</span><span class="n">status</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">workflow_types</span><span class="p">[</span><span class="n">workflow_type</span><span class="p">][</span><span class="n">status</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># 计算完成率</span>
+        <span class="n">total_workflows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">final_states</span><span class="p">)</span>
+        <span class="n">completed_workflows</span> <span class="o">=</span> <span class="n">workflow_status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;COMPLETED&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">completion_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">completed_workflows</span> <span class="o">/</span> <span class="n">total_workflows</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">total_workflows</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="c1"># 计算各类型工作流的完成率</span>
+        <span class="n">type_completion_rates</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">workflow_type</span><span class="p">,</span> <span class="n">status_counts</span> <span class="ow">in</span> <span class="n">workflow_types</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">type_total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">status_counts</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="n">type_completed</span> <span class="o">=</span> <span class="n">status_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;COMPLETED&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">type_completion_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">type_completed</span> <span class="o">/</span> <span class="n">type_total</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">type_total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">type_completion_rates</span><span class="p">[</span><span class="n">workflow_type</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;total&#39;</span><span class="p">:</span> <span class="n">type_total</span><span class="p">,</span>
+                <span class="s1">&#39;completed&#39;</span><span class="p">:</span> <span class="n">type_completed</span><span class="p">,</span>
+                <span class="s1">&#39;completion_rate&#39;</span><span class="p">:</span> <span class="n">type_completion_rate</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;total_workflows&#39;</span><span class="p">:</span> <span class="n">total_workflows</span><span class="p">,</span>
+            <span class="s1">&#39;completed_workflows&#39;</span><span class="p">:</span> <span class="n">completed_workflows</span><span class="p">,</span>
+            <span class="s1">&#39;completion_rate&#39;</span><span class="p">:</span> <span class="n">completion_rate</span><span class="p">,</span>
+            <span class="s1">&#39;status_distribution&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">workflow_status</span><span class="p">),</span>
+            <span class="s1">&#39;type_completion_rates&#39;</span><span class="p">:</span> <span class="n">type_completion_rates</span>
+        <span class="p">}</span></div>
+
+<div class="viewcode-block" id="StatsAnalyzer.analyze_battery_consumption"><a class="viewcode-back" href="../../../api/statistics.html#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_battery_consumption">[docs]</a>    <span class="k">def</span> <span class="nf">analyze_battery_consumption</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        分析电池消耗率</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            电池消耗率统计</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 按代理ID分组</span>
+        <span class="n">agent_battery_data</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_battery</span><span class="p">:</span>
+            <span class="n">agent_id</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="n">battery_level</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+            <span class="n">agent_battery_data</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
+                <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="n">battery_level</span>
+            <span class="p">})</span>
+
+        <span class="c1"># 计算每个代理的电池消耗率</span>
+        <span class="n">battery_consumption_rates</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">agent_battery_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># 按时间戳排序</span>
+            <span class="n">sorted_data</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">])</span>
+
+            <span class="c1"># 如果数据点少于2个，无法计算消耗率</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># 计算消耗率（百分比/小时）</span>
+            <span class="n">first_point</span> <span class="o">=</span> <span class="n">sorted_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">last_point</span> <span class="o">=</span> <span class="n">sorted_data</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">time_diff</span> <span class="o">=</span> <span class="n">last_point</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">first_point</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span>
+            <span class="n">battery_diff</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="c1"># 不算充电</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_data</span><span class="p">)):</span>
+                <span class="n">battery_diff</span> <span class="o">+=</span> <span class="nb">max</span><span class="p">(</span><span class="n">sorted_data</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;battery_level&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">sorted_data</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;battery_level&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># 避免除以零</span>
+            <span class="k">if</span> <span class="n">time_diff</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># 计算每小时消耗率</span>
+            <span class="n">hourly_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">battery_diff</span> <span class="o">/</span> <span class="n">time_diff</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3600</span>
+
+            <span class="n">battery_consumption_rates</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;initial_level&#39;</span><span class="p">:</span> <span class="n">first_point</span><span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;final_level&#39;</span><span class="p">:</span> <span class="n">last_point</span><span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;time_period&#39;</span><span class="p">:</span> <span class="n">time_diff</span><span class="p">,</span>
+                <span class="s1">&#39;hourly_consumption_rate&#39;</span><span class="p">:</span> <span class="n">hourly_rate</span>
+            <span class="p">}</span>
+
+        <span class="c1"># 计算平均消耗率</span>
+        <span class="n">hourly_rates</span> <span class="o">=</span> <span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;hourly_consumption_rate&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">battery_consumption_rates</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+        <span class="n">avg_hourly_rate</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">hourly_rates</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">hourly_rates</span><span class="p">)</span> <span class="k">if</span> <span class="n">hourly_rates</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;agent_consumption_rates&#39;</span><span class="p">:</span> <span class="n">battery_consumption_rates</span><span class="p">,</span>
+            <span class="s1">&#39;average_hourly_rate&#39;</span><span class="p">:</span> <span class="n">avg_hourly_rate</span>
+        <span class="p">}</span></div>
+
+<div class="viewcode-block" id="StatsAnalyzer.analyze_weather_impact"><a class="viewcode-back" href="../../../api/statistics.html#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_weather_impact">[docs]</a>    <span class="k">def</span> <span class="nf">analyze_weather_impact</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        分析天气对电池消耗的影响</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            天气影响统计</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 按时间段分组的天气数据</span>
+        <span class="n">weather_periods</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">weather</span><span class="p">:</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="n">wind_speed</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+            <span class="n">weather_periods</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s1">&#39;start_time&#39;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
+                <span class="s1">&#39;wind_speed&#39;</span><span class="p">:</span> <span class="n">wind_speed</span><span class="p">,</span>
+                <span class="s1">&#39;condition&#39;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;condition&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">),</span>
+                <span class="s1">&#39;severity&#39;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;severity&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+            <span class="p">})</span>
+
+        <span class="c1"># 按时间排序</span>
+        <span class="n">weather_periods</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">weather_periods</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;start_time&#39;</span><span class="p">])</span>
+
+        <span class="c1"># 为每个时间段添加结束时间</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">weather_periods</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">weather_periods</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;end_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">weather_periods</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="s1">&#39;start_time&#39;</span><span class="p">]</span>
+
+        <span class="c1"># 最后一个时间段的结束时间设为仿真结束时间</span>
+        <span class="k">if</span> <span class="n">weather_periods</span><span class="p">:</span>
+            <span class="n">sim_time</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;simulation_time&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="n">weather_periods</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;end_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sim_time</span>
+
+        <span class="c1"># 计算每个天气时间段内的平均电池消耗率</span>
+        <span class="n">weather_impact</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">period</span> <span class="ow">in</span> <span class="n">weather_periods</span><span class="p">:</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">period</span><span class="p">[</span><span class="s1">&#39;start_time&#39;</span><span class="p">]</span>
+            <span class="n">end_time</span> <span class="o">=</span> <span class="n">period</span><span class="p">[</span><span class="s1">&#39;end_time&#39;</span><span class="p">]</span>
+            <span class="n">wind_speed</span> <span class="o">=</span> <span class="n">period</span><span class="p">[</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span>
+
+            <span class="c1"># 获取该时间段内的电池数据</span>
+            <span class="n">period_battery_data</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_battery</span><span class="p">:</span>
+                <span class="n">timestamp</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">start_time</span> <span class="o">&lt;=</span> <span class="n">timestamp</span> <span class="o">&lt;</span> <span class="n">end_time</span><span class="p">:</span>
+                    <span class="n">period_battery_data</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                        <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">),</span>
+                        <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
+                        <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+                    <span class="p">})</span>
+
+            <span class="c1"># 按代理ID分组</span>
+            <span class="n">agent_battery_changes</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">period_battery_data</span><span class="p">:</span>
+                <span class="n">agent_battery_changes</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;agent_id&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+            <span class="c1"># 计算每个代理在该时间段内的电池消耗率</span>
+            <span class="n">period_consumption_rates</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">agent_battery_changes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="c1"># 按时间戳排序</span>
+                <span class="n">sorted_data</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">])</span>
+
+                <span class="c1"># 如果数据点少于2个，无法计算消耗率</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># 计算消耗率（百分比/小时）</span>
+                <span class="n">first_point</span> <span class="o">=</span> <span class="n">sorted_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">last_point</span> <span class="o">=</span> <span class="n">sorted_data</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+                <span class="n">time_diff</span> <span class="o">=</span> <span class="n">last_point</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">first_point</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span>
+                <span class="n">battery_diff</span> <span class="o">=</span> <span class="n">first_point</span><span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">last_point</span><span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">]</span>
+
+                <span class="c1"># 避免除以零</span>
+                <span class="k">if</span> <span class="n">time_diff</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># 计算每小时消耗率</span>
+                <span class="n">hourly_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">battery_diff</span> <span class="o">/</span> <span class="n">time_diff</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3600</span>
+                <span class="n">period_consumption_rates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">hourly_rate</span><span class="p">)</span>
+
+            <span class="c1"># 计算该时间段内的平均消耗率</span>
+            <span class="n">avg_rate</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">period_consumption_rates</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">period_consumption_rates</span><span class="p">)</span> <span class="k">if</span> <span class="n">period_consumption_rates</span> <span class="k">else</span> <span class="mi">0</span>
+
+            <span class="n">weather_impact</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s1">&#39;start_time&#39;</span><span class="p">:</span> <span class="n">start_time</span><span class="p">,</span>
+                <span class="s1">&#39;end_time&#39;</span><span class="p">:</span> <span class="n">end_time</span><span class="p">,</span>
+                <span class="s1">&#39;duration&#39;</span><span class="p">:</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">,</span>
+                <span class="s1">&#39;wind_speed&#39;</span><span class="p">:</span> <span class="n">wind_speed</span><span class="p">,</span>
+                <span class="s1">&#39;condition&#39;</span><span class="p">:</span> <span class="n">period</span><span class="p">[</span><span class="s1">&#39;condition&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;severity&#39;</span><span class="p">:</span> <span class="n">period</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;avg_battery_consumption_rate&#39;</span><span class="p">:</span> <span class="n">avg_rate</span><span class="p">,</span>
+                <span class="s1">&#39;num_data_points&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">period_consumption_rates</span><span class="p">)</span>
+            <span class="p">})</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;weather_periods&#39;</span><span class="p">:</span> <span class="n">weather_impact</span><span class="p">,</span>
+            <span class="s1">&#39;correlation&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_correlation</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">weather_impact</span><span class="p">],</span>
+                <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;avg_battery_consumption_rate&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">weather_impact</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="p">}</span></div>
+
+    <span class="k">def</span> <span class="nf">_calculate_correlation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算相关系数</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x: x值列表</span>
+<span class="sd">            y: y值列表</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            相关系数</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 如果数据点少于2个，无法计算相关系数</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="c1"># 计算均值</span>
+        <span class="n">mean_x</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">mean_y</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+        <span class="c1"># 计算协方差和标准差</span>
+        <span class="n">numerator</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">xi</span> <span class="o">-</span> <span class="n">mean_x</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">yi</span> <span class="o">-</span> <span class="n">mean_y</span><span class="p">)</span> <span class="k">for</span> <span class="n">xi</span><span class="p">,</span> <span class="n">yi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+        <span class="n">denominator</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">sum</span><span class="p">((</span><span class="n">xi</span> <span class="o">-</span> <span class="n">mean_x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">xi</span> <span class="ow">in</span> <span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yi</span> <span class="o">-</span> <span class="n">mean_y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">yi</span> <span class="ow">in</span> <span class="n">y</span><span class="p">))</span>
+
+        <span class="c1"># 避免除以零</span>
+        <span class="k">if</span> <span class="n">denominator</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span>
+
+<div class="viewcode-block" id="StatsAnalyzer.analyze_task_execution_time"><a class="viewcode-back" href="../../../api/statistics.html#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.analyze_task_execution_time">[docs]</a>    <span class="k">def</span> <span class="nf">analyze_task_execution_time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        分析任务执行时间</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            任务执行时间统计</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 按工作流类型分组的任务执行时间</span>
+        <span class="n">workflow_execution_times</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="c1"># 计算每个工作流的执行时间</span>
+        <span class="k">for</span> <span class="n">workflow_id</span><span class="p">,</span> <span class="n">states</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_states</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">states</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># 按时间戳排序</span>
+            <span class="n">sorted_states</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">states</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+            <span class="c1"># 获取工作流类型</span>
+            <span class="n">workflow_type</span> <span class="o">=</span> <span class="n">sorted_states</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;workflow_type&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+
+            <span class="c1"># 查找开始和结束时间</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">end_time</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">sorted_states</span><span class="p">:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;new_status&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s1">&#39;RUNNING&#39;</span> <span class="ow">and</span> <span class="n">start_time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">start_time</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s1">&#39;COMPLETED&#39;</span><span class="p">:</span>
+                    <span class="n">end_time</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># 如果有开始和结束时间，计算执行时间</span>
+            <span class="k">if</span> <span class="n">start_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">end_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">execution_time</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+                <span class="n">workflow_execution_times</span><span class="p">[</span><span class="n">workflow_type</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">execution_time</span><span class="p">)</span>
+
+        <span class="c1"># 计算每种工作流类型的平均执行时间</span>
+        <span class="n">avg_execution_times</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">workflow_type</span><span class="p">,</span> <span class="n">times</span> <span class="ow">in</span> <span class="n">workflow_execution_times</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">avg_time</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="k">if</span> <span class="n">times</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">min_time</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="k">if</span> <span class="n">times</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">max_time</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="k">if</span> <span class="n">times</span> <span class="k">else</span> <span class="mi">0</span>
+
+            <span class="n">avg_execution_times</span><span class="p">[</span><span class="n">workflow_type</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;avg_time&#39;</span><span class="p">:</span> <span class="n">avg_time</span><span class="p">,</span>
+                <span class="s1">&#39;min_time&#39;</span><span class="p">:</span> <span class="n">min_time</span><span class="p">,</span>
+                <span class="s1">&#39;max_time&#39;</span><span class="p">:</span> <span class="n">max_time</span><span class="p">,</span>
+                <span class="s1">&#39;num_workflows&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;workflow_execution_times&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">workflow_execution_times</span><span class="p">),</span>
+            <span class="s1">&#39;avg_execution_times&#39;</span><span class="p">:</span> <span class="n">avg_execution_times</span>
+        <span class="p">}</span></div>
+
+<div class="viewcode-block" id="StatsAnalyzer.generate_report"><a class="viewcode-back" href="../../../api/statistics.html#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.generate_report">[docs]</a>    <span class="k">def</span> <span class="nf">generate_report</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        生成统计报告</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            统计报告</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 分析工作流完成率</span>
+        <span class="n">workflow_completion</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyze_workflow_completion</span><span class="p">()</span>
+
+        <span class="c1"># 分析电池消耗率</span>
+        <span class="n">battery_consumption</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyze_battery_consumption</span><span class="p">()</span>
+
+        <span class="c1"># 分析天气影响</span>
+        <span class="n">weather_impact</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyze_weather_impact</span><span class="p">()</span>
+
+        <span class="c1"># 分析任务执行时间</span>
+        <span class="n">task_execution_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyze_task_execution_time</span><span class="p">()</span>
+
+        <span class="c1"># 生成报告</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span>
+            <span class="s1">&#39;workflow_completion&#39;</span><span class="p">:</span> <span class="n">workflow_completion</span><span class="p">,</span>
+            <span class="s1">&#39;battery_consumption&#39;</span><span class="p">:</span> <span class="n">battery_consumption</span><span class="p">,</span>
+            <span class="s1">&#39;weather_impact&#39;</span><span class="p">:</span> <span class="n">weather_impact</span><span class="p">,</span>
+            <span class="s1">&#39;task_execution_time&#39;</span><span class="p">:</span> <span class="n">task_execution_time</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">report</span></div>
+
+<div class="viewcode-block" id="StatsAnalyzer.save_report"><a class="viewcode-back" href="../../../api/statistics.html#aeroagentsim.statistics.stats_analyzer.StatsAnalyzer.save_report">[docs]</a>    <span class="k">def</span> <span class="nf">save_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        保存统计报告</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            output_file: 输出文件路径</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            保存的文件路径</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 生成报告</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_report</span><span class="p">()</span>
+
+        <span class="c1"># 如果没有指定输出文件，使用默认路径</span>
+        <span class="k">if</span> <span class="n">output_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">output_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats_dir</span><span class="p">,</span> <span class="s2">&quot;report.json&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 保存报告</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;统计报告已保存到: </span><span class="si">{</span><span class="n">output_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">output_file</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.statistics.stats_analyzer</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

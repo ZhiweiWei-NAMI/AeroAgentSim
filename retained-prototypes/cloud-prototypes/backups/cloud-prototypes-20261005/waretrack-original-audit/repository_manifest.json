@@ -1,0 +1,144 @@
+{
+  "repository": "https://github.com/siddik-web/waretrack",
+  "branch": "main",
+  "commit": "f2bd7329e95629bb09e761929c7ddbf3abfa6183",
+  "commit_time": "2026-10-05T05:53:16Z",
+  "tree_sha": "e6234ad4c82d4e71c3d14556cf516915903b88f5",
+  "truncated": false,
+  "verified_main_at": "2026-10-05T12:36:25Z",
+  "matches_previous_audit_commit": true,
+  "tracked_file_count": 14,
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha": "779765b71ce0001bb73e18ffbdc499299cfa7232",
+      "size": 39,
+      "role": "documentation/configuration",
+      "materialized": true,
+      "git_blob_verified": true,
+      "sha256": "3b74a4e2f83a609a1fa3e6bc3f6ae74b78ad4d0a1a0ed6dbe4d3f082b414b308",
+      "line_count": 4
+    },
+    {
+      "path": ".nojekyll",
+      "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0,
+      "role": "documentation/configuration",
+      "materialized": true,
+      "git_blob_verified": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "line_count": 0
+    },
+    {
+      "path": "README.md",
+      "sha": "09f638f1d2ab89e8bf3fd573356bd98caafe0d29",
+      "size": 6866,
+      "role": "documentation/configuration",
+      "materialized": true,
+      "git_blob_verified": true,
+      "sha256": "ec6feeddc94ead8fe9cfadf365ab142590fc549e3d28545573acc27aa25f0457",
+      "line_count": 76
+    },
+    {
+      "path": "WareTrack_game_rules.xlsx",
+      "sha": "4f4fd263d55abfbd0c0864f897701155287e790f",
+      "size": 27134,
+      "role": "rules workbook",
+      "materialized": true,
+      "git_blob_verified": true,
+      "sha256": "2e8cd6405cb5da4f716daa5a82db94044aa4335206fb36507d46137ed6b59ce9"
+    },
+    {
+      "path": "docs/media/city.jpg",
+      "sha": "b86bc76f914b2a559941d667d8e3a0c67f151718",
+      "size": 196660,
+      "role": "documentation media",
+      "materialized": false,
+      "status": "Complete-tree entry enumerated; no executable code; image/GIF pixels not reviewed"
+    },
+    {
+      "path": "docs/media/inspector.jpg",
+      "sha": "e96720c38a84c22ee7bd38d0af6815a6727e729e",
+      "size": 181757,
+      "role": "documentation media",
+      "materialized": false,
+      "status": "Complete-tree entry enumerated; no executable code; image/GIF pixels not reviewed"
+    },
+    {
+      "path": "docs/media/order-requests.jpg",
+      "sha": "5fda9a7f5103019ca17452737ee97f9cdc64ac9f",
+      "size": 182515,
+      "role": "documentation media",
+      "materialized": false,
+      "status": "Complete-tree entry enumerated; no executable code; image/GIF pixels not reviewed"
+    },
+    {
+      "path": "docs/media/preview.gif",
+      "sha": "e544c0e300e750e77db414859673588112f10338",
+      "size": 1527951,
+      "role": "documentation media",
+      "materialized": false,
+      "status": "Complete-tree entry enumerated; no executable code; image/GIF pixels not reviewed"
+    },
+    {
+      "path": "docs/media/shift.jpg",
+      "sha": "430627688ffade0e5268316d5fe832dc1f3ede1f",
+      "size": 182310,
+      "role": "documentation media",
+      "materialized": false,
+      "status": "Complete-tree entry enumerated; no executable code; image/GIF pixels not reviewed"
+    },
+    {
+      "path": "docs/media/site-select.jpg",
+      "sha": "b594c719b2d24e2dd821edd78a04f0f262f74c00",
+      "size": 135187,
+      "role": "documentation media",
+      "materialized": false,
+      "status": "Complete-tree entry enumerated; no executable code; image/GIF pixels not reviewed"
+    },
+    {
+      "path": "docs/media/town-planner.jpg",
+      "sha": "bd872be41f7f6891068bd58793642be299308799",
+      "size": 171796,
+      "role": "documentation media",
+      "materialized": false,
+      "status": "Complete-tree entry enumerated; no executable code; image/GIF pixels not reviewed"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-04-construction-system.md",
+      "sha": "5b1227466d40c6f04463dae97b93459b19e8e07f",
+      "size": 28309,
+      "role": "documentation/configuration",
+      "materialized": true,
+      "git_blob_verified": true,
+      "sha256": "266b33790b4a7a6b0d58f2d64c06f73f4fef5c8b473aabd0594a397f940f04a4",
+      "line_count": 567
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-04-construction-system-design.md",
+      "sha": "2bd158198e0c38326e8257345c01b410793937e6",
+      "size": 5804,
+      "role": "documentation/configuration",
+      "materialized": true,
+      "git_blob_verified": true,
+      "sha256": "6fac6f5b173c85bc3e90ed21d5265f6bc1a208d005fe16658cacbe898142906e",
+      "line_count": 128
+    },
+    {
+      "path": "index.html",
+      "sha": "fc49a4102d35883f2aa904a47e2abaf6c30e40c1",
+      "size": 319001,
+      "role": "application source",
+      "materialized": true,
+      "git_blob_verified": true,
+      "sha256": "68a0425674af24ecae5a74715653403c3de13678ac19b0357f1fbde5660c54ee",
+      "line_count": 4022
+    }
+  ],
+  "verification": {
+    "method": "GitHub connector read of current main commit and full recursive tree; pinned-commit contents",
+    "syntax_check": "node --check inline application script: passed, no application execution",
+    "browser_visual_test": "not performed",
+    "writes": "local audit workspace only; no project implementation, external publication or changes"
+  }
+}

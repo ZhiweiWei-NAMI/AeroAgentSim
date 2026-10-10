@@ -1,0 +1,27 @@
+{
+  "status": "Research and implementation handoff complete; no weights downloaded, server accessed, or training run",
+  "checked_date_utc": "2026-10-05",
+  "checks": {
+    "config_json_parse": "pass",
+    "explicit_lora_targets": 26,
+    "lora_parameter_arithmetic": 1032192,
+    "history_points": 21,
+    "future_points": 10,
+    "nominal_entity_time_tokens_for_100_entities": 3100,
+    "nominal_independent_camera_tokens": 28160,
+    "software_and_gpu_runtime": "not run",
+    "server_load_and_training": "not run"
+  },
+  "files": [
+    {
+      "file": "implementation_zh.md",
+      "bytes": 29480,
+      "sha256": "303aab0bc1410ee832edd1ba668ff224d4e82ccc46b8d6058327d4eb65f9bc16"
+    },
+    {
+      "file": "initial_config.example.json",
+      "bytes": 6855,
+      "sha256": "d84faeae17b8bb5c00d8295eb0545c5b801517d035620e701d11b3f3f104972a"
+    }
+  ]
+}

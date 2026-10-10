@@ -1,0 +1,21 @@
+{
+  "purpose": "bounded synthetic interface prototype; documented example, not a training launcher",
+  "history_samples": 21,
+  "history_seconds": 10.0,
+  "tick_seconds": 0.5,
+  "future_steps": 10,
+  "rollout_samples": 8,
+  "batch_contract": "one scene per call; explicit K axis",
+  "fields": [
+    {"name": "x", "kind": "continuous_unbounded", "unit": "m", "frame": "world", "center": 0.0, "scale": 1.0, "min_std": 0.01},
+    {"name": "y", "kind": "continuous_unbounded", "unit": "m", "frame": "world", "center": 0.0, "scale": 1.0, "min_std": 0.01}
+  ],
+  "graph_width": 16,
+  "tiny_backbone_width": 24,
+  "low_rank": 2,
+  "stage1_mode": "encode_history_once_then_graph_transition_decoder",
+  "stage2": {"scratch": true, "cross_stage_parameter_tying": false, "freeze_stage1": true},
+  "hybrid": {"timing_ticks": [1,2,3,4,5,6,7,8,9], "terminal_tick": 10, "terminal_weight": 0.5, "prototype_clamp_epsilon": 1e-7, "frozen_function_exact_parity_verified": false},
+  "hf_adapter": {"enabled": false, "local_model_path": null, "caller_pinned_revision": null, "local_files_only": true, "trust_remote_code": false},
+  "prohibited_in_this_delivery": ["model_downloads", "server_launch", "GPU_training", "API_spend", "old_checkpoint_modification", "runtime_full_dataset_scans"]
+}

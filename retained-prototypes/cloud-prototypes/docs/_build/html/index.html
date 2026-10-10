@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>AeroAgentSim Documentation &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=7a812f30"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Getting Started" href="getting_started.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="getting_started.html" title="Getting Started"
+             accesskey="N">next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">AeroAgentSim Documentation</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-documentation">
+<h1>AeroAgentSim Documentation<a class="headerlink" href="#aeroagentsim-documentation" title="Permalink to this heading">¶</a></h1>
+<p>AeroAgentSim combines a discrete-event simulation core with a developer workbench for configuration editing, workflow inspection, runtime validation, and execution analysis.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#install">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#first-simulation">First Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#start-the-workbench">Start the Workbench</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#runtime-layout">Runtime Layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#browser-validation">Browser Validation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#core-patterns">Core Patterns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#d-workbench">2D Workbench</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#api-interaction-model">API Interaction Model</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/core.html">Core Framework</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/agent.html">Agent Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/component.html">Component Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/workflow.html">Workflow Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/dataprovider.html">DataProvider Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/manager.html">Manager Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/task.html">Task Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/resource.html">Resource Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/statistics.html">Statistics and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/utils.html">Utilities and Helpers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/index.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/index.html#quick-reference">Quick Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/index.html#usage-patterns">Usage Patterns</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#understanding-aeroagentsim-s-execution-model">Understanding AeroAgentSim’s Execution Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#basic-examples">Basic Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#workflow-examples">Workflow Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#data-integration-examples">Data Integration Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#advanced-examples">Advanced Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#running-examples">Running Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="guides/index.html">Developer Guides</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="guides/architecture.html">Architecture Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/agent_development.html">Agent Development Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/component_development.html">Component Development Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/workflow_development.html">Workflow Development Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/dataprovider_development.html">DataProvider Development Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/simulation_setup.html">Simulation Setup Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/performance_tuning.html">Performance Tuning Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/index.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/index.html#getting-started-with-development">Getting Started with Development</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/index.html#development-environment-setup">Development Environment Setup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to AeroAgentSim</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#code-of-conduct">Code of Conduct</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#how-to-contribute">How to Contribute</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#development-setup">Development Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#coding-standards">Coding Standards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#testing-guidelines">Testing Guidelines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#submitting-changes">Submitting Changes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#community">Community</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#questions">Questions?</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">¶</a></h2>
+<p>AeroAgentSim is organized around these developer workflows:</p>
+<ul class="simple">
+<li><p>define and inspect agents, components, tasks, and workflows</p></li>
+<li><p>build configs from builtin and custom definitions</p></li>
+<li><p>validate drafts and run preflight checks</p></li>
+<li><p>launch runs and observe structured logs plus live spatial snapshots</p></li>
+<li><p>replay trajectories and inspect stored run artifacts</p></li>
+</ul>
+<a class="reference internal image-reference" href="_images/workflow-studio-relation-graph.png"><img alt="Workflow Studio relation graph with auto layout and interactive canvas controls" src="_images/workflow-studio-relation-graph.png" style="width: 100%;" /></a>
+</section>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>aeroagentsim_env
+<span class="nb">source</span><span class="w"> </span>aeroagentsim_env/bin/activate
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="o">[</span>dev<span class="o">]</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import aeroagentsim, airfogsim; from aeroagentsim import Environment; from airfogsim import Environment as LegacyEnvironment; print(Environment.__name__, Environment is LegacyEnvironment)&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="key-docs">
+<h2>Key Docs<a class="headerlink" href="#key-docs" title="Permalink to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="getting_started.html"><span class="doc">Getting Started</span></a></p></li>
+<li><p><a class="reference internal" href="user_guide.html"><span class="doc">User Guide</span></a></p></li>
+<li><p><a class="reference internal" href="api/index.html"><span class="doc">API Reference</span></a></p></li>
+<li><p><a class="reference internal" href="examples.html"><span class="doc">Examples</span></a></p></li>
+</ul>
+</section>
+<section id="runtime-model">
+<h2>Runtime Model<a class="headerlink" href="#runtime-model" title="Permalink to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Config snapshots are stored under <code class="docutils literal notranslate"><span class="pre">runtime/aeroagentsim/configs/</span></code></p></li>
+<li><p>Each launched run receives its own <code class="docutils literal notranslate"><span class="pre">run_id</span></code></p></li>
+<li><p>Run artifacts are stored under <code class="docutils literal notranslate"><span class="pre">runtime/aeroagentsim/runs/&lt;run_id&gt;/</span></code></p></li>
+<li><p>Run start performs runtime preflight; <code class="docutils literal notranslate"><span class="pre">warning</span></code> entries remain visible and <code class="docutils literal notranslate"><span class="pre">error</span></code> entries block launch</p></li>
+<li><p>The workbench uses REST for control and WebSocket for live updates</p></li>
+<li><p>Custom <code class="docutils literal notranslate"><span class="pre">agent</span></code> / <code class="docutils literal notranslate"><span class="pre">task</span></code> / <code class="docutils literal notranslate"><span class="pre">workflow</span></code> definitions are file-backed under <code class="docutils literal notranslate"><span class="pre">registry/aeroagentsim/</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="#">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">AeroAgentSim Documentation</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li><a class="reference internal" href="#key-docs">Key Docs</a></li>
+<li><a class="reference internal" href="#runtime-model">Runtime Model</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="getting_started.html"
+                          title="next chapter">Getting Started</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="getting_started.html" title="Getting Started"
+             >next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">AeroAgentSim Documentation</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

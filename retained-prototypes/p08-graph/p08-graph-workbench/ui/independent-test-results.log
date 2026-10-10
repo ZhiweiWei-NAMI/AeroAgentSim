@@ -1,0 +1,27 @@
+✔ anti-parallel edges use distinct visible/hit-test strokes (1.925796ms)
+✔ same-direction parallel edges use separate strokes without dropping IDs (0.806533ms)
+{"benchmark":"model_only_no_render","source_nodes":20000,"source_edges":64000,"visible_nodes":600,"visible_edges":132,"elapsed_ms":120.3}
+✔ parallel edge occurrences and self-loops survive indexing without endpoint dedup (1.570922ms)
+✔ edge payload, direction, relation and role survive scene projection exactly (0.307743ms)
+✔ filtering away middle nodes does not synthesize shortcut edges (0.785622ms)
+✔ bounded preview reports total matching nodes and exact omitted edge counts (0.357768ms)
+✔ scene retains selected focus outside filter and makes override explicit (0.185199ms)
+✔ every source node kind and edge relation is cataloged even outside visible cap (2.437866ms)
+✔ unknown, missing, null and false values are retained distinctly (0.372491ms)
+✔ shared canonical nodes do not import another case edge into selected case (0.393101ms)
+✔ same canonical ID cannot silently mask differing semantic level or identity (0.363917ms)
+✔ dangling endpoints are diagnosed without creating entity nodes (0.308874ms)
+✔ large multi-kind graph indexing and bounded projections are finite (149.499602ms)
+✔ actual data: counts, global coverage, raw unknown/AST inspection and exact edge drilldown (358.67008ms)
+✔ actual global index result loads exact other case and keeps inspected original payload (232.251132ms)
+✔ newer navigation wins if older request resolves after abort (18.07149ms)
+✔ cancelled load keeps last complete graph and can retry (14.210844ms)
+✔ failed case load is surfaced and never replaces current graph with partial data (13.246604ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1141.516354

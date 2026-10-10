@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.component.object_sensor &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.object_sensor</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.component.object_sensor</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim 物理对象感知组件模块</span>
+
+<span class="sd">该模块实现了一个持续运行的物理环境感知组件。该组件利用 AirspaceManager 获取周围对象的&quot;真实&quot;信息，</span>
+<span class="sd">然后在组件内部模拟传感器的不确定性（如位置误差、分类错误），最终将带有模拟误差的&quot;感知到的&quot;对象信息</span>
+<span class="sd">更新到 Agent 的状态中。</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.component</span> <span class="kn">import</span> <span class="n">Component</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ObjectSensorComponent"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.object_sensor.ObjectSensorComponent">[docs]</a><span class="k">class</span> <span class="nc">ObjectSensorComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    物理对象感知组件，持续感知周围环境中的物理对象。</span>
+
+<span class="sd">    该组件利用 AirspaceManager 获取周围对象的&quot;真实&quot;信息，然后模拟传感器的不确定性</span>
+<span class="sd">    （如位置误差、分类错误），最终将带有模拟误差的&quot;感知到的&quot;对象信息更新到 Agent 的状态中。</span>
+
+<span class="sd">    性能指标：</span>
+<span class="sd">    - sensor_accuracy_position: 传感器位置精度指标（误差标准差）</span>
+<span class="sd">    - sensor_accuracy_classification: 传感器分类精度指标（错误率）</span>
+<span class="sd">    - sensor_power_consumption: 传感器基础功耗</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sensor_accuracy_position&#39;</span><span class="p">,</span> <span class="s1">&#39;sensor_accuracy_classification&#39;</span><span class="p">,</span> <span class="s1">&#39;sensor_power_consumption&#39;</span><span class="p">]</span>
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="ObjectSensorComponent.__init__"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.object_sensor.ObjectSensorComponent.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">supported_events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;object_detected&#39;</span><span class="p">,</span> <span class="s1">&#39;object_lost&#39;</span><span class="p">],</span>
+                 <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化物理对象感知组件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 所属代理</span>
+<span class="sd">            name: 组件名称</span>
+<span class="sd">            supported_events: 支持的额外事件</span>
+<span class="sd">            properties: 组件属性，包含传感器配置参数</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;ObjectSensor&quot;</span><span class="p">,</span> <span class="n">supported_events</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+        <span class="c1"># 存储配置属性</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensing_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;range&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>  <span class="c1"># 最大感知距离</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensing_interval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensing_interval&#39;</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>  <span class="c1"># 感知更新周期</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_consumption</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;power_consumption&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># 基础功耗</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position_accuracy_stddev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;position_accuracy_stddev&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># 位置测量误差的标准差</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classification_error_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;classification_error_rate&#39;</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>  <span class="c1"># 对象类型识别错误率</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detection_probability</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;detection_probability&#39;</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">)</span>  <span class="c1"># 探测到范围内对象的概率</span>
+
+        <span class="c1"># 电池消耗相关属性</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;energy_factor&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># 能量消耗因子</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_energy_consumption</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;base_energy_consumption&#39;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># 基础能量消耗率（每秒消耗电池百分比）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">object_detection_energy_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_detection_energy_factor&#39;</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)</span>  <span class="c1"># 每检测到一个对象的额外能量消耗</span>
+
+        <span class="c1"># 初始化内部状态变量</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_detected_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># 上次检测到的对象ID集合</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># 持续感知进程</span>
+
+        <span class="c1"># 启动后台感知进程</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_persistent_object_sensing</span><span class="p">())</span>
+
+        <span class="c1"># 更新组件性能指标</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;sensor_accuracy_position&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_accuracy_stddev</span><span class="p">,</span>
+            <span class="s1">&#39;sensor_accuracy_classification&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">classification_error_rate</span><span class="p">,</span>
+            <span class="s1">&#39;sensor_power_consumption&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_consumption</span>
+        <span class="p">})</span></div>
+
+    <span class="k">def</span> <span class="nf">_persistent_object_sensing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        持续对象感知的后台进程</span>
+
+<span class="sd">        该进程周期性地模拟感知过程并更新Agent状态</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="c1"># 等待一个感知周期</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensing_interval</span><span class="p">)</span>
+
+                <span class="c1"># 检查组件和Agent状态是否正常</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;error&#39;</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># 获取自身位置</span>
+                <span class="n">my_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">my_position</span><span class="p">:</span>
+                    <span class="k">continue</span>  <span class="c1"># 如果位置未知，跳过本次感知</span>
+
+                <span class="c1"># 获取真实对象信息</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># 调用AirspaceManager获取周围对象的真实信息</span>
+                    <span class="n">nearby_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_nearby_objects</span><span class="p">(</span>
+                        <span class="n">position</span><span class="o">=</span><span class="n">my_position</span><span class="p">,</span>
+                        <span class="n">radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sensing_range</span>
+                    <span class="p">)</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件无法获取周围对象: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># 模拟感知过程和不准确性</span>
+                <span class="n">perceived_objects_list</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">current_perceived_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+                <span class="c1"># nearby_objects 是一个字典，键是对象ID，值是位置坐标 (x, y, z)</span>
+                <span class="k">for</span> <span class="n">obj_id</span><span class="p">,</span> <span class="n">obj_pos</span> <span class="ow">in</span> <span class="n">nearby_objects</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="c1"># 过滤掉自身</span>
+                    <span class="k">if</span> <span class="n">obj_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="c1"># 模拟漏检</span>
+                    <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">detection_probability</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="c1"># 获取对象的真实信息</span>
+                    <span class="n">true_id</span> <span class="o">=</span> <span class="n">obj_id</span>
+                    <span class="n">true_pos</span> <span class="o">=</span> <span class="n">obj_pos</span>
+                    <span class="n">true_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_object_type_from_id</span><span class="p">(</span><span class="n">true_id</span><span class="p">)</span>
+
+                    <span class="c1"># 模拟位置误差</span>
+                    <span class="n">perceived_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_position_error</span><span class="p">(</span><span class="n">true_pos</span><span class="p">)</span>
+
+                    <span class="c1"># 模拟分类误差</span>
+                    <span class="n">perceived_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_classification_error</span><span class="p">(</span><span class="n">true_type</span><span class="p">)</span>
+
+                    <span class="c1"># 提取对象信息</span>
+                    <span class="n">object_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_object_info</span><span class="p">(</span><span class="n">true_id</span><span class="p">,</span> <span class="n">perceived_pos</span><span class="p">,</span> <span class="n">perceived_type</span><span class="p">,</span> <span class="n">my_position</span><span class="p">)</span>
+
+                    <span class="c1"># 添加到感知对象列表</span>
+                    <span class="n">perceived_objects_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">object_info</span><span class="p">)</span>
+                    <span class="n">current_perceived_ids</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">true_id</span><span class="p">)</span>
+
+                <span class="c1"># 更新Agent状态</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;nearby_objects&#39;</span><span class="p">,</span> <span class="n">perceived_objects_list</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;last_object_scan_time&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+
+                <span class="c1"># 计算并更新电池消耗</span>
+                <span class="n">detected_objects_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">perceived_objects_list</span><span class="p">)</span>
+                <span class="n">energy_consumed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sensing_energy_consumption</span><span class="p">(</span><span class="n">detected_objects_count</span><span class="p">)</span>
+
+                <span class="c1"># 获取当前电池电量</span>
+                <span class="n">battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+
+                <span class="c1"># 更新电池电量</span>
+                <span class="n">new_battery_level</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">battery_level</span> <span class="o">-</span> <span class="n">energy_consumed</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="n">new_battery_level</span><span class="p">)</span>
+
+                <span class="c1"># 如果电量过低，打印警告</span>
+                <span class="k">if</span> <span class="n">new_battery_level</span> <span class="o">&lt;</span> <span class="mi">20</span> <span class="ow">and</span> <span class="n">battery_level</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 警告! </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 感知中电量低于20%: </span><span class="si">{</span><span class="n">new_battery_level</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">new_battery_level</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="n">battery_level</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 严重警告! </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 感知中电量极低: </span><span class="si">{</span><span class="n">new_battery_level</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">new_battery_level</span> <span class="o">&lt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 严重警告! </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 感知中电量耗尽!&quot;</span><span class="p">)</span>
+                    <span class="c1"># 电量耗尽，将组件设置为错误状态</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;error&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件因电量耗尽被设置为错误状态&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># 触发事件</span>
+                <span class="c1"># 新检测到的对象</span>
+                <span class="k">for</span> <span class="n">obj_id</span> <span class="ow">in</span> <span class="n">current_perceived_ids</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_detected_ids</span><span class="p">:</span>
+                    <span class="n">obj_info</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">obj</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">perceived_objects_list</span> <span class="k">if</span> <span class="n">obj</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">obj_id</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">obj_info</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;object_detected&#39;</span><span class="p">,</span> <span class="n">obj_info</span><span class="p">)</span>
+
+                <span class="c1"># 丢失的对象</span>
+                <span class="k">for</span> <span class="n">obj_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_detected_ids</span> <span class="o">-</span> <span class="n">current_perceived_ids</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;object_lost&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">obj_id</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">})</span>
+
+                <span class="c1"># 更新上次检测到的对象ID集合</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_last_detected_ids</span> <span class="o">=</span> <span class="n">current_perceived_ids</span>
+
+        <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span><span class="p">:</span>
+            <span class="c1"># 进程被中断，不需要特殊处理</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_get_object_type_from_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        从对象ID推断对象类型</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            obj_id: 对象ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: 对象类型</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 尝试从ID前缀推断类型</span>
+        <span class="k">if</span> <span class="n">obj_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;agent_drone&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;drone&#39;</span>
+        <span class="k">elif</span> <span class="n">obj_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;agent_terminal&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;terminal&#39;</span>
+        <span class="k">elif</span> <span class="n">obj_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;agent_delivery&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;delivery&#39;</span>
+        <span class="k">elif</span> <span class="n">obj_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;agent_inspection&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;inspection&#39;</span>
+        <span class="k">elif</span> <span class="n">obj_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;agent_sensing&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;sensing_agent&#39;</span>
+        <span class="k">elif</span> <span class="n">obj_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;agent_&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;agent&#39;</span>
+        <span class="k">elif</span> <span class="n">obj_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;landing_&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;landing&#39;</span>
+        <span class="k">elif</span> <span class="n">obj_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;obstacle_&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;obstacle&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;unknown&#39;</span>
+
+    <span class="k">def</span> <span class="nf">_add_position_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_pos</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        为真实位置添加随机误差</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            true_pos: 真实位置坐标 (x, y, z)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[float, float, float]: 感知到的位置坐标</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">true_pos</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">true_pos</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">true_pos</span>
+
+        <span class="c1"># 为每个坐标添加随机误差</span>
+        <span class="n">x_error</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_accuracy_stddev</span><span class="p">)</span>
+        <span class="n">y_error</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_accuracy_stddev</span><span class="p">)</span>
+        <span class="n">z_error</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_accuracy_stddev</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">true_pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">x_error</span><span class="p">,</span>
+            <span class="n">true_pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">y_error</span><span class="p">,</span>
+            <span class="n">true_pos</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">z_error</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_apply_classification_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        应用分类误差</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            true_type: 真实对象类型</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: 感知到的对象类型</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 如果随机值小于错误率，则发生分类错误</span>
+        <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">classification_error_rate</span><span class="p">:</span>
+            <span class="c1"># 可能的对象类型列表</span>
+            <span class="n">possible_types</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;drone&#39;</span><span class="p">,</span> <span class="s1">&#39;terminal&#39;</span><span class="p">,</span> <span class="s1">&#39;delivery&#39;</span><span class="p">,</span> <span class="s1">&#39;inspection&#39;</span><span class="p">,</span> <span class="s1">&#39;agent&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">]</span>
+
+            <span class="c1"># 从可能的类型中随机选择一个，但不能是真实类型</span>
+            <span class="n">possible_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">possible_types</span> <span class="k">if</span> <span class="n">t</span> <span class="o">!=</span> <span class="n">true_type</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">possible_types</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">possible_types</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s1">&#39;unknown&#39;</span>
+
+        <span class="c1"># 没有发生分类错误，返回真实类型</span>
+        <span class="k">return</span> <span class="n">true_type</span>
+
+    <span class="k">def</span> <span class="nf">_extract_object_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">perceived_pos</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+                            <span class="n">perceived_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">my_position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        提取对象信息</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            obj_id: 对象ID</span>
+<span class="sd">            perceived_pos: 感知到的位置</span>
+<span class="sd">            perceived_type: 感知到的类型</span>
+<span class="sd">            my_position: 自身位置</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict: 包含感知到的对象信息的字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 计算相对位置</span>
+        <span class="n">relative_pos</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">perceived_pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">my_position</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">perceived_pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">my_position</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">perceived_pos</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">my_position</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 计算距离</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="p">(</span><span class="n">relative_pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">relative_pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">relative_pos</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+
+        <span class="c1"># 返回对象信息字典</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">obj_id</span><span class="p">,</span>
+            <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">perceived_type</span><span class="p">,</span>
+            <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="n">perceived_pos</span><span class="p">,</span>
+            <span class="s1">&#39;relative_position&#39;</span><span class="p">:</span> <span class="n">relative_pos</span><span class="p">,</span>
+            <span class="s1">&#39;distance&#39;</span><span class="p">:</span> <span class="n">distance</span><span class="p">,</span>
+            <span class="s1">&#39;detection_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_sensing_energy_consumption</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">detected_objects_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算感知过程的能量消耗</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            detected_objects_count: 检测到的对象数量</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: 感知过程消耗的电池电量百分比</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 基础能量消耗</span>
+        <span class="n">energy_consumed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_energy_consumption</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span>
+
+        <span class="c1"># 根据检测到的对象数量增加能量消耗</span>
+        <span class="n">energy_consumed</span> <span class="o">+=</span> <span class="n">detected_objects_count</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">object_detection_energy_factor</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span>
+
+        <span class="c1"># 根据感知范围调整能量消耗（范围越大，消耗越多）</span>
+        <span class="n">range_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_range</span> <span class="o">/</span> <span class="mf">100.0</span>  <span class="c1"># 标准化为100米范围</span>
+        <span class="n">energy_consumed</span> <span class="o">*=</span> <span class="n">range_factor</span>
+
+        <span class="c1"># 获取电池电量，低电量时降低能耗以延长电池寿命</span>
+        <span class="n">battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mf">20.0</span><span class="p">:</span>
+            <span class="n">energy_consumed</span> <span class="o">*=</span> <span class="mf">0.8</span>  <span class="c1"># 低电量时降低20%能耗</span>
+        <span class="k">if</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mf">10.0</span><span class="p">:</span>
+            <span class="n">energy_consumed</span> <span class="o">*=</span> <span class="mf">0.6</span>  <span class="c1"># 极低电量时降低40%能耗</span>
+
+        <span class="k">return</span> <span class="n">energy_consumed</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算基于当前代理状态的性能指标</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, Any]: 性能指标字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 获取当前电池电量</span>
+        <span class="n">battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+
+        <span class="c1"># 根据电池电量调整功耗</span>
+        <span class="n">adjusted_power_consumption</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_consumption</span>
+        <span class="k">if</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mf">20.0</span><span class="p">:</span>
+            <span class="n">adjusted_power_consumption</span> <span class="o">*=</span> <span class="mf">0.8</span>  <span class="c1"># 低电量时降低功耗</span>
+        <span class="k">if</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mf">10.0</span><span class="p">:</span>
+            <span class="n">adjusted_power_consumption</span> <span class="o">*=</span> <span class="mf">0.6</span>  <span class="c1"># 极低电量时进一步降低功耗</span>
+
+        <span class="c1"># 返回性能指标</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;sensor_accuracy_position&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_accuracy_stddev</span><span class="p">,</span>
+            <span class="s1">&#39;sensor_accuracy_classification&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">classification_error_rate</span><span class="p">,</span>
+            <span class="s1">&#39;sensor_power_consumption&#39;</span><span class="p">:</span> <span class="n">adjusted_power_consumption</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="ObjectSensorComponent.disable"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.object_sensor.ObjectSensorComponent.disable">[docs]</a>    <span class="k">def</span> <span class="nf">disable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        禁用组件，将其设置为错误状态并取消所有正在执行的任务</span>
+<span class="sd">        同时停止持续感知进程</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 调用父类的disable方法</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">disable</span><span class="p">()</span>
+
+        <span class="c1"># 停止持续感知进程</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span><span class="o">.</span><span class="n">interrupt</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件被禁用，停止持续感知进程&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ObjectSensorComponent.enable"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.object_sensor.ObjectSensorComponent.enable">[docs]</a>    <span class="k">def</span> <span class="nf">enable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        启用组件，将其从错误状态恢复</span>
+<span class="sd">        重新启动持续感知进程</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 调用父类的enable方法</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">enable</span><span class="p">()</span>
+
+        <span class="c1"># 重新启动持续感知进程</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_persistent_object_sensing</span><span class="p">())</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件被启用，重新启动持续感知进程&quot;</span><span class="p">)</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.object_sensor</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

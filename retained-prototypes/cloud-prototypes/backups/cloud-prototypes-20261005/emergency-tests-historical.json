@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "assertions": 4244,
+  "dom_errors": [],
+  "canonical_config_digest": "77cabf7ac2da1a379ae8b0c9bec392a3851d3e7101303a12bcdf4611252e858a",
+  "canonical_graph_digest": "aaa7bb39fc22828e82c0fb76fea3607885c5bf7441efcbe4d9ee99d76382e055",
+  "canonical_nodes": 213,
+  "canonical_edges": 1146,
+  "total_nodes": 323,
+  "total_edges": 1256,
+  "scope": "Canonical identity+roundtrip fixture output+3D/flat DOM interactions. Not actual browser rendering, native semantics or real physical execution."
+}

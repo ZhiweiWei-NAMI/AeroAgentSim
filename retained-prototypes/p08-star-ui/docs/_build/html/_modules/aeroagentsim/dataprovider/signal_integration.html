@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.dataprovider.signal_integration &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.signal_integration</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.dataprovider.signal_integration</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim 信号数据集成模块</span>
+
+<span class="sd">该模块实现了信号数据集成，用于加载外部信号源定义并注册到信号数据提供者。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 从配置文件加载信号源定义</span>
+<span class="sd">2. 将信号源注册到信号数据提供者</span>
+<span class="sd">3. 管理信号源的激活和停用</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Callable</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.dataprovider</span> <span class="kn">import</span> <span class="n">DataIntegration</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.dataprovider.signal</span> <span class="kn">import</span> <span class="n">SignalDataProvider</span><span class="p">,</span> <span class="n">SignalSource</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">calculate_link_quality</span><span class="p">(</span><span class="n">link_context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">env</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    计算链路质量指标，包括SINR、接收功率和干扰功率</span>
+
+<span class="sd">    该函数作为FrequencyManager的链路质量计算器Hook函数，用于计算链路质量指标。</span>
+<span class="sd">    它使用SignalDataProvider提供的信号传播和干扰计算功能，但不直接依赖于SignalDataProvider的内部实现。</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        link_context: 链路上下文，包含以下字段:</span>
+<span class="sd">            - source_id: 源代理ID</span>
+<span class="sd">            - target_id: 目标代理ID</span>
+<span class="sd">            - source_position: 源代理位置 (x, y, z)</span>
+<span class="sd">            - target_position: 目标代理位置 (x, y, z)</span>
+<span class="sd">            - transmit_power_dbm: 发射功率 (dBm)</span>
+<span class="sd">            - center_frequency: 中心频率 (MHz)</span>
+<span class="sd">            - bandwidth: 带宽 (MHz)</span>
+<span class="sd">            - resource_id: 资源ID</span>
+<span class="sd">        env: 仿真环境</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        包含链路质量指标的字典，包括:</span>
+<span class="sd">            - received_power_dbm: 接收功率 (dBm)</span>
+<span class="sd">            - interference_dbm: 干扰功率 (dBm)</span>
+<span class="sd">            - noise_dbm: 噪声功率 (dBm)</span>
+<span class="sd">            - sinr: 信噪干扰比 (dB)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># 获取SignalDataProvider</span>
+    <span class="n">signal_provider</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;signal_data_provider&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">signal_provider</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No SignalDataProvider found in environment. Using default values.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># 提取链路上下文信息</span>
+    <span class="n">source_id</span> <span class="o">=</span> <span class="n">link_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_id&#39;</span><span class="p">)</span>
+    <span class="n">target_id</span> <span class="o">=</span> <span class="n">link_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_id&#39;</span><span class="p">)</span>
+    <span class="n">source_position</span> <span class="o">=</span> <span class="n">link_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_position&#39;</span><span class="p">)</span>
+    <span class="n">target_position</span> <span class="o">=</span> <span class="n">link_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_position&#39;</span><span class="p">)</span>
+    <span class="n">transmit_power_dbm</span> <span class="o">=</span> <span class="n">link_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transmit_power_dbm&#39;</span><span class="p">)</span>
+    <span class="n">center_frequency</span> <span class="o">=</span> <span class="n">link_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;center_frequency&#39;</span><span class="p">)</span>
+    <span class="n">bandwidth</span> <span class="o">=</span> <span class="n">link_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;bandwidth&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 创建临时信号源</span>
+    <span class="n">temp_source</span> <span class="o">=</span> <span class="n">SignalSource</span><span class="p">(</span>
+        <span class="n">source_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;temp_</span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">position</span><span class="o">=</span><span class="n">source_position</span><span class="p">,</span>
+        <span class="n">transmit_power_dbm</span><span class="o">=</span><span class="n">transmit_power_dbm</span><span class="p">,</span>
+        <span class="n">center_frequency</span><span class="o">=</span><span class="n">center_frequency</span><span class="p">,</span>
+        <span class="n">bandwidth</span><span class="o">=</span><span class="n">bandwidth</span><span class="p">,</span>
+        <span class="n">signal_type</span><span class="o">=</span><span class="s1">&#39;communication&#39;</span><span class="p">,</span>
+        <span class="n">target_id</span><span class="o">=</span><span class="n">target_id</span>
+    <span class="p">)</span>
+
+    <span class="c1"># 计算接收功率</span>
+    <span class="n">rx_power_dbm</span> <span class="o">=</span> <span class="n">signal_provider</span><span class="o">.</span><span class="n">_calculate_received_power</span><span class="p">(</span><span class="n">temp_source</span><span class="p">,</span> <span class="n">target_position</span><span class="p">)</span>
+
+    <span class="c1"># 获取干扰信号</span>
+    <span class="n">interference_signals</span> <span class="o">=</span> <span class="n">signal_provider</span><span class="o">.</span><span class="n">get_detectable_signals_at_location</span><span class="p">(</span>
+        <span class="n">sensor_location</span><span class="o">=</span><span class="n">target_position</span><span class="p">,</span>
+        <span class="n">frequency_bands_of_interest</span><span class="o">=</span><span class="p">[(</span><span class="n">center_frequency</span> <span class="o">-</span> <span class="n">bandwidth</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">center_frequency</span> <span class="o">+</span> <span class="n">bandwidth</span><span class="o">/</span><span class="mi">2</span><span class="p">)],</span>
+        <span class="n">sensor_sensitivity_threshold</span><span class="o">=-</span><span class="mf">120.0</span>  <span class="c1"># 非常低的阈值</span>
+    <span class="p">)</span>
+
+    <span class="c1"># 计算干扰功率（排除目标信号）</span>
+    <span class="n">interference_power_mw</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">signal</span> <span class="ow">in</span> <span class="n">interference_signals</span><span class="p">:</span>
+        <span class="c1"># 排除目标信号</span>
+        <span class="k">if</span> <span class="n">signal</span><span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="sa">f</span><span class="s2">&quot;temp_</span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&quot;</span> <span class="ow">and</span> <span class="n">signal</span><span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">source_id</span><span class="p">:</span>
+            <span class="c1"># 将dBm转换为mW</span>
+            <span class="n">interference_power_mw</span> <span class="o">+=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">signal</span><span class="p">[</span><span class="s1">&#39;received_power&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">10</span><span class="p">)</span>
+
+    <span class="c1"># 计算干扰功率(dBm)</span>
+    <span class="n">interference_dbm</span> <span class="o">=</span> <span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">interference_power_mw</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">interference_dbm</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">interference_power_mw</span><span class="p">)</span>
+
+    <span class="c1"># 获取噪声功率</span>
+    <span class="n">noise_dbm</span> <span class="o">=</span> <span class="n">signal_provider</span><span class="o">.</span><span class="n">default_noise_floor</span>
+    <span class="n">noise_mw</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">noise_dbm</span> <span class="o">/</span> <span class="mi">10</span><span class="p">)</span>
+
+    <span class="c1"># 计算SINR</span>
+    <span class="k">if</span> <span class="n">interference_power_mw</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># 干扰加噪声功率 (线性域相加)</span>
+        <span class="n">interference_noise_mw</span> <span class="o">=</span> <span class="n">interference_power_mw</span> <span class="o">+</span> <span class="n">noise_mw</span>
+        <span class="n">interference_noise_dbm</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">interference_noise_mw</span><span class="p">)</span>
+        <span class="n">sinr</span> <span class="o">=</span> <span class="n">rx_power_dbm</span> <span class="o">-</span> <span class="n">interference_noise_dbm</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># 无干扰，仅考虑噪声</span>
+        <span class="n">sinr</span> <span class="o">=</span> <span class="n">rx_power_dbm</span> <span class="o">-</span> <span class="n">noise_dbm</span>
+
+    <span class="c1"># 返回链路质量指标</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s1">&#39;received_power_dbm&#39;</span><span class="p">:</span> <span class="n">rx_power_dbm</span><span class="p">,</span>
+        <span class="s1">&#39;interference_dbm&#39;</span><span class="p">:</span> <span class="n">interference_dbm</span><span class="p">,</span>
+        <span class="s1">&#39;noise_dbm&#39;</span><span class="p">:</span> <span class="n">noise_dbm</span><span class="p">,</span>
+        <span class="s1">&#39;sinr&#39;</span><span class="p">:</span> <span class="n">sinr</span>
+    <span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">register_link_quality_calculator</span><span class="p">(</span><span class="n">env</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    注册链路质量计算函数到频率管理器</span>
+
+<span class="sd">    这是一个便捷函数，用于将链路质量计算函数注册到频率管理器。</span>
+<span class="sd">    它可以在不创建SignalIntegration实例的情况下使用。</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: 是否成功注册</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># 获取频率管理器</span>
+    <span class="n">frequency_manager</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;frequency_manager&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">frequency_manager</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No FrequencyManager found in environment. Cannot register link quality calculator.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="c1"># 注册链路质量计算函数</span>
+    <span class="n">frequency_manager</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;link_quality_calculator&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">calculate_link_quality</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">frequency_manager</span><span class="p">,</span> <span class="s1">&#39;link_quality_calculator&#39;</span><span class="p">):</span>
+        <span class="n">frequency_manager</span><span class="o">.</span><span class="n">link_quality_calculator</span> <span class="o">=</span> <span class="n">calculate_link_quality</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Registered link quality calculator with FrequencyManager&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="ExternalSignalSourceIntegration"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal_integration.ExternalSignalSourceIntegration">[docs]</a><span class="k">class</span> <span class="nc">ExternalSignalSourceIntegration</span><span class="p">(</span><span class="n">DataIntegration</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    外部信号源集成，用于加载外部信号源定义并注册到信号数据提供者</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ExternalSignalSourceIntegration.__init__"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal_integration.ExternalSignalSourceIntegration.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化外部信号源集成</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            config: 配置字典，可能包含以下字段:</span>
+<span class="sd">                - sources_file: 信号源定义文件路径</span>
+<span class="sd">                - sources: 直接定义的信号源列表</span>
+<span class="sd">                - auto_load: 是否自动加载信号源 (默认为True)</span>
+<span class="sd">                - signal_provider_id: 信号数据提供者ID (默认为&#39;signal_data_provider&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 合并默认配置和用户配置</span>
+        <span class="n">default_config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;sources_file&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;sources&#39;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s1">&#39;auto_load&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;signal_provider_id&#39;</span><span class="p">:</span> <span class="s1">&#39;signal_data_provider&#39;</span>
+        <span class="p">}</span>
+
+        <span class="c1"># 如果config为None，使用空字典</span>
+        <span class="n">user_config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="c1"># 合并配置</span>
+        <span class="n">merged_config</span> <span class="o">=</span> <span class="n">default_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">merged_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">user_config</span><span class="p">)</span>
+
+        <span class="c1"># 设置signal_provider_id，这样_initialize_provider可以使用它</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider_id</span> <span class="o">=</span> <span class="n">merged_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;signal_provider_id&#39;</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">merged_config</span><span class="p">)</span>
+
+        <span class="c1"># 信号源定义</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sources_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sources_file&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sources</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sources&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_load</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;auto_load&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># 已加载的信号源</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loaded_sources</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 信号源激活/停用触发器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activation_triggers</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 如果配置了自动加载，则立即加载信号源</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_load</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_signal_sources</span><span class="p">()</span>
+
+        <span class="c1"># 如果配置了与频率管理器集成，则注册链路质量计算函数</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;integrate_with_frequency_manager&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">integrate_with_frequency_manager</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_initialize_provider</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化信号数据提供者</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 检查环境中是否已有信号数据提供者</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider_id</span><span class="p">):</span>
+            <span class="c1"># 创建信号数据提供者</span>
+            <span class="n">signal_provider</span> <span class="o">=</span> <span class="n">SignalDataProvider</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;provider_config&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+
+            <span class="c1"># 注册到环境</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider_id</span><span class="p">,</span> <span class="n">signal_provider</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created SignalDataProvider with ID: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">signal_provider_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 获取信号数据提供者引用</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider_id</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_register_event_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册事件监听器</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 订阅信号源事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="n">SignalDataProvider</span><span class="o">.</span><span class="n">EVENT_SIGNAL_SOURCE_ADDED</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">_source_added_handler&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_on_signal_source_added</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="n">SignalDataProvider</span><span class="o">.</span><span class="n">EVENT_SIGNAL_SOURCE_REMOVED</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">_source_removed_handler&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_on_signal_source_removed</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_on_signal_source_added</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理信号源添加事件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event_data: 事件数据</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_id&#39;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal source added: </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_on_signal_source_removed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理信号源移除事件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event_data: 事件数据</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_id&#39;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal source removed: </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 如果有对应的激活触发器，也移除它</span>
+        <span class="k">if</span> <span class="n">source_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">activation_triggers</span><span class="p">:</span>
+            <span class="n">trigger</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">activation_triggers</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">source_id</span><span class="p">)</span>
+            <span class="n">trigger</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Removed activation trigger for source: </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExternalSignalSourceIntegration.load_signal_sources"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal_integration.ExternalSignalSourceIntegration.load_signal_sources">[docs]</a>    <span class="k">def</span> <span class="nf">load_signal_sources</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        加载信号源定义</span>
+
+<span class="sd">        从配置文件和直接定义的信号源列表加载信号源。</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 从文件加载</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources_file</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_load_sources_from_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sources_file</span><span class="p">)</span>
+
+        <span class="c1"># 从配置加载</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_load_sources_from_config</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_load_sources_from_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        从文件加载信号源定义</span>
+
+<span class="sd">        支持JSON和YAML格式。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file_path: 文件路径</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signal sources file not found: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 根据文件扩展名选择解析器</span>
+            <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">file_path</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;.json&#39;</span><span class="p">]:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">sources_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;.yml&#39;</span><span class="p">]:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">sources_data</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported file format: </span><span class="si">{</span><span class="n">ext</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="c1"># 加载信号源</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_load_sources_from_config</span><span class="p">(</span><span class="n">sources_data</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded signal sources from file: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error loading signal sources from file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_load_sources_from_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sources_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        从配置加载信号源定义</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sources_data: 信号源定义列表或字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 确保sources_data是列表</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sources_data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">sources_list</span> <span class="o">=</span> <span class="n">sources_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sources&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sources_list</span> <span class="o">=</span> <span class="n">sources_data</span>
+
+        <span class="c1"># 遍历信号源定义</span>
+        <span class="k">for</span> <span class="n">source_def</span> <span class="ow">in</span> <span class="n">sources_list</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># 创建信号源</span>
+                <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_signal_source</span><span class="p">(</span><span class="n">source_def</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">source</span><span class="p">:</span>
+                    <span class="c1"># 注册到信号数据提供者</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="o">.</span><span class="n">add_signal_source</span><span class="p">(</span><span class="n">source</span><span class="p">):</span>
+                        <span class="c1"># 记录已加载的信号源</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">loaded_sources</span><span class="p">[</span><span class="n">source</span><span class="o">.</span><span class="n">source_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">source</span>
+
+                        <span class="c1"># 如果定义了激活时间，创建激活触发器</span>
+                        <span class="k">if</span> <span class="s1">&#39;activation_time&#39;</span> <span class="ow">in</span> <span class="n">source_def</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_create_activation_trigger</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span> <span class="n">source_def</span><span class="p">)</span>
+
+                        <span class="c1"># 如果定义了停用时间，创建停用触发器</span>
+                        <span class="k">if</span> <span class="s1">&#39;deactivation_time&#39;</span> <span class="ow">in</span> <span class="n">source_def</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_create_deactivation_trigger</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span> <span class="n">source_def</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error creating signal source: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loaded_sources</span><span class="p">)</span><span class="si">}</span><span class="s2"> signal sources from config&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_create_signal_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_def</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        从定义创建信号源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_def: 信号源定义字典</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            SignalSource or None: 创建的信号源，如果创建失败则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 检查必要字段</span>
+        <span class="n">required_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">,</span> <span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="s1">&#39;transmit_power_dbm&#39;</span><span class="p">,</span> <span class="s1">&#39;center_frequency&#39;</span><span class="p">,</span> <span class="s1">&#39;bandwidth&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">required_fields</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">source_def</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required field &#39;</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">&#39; in signal source definition&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># 创建信号源</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">SignalSource</span><span class="p">(</span>
+                <span class="n">source_id</span><span class="o">=</span><span class="n">source_def</span><span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">],</span>
+                <span class="n">position</span><span class="o">=</span><span class="n">source_def</span><span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">],</span>
+                <span class="n">transmit_power_dbm</span><span class="o">=</span><span class="n">source_def</span><span class="p">[</span><span class="s1">&#39;transmit_power_dbm&#39;</span><span class="p">],</span>
+                <span class="n">center_frequency</span><span class="o">=</span><span class="n">source_def</span><span class="p">[</span><span class="s1">&#39;center_frequency&#39;</span><span class="p">],</span>
+                <span class="n">bandwidth</span><span class="o">=</span><span class="n">source_def</span><span class="p">[</span><span class="s1">&#39;bandwidth&#39;</span><span class="p">],</span>
+                <span class="n">signal_type</span><span class="o">=</span><span class="n">source_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;signal_type&#39;</span><span class="p">,</span> <span class="s1">&#39;communication&#39;</span><span class="p">),</span>
+                <span class="n">is_active</span><span class="o">=</span><span class="n">source_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_active&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+                <span class="n">modulation</span><span class="o">=</span><span class="n">source_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;modulation&#39;</span><span class="p">),</span>
+                <span class="n">polarization</span><span class="o">=</span><span class="n">source_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;polarization&#39;</span><span class="p">),</span>
+                <span class="n">antenna_gain</span><span class="o">=</span><span class="n">source_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;antenna_gain&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="n">antenna_pattern</span><span class="o">=</span><span class="n">source_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;antenna_pattern&#39;</span><span class="p">),</span>
+                <span class="n">target_id</span><span class="o">=</span><span class="n">source_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_id&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">source</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error creating signal source: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_create_activation_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">source_def</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建信号源激活触发器</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 信号源ID</span>
+<span class="sd">            source_def: 信号源定义</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">activation_time</span> <span class="o">=</span> <span class="n">source_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;activation_time&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">activation_time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 创建时间触发器</span>
+        <span class="n">trigger_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;activate_</span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">trigger</span> <span class="o">=</span> <span class="n">TimeTrigger</span><span class="p">(</span>
+            <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
+            <span class="n">trigger_id</span><span class="o">=</span><span class="n">trigger_id</span><span class="p">,</span>
+            <span class="n">activation_time</span><span class="o">=</span><span class="n">activation_time</span><span class="p">,</span>
+            <span class="n">callback</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_activate_signal_source</span><span class="p">(</span><span class="n">source_id</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 激活触发器</span>
+        <span class="n">trigger</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+
+        <span class="c1"># 记录触发器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activation_triggers</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">trigger</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created activation trigger for source </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> at time </span><span class="si">{</span><span class="n">activation_time</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_create_deactivation_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">source_def</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建信号源停用触发器</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 信号源ID</span>
+<span class="sd">            source_def: 信号源定义</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">deactivation_time</span> <span class="o">=</span> <span class="n">source_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;deactivation_time&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">deactivation_time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 创建时间触发器</span>
+        <span class="n">trigger_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;deactivate_</span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">trigger</span> <span class="o">=</span> <span class="n">TimeTrigger</span><span class="p">(</span>
+            <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
+            <span class="n">trigger_id</span><span class="o">=</span><span class="n">trigger_id</span><span class="p">,</span>
+            <span class="n">activation_time</span><span class="o">=</span><span class="n">deactivation_time</span><span class="p">,</span>
+            <span class="n">callback</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deactivate_signal_source</span><span class="p">(</span><span class="n">source_id</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 激活触发器</span>
+        <span class="n">trigger</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+
+        <span class="c1"># 记录触发器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activation_triggers</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;deactivate_</span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trigger</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created deactivation trigger for source </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> at time </span><span class="si">{</span><span class="n">deactivation_time</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_activate_signal_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        激活信号源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 信号源ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 更新信号源状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="o">.</span><span class="n">update_signal_source</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">is_active</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Activated signal source: </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> at time </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_deactivate_signal_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        停用信号源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 信号源ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 更新信号源状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="o">.</span><span class="n">update_signal_source</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">is_active</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Deactivated signal source: </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2"> at time </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExternalSignalSourceIntegration.add_signal_source"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal_integration.ExternalSignalSourceIntegration.add_signal_source">[docs]</a>    <span class="k">def</span> <span class="nf">add_signal_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_def</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        添加信号源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_def: 信号源定义</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功添加</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 创建信号源</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_signal_source</span><span class="p">(</span><span class="n">source_def</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">source</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 注册到信号数据提供者</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="o">.</span><span class="n">add_signal_source</span><span class="p">(</span><span class="n">source</span><span class="p">):</span>
+            <span class="c1"># 记录已加载的信号源</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loaded_sources</span><span class="p">[</span><span class="n">source</span><span class="o">.</span><span class="n">source_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">source</span>
+
+            <span class="c1"># 如果定义了激活时间，创建激活触发器</span>
+            <span class="k">if</span> <span class="s1">&#39;activation_time&#39;</span> <span class="ow">in</span> <span class="n">source_def</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_create_activation_trigger</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span> <span class="n">source_def</span><span class="p">)</span>
+
+            <span class="c1"># 如果定义了停用时间，创建停用触发器</span>
+            <span class="k">if</span> <span class="s1">&#39;deactivation_time&#39;</span> <span class="ow">in</span> <span class="n">source_def</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_create_deactivation_trigger</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span> <span class="n">source_def</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="ExternalSignalSourceIntegration.remove_signal_source"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal_integration.ExternalSignalSourceIntegration.remove_signal_source">[docs]</a>    <span class="k">def</span> <span class="nf">remove_signal_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        移除信号源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 信号源ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功移除</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 从信号数据提供者移除</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="o">.</span><span class="n">remove_signal_source</span><span class="p">(</span><span class="n">source_id</span><span class="p">):</span>
+            <span class="c1"># 从已加载信号源中移除</span>
+            <span class="k">if</span> <span class="n">source_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">loaded_sources</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">loaded_sources</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span>
+
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="ExternalSignalSourceIntegration.integrate_with_frequency_manager"><a class="viewcode-back" href="../../../api/dataprovider.html#aeroagentsim.dataprovider.signal_integration.ExternalSignalSourceIntegration.integrate_with_frequency_manager">[docs]</a>    <span class="k">def</span> <span class="nf">integrate_with_frequency_manager</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        与频率管理器集成</span>
+
+<span class="sd">        将链路质量计算函数注册到频率管理器</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">register_link_quality_calculator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">)</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.signal_integration</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

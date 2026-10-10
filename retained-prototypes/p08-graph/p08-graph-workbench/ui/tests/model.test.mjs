@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {makeIndex,queryNodes,chooseScene,layoutScene,projectPoint,factFields,safeDataURL,scenariosOf} from '../model.js';
+const root=new URL('../../data/',import.meta.url);
+const manifest=JSON.parse(await readFile(new URL('manifest.json',root),'utf8'));
+const all=JSON.parse(await readFile(new URL('graph.json',root),'utf8'));
+const index=makeIndex([{data:all,scenario:{id:'all'}}]);
+test('real accepted graph counts, kinds, edges and source IDs retained',()=>{assert.equal(index.nodes.size,manifest.counts.node_count);assert.equal(index.edges.size,manifest.counts.edge_count);assert.equal(index.dangling.length,0);assert.equal(index.conflicts.length,0);assert.ok(index.types.size>50);assert.ok(index.relations.size>70);assert.equal(scenariosOf(manifest).length,75);});
+test('real graph bounded scene contains only real source objects, no shortcut edges',()=>{const t=performance.now(),scene=chooseScene(index,{matches:queryNodes(index),limit:120,edgeLimit:900});for(const n of scene.nodes)assert.strictEqual(n,index.nodes.get(n.id));for(const e of scene.edges){assert.strictEqual(e,index.edges.get(e.id));assert.ok(scene.nodes.some(n=>n.id===e.source));assert.ok(scene.nodes.some(n=>n.id===e.target));}assert.equal(scene.nodes.length,120);assert.equal(scene.omittedNodes,index.nodes.size-120);assert.ok(performance.now()-t<2000);});
+test('every accepted node kind and relation remains individually selectable',()=>{for(const kind of index.types.keys()){const matches=queryNodes(index,{type:kind});assert.ok(matches.length);assert.ok(matches.every(n=>n.kind===kind));}for(const [id,e]of index.edges)assert.ok((index.adjacent.get(e.source)||[]).some(a=>a.id===id));});
+test('fact literal false/null/UNKNOWN and nanosecond strings retained without coercion',()=>{for(const value of [null,false,'UNKNOWN',0]){const f=factFields({payload:{value,valid_time_ns:'9007199254740993001',unit:null}});assert.strictEqual(f.value,value);assert.equal(f.valid_time_ns,'9007199254740993001');assert.equal(f.unit,null);}});
+test('camera projection and layout are finite for real nodes in both modes',()=>{const matches=queryNodes(index),scene=chooseScene(index,{matches,limit:120});for(const flat of [true,false]){for(const p of layoutScene(scene,flat).values()){const q=projectPoint(p,{yaw:flat?0:.25,pitch:flat?0:.4,panX:0,panY:0,zoom:.5},1200,600);assert.ok(Number.isFinite(q.x)&&Number.isFinite(q.y)&&Number.isFinite(q.depth));}}});
+test('data URL resolver rejects off-origin and executable schemes',()=>{assert.equal(safeDataURL('scenarios/ag.a01.json','http://localhost:4318/data/manifest.json'),'http://localhost:4318/data/scenarios/ag.a01.json');assert.throws(()=>safeDataURL('https://external.example/data.json','http://localhost:4318/data/manifest.json'));assert.throws(()=>safeDataURL('javascript:alert(1)','http://localhost:4318/data/manifest.json'));});

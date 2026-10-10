@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.component.mobility &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.mobility</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.component.mobility</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.component</span> <span class="kn">import</span> <span class="n">Component</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MoveToComponent"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.mobility.MoveToComponent">[docs]</a><span class="k">class</span> <span class="nc">MoveToComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    移动组件，用于执行位置移动任务。</span>
+
+<span class="sd">    性能指标：</span>
+<span class="sd">    - speed: 移动速度（单位/秒）</span>
+<span class="sd">    - energy_consumption: 能源消耗率（每秒瓦特）</span>
+<span class="sd">    - direction: 移动方向</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;speed&#39;</span><span class="p">,</span> <span class="s1">&#39;energy_consumption&#39;</span><span class="p">,</span> <span class="s1">&#39;direction&#39;</span><span class="p">]</span>  <span class="c1"># 移除position</span>
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="s1">&#39;external_force&#39;</span><span class="p">,</span> <span class="s1">&#39;moving_status&#39;</span><span class="p">,</span> <span class="s1">&#39;max_allowed_speed&#39;</span><span class="p">]</span> <span class="c1"># 监控的状态</span>
+
+<div class="viewcode-block" id="MoveToComponent.__init__"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.mobility.MoveToComponent.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">supported_events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;speed_changed&#39;</span><span class="p">],</span> <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化移动组件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 所属代理</span>
+<span class="sd">            name: 组件名称</span>
+<span class="sd">            supported_events: 支持的额外事件</span>
+<span class="sd">            properties: 组件属性，包含speed_factor和energy_factor</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;MoveTo&quot;</span><span class="p">,</span> <span class="n">supported_events</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">speed_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;speed_factor&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># 默认速度因子为1.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;energy_factor&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># 默认能量因子为1.0</span>
+
+        <span class="c1"># 悬停能量消耗进程</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 注册状态变化监听器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state_listener_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_moving_status_listener&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">,</span>
+            <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">state_listener_id</span><span class="si">}</span><span class="s1">_hovering&#39;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_moving_status_change</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">add_source_filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">event_data</span><span class="p">:</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;moving_status&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_calculate_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;计算基于当前代理状态的性能指标&quot;&quot;&quot;</span>
+        <span class="c1"># 从代理状态获取关键信息</span>
+        <span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="n">moving_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;moving_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+        <span class="n">max_speed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;max_allowed_speed&#39;</span><span class="p">,</span> <span class="mf">15.0</span><span class="p">)</span>
+
+        <span class="c1"># Ensure external_force is a list/tuple of 3 numbers</span>
+        <span class="n">raw_external_force</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;external_force&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_external_force</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_external_force</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">):</span>
+            <span class="n">external_force</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]</span> <span class="c1"># Default to zero vector if invalid</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">external_force</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">raw_external_force</span><span class="p">)</span> <span class="c1"># Ensure it&#39;s a list</span>
+
+        <span class="c1"># 计算速度和能量消耗</span>
+
+        <span class="c1"># 如果移动状态不是flying，速度为0</span>
+        <span class="k">if</span> <span class="n">moving_status</span> <span class="o">!=</span> <span class="s1">&#39;flying&#39;</span><span class="p">:</span>
+            <span class="n">speed</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="c1"># 悬停状态下的能量消耗</span>
+            <span class="n">energy_consumption</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_hovering_energy_consumption</span><span class="p">(</span><span class="n">external_force</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 基础速度取决于电池电量</span>
+            <span class="n">base_speed</span> <span class="o">=</span> <span class="mf">15.0</span>  <span class="c1"># 默认15米/秒</span>
+            <span class="k">if</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">:</span>
+                <span class="c1"># 低电量时速度降低</span>
+                <span class="n">base_speed</span> <span class="o">=</span> <span class="mf">10.0</span>
+            <span class="k">if</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="c1"># 极低电量时速度显著降低</span>
+                <span class="n">base_speed</span> <span class="o">=</span> <span class="mf">5.0</span>
+            <span class="k">if</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+                <span class="c1"># 电量耗尽，速度为零</span>
+                <span class="n">base_speed</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+            <span class="c1"># 应用速度因子</span>
+            <span class="n">adjusted_speed</span> <span class="o">=</span> <span class="n">base_speed</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">speed_factor</span>
+
+            <span class="c1"># --- 考虑外部力的影响 (简化模型) ---</span>
+            <span class="c1"># 假设外部力主要影响能量消耗，并可能轻微影响速度</span>
+            <span class="c1"># Calculate magnitude of external force (simplified, assumes force vector components)</span>
+            <span class="n">force_magnitude</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">f</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">external_force</span><span class="p">))</span>
+
+            <span class="c1"># Example: Increase energy consumption based on force magnitude</span>
+            <span class="c1"># Need a scaling factor based on agent&#39;s mass, drag, etc.</span>
+            <span class="n">force_energy_penalty</span> <span class="o">=</span> <span class="n">force_magnitude</span> <span class="o">*</span> <span class="mf">0.05</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span> <span class="c1"># Example penalty factor (adjust 0.05 as needed)</span>
+            <span class="n">energy_consumption</span> <span class="o">=</span> <span class="p">(</span><span class="n">adjusted_speed</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span><span class="p">)</span> <span class="o">+</span> <span class="n">force_energy_penalty</span>
+
+            <span class="c1"># Example: Slightly reduce speed if force is significant (e.g., headwind)</span>
+            <span class="c1"># This is highly simplified. Real model needs force direction relative to movement direction.</span>
+            <span class="n">speed_reduction_factor</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">force_magnitude</span> <span class="o">*</span> <span class="mf">0.01</span><span class="p">)</span> <span class="c1"># Example reduction (ensure speed doesn&#39;t go below 10%)</span>
+            <span class="n">speed</span> <span class="o">=</span> <span class="n">adjusted_speed</span> <span class="o">*</span> <span class="n">speed_reduction_factor</span>
+
+            <span class="c1"># Ensure non-negative values</span>
+            <span class="n">speed</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">speed</span><span class="p">)</span>
+            <span class="n">speed</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">speed</span><span class="p">,</span> <span class="n">max_speed</span><span class="p">)</span>
+            <span class="n">energy_consumption</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">energy_consumption</span><span class="p">)</span>
+
+        <span class="c1"># 计算方向（如果可能）</span>
+        <span class="n">direction</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
+        <span class="n">target_position</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 从活跃任务中获取目标位置</span>
+        <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tasks</span><span class="p">:</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tasks</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s1">&#39;target_position&#39;</span><span class="p">):</span>
+                <span class="n">target_position</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">target_position</span>
+                <span class="k">break</span>
+            <span class="k">elif</span> <span class="s1">&#39;target_position&#39;</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">properties</span><span class="p">:</span>
+                <span class="n">target_position</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s1">&#39;target_position&#39;</span><span class="p">]</span>
+                <span class="k">break</span>
+            <span class="k">elif</span> <span class="s1">&#39;position&#39;</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">target_state</span><span class="p">:</span>
+                <span class="n">target_position</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">target_state</span><span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">]</span>
+                <span class="k">break</span>
+
+        <span class="c1"># 如果有目标位置，计算方向</span>
+        <span class="k">if</span> <span class="n">target_position</span> <span class="ow">and</span> <span class="n">position</span><span class="p">:</span>
+            <span class="n">dx</span> <span class="o">=</span> <span class="n">target_position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">dy</span> <span class="o">=</span> <span class="n">target_position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="c1"># 计算水平平面上的距离</span>
+            <span class="n">horizontal_distance</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">dy</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+            <span class="c1"># 确定大致方向（水平平面上）</span>
+            <span class="k">if</span> <span class="n">horizontal_distance</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">:</span>  <span class="c1"># 避免零距离时的方向不确定性</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">dx</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">abs</span><span class="p">(</span><span class="n">dy</span><span class="p">):</span>
+                    <span class="c1"># 主要是东/西方向</span>
+                    <span class="n">direction</span> <span class="o">=</span> <span class="s1">&#39;east&#39;</span> <span class="k">if</span> <span class="n">dx</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;west&#39;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># 主要是南/北方向</span>
+                    <span class="n">direction</span> <span class="o">=</span> <span class="s1">&#39;north&#39;</span> <span class="k">if</span> <span class="n">dy</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;south&#39;</span>
+
+                <span class="c1"># 对角线方向处理</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">dx</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="n">horizontal_distance</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">dy</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="n">horizontal_distance</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">dx</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">dy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">direction</span> <span class="o">=</span> <span class="s1">&#39;northeast&#39;</span>
+                    <span class="k">elif</span> <span class="n">dx</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">dy</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">direction</span> <span class="o">=</span> <span class="s1">&#39;southeast&#39;</span>
+                    <span class="k">elif</span> <span class="n">dx</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">dy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">direction</span> <span class="o">=</span> <span class="s1">&#39;northwest&#39;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">direction</span> <span class="o">=</span> <span class="s1">&#39;southwest&#39;</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;speed&#39;</span><span class="p">:</span> <span class="n">speed</span><span class="p">,</span>
+            <span class="s1">&#39;energy_consumption&#39;</span><span class="p">:</span> <span class="n">energy_consumption</span><span class="p">,</span>
+            <span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="n">direction</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_hovering_energy_consumption</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">external_force</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算悬停状态下的能量消耗</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            external_force: 外部力向量，默认为None，会从代理状态获取</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: 悬停状态下的能量消耗值</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 悬停基础能量消耗（比飞行状态低）</span>
+        <span class="c1"># 假设悬停每秒消耗0.2%的电量</span>
+        <span class="n">energy_consumed</span> <span class="o">=</span> <span class="mf">0.2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span>
+
+        <span class="c1"># 获取外部力</span>
+        <span class="k">if</span> <span class="n">external_force</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">raw_external_force</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;external_force&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_external_force</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_external_force</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">):</span>
+                <span class="n">external_force</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">external_force</span> <span class="o">=</span> <span class="n">raw_external_force</span>
+
+        <span class="c1"># 计算外部力对悬停能耗的影响</span>
+        <span class="n">force_magnitude</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">f</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">external_force</span><span class="p">))</span>
+        <span class="n">force_energy_penalty</span> <span class="o">=</span> <span class="n">force_magnitude</span> <span class="o">*</span> <span class="mf">0.01</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span>
+        <span class="n">energy_consumed</span> <span class="o">+=</span> <span class="n">force_energy_penalty</span>
+
+        <span class="c1"># 确保非负值</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">energy_consumed</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_moving_status_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理移动状态变化事件&quot;&quot;&quot;</span>
+        <span class="n">new_status</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;new_value&#39;</span><span class="p">)</span>
+        <span class="n">old_status</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;old_value&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 如果状态变为hovering，启动悬停能量消耗进程</span>
+        <span class="k">if</span> <span class="n">new_status</span> <span class="o">==</span> <span class="s1">&#39;hovering&#39;</span><span class="p">:</span>
+            <span class="c1"># 检查组件是否处于错误状态</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件处于错误状态，不启动悬停能量消耗进程&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_hovering_energy_consumption</span><span class="p">())</span>
+                <span class="c1"># print(f&quot;时间 {self.env.now}: {self.agent_id} 开始悬停，启动悬停能量消耗进程&quot;)</span>
+        <span class="c1"># 如果状态从hovering变为其他状态，停止悬停能量消耗进程</span>
+        <span class="k">elif</span> <span class="n">old_status</span> <span class="o">==</span> <span class="s1">&#39;hovering&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span><span class="o">.</span><span class="n">interrupt</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="c1"># print(f&quot;时间 {self.env.now}: {self.agent_id} 停止悬停，关闭悬停能量消耗进程&quot;)</span>
+
+    <span class="k">def</span> <span class="nf">_hovering_energy_consumption</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;悬停能量消耗进程&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 每秒更新一次电池电量</span>
+            <span class="n">update_interval</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># 1秒</span>
+
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="c1"># 等待指定时间</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">update_interval</span><span class="p">)</span>
+
+                <span class="c1"># 检查组件是否处于错误状态</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件处于错误状态，停止悬停能量消耗进程&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># 检查代理是否仍在悬停状态</span>
+                <span class="n">current_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;moving_status&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">current_status</span> <span class="o">!=</span> <span class="s1">&#39;hovering&#39;</span><span class="p">:</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># 获取当前电池电量</span>
+                <span class="n">battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+
+                <span class="c1"># 计算悬停能量消耗</span>
+                <span class="n">energy_consumed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_hovering_energy_consumption</span><span class="p">()</span>
+
+                <span class="c1"># 更新电池电量</span>
+                <span class="n">new_battery_level</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">battery_level</span> <span class="o">-</span> <span class="n">energy_consumed</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="n">new_battery_level</span><span class="p">)</span>
+
+                <span class="c1"># 如果电量过低，打印警告</span>
+                <span class="k">if</span> <span class="n">new_battery_level</span> <span class="o">&lt;</span> <span class="mi">20</span> <span class="ow">and</span> <span class="n">battery_level</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 警告! </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 悬停中电量低于20%: </span><span class="si">{</span><span class="n">new_battery_level</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">new_battery_level</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="n">battery_level</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 严重警告! </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 悬停中电量极低: </span><span class="si">{</span><span class="n">new_battery_level</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">new_battery_level</span> <span class="o">&lt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 严重警告! </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 悬停中电量耗尽!&quot;</span><span class="p">)</span>
+                    <span class="c1"># 电量耗尽，可能需要触发紧急降落或其他处理</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;error&#39;</span><span class="p">)</span>
+                    <span class="c1"># 将组件设置为错误状态</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件因电量耗尽被设置为错误状态&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+        <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span><span class="p">:</span>
+            <span class="c1"># 进程被中断，不需要特殊处理</span>
+            <span class="k">pass</span>
+
+<div class="viewcode-block" id="MoveToComponent.disable"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.mobility.MoveToComponent.disable">[docs]</a>    <span class="k">def</span> <span class="nf">disable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        禁用组件，将其设置为错误状态并取消所有正在执行的任务</span>
+<span class="sd">        同时停止悬停能量消耗进程</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 调用父类的disable方法</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">disable</span><span class="p">()</span>
+
+        <span class="c1"># 停止悬停能量消耗进程</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span><span class="o">.</span><span class="n">interrupt</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hovering_process</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件被禁用，停止悬停能量消耗进程&quot;</span><span class="p">)</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.mobility</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>
