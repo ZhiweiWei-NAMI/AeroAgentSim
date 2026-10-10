@@ -16,7 +16,6 @@ jobs:
         python-version: ["3.10", "3.11"]
     env:
       PYTHONDONTWRITEBYTECODE: "1"
-      HYPOTHESIS_STORAGE_DIRECTORY: ${{ runner.temp }}/platform/hypothesis
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,6 +38,8 @@ jobs:
           npm run build
       - name: Independent non-Docker tests
         working-directory: platform
+        env:
+          HYPOTHESIS_STORAGE_DIRECTORY: ${{ runner.temp }}/platform/hypothesis
         run: |
           # Canonical-source compatibility cases run in the AeroGraph job below.
           python -m pytest tests/platform tests/integrations/aerograph/test_compiler.py \
@@ -68,7 +69,6 @@ jobs:
     env:
       AEROAGENTSIM_AEROGRAPH_ROOT: ${{ github.workspace }}/aerograph
       PYTHONDONTWRITEBYTECODE: "1"
-      HYPOTHESIS_STORAGE_DIRECTORY: ${{ runner.temp }}/platform-graph/hypothesis
     steps:
       - uses: actions/checkout@v4
         with:
@@ -97,6 +97,8 @@ jobs:
           npm run build
       - name: Full platform and decision tests without Docker or model calls
         working-directory: platform
+        env:
+          HYPOTHESIS_STORAGE_DIRECTORY: ${{ runner.temp }}/platform-graph/hypothesis
         run: |
           python -m pytest tests/platform tests/agents tests/integrations/aerograph \
             tests/behaviours tests/observations \
