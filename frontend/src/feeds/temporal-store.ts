@@ -4,9 +4,9 @@ import { entityId } from '../viewport/bindings';
 type Fact = FeedCommit['facts'][number];
 type Retraction = FeedCommit['retracted'][number];
 type Edge = FeedCommit['edges'][number];
-interface FieldVersion { commit: FeedCommit; value: Fact | Retraction; retract: boolean }
+export interface FieldVersion { commit: FeedCommit; value: Fact | Retraction; retract: boolean }
 interface EdgeVersion { commit: FeedCommit; value: Edge }
-interface BehaviourVersion<T> { commit: FeedCommit; value: T }
+export interface BehaviourVersion<T> { commit: FeedCommit; value: T }
 const before = (a: Instant, ns: bigint, microstep: number) => BigInt(a.ns) < ns || BigInt(a.ns) === ns && a.microstep <= microstep;
 const contains = (start: Instant, end: Instant | null | undefined, ns: bigint, microstep: number) => before(start,ns,microstep) && (!end || !before(end,ns,microstep));
 
@@ -31,6 +31,12 @@ export class TemporalFeedStore extends FeedStore {
   constructor(header: RunHeader) { super(header); }
   predicateRecords(contextId:string):ReadonlyArray<BehaviourVersion<PredicateTruth>> {return this.predicateVersions.get(contextId)??[];}
   chainRecords(instanceId: string): ReadonlyArray<BehaviourVersion<ChainInstance>> { return this.chainVersions.get(instanceId) ?? []; }
+  /** Every retained version of one field, oldest first; read-only view for explanations. */
+  fieldVersionsOf(id: string, fieldId: string): ReadonlyArray<FieldVersion> { return this.versions.get(id)?.get(fieldId) ?? []; }
+  /** Field ids that have at least one retained version for an entity. */
+  fieldIdsOf(id: string): string[] { return [...(this.versions.get(id)?.keys() ?? [])]; }
+  /** All predicate contexts with their retained versions (read-only). */
+  allPredicateRecords(): ReadonlyMap<string, ReadonlyArray<BehaviourVersion<PredicateTruth>>> { return this.predicateVersions; }
   select(key?: EntityKey) {
     if (!key) { this.selection = undefined; return; }
     if (this.header.epoch === undefined) throw Error('Selection epoch is unavailable; load the run manifest/header epoch');

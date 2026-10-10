@@ -10,6 +10,8 @@ import '../scene/presentation';
 interface Props {
   store: FeedStore & { liveFollow?: boolean }; clock: PlaybackClock; selected?: EntityKey; mode: CameraMode; quality: Quality; trails: boolean;
   commitCut?: number;
+  /** Entities emphasised together with the selection (cause trace). */
+  highlights?: EntityKey[];
   simple?: boolean; focus?: {position:[number,number,number];revision:number};
   onSelect: (key: EntityKey) => void; onTick: () => void; onError: (error: unknown) => void;
   onQuality: (quality: Quality, fps?: number) => void;
@@ -40,7 +42,7 @@ export function ViewportView(props: Props) {
         semantic:props.simple===true,showAllLabels:showAllLabels,
         onLegend:(entries,zones)=>{setLegend(entries);setZoneCount(zones);},
       });
-      viewport.current.setDusk(dusk);viewport.current.setCameraMode(mode ?? props.mode);viewport.current.setSelection(props.selected);
+      viewport.current.setDusk(dusk);viewport.current.setCameraMode(mode ?? props.mode);viewport.current.setSelection(props.selected);viewport.current.setHighlights(props.highlights??[]);
       const animate=(now:number)=>{
         try{
           const p=current.current,delta=(now-last)/1000;last=now;
@@ -61,6 +63,8 @@ export function ViewportView(props: Props) {
     return()=>{cancelAnimationFrame(frame);viewport.current?.dispose();viewport.current=undefined;root.current?.closest('.viewer-main')?.removeAttribute('data-inspector-collapsed');};
   },[props.store,props.clock]);
   useEffect(()=>{viewport.current?.setSelection(props.selected);},[props.selected]);
+  const highlightKey=(props.highlights??[]).map(key=>`${key.id}:${key.generation}`).join('|');
+  useEffect(()=>{viewport.current?.setHighlights(props.highlights??[]);},[highlightKey]);
   useEffect(()=>{viewport.current?.setSemantic({showAllLabels});},[showAllLabels]);
   useEffect(()=>{viewport.current?.setCameraMode(mode ?? props.mode);},[props.mode,mode]);
   useEffect(()=>{viewport.current?.setQuality(props.quality);},[props.quality]);

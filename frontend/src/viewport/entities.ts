@@ -30,6 +30,12 @@ export class EntityLayer {
   labelsMs = 0;
   transformsChanged = false;
   readonly selection: T.Object3D[]=[];
+  /** Entities emphasised together (for example by a cause trace), in addition to the single selection. */
+  private highlighted = new Set<string>();
+  private highlightRings: T.Mesh[] = [];
+  /** Number of highlight rings drawn in the latest frame (diagnostic). */
+  highlightedShown = 0;
+  setHighlights(ids: ReadonlySet<string>) { this.highlighted = new Set(ids); }
   /** Semantic overlay policy (newcomer mode); inert defaults keep Expert behavior. */
   semantic = false;
   showAllLabels = false;
@@ -160,7 +166,7 @@ export class EntityLayer {
       this.dummy.scale.setScalar(binding.visual.scale ?? 1);
       if (binding.visual.kind !== 'label') {
         const batch = this.batches.get(binding) ?? this.createBatch(binding, Math.max(64, store.entities.size));
-        const isSelected=!!selected&&entityId(selected)===id;
+        const isSelected=!!selected&&entityId(selected)===id||this.highlighted.has(id);
         const far=batch.far&&!isSelected&&(position.distanceTo(camera.position)>100||batch.keys.length>=48)?batch.far:undefined;
         if(far){
           if(far.keys.length>=far.mesh.instanceMatrix.count){const old=far.mesh;far.mesh=new T.InstancedMesh(old.geometry,old.material,old.instanceMatrix.count*2);far.mesh.frustumCulled=false;far.mesh.castShadow=old.castShadow;far.mesh.receiveShadow=old.receiveShadow;for(let i=0;i<far.keys.length;i++){old.getMatrixAt(i,this.matrix);far.mesh.setMatrixAt(i,this.matrix);}old.removeFromParent();old.dispose();this.root.add(far.mesh);}
@@ -185,7 +191,7 @@ export class EntityLayer {
         }
       }
       const isSelected=!!selected && entityId(selected)===id;
-      candidates.push({id,key:entity.key,position,selected:isSelected,forced:binding.visual.kind==='label'});
+      candidates.push({id,key:entity.key,position,selected:isSelected,forced:binding.visual.kind==='label'||this.highlighted.has(id)});
     }
     // Semantic label policy (newcomer mode): selected / task-active /
     // recently event-involved entities always label; others only on real
@@ -238,6 +244,18 @@ export class EntityLayer {
     // Keep a small reusable label pool; retired generations cannot accumulate DOM.
     for(const [id,label] of this.labels)if(!this.positions.has(id)||(this.labels.size>64&&label.hidden)){label.remove();this.labels.delete(id);}
     this.labelsMs = performance.now() - labelsStarted;
+    let ringed = 0;
+    for (const id of this.highlighted) {
+      const spot = this.positions.get(id); if (!spot) continue;
+      let ring = this.highlightRings[ringed];
+      if (!ring) {
+        ring = new T.Mesh(new T.TorusGeometry(1.1, 0.09, 8, 48), new T.MeshBasicMaterial({ color: '#ff8a1f', depthTest: false, transparent: true, opacity: 0.95 }));
+        ring.rotation.x = -Math.PI / 2; ring.renderOrder = 5; this.root.add(ring); this.highlightRings.push(ring);
+      }
+      ring.visible = true; ring.position.copy(spot).add(new T.Vector3(0,-0.2,0)); ring.scale.setScalar(Math.max(1.6,spot.distanceTo(camera.position)*0.022)); ringed++;
+    }
+    for (let i = ringed; i < this.highlightRings.length; i++) this.highlightRings[i].visible = false;
+    this.highlightedShown = ringed;
     const focus=selected?this.positions.get(entityId(selected)):undefined;
     this.ring.visible=!!focus;if(focus){this.ring.position.copy(focus).add(new T.Vector3(0,-0.2,0));this.ring.scale.setScalar(Math.max(1,focus.distanceTo(camera.position)*0.012));}
     const stamp=`${selected?entityId(selected):''}/${ns}/${renderOrigin.toArray()}/${showTrails}`;
