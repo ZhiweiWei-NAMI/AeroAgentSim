@@ -1,0 +1,291 @@
+diff --git a/frontend/src/city-compile-panel.test.ts b/frontend/src/city-compile-panel.test.ts
+index 7d48284..37d4e4e 100644
+--- a/frontend/src/city-compile-panel.test.ts
++++ b/frontend/src/city-compile-panel.test.ts
+@@ -1 +1 @@
+-import { afterEach, describe, expect, it, vi } from "vitest";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+@@ -3 +3,3 @@ import { renderCityCompilePanel, type CityCompiledSelection } from "./city-compi
+-import { createDefaultCityWorkspaceConfig } from "./city-workspace-config";
++import { CITY_WORKSPACE_STORAGE_KEY, createDefaultCityWorkspaceConfig, saveCityWorkspaceConfig } from "./city-workspace-config";
++import * as workspaceConfig from "./city-workspace-config";
++import { setLanguage } from "./i18n";
+@@ -56,0 +59,5 @@ function runButton(root: HTMLElement): HTMLButtonElement | null {
++beforeEach(() => {
++  window.localStorage.clear();
++  setLanguage("zh");
++  saveCityWorkspaceConfig(createDefaultCityWorkspaceConfig());
++});
+@@ -82,0 +90 @@ describe("city compile panel", () => {
++      if (url.endsWith(`/authoring/v1/compilations/${compiledResult.compilation_id}`)) return jsonResponse(200, compiledResult);
+@@ -106,0 +115 @@ describe("city compile panel", () => {
++      draftSha256: compiledResult.draft_sha256,
+@@ -124,0 +134 @@ describe("city compile panel", () => {
++      if (url.endsWith(`/authoring/v1/compilations/${blockedResult.compilation_id}`)) return jsonResponse(200, blockedResult);
+@@ -190,0 +201,85 @@ describe("city compile panel", () => {
++
++it("rejects a missing saved configuration without submitting the in-memory draft", async () => {
++  window.localStorage.removeItem(CITY_WORKSPACE_STORAGE_KEY);
++  const fetchMock = vi.fn(async () => jsonResponse(200, catalog));
++  vi.stubGlobal("fetch", fetchMock);
++  const root = document.createElement("div");
++  renderCityCompilePanel(root, () => createDefaultCityWorkspaceConfig(), vi.fn());
++  await vi.waitFor(() => expect(compileButton(root).disabled).toBe(false));
++  compileButton(root).click();
++  await vi.waitFor(() => expect(root.textContent).toContain("尚无已保存配置"));
++  expect(fetchMock).toHaveBeenCalledOnce();
++  expect(runButton(root)).toBeNull();
++});
++
++it("rejects unsaved divergence without silently substituting the stored draft", async () => {
++  const current = createDefaultCityWorkspaceConfig(); current.seed = 99;
++  const fetchMock = vi.fn(async () => jsonResponse(200, catalog));
++  vi.stubGlobal("fetch", fetchMock);
++  const root = document.createElement("div");
++  renderCityCompilePanel(root, () => current, vi.fn());
++  await vi.waitFor(() => expect(compileButton(root).disabled).toBe(false));
++  compileButton(root).click();
++  await vi.waitFor(() => expect(root.textContent).toContain("当前草稿与已保存配置不同"));
++  expect(fetchMock).toHaveBeenCalledOnce();
++  expect(runButton(root)).toBeNull();
++});
++
++it("compiles the immutable exact saved readback and displays its published identity", async () => {
++  const saved = createDefaultCityWorkspaceConfig(); saved.name = "Saved exact draft";
++  const current = structuredClone(saved);
++  vi.spyOn(workspaceConfig, "loadCityWorkspaceConfig").mockReturnValue(saved);
++  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
++    const url = String(input);
++    if (url.endsWith("/native-scenes")) return jsonResponse(200, catalog);
++    if (url.endsWith("/compilations")) {
++      current.name = "Changed after submission";
++      expect(JSON.parse(String(init?.body)).draft).toEqual(saved);
++      expect(Object.isFrozen(saved)).toBe(true);
++      expect(Object.isFrozen(saved.fleet[0])).toBe(true);
++      return jsonResponse(201, compiledResult);
++    }
++    if (url.endsWith(`/compilations/${compiledResult.compilation_id}`)) return jsonResponse(200, compiledResult);
++    throw new Error(`unexpected fetch ${url}`);
++  });
++  vi.stubGlobal("fetch", fetchMock);
++  const root = document.createElement("div"); const onCompiled = vi.fn();
++  renderCityCompilePanel(root, () => current, onCompiled);
++  await vi.waitFor(() => expect(compileButton(root).disabled).toBe(false));
++  compileButton(root).click();
++  await vi.waitFor(() => expect(root.textContent).toContain("发布回读一致"));
++  expect(root.querySelector('[data-saved-draft-sha256]')?.getAttribute("data-saved-draft-sha256")).toBe(compiledResult.draft_sha256);
++  expect(root.textContent).toContain(compiledResult.runs[0]!.run_id);
++  runButton(root)!.click();
++  expect(onCompiled).toHaveBeenCalledWith(expect.objectContaining({ draftSha256: compiledResult.draft_sha256,
++    runIds: [compiledResult.runs[0]!.run_id] }));
++});
++
++it.each(["draft hash", "run ID"])("rejects a published backend %s mismatch before exposing Run", async mismatch => {
++  const changed = mismatch === "draft hash" ? { ...compiledResult, draft_sha256: "9".repeat(64) }
++    : { ...compiledResult, runs: [{ ...compiledResult.runs[0]!, run_id: "8".repeat(64) }] };
++  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
++    const url = String(input);
++    if (url.endsWith("/native-scenes")) return jsonResponse(200, catalog);
++    if (url.endsWith("/compilations")) return jsonResponse(201, compiledResult);
++    return jsonResponse(200, changed);
++  });
++  vi.stubGlobal("fetch", fetchMock);
++  const root = document.createElement("div"); const onCompiled = vi.fn();
++  renderCityCompilePanel(root, () => createDefaultCityWorkspaceConfig(), onCompiled);
++  await vi.waitFor(() => expect(compileButton(root).disabled).toBe(false));
++  compileButton(root).click();
++  await vi.waitFor(() => expect(root.textContent).toContain("配置哈希或运行身份不一致"));
++  expect(runButton(root)).toBeNull(); expect(onCompiled).not.toHaveBeenCalled();
++});
++
++it("uses the existing English language mechanism for saved-config errors", async () => {
++  setLanguage("en"); window.localStorage.removeItem(CITY_WORKSPACE_STORAGE_KEY);
++  vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(200, catalog)));
++  const root = document.createElement("div");
++  renderCityCompilePanel(root, () => createDefaultCityWorkspaceConfig(), vi.fn());
++  await vi.waitFor(() => expect(root.querySelector("select")?.options.length).toBe(1));
++  const button = Array.from(root.querySelectorAll("button")).find(item => item.textContent === "Compile saved draft")!;
++  button.click();
++  await vi.waitFor(() => expect(root.textContent).toContain("No saved configuration exists"));
++});
+diff --git a/frontend/src/city-compile-panel.ts b/frontend/src/city-compile-panel.ts
+index c86350d..6470eda 100644
+--- a/frontend/src/city-compile-panel.ts
++++ b/frontend/src/city-compile-panel.ts
+@@ -2 +2 @@ import {
+-  compileCityDraft, fetchNativeSceneCatalog,
++  compileCityDraft, fetchCompilation, fetchNativeSceneCatalog,
+@@ -5 +5,3 @@ import {
+-import type { CityWorkspaceConfig } from "./city-workspace-config";
++import { loadCityWorkspaceConfig, parseCityWorkspaceConfig, type CityWorkspaceConfig } from "./city-workspace-config";
++import { sameJson } from "./city-roads";
++import { t, tf } from "./i18n";
+@@ -9,0 +12 @@ export interface CityCompiledSelection {
++  readonly draftSha256: string;
+@@ -12,0 +16,8 @@ export interface CityCompiledSelection {
++function freezeSavedDraft<T>(value: T): T {
++  if (value !== null && typeof value === "object") {
++    for (const child of Object.values(value)) freezeSavedDraft(child);
++    Object.freeze(value);
++  }
++  return value;
++}
++
+@@ -92 +103 @@ export function renderCityCompilePanel(
+-  compileButton.textContent = "编译当前草稿";
++  compileButton.textContent = t("compile.savedDraft");
+@@ -153 +164,3 @@ export function renderCityCompilePanel(
+-    keyValueRow(panel, "草稿哈希", result.draft_sha256);
++    keyValueRow(panel, t("compile.savedIdentity"), result.draft_sha256);
++    panel.dataset.savedDraftSha256 = result.draft_sha256;
++    panel.dataset.compilationId = result.compilation_id;
+@@ -166,0 +180 @@ export function renderCityCompilePanel(
++        draftSha256: result.draft_sha256,
+@@ -185 +199 @@ export function renderCityCompilePanel(
+-    compileButton.textContent = busy ? "编译中…" : "编译当前草稿";
++    compileButton.textContent = t(busy ? "compile.busy" : "compile.savedDraft");
+@@ -233,5 +247,20 @@ export function renderCityCompilePanel(
+-    void compileCityDraft({
+-      registration_id: registration.registration_id,
+-      registration_sha256: registration.registration_sha256,
+-      draft: getDraft(),
+-    }, controller.signal).then(outcome => {
++    void (async () => {
++      const saved = loadCityWorkspaceConfig();
++      if (saved === null) throw new Error(t("compile.savedMissing"));
++      const current = parseCityWorkspaceConfig(getDraft());
++      if (!sameJson(saved, current)) throw new Error(t("compile.unsavedChanged"));
++      const draft = freezeSavedDraft(saved);
++      const outcome = await compileCityDraft({
++        registration_id: registration.registration_id,
++        registration_sha256: registration.registration_sha256,
++        draft,
++      }, controller.signal);
++      if (outcome.kind === "compiled" || outcome.kind === "blocked") {
++        const published = await fetchCompilation(outcome.result.compilation_id, controller.signal);
++        if (published.kind !== "found") throw new Error(tf("compile.publishedFailed", {
++          code: published.code, detail: published.detail,
++        }));
++        if (!sameJson(outcome.result, published.result)) throw new Error(t("compile.identityMismatch"));
++      }
++      return outcome;
++    })().then(outcome => {
+@@ -241 +270 @@ export function renderCityCompilePanel(
+-      else renderError(`编译请求被拒绝：[${outcome.code}] ${outcome.detail}`);
++      else renderError(tf("compile.requestRejected", { code: outcome.code, detail: outcome.detail }));
+@@ -244 +273 @@ export function renderCityCompilePanel(
+-      renderError(`编译请求失败：${error instanceof Error ? error.message : String(error)}`);
++      renderError(tf("compile.requestFailed", { detail: error instanceof Error ? error.message : String(error) }));
+diff --git a/frontend/src/city-studio.test.ts b/frontend/src/city-studio.test.ts
+index 6e5344b..5d5a303 100644
+--- a/frontend/src/city-studio.test.ts
++++ b/frontend/src/city-studio.test.ts
+@@ -4 +4 @@ import {
+-  nativeReferenceSpatialSource, resolveRegisteredSource, validateStudioGeometry,
++  nativeReferenceSpatialSource, renderCompiledHandoff, resolveRegisteredSource, savedNativeRegistration, validateStudioGeometry,
+@@ -5,0 +6 @@ import {
++import { setLanguage } from "./i18n";
+@@ -37,0 +39,21 @@ const facility: CityFacility = {
++describe("compiled saved-configuration handoff", () => {
++  it.each(["zh", "en"] as const)("shows immutable identities without starting a run (%s)", language => {
++    setLanguage(language);
++    const root = document.createElement("div");
++    const selection = {
++      compilationId: "compilation.saved", registrationId: "scene.saved",
++      draftSha256: "a".repeat(64), runIds: ["b".repeat(64), "c".repeat(64)],
++    };
++    renderCompiledHandoff(root, selection);
++    expect(root.querySelector("h3")?.textContent).toBe(
++      language === "en" ? "Compiled, not yet run" : "已编译，尚未运行",
++    );
++    for (const identity of [selection.compilationId, selection.registrationId,
++      selection.draftSha256, ...selection.runIds]) expect(root.textContent).toContain(identity);
++    expect(root.textContent).toContain(language === "en" ? "Saved configuration identity" : "已保存配置身份");
++    expect(root.querySelector("a")?.getAttribute("href")).toBe("/");
++    expect(root.querySelector("button")).toBeNull();
++    setLanguage("zh");
++  });
++});
++
+@@ -81,0 +104,9 @@ describe("native reference spatial source", () => {
++  it("resolves the saved exact source selector without guessing URLs or choosing another registration", () => {
++    const registration = { registration_id: "inspection.saved", scene_path: "/native/saved.json",
++      scene_url: "/authoring/v1/native-scenes/inspection.saved/scene" } as NativeSceneRegistration;
++    expect(savedNativeRegistration("/native/saved.json", [registration])).toBe(registration);
++    expect(savedNativeRegistration("/native/other.json", [registration])).toBeNull();
++    expect(() => savedNativeRegistration("/native/saved.json", [registration,
++      { ...registration, registration_id: "inspection.ambiguous" }])).toThrow("Multiple native registrations");
++  });
++
+diff --git a/frontend/src/city-studio.ts b/frontend/src/city-studio.ts
+index c08e908..e7fe50a 100644
+--- a/frontend/src/city-studio.ts
++++ b/frontend/src/city-studio.ts
+@@ -9 +9 @@ import {
+-  fetchAuthoringCatalog, fetchAuthoringJob, fetchAuthoringSource, loadReadyAuthoringPresentation,
++  fetchAuthoringCatalog, fetchAuthoringJob, fetchAuthoringSource, fetchNativeSceneCatalog, loadReadyAuthoringPresentation,
+@@ -73,0 +74 @@ import type { TraceTarget } from "./state/target";
++import { initLanguage, t, tf } from "./i18n";
+@@ -345,0 +347,9 @@ function selectedTab(): StudioTab {
++/** Saved scenePath is a source selector, not a fetch URL for a native registration. */
++export function savedNativeRegistration(
++  scenePath: string, registrations: readonly NativeSceneRegistration[],
++): NativeSceneRegistration | null {
++  const matches = registrations.filter(item => item.scene_path === scenePath);
++  if (matches.length > 1) throw new Error(`Multiple native registrations select ${scenePath}`);
++  return matches[0] ?? null;
++}
++
+@@ -348 +358 @@ function selectedTab(): StudioTab {
+-function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelection): void {
++export function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelection): void {
+@@ -353 +363 @@ function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelecti
+-  title.textContent = "已编译，尚未运行";
++  title.textContent = t("compile.handoffTitle");
+@@ -356,3 +366,5 @@ function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelecti
+-  detail.textContent = `编译 ${selection.compilationId} · 场景注册 ${selection.registrationId} · `
+-    + `运行 ${selection.runIds.join("、")}。由本地运行控制服务载入此编译后，在查看器的运行控制中启动；`
+-    + "运行结果以封存证据和独立验证为准。";
++  detail.textContent = `${t("compile.savedIdentity")}: ${selection.draftSha256} · `
++    + tf("compile.handoffDetail", {
++      compilation: selection.compilationId, registration: selection.registrationId,
++      runs: selection.runIds.join(", "),
++    });
+@@ -362 +374 @@ function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelecti
+-  link.textContent = "打开运行控制台";
++  link.textContent = t("compile.handoffLink");
+@@ -468,2 +480,2 @@ class CityStudio {
+-    this.startMap();
+-    if (!this.authoringMode) void this.loadInitialSpatial();
++    if (this.authoringMode) this.startMap();
++    else void this.loadInitialSpatial();
+@@ -1449 +1461,22 @@ class CityStudio {
+-      this.spatial = await loadSpatialSource(this.config.scenePath);
++      const scenePath = this.config.scenePath;
++      if (cityPreviewScenePresetForPath(scenePath) === null) {
++        const outcome = await fetchNativeSceneCatalog();
++        if (outcome.kind === "error") throw new Error(`[${outcome.code}] ${outcome.detail}`);
++        if (this.authoringMode || this.config.scenePath !== scenePath) return;
++        const registration = savedNativeRegistration(scenePath, outcome.catalog.registrations);
++        if (registration !== null) {
++          const reference = await loadNativeReferenceScene(registration);
++          if (this.authoringMode || this.config.scenePath !== scenePath) return;
++          // Keep the saved edited draft. The registered reference supplies verified
++          // public geometry; it must not replace saved seed/name/business inputs.
++          this.nativeReference = reference;
++          this.spatial = nativeReferenceSpatialSource(reference);
++          this.draftError = this.validateDraft();
++          this.startMap();
++          if (this.tab === "spatial" || this.tab === "runtime") this.renderTab();
++          this.renderSummary();
++          return;
++        }
++      }
++      this.startMap();
++      this.spatial = await loadSpatialSource(scenePath);
+@@ -2035 +2068,4 @@ class CityStudio {
+-if (typeof document !== "undefined" && document.querySelector("#city-studio") !== null) new CityStudio();
++if (typeof document !== "undefined" && document.querySelector("#city-studio") !== null) {
++  initLanguage();
++  new CityStudio();
++}

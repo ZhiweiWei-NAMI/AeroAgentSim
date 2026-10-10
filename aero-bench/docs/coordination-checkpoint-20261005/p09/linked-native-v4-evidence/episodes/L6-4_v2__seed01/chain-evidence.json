@@ -1,0 +1,465 @@
+{
+  "episode_id": "L6-4_v2__seed01",
+  "status": "requires_resolution",
+  "revision": "p09.linked-native-causal/v4",
+  "original_narrative": {
+    "scenario_description": "Wideband jamming affecting multiple UAVs",
+    "script_description": "Wideband jamming affecting multiple UAVs",
+    "original_event_titles": [
+      {
+        "event_id": "lifecycle_takeoff_uav_digital_l6_4_v2",
+        "title": "UAV takes off from visible home pad and enters mission airspace",
+        "intent": "uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+        "predecessors": null
+      },
+      {
+        "event_id": "lifecycle_takeoff_uav_digital_l6_4_v2_secondary",
+        "title": "UAV takes off from visible home pad and enters mission airspace",
+        "intent": "uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+        "predecessors": null
+      },
+      {
+        "event_id": "wideband_jamming",
+        "title": "Wideband jamming affects two UAVs",
+        "intent": "digital_anomaly",
+        "predecessors": [
+          "lifecycle_takeoff_uav_digital_l6_4_v2",
+          "lifecycle_takeoff_uav_digital_l6_4_v2_secondary"
+        ]
+      },
+      {
+        "event_id": "multi_uav_hold_entry",
+        "title": "Both UAVs maneuver to deterministic jamming hold points",
+        "intent": "digital_anomaly",
+        "predecessors": null
+      },
+      {
+        "event_id": "multi_uav_safe_hold",
+        "title": "Both UAVs remain stationary in safe hold under jamming",
+        "intent": "safe_hold",
+        "predecessors": null
+      },
+      {
+        "event_id": "alternate_channel",
+        "title": "Alternate channel recovers both UAVs",
+        "intent": "recovery_or_restore",
+        "predecessors": null
+      },
+      {
+        "event_id": "lifecycle_landing_uav_digital_l6_4_v2",
+        "title": "UAV returns to the visible home pad and lands after mission resolution",
+        "intent": "landing_or_terminal_resolution",
+        "predecessors": null
+      },
+      {
+        "event_id": "lifecycle_landing_uav_digital_l6_4_v2_secondary",
+        "title": "UAV returns to the visible home pad and lands after mission resolution",
+        "intent": "landing_or_terminal_resolution",
+        "predecessors": null
+      }
+    ]
+  },
+  "source_refs": [
+    "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/event_script.json",
+    "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/scene_setup.json"
+  ],
+  "scope": {
+    "schema_version": "p09.linked-source-adoption/v4",
+    "episode_id": "L6-4_v2__seed01",
+    "scenario_id": "L6-4_v2",
+    "seed": 1,
+    "ns3_seed": 2,
+    "ns3_run": 1,
+    "mechanism": "cochannel_backup",
+    "actor_ids": [
+      "uav_digital_l6_4_v2",
+      "uav_digital_l6_4_v2_secondary"
+    ],
+    "primary_station": "tower_l6_4_v2",
+    "backup_station": null,
+    "heartbeat": {
+      "period_ns": 100000000,
+      "payload_bytes": 256,
+      "ttl_ns": 200000000,
+      "window_ns": 1000000000,
+      "loss_limit": 0.05,
+      "consecutive_limit": 3
+    },
+    "receiver_state_namespace": "p09.actor-heartbeat-watchdog/v1",
+    "receiver_state_definitions": {
+      "loss_ratio": "unit1; mature expected local slots not received before strict generation+TTL; includes unsent expected slots",
+      "consecutive_missing": "packet; trailing mature missing sequence slots",
+      "degraded": "bool/UNKNOWN; loss_ratio>0.05 AND consecutive_missing>=3",
+      "observation_ns": "ns; local window close/available time, consumed strictly before actor decision"
+    },
+    "legacy_state_disposition": "old global accepted-TX/reference and initial runtime flags are separate; no actor-control causality claim from those flags",
+    "command": {
+      "payload_bytes": 64,
+      "attempts": 3,
+      "period_ns": 100000000,
+      "deadline_ns": 2000000000,
+      "policy_delay_ns": 0
+    },
+    "source_script": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/event_script.json",
+    "source_scene": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/scene_setup.json",
+    "source_script_sha256": "4f99989cfb512765b883adf45f2e13a976fa293938b8e8723db49f2614143eed",
+    "source_scene_sha256": "05ad4c78457da2b748c4d3d0c68b6f4cdddc2e344fd38e2c3b4b11e1d942e0df",
+    "corrections": [
+      {
+        "event_id": "wideband_jamming",
+        "change": "legacy IDs retained; simulated cause and hold titles declare cochannel competition, not certified wideband jamming"
+      }
+    ],
+    "assumptions": [
+      "receiver-visible periodic heartbeat is configured application traffic",
+      "actor observes local weather/nearby geometry after one original tick",
+      "10Hz authored waypoint engine, not PX4 aerodynamic flight"
+    ],
+    "rain_rf": "not amplified; dimensionless rain is not an observed mm/h rate",
+    "rf_profile": "R1:2412MHz/20MHz/HtMcs0/16dBm/NF7/n3/L0=40.09532929124565",
+    "motion_acquisition": {
+      "version": "p09.complete-admitted-landings/v1",
+      "nominal_duration_ticks": 900,
+      "landing_dwell_ticks": 5,
+      "extension_basis": "actual admitted landing motion terminal tick plus five original ticks; original speeds/routes unchanged"
+    },
+    "interference_offered_bps": 8000000,
+    "backup_channel": 6,
+    "interference_class": "legitimate cochannel UDP competition, not wideband jamming",
+    "channel_switch_authority": "preconfigured synchronized local failover after source safe-hold delay; no failed-link command required"
+  },
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+    "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+    "wideband_jamming": 24000000000,
+    "multi_uav_hold_entry": 65000000000,
+    "multi_uav_safe_hold": 78000000000,
+    "alternate_channel": 84500000000
+  },
+  "guard_refs": {
+    "lifecycle_takeoff_uav_digital_l6_4_v2": "trig_lifecycle_takeoff_uav_digital_l6_4_v2",
+    "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": "trig_lifecycle_takeoff_uav_digital_l6_4_v2_secondary",
+    "wideband_jamming": "trig_wideband_jamming",
+    "multi_uav_hold_entry": "trig_after_wideband_jamming_delay_30",
+    "multi_uav_safe_hold": "trig_after_multi_uav_hold_entry_delay_127",
+    "alternate_channel": "trig_after_multi_uav_safe_hold_delay_60",
+    "lifecycle_landing_uav_digital_l6_4_v2": "trig_after_alternate_channel_delay_80",
+    "lifecycle_landing_uav_digital_l6_4_v2_secondary": "trig_after_alternate_channel_delay_88"
+  },
+  "first_allowed_admissions": {
+    "lifecycle_takeoff_uav_digital_l6_4_v2": {
+      "event_id": "lifecycle_takeoff_uav_digital_l6_4_v2",
+      "decision_tick": 30,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "lifecycle_takeoff_uav_digital_l6_4_v2",
+        "decision_ns": 3000000000
+      }
+    },
+    "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": {
+      "event_id": "lifecycle_takeoff_uav_digital_l6_4_v2_secondary",
+      "decision_tick": 38,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "lifecycle_takeoff_uav_digital_l6_4_v2_secondary",
+        "decision_ns": 3800000000
+      }
+    },
+    "wideband_jamming": {
+      "event_id": "wideband_jamming",
+      "decision_tick": 240,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "wideband_jamming",
+        "decision_ns": 24000000000
+      }
+    },
+    "multi_uav_hold_entry": {
+      "event_id": "multi_uav_hold_entry",
+      "decision_tick": 404,
+      "allow": true,
+      "evidence": {
+        "rule_version": "p09.actor-heartbeat-watchdog/v1",
+        "rows": [
+          {
+            "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+            "observation_ns": 40300000000,
+            "receiver_owner": "uav_digital_l6_4_v2",
+            "receiver_epoch": 0,
+            "window_ns": 1000000000,
+            "mature_expected": 8,
+            "timely_received": 5,
+            "ttl_not_timely": 3,
+            "observed_late": 3,
+            "pending_expected": 2,
+            "loss_ratio": 0.375,
+            "availability": "KNOWN",
+            "reason": null,
+            "consecutive_missing": 3,
+            "degraded": true,
+            "rule_version": "p09.actor-heartbeat-watchdog/v1",
+            "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+          },
+          {
+            "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+            "observation_ns": 40300000000,
+            "receiver_owner": "uav_digital_l6_4_v2_secondary",
+            "receiver_epoch": 0,
+            "window_ns": 1000000000,
+            "mature_expected": 8,
+            "timely_received": 4,
+            "ttl_not_timely": 4,
+            "observed_late": 3,
+            "pending_expected": 2,
+            "loss_ratio": 0.5,
+            "availability": "KNOWN",
+            "reason": null,
+            "consecutive_missing": 4,
+            "degraded": true,
+            "rule_version": "p09.actor-heartbeat-watchdog/v1",
+            "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+          }
+        ],
+        "required": "degraded",
+        "decision_ns": 40400000000,
+        "authority": "local onboard",
+        "physical_motion_evidence": null
+      }
+    },
+    "multi_uav_safe_hold": {
+      "event_id": "multi_uav_safe_hold",
+      "decision_tick": 777,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "multi_uav_safe_hold",
+        "decision_ns": 77700000000
+      }
+    },
+    "alternate_channel": {
+      "event_id": "alternate_channel",
+      "decision_tick": 842,
+      "allow": true,
+      "evidence": {
+        "owners": [
+          {
+            "allow": true,
+            "evidence": {
+              "message_id": "command:alternate_channel:uav_digital_l6_4_v2",
+              "receipt": {
+                "schema_version": "p09.actual-downlink-command-receipt/v1",
+                "command_id": "command:alternate_channel:uav_digital_l6_4_v2",
+                "packet_id": "packet-51682",
+                "source_owner": "tower_l6_4_v2",
+                "source_epoch": 0,
+                "receiver_owner": "uav_digital_l6_4_v2",
+                "receiver_epoch": 0,
+                "evidence_available_ns": 84000000000,
+                "decision_ns": 84100000000,
+                "send_ns": 84100000000,
+                "deadline_ns": 86100000000,
+                "action": "alternate_channel",
+                "receive_ns": 84106040710,
+                "accepted_ns": 84106040710,
+                "status": "accepted"
+              },
+              "controller_decisions": [
+                {
+                  "schema_version": "p09.receiver-controller-consumption/v1",
+                  "command_id": "command:alternate_channel:uav_digital_l6_4_v2",
+                  "receiver_owner": "uav_digital_l6_4_v2",
+                  "receiver_epoch": 0,
+                  "action": "alternate_channel",
+                  "receive_ns": 84106040710,
+                  "accepted_ns": 84106040710,
+                  "policy_delay_ns": 0,
+                  "policy_ready_ns": 84106040710,
+                  "queue_available_ns": 84200000000,
+                  "execution_decision_ns": 84200000000,
+                  "status": "ready_for_executor",
+                  "physical_motion_evidence": null
+                }
+              ]
+            }
+          },
+          {
+            "allow": true,
+            "evidence": {
+              "message_id": "command:alternate_channel:uav_digital_l6_4_v2_secondary",
+              "receipt": {
+                "schema_version": "p09.actual-downlink-command-receipt/v1",
+                "command_id": "command:alternate_channel:uav_digital_l6_4_v2_secondary",
+                "packet_id": "packet-51683",
+                "source_owner": "tower_l6_4_v2",
+                "source_epoch": 0,
+                "receiver_owner": "uav_digital_l6_4_v2_secondary",
+                "receiver_epoch": 0,
+                "evidence_available_ns": 84000000000,
+                "decision_ns": 84100000000,
+                "send_ns": 84100000000,
+                "deadline_ns": 86100000000,
+                "action": "alternate_channel",
+                "receive_ns": 84122101431,
+                "accepted_ns": 84122101431,
+                "status": "accepted"
+              },
+              "controller_decisions": [
+                {
+                  "schema_version": "p09.receiver-controller-consumption/v1",
+                  "command_id": "command:alternate_channel:uav_digital_l6_4_v2_secondary",
+                  "receiver_owner": "uav_digital_l6_4_v2_secondary",
+                  "receiver_epoch": 0,
+                  "action": "alternate_channel",
+                  "receive_ns": 84122101431,
+                  "accepted_ns": 84122101431,
+                  "policy_delay_ns": 0,
+                  "policy_ready_ns": 84122101431,
+                  "queue_available_ns": 84200000000,
+                  "execution_decision_ns": 84200000000,
+                  "status": "ready_for_executor",
+                  "physical_motion_evidence": null
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "unfired_events": [
+    "lifecycle_landing_uav_digital_l6_4_v2",
+    "lifecycle_landing_uav_digital_l6_4_v2_secondary"
+  ],
+  "trajectory_difference": {
+    "uav_digital_l6_4_v2": {
+      "first_changed_tick": 271,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6636.321,
+          6526.731,
+          31.8
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          -2.0
+        ],
+        "state": "descending",
+        "activity_type": "descending"
+      },
+      "after": {
+        "pos_enu": [
+          6636.321,
+          6526.731,
+          32.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "state": "jammed",
+        "activity_type": "jammed"
+      }
+    },
+    "uav_digital_l6_4_v2_secondary": {
+      "first_changed_tick": 271,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6624.321,
+          6533.731,
+          34.2
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "state": "airborne",
+        "activity_type": "airborne"
+      },
+      "after": {
+        "pos_enu": [
+          6624.321,
+          6533.731,
+          34.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "state": "jammed",
+        "activity_type": "jammed"
+      }
+    },
+    "tower_l6_4_v2": {
+      "first_changed_tick": 461,
+      "fields": [
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "state": "alternate_channel",
+        "activity_type": "alternate_channel"
+      },
+      "after": {
+        "state": "jammed",
+        "activity_type": "jammed"
+      }
+    }
+  },
+  "duration_original_ticks": 900,
+  "duration_adopted_ticks": 900,
+  "all_actor_final_states_ref": "episodes/L6-4_v2__seed01/all-actor-final-states.json",
+  "ue_dependencies": {
+    "changed_entities": [
+      "uav_digital_l6_4_v2",
+      "uav_digital_l6_4_v2_secondary",
+      "tower_l6_4_v2"
+    ],
+    "weather_changed": false,
+    "camera_declarations": [
+      {
+        "camera_id": "demo_high_overview",
+        "placement_mode": "world_pose",
+        "placement": {
+          "position_enu_m": [
+            6653.036,
+            6503.227,
+            180.0
+          ],
+          "rotation_deg": {
+            "pitch_deg": -70.0,
+            "yaw_deg": 0.0
+          }
+        },
+        "fov_deg": 90.0
+      }
+    ],
+    "camera_declarations_changed": false,
+    "model_or_material_change": false,
+    "capture_frame_step_original_ticks": 5,
+    "appended_frames_if_adopted": 0,
+    "review_before_collection": true
+  },
+  "classification": "A",
+  "classification_basis": "Actual render input trajectory/state/time differs",
+  "published_original210_changed": false,
+  "terminal_acceptance": "all fired is not a whole-chain pass; reviewers must check receipts, rule operands, actual motion and all actors"
+}

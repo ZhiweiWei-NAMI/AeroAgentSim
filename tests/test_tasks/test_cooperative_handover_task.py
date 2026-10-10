@@ -1,10 +1,10 @@
 import pytest
 
-from airfogsim.task.cooperative_handover_task import CooperativeHandoverTask
-from airfogsim.core.cooperative_task import CooperativeTaskState
-from airfogsim.core.transfer_item import MockTransferItem
-from airfogsim.core.rendezvous_area import MockRendezvousArea
-from airfogsim.manager.transfer_manager import TransferManager
+from aeroagentsim.task.cooperative_handover_task import CooperativeHandoverTask
+from aeroagentsim.core.cooperative_task import CooperativeTaskState
+from aeroagentsim.core.transfer_item import MockTransferItem
+from aeroagentsim.core.rendezvous_area import MockRendezvousArea
+from aeroagentsim.manager.transfer_manager import TransferManager
 
 """
 前置条件校验：缺 item / 缺 transfer_manager / 区域不支持缓冲 / participants 不完整 → 任务 FAIL。

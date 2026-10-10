@@ -1,0 +1,441 @@
+{
+  "author": "B01 single implementation author (schema_author + data_author responsibilities combined per dispatch brief)",
+  "assignment": "B01 S01.01-S01.04 complete; specification fully received (4 headers + end marker) and acknowledged in reports/B01/author_checkpoint.json before implementation",
+  "route": {
+    "declared": "glm_sdk/workbuddy/glm-5.3-flash, provider-default reasoning, 131072 output budget",
+    "effective_model_claim": "none made by author; coordinator captures the actual route/session externally",
+    "delegation": "none; no subagents, no other models"
+  },
+  "runtime": {
+    "python": "/mnt/data2/weizhiwei/AERO_WORLD/Dataset/world_model/runtimes/qwen35/bin/python",
+    "env": "CUDA_VISIBLE_DEVICES empty on every command; CPU only; zero GPU training minutes",
+    "user": "weizhiwei"
+  },
+  "files_written": {
+    "code_root_Dataset/world_model/p01_schema_rollout_v4/": [
+      "src/p01v4/__init__.py",
+      "src/p01v4/contracts/__init__.py",
+      "src/p01v4/contracts/schema.py",
+      "src/p01v4/data/__init__.py",
+      "src/p01v4/data/import_episode.py",
+      "src/p01v4/data/serialization.py",
+      "src/p01v4/data/windows.py",
+      "src/p01v4/data/normalization.py",
+      "src/p01v4/data/provenance.py",
+      "contracts/schema-v1.json",
+      "tests/__init__.py",
+      "tests/unit/__init__.py",
+      "tests/unit/test_schema.py",
+      "tests/unit/test_import_episode.py",
+      "tests/unit/test_roundtrip.py",
+      "tests/unit/test_no_future_leak.py",
+      "tests/unit/test_split_provenance.py",
+      "tests/fixtures/schema_cases.json"
+    ],
+    "results_root_design/p01_generic/schema_rollout_v4/": [
+      "reports/B01/author_checkpoint.json",
+      "reports/B01/author_result.json",
+      "reports/S01.01/junit.xml",
+      "reports/S01.02/junit.xml",
+      "reports/S01.03/junit.xml",
+      "reports/S01.04/junit.xml",
+      "configs/serialization.json",
+      "configs/pilot-windows.json",
+      "manifests/episode-pilot.json",
+      "manifests/pilot-import.json",
+      "derived/pilot_L4-1_v1__seed00.canonical.jsonl",
+      "derived/pilot-norm-scope.json"
+    ]
+  },
+  "verification": {
+    "entry_commands": {
+      "S01.01": "cd Dataset/world_model/p01_schema_rollout_v4 && CUDA_VISIBLE_DEVICES= python -B -m pytest tests/unit/test_schema.py -q -p no:cacheprovider --junitxml <results>/reports/S01.01/junit.xml",
+      "S01.02": "cd Dataset/world_model/p01_schema_rollout_v4 && CUDA_VISIBLE_DEVICES= python -B -m pytest tests/unit/test_import_episode.py -q -p no:cacheprovider --junitxml <results>/reports/S01.02/junit.xml",
+      "S01.03": "cd Dataset/world_model/p01_schema_rollout_v4 && CUDA_VISIBLE_DEVICES= python -B -m pytest tests/unit/test_roundtrip.py -q -p no:cacheprovider --junitxml <results>/reports/S01.03/junit.xml",
+      "S01.04": "cd Dataset/world_model/p01_schema_rollout_v4 && CUDA_VISIBLE_DEVICES= python -B -m pytest tests/unit/test_no_future_leak.py -q -p no:cacheprovider --junitxml <results>/reports/S01.04/junit.xml"
+    },
+    "raw_exits_and_counts": [
+      {
+        "step": "S01.01",
+        "exit": 0,
+        "passed": 13,
+        "failed": 0,
+        "wall_s": 0.5,
+        "max_rss_kbytes": 34168
+      },
+      {
+        "step": "S01.02",
+        "exit": 0,
+        "passed": 11,
+        "failed": 0,
+        "wall_s": 23.22,
+        "max_rss_kbytes": 1235744
+      },
+      {
+        "step": "S01.03",
+        "exit": 0,
+        "passed": 12,
+        "failed": 0,
+        "wall_s": 48.57,
+        "max_rss_kbytes": 1589156
+      },
+      {
+        "step": "S01.04",
+        "exit": 0,
+        "passed": 14,
+        "failed": 0,
+        "wall_s": 5.38,
+        "max_rss_kbytes": 1076840
+      },
+      {
+        "step": "S01.04+parent-supplement",
+        "exit": 0,
+        "passed": 34,
+        "failed": 0,
+        "wall_s": 4.96,
+        "max_rss_kbytes": 1076940
+      },
+      {
+        "step": "all-four-suites",
+        "exit": 0,
+        "passed": 50,
+        "failed": 0,
+        "wall_s": 76.37,
+        "max_rss_kbytes": 1607480
+      }
+    ],
+    "junit_summary": {
+      "S01.01": "errors=0 failures=0 skipped=0 tests=13",
+      "S01.02": "errors=0 failures=0 skipped=0 tests=11",
+      "S01.03": "errors=0 failures=0 skipped=0 tests=12",
+      "S01.04": "errors=0 failures=0 skipped=0 tests=34 (14 causal-cutoff + 20 split/provenance/leak-audit supplement cases)"
+    }
+  },
+  "parent_supplement_implementation": {
+    "transported_q": {
+      "verbatim_rule": "historical transported_q uses TRUE future + TRAIN-frozen Gaussian noise and is oracle diagnostic only; excluded from new prediction inputs",
+      "source_evidence": "mechanism declared by parent supplement; no readable code or artifact in this package re-derives it (structured_mm modules and run outputs searched; old run_v3 diagnostic.pt carries states/future_features/targets with episode/cutoff/split metadata but no transported_q field), so it is recorded as lineage producer policy, not reimplemented",
+      "enforcement": "p01v4.data.provenance.reject_transported_inputs raises SplitGroupError on any input-branch record carrying source_family=transported_q (directly or via provenance.producer_mechanism.source_family); diagnostics-side storage stays legal"
+    },
+    "split_group": {
+      "verbatim_rule": "source_family/split_group derive from ORIGINAL scenario and seed; every old/new copy, 36overlay, normal/congested branch and all windows from the same source share one split; versions are not independent examples",
+      "implementation": "p01v4.data.provenance.original_identity parses <scenario>_v<N>__seed<M> (raw key preserved with zero-padding), keeps variant marks after '::' or '++' verbatim; split_group resolves only through the original key against an explicit table and raises on unknown originals",
+      "table_provenance": "host_data_v2/cohort.json read this session: 6 episodes - TRAIN L1-1_v1__seed00(cutoff 140), L4-1_v1__seed00(250), L4-5_v1__seed00(250), L4-8_v1__seed00(250); VALID L1-1_v1__seed01(140..155), L4-3_v1__seed00(275); cross-checked episode-by-episode in tests",
+      "explicit_unknown": "decorated-id grammar (36overlay/branch marks) has no readable producer source; marks are preserved, never silently re-splitted; TEST originals are not invented"
+    },
+    "provenance_recording": {
+      "producer_mechanism": "TRANSPORTED_Q_MECHANISM in provenance.py plus producer_policy block in configs/pilot-windows.json",
+      "available_time": "capture_bound (pilot rgb/lidar, same-run tick binding via capture_binding_record) and hindsight_truth established; rule 'unknown' stays explicit with tick=None and a note, never fabricated",
+      "same_run_capture_binding": "pilot rgb/lidar observation binds to the truth frame at the same tick of the same run; mismatched ticks raise"
+    },
+    "new_leak_cases_in_S01.04": [
+      "future-truth frame/edge records (tick > cutoff) rejected from prediction inputs (reject_future_truth_inputs)",
+      "input record with available_time.tick > cutoff rejected even when its content tick predates the cutoff (hindsight truth)",
+      "future-visibility selector leak caught by membership-perturbation audit (audit_input_selector)",
+      "future-topology selector leak (input set flipping on a future relation value) caught by the same audit",
+      "tick-prefix selector passes the audit; transported_q inputs rejected from the input branch"
+    ],
+    "physical_dimension_upgrades": "unconsumed physical-dimension upgrades do not block this CPU engineering; the 26-entry unit registry and existing coordinate frames remain as implemented in S01.01",
+    "partial_code_preservation": "earlier author files untouched and green; supplement added as new module (src/p01v4/data/provenance.py), new tests (tests/unit/test_split_provenance.py), additive edits to windows.py and configs/pilot-windows.json",
+    "six_point_supplement": {
+      "point1_revisions": "package_revision_document separates v14 PACKAGE source_revision from per-dimension producer_revision; a 36x8 package label never proves all eight producers changed; each dimension maps its actual source files (pilot-import.json already carries the concrete source->record mapping for the pilot); unprovided dimensions stay producer_revision=null, changed/same/unknown buckets via revision_summary",
+      "point2_views": "model_visible_view separates lossless archive from model-visible content: full event_script/scene_setup, future fault/weather schedule, terminal/hidden control, semantic episode names carry available_time.rule=archive_only and are excluded from the default view; known-plan experiments need separate experiment labels (excluded from default view too); exclusion counts reported, unknown rules never guessed in",
+      "point3_transport_q": "unchanged ORACLE_ONLY enforcement (reject_transported_inputs); mechanism stays parent-declared lineage, not re-derived",
+      "point4_splits": "original scenario+seed rule unchanged; new-scenario generalization claims recorded as requiring the ENTIRE scenario with ALL seeds held out - the pilot makes no generalization claim (engineering_test_scope.generalization_claim)",
+      "point5_lp": "L_DEFINITION_LEGACY_Q='L/p01-legacy-q-bounded-observation' vs L_DEFINITION_TTL='L/p01-ttl-observation-actual-available-time' as distinct definition_id; timely_L counts cases with actual available_time<=cutoff, no timely RX => l_undefined_cases (L never imputed zero), pending/censored compute tasks counted without hindsight outcomes",
+      "point6_capture": "actual capture binds same run/pose/weather/clock (capture_binding_record, mismatched ticks raise); planned 181 capture times do not prove 181 successful frames - pilot manifest records ACTUAL counted 11 rgb + 11 lidar; NOT_RECOMPUTED events recorded via available_time rule unknown (tick=None), never zero"
+    }
+  },
+  "field_relation_coverage": {
+    "schema_families": [
+      "identity.episode_id",
+      "identity.scenario_id",
+      "identity.capture_view_id",
+      "roster.entity_id",
+      "roster.entity_category",
+      "roster.entity_kind",
+      "roster.observer_role",
+      "pose.position_enu_m",
+      "pose.velocity_enu_mps",
+      "pose.yaw_deg",
+      "motion.speed_mps",
+      "annotations.state",
+      "annotations.activity_type",
+      "annotations.visibility_state",
+      "relation.predicate_id",
+      "relation.tuple_id",
+      "relation.value",
+      "relation.bindings",
+      "event.event_id",
+      "event.event_family_id",
+      "event.detection_tick",
+      "event.end_tick",
+      "event.bindings",
+      "observation.path",
+      "observation.modality",
+      "observation.tick",
+      "observation.observer_entity_id",
+      "observation.record_count"
+    ],
+    "value_type_support": "bool / enum / real / bounded / circular / vector / optional / ragged",
+    "units": "26 canonical units imported from executable UNIT_DEFINITIONS (Dataset/world_model/graph/field_contract.py), incl. simulation_tick, m, m/s, deg, count, ratio, lux, degC, ppm",
+    "coordinate_frames": {
+      "world_enu_m": "coord.external_enu_m.v1 (producer-declared world frame; axes e,n,u)",
+      "sensor_body_ned": "sensor_body_ned_m.v1 (lidar producer body-NED mount frame; axes n,e,d, source arrays points_sensor_ned_m)"
+    },
+    "missing_distinction": {
+      "zero": "present value 0.0; never a missing marker (tested)",
+      "missing": "source declared field, no value this tick",
+      "inapplicable": "family does not apply to record kind/instance",
+      "absent": "not carried by this source grammar instance",
+      "source_unknown": "source's own unknown sentinel (compute deadline pattern; event.end_tick)"
+    }
+  },
+  "pilot_episode": {
+    "episode_id": "L4-1_v1__seed00",
+    "why": "fixed TRAIN episode of the prior v2 engineering cohort with cutoff 250 inside its span; largest record volume among the four episodes that have a capture supplement, so it exercises per-modality import at realistic scale",
+    "sources_read_only": [
+      "aw_data/render_ready_episodes/L4-1_v1__seed00/{truth_frames,trajectories,weather_meta}.jsonl + global_entity_roster.json",
+      "aw_data/objective_semantic_truth/L4-1_v1__seed00/{world_truth_graph_deltas,event_occurrences}.jsonl",
+      "design/p01_generic/structured_mm_20261006/host_data_v2/L4-1_v1/seed00/uav_view_000__u_inspect_l4_1_v1/{rgb,lidar}"
+    ],
+    "coverage": {
+      "source_records": {
+        "truth_frames.jsonl": 901,
+        "global_entity_roster.json": 78,
+        "world_truth_graph_deltas.jsonl": 180,
+        "event_occurrences.jsonl": 10
+      },
+      "canonical_records": {
+        "frame": 41472,
+        "entity": 78,
+        "edge": 138831,
+        "event": 10,
+        "observation": 22
+      },
+      "tick_range": "0..900, 901 ticks, gapless",
+      "modalities": {
+        "rgb": 11,
+        "lidar": 11,
+        "missing": []
+      },
+      "import_wall_seconds": 12.665,
+      "import_max_rss_kbytes": 716400
+    },
+    "count_equivalence": "frame records == sum of per-frame entity rows (41472); edge records == sum of delta operations (138831); entity/event 1:1",
+    "mid_record_provenance": {
+      "canonical": "edge tick=450 predicate=communication.message_transmission_failed tuple=world_predicate_tuple:2020855f18484f091ae1992d bindings={attempt: transmission_attempt:80d03379ab69ec72cf23a97b} value=false",
+      "source": "aw_data/objective_semantic_truth/L4-1_v1__seed00/world_truth_graph_deltas.jsonl line 90, delta tick 450",
+      "resolution": "canonical source.line + tuple_id resolves to the exact source operation; predicate and bindings match"
+    }
+  },
+  "precision_and_order_semantics": {
+    "lossless_definition": "decode(encode(x)) == x exactly; floats are binary64 values parsed from source JSON text; no epsilon anywhere",
+    "tolerance_source": "the original data's own JSON decimal precision; no arbitrary tolerance",
+    "order": "field keys sorted (no semantics); record order normalized via multiset compare (semantic_equivalent); list order preserved and significant: vector axes (E,N,U / N,E,D), field_names/cells pairing",
+    "roundtrip_verified": "all 180413 pilot records, JSONL and compact-table both exact",
+    "byte_token_measurement": {
+      "method": "bytes from len(utf-8); tokens ONLY from the authorized local Qwen tokenizer.json (CPU, no weight load) at the approved Data1 snapshot b1485b2fa6dfa1287294f269f5fb618e03d52d7c",
+      "full_jsonl_bytes": 124716471,
+      "compact_table_bytes": 87668893,
+      "byte_reduction_percent": 29.7,
+      "full_jsonl_tokens": 46510889,
+      "compact_table_tokens": 37710593,
+      "token_reduction_percent": 18.9,
+      "info_loss": "none; both encodings round-trip exactly before measurement"
+    }
+  },
+  "cutoff_and_fit": {
+    "cutoff": 250,
+    "target_times": [
+      300,
+      305,
+      310,
+      315,
+      320,
+      325,
+      330,
+      335,
+      340,
+      345,
+      350
+    ],
+    "physical_columns": "source clock tick_hz=10, dt_s=0.1 (declared per truth frame); horizon 50..100 ticks = 5.0..10.0 s; one-step window 5 ticks = 0.5 s",
+    "fit_scoper": {
+      "version": "p01v4-norm-1",
+      "field": "motion.speed_mps",
+      "fit_split": "TRAIN",
+      "fit_episode": "L4-1_v1__seed00",
+      "max_fit_tick": 250,
+      "fit_count": 9038,
+      "mean": 1.9817456184996578,
+      "std": 2.7378114247020586
+    },
+    "leak_guards": [
+      "input branch: tick <= cutoff only; checked per record (scan_input_leak)",
+      "future frame/observation content only on target branch (tested)",
+      "future-caption and future-pose records rejected from input branch (tested)",
+      "input selection by future visibility rejected (guard + test)",
+      "VALID/TEST scaler fit raises; future records excluded from fit; max_fit_tick + count reported (tested)"
+    ],
+    "generalization_claim": "none; the pilot window reuses one episode for engineering verification and is explicitly labeled no-cross-episode-generalization in configs/pilot-windows.json"
+  },
+  "open_dependencies_and_gaps": [
+    {
+      "gap": "schema families cover the v4 engineering pilot streams; the full source field vocabulary (14426 declared source fields in design/belief/field_definitions.jsonl across ~30 source roles: compute_state, communication_state, domain_state observation families, evidence/semantic observation channels, ARM/sumo supplement streams) is NOT yet mapped into canonical families",
+      "named_unresolved_fields": [
+        "compute_state.capacity/allocation/resource_request.cpu_cores|gpu_units|memory_mb",
+        "compute_state.deadline.{queue_started_tick,deadline_tick,slack_ticks,status,requirement_status} (source-unknown semantics already modeled as kind source_unknown)",
+        "communication_state.{bandwidth.requested_mbps,bandwidth.allocated_mbps,link_quality.latency_ms,heartbeat_age_ms,channel.*}",
+        "domain_state observation families (e.g. values.red_duration_ticks_by_controller, values.queue_sampling_window.stopped_vehicle_count_by_lane, weather truth fields beyond pilot weather_meta)",
+        "receiver observation log channels (request/communication/fault/context/weather registers in runs/belief_observation_logs) and their availability_tick semantics"
+      ],
+      "status": "explicit scope boundary of S01.01 pilot, not an UNKNOWN placeholder: UNKNOWN is used only as the source's own value sentinel, never to mask unmapped fields; extending families requires explicit FIELD_FAMILIES registration with unit/frame/dtype plus fixtures (tested boundary)"
+    },
+    {
+      "gap": "no relation/event records were imported from semantic_graph_deltas.jsonl / predicate_truth.jsonl / l0_predicate_state.jsonl in the pilot; world_truth_graph_deltas was used as the single relation source to keep the pilot auditable",
+      "named_unresolved_fields": [
+        "semantic_graph_deltas.operations.{add,invalidate,restore,set}_predicate_truth.{source_truth_id,reason,source_break_id}",
+        "predicate_transitions.{evidence_truth_ids,materialization_policy}"
+      ],
+      "status": "deferred to the next package step that owns semantic-layer import; world-layer relation import is complete"
+    },
+    {
+      "gap": "future modalities beyond rgb/lidar (depth, segmentation) have no capture supplement in the pilot source; observation.modality enum currently declares rgb|lidar only",
+      "named_unresolved_fields": [
+        "observation.modality=depth",
+        "observation.modality=segmentation"
+      ],
+      "status": "missing modality does not block independent import (tested with capture_root=None); enum extension is a one-line contract edit when a depth/seg producer source appears"
+    }
+  ],
+  "workflow_compliance": {
+    "no_gpu": "CUDA_VISIBLE_DEVICES empty everywhere; no model loading, no training, no UE",
+    "no_git_mutation": true,
+    "old_outputs_preserved": "no writes outside declared writable paths; B00 delivery.json untouched; P02/P09/legacy v1-v3 untouched",
+    "read_only_sources": "raw sources only read; all derivatives are new versioned files under the results root",
+    "no_digest_acceptance": "no sha256/digest fields written into any artifact; source provenance is path+line only",
+    "no_persistent_memory": true,
+    "no_custom_audit_runner": "verification is the four specified pytest entries only"
+  },
+  "next": "B01 complete; awaiting coordinator-owned delivery.json and different-author GLM initial review; B02 not started",
+  "freeze": {
+    "checkpoint": "B01 delivery freeze: source frozen after author_result.json finalization; no further source, config, test or implementation changes in this session; B02 not started",
+    "reviewer_concern": "independent GLM reviewer reported provenance.py/test_split_provenance.py/windows.py changed after author_result.json (moving target); resolved by this authoritative re-run of the exact current source followed by a no-further-writes commitment",
+    "final_run": {
+      "command": "cd Dataset/world_model/p01_schema_rollout_v4 && CUDA_VISIBLE_DEVICES= python -B -m pytest tests/unit -q -p no:cacheprovider --junitxml <results>/reports/S01.04/junit.xml",
+      "exit": 0,
+      "passed": 82,
+      "failed": 0,
+      "wall_s": 76.17,
+      "max_rss_kbytes": 1608376,
+      "python": "/mnt/data2/weizhiwei/AERO_WORLD/Dataset/world_model/runtimes/qwen35/bin/python",
+      "junit_note": "reports/S01.04/junit.xml currently holds the combined 82-test run; per-suite canonical counts are S01.01=13, S01.02=11, S01.03=12 (their own junit files) and S01.04 covers tests/unit/test_no_future_leak.py + tests/unit/test_split_provenance.py = 34"
+    },
+    "frozen_test_list": {
+      "tests/unit/test_schema.py": [
+        "test_bool_and_enum_support",
+        "test_real_bounded_circular_vector_support",
+        "test_optional_ragged_support",
+        "test_units_and_frames_exist",
+        "test_missing_inapplicable_absent_zero_distinct",
+        "test_duplicate_entity_id_detected",
+        "test_unknown_field_family_located",
+        "test_illegal_frame_unit_located",
+        "test_nan_inf_rejected",
+        "test_world_camera_frame_mixing_located",
+        "test_negative_fixture_anchors",
+        "test_schema_v1_json_written_and_consistent",
+        "test_new_family_requires_registration"
+      ],
+      "tests/unit/test_import_episode.py": [
+        "test_source_vs_canonical_counts",
+        "test_first_last_and_middle_tick_coverage",
+        "test_first_last_and_middle_events_traceable",
+        "test_middle_tick_relation_back_to_source",
+        "test_modalities_and_missing_modality_independence",
+        "test_sources_read_only_and_record_counts",
+        "test_cross_episode_id_merge_detected",
+        "test_duplicate_entity_id_detected",
+        "test_missing_modality_does_not_block_import",
+        "test_truncated_history_detected",
+        "test_missing_tick_record_rejected_by_schema"
+      ],
+      "tests/unit/test_roundtrip.py": [
+        "test_jsonl_roundtrip_exact",
+        "test_compact_roundtrip_exact",
+        "test_precision_enum_units_edges_missing_preserved",
+        "test_permuted_order_semantic_equivalence",
+        "test_typed_input_view_from_same_records",
+        "test_schema_drift_detected",
+        "test_rounding_detected",
+        "test_missing_edge_detected",
+        "test_list_order_semantics",
+        "test_unknown_non_present_kind_in_compact",
+        "test_ragged_row_rejected",
+        "test_byte_measurement_and_token_policy"
+      ],
+      "tests/unit/test_no_future_leak.py": [
+        "test_every_input_tick_le_cutoff",
+        "test_future_capture_only_on_target_branch",
+        "test_target_times_after_cutoff_and_horizon",
+        "test_cutoff_to_target_physical_time",
+        "test_scaler_scope_document_and_fit_indices",
+        "test_transform_works_for_train_fit",
+        "test_future_pose_in_input_rejected",
+        "test_future_caption_in_input_rejected",
+        "test_future_visibility_input_selection_rejected",
+        "test_valid_and_test_fit_normalization_rejected",
+        "test_future_records_excluded_from_fit",
+        "test_target_time_at_or_before_cutoff_rejected",
+        "test_cross_episode_window_rejected",
+        "test_pilot_windows_config_consistent"
+      ],
+      "tests/unit/test_split_provenance.py": [
+        "test_original_identity_parse",
+        "test_split_group_shared_by_all_versions",
+        "test_split_group_matches_old_cohort_assignment",
+        "test_decorated_variant_resolves_to_original_not_new_group",
+        "test_original_missing_from_split_table_raises",
+        "test_transported_q_rejected_from_prediction_inputs",
+        "test_transported_q_detected_via_provenance_mechanism",
+        "test_normal_records_pass_transported_gate",
+        "test_transported_q_mechanism_documented_not_reimplemented",
+        "test_future_truth_frame_rejected_as_input",
+        "test_future_truth_edge_rejected_as_input",
+        "test_available_time_after_cutoff_rejected_even_if_tick_past",
+        "test_prefix_truth_inputs_pass_future_truth_gate",
+        "test_audit_catches_future_visibility_selector",
+        "test_audit_catches_future_topology_selector",
+        "test_audit_accepts_tick_prefix_selector",
+        "test_capture_binding_established_for_pilot_modalities",
+        "test_capture_binding_mismatch_rejected",
+        "test_available_time_unknown_stays_unknown",
+        "test_available_time_established_rules_recorded",
+        "test_package_label_never_proves_all_producers_changed",
+        "test_missing_source_file_map_rejected",
+        "test_unprovided_dimension_recorded_unknown_not_guessed",
+        "test_archive_only_content_excluded_from_model_view",
+        "test_known_plan_experiment_requires_separate_label",
+        "test_transportexcluded_from_model_view",
+        "test_ttl_L_excludes_untimely_rx_never_zero",
+        "test_pending_compute_tasks_stay_censored",
+        "test_legacy_q_and_ttl_have_distinct_definition_ids",
+        "test_actual_capture_counts_not_planned_count",
+        "test_capture_binding_same_run_enforced",
+        "test_not_recomputed_is_not_zero_events"
+      ]
+    },
+    "scope_limitations_remaining": [
+      "single-episode pilot (L4-1_v1__seed00) only; no multi-episode or cross-episode generalization claim",
+      "pilot relation source is world_truth_graph_deltas.jsonl only; semantic_graph_deltas.jsonl / predicate_truth.jsonl / l0_predicate_state.jsonl fields (source_truth_id, reason, source_break_id, evidence_truth_ids, materialization_policy) not imported",
+      "full 14426-field source vocabulary (compute_state, communication_state, domain_state families, receiver observation-log channels) not mapped into canonical families; explicit FIELD_FAMILIES registration required per new family",
+      "observation.modality enum is rgb|lidar only (no depth/segmentation producer source in the pilot)",
+      "decorated episode-id grammar (36overlay/branch marks) has no readable producer source; marks preserved verbatim, never silently re-splitted",
+      "TEST split originals are not present in the old cohort and were not invented",
+      "transported_q mechanism stays parent-declared lineage (TRUE future + TRAIN-frozen noise); no code re-derives it",
+      "token measurements use the authorized local tokenizer.json only (CPU, no weight load); byte measurements elsewhere",
+      "physical-dimension fidelity upgrades remain unconsumed and non-blocking for this CPU engineering"
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "windows": "p01v4/pilot-windows",
+  "version": 1,
+  "pilot_episode": {
+    "episode_id": "L4-1_v1__seed00",
+    "split": "TRAIN",
+    "tick_hz": 10,
+    "dt_s": 0.1,
+    "tick_range": [0, 900]
+  },
+  "supervision_windows": [
+    {
+      "window_id": "L4-1_v1__seed00:cutoff250:t+50..t+100",
+      "cutoff": 250,
+      "target_times": [300, 305, 310, 315, 320, 325, 330, 335, 340, 345, 350],
+      "horizon_ticks": [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100],
+      "horizon_seconds": [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0],
+      "target_branch_kinds": ["frame", "observation"],
+      "note": "cutoff 250 is the fixed TRAIN cutoff of the prior v2 engineering cohort for this episode; targets are the 11 subsequent capture-step frames"
+    },
+    {
+      "window_id": "L4-1_v1__seed00:cutoff250:single_step",
+      "cutoff": 250,
+      "target_times": [255],
+      "horizon_ticks": [5],
+      "horizon_seconds": [0.5],
+      "target_branch_kinds": ["frame", "observation"],
+      "note": "one-step horizon: 5 ticks = 0.5 s physical time"
+    }
+  ],
+  "fit_policy": {
+    "scaler_version": "p01v4-norm-1",
+    "allowed_fit_splits": ["TRAIN"],
+    "fit_input_rule": "tick <= cutoff records of TRAIN episodes only; VALID/TEST fit raises NormalizationScopeError",
+    "fit_fields_pilot": ["motion.speed_mps"],
+    "max_fit_tick_reporting": "scaler.scope_document() records the largest tick that entered the fit"
+  },
+  "split_group_policy": {
+    "rule": "source_family and split_group derive from the ORIGINAL scenario/seed key <scenario>_v<N>__seed<M>; every old/new copy, 36overlay and normal/congested branch, and every supervision window built from one source shares exactly that original's single split group; versions are not independent examples",
+    "table_source": "host_data_v2/cohort.json (prior v2 engineering cohort TRAIN/VALID assignment, verified episode-by-episode in tests/unit/test_split_provenance.py)",
+    "train_originals": ["L1-1_v1__seed00", "L4-1_v1__seed00", "L4-5_v1__seed00", "L4-8_v1__seed00"],
+    "valid_originals": ["L1-1_v1__seed01", "L4-3_v1__seed00"],
+    "decorated_ids": "variant marks after '::' or '++' are preserved verbatim and never create a new split group; TEST originals are not present in the old cohort and are not invented here",
+    "unknown": "any episode id outside the verified grammar raises instead of guessing"
+  },
+  "producer_policy": {
+    "transported_q": {
+      "source_family": "transported_q",
+      "producer": "historical P01 diagnostic export (pre-v4 lineage; produced outside this package)",
+      "mechanism": "TRUE future values + TRAIN-frozen Gaussian noise (parent supplement declaration)",
+      "role": "oracle diagnostic only",
+      "admissible_as_prediction_input": false,
+      "enforcement": "p01v4.data.provenance.reject_transported_inputs raises on any input-branch record of this family"
+    },
+    "available_time": {
+      "capture_bound": "established for pilot rgb/lidar: content available at the same-run capture tick, bound via p01v4.data.provenance.capture_binding_record",
+      "hindsight_truth": "truth frames/edges/events: content tick definitive, inadmissible as input after cutoff",
+      "unknown": "kept explicit with tick=None and a note; never fabricated"
+    }
+  },
+  "leak_audit": {
+    "future_truth": "p01v4.data.windows.reject_future_truth_inputs rejects truth records with tick > cutoff AND input records whose provenance available_time.tick > cutoff",
+    "future_visibility_topology": "p01v4.data.windows.audit_input_selector perturbs all future field content and requires selector membership to be unchanged; a flip is a future-visibility/topology leak and raises"
+  },
+  "six_point_supplement_policy": {
+    "revisions": "v14 PACKAGE source_revision is separate from per-dimension producer_revision; a 36x8 package label never proves all eight producers changed; per-dimension actual source files mapped in p01v4.data.provenance.package_revision_document (unprovided dimensions stay producer_revision=null)",
+    "views": "lossless archive view (full event_script/scene_setup, future fault/weather schedule, terminal/hidden control, semantic episode names) is address/archive-only; model_visible_view admits only capture_bound/hindsight_truth content with tick <= cutoff; known-plan experiments need separate labels",
+    "transported_q": "ORACLE_ONLY (TRUE future + TRAIN-frozen Gaussian noise), never a prediction input",
+    "splits": "ORIGINAL scenario+seed decides; all versions/overlays/load branches/windows share one split; new-scenario generalization claims require the ENTIRE scenario with all seeds held out",
+    "lp_definitions": "legacy q-based L/P (L/p01-legacy-q-bounded-observation) and TTL L/P (L/p01-ttl-observation-actual-available-time) are distinct definition_id; timely cases count actual available_time<=cutoff; no timely RX means L undefined (never zero); pending/censored compute tasks stay censored without hindsight outcomes",
+    "capture": "actual capture binds same run/pose/weather/clock (capture_binding_record); 181 planned capture times never prove 181 successful frames - pilot actual counted frames are 11 rgb + 11 lidar (manifest pilot-import.json); NOT_RECOMPUTED is unknown, not zero events"
+  },
+  "engineering_test_scope": {
+    "leak_checks": [
+      "input tick <= cutoff for every input record",
+      "future frame/observation content only on the target branch",
+      "input-set selection depends only on tick <= cutoff, never on visibility or any field value",
+      "scaler fit restricted to TRAIN split and tick <= cutoff"
+    ],
+    "generalization_claim": "windows built here reuse the same episode for engineering tests; NO cross-episode generalization is claimed from them"
+  }
+}

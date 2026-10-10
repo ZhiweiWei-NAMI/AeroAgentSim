@@ -1,0 +1,267 @@
+{
+  "schema_version": "p02.review-evidence/v6",
+  "source_HEAD": "ea295073cdd310a31fa2e29317a3571bc716bb87",
+  "source_worktree": "dirty existing server implementation; source hashes were not frozen before v6 capture. Current later custody-marker patch is not represented by these images.",
+  "capture_script_sha256": "33e08c6a7519bef531b74b7fcb28f2106b180d7f8b6d9b6fe0b7eb0e301fdf18",
+  "images": {
+    "integrated-v6-default-zh.png": {
+      "sha256": "9d243c05ec1166fd7c7c21c2f5726d7a062d8d193cc63732e00f90b93e6e2c0f",
+      "bytes": 667783
+    },
+    "integrated-v6-selected-zh.png": {
+      "sha256": "5d317aec8f784874adce198baaeff61ff580c7ea74160386a67b01ca475a2310",
+      "bytes": 726889
+    },
+    "integrated-v6-selected-en.png": {
+      "sha256": "7aa014f699057be90e68e87aa210ea8247b2344caaef46ff8adab08ff41d1443",
+      "bytes": 724726
+    },
+    "integrated-v6-follow-start-en.png": {
+      "sha256": "c1e80ea5c6f70cb8d962e152db75470b93db2fb3078f1cbe0f590815eef6f3e2",
+      "bytes": 1845579
+    },
+    "integrated-v6-follow-moved-en.png": {
+      "sha256": "0c98cee87631f9ba10a0bdba99b60f7fe2d51aae333f57caa5f7666763151bba",
+      "bytes": 1604434
+    },
+    "integrated-v6-follow-backward-en.png": {
+      "sha256": "c1e80ea5c6f70cb8d962e152db75470b93db2fb3078f1cbe0f590815eef6f3e2",
+      "bytes": 1845579
+    },
+    "integrated-v6-seek-zero-en.png": {
+      "sha256": "a2da64202ce2bbba63ae120f4e2fd32f7edc08a2a5b6613414c3f56e492ba9c3",
+      "bytes": 717490
+    }
+  },
+  "operation_evidence": [
+    {
+      "name": "default-zh",
+      "cursor_index": "0",
+      "scene_tick": "1",
+      "time_s": "0.5",
+      "language": "zh-CN",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "sceneReady": "true",
+      "texturesReady": "true",
+      "camera_mode": "free",
+      "left_order_rows": [],
+      "right_order_rows": [],
+      "position_evidence": null,
+      "destination_state": "unknown"
+    },
+    {
+      "name": "selected-zh",
+      "cursor_index": "9",
+      "scene_tick": "10",
+      "time_s": "5",
+      "language": "zh-CN",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "sceneReady": "true",
+      "texturesReady": "true",
+      "camera_mode": "free",
+      "left_order_rows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "订单 order.inspection-overlay.1 · picked_up · 包裹 parcel.order.inspection-overlay.1 · 承运 uav.inspector · 托管 uav.inspector (entity) · 目的地 facility.liede · tick 10 · 00:05.0"
+        }
+      ],
+      "right_order_rows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "订单 inspection-overlay.1"
+        }
+      ],
+      "position_evidence": null,
+      "destination_state": "unknown"
+    },
+    {
+      "name": "selected-en",
+      "cursor_index": "9",
+      "scene_tick": "10",
+      "time_s": "5",
+      "language": "en",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "sceneReady": "true",
+      "texturesReady": "true",
+      "camera_mode": "free",
+      "left_order_rows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order order.inspection-overlay.1 · picked_up · Parcel parcel.order.inspection-overlay.1 · Carrier uav.inspector · Custody uav.inspector (entity) · Destination facility.liede · tick 10 · 00:05.0"
+        }
+      ],
+      "right_order_rows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order inspection-overlay.1"
+        }
+      ],
+      "position_evidence": null,
+      "destination_state": "unknown"
+    },
+    {
+      "name": "follow-start-en",
+      "cursor_index": "9",
+      "scene_tick": "10",
+      "time_s": "5",
+      "language": "en",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "sceneReady": "true",
+      "texturesReady": "true",
+      "camera_mode": "chase",
+      "left_order_rows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order order.inspection-overlay.1 · picked_up · Parcel parcel.order.inspection-overlay.1 · Carrier uav.inspector · Custody uav.inspector (entity) · Destination facility.liede · tick 10 · 00:05.0"
+        }
+      ],
+      "right_order_rows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order inspection-overlay.1"
+        }
+      ],
+      "position_evidence": null,
+      "destination_state": "unknown"
+    },
+    {
+      "name": "follow-moved-en",
+      "cursor_index": "39",
+      "scene_tick": "40",
+      "time_s": "20",
+      "language": "en",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "sceneReady": "true",
+      "texturesReady": "true",
+      "camera_mode": "chase",
+      "left_order_rows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "40",
+          "text": "Order order.inspection-overlay.1 · delivered · Parcel parcel.order.inspection-overlay.1 · Carrier uav.inspector · Custody facility.liede (facility) · Destination facility.liede · tick 14 · 00:07.0"
+        }
+      ],
+      "right_order_rows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "40",
+          "text": "Order inspection-overlay.1"
+        }
+      ],
+      "position_evidence": null,
+      "destination_state": "unknown"
+    },
+    {
+      "name": "follow-backward-en",
+      "cursor_index": "9",
+      "scene_tick": "10",
+      "time_s": "5",
+      "language": "en",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "sceneReady": "true",
+      "texturesReady": "true",
+      "camera_mode": "chase",
+      "left_order_rows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order order.inspection-overlay.1 · picked_up · Parcel parcel.order.inspection-overlay.1 · Carrier uav.inspector · Custody uav.inspector (entity) · Destination facility.liede · tick 10 · 00:05.0"
+        }
+      ],
+      "right_order_rows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order inspection-overlay.1"
+        }
+      ],
+      "position_evidence": null,
+      "destination_state": "unknown"
+    },
+    {
+      "name": "seek-zero-en",
+      "cursor_index": "0",
+      "scene_tick": "1",
+      "time_s": "0.5",
+      "language": "en",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "sceneReady": "true",
+      "texturesReady": "true",
+      "camera_mode": "free",
+      "left_order_rows": [],
+      "right_order_rows": [],
+      "position_evidence": null,
+      "destination_state": "unknown"
+    }
+  ],
+  "render_entry": "frontend/index.html -> src/main.ts -> PublicTraceApp -> PublicTraceMap",
+  "trace_source": "validation/platform-plan-20261001/W1-I5/runs-v8/c69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba/public/public-trace.json",
+  "scene_configuration": "/city-presentation/jingan-engineering-preview-v3.json",
+  "business_source": "frontend/public/p02-business-identities/demo.json; authored nonphysical fixture using logistics order layer",
+  "ground_source": "Native OSM region geometry; central plot way730921132 landuse=construction; existing pinned terrain-v1 material library restored",
+  "limitations": [
+    "IN PROGRESS: no final visual acceptance",
+    "facility.liede lacks exact scene entity/coordinates; destination marker UNKNOWN",
+    "Native UAV model asset is JSON entity-symbol, not GLB; original native building/city GLBs retained. Existing preview aircraft GLB is not declared in this replay.",
+    "v6 follow-moved image still uses former-carrier parcel anchor after declared facility custody; later corrected source awaits next capture",
+    "Marker-position extractor used wrong DOM selector; movement evidence is actual telemetry/sample time and chase camera screenshots, not that extractor",
+    "Business picked_up/delivered states are authored fixture receipts, not physical transport evidence",
+    "Configuration edit/save/readback on the same run config is not yet demonstrated"
+  ],
+  "excluded": "Original model/map assets, raw traces, credentials, accounts, private addresses and personal data"
+}

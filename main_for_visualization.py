@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-AirFogSim可视化系统启动脚本
-启动FastAPI后端和React前端服务
+AeroAgentSim 开发者工作台启动脚本。
+
+启动 FastAPI 后端和 React 前端服务。
 """
 
 import os
@@ -14,15 +15,21 @@ import webbrowser
 import signal
 import argparse
 from pathlib import Path
-from airfogsim.utils.logging_config import get_logger
 from dotenv import load_dotenv # 新增导入
+
+# 获取项目根目录
+ROOT_DIR = Path(__file__).resolve().parent
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from aeroagentsim.utils.logging_config import get_logger
+
 logger = get_logger(__name__)
 # 加载 .env 文件中的环境变量 (如果存在) - 移到全局作用域
 load_dotenv()
-# 获取项目根目录
-ROOT_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
-BACKEND_MODULE = "src.airfogsim.visualization:app"
+BACKEND_MODULE = "aeroagentsim.visualization.app:app"
 
 # 全局进程变量
 frontend_process = None
@@ -159,9 +166,9 @@ def open_browser(url):
 
 def main():
     """主函数"""
-    parser = argparse.ArgumentParser(description="启动AirFogSim可视化系统")
+    parser = argparse.ArgumentParser(description="启动 AeroAgentSim 开发者工作台")
     parser.add_argument("--backend-port", type=int, default=8002, help="后端服务端口")
-    parser.add_argument("--frontend-port", type=int, default=3001, help="前端服务端口")
+    parser.add_argument("--frontend-port", type=int, default=3000, help="前端服务端口")
     parser.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
     parser.add_argument("--no-reload", action="store_true", help="禁用后端自动重载")
     
@@ -172,7 +179,7 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
     
     logger.info("=" * 60)
-    logger.info("AirFogSim 可视化系统启动工具")
+    logger.info("AeroAgentSim 开发者工作台启动工具")
     logger.info("=" * 60)
     
     # 检查依赖

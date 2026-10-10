@@ -1,0 +1,59 @@
+[
+  {
+    "iteration": 0,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_x1_forced_landing": 3000000000,
+      "x1_ped_approach": 12000000000,
+      "crowd_present": 15000000000,
+      "rain_onset": 18000000000,
+      "rain_threshold": 18500000000,
+      "c2_loss_tick": 26000000000,
+      "c2_loss_after_rain": 27000000000,
+      "c2_safe_hold": 37000000000,
+      "forced_landing_descent": 40000000000,
+      "crowd_reacts_to_landing": 45500000000,
+      "x1_recovery": 61500000000
+    },
+    "packet_count": 900,
+    "accepted_messages": {},
+    "native_wall_time_s": 0.24340264033526182
+  },
+  {
+    "iteration": 1,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_x1_forced_landing": 3000000000,
+      "x1_ped_approach": 12000000000,
+      "crowd_present": 15000000000,
+      "rain_onset": 18000000000,
+      "rain_threshold": 18500000000,
+      "c2_loss_tick": 26000000000,
+      "c2_loss_after_rain": 27000000000,
+      "c2_safe_hold": 37000000000,
+      "forced_landing_descent": 40000000000,
+      "crowd_reacts_to_landing": 45500000000,
+      "x1_recovery": 61500000000
+    },
+    "packet_count": 900,
+    "accepted_messages": {},
+    "native_wall_time_s": 0.24939287267625332
+  },
+  {
+    "iteration": 2,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_x1_forced_landing": 3000000000,
+      "x1_ped_approach": 12000000000,
+      "crowd_present": 15000000000,
+      "rain_onset": 18000000000,
+      "rain_threshold": 18500000000,
+      "c2_loss_tick": 26000000000,
+      "c2_loss_after_rain": 27000000000,
+      "c2_safe_hold": 37000000000,
+      "forced_landing_descent": 40000000000,
+      "crowd_reacts_to_landing": 45500000000,
+      "x1_recovery": 61500000000
+    },
+    "packet_count": 900,
+    "accepted_messages": {},
+    "native_wall_time_s": 0.23947294987738132
+  }
+]

@@ -1,0 +1,772 @@
+{
+  "schema_version": "p02.scene-review/v7",
+  "source": {
+    "source_HEAD": "ea295073cdd310a31fa2e29317a3571bc716bb87",
+    "source_worktree": "dirty existing server implementation",
+    "files": {
+      "frontend/src/map.ts": "d1e8bb312101d2f1b6060b049abb4b5a8a44bb2a4645582f981e80e8e02ca3b7",
+      "frontend/src/p02-entity-overlays.ts": "274e7b1144b18726d8b4f2c3c06b88023cc4572fd23b6ae505d9962994a08f73",
+      "frontend/src/native-city-presentation.ts": "fd804f266f43472ba4a2040cf19c006daf52b6a39221a41d939a3b1b6e421fa5",
+      "frontend/src/operations-monitor.ts": "86727ed20f22470a3b6d2e69e0e0bc09ef35ccb026dbe3a7e3809d0e4b6f634e",
+      "frontend/src/operations-monitor.css": "18ec9b385c9eb7e04035cce2ed05a3495b65da73fdbe181de098a11de4746dfd",
+      "frontend/src/i18n.ts": "744eccbff19c8f023c940b42dc6dd3d6222b228efbfe3dceba80c72158fe85ba",
+      "frontend/src/app.ts": "a9f7efee181bca6027ff05dd231b0ff3119404e810cd18d456ca6142204c590a",
+      "frontend/public/p02-business-identities/demo.json": "9a96a3d7f6eab33e86cf425b7fa7590820432fae68dd1effceefc3480ba13a23"
+    },
+    "scope": "Original native BENCH city/building GLB scene; UAV is a declared JSON symbol with screen-space marker; authored nonphysical business association fixture"
+  },
+  "scope": "Original BENCH GLB scene; authored business associations, not physical cargo custody evidence",
+  "scene_config": "/city-presentation/jingan-engineering-preview-v3.json",
+  "trace": "validation/platform-plan-20261001/W1-I5/runs-v8/c69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba/public/public-trace.json",
+  "capture_script_sha256": "0d51caff5c4c5064a1ec2a64e4ee6b7e0656f520af74ce83bcf22e1bafb7a635",
+  "page_errors": [],
+  "request_failed_count": 208,
+  "images": [
+    {
+      "path": "integrated-v7-default-zh.png",
+      "sha256": "d48e61c353f45eb4f619bb5ca2a03f4e92db03c6eae2e4384360e06cee579030",
+      "bytes": 668534,
+      "size": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "path": "integrated-v7-selected-zh.png",
+      "sha256": "b3f06957e8ae8b02e629958414ac2c28bf94c64fe8131ec9464dd1e5aed5ef1f",
+      "bytes": 727441,
+      "size": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "path": "integrated-v7-selected-en.png",
+      "sha256": "bc4d646f5632238d99f57f993a822e3a58a1b179df019000bdae9ee28ef8d1d0",
+      "bytes": 725190,
+      "size": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "path": "integrated-v7-follow-start-en.png",
+      "sha256": "13108b99366ca81773e34b2334a640f34c5a26614ac48c10e6f9309c1f762f31",
+      "bytes": 1845962,
+      "size": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "path": "integrated-v7-follow-moved-en.png",
+      "sha256": "dea2dadde7f82a493b6c59a81103d4d6d1d92f930cbfec9ef2b180f926c3211b",
+      "bytes": 1602637,
+      "size": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "path": "integrated-v7-follow-backward-en.png",
+      "sha256": "13108b99366ca81773e34b2334a640f34c5a26614ac48c10e6f9309c1f762f31",
+      "bytes": 1845962,
+      "size": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "path": "integrated-v7-seek-zero-en.png",
+      "sha256": "f6766afad57e3f49f2b5ca823df243c713d96eec2b0173e4561dbe8db74a1887",
+      "bytes": 718237,
+      "size": [
+        1600,
+        1000
+      ]
+    }
+  ],
+  "operation_frames": [
+    {
+      "name": "default-zh",
+      "language": "zh-CN",
+      "cursor": "0",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "leftRows": [],
+      "rightRows": [],
+      "markerPositions": [
+        {
+          "key": "uav.inspector",
+          "objectId": "uav.inspector",
+          "kind": "uav",
+          "x": "-450",
+          "z": "450",
+          "decluttered": "true"
+        }
+      ],
+      "scene": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "6.200",
+        "observationMainCalls": "196",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "1",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u57ce\u5e02\u5df2\u5c31\u7eea",
+        "observationTimeS": "0.5",
+        "minimapUpdateMs": "49.600",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "268",
+        "drawCalls": "15",
+        "buildingReplacements": "43",
+        "buildingVisualParts": "43",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "0",
+        "streetLampCount": "92",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "15",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "11109208",
+        "buildingRenderPackMissing": "3",
+        "buildingRenderBlocks": "12",
+        "roadAssetsEffectiveFixturesSha256": "fc0361858884307b7762a4817575dfe9b8a1345df16f8345f89c78c638b7ad87",
+        "roadAssetsFlightSha256": "415af5fbe7e036ad27f01f7bc601496872ea5041a973a9fddc93deb05fd9b8ab",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "previewSecond": "30",
+        "previewFollowId": "uav.02",
+        "previewUavTypes": "Holybro X500,\u76f8\u673a\u56db\u65cb\u7ffc",
+        "previewUpdateMs": "1.1",
+        "previewRenderMs": "6.0",
+        "previewRenderCalls": "163",
+        "visualWeatherAnimated": "false",
+        "sceneLoadPhaseSeconds": "{\"pack\":1.9,\"meshes\":0.6,\"cityAssets\":2.7,\"firstFrame\":56.5}",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      }
+    },
+    {
+      "name": "selected-zh",
+      "language": "zh-CN",
+      "cursor": "9",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "leftRows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "\u8ba2\u5355 order.inspection-overlay.1 \u00b7 picked_up \u00b7 \u5305\u88f9 parcel.order.inspection-overlay.1 \u00b7 \u627f\u8fd0 uav.inspector \u00b7 \u6258\u7ba1 uav.inspector (entity) \u00b7 \u76ee\u7684\u5730 facility.liede \u00b7 tick 10 \u00b7 00:05.0"
+        }
+      ],
+      "rightRows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "\u8ba2\u5355 inspection-overlay.1"
+        }
+      ],
+      "markerPositions": [
+        {
+          "key": "uav.inspector",
+          "objectId": "uav.inspector",
+          "kind": "uav",
+          "x": "-450.0000000000688",
+          "z": "450.0000000000154",
+          "decluttered": "false"
+        }
+      ],
+      "scene": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.600",
+        "observationMainCalls": "225",
+        "observationMainTriangles": "1263310",
+        "observationCameraMode": "free",
+        "sceneTick": "10",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u57ce\u5e02\u5df2\u5c31\u7eea",
+        "observationTimeS": "5",
+        "minimapUpdateMs": "30.500",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "268",
+        "drawCalls": "15",
+        "buildingReplacements": "43",
+        "buildingVisualParts": "43",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "0",
+        "streetLampCount": "92",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "15",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "11109208",
+        "buildingRenderPackMissing": "3",
+        "buildingRenderBlocks": "12",
+        "roadAssetsEffectiveFixturesSha256": "fc0361858884307b7762a4817575dfe9b8a1345df16f8345f89c78c638b7ad87",
+        "roadAssetsFlightSha256": "415af5fbe7e036ad27f01f7bc601496872ea5041a973a9fddc93deb05fd9b8ab",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "previewSecond": "30",
+        "previewFollowId": "uav.02",
+        "previewUavTypes": "Holybro X500,\u76f8\u673a\u56db\u65cb\u7ffc",
+        "previewUpdateMs": "1.1",
+        "previewRenderMs": "6.0",
+        "previewRenderCalls": "163",
+        "visualWeatherAnimated": "false",
+        "sceneLoadPhaseSeconds": "{\"pack\":1.9,\"meshes\":0.6,\"cityAssets\":2.7,\"firstFrame\":56.5}",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800",
+        "p02CargoLabelSet": "uav.inspector:parcel.order.inspection-overlay.1"
+      }
+    },
+    {
+      "name": "selected-en",
+      "language": "en",
+      "cursor": "9",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "leftRows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order order.inspection-overlay.1 \u00b7 picked_up \u00b7 Parcel parcel.order.inspection-overlay.1 \u00b7 Carrier uav.inspector \u00b7 Custody uav.inspector (entity) \u00b7 Destination facility.liede \u00b7 tick 10 \u00b7 00:05.0"
+        }
+      ],
+      "rightRows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order inspection-overlay.1"
+        }
+      ],
+      "markerPositions": [
+        {
+          "key": "uav.inspector",
+          "objectId": "uav.inspector",
+          "kind": "uav",
+          "x": "-450.0000000000688",
+          "z": "450.0000000000154",
+          "decluttered": "false"
+        }
+      ],
+      "scene": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "9.200",
+        "observationMainCalls": "225",
+        "observationMainTriangles": "1263310",
+        "observationCameraMode": "free",
+        "sceneTick": "10",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u57ce\u5e02\u5df2\u5c31\u7eea",
+        "observationTimeS": "5",
+        "minimapUpdateMs": "32.600",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "268",
+        "drawCalls": "15",
+        "buildingReplacements": "43",
+        "buildingVisualParts": "43",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "0",
+        "streetLampCount": "92",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "15",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "11109208",
+        "buildingRenderPackMissing": "3",
+        "buildingRenderBlocks": "12",
+        "roadAssetsEffectiveFixturesSha256": "fc0361858884307b7762a4817575dfe9b8a1345df16f8345f89c78c638b7ad87",
+        "roadAssetsFlightSha256": "415af5fbe7e036ad27f01f7bc601496872ea5041a973a9fddc93deb05fd9b8ab",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "previewSecond": "30",
+        "previewFollowId": "uav.02",
+        "previewUavTypes": "Holybro X500,\u76f8\u673a\u56db\u65cb\u7ffc",
+        "previewUpdateMs": "1.1",
+        "previewRenderMs": "6.0",
+        "previewRenderCalls": "163",
+        "visualWeatherAnimated": "false",
+        "sceneLoadPhaseSeconds": "{\"pack\":1.9,\"meshes\":0.6,\"cityAssets\":2.7,\"firstFrame\":56.5}",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800",
+        "p02CargoLabelSet": "uav.inspector:parcel.order.inspection-overlay.1"
+      }
+    },
+    {
+      "name": "follow-start-en",
+      "language": "en",
+      "cursor": "9",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "leftRows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order order.inspection-overlay.1 \u00b7 picked_up \u00b7 Parcel parcel.order.inspection-overlay.1 \u00b7 Carrier uav.inspector \u00b7 Custody uav.inspector (entity) \u00b7 Destination facility.liede \u00b7 tick 10 \u00b7 00:05.0"
+        }
+      ],
+      "rightRows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order inspection-overlay.1"
+        }
+      ],
+      "markerPositions": [
+        {
+          "key": "uav.inspector",
+          "objectId": "uav.inspector",
+          "kind": "uav",
+          "x": "-450.0000000000688",
+          "z": "450.0000000000154",
+          "decluttered": "false"
+        }
+      ],
+      "scene": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "632.100",
+        "observationMainCalls": "717",
+        "observationMainTriangles": "1266714",
+        "observationCameraMode": "chase",
+        "sceneTick": "10",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u57ce\u5e02\u5df2\u5c31\u7eea",
+        "observationTimeS": "5",
+        "minimapUpdateMs": "33.700",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "268",
+        "drawCalls": "15",
+        "buildingReplacements": "43",
+        "buildingVisualParts": "43",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "0",
+        "streetLampCount": "92",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "15",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "11109208",
+        "buildingRenderPackMissing": "3",
+        "buildingRenderBlocks": "12",
+        "roadAssetsEffectiveFixturesSha256": "fc0361858884307b7762a4817575dfe9b8a1345df16f8345f89c78c638b7ad87",
+        "roadAssetsFlightSha256": "415af5fbe7e036ad27f01f7bc601496872ea5041a973a9fddc93deb05fd9b8ab",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "previewSecond": "30",
+        "previewFollowId": "uav.02",
+        "previewUavTypes": "Holybro X500,\u76f8\u673a\u56db\u65cb\u7ffc",
+        "previewUpdateMs": "1.1",
+        "previewRenderMs": "6.0",
+        "previewRenderCalls": "163",
+        "visualWeatherAnimated": "false",
+        "sceneLoadPhaseSeconds": "{\"pack\":1.9,\"meshes\":0.6,\"cityAssets\":2.7,\"firstFrame\":56.5}",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800",
+        "p02CargoLabelSet": "uav.inspector:parcel.order.inspection-overlay.1"
+      }
+    },
+    {
+      "name": "follow-moved-en",
+      "language": "en",
+      "cursor": "39",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "leftRows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "40",
+          "text": "Order order.inspection-overlay.1 \u00b7 delivered \u00b7 Parcel parcel.order.inspection-overlay.1 \u00b7 Carrier uav.inspector \u00b7 Custody facility.liede (facility) \u00b7 Destination facility.liede \u00b7 tick 14 \u00b7 00:07.0"
+        }
+      ],
+      "rightRows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "40",
+          "text": "Order inspection-overlay.1"
+        }
+      ],
+      "markerPositions": [
+        {
+          "key": "uav.inspector",
+          "objectId": "uav.inspector",
+          "kind": "uav",
+          "x": "-449.9898405826422",
+          "z": "450.01001841666135",
+          "decluttered": "false"
+        }
+      ],
+      "scene": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "15.500",
+        "observationMainCalls": "757",
+        "observationMainTriangles": "1266808",
+        "observationCameraMode": "chase",
+        "sceneTick": "40",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u57ce\u5e02\u5df2\u5c31\u7eea",
+        "observationTimeS": "20",
+        "minimapUpdateMs": "39.200",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "268",
+        "drawCalls": "15",
+        "buildingReplacements": "43",
+        "buildingVisualParts": "43",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "0",
+        "streetLampCount": "92",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "15",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "11109208",
+        "buildingRenderPackMissing": "3",
+        "buildingRenderBlocks": "12",
+        "roadAssetsEffectiveFixturesSha256": "fc0361858884307b7762a4817575dfe9b8a1345df16f8345f89c78c638b7ad87",
+        "roadAssetsFlightSha256": "415af5fbe7e036ad27f01f7bc601496872ea5041a973a9fddc93deb05fd9b8ab",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "previewSecond": "30",
+        "previewFollowId": "uav.02",
+        "previewUavTypes": "Holybro X500,\u76f8\u673a\u56db\u65cb\u7ffc",
+        "previewUpdateMs": "1.1",
+        "previewRenderMs": "6.0",
+        "previewRenderCalls": "163",
+        "visualWeatherAnimated": "false",
+        "sceneLoadPhaseSeconds": "{\"pack\":1.9,\"meshes\":0.6,\"cityAssets\":2.7,\"firstFrame\":56.5}",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800",
+        "p02CargoLabelSet": "uav.inspector:parcel.order.inspection-overlay.1"
+      }
+    },
+    {
+      "name": "follow-backward-en",
+      "language": "en",
+      "cursor": "9",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "leftRows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order order.inspection-overlay.1 \u00b7 picked_up \u00b7 Parcel parcel.order.inspection-overlay.1 \u00b7 Carrier uav.inspector \u00b7 Custody uav.inspector (entity) \u00b7 Destination facility.liede \u00b7 tick 10 \u00b7 00:05.0"
+        }
+      ],
+      "rightRows": [
+        {
+          "order": "order.inspection-overlay.1",
+          "cursor": "10",
+          "text": "Order inspection-overlay.1"
+        }
+      ],
+      "markerPositions": [
+        {
+          "key": "uav.inspector",
+          "objectId": "uav.inspector",
+          "kind": "uav",
+          "x": "-450.0000000000688",
+          "z": "450.0000000000154",
+          "decluttered": "false"
+        }
+      ],
+      "scene": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "12.400",
+        "observationMainCalls": "717",
+        "observationMainTriangles": "1266714",
+        "observationCameraMode": "chase",
+        "sceneTick": "10",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u57ce\u5e02\u5df2\u5c31\u7eea",
+        "observationTimeS": "5",
+        "minimapUpdateMs": "35.000",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "268",
+        "drawCalls": "15",
+        "buildingReplacements": "43",
+        "buildingVisualParts": "43",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "0",
+        "streetLampCount": "92",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "15",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "11109208",
+        "buildingRenderPackMissing": "3",
+        "buildingRenderBlocks": "12",
+        "roadAssetsEffectiveFixturesSha256": "fc0361858884307b7762a4817575dfe9b8a1345df16f8345f89c78c638b7ad87",
+        "roadAssetsFlightSha256": "415af5fbe7e036ad27f01f7bc601496872ea5041a973a9fddc93deb05fd9b8ab",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "previewSecond": "30",
+        "previewFollowId": "uav.02",
+        "previewUavTypes": "Holybro X500,\u76f8\u673a\u56db\u65cb\u7ffc",
+        "previewUpdateMs": "1.1",
+        "previewRenderMs": "6.0",
+        "previewRenderCalls": "163",
+        "visualWeatherAnimated": "false",
+        "sceneLoadPhaseSeconds": "{\"pack\":1.9,\"meshes\":0.6,\"cityAssets\":2.7,\"firstFrame\":56.5}",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800",
+        "p02CargoLabelSet": "uav.inspector:parcel.order.inspection-overlay.1"
+      }
+    },
+    {
+      "name": "seek-zero-en",
+      "language": "en",
+      "cursor": "0",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "leftRows": [],
+      "rightRows": [],
+      "markerPositions": [
+        {
+          "key": "uav.inspector",
+          "objectId": "uav.inspector",
+          "kind": "uav",
+          "x": "-450.0000000000688",
+          "z": "450.0000000000154",
+          "decluttered": "false"
+        }
+      ],
+      "scene": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "7.000",
+        "observationMainCalls": "196",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "1",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u57ce\u5e02\u5df2\u5c31\u7eea",
+        "observationTimeS": "0.5",
+        "minimapUpdateMs": "52.600",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "268",
+        "drawCalls": "15",
+        "buildingReplacements": "43",
+        "buildingVisualParts": "43",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "0",
+        "streetLampCount": "92",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "15",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "11109208",
+        "buildingRenderPackMissing": "3",
+        "buildingRenderBlocks": "12",
+        "roadAssetsEffectiveFixturesSha256": "fc0361858884307b7762a4817575dfe9b8a1345df16f8345f89c78c638b7ad87",
+        "roadAssetsFlightSha256": "415af5fbe7e036ad27f01f7bc601496872ea5041a973a9fddc93deb05fd9b8ab",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "previewSecond": "30",
+        "previewFollowId": "uav.02",
+        "previewUavTypes": "Holybro X500,\u76f8\u673a\u56db\u65cb\u7ffc",
+        "previewUpdateMs": "1.1",
+        "previewRenderMs": "6.0",
+        "previewRenderCalls": "163",
+        "visualWeatherAnimated": "false",
+        "sceneLoadPhaseSeconds": "{\"pack\":1.9,\"meshes\":0.6,\"cityAssets\":2.7,\"firstFrame\":56.5}",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800",
+        "p02CargoLabelSet": ""
+      }
+    }
+  ],
+  "remaining_gaps": [
+    "Destination facility.liede absent from actual scene entity/config coordinate authority; unlocated UNKNOWN",
+    "Actual native UAV replay artifact is JSON symbol, not UAV GLB; independent screen-space aircraft icon is visual presentation only",
+    "Business records are authored nonphysical associations from orders.py; delivery at7s is not observed physical delivery",
+    "Configuration save/readback consumption by this sealed run is unproved",
+    "Final parent visual acceptance remains pending"
+  ],
+  "pixel_assessment": {
+    "selected_en": "Independent small blue aircraft icon remains distinct from the parcel icon/leader; streets and construction terrain visible; light inspector includes telemetry and camera controls. Long IDs and fixture limitations remain.",
+    "follow_moved_en": "At20s facility custody is shown in authored business panel; the parcel label/icon has no placement because facility lacks coordinates, and is not attached to the old aircraft. The aircraft icon remains at actual replay pose.",
+    "time_note": "Scrubber index9 corresponds to actual scene tick10/time5s. Business latest record tick14/time7s at frame40/time20s is historical authoring evidence. These times are not conflated.",
+    "cargo_label_cache_note": "p02CargoLabelSet records allocated label identity, not visibility or custody anchor; it is not a positioning observation."
+  }
+}

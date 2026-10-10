@@ -1,93 +1,20 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  background: #f4f7fb;
+  color: #142b47;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+}
+
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-
-.site-layout-content {
-  min-height: 280px;
-  padding: 24px;
-  background: #fff;
-}
-
-.logo {
-  float: left;
-  width: 120px;
-  height: 31px;
-  margin: 16px 24px 16px 0;
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.ant-row-rtl .logo {
-  float: right;
-  margin: 16px 0 16px 24px;
-}
-
-.map-container {
-  height: 500px;
-  width: 100%;
-}
-
-.drone-marker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: rgba(0, 128, 255, 0.7);
-  border: 2px solid white;
-  color: white;
-  font-weight: bold;
-}
-
-.drone-marker.warning {
-  background-color: rgba(255, 165, 0, 0.7);
-}
-
-.drone-marker.critical {
-  background-color: rgba(255, 0, 0, 0.7);
-}
-
-.timeline-container {
-  margin-top: 20px;
-  padding: 20px;
-  background: #f0f2f5;
-  border-radius: 4px;
-}
-
-.dashboard-card {
-  margin-bottom: 16px;
-}
-
-.status-tag-running {
-  color: #52c41a;
-  background: #f6ffed;
-  border-color: #b7eb8f;
-}
-
-.status-tag-completed {
-  color: #1890ff;
-  background: #e6f7ff;
-  border-color: #91d5ff;
-}
-
-.status-tag-failed {
-  color: #f5222d;
-  background: #fff1f0;
-  border-color: #ffa39e;
-}
-
-.status-tag-pending {
-  color: #faad14;
-  background: #fffbe6;
-  border-color: #ffe58f;
+  font-family: 'IBM Plex Mono', SFMono-Regular, Menlo, monospace;
 }

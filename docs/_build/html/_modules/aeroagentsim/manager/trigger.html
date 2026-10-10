@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.manager.trigger &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.trigger</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.manager.trigger</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TriggerOperator</span><span class="p">,</span> <span class="n">TriggerType</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">Trigger</span><span class="p">,</span> <span class="n">TimeTrigger</span><span class="p">,</span> <span class="n">StateTrigger</span><span class="p">,</span> <span class="n">EventTrigger</span><span class="p">,</span> <span class="n">CompositeTrigger</span>
+<div class="viewcode-block" id="TriggerManager"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.trigger.TriggerManager">[docs]</a><span class="k">class</span> <span class="nc">TriggerManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;触发器管理器&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TriggerManager.__init__"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.trigger.TriggerManager.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Trigger</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;trigger_manager_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_manager_events</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_register_manager_events</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;注册管理器事件&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;trigger_created&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;trigger_activated&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;trigger_deactivated&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;trigger_fired&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TriggerManager.create_event_trigger"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.trigger.TriggerManager.create_event_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">create_event_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">event_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                           <span class="n">value_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">operator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TriggerOperator</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">target_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EventTrigger</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;创建基于事件的触发器&quot;&quot;&quot;</span>
+        <span class="n">trigger</span> <span class="o">=</span> <span class="n">EventTrigger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">value_key</span><span class="p">,</span> <span class="n">operator</span><span class="p">,</span> <span class="n">target_value</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">[</span><span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">trigger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;trigger_created&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;trigger_id&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_name&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_type&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">})</span>
+        <span class="k">return</span> <span class="n">trigger</span></div>
+
+<div class="viewcode-block" id="TriggerManager.create_state_trigger"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.trigger.TriggerManager.create_state_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">create_state_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">state_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                           <span class="n">operator</span><span class="p">:</span> <span class="n">TriggerOperator</span> <span class="o">=</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">EQUALS</span><span class="p">,</span>
+                           <span class="n">target_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StateTrigger</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;创建基于状态的触发器&quot;&quot;&quot;</span>
+        <span class="n">trigger</span> <span class="o">=</span> <span class="n">StateTrigger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">state_key</span><span class="p">,</span> <span class="n">operator</span><span class="p">,</span> <span class="n">target_value</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">[</span><span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">trigger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;trigger_created&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;trigger_id&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_name&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_type&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">})</span>
+        <span class="k">return</span> <span class="n">trigger</span></div>
+
+<div class="viewcode-block" id="TriggerManager.create_time_trigger"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.trigger.TriggerManager.create_time_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">create_time_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trigger_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">interval</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">cron_expr</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                           <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TimeTrigger</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;创建基于时间的触发器&quot;&quot;&quot;</span>
+        <span class="n">trigger</span> <span class="o">=</span> <span class="n">TimeTrigger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">cron_expr</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">[</span><span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">trigger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;trigger_created&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;trigger_id&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_name&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_type&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">})</span>
+        <span class="k">return</span> <span class="n">trigger</span></div>
+
+<div class="viewcode-block" id="TriggerManager.create_composite_trigger"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.trigger.TriggerManager.create_composite_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">create_composite_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">triggers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Trigger</span><span class="p">],</span>
+                                <span class="n">operator</span><span class="p">:</span> <span class="n">TriggerOperator</span> <span class="o">=</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">AND</span><span class="p">,</span>
+                                <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CompositeTrigger</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;创建组合触发器&quot;&quot;&quot;</span>
+        <span class="n">trigger</span> <span class="o">=</span> <span class="n">CompositeTrigger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">triggers</span><span class="p">,</span> <span class="n">operator</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">[</span><span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">trigger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;trigger_created&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;trigger_id&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_name&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_type&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">})</span>
+        <span class="k">return</span> <span class="n">trigger</span></div>
+
+<div class="viewcode-block" id="TriggerManager.get_trigger"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.trigger.TriggerManager.get_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">get_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trigger_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trigger</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取触发器&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">trigger_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TriggerManager.activate_trigger"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.trigger.TriggerManager.activate_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">activate_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trigger_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;激活触发器&quot;&quot;&quot;</span>
+        <span class="n">trigger</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_trigger</span><span class="p">(</span><span class="n">trigger_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trigger</span><span class="p">:</span>
+            <span class="n">trigger</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;trigger_activated&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;trigger_id&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;trigger_name&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">})</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="TriggerManager.deactivate_trigger"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.trigger.TriggerManager.deactivate_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">deactivate_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trigger_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;停用触发器&quot;&quot;&quot;</span>
+        <span class="n">trigger</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_trigger</span><span class="p">(</span><span class="n">trigger_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trigger</span><span class="p">:</span>
+            <span class="n">trigger</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;trigger_deactivated&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;trigger_id&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;trigger_name&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">})</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="TriggerManager.remove_trigger"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.trigger.TriggerManager.remove_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">remove_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trigger_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;移除触发器&quot;&quot;&quot;</span>
+        <span class="n">trigger</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_trigger</span><span class="p">(</span><span class="n">trigger_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trigger</span><span class="p">:</span>
+            <span class="n">trigger</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">[</span><span class="n">trigger_id</span><span class="p">]</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.trigger</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

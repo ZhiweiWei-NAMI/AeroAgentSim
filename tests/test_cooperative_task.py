@@ -1,7 +1,7 @@
 import pytest
 
-from airfogsim.core.cooperative_task import CooperativeTask, CooperativeTaskState
-from airfogsim.core.transfer_item import MockTransferItem
+from aeroagentsim.core.cooperative_task import CooperativeTask, CooperativeTaskState
+from aeroagentsim.core.transfer_item import MockTransferItem
 
 
 class DummyEventRegistry:

@@ -1,0 +1,94 @@
+{
+  "schema_version": "p09.linked-native-causal/v4",
+  "episode_id": "X5_comm_failure_to_pad_contention__seed02",
+  "seed": 2,
+  "scenario_id": "X5_comm_failure_to_pad_contention",
+  "source_refs": [
+    "Dataset/scenarios/X_cross_layer/X5_comm_failure_to_pad_contention/event_script.json",
+    "Dataset/scenarios/X_cross_layer/X5_comm_failure_to_pad_contention/scene_setup.json"
+  ],
+  "guard_version": null,
+  "healthy_control": false,
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_x5_priority": 3000000000,
+    "lifecycle_takeoff_uav_x5_second": 4000000000,
+    "station_failure": 22000000000,
+    "backup_pad_unavailable": 25000000000,
+    "dual_uav_pad_contention": 28000000000,
+    "pad_priority_arbitration": 56000000000,
+    "second_uav_reroute": 59000000000,
+    "station_recovered": 65500000000,
+    "lifecycle_landing_uav_x5_priority": 69000000000,
+    "lifecycle_landing_uav_x5_second": 74500000000
+  },
+  "unfired_events": [],
+  "pose_and_visual_differences_from_same_seed_source_replay": {
+    "uav_x5_second": {
+      "first_changed_tick": 561,
+      "fields": [
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "state": "hold",
+        "activity_type": "hold"
+      },
+      "after": {
+        "state": "airborne",
+        "activity_type": "airborne"
+      }
+    },
+    "uav_x5_priority": {
+      "first_changed_tick": 686,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6637.659,
+          6528.041,
+          6.0
+        ],
+        "vel_mps": [
+          0.0,
+          8.0,
+          0.0
+        ],
+        "yaw_deg": 90.0,
+        "state": "return_to_pad",
+        "activity_type": "return_to_pad"
+      },
+      "after": {
+        "pos_enu": [
+          6637.659,
+          6527.241,
+          6.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -93.210221,
+        "state": "airborne",
+        "activity_type": "airborne"
+      }
+    }
+  },
+  "weather_changed": false,
+  "adoption_class": "A",
+  "published210_modified": false,
+  "collection_status": "one-shot collection pending final freeze",
+  "iteration_count": 5,
+  "backend": "p01.ns3.frozen-wifi/v8-switch-completion",
+  "duration_ticks": 900,
+  "motion_acquisition": null,
+  "output_dir": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed02/adopted",
+  "motion_scope": "authored waypoint engine; not PX4 motion feedback",
+  "missing_event_disposition": "complete",
+  "rf_weather_scope": "not amplified; dimensionless rain is not an observed mm/h rate"
+}

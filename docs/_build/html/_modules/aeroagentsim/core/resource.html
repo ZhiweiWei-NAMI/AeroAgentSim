@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.core.resource &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.resource</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.core.resource</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim资源(Resource)核心模块</span>
+
+<span class="sd">该模块定义了仿真系统中资源的基础类和管理机制。资源是系统中被代理使用的</span>
+<span class="sd">各种实体，如空域、频率、着陆点等。模块采用泛型设计，支持不同类型的资源</span>
+<span class="sd">管理。主要内容包括：</span>
+<span class="sd">1. Resource类：基本资源类，定义资源的通用属性和状态</span>
+<span class="sd">2. ResourceManager类：资源管理器基类，负责资源的注册、分配和释放</span>
+<span class="sd">3. 资源分配机制：包括分配查找、记录和释放</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">.enums</span> <span class="kn">import</span> <span class="n">ResourceStatus</span><span class="p">,</span> <span class="n">AllocationStatus</span> <span class="c1"># 导入 AllocationStatus</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span>
+
+<div class="viewcode-block" id="Resource"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.Resource">[docs]</a><span class="k">class</span> <span class="nc">Resource</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;基本资源类&quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="Resource.__init__"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.Resource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">attributes</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">resource_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="o">=</span> <span class="n">attributes</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span>  <span class="c1"># available, allocated, maintenance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># 当前活跃分配ID集合</span></div>
+
+<div class="viewcode-block" id="Resource.get_attribute"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.Resource.get_attribute">[docs]</a>    <span class="k">def</span> <span class="nf">get_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取资源属性&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Resource.set_status"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.Resource.set_status">[docs]</a>    <span class="k">def</span> <span class="nf">set_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_status</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        直接设置资源的状态。</span>
+<span class="sd">        警告：谨慎使用，这可能会绕过管理器的状态逻辑。</span>
+<span class="sd">        主要用于外部事件（如天气）强制更新状态。</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Consider adding validation against ResourceStatus enum if available</span>
+        <span class="n">old_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span>
+        <span class="k">if</span> <span class="n">old_status</span> <span class="o">!=</span> <span class="n">new_status</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">new_status</span>
+            <span class="c1"># Optionally trigger a status change event here if needed globally</span>
+            <span class="c1"># print(f&quot;DEBUG Resource {self.id} status set to {new_status} (was {old_status})&quot;)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div></div>
+
+<span class="c1"># 资源类型泛型</span>
+<span class="n">R</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;R&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ResourceManager"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager">[docs]</a><span class="k">class</span> <span class="nc">ResourceManager</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">R</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    资源管理器基类</span>
+<span class="sd">    </span>
+<span class="sd">    管理单一类型资源的注册、分配和释放</span>
+<span class="sd">    </span>
+<span class="sd">    泛型参数R表示管理的资源类型</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="ResourceManager.__init__"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># 资源存储</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">R</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="c1"># 分配记录</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_allocations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="c1"># 环境引用(用于时间等)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span></div>
+    
+    <span class="c1">#----------------------------------------------------</span>
+    <span class="c1"># 1. 资源生命周期管理</span>
+    <span class="c1">#----------------------------------------------------</span>
+    
+<div class="viewcode-block" id="ResourceManager.register_resource"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager.register_resource">[docs]</a>    <span class="k">def</span> <span class="nf">register_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">:</span> <span class="n">R</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;注册资源到管理器&quot;&quot;&quot;</span>
+        <span class="c1"># 检查资源是否已存在</span>
+        <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="c1"># 添加资源</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">resource</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">resource</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="k">return</span> <span class="kc">True</span></div>
+        
+<div class="viewcode-block" id="ResourceManager.unregister_resource"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager.unregister_resource">[docs]</a>    <span class="k">def</span> <span class="nf">unregister_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;从管理器移除资源&quot;&quot;&quot;</span>
+        <span class="c1"># 检查资源是否存在</span>
+        <span class="k">if</span> <span class="n">resource_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="c1"># 检查资源是否有活跃分配</span>
+        <span class="n">active_allocations</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">a_id</span> <span class="k">for</span> <span class="n">a_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">[</span><span class="n">a_id</span><span class="p">][</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">AllocationStatus</span><span class="o">.</span><span class="n">ACTIVE</span>
+        <span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">active_allocations</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># 有活跃分配，不能移除</span>
+            
+        <span class="c1"># 移除资源</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">resource_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span>
+            
+        <span class="k">return</span> <span class="kc">True</span></div>
+    
+<div class="viewcode-block" id="ResourceManager.update_resource"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager.update_resource">[docs]</a>    <span class="k">def</span> <span class="nf">update_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">attributes</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;更新资源属性&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">resource_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="c1"># 更新资源属性</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;attributes&#39;</span><span class="p">):</span>
+            <span class="n">resource</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">attributes</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 直接设置属性</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attributes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                
+        <span class="k">return</span> <span class="kc">True</span></div>
+    
+    <span class="c1">#----------------------------------------------------</span>
+    <span class="c1"># 2. 资源分配管理</span>
+    <span class="c1">#----------------------------------------------------</span>
+    
+<div class="viewcode-block" id="ResourceManager.allocate_resource"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager.allocate_resource">[docs]</a>    <span class="k">def</span> <span class="nf">allocate_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">requirements</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        分配符合要求的资源</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            user_id: 用户ID</span>
+<span class="sd">            requirements: 资源需求</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            (allocation_id, resource_id) 或 (None, None)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 查找符合要求的资源</span>
+        <span class="n">suitable_resources</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_resources</span><span class="p">(</span><span class="n">requirements</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">suitable_resources</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+            
+        <span class="c1"># 选择第一个符合要求的资源</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="n">suitable_resources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">resource_id</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">id</span>
+        
+        <span class="c1"># 检查资源是否可以分配</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">resource</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+            
+        <span class="c1"># 创建分配</span>
+        <span class="n">allocation_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;alloc_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        
+        <span class="c1"># 记录分配信息</span>
+        <span class="n">allocation_info</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">allocation_id</span><span class="p">,</span>
+            <span class="s1">&#39;resource_id&#39;</span><span class="p">:</span> <span class="n">resource_id</span><span class="p">,</span>
+            <span class="s1">&#39;user_id&#39;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
+            <span class="s1">&#39;requirements&#39;</span><span class="p">:</span> <span class="n">requirements</span><span class="p">,</span>
+            <span class="s1">&#39;start_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_current_time</span><span class="p">(),</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="n">AllocationStatus</span><span class="o">.</span><span class="n">ACTIVE</span>
+        <span class="p">}</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">[</span><span class="n">allocation_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">allocation_info</span>
+        
+        <span class="c1"># 更新索引</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">allocation_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_allocations</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">allocation_id</span><span class="p">)</span>
+        
+        <span class="c1"># 更新资源状态</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">):</span>
+            <span class="n">resource</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">FULLY_ALLOCATED</span> <span class="c1"># 使用枚举</span>
+            
+        <span class="c1"># 记录分配到资源</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;current_allocations&#39;</span><span class="p">):</span>
+            <span class="n">resource</span><span class="o">.</span><span class="n">current_allocations</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">allocation_id</span><span class="p">)</span>
+            
+        <span class="k">return</span> <span class="n">allocation_id</span><span class="p">,</span> <span class="n">resource_id</span></div>
+    
+<div class="viewcode-block" id="ResourceManager.release_allocation"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager.release_allocation">[docs]</a>    <span class="k">def</span> <span class="nf">release_allocation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allocation_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;释放资源分配&quot;&quot;&quot;</span>
+        <span class="c1"># 检查分配是否存在</span>
+        <span class="k">if</span> <span class="n">allocation_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="n">allocation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">[</span><span class="n">allocation_id</span><span class="p">]</span>
+        
+        <span class="c1"># 检查分配是否已释放</span>
+        <span class="k">if</span> <span class="n">allocation</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">AllocationStatus</span><span class="o">.</span><span class="n">ACTIVE</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="n">resource_id</span> <span class="o">=</span> <span class="n">allocation</span><span class="p">[</span><span class="s1">&#39;resource_id&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># 检查资源是否存在</span>
+        <span class="k">if</span> <span class="n">resource_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span>
+        
+        <span class="c1"># 更新资源状态</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">):</span>
+            <span class="c1"># 检查是否还有其他活跃分配</span>
+            <span class="n">other_active</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">[</span><span class="n">a_id</span><span class="p">][</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">AllocationStatus</span><span class="o">.</span><span class="n">ACTIVE</span>
+                <span class="k">for</span> <span class="n">a_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">a_id</span> <span class="o">!=</span> <span class="n">allocation_id</span>
+            <span class="p">)</span>
+            
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">other_active</span><span class="p">:</span>
+                <span class="n">resource</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span>
+                
+        <span class="c1"># 从资源的分配记录中移除</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;current_allocations&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">allocation_id</span> <span class="ow">in</span> <span class="n">resource</span><span class="o">.</span><span class="n">current_allocations</span><span class="p">:</span>
+                <span class="n">resource</span><span class="o">.</span><span class="n">current_allocations</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">allocation_id</span><span class="p">)</span>
+                
+        <span class="c1"># 更新分配状态</span>
+        <span class="n">allocation</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">AllocationStatus</span><span class="o">.</span><span class="n">RELEASED</span>
+        <span class="n">allocation</span><span class="p">[</span><span class="s1">&#39;end_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_current_time</span><span class="p">()</span>
+        
+        <span class="k">return</span> <span class="kc">True</span></div>
+    
+    <span class="c1">#----------------------------------------------------</span>
+    <span class="c1"># 3. 资源查询</span>
+    <span class="c1">#----------------------------------------------------</span>
+    
+<div class="viewcode-block" id="ResourceManager.find_resources"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager.find_resources">[docs]</a>    <span class="k">def</span> <span class="nf">find_resources</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requirements</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">R</span><span class="p">]:</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="ResourceManager.get_user_allocations"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager.get_user_allocations">[docs]</a>    <span class="k">def</span> <span class="nf">get_user_allocations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取用户的所有分配&quot;&quot;&quot;</span>
+        <span class="n">allocation_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_allocations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">[</span><span class="n">alloc_id</span><span class="p">]</span> <span class="k">for</span> <span class="n">alloc_id</span> <span class="ow">in</span> <span class="n">allocation_ids</span> <span class="k">if</span> <span class="n">alloc_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">]</span></div>
+    
+<div class="viewcode-block" id="ResourceManager.get_resource_allocations"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager.get_resource_allocations">[docs]</a>    <span class="k">def</span> <span class="nf">get_resource_allocations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取资源的所有分配&quot;&quot;&quot;</span>
+        <span class="n">allocation_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">[</span><span class="n">alloc_id</span><span class="p">]</span> <span class="k">for</span> <span class="n">alloc_id</span> <span class="ow">in</span> <span class="n">allocation_ids</span> <span class="k">if</span> <span class="n">alloc_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">]</span></div>
+    
+<div class="viewcode-block" id="ResourceManager.get_allocation"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.core.resource.ResourceManager.get_allocation">[docs]</a>    <span class="k">def</span> <span class="nf">get_allocation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allocation_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取分配信息&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">allocation_id</span><span class="p">)</span></div>
+    
+    <span class="c1">#----------------------------------------------------</span>
+    <span class="c1"># 辅助方法</span>
+    <span class="c1">#----------------------------------------------------</span>
+    
+    <span class="k">def</span> <span class="nf">_get_current_time</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取当前时间&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.resource</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,758 @@
+{
+  "scope": "offline probes reusing unmodified final native-v12 receipts; no provider rerun",
+  "node_scope_source": "trajectories.jsonl, continuous exact owners ticks0..900,epoch0",
+  "half_open_lifetime": "current use_ns <65500000000; historical accepted receipt remains retained",
+  "service_expiry": [
+    {
+      "message_id": "pad-request:uav_x5_priority",
+      "owner": "pad_x5_primary",
+      "tick": 654,
+      "allow": true,
+      "evidence": {
+        "message_id": "pad-request:uav_x5_priority",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_priority",
+          "packet_id": "packet-1155",
+          "source_owner": "uav_x5_priority",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 57500000000,
+          "decision_ns": 57600000000,
+          "send_ns": 57600000000,
+          "deadline_ns": 62600000000,
+          "action": "request_pad",
+          "receive_ns": 57607282351,
+          "accepted_ns": 57607282351,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65400000000,
+        "valid_until_ns": 65500000000,
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-request:uav_x5_priority",
+      "owner": "pad_x5_primary",
+      "tick": 655,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-request:uav_x5_priority",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_priority",
+          "packet_id": "packet-1155",
+          "source_owner": "uav_x5_priority",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 57500000000,
+          "decision_ns": 57600000000,
+          "send_ns": 57600000000,
+          "deadline_ns": 62600000000,
+          "action": "request_pad",
+          "receive_ns": 57607282351,
+          "accepted_ns": 57607282351,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65500000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-request:uav_x5_priority",
+      "owner": "pad_x5_primary",
+      "tick": 656,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-request:uav_x5_priority",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_priority",
+          "packet_id": "packet-1155",
+          "source_owner": "uav_x5_priority",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 57500000000,
+          "decision_ns": 57600000000,
+          "send_ns": 57600000000,
+          "deadline_ns": 62600000000,
+          "action": "request_pad",
+          "receive_ns": 57607282351,
+          "accepted_ns": 57607282351,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65600000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-request:uav_x5_priority",
+      "owner": "pad_x5_primary",
+      "tick": 660,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-request:uav_x5_priority",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_priority",
+          "packet_id": "packet-1155",
+          "source_owner": "uav_x5_priority",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 57500000000,
+          "decision_ns": 57600000000,
+          "send_ns": 57600000000,
+          "deadline_ns": 62600000000,
+          "action": "request_pad",
+          "receive_ns": 57607282351,
+          "accepted_ns": 57607282351,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 66000000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-request:uav_x5_priority",
+      "owner": "pad_x5_primary",
+      "tick": 900,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-request:uav_x5_priority",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_priority",
+          "packet_id": "packet-1155",
+          "source_owner": "uav_x5_priority",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 57500000000,
+          "decision_ns": 57600000000,
+          "send_ns": 57600000000,
+          "deadline_ns": 62600000000,
+          "action": "request_pad",
+          "receive_ns": 57607282351,
+          "accepted_ns": 57607282351,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 90000000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-request:uav_x5_second",
+      "owner": "pad_x5_primary",
+      "tick": 654,
+      "allow": true,
+      "evidence": {
+        "message_id": "pad-request:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_second",
+          "packet_id": "packet-672",
+          "source_owner": "uav_x5_second",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 33500000000,
+          "decision_ns": 33600000000,
+          "send_ns": 33600000000,
+          "deadline_ns": 38600000000,
+          "action": "request_pad",
+          "receive_ns": 33607303683,
+          "accepted_ns": 33607303683,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65400000000,
+        "valid_until_ns": 65500000000,
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-request:uav_x5_second",
+      "owner": "pad_x5_primary",
+      "tick": 655,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-request:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_second",
+          "packet_id": "packet-672",
+          "source_owner": "uav_x5_second",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 33500000000,
+          "decision_ns": 33600000000,
+          "send_ns": 33600000000,
+          "deadline_ns": 38600000000,
+          "action": "request_pad",
+          "receive_ns": 33607303683,
+          "accepted_ns": 33607303683,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65500000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-request:uav_x5_second",
+      "owner": "pad_x5_primary",
+      "tick": 656,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-request:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_second",
+          "packet_id": "packet-672",
+          "source_owner": "uav_x5_second",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 33500000000,
+          "decision_ns": 33600000000,
+          "send_ns": 33600000000,
+          "deadline_ns": 38600000000,
+          "action": "request_pad",
+          "receive_ns": 33607303683,
+          "accepted_ns": 33607303683,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65600000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-request:uav_x5_second",
+      "owner": "pad_x5_primary",
+      "tick": 660,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-request:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_second",
+          "packet_id": "packet-672",
+          "source_owner": "uav_x5_second",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 33500000000,
+          "decision_ns": 33600000000,
+          "send_ns": 33600000000,
+          "deadline_ns": 38600000000,
+          "action": "request_pad",
+          "receive_ns": 33607303683,
+          "accepted_ns": 33607303683,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 66000000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-request:uav_x5_second",
+      "owner": "pad_x5_primary",
+      "tick": 900,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-request:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_second",
+          "packet_id": "packet-672",
+          "source_owner": "uav_x5_second",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 33500000000,
+          "decision_ns": 33600000000,
+          "send_ns": 33600000000,
+          "deadline_ns": 38600000000,
+          "action": "request_pad",
+          "receive_ns": 33607303683,
+          "accepted_ns": 33607303683,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 90000000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-result:uav_x5_priority",
+      "owner": "uav_x5_priority",
+      "tick": 654,
+      "allow": true,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_priority",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_priority",
+          "packet_id": "packet-1176",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "priority_granted",
+          "receive_ns": 58502690717,
+          "accepted_ns": 58502690717,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65400000000,
+        "valid_until_ns": 65500000000,
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-result:uav_x5_priority",
+      "owner": "uav_x5_priority",
+      "tick": 655,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_priority",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_priority",
+          "packet_id": "packet-1176",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "priority_granted",
+          "receive_ns": 58502690717,
+          "accepted_ns": 58502690717,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65500000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-result:uav_x5_priority",
+      "owner": "uav_x5_priority",
+      "tick": 656,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_priority",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_priority",
+          "packet_id": "packet-1176",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "priority_granted",
+          "receive_ns": 58502690717,
+          "accepted_ns": 58502690717,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65600000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-result:uav_x5_priority",
+      "owner": "uav_x5_priority",
+      "tick": 660,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_priority",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_priority",
+          "packet_id": "packet-1176",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "priority_granted",
+          "receive_ns": 58502690717,
+          "accepted_ns": 58502690717,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 66000000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-result:uav_x5_priority",
+      "owner": "uav_x5_priority",
+      "tick": 900,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_priority",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_priority",
+          "packet_id": "packet-1176",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "priority_granted",
+          "receive_ns": 58502690717,
+          "accepted_ns": 58502690717,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 90000000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-result:uav_x5_second",
+      "owner": "uav_x5_second",
+      "tick": 654,
+      "allow": true,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_second",
+          "packet_id": "packet-1177",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "reroute",
+          "receive_ns": 58503246845,
+          "accepted_ns": 58503246845,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65400000000,
+        "valid_until_ns": 65500000000,
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-result:uav_x5_second",
+      "owner": "uav_x5_second",
+      "tick": 655,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_second",
+          "packet_id": "packet-1177",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "reroute",
+          "receive_ns": 58503246845,
+          "accepted_ns": 58503246845,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65500000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-result:uav_x5_second",
+      "owner": "uav_x5_second",
+      "tick": 656,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_second",
+          "packet_id": "packet-1177",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "reroute",
+          "receive_ns": 58503246845,
+          "accepted_ns": 58503246845,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 65600000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-result:uav_x5_second",
+      "owner": "uav_x5_second",
+      "tick": 660,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_second",
+          "packet_id": "packet-1177",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "reroute",
+          "receive_ns": 58503246845,
+          "accepted_ns": 58503246845,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 66000000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    },
+    {
+      "message_id": "pad-result:uav_x5_second",
+      "owner": "uav_x5_second",
+      "tick": 900,
+      "allow": false,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_second",
+          "packet_id": "packet-1177",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "reroute",
+          "receive_ns": 58503246845,
+          "accepted_ns": 58503246845,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 90000000000,
+        "valid_until_ns": 65500000000,
+        "reason": "pad service lease expired",
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false
+      }
+    }
+  ],
+  "receiver_timer_global_clock_invariance": [
+    {
+      "unobservable_global_arbitration_tick": 580,
+      "decision_tick": 610,
+      "allow": true,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_second",
+          "packet_id": "packet-1177",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "reroute",
+          "receive_ns": 58503246845,
+          "accepted_ns": 58503246845,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 61000000000,
+        "valid_until_ns": 65500000000,
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false,
+        "received_application_payload": {
+          "schema_version": "p09.pad-allocation-result/v1",
+          "kind": "pad_allocation_result",
+          "pad_owner": "pad_x5_primary",
+          "receiver_owner": "uav_x5_second",
+          "arbitration_event_id": "pad_priority_arbitration",
+          "arbitration_ns": 58000000000,
+          "allocation_action": "reroute",
+          "valid_until_ns": 65500000000,
+          "timer_policy_version": "p09.x5.received-arbitration-time-reroute/v1"
+        },
+        "timer_due_ns": 61000000000,
+        "timer_policy": {
+          "version": "p09.x5.received-arbitration-time-reroute/v1",
+          "delay_original_ticks": 30,
+          "original_trigger": {
+            "trigger_id": "trig_after_pad_priority_arbitration_delay_30",
+            "type": "event_fired_after",
+            "event_id": "pad_priority_arbitration",
+            "delay_ticks": 30
+          },
+          "clock": "absolute simulation ns from trusted pad result submission bound to actual native RX",
+          "admission": "receiver must have exact unexpired result before action; timer due from received arbitration_ns plus original delay",
+          "migration": "retain arbitration-relative 30-tick narrative delay; remove receiver global event-table access; late/unreceived/expired result never admits reroute"
+        },
+        "reason": "received result timer due"
+      }
+    },
+    {
+      "unobservable_global_arbitration_tick": 581,
+      "decision_tick": 610,
+      "allow": true,
+      "evidence": {
+        "message_id": "pad-result:uav_x5_second",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_second",
+          "packet_id": "packet-1177",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "reroute",
+          "receive_ns": 58503246845,
+          "accepted_ns": 58503246845,
+          "status": "accepted"
+        },
+        "current_receiver_epoch": 0,
+        "use_ns": 61000000000,
+        "valid_until_ns": 65500000000,
+        "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+        "custody_claim": false,
+        "received_application_payload": {
+          "schema_version": "p09.pad-allocation-result/v1",
+          "kind": "pad_allocation_result",
+          "pad_owner": "pad_x5_primary",
+          "receiver_owner": "uav_x5_second",
+          "arbitration_event_id": "pad_priority_arbitration",
+          "arbitration_ns": 58000000000,
+          "allocation_action": "reroute",
+          "valid_until_ns": 65500000000,
+          "timer_policy_version": "p09.x5.received-arbitration-time-reroute/v1"
+        },
+        "timer_due_ns": 61000000000,
+        "timer_policy": {
+          "version": "p09.x5.received-arbitration-time-reroute/v1",
+          "delay_original_ticks": 30,
+          "original_trigger": {
+            "trigger_id": "trig_after_pad_priority_arbitration_delay_30",
+            "type": "event_fired_after",
+            "event_id": "pad_priority_arbitration",
+            "delay_ticks": 30
+          },
+          "clock": "absolute simulation ns from trusted pad result submission bound to actual native RX",
+          "admission": "receiver must have exact unexpired result before action; timer due from received arbitration_ns plus original delay",
+          "migration": "retain arbitration-relative 30-tick narrative delay; remove receiver global event-table access; late/unreceived/expired result never admits reroute"
+        },
+        "reason": "received result timer due"
+      }
+    }
+  ],
+  "same_receipt_sha256": "ab91d11691ff9134b824f0054608be190c54020fd09900a1b6c63b4e6beae995"
+}

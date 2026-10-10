@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="AERO-BENCH 本地城市、车辆与无人机素材目录" />
+    <title>AERO-BENCH · 素材库</title>
+  </head>
+  <body>
+    <div id="asset-library">
+      <header class="library-topbar">
+        <a class="library-brand" href="./"><span class="brand-mark">◆</span><span>AERO-BENCH</span></a>
+        <span class="topbar-divider"></span>
+        <span class="topbar-title">城市可视化素材库</span>
+        <div class="topbar-actions">
+          <span class="local-badge">本地目录 · 只读</span>
+          <a href="./?scene=1">城市视图</a>
+          <a href="./">返回控制台</a>
+        </div>
+      </header>
+
+      <main class="library-shell">
+        <aside class="library-sidebar">
+          <div class="sidebar-head">
+            <span class="eyebrow">ASSET EXPLORER</span>
+            <h1>素材目录</h1>
+            <p>可旋转模型与源包展示图分开列出，再按机型查看。</p>
+          </div>
+          <nav id="category-nav" aria-label="素材分类"></nav>
+          <section class="sidebar-note">
+            <h2>建议补齐</h2>
+            <p><strong>车辆</strong>：厢式配送车、公交车、货车、应急车辆。先按场景中实际声明的车型选择。</p>
+            <p><strong>无人机</strong>：载荷多旋翼、固定翼测绘机、垂直起降机。现有 X500 可作为巡检四旋翼基准。</p>
+          </section>
+        </aside>
+
+        <section class="library-content" aria-label="素材列表">
+          <div class="content-heading">
+            <div><span class="eyebrow">LOCAL INVENTORY</span><h2 id="section-title">无人机 3D 模型</h2><p id="section-description">正在读取本地目录…</p></div>
+            <button id="refresh-catalog" class="refresh-button" type="button">刷新目录</button>
+          </div>
+          <div id="inventory-summary" class="inventory-summary" aria-live="polite"></div>
+          <div class="filter-bar">
+            <label class="search-field"><span aria-hidden="true">⌕</span><input id="asset-search" type="search" placeholder="搜索名称、目录、格式" aria-label="搜索素材" /></label>
+            <select id="status-filter" aria-label="按状态筛选">
+              <option value="all">全部状态</option>
+              <option value="ready">3D 可预览</option>
+              <option value="available">场景/纹理可用</option>
+              <option value="downloaded">源包已下载</option>
+              <option value="pending">待下载</option>
+              <option value="partial">文件未完整</option>
+            </select>
+          </div>
+          <div id="subgroup-nav" class="subgroup-nav" aria-label="二级目录"></div>
+          <p id="result-count" class="result-count"></p>
+          <div id="asset-grid" class="asset-grid" aria-live="polite"></div>
+          <button id="load-more" class="load-more-button" type="button" hidden>加载更多素材</button>
+        </section>
+
+        <aside id="preview-panel" class="preview-sidebar" aria-label="素材预览">
+          <div class="preview-header"><span class="eyebrow">INSPECTOR</span><span id="preview-mode" class="preview-mode">选择素材</span></div>
+          <div id="preview-stage" class="preview-stage">
+            <canvas id="preview-canvas" aria-label="可拖动旋转、滚轮缩放的三维模型预览"></canvas>
+            <img id="preview-image" alt="" />
+            <div id="preview-placeholder" class="preview-placeholder">选择一项素材查看详情</div>
+            <div id="preview-loading" class="preview-loading" hidden>正在加载模型…</div>
+          </div>
+          <div class="preview-toolbar"><span id="interaction-hint">3D 模型支持拖动旋转、滚轮缩放</span><div class="preview-actions"><button id="material-toggle" type="button" aria-expanded="false" disabled>涂装试用</button><button id="reset-view" type="button" disabled>重置视角</button><button id="expand-preview" type="button" aria-pressed="false">全屏预览</button></div></div>
+          <section id="material-panel" class="material-panel" aria-label="通用材质试用" hidden>
+            <div class="material-panel-heading"><strong>通用材质试用</strong><span>只影响当前预览，可还原</span></div>
+            <div class="material-controls">
+              <label>作用范围<select id="material-target"><option value="all">整个模型</option></select></label>
+              <label>材质<select id="material-preset"></select></label>
+              <label>颜色<input id="material-color" type="color" value="#536b75" /></label>
+              <label>粗糙度<input id="material-roughness" type="range" min="0" max="1" step="0.01" value="0.5" /></label>
+              <label>金属度<input id="material-metalness" type="range" min="0" max="1" step="0.01" value="0.1" /></label>
+              <label>纹理密度<input id="material-repeat" type="range" min="0.5" max="8" step="0.5" value="2" /></label>
+            </div>
+            <div class="material-panel-actions"><button id="material-apply" type="button">应用到预览</button><button id="material-restore" type="button">还原入库外观</button></div>
+            <p id="material-status" role="status">选择材质后可试涂整个模型或单个部件。点击模型可选中部件。</p>
+          </section>
+          <div class="preview-details">
+            <span id="detail-category" class="detail-category"></span>
+            <h2 id="detail-title">尚未选择素材</h2>
+            <p id="detail-note" class="detail-note"></p>
+            <button id="open-converted-model" class="open-model-button" type="button" hidden>打开可旋转 3D 模型</button>
+            <figure id="source-reference" class="source-reference" hidden>
+              <a id="source-reference-link" target="_blank" rel="noopener noreferrer"><img id="source-reference-image" alt="" /></a>
+              <figcaption>源包展示图，仅供对照外观；不是可直接映射到模型的材质贴图。</figcaption>
+            </figure>
+            <dl id="detail-fields"></dl>
+          </div>
+          <p class="preview-footnote">预览尺寸按模型边界自动取景。正式运行中的型号、位置和尺寸仍由场景声明与公开轨迹决定。</p>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/src/asset-library.ts"></script>
+  </body>
+</html>

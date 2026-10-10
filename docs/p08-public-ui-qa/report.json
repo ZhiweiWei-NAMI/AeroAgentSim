@@ -1,0 +1,102 @@
+{
+  "scope": "published legacy dataset / UI-only visual review",
+  "ui_commit": "4f9adf6e8b851d3a7b1086fba3d297f1620607a2",
+  "legacy_commit": "7ca57707930fc45fdc1d48f32c6470beabf33bb8",
+  "checks": {
+    "initial_source": "instances",
+    "unavailable_controls": [
+      {
+        "id": "source-coherent",
+        "disabled": true,
+        "label": "连贯案例 未加载 / UNLOADED"
+      },
+      {
+        "id": "source-native",
+        "disabled": true,
+        "label": "类型目录 未加载 / UNLOADED"
+      }
+    ],
+    "pointer_rotation": true,
+    "shift_pan": true,
+    "wheel_zoom": true,
+    "keyboard_rotate": true,
+    "search_shortcut": true,
+    "search_results": 1,
+    "node_inspector": true,
+    "hover": true,
+    "edge_inspector": true,
+    "escape_clear": true,
+    "unloaded_provenance": true,
+    "desktop_no_horizontal_overflow": true,
+    "desktop_no_body_overflow": true,
+    "mobile_no_horizontal_overflow": true,
+    "mobile_no_body_overflow": false
+  },
+  "screenshots": [
+    "initial-legacy-desktop.png",
+    "selected-rule-desktop.png",
+    "selected-edge-desktop.png",
+    "legacy-mobile.png"
+  ],
+  "unavailable": [
+    "Original1686catalog",
+    "Accepted13casebrowsercoverage",
+    "Native provider integration",
+    "C01new explanationchain"
+  ],
+  "dataset": {
+    "scenario": "DLV-A27-001",
+    "full_nodes": 254,
+    "full_edges": 586,
+    "visible_nodes": 240,
+    "visible_edges": 585,
+    "rendered_labels": 20
+  },
+  "selected_record": {
+    "id": "n:023d74eae3977224020fc6ce",
+    "kind": "constraint_check_result"
+  },
+  "selected_edge": "e:31d903f09082e2bd61743032",
+  "desktop_layout": {
+    "width": 1600,
+    "height": 1000,
+    "scroll_width": 1600,
+    "scroll_height": 1000,
+    "body_width": 1600,
+    "body_height": 1000,
+    "panels": [
+      {
+        "class": "navigator",
+        "overflowY": "auto",
+        "height": 885,
+        "scroll_height": 1349
+      },
+      {
+        "class": "inspector",
+        "overflowY": "auto",
+        "height": 885,
+        "scroll_height": 885
+      }
+    ]
+  },
+  "mobile_layout": {
+    "width": 390,
+    "height": 844,
+    "scroll_width": 390,
+    "scroll_height": 2085
+  },
+  "page_errors": [],
+  "failed_requests": [],
+  "image_sha256": {
+    "initial-legacy-desktop.png": "9e2d10e046e6275e5a6acf54c6cf8402c42b19a5347c4a22bb9b72d4310c1188",
+    "selected-rule-desktop.png": "d300dc03b9458ab04cae3c77b84d1d8b40b7b6325607fd67a8f1334455926f2e",
+    "selected-edge-desktop.png": "87a4e5c20e265e8e07ec5f48949d32ac0f271fe5b6e7be72913e5b19e81be9c0",
+    "legacy-mobile.png": "96f33841c98d2d2bb29732202fc713f01784ad68bc021f52bfbf6a7ebbfba844"
+  },
+  "pixel_assessment": {
+    "desktop": "Light readable panels; graph overview cluster occupies only part of canvas, with pale edges and repeated legacy fixture labels. Focused constraint/edge view is clear.",
+    "mobile": "FAIL:2085px page height at844px viewport; graph below fold. QA scope banner hidden by supplied mobile CSS. No horizontal overflow.",
+    "renderer": "Canvas2D projects a3D force layout; this code is not a Three.js WebGL renderer.",
+    "acceptance": "UI-only partial review; no private catalog or accepted13case provider execution claim."
+  }
+}

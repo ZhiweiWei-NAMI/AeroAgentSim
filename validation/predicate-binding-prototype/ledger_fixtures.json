@@ -1,0 +1,103 @@
+{
+  "schema": "fixture.authority-ledger/v1",
+  "authority_id": "fixture-only-authority",
+  "authority_epoch": 8,
+  "custody": {
+    "parcel": {
+      "run_id": "fixture.binding.run",
+      "epoch": "epoch.1",
+      "id": "parcel.1",
+      "generation": 1,
+      "ref_type": "object"
+    },
+    "source": {
+      "run_id": "fixture.binding.run",
+      "epoch": "epoch.1",
+      "id": "pad.1",
+      "generation": 1,
+      "ref_type": "object"
+    },
+    "task": {
+      "run_id": "fixture.binding.run",
+      "epoch": "epoch.1",
+      "id": "task.delivery",
+      "generation": 1,
+      "ref_type": "object"
+    },
+    "revision": 4,
+    "targets": [
+      {
+        "run_id": "fixture.binding.run",
+        "epoch": "epoch.1",
+        "id": "ugv.01",
+        "generation": 1,
+        "ref_type": "object"
+      },
+      {
+        "run_id": "fixture.binding.run",
+        "epoch": "epoch.1",
+        "id": "uav.1",
+        "generation": 1,
+        "ref_type": "object"
+      }
+    ],
+    "expected_commit_statuses": [
+      "committed",
+      "stale_precondition"
+    ]
+  },
+  "resource_bundle": {
+    "task": {
+      "run_id": "fixture.binding.run",
+      "epoch": "epoch.1",
+      "id": "task.delivery",
+      "generation": 1,
+      "ref_type": "object"
+    },
+    "consumer": {
+      "run_id": "fixture.binding.run",
+      "epoch": "epoch.1",
+      "id": "uav.1",
+      "generation": 1,
+      "ref_type": "object"
+    },
+    "resources": [
+      {
+        "ref": {
+          "run_id": "fixture.binding.run",
+          "epoch": "epoch.1",
+          "id": "queue.1",
+          "generation": 1,
+          "ref_type": "object"
+        },
+        "dimension": "cpu",
+        "unit": "core",
+        "capacity": 8,
+        "demand": 6
+      },
+      {
+        "ref": {
+          "run_id": "fixture.binding.run",
+          "epoch": "epoch.1",
+          "id": "link.1",
+          "generation": 1,
+          "ref_type": "object"
+        },
+        "dimension": "rate",
+        "unit": "bit/s",
+        "capacity": 8000000,
+        "demand": 6000000
+      }
+    ],
+    "window": {
+      "start_ns": 10000000000,
+      "end_ns": 20000000000
+    },
+    "expected_outcomes": [
+      "admitted",
+      "stale_precondition",
+      "capacity_exceeded"
+    ]
+  },
+  "scope": "In-memory fixture authority only; no provider effects or commands."
+}

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.agent.delivery_drone.DeliveryDroneAgent &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.agent.delivery_drone.DeliveryDroneAgent</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-agent-delivery-drone-deliverydroneagent">
+<h1>aeroagentsim.agent.delivery_drone.DeliveryDroneAgent<a class="headerlink" href="#aeroagentsim-agent-delivery-drone-deliverydroneagent" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.agent.delivery_drone.DeliveryDroneAgent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.agent.delivery_drone.</span></span><span class="sig-name descname"><span class="pre">DeliveryDroneAgent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/agent/delivery_drone.html#DeliveryDroneAgent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent" title="Permalink to this definition">¶</a></dt>
+<dd><p>物流无人机代理，能够执行物流任务和工作流，结合了无人机和物流代理的功能</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/agent/delivery_drone.html#DeliveryDroneAgent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../agent.html#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.__init__" title="aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(env, agent_name[, properties, agent_id])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">accept_contract</span></code>(contract_id)</p></td>
+<td><p>接受合约</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_component</span></code>(component)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_possessing_object</span></code>(object_name, obj)</p></td>
+<td><p>添加代理拥有的对象，并监听其状态变化事件</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_task_to_queue</span></code>(component_name, task_name, ...)</p></td>
+<td><p>添加任务到队列</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cancel_task</span></code>(task_id)</p></td>
+<td><p>取消指定的任务。在组件级别查找任务进程。</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cleanup</span></code>()</p></td>
+<td><p>清理代理资源，包括取消事件监听和触发器</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_contract</span></code>(task_info, target_agent_ids, ...)</p></td>
+<td><p>创建任务卸载合约</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute_task</span></code>(component_name, task_name, ...)</p></td>
+<td><p>Creates and executes a task using a specified component.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_active_workflows</span></code>()</p></td>
+<td><p>获取代理的活跃工作流</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_agent_contracts</span></code>([role, status])</p></td>
+<td><p>获取代理相关的合约</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_available_contracts</span></code>()</p></td>
+<td><p>获取可接受的合约列表</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_component</span></code>(component_name)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_component_names</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_component_tasks</span></code>(component_name)</p></td>
+<td><p>获取指定组件正在执行的任务</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_components</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_current_states</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../agent.html#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_description" title="aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_description"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_description</span></code></a>()</p></td>
+<td><p>获取代理类型的描述</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../agent.html#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_details" title="aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_details"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_details</span></code></a>()</p></td>
+<td><p>获取代理详细信息，添加物流无人机相关信息</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_event</span></code>(event_name)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_possessing_object</span></code>(object_name)</p></td>
+<td><p>获取代理拥有的对象</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_possessing_object_names</span></code>()</p></td>
+<td><p>获取代理拥有的所有对象名称</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_state</span></code>(key[, default])</p></td>
+<td><p>获取状态值，支持复合状态访问（如 'charging_station.status'）</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_state_templates</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">has_event</span></code>(event_name)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">has_state</span></code>(key)</p></td>
+<td><p>检查状态是否存在，支持复合状态</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_states</span></code>([level_class])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">live</span></code>()</p></td>
+<td><p>代理的主要行为逻辑。</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">power_off</span></code>()</p></td>
+<td><p>关闭终端</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">power_on</span></code>()</p></td>
+<td><p>开启终端</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../agent.html#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.register_event_listeners" title="aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.register_event_listeners"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_event_listeners</span></code></a>()</p></td>
+<td><p>注册物流无人机需要监听的事件</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_state_template</span></code>(key, **kwargs)</p></td>
+<td><p>Registers a state template for this Agent class.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_possessing_object</span></code>(object_name)</p></td>
+<td><p>移除代理拥有的对象，并取消相关事件订阅</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_state</span></code>(key, value)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">standby</span></code>()</p></td>
+<td><p>终端进入待机模式</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">subscribe</span></code>(source_id, event_name, callback[, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">trigger_event</span></code>(event_name[, value])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unsubscribe</span></code>(source_id, event_name, listener_id)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unsubscribe_all</span></code>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_state</span></code>(key, value)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_states</span></code>(state_dict)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_description">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/agent/delivery_drone.html#DeliveryDroneAgent.get_description"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_description" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取代理类型的描述</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/agent/delivery_drone.html#DeliveryDroneAgent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.register_event_listeners">
+<span class="sig-name descname"><span class="pre">register_event_listeners</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/agent/delivery_drone.html#DeliveryDroneAgent.register_event_listeners"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.register_event_listeners" title="Permalink to this definition">¶</a></dt>
+<dd><p>注册物流无人机需要监听的事件</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_details">
+<span class="sig-name descname"><span class="pre">get_details</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/agent/delivery_drone.html#DeliveryDroneAgent.get_details"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_details" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取代理详细信息，添加物流无人机相关信息</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.agent.delivery_drone.DeliveryDroneAgent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent"><code class="docutils literal notranslate"><span class="pre">DeliveryDroneAgent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.__init__"><code class="docutils literal notranslate"><span class="pre">DeliveryDroneAgent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_description"><code class="docutils literal notranslate"><span class="pre">DeliveryDroneAgent.get_description()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">DeliveryDroneAgent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.register_event_listeners"><code class="docutils literal notranslate"><span class="pre">DeliveryDroneAgent.register_event_listeners()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_details"><code class="docutils literal notranslate"><span class="pre">DeliveryDroneAgent.get_details()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.agent.delivery_drone.DeliveryDroneAgent.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.agent.delivery_drone.DeliveryDroneAgent</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

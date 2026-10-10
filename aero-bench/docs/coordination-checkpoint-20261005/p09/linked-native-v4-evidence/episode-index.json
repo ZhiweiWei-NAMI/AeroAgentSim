@@ -1,0 +1,261 @@
+{
+  "batch_snapshot": [
+    {
+      "episode_id": "L6-1_v1__seed00",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 19.041685255244374
+    },
+    {
+      "episode_id": "L6-1_v1__seed01",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 20.087497833184898
+    },
+    {
+      "episode_id": "L6-1_v1__seed02",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 20.24829087499529
+    },
+    {
+      "episode_id": "L6-1_v2__seed00",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 20.6143753901124
+    },
+    {
+      "episode_id": "L6-1_v2__seed01",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 20.874515060335398
+    },
+    {
+      "episode_id": "L6-1_v2__seed02",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 20.907400157302618
+    },
+    {
+      "episode_id": "L2-1_v1__seed00",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 28.199931293725967
+    },
+    {
+      "episode_id": "L2-1_v1__seed01",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 29.18791195563972
+    },
+    {
+      "episode_id": "L2-1_v1__seed02",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 28.87481950223446
+    },
+    {
+      "episode_id": "L2-1_v2__seed00",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/summary.json",
+      "unfired_events": [
+        "patrol_resume_via_backup_link",
+        "lifecycle_landing_uav_l2_1_v2"
+      ],
+      "status": "requires_resolution",
+      "wall_time_s": 19.742921474389732
+    },
+    {
+      "episode_id": "L5-1_v1__seed00",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 12.523547038435936
+    },
+    {
+      "episode_id": "L5-1_v1__seed01",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 12.897640319541097
+    },
+    {
+      "episode_id": "L5-1_v1__seed02",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 12.266838878393173
+    },
+    {
+      "episode_id": "L5-1_v2__seed00",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 13.905419231392443
+    },
+    {
+      "episode_id": "L5-1_v2__seed01",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 13.475781302899122
+    },
+    {
+      "episode_id": "L5-1_v2__seed02",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 13.939459774643183
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed00",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 22.24515767674893
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed01",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 22.148637569509447
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed02",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 22.275906790047884
+    },
+    {
+      "episode_id": "L6-4_v1__seed00",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 88.81222016643733
+    },
+    {
+      "episode_id": "L6-4_v1__seed01",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/summary.json",
+      "unfired_events": [
+        "multi_uav_hold_entry",
+        "multi_uav_safe_hold",
+        "alternate_channel",
+        "lifecycle_landing_uav_digital_l6_4_v1",
+        "lifecycle_landing_uav_digital_l6_4_v1_secondary"
+      ],
+      "status": "requires_resolution",
+      "wall_time_s": 54.4100097483024
+    },
+    {
+      "episode_id": "L6-4_v2__seed00",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 78.67135601677
+    },
+    {
+      "episode_id": "L6-4_v2__seed01",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/summary.json",
+      "unfired_events": [
+        "lifecycle_landing_uav_digital_l6_4_v2",
+        "lifecycle_landing_uav_digital_l6_4_v2_secondary"
+      ],
+      "status": "requires_resolution",
+      "wall_time_s": 67.07077620178461
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed00",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 47.4659483525902
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed01",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 47.015119295567274
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed02",
+      "summary_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "status": "complete",
+      "wall_time_s": 47.03134308103472
+    }
+  ],
+  "representative_packets": [
+    {
+      "episode_id": "L6-1_v1__seed00",
+      "status": "complete",
+      "path": "episodes/L6-1_v1__seed00/chain-evidence.json"
+    },
+    {
+      "episode_id": "L6-1_v2__seed00",
+      "status": "complete",
+      "path": "episodes/L6-1_v2__seed00/chain-evidence.json"
+    },
+    {
+      "episode_id": "L2-1_v1__seed00",
+      "status": "complete",
+      "path": "episodes/L2-1_v1__seed00/chain-evidence.json"
+    },
+    {
+      "episode_id": "L2-1_v2__seed00",
+      "status": "requires_resolution",
+      "path": "episodes/L2-1_v2__seed00/chain-evidence.json"
+    },
+    {
+      "episode_id": "L5-1_v1__seed00",
+      "status": "complete",
+      "path": "episodes/L5-1_v1__seed00/chain-evidence.json"
+    },
+    {
+      "episode_id": "L5-1_v2__seed00",
+      "status": "complete",
+      "path": "episodes/L5-1_v2__seed00/chain-evidence.json"
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed00",
+      "status": "complete",
+      "path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/chain-evidence.json"
+    },
+    {
+      "episode_id": "L6-4_v1__seed00",
+      "status": "complete",
+      "path": "episodes/L6-4_v1__seed00/chain-evidence.json"
+    },
+    {
+      "episode_id": "L6-4_v1__seed01",
+      "status": "requires_resolution",
+      "path": "episodes/L6-4_v1__seed01/chain-evidence.json"
+    },
+    {
+      "episode_id": "L6-4_v2__seed00",
+      "status": "complete",
+      "path": "episodes/L6-4_v2__seed00/chain-evidence.json"
+    },
+    {
+      "episode_id": "L6-4_v2__seed01",
+      "status": "requires_resolution",
+      "path": "episodes/L6-4_v2__seed01/chain-evidence.json"
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed00",
+      "status": "complete",
+      "path": "episodes/X5_comm_failure_to_pad_contention__seed00/chain-evidence.json"
+    }
+  ],
+  "not_a_final_210_adoption_manifest": true
+}

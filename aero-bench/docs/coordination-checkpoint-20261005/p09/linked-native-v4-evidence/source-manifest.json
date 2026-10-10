@@ -1,0 +1,1260 @@
+{
+  "captured_utc": "2026-10-06T03:38:13.267443+00:00",
+  "revision": "p09.linked-native-causal/v4",
+  "files": [
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/linked_contract.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/linked_contract.py",
+      "bytes": 14409,
+      "sha256": "6548d30ef299858d5e8042b26b857c0be828f13cf886809c423ec9833e34108e"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/linked_transport.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/linked_transport.py",
+      "bytes": 9710,
+      "sha256": "1a298bd1c7642fe30f3ff276f61d8246d2a3f42a1382d96d447e25082a76d836"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/linked_observations.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/linked_observations.py",
+      "bytes": 3249,
+      "sha256": "b931e0456458b4782ca38662e44274ccd87d7d97ae626490f7715e1f3c2f1547"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/linked_replay.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/linked_replay.py",
+      "bytes": 26720,
+      "sha256": "2b76801581124ad9d7beedfc9abc7f42c86178b01733aecc076f349e6a5e6051"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/linked_engine.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/linked_engine.py",
+      "bytes": 5334,
+      "sha256": "394cbd1529a253d9ff4c3a217772872becf3e8098246348b987d54165bf52f5e"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/provider_adapter.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/provider_adapter.py",
+      "bytes": 23419,
+      "sha256": "8f70a2adc0f137dd07596487c2842f3e2f5dff1491ef6fd2654e6a73be38c58d"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/p01_ns3_provider.cc",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/p01_ns3_provider.cc",
+      "bytes": 31021,
+      "sha256": "8a1faa1e80ab5ad1f052bc77db109fb92183ddf455a9c37fc79ee4f34af638b5"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/receipt_scope.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/receipt_scope.py",
+      "bytes": 3339,
+      "sha256": "377260dd3b9e682c4c17e55ae7c581570fdb66407ec06f5fb51a692c31a91727"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/receipt_semantics.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/receipt_semantics.py",
+      "bytes": 11679,
+      "sha256": "1ef5bccf2647838fbe1b6a4717ce7b0d899ed7c39f8683d424ed10647ff70e6f"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/controller_receipt_consumer.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/controller_receipt_consumer.py",
+      "bytes": 2312,
+      "sha256": "d4e8b7bf9547447514fa4d0d3a72a94899401d44d086c52575b2cac85c3c88aa"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/command_receipts.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/command_receipts.py",
+      "bytes": 2886,
+      "sha256": "518eb0309eaaa1c056f556a87aa360e1f34d528ba7e93faf7678f3d3da8be224"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/test_linked_replay.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/test_linked_replay.py",
+      "bytes": 6050,
+      "sha256": "eec5f0687bed75bbb8704a5571ebc0764a80ee0affcbd77e5fe80ee99af35ee3"
+    },
+    {
+      "source_path": "Dataset/semantic_simulation/ns3_episode/test_linked_observations.py",
+      "export_path": "source/Dataset/semantic_simulation/ns3_episode/test_linked_observations.py",
+      "bytes": 2705,
+      "sha256": "dc103f076cba3092c63013333d6b67e148a35ca85f8344b0780e897bdcb66907"
+    },
+    {
+      "source_path": "Dataset/tools/l6_v2/engine.py",
+      "export_path": "source/Dataset/tools/l6_v2/engine.py",
+      "bytes": 8854,
+      "sha256": "e03f6d3aa6f5b05452d14399832a0a1c2b5d642bf70de67ca160193668fb78e1"
+    },
+    {
+      "source_path": "Dataset/tools/l6_v2/common.py",
+      "export_path": "source/Dataset/tools/l6_v2/common.py",
+      "bytes": 2660,
+      "sha256": "1ddd7bc95bafff90cfe0cf65a4c28edc1ab41b7fed328580db01001d7b567561"
+    },
+    {
+      "source_path": "Dataset/tools/batch_generate.py",
+      "export_path": "source/Dataset/tools/batch_generate.py",
+      "bytes": 102907,
+      "sha256": "32ed48f6d984bf36f5e4327f81b91c6afc3712d9dcd9b85eb6fe28a723be69d5"
+    },
+    {
+      "source_path": "Plugins/SumoImporter/Scripts/donghu_core/event_script_interpreter.py",
+      "export_path": "source/Plugins/SumoImporter/Scripts/donghu_core/event_script_interpreter.py",
+      "bytes": 24219,
+      "sha256": "71a01b82a44bd0687c445f1a0dcb56b4ef4c03cc37a467839d7f79747cf420c4"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/summary.json",
+      "export_path": "episodes/L6-1_v1__seed00/summary.json",
+      "bytes": 2274,
+      "sha256": "b5d59726e529d59b7c8bbc7e1354ff19fcca8f1a10f51f26c076afd24314b9ef"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/adoption_profile.json",
+      "export_path": "episodes/L6-1_v1__seed00/adoption_profile.json",
+      "bytes": 2064,
+      "sha256": "cae7aa27bbd75221d86f2268711fb47419c5a93cf807d007e4be696a64ab86ee"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/command_receipts.json",
+      "export_path": "episodes/L6-1_v1__seed00/command_receipts.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/coupled_iterations.json",
+      "export_path": "episodes/L6-1_v1__seed00/coupled_iterations.json",
+      "bytes": 756,
+      "sha256": "27de833669598d8cd17c91a889196a04e9dc2db34a381e758f910bf75d47f108"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/execution_time.json",
+      "export_path": "episodes/L6-1_v1__seed00/execution_time.json",
+      "bytes": 40,
+      "sha256": "e36ddf9832c371c5e13dcd33450b18ada8f7116bc054c9f311a1fc3636e62f24"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/event_script.json",
+      "export_path": "episodes/L6-1_v1__seed00/event_script.json",
+      "bytes": 28551,
+      "sha256": "70a350fdfd3628597afce252f2199423c830b4acd5c0790a6b407c2c6aa29efb"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/scene_setup.json",
+      "export_path": "episodes/L6-1_v1__seed00/scene_setup.json",
+      "bytes": 105832,
+      "sha256": "0d30da741f3fdc221d441d1632d7ac913836d7b1cb6a7fefa9785f43cb59e463"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/actions.json",
+      "export_path": "episodes/L6-1_v1__seed00/actions.json",
+      "bytes": 8721,
+      "sha256": "ef42ffb850afff996e2daa57659984e8f5346ff01e4a1ba1d260806fabc341e7"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/network_backend.json",
+      "export_path": "episodes/L6-1_v1__seed00/network_backend.json",
+      "bytes": 10501,
+      "sha256": "0e95940acec9578359d0fbbb4a6589d591cf4db3f483bd6ee49c9bbfd0c7402b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed00/adopted/radio_actions.jsonl",
+      "export_path": "episodes/L6-1_v1__seed00/radio_actions.jsonl",
+      "bytes": 252,
+      "sha256": "a45d2254fe0e6b07f11ead6912b35bc41de7c27fe8c75ba0076a7fd1fee0722d"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-1_v1/event_script.json",
+      "export_path": "episodes/L6-1_v1__seed00/original/event_script.json",
+      "bytes": 28551,
+      "sha256": "70a350fdfd3628597afce252f2199423c830b4acd5c0790a6b407c2c6aa29efb"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-1_v1/scene_setup.json",
+      "export_path": "episodes/L6-1_v1__seed00/original/scene_setup.json",
+      "bytes": 105832,
+      "sha256": "0d30da741f3fdc221d441d1632d7ac913836d7b1cb6a7fefa9785f43cb59e463"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed01/adopted/summary.json",
+      "export_path": "episodes/L6-1_v1__seed01/summary.json",
+      "bytes": 2274,
+      "sha256": "5a9ddeceb635284d1129c6d78d80e091b993198542b3beb45e21c2becc68bca5"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed01/adopted/adoption_profile.json",
+      "export_path": "episodes/L6-1_v1__seed01/adoption_profile.json",
+      "bytes": 2064,
+      "sha256": "345c4ddb337bca81d122d31a9125980b9b5e495d37d018f1d712423a40f3a168"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed01/adopted/command_receipts.json",
+      "export_path": "episodes/L6-1_v1__seed01/command_receipts.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed01/adopted/coupled_iterations.json",
+      "export_path": "episodes/L6-1_v1__seed01/coupled_iterations.json",
+      "bytes": 755,
+      "sha256": "609239ddca06cda2278f9ef2b8789240d455e9b683b7469132730ed720eb1228"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed01/adopted/execution_time.json",
+      "export_path": "episodes/L6-1_v1__seed01/execution_time.json",
+      "bytes": 40,
+      "sha256": "ffdc335430e9da81505d57e76b6474e38c884edace9745180487e78e7062bbbb"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed02/adopted/summary.json",
+      "export_path": "episodes/L6-1_v1__seed02/summary.json",
+      "bytes": 2274,
+      "sha256": "89d5fad7e44ce5c50b365d24c4437363c0125122ddbe899127fca4d5b84dee8e"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed02/adopted/adoption_profile.json",
+      "export_path": "episodes/L6-1_v1__seed02/adoption_profile.json",
+      "bytes": 2064,
+      "sha256": "cb8e9a76390bdc2e4b1a86afa7f462c587266043ecf41ff5a2d08749f530be4e"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed02/adopted/command_receipts.json",
+      "export_path": "episodes/L6-1_v1__seed02/command_receipts.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed02/adopted/coupled_iterations.json",
+      "export_path": "episodes/L6-1_v1__seed02/coupled_iterations.json",
+      "bytes": 754,
+      "sha256": "960a4569f26b13bab8404a54c219cdb92f98f03356dace960b4a85b7af8ad6e1"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v1__seed02/adopted/execution_time.json",
+      "export_path": "episodes/L6-1_v1__seed02/execution_time.json",
+      "bytes": 39,
+      "sha256": "4fe4e884763a2d6cab844a75bdb6623593f237ff3dae695c9527c06edd05e549"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/summary.json",
+      "export_path": "episodes/L6-1_v2__seed00/summary.json",
+      "bytes": 2274,
+      "sha256": "dd3ee6f6499c86826c7d3c23208679e7fb899832435bf013bac0cae99bfe1290"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/adoption_profile.json",
+      "export_path": "episodes/L6-1_v2__seed00/adoption_profile.json",
+      "bytes": 2064,
+      "sha256": "67270f584c4e880707bce9f5d5c012dab4bc399fdec592b1f8f81f150e852020"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/command_receipts.json",
+      "export_path": "episodes/L6-1_v2__seed00/command_receipts.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/coupled_iterations.json",
+      "export_path": "episodes/L6-1_v2__seed00/coupled_iterations.json",
+      "bytes": 757,
+      "sha256": "0d81526e5cfeea23141f5faaa927caf77c257cedbf18af5086f0e69e27b66f9c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/execution_time.json",
+      "export_path": "episodes/L6-1_v2__seed00/execution_time.json",
+      "bytes": 40,
+      "sha256": "b05265c34572018330dabf190af14c00a66a6107ebc1034433d9c958766a548a"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/event_script.json",
+      "export_path": "episodes/L6-1_v2__seed00/event_script.json",
+      "bytes": 28965,
+      "sha256": "aad8821298c8d5b0c317243e3d2c3a544f844d5e769c96ff02e55f077c45129e"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/scene_setup.json",
+      "export_path": "episodes/L6-1_v2__seed00/scene_setup.json",
+      "bytes": 108994,
+      "sha256": "194f2f5fb50e3783bf73748f0daa8aad09090ddf47a3cdadc8ff60812bf85eb8"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/actions.json",
+      "export_path": "episodes/L6-1_v2__seed00/actions.json",
+      "bytes": 8802,
+      "sha256": "65af1169c2d1f41de00db2c494ebc2be2a9486ff285eb2e31b6a216ab52dfd11"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/network_backend.json",
+      "export_path": "episodes/L6-1_v2__seed00/network_backend.json",
+      "bytes": 10501,
+      "sha256": "f4128e7a9484c1fa1ff8927e506d803f44d79eff3c2891bbedd84443318006c4"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted/radio_actions.jsonl",
+      "export_path": "episodes/L6-1_v2__seed00/radio_actions.jsonl",
+      "bytes": 252,
+      "sha256": "731ef88b769a1325380b1396d6f5a82240ef8bdfc62272b09e07be6c6c259311"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-1_v2/event_script.json",
+      "export_path": "episodes/L6-1_v2__seed00/original/event_script.json",
+      "bytes": 28965,
+      "sha256": "aad8821298c8d5b0c317243e3d2c3a544f844d5e769c96ff02e55f077c45129e"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-1_v2/scene_setup.json",
+      "export_path": "episodes/L6-1_v2__seed00/original/scene_setup.json",
+      "bytes": 108994,
+      "sha256": "194f2f5fb50e3783bf73748f0daa8aad09090ddf47a3cdadc8ff60812bf85eb8"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed01/adopted/summary.json",
+      "export_path": "episodes/L6-1_v2__seed01/summary.json",
+      "bytes": 2274,
+      "sha256": "ec1f9374983e2b6b25cfa5fbab43c859356d355d3d0ac583529f4042992ee4aa"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed01/adopted/adoption_profile.json",
+      "export_path": "episodes/L6-1_v2__seed01/adoption_profile.json",
+      "bytes": 2064,
+      "sha256": "4bea9764d6f3fb9ba51cf871ab232fff60e4715364f9ffb6c92e1bd2f3fb8ea3"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed01/adopted/command_receipts.json",
+      "export_path": "episodes/L6-1_v2__seed01/command_receipts.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed01/adopted/coupled_iterations.json",
+      "export_path": "episodes/L6-1_v2__seed01/coupled_iterations.json",
+      "bytes": 756,
+      "sha256": "ef8305716833d414aa338accc1f9f859fb021be3e5b111afda49d2cfc62ffdf0"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed01/adopted/execution_time.json",
+      "export_path": "episodes/L6-1_v2__seed01/execution_time.json",
+      "bytes": 40,
+      "sha256": "1f661daab2ff80aa90de6e8c57ca1d33267b7a012a2d6c42352ff0b8deb56118"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed02/adopted/summary.json",
+      "export_path": "episodes/L6-1_v2__seed02/summary.json",
+      "bytes": 2274,
+      "sha256": "06afaa3cd2aca4aa4b8e8b77641481b145fcc07f7b7670622190155b59b0248c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed02/adopted/adoption_profile.json",
+      "export_path": "episodes/L6-1_v2__seed02/adoption_profile.json",
+      "bytes": 2064,
+      "sha256": "1a5c32d489830ebabe1d8deaca4de435e0164d49416415bd336b6a651b1ad27f"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed02/adopted/command_receipts.json",
+      "export_path": "episodes/L6-1_v2__seed02/command_receipts.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed02/adopted/coupled_iterations.json",
+      "export_path": "episodes/L6-1_v2__seed02/coupled_iterations.json",
+      "bytes": 755,
+      "sha256": "bc5fb22db2aeebb7beacc92db465bf174a490530c23acb6d48a704c9733530c1"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed02/adopted/execution_time.json",
+      "export_path": "episodes/L6-1_v2__seed02/execution_time.json",
+      "bytes": 40,
+      "sha256": "1ca4c7c2d2be0848661700c9fab2bab62fa4250a51f9baf5707005550a8aed9c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/summary.json",
+      "export_path": "episodes/L2-1_v1__seed00/summary.json",
+      "bytes": 1969,
+      "sha256": "cde885b0518c2c0e70f93912336ba42e4c2a732dff1f653726b804c72bbaf5e2"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/adoption_profile.json",
+      "export_path": "episodes/L2-1_v1__seed00/adoption_profile.json",
+      "bytes": 2768,
+      "sha256": "26d53db6e631e44b5043687c54e540b41ab5d00e73566844e1699bbb54036c84"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/command_receipts.json",
+      "export_path": "episodes/L2-1_v1__seed00/command_receipts.json",
+      "bytes": 5787,
+      "sha256": "6e74bf3696f0b58672506f1532cf8b96e96ba967d288bf5e672eef313f72e36b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/coupled_iterations.json",
+      "export_path": "episodes/L2-1_v1__seed00/coupled_iterations.json",
+      "bytes": 1543,
+      "sha256": "791e478232d18fa8202beff13fe8dad043472de2756080908ca0b5fd573137ee"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/execution_time.json",
+      "export_path": "episodes/L2-1_v1__seed00/execution_time.json",
+      "bytes": 39,
+      "sha256": "5bb790d38d0ad3a09be87bd3013ac13b56f657e98616222f2c3748786351d584"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/event_script.json",
+      "export_path": "episodes/L2-1_v1__seed00/event_script.json",
+      "bytes": 31912,
+      "sha256": "f23260fd150248edd637980b44ea723a1d7825c4f3b9c6694a9c815aa065f821"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/scene_setup.json",
+      "export_path": "episodes/L2-1_v1__seed00/scene_setup.json",
+      "bytes": 114320,
+      "sha256": "b07e10ca6f4b0b3f30b79f9256c3cc2b54c00e9394151591682632a810200cfa"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/actions.json",
+      "export_path": "episodes/L2-1_v1__seed00/actions.json",
+      "bytes": 10501,
+      "sha256": "93cae0653bc01507b64603cef2c67fd8302f66445b706ded002ef87d5d283be2"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/network_backend.json",
+      "export_path": "episodes/L2-1_v1__seed00/network_backend.json",
+      "bytes": 11375,
+      "sha256": "72f3804528f0039fbcba98302615ec1a0404cc4750716c7b1cc15a05f9a4d501"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed00/adopted/radio_actions.jsonl",
+      "export_path": "episodes/L2-1_v1__seed00/radio_actions.jsonl",
+      "bytes": 126,
+      "sha256": "21d2c0ccc1d516d225fdd555991f1452691a9ce8345a791d2a1cb67557b42aca"
+    },
+    {
+      "source_path": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v1/event_script.json",
+      "export_path": "episodes/L2-1_v1__seed00/original/event_script.json",
+      "bytes": 30020,
+      "sha256": "6b43f9565af508b5e6f6da4909615a1999e5c4b5b4906019fcad764a233e4755"
+    },
+    {
+      "source_path": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v1/scene_setup.json",
+      "export_path": "episodes/L2-1_v1__seed00/original/scene_setup.json",
+      "bytes": 114320,
+      "sha256": "b07e10ca6f4b0b3f30b79f9256c3cc2b54c00e9394151591682632a810200cfa"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed01/adopted/summary.json",
+      "export_path": "episodes/L2-1_v1__seed01/summary.json",
+      "bytes": 1969,
+      "sha256": "ab51065a610aee05df747112bade2f148710f49d2b279f7f55c9452670fed57f"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed01/adopted/adoption_profile.json",
+      "export_path": "episodes/L2-1_v1__seed01/adoption_profile.json",
+      "bytes": 2768,
+      "sha256": "ec774716f2c71a3db482a6a551a3dfe83aa8097f7e4a74e4672253240e0bacf8"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed01/adopted/command_receipts.json",
+      "export_path": "episodes/L2-1_v1__seed01/command_receipts.json",
+      "bytes": 5787,
+      "sha256": "f801654c92d0ad8ccb31fb9a7dd4156fb76c95479b5710e7d5fd8e251c7d8eed"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed01/adopted/coupled_iterations.json",
+      "export_path": "episodes/L2-1_v1__seed01/coupled_iterations.json",
+      "bytes": 1542,
+      "sha256": "62333897613a6ff021143eb6efb4d5d66b6991a51cceec31d43d2068b8a4376e"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed01/adopted/execution_time.json",
+      "export_path": "episodes/L2-1_v1__seed01/execution_time.json",
+      "bytes": 39,
+      "sha256": "26a2bbd0984fff7e93f7020eddab43a90ed0a33ce8775f20a047d632f7d3a4b7"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed02/adopted/summary.json",
+      "export_path": "episodes/L2-1_v1__seed02/summary.json",
+      "bytes": 1969,
+      "sha256": "bc4f80c4464ab03b9264d8e0145de2f5de99615c75ae6b1c0f0010b08dd9baee"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed02/adopted/adoption_profile.json",
+      "export_path": "episodes/L2-1_v1__seed02/adoption_profile.json",
+      "bytes": 2768,
+      "sha256": "76fd3feb5c1402ccd631be13b56b3f7f0f7d13026c3b1dbfcb80f396839a9cae"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed02/adopted/command_receipts.json",
+      "export_path": "episodes/L2-1_v1__seed02/command_receipts.json",
+      "bytes": 5787,
+      "sha256": "0273f0bca04b8f879fcc29a8855c0b297b1ce9e9906e0ba230846cb0769415ee"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed02/adopted/coupled_iterations.json",
+      "export_path": "episodes/L2-1_v1__seed02/coupled_iterations.json",
+      "bytes": 1542,
+      "sha256": "6eb020eadb815a20f2d24c80c537df1b9ba8e39f4cbf05e692ec59274eb016eb"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v1__seed02/adopted/execution_time.json",
+      "export_path": "episodes/L2-1_v1__seed02/execution_time.json",
+      "bytes": 40,
+      "sha256": "fb5430fe2cba056720998628ae53c7e72951a02dfa4051aba44e0f3b00a1ec25"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/summary.json",
+      "export_path": "episodes/L2-1_v2__seed00/summary.json",
+      "bytes": 1972,
+      "sha256": "050e005bc5997430852660dd398ec2042236ff4f3339ce5a3fb9febe1dec1957"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/adoption_profile.json",
+      "export_path": "episodes/L2-1_v2__seed00/adoption_profile.json",
+      "bytes": 2768,
+      "sha256": "fd625bb10342bfa1a1d9b2bdf6c2246e999fb23aaf8fdcd4e377d5dfb7175903"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/command_receipts.json",
+      "export_path": "episodes/L2-1_v2__seed00/command_receipts.json",
+      "bytes": 2193,
+      "sha256": "18f03a53cb3d4e5c3eb564a8bc84baa3043fcad0f65aa0529db2c1518cdbaf85"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/coupled_iterations.json",
+      "export_path": "episodes/L2-1_v2__seed00/coupled_iterations.json",
+      "bytes": 1169,
+      "sha256": "5f9a462d133dbb44f51bdb00c692ba3245272ead1cb7e3c8d3e1a9dfd19f3fe1"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/execution_time.json",
+      "export_path": "episodes/L2-1_v2__seed00/execution_time.json",
+      "bytes": 40,
+      "sha256": "3632535e9a5d581461a61e6f493de299f7bb73dfa56aa167265403d8e326d4f5"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/event_script.json",
+      "export_path": "episodes/L2-1_v2__seed00/event_script.json",
+      "bytes": 38838,
+      "sha256": "89f2b757bfee16cd4e089514c53569b833653a5ae27982048af903f39881c642"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/scene_setup.json",
+      "export_path": "episodes/L2-1_v2__seed00/scene_setup.json",
+      "bytes": 78595,
+      "sha256": "5d5e7e8f55d34f6c7c7c1b788c610624039a3faa2ce0c11fcf7bb3069e44dc81"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/actions.json",
+      "export_path": "episodes/L2-1_v2__seed00/actions.json",
+      "bytes": 6528,
+      "sha256": "5458473cdd338b590d936d5eec8579962144384bb51ff520ff228a110f34c7a5"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/network_backend.json",
+      "export_path": "episodes/L2-1_v2__seed00/network_backend.json",
+      "bytes": 11374,
+      "sha256": "c5448bfabbf9362ac83a7eb770ccc0f08329c03150ff6a808c5de6105dc9147c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L2-1_v2__seed00/adopted/radio_actions.jsonl",
+      "export_path": "episodes/L2-1_v2__seed00/radio_actions.jsonl",
+      "bytes": 126,
+      "sha256": "36441ba713968b2ca28d7ac3293e90cd37a7182ae4bc0e32bb0fba248978f69d"
+    },
+    {
+      "source_path": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/event_script.json",
+      "export_path": "episodes/L2-1_v2__seed00/original/event_script.json",
+      "bytes": 36946,
+      "sha256": "eda41c304f3bd445a68c7af748edf384770306ce79ce417f5c72b85b26fca6aa"
+    },
+    {
+      "source_path": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/scene_setup.json",
+      "export_path": "episodes/L2-1_v2__seed00/original/scene_setup.json",
+      "bytes": 78595,
+      "sha256": "5d5e7e8f55d34f6c7c7c1b788c610624039a3faa2ce0c11fcf7bb3069e44dc81"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed00/adopted/summary.json",
+      "export_path": "episodes/L5-1_v1__seed00/summary.json",
+      "bytes": 2845,
+      "sha256": "63438a4c8f9657517346912821692cbce1ad1c15363c66db0441a140efd316e2"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed00/adopted/adoption_profile.json",
+      "export_path": "episodes/L5-1_v1__seed00/adoption_profile.json",
+      "bytes": 2723,
+      "sha256": "20d5bb6c01e97fab21e59676c656b29e7d94c35969b7cdd1c4815cb4a7bbaf61"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed00/adopted/event_script.json",
+      "export_path": "episodes/L5-1_v1__seed00/event_script.json",
+      "bytes": 48777,
+      "sha256": "31e1fd11b3d43dbf09de08ec1c403aa4a4384fb065e05f7a2c6ce9e9ffa37ca5"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed00/adopted/scene_setup.json",
+      "export_path": "episodes/L5-1_v1__seed00/scene_setup.json",
+      "bytes": 102905,
+      "sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed00/adopted/actions.json",
+      "export_path": "episodes/L5-1_v1__seed00/actions.json",
+      "bytes": 17524,
+      "sha256": "fe822b7355063d920bfd0638473c23bfb876aedc9b7059dd5bdc2b8eadeeeb17"
+    },
+    {
+      "source_path": "Dataset/scenarios/L5_environment/interaction/L5-1_v1/event_script.json",
+      "export_path": "episodes/L5-1_v1__seed00/original/event_script.json",
+      "bytes": 48758,
+      "sha256": "467e3b930f0dd99f8b82412248584d20d42e30e3e7f3c38fef5ee99b5514dfbf"
+    },
+    {
+      "source_path": "Dataset/scenarios/L5_environment/interaction/L5-1_v1/scene_setup.json",
+      "export_path": "episodes/L5-1_v1__seed00/original/scene_setup.json",
+      "bytes": 102905,
+      "sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed01/adopted/summary.json",
+      "export_path": "episodes/L5-1_v1__seed01/summary.json",
+      "bytes": 2845,
+      "sha256": "9764605a0a06df6adc238018e8ca94d4ae3351768271cd071f5105e55d7a905b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed01/adopted/adoption_profile.json",
+      "export_path": "episodes/L5-1_v1__seed01/adoption_profile.json",
+      "bytes": 2723,
+      "sha256": "dd859abf9a6aec250eef24a852ed3c5b7daec6b1597d5679cc8d950c1fee5489"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed02/adopted/summary.json",
+      "export_path": "episodes/L5-1_v1__seed02/summary.json",
+      "bytes": 2845,
+      "sha256": "f0ccf1e6646e806a680496e6efd2c58b5c276dba5136301bbf785b035df390d1"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed02/adopted/adoption_profile.json",
+      "export_path": "episodes/L5-1_v1__seed02/adoption_profile.json",
+      "bytes": 2723,
+      "sha256": "b66d6a8125976aae5ee757cf9cd7b94c8d160515d9393532a2cc002df55d2d89"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed00/adopted/summary.json",
+      "export_path": "episodes/L5-1_v2__seed00/summary.json",
+      "bytes": 2873,
+      "sha256": "76935f98a44a1d4e49f43c6524b460cf1dbaadd4e75ed45ecd4a14af0f6094dc"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed00/adopted/adoption_profile.json",
+      "export_path": "episodes/L5-1_v2__seed00/adoption_profile.json",
+      "bytes": 2723,
+      "sha256": "5e8e026f175a364c2a274984965a4faab0666f568cd4795338781ddb1adf572d"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed00/adopted/event_script.json",
+      "export_path": "episodes/L5-1_v2__seed00/event_script.json",
+      "bytes": 51284,
+      "sha256": "0df01ddbbf4de269fd430a56da74d8762611566c7b347b9480e44ae988f6b452"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed00/adopted/scene_setup.json",
+      "export_path": "episodes/L5-1_v2__seed00/scene_setup.json",
+      "bytes": 110664,
+      "sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed00/adopted/actions.json",
+      "export_path": "episodes/L5-1_v2__seed00/actions.json",
+      "bytes": 19577,
+      "sha256": "1d3b01cf32eb1b30e797e55b779268ce9b2c3d71199af1b7f221ce9f7bb0c920"
+    },
+    {
+      "source_path": "Dataset/scenarios/L5_environment/interaction/L5-1_v2/event_script.json",
+      "export_path": "episodes/L5-1_v2__seed00/original/event_script.json",
+      "bytes": 51265,
+      "sha256": "694174868dcc77e4db8e631b2af47948e99d6e44f4950b8722411e24808b35b5"
+    },
+    {
+      "source_path": "Dataset/scenarios/L5_environment/interaction/L5-1_v2/scene_setup.json",
+      "export_path": "episodes/L5-1_v2__seed00/original/scene_setup.json",
+      "bytes": 110664,
+      "sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed01/adopted/summary.json",
+      "export_path": "episodes/L5-1_v2__seed01/summary.json",
+      "bytes": 2873,
+      "sha256": "797ef2f721d531f0fe9abf8ad36e04b39e9a5633cca55e007c203b00c9b1f2d9"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed01/adopted/adoption_profile.json",
+      "export_path": "episodes/L5-1_v2__seed01/adoption_profile.json",
+      "bytes": 2723,
+      "sha256": "00520bcced49af977e15cd7d0cfb64727b5dc466f17357d5a9c90f1a63a7313a"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed02/adopted/summary.json",
+      "export_path": "episodes/L5-1_v2__seed02/summary.json",
+      "bytes": 2873,
+      "sha256": "7e89fcc3f0a85c1b386e616aaea78fcec21da95316e8f435a1ad779eae686a74"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v2__seed02/adopted/adoption_profile.json",
+      "export_path": "episodes/L5-1_v2__seed02/adoption_profile.json",
+      "bytes": 2723,
+      "sha256": "95b8beca13c9bd5ff4fe2009bd82ecef047f25cad555700cb6330089dce310a5"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/summary.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/summary.json",
+      "bytes": 9565,
+      "sha256": "a2ae2d34c8b82ccc56373939019e7ba5976eec84f9c7be10c9f2097c1d226e8c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/adoption_profile.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/adoption_profile.json",
+      "bytes": 2428,
+      "sha256": "75c89c7631ee6b70febd0320f3c95f66718860dbe3ad6f30a85e70c6ebe85c31"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/command_receipts.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/command_receipts.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/coupled_iterations.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/coupled_iterations.json",
+      "bytes": 1801,
+      "sha256": "f513845b149ed3fc26a6b57703db7e1c6ff3090d81bff53627e425cb57e3d7e8"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/execution_time.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/execution_time.json",
+      "bytes": 40,
+      "sha256": "6bf6ff36ae21d3afed96a356497fb16f626c65a2e7a234a191980c2805100a1e"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/event_script.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/event_script.json",
+      "bytes": 63862,
+      "sha256": "49197ad404d0c306545e0b7d090e467969cfe30d2c8606ac90ff7f60c86a82e7"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/scene_setup.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/scene_setup.json",
+      "bytes": 97801,
+      "sha256": "180217e9619a20ffd6fd80b4d7d67163cab7638e432bd024f658993e9f560b30"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/actions.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/actions.json",
+      "bytes": 23548,
+      "sha256": "d62a5dbd986651bc5b2a97b845b307359a2868098d0d91ea25fcd61d370f496b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/network_backend.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/network_backend.json",
+      "bytes": 10574,
+      "sha256": "6a3dbeaa29ce792a762aa0a3bd7166a0155c176dca43e69628022362903be869"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/radio_actions.jsonl",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/radio_actions.jsonl",
+      "bytes": 304,
+      "sha256": "493aeeeeea5d559447e8cb036eae602faf625f6bca9f8ec54a051d872bef756a"
+    },
+    {
+      "source_path": "Dataset/scenarios/X_cross_layer/X1_rain_to_c2loss_to_forced_landing/event_script.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/original/event_script.json",
+      "bytes": 63832,
+      "sha256": "34b9b1dd71c7ae47fd6a03635374e856a447171f82ecb15bdd808a7e9446f77f"
+    },
+    {
+      "source_path": "Dataset/scenarios/X_cross_layer/X1_rain_to_c2loss_to_forced_landing/scene_setup.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed00/original/scene_setup.json",
+      "bytes": 97801,
+      "sha256": "180217e9619a20ffd6fd80b4d7d67163cab7638e432bd024f658993e9f560b30"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/summary.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed01/summary.json",
+      "bytes": 9565,
+      "sha256": "066e3fe04c51092599f070f3d966b874fded31504cb5c6f8cebadfd2e099d92d"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/adoption_profile.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed01/adoption_profile.json",
+      "bytes": 2428,
+      "sha256": "f81b0bef208970c8b0f713d89e488cc14c080cb178a918bf6d840f104dfe7c05"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/command_receipts.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed01/command_receipts.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/coupled_iterations.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed01/coupled_iterations.json",
+      "bytes": 1802,
+      "sha256": "4a0768aedabafdae624ce099ffe045488eeba04f4d43155cb2066649ed5abe85"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/execution_time.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed01/execution_time.json",
+      "bytes": 39,
+      "sha256": "1ecef54fc6f3e0c9d77558c94b0939b8bc21d8345dde45726ab5b04bac3416f4"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed02/adopted/summary.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed02/summary.json",
+      "bytes": 9565,
+      "sha256": "91b384f8b4a05c976d1f251ec29c289b79892b6b1224dc90215dfbb214b29e94"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed02/adopted/adoption_profile.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed02/adoption_profile.json",
+      "bytes": 2428,
+      "sha256": "7e6c8efdbeab2d721ecaeaa5184edccd684d1d1af4d792726a027569017e2c0c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed02/adopted/command_receipts.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed02/command_receipts.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed02/adopted/coupled_iterations.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed02/coupled_iterations.json",
+      "bytes": 1803,
+      "sha256": "bb94d863c063d214460e524d1d035607f11c4ae52408cb227940df4161785b42"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X1_rain_to_c2loss_to_forced_landing__seed02/adopted/execution_time.json",
+      "export_path": "episodes/X1_rain_to_c2loss_to_forced_landing__seed02/execution_time.json",
+      "bytes": 40,
+      "sha256": "9ee9546921febf67c68813e2a4764d0dc4c8ec75450f4f650ebdc4561d10965c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/summary.json",
+      "export_path": "episodes/L6-4_v1__seed00/summary.json",
+      "bytes": 14893,
+      "sha256": "4be48e3c7bd4e2e058617b4ee0eceb8d007031dd2c24a64cb27481c97e441dfe"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/adoption_profile.json",
+      "export_path": "episodes/L6-4_v1__seed00/adoption_profile.json",
+      "bytes": 2857,
+      "sha256": "088e8848b69610264c6aa5ddfa9089914f5448f013d38df85d7ef6553e4fffca"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/command_receipts.json",
+      "export_path": "episodes/L6-4_v1__seed00/command_receipts.json",
+      "bytes": 12273,
+      "sha256": "3582f3e6075ddf570fdfae2ba8710bfd8ea8b3f7408e48c8ea8345e5e379742a"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/coupled_iterations.json",
+      "export_path": "episodes/L6-4_v1__seed00/coupled_iterations.json",
+      "bytes": 5032,
+      "sha256": "3a6b3d7e2901b438dd5b535eea171812740e2a0d24aa1bc12c913d2b476e2d05"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/execution_time.json",
+      "export_path": "episodes/L6-4_v1__seed00/execution_time.json",
+      "bytes": 39,
+      "sha256": "442d6ca6398f7e65a4808fa9ef4b71dc95bd416c1e3467b813a846879c976adc"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/event_script.json",
+      "export_path": "episodes/L6-4_v1__seed00/event_script.json",
+      "bytes": 43385,
+      "sha256": "ee1b178ca44bd2ddf2180deb72b5727b3a62389c224d963b0fd8be318bf7c00c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/scene_setup.json",
+      "export_path": "episodes/L6-4_v1__seed00/scene_setup.json",
+      "bytes": 112021,
+      "sha256": "e0905cd75ba3d01a1d5f75cd704c72c1219d738ccbbe6410e5c8eae899a6034b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/actions.json",
+      "export_path": "episodes/L6-4_v1__seed00/actions.json",
+      "bytes": 17181,
+      "sha256": "d27e084876b7aa6399bc122b3cef077e8ce2cc0d6cb93bf755ae7302f880f68b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/network_backend.json",
+      "export_path": "episodes/L6-4_v1__seed00/network_backend.json",
+      "bytes": 11382,
+      "sha256": "f0c7191bb13ec0cf75a97f7ec4fa4754e1ed70296697b60e08c94f9b5db833bd"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed00/adopted/radio_actions.jsonl",
+      "export_path": "episodes/L6-4_v1__seed00/radio_actions.jsonl",
+      "bytes": 1022,
+      "sha256": "5d7c8969571d49cb3698024606583867722ce7df0350aeab5a1f16a4eef131d6"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/event_script.json",
+      "export_path": "episodes/L6-4_v1__seed00/original/event_script.json",
+      "bytes": 43345,
+      "sha256": "798017de70a367fb5675d46cd49f429c194c28ec52e6213b6590255645509e6d"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/scene_setup.json",
+      "export_path": "episodes/L6-4_v1__seed00/original/scene_setup.json",
+      "bytes": 112021,
+      "sha256": "e0905cd75ba3d01a1d5f75cd704c72c1219d738ccbbe6410e5c8eae899a6034b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/summary.json",
+      "export_path": "episodes/L6-4_v1__seed01/summary.json",
+      "bytes": 3388,
+      "sha256": "aee98dcbc38d4a2807119b44c5a86ebb22c44138bed7a72e609514d25afb9111"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/adoption_profile.json",
+      "export_path": "episodes/L6-4_v1__seed01/adoption_profile.json",
+      "bytes": 2857,
+      "sha256": "81c1024d42fd6249e980e549da7c4c88ce353dfabf1f6d3b74ebb5a3960482cf"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/command_receipts.json",
+      "export_path": "episodes/L6-4_v1__seed01/command_receipts.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/coupled_iterations.json",
+      "export_path": "episodes/L6-4_v1__seed01/coupled_iterations.json",
+      "bytes": 1890,
+      "sha256": "15d19c147271e27c64e67510ab934fb024c7b2f22d7445e8f1b71b8e0d75cb87"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/execution_time.json",
+      "export_path": "episodes/L6-4_v1__seed01/execution_time.json",
+      "bytes": 39,
+      "sha256": "8dd6f8955c0d217e883837c093f34c89ab4ac48ba5b69c44cc49826132b2e873"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/event_script.json",
+      "export_path": "episodes/L6-4_v1__seed01/event_script.json",
+      "bytes": 43385,
+      "sha256": "ee1b178ca44bd2ddf2180deb72b5727b3a62389c224d963b0fd8be318bf7c00c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/scene_setup.json",
+      "export_path": "episodes/L6-4_v1__seed01/scene_setup.json",
+      "bytes": 112021,
+      "sha256": "e0905cd75ba3d01a1d5f75cd704c72c1219d738ccbbe6410e5c8eae899a6034b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/actions.json",
+      "export_path": "episodes/L6-4_v1__seed01/actions.json",
+      "bytes": 5005,
+      "sha256": "e34ca9f91a9f48a0640c4ed515cadeed0f23c5b95a72af633aa74a02a407f093"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/network_backend.json",
+      "export_path": "episodes/L6-4_v1__seed01/network_backend.json",
+      "bytes": 11382,
+      "sha256": "614177c48fe63b806054579f09ddfd634706b80f7854537dce69b75eb8e86f36"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted/radio_actions.jsonl",
+      "export_path": "episodes/L6-4_v1__seed01/radio_actions.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/event_script.json",
+      "export_path": "episodes/L6-4_v1__seed01/original/event_script.json",
+      "bytes": 43345,
+      "sha256": "798017de70a367fb5675d46cd49f429c194c28ec52e6213b6590255645509e6d"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/scene_setup.json",
+      "export_path": "episodes/L6-4_v1__seed01/original/scene_setup.json",
+      "bytes": 112021,
+      "sha256": "e0905cd75ba3d01a1d5f75cd704c72c1219d738ccbbe6410e5c8eae899a6034b"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/summary.json",
+      "export_path": "episodes/L6-4_v2__seed00/summary.json",
+      "bytes": 14893,
+      "sha256": "730c094ac66fc894c35d615589db70c0ff504a26b9a52c86a5fe1aa46f33d0c6"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/adoption_profile.json",
+      "export_path": "episodes/L6-4_v2__seed00/adoption_profile.json",
+      "bytes": 2857,
+      "sha256": "7b25b9f2e213cee9a66dcc9da63f3e0413dfb3b9b3ae001662318c407708ede9"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/command_receipts.json",
+      "export_path": "episodes/L6-4_v2__seed00/command_receipts.json",
+      "bytes": 12273,
+      "sha256": "94e5367e1e38bb0a876d0ef1a350398ea29a6d765fc765f2d5b154c5ed9ab2dd"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/coupled_iterations.json",
+      "export_path": "episodes/L6-4_v2__seed00/coupled_iterations.json",
+      "bytes": 4470,
+      "sha256": "9ad620b80ce346cec15394572735fa2af20cf10d58ee13bae398627cdd8d23f3"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/execution_time.json",
+      "export_path": "episodes/L6-4_v2__seed00/execution_time.json",
+      "bytes": 39,
+      "sha256": "11b7fe1140d72e29367c5259a943997fd41d4e081ed657d65652803c72820d27"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/event_script.json",
+      "export_path": "episodes/L6-4_v2__seed00/event_script.json",
+      "bytes": 43349,
+      "sha256": "a941bdd95dff4859040854bf470cdd162995e501d13390464c25327782ee9f78"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/scene_setup.json",
+      "export_path": "episodes/L6-4_v2__seed00/scene_setup.json",
+      "bytes": 111658,
+      "sha256": "05ad4c78457da2b748c4d3d0c68b6f4cdddc2e344fd38e2c3b4b11e1d942e0df"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/actions.json",
+      "export_path": "episodes/L6-4_v2__seed00/actions.json",
+      "bytes": 17179,
+      "sha256": "207bb4b4cf00da095e0777b50ee9daa24e075cf580e1850679d2d5db993a80a2"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/network_backend.json",
+      "export_path": "episodes/L6-4_v2__seed00/network_backend.json",
+      "bytes": 11382,
+      "sha256": "9cb51a2e77a262b0d36c8e11dd3157f3666857c6053f23dc0cc152eb9e426213"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed00/adopted/radio_actions.jsonl",
+      "export_path": "episodes/L6-4_v2__seed00/radio_actions.jsonl",
+      "bytes": 1022,
+      "sha256": "2ea10681d1ef80acc4857e1993a0ebd5ab8339e6b63fec2d341eefb637d6d15a"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/event_script.json",
+      "export_path": "episodes/L6-4_v2__seed00/original/event_script.json",
+      "bytes": 43309,
+      "sha256": "4f99989cfb512765b883adf45f2e13a976fa293938b8e8723db49f2614143eed"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/scene_setup.json",
+      "export_path": "episodes/L6-4_v2__seed00/original/scene_setup.json",
+      "bytes": 111658,
+      "sha256": "05ad4c78457da2b748c4d3d0c68b6f4cdddc2e344fd38e2c3b4b11e1d942e0df"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/summary.json",
+      "export_path": "episodes/L6-4_v2__seed01/summary.json",
+      "bytes": 3427,
+      "sha256": "fbe6a80d86802bd1aa69158af09f27a09d52dbe5f806b9015bc5177d6ff5ac2a"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/adoption_profile.json",
+      "export_path": "episodes/L6-4_v2__seed01/adoption_profile.json",
+      "bytes": 2857,
+      "sha256": "c3c707a4fcdc1efc31408c93bdbdeecce344549a25731d788de8296326561cc7"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/command_receipts.json",
+      "export_path": "episodes/L6-4_v2__seed01/command_receipts.json",
+      "bytes": 5863,
+      "sha256": "4284120b2ad4aa4af2c506e4dcb3061acd5e9a72f09ea49b2876917551cdabab"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/coupled_iterations.json",
+      "export_path": "episodes/L6-4_v2__seed01/coupled_iterations.json",
+      "bytes": 2851,
+      "sha256": "51ba4bb78b04fe1cb726dd69a72b5a17b2ce36579f1f359eb9d4d8e4e25164bf"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/execution_time.json",
+      "export_path": "episodes/L6-4_v2__seed01/execution_time.json",
+      "bytes": 39,
+      "sha256": "6c0208f24fb1f64801ebcfc6ae7599adec5b8ba4accf55cac3c1f349db199981"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/event_script.json",
+      "export_path": "episodes/L6-4_v2__seed01/event_script.json",
+      "bytes": 43349,
+      "sha256": "a941bdd95dff4859040854bf470cdd162995e501d13390464c25327782ee9f78"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/scene_setup.json",
+      "export_path": "episodes/L6-4_v2__seed01/scene_setup.json",
+      "bytes": 111658,
+      "sha256": "05ad4c78457da2b748c4d3d0c68b6f4cdddc2e344fd38e2c3b4b11e1d942e0df"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/actions.json",
+      "export_path": "episodes/L6-4_v2__seed01/actions.json",
+      "bytes": 13072,
+      "sha256": "6d5902e091c166b84e969a2dcc932b308634c16a0fe05c576ff4f454b71466ac"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/network_backend.json",
+      "export_path": "episodes/L6-4_v2__seed01/network_backend.json",
+      "bytes": 11383,
+      "sha256": "9dfe3d5189cb1f0d2c9cb2109a90aec35d2c446a27fead582342ec267075906f"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v2__seed01/adopted/radio_actions.jsonl",
+      "export_path": "episodes/L6-4_v2__seed01/radio_actions.jsonl",
+      "bytes": 1022,
+      "sha256": "b44abfaa6f783f536afbd01c4b409097ad7c46a74eae6c750b2c24186b4f8571"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/event_script.json",
+      "export_path": "episodes/L6-4_v2__seed01/original/event_script.json",
+      "bytes": 43309,
+      "sha256": "4f99989cfb512765b883adf45f2e13a976fa293938b8e8723db49f2614143eed"
+    },
+    {
+      "source_path": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/scene_setup.json",
+      "export_path": "episodes/L6-4_v2__seed01/original/scene_setup.json",
+      "bytes": 111658,
+      "sha256": "05ad4c78457da2b748c4d3d0c68b6f4cdddc2e344fd38e2c3b4b11e1d942e0df"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/summary.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/summary.json",
+      "bytes": 2701,
+      "sha256": "697516d1fdd0950a91fe58ec237f93c447779c4db313a972cb3a9531a36a4f41"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/adoption_profile.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/adoption_profile.json",
+      "bytes": 3157,
+      "sha256": "9113f0babbea1ad7b86b5113528adcc6bd1728a85afcdb4069f34094257614e8"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/command_receipts.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/command_receipts.json",
+      "bytes": 16778,
+      "sha256": "342fefa77872e99de53ed5db5d20ff91dc1c2e50a25c79b632806552a5a9322c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/coupled_iterations.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/coupled_iterations.json",
+      "bytes": 4393,
+      "sha256": "c25295b8f98e606fc854a9277d495d3945e61487025a779b0351cf67f56e3309"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/execution_time.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/execution_time.json",
+      "bytes": 40,
+      "sha256": "9c5aa2a281a5fd4140376dff22bd4d41b97b388497a05cda03d8656f6099d36e"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/event_script.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/event_script.json",
+      "bytes": 51586,
+      "sha256": "eb5da8e7d89a2c791dbd776648c521271450be3b4ad767dac3f7ecdcfff4b6d4"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/scene_setup.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/scene_setup.json",
+      "bytes": 117976,
+      "sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/actions.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/actions.json",
+      "bytes": 20783,
+      "sha256": "59ea8cecf950fad65fa51e6c8a2422be19a727e454ea7529520047a400e6830a"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/network_backend.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/network_backend.json",
+      "bytes": 12349,
+      "sha256": "4af991e49395159f94bfbee0b8b0bb7cfd6d128636698998a5129cb6b9e5a0c4"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/radio_actions.jsonl",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/radio_actions.jsonl",
+      "bytes": 304,
+      "sha256": "da1a4ac3a2f56efb55612f6de3202197977d9f5eb78efc57838cfe28b2250b40"
+    },
+    {
+      "source_path": "Dataset/scenarios/X_cross_layer/X5_comm_failure_to_pad_contention/event_script.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/original/event_script.json",
+      "bytes": 51586,
+      "sha256": "eb5da8e7d89a2c791dbd776648c521271450be3b4ad767dac3f7ecdcfff4b6d4"
+    },
+    {
+      "source_path": "Dataset/scenarios/X_cross_layer/X5_comm_failure_to_pad_contention/scene_setup.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed00/original/scene_setup.json",
+      "bytes": 117976,
+      "sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed01/adopted/summary.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed01/summary.json",
+      "bytes": 2701,
+      "sha256": "82b82088bfb96406ff57cf40f94b1dde215761d182b88922ed019d823d7c317d"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed01/adopted/adoption_profile.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed01/adoption_profile.json",
+      "bytes": 3157,
+      "sha256": "d4bd1b5f0a5001ae8e693e77b4a727c03e3a6ff5c6d08bb4b50dee3a6a4996b5"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed01/adopted/command_receipts.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed01/command_receipts.json",
+      "bytes": 16778,
+      "sha256": "9924939a739777fa5717e8d5955181493bd30501f99749fd1d3c1ef062983689"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed01/adopted/coupled_iterations.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed01/coupled_iterations.json",
+      "bytes": 4390,
+      "sha256": "79da94bf0e6212856b60903a36cf3f799373ba823b6bf82eb7243d647d5fb820"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed01/adopted/execution_time.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed01/execution_time.json",
+      "bytes": 39,
+      "sha256": "9ae41b27d652c8cf8d367bc382c427043a64b9a67b4f7700402a86eaa462b765"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed02/adopted/summary.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed02/summary.json",
+      "bytes": 2701,
+      "sha256": "cda9e87ac4b4cdcfc7cf650272a77cb094c7ab601d01a3c4a860d76d56b19935"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed02/adopted/adoption_profile.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed02/adoption_profile.json",
+      "bytes": 3157,
+      "sha256": "e5fe71a276f1db0cae12edbc5d3ea8cf90ba5ab73e08988be9b18d58aea34a8c"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed02/adopted/command_receipts.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed02/command_receipts.json",
+      "bytes": 16778,
+      "sha256": "d42219a148a688e9a05a97d9907a8603c5263b857eb61bd0b4726b6a2d8d8ddb"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed02/adopted/coupled_iterations.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed02/coupled_iterations.json",
+      "bytes": 4391,
+      "sha256": "65d6b4800681930f69ad86b452fcd395f8990a84cdac9f09a0025b091d1fc256"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed02/adopted/execution_time.json",
+      "export_path": "episodes/X5_comm_failure_to_pad_contention__seed02/execution_time.json",
+      "bytes": 39,
+      "sha256": "d8bcf2a4ac4fc54d0deaa8c8ed1cd81940d5b2cef7577c3f8f84f84b0cc570a9"
+    }
+  ]
+}

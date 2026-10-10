@@ -1,0 +1,326 @@
+{
+  "schema_version": "p09.full-existing-trajectory-delta/v1",
+  "scope": "Exact 30 existing native v12 outputs and v13 metadata products only; no simulation or capture.",
+  "episodes": [
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed00",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_review/X5_comm_failure_to_pad_contention__seed00/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_review/X5_comm_failure_to_pad_contention__seed00/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed01",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed01/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed01/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed02",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed02/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed02/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L2-1_v2__seed00",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed00/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_artifacts/L2-1_v2__seed00/trajectories.jsonl",
+      "source_sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25",
+      "current_sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb",
+      "status": "ALL_ROWS_STREAM_COMPARED",
+      "rows": 15317,
+      "unchanged_rows": 12614,
+      "route_metadata_rows": 901,
+      "corridor_placement_rows": 1802,
+      "all_changed_fields": [
+        "planned_route_waypoints_enu_m",
+        "pos_enu",
+        "route_waypoints_enu_m",
+        "yaw_deg"
+      ],
+      "physical_actor_rows_unchanged": 13515,
+      "physical_motion_numeric_change": false,
+      "logical_corridor_placement_changed": [
+        "corridor_l2_1_v2_uav_l2_1_v2_03",
+        "corridor_l2_1_v2_uav_l2_1_v2_04"
+      ],
+      "meaning": "Logical corridor placement numbers intentionally change; physical actor position, velocity, yaw and state do not."
+    },
+    {
+      "episode_id": "L2-1_v2__seed01",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed01/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_artifacts/L2-1_v2__seed01/trajectories.jsonl",
+      "source_sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25",
+      "current_sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb",
+      "status": "ALL_ROWS_STREAM_COMPARED",
+      "rows": 15317,
+      "unchanged_rows": 12614,
+      "route_metadata_rows": 901,
+      "corridor_placement_rows": 1802,
+      "all_changed_fields": [
+        "planned_route_waypoints_enu_m",
+        "pos_enu",
+        "route_waypoints_enu_m",
+        "yaw_deg"
+      ],
+      "physical_actor_rows_unchanged": 13515,
+      "physical_motion_numeric_change": false,
+      "logical_corridor_placement_changed": [
+        "corridor_l2_1_v2_uav_l2_1_v2_03",
+        "corridor_l2_1_v2_uav_l2_1_v2_04"
+      ],
+      "meaning": "Logical corridor placement numbers intentionally change; physical actor position, velocity, yaw and state do not."
+    },
+    {
+      "episode_id": "L2-1_v2__seed02",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed02/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_artifacts/L2-1_v2__seed02/trajectories.jsonl",
+      "source_sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25",
+      "current_sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb",
+      "status": "ALL_ROWS_STREAM_COMPARED",
+      "rows": 15317,
+      "unchanged_rows": 12614,
+      "route_metadata_rows": 901,
+      "corridor_placement_rows": 1802,
+      "all_changed_fields": [
+        "planned_route_waypoints_enu_m",
+        "pos_enu",
+        "route_waypoints_enu_m",
+        "yaw_deg"
+      ],
+      "physical_actor_rows_unchanged": 13515,
+      "physical_motion_numeric_change": false,
+      "logical_corridor_placement_changed": [
+        "corridor_l2_1_v2_uav_l2_1_v2_03",
+        "corridor_l2_1_v2_uav_l2_1_v2_04"
+      ],
+      "meaning": "Logical corridor placement numbers intentionally change; physical actor position, velocity, yaw and state do not."
+    },
+    {
+      "episode_id": "L2-1_v1__seed00",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed00/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed00/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L2-1_v1__seed01",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed01/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed01/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L2-1_v1__seed02",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed02/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed02/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-1_v1__seed00",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed00/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed00/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "ef70e9aba99ced9fe8e26d799ea3b89ff31a7bac695f797278c142b1e28a2de8",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-1_v1__seed01",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed01/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed01/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "ef70e9aba99ced9fe8e26d799ea3b89ff31a7bac695f797278c142b1e28a2de8",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-1_v1__seed02",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed02/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed02/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "ef70e9aba99ced9fe8e26d799ea3b89ff31a7bac695f797278c142b1e28a2de8",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-1_v2__seed00",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed00/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed00/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "2ef5cdad752607566fd316f65c89dc32a9cefd7bdb6a9bfec9b0a20e18df1f98",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-1_v2__seed01",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed01/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed01/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "2ef5cdad752607566fd316f65c89dc32a9cefd7bdb6a9bfec9b0a20e18df1f98",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-1_v2__seed02",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed02/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed02/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "2ef5cdad752607566fd316f65c89dc32a9cefd7bdb6a9bfec9b0a20e18df1f98",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L5-1_v1__seed00",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed00/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed00/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "dae0edc800d527bee1d2ba865b65740977501d5a2b343ee328515a307287c98f",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L5-1_v1__seed01",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed01/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed01/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "dae0edc800d527bee1d2ba865b65740977501d5a2b343ee328515a307287c98f",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L5-1_v1__seed02",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed02/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed02/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "dae0edc800d527bee1d2ba865b65740977501d5a2b343ee328515a307287c98f",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L5-1_v2__seed00",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed00/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed00/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "82c2f40e35c92e5b3b10cb34975fe925033945b8f08d3ac06ffb59774040cb62",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L5-1_v2__seed01",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed01/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed01/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "82c2f40e35c92e5b3b10cb34975fe925033945b8f08d3ac06ffb59774040cb62",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L5-1_v2__seed02",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed02/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed02/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "82c2f40e35c92e5b3b10cb34975fe925033945b8f08d3ac06ffb59774040cb62",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed00",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed01",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed02",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed02/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed02/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-4_v1__seed00",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed00/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed00/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "953a4afd0394306d6224b8baab653971c6ec3ae211d2c80246aa2771877ecd28",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-4_v1__seed01",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed01/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed01/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "0bdae79313916761bc70a18979b871e2f772dbeeae60a4fa78d6ef433cefa9d8",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-4_v1__seed02",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed02/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed02/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "5b1cfe041c6c01cc1517f30eed33b8c02a6288567b3d70ac2925748dcd832abd",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-4_v2__seed00",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed00/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed00/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "6c00514385c108108e71515fd9c0dae463475888d059d2676776671d93030bb1",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-4_v2__seed01",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed01/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed01/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "525f3af226e79f359baa6bbaf23f767d86c92d05186e16f94466ef4aa8e6d1bf",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    },
+    {
+      "episode_id": "L6-4_v2__seed02",
+      "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed02/adopted/trajectories.jsonl",
+      "current": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed02/adopted/trajectories.jsonl",
+      "status": "SAME_IMMUTABLE_SOURCE_FILE",
+      "source_sha256": "c782c6596a497d63626b49dc3ea14e8ec245224b4f45f89cd09d16151c7da2f9",
+      "numeric_change": false,
+      "method": "Current product directly references the exact source file; no transformed trajectory exists."
+    }
+  ],
+  "X1_byte_exact_export_rows": 18,
+  "pose_scope": "Every existing field is compared for three transformed L2v2 files. The other 27 current trajectories are the original source files; no broader pose range is inferred from boundary samples."
+}

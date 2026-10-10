@@ -1,0 +1,16 @@
+{
+  "fit_scope": {
+    "version": "p01v4-norm-1",
+    "field": "motion.speed_mps",
+    "fit_episode_id": "L4-1_v1__seed00",
+    "fit_split": "TRAIN",
+    "max_fit_tick": 250,
+    "count": 9038
+  },
+  "mean": 1.9817456184996578,
+  "std": 2.7378114247020586,
+  "fit_rule": "tick <= 250 input-branch frames of the TRAIN episode only; fit indices are the canonical frame records with present motion.speed_mps at ticks 0..250",
+  "excluded_by_construction": ["VALID/TEST splits (NormalizationScopeError)", "records with tick > cutoff", "non-numeric and non-present speed values"],
+  "command": "fit_scaler(canonical_records, field='motion.speed_mps', episode_id='L4-1_v1__seed00', split='TRAIN', cutoff=250)",
+  "engineer_test_scope_note": "single-episode pilot fit for engineering verification only; no cross-episode generalization claimed"
+}

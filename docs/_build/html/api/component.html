@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Component Classes &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Workflow Classes" href="workflow.html" />
+    <link rel="prev" title="Agent Classes" href="agent.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="workflow.html" title="Workflow Classes"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="agent.html" title="Agent Classes"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">API Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Component Classes</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="component-classes">
+<h1>Component Classes<a class="headerlink" href="#component-classes" title="Permalink to this heading">¶</a></h1>
+<p>Components provide functional capabilities to agents. Each component encapsulates specific functionality and manages the execution of related tasks.</p>
+<section id="base-component">
+<h2>Base Component<a class="headerlink" href="#base-component" title="Permalink to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.component.</span></span><span class="sig-name descname"><span class="pre">Component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/component.html#Component"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.component.Component" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>执行任务的组件，使用分配的资源。</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#aeroagentsim.core.component.Component.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#aeroagentsim.core.component.Component.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/component.html#Component.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.component.Component.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.core.component.Component.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.core.component.Component.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.trigger_event">
+<span class="sig-name descname"><span class="pre">trigger_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/component.html#Component.trigger_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.component.Component.trigger_event" title="Permalink to this definition">¶</a></dt>
+<dd><p>触发组件命名空间下的事件。</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.can_execute">
+<span class="sig-name descname"><span class="pre">can_execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/component.html#Component.can_execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.component.Component.can_execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查组件名称是否匹配</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.is_busy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_busy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#aeroagentsim.core.component.Component.is_busy" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查组件是否正在执行任务</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.is_available">
+<span class="sig-name descname"><span class="pre">is_available</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/component.html#Component.is_available"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.component.Component.is_available" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查组件是否可用</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.execute_task">
+<span class="sig-name descname"><span class="pre">execute_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">simpy.Process</span></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/component.html#Component.execute_task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.component.Component.execute_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>开始执行任务。返回包含完整生命周期的SimPy进程。
+由Agent调用。</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.disable">
+<span class="sig-name descname"><span class="pre">disable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/component.html#Component.disable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.component.Component.disable" title="Permalink to this definition">¶</a></dt>
+<dd><p>禁用组件，将其设置为错误状态并取消所有正在执行的任务</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.component.Component.enable">
+<span class="sig-name descname"><span class="pre">enable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/component.html#Component.enable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.component.Component.enable" title="Permalink to this definition">¶</a></dt>
+<dd><p>启用组件，将其从错误状态恢复</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="mobility-components">
+<h2>Mobility Components<a class="headerlink" href="#mobility-components" title="Permalink to this heading">¶</a></h2>
+<section id="movetocomponent">
+<h3>MoveToComponent<a class="headerlink" href="#movetocomponent" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.component.mobility.MoveToComponent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.component.mobility.</span></span><span class="sig-name descname"><span class="pre">MoveToComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['speed_changed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/mobility.html#MoveToComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.mobility.MoveToComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">Component</span></code></a></p>
+<p>移动组件，用于执行位置移动任务。</p>
+<p>性能指标：
+- speed: 移动速度（单位/秒）
+- energy_consumption: 能源消耗率（每秒瓦特）
+- direction: 移动方向</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.mobility.MoveToComponent.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['speed',</span> <span class="pre">'energy_consumption',</span> <span class="pre">'direction']</span></em><a class="headerlink" href="#aeroagentsim.component.mobility.MoveToComponent.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.mobility.MoveToComponent.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['battery_level',</span> <span class="pre">'external_force',</span> <span class="pre">'moving_status',</span> <span class="pre">'max_allowed_speed']</span></em><a class="headerlink" href="#aeroagentsim.component.mobility.MoveToComponent.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.mobility.MoveToComponent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['speed_changed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/mobility.html#MoveToComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.mobility.MoveToComponent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化移动组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称</p></li>
+<li><p><strong>supported_events</strong> – 支持的额外事件</p></li>
+<li><p><strong>properties</strong> – 组件属性，包含speed_factor和energy_factor</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.mobility.MoveToComponent.disable">
+<span class="sig-name descname"><span class="pre">disable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/mobility.html#MoveToComponent.disable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.mobility.MoveToComponent.disable" title="Permalink to this definition">¶</a></dt>
+<dd><p>禁用组件，将其设置为错误状态并取消所有正在执行的任务
+同时停止悬停能量消耗进程</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.mobility.MoveToComponent.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.mobility.MoveToComponent.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.mobility.MoveToComponent.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.mobility.MoveToComponent.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="power-management">
+<h2>Power Management<a class="headerlink" href="#power-management" title="Permalink to this heading">¶</a></h2>
+<section id="chargingcomponent">
+<h3>ChargingComponent<a class="headerlink" href="#chargingcomponent" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.component.charging.ChargingComponent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.component.charging.</span></span><span class="sig-name descname"><span class="pre">ChargingComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['charging_started',</span> <span class="pre">'charging_completed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/charging.html#ChargingComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.charging.ChargingComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">Component</span></code></a></p>
+<p>充电组件，用于管理电池充电过程和充电站资源请求。</p>
+<p>性能指标：
+- charging_rate: 充电速率（%/小时）
+- time_to_full: 充满所需时间（小时）
+- energy_level: 当前电量水平（%）
+- request_processing_time: 充电站资源请求处理时间（秒）</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.charging.ChargingComponent.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['charging_rate',</span> <span class="pre">'request_processing_time']</span></em><a class="headerlink" href="#aeroagentsim.component.charging.ChargingComponent.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.charging.ChargingComponent.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['battery_capacity',</span> <span class="pre">'position',</span> <span class="pre">'moving_status',</span> <span class="pre">'charging_station.current_allocations',</span> <span class="pre">'charging_station.power_level']</span></em><a class="headerlink" href="#aeroagentsim.component.charging.ChargingComponent.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.charging.ChargingComponent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['charging_started',</span> <span class="pre">'charging_completed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/charging.html#ChargingComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.charging.ChargingComponent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化充电组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称</p></li>
+<li><p><strong>supported_events</strong> – 支持的额外事件</p></li>
+<li><p><strong>properties</strong> – 组件属性，包含charging_factor和charging_efficiency</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.charging.ChargingComponent.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.charging.ChargingComponent.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.charging.ChargingComponent.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.charging.ChargingComponent.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="communication-components">
+<h2>Communication Components<a class="headerlink" href="#communication-components" title="Permalink to this heading">¶</a></h2>
+<section id="communicationcomponent">
+<h3>CommunicationComponent<a class="headerlink" href="#communicationcomponent" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.component.communication.CommunicationComponent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.component.communication.</span></span><span class="sig-name descname"><span class="pre">CommunicationComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['communication_status_changed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/communication.html#CommunicationComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.communication.CommunicationComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">Component</span></code></a></p>
+<p>代表代理的通信能力，管理无线通信资源的组件</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.communication.CommunicationComponent.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['signal_strength',</span> <span class="pre">'bandwidth',</span> <span class="pre">'latency',</span> <span class="pre">'transmission_rate',</span> <span class="pre">'communication_quality']</span></em><a class="headerlink" href="#aeroagentsim.component.communication.CommunicationComponent.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.communication.CommunicationComponent.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['battery_level',</span> <span class="pre">'position',</span> <span class="pre">'trans_target_agent_id',</span> <span class="pre">'status',</span> <span class="pre">'transmitting_status']</span></em><a class="headerlink" href="#aeroagentsim.component.communication.CommunicationComponent.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.communication.CommunicationComponent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['communication_status_changed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/communication.html#CommunicationComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.communication.CommunicationComponent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化通信组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称</p></li>
+<li><p><strong>supported_events</strong> – 支持的额外事件</p></li>
+<li><p><strong>properties</strong> – 组件属性，包含max_power、default_frequency等</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.communication.CommunicationComponent.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.communication.CommunicationComponent.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.communication.CommunicationComponent.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.communication.CommunicationComponent.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="computation-components">
+<h2>Computation Components<a class="headerlink" href="#computation-components" title="Permalink to this heading">¶</a></h2>
+<section id="cpucomponent">
+<h3>CPUComponent<a class="headerlink" href="#cpucomponent" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.CPUComponent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.component.computation.</span></span><span class="sig-name descname"><span class="pre">CPUComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['cpu_usage_changed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/computation.html#CPUComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.computation.CPUComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">Component</span></code></a></p>
+<p>代表代理的计算能力，管理CPU和内存资源的组件</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.CPUComponent.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['processing_power']</span></em><a class="headerlink" href="#aeroagentsim.component.computation.CPUComponent.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.CPUComponent.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['battery_level',</span> <span class="pre">'cpu_usage',</span> <span class="pre">'memory_usage']</span></em><a class="headerlink" href="#aeroagentsim.component.computation.CPUComponent.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.CPUComponent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['cpu_usage_changed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/computation.html#CPUComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.computation.CPUComponent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化计算组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称</p></li>
+<li><p><strong>supported_events</strong> – 支持的额外事件</p></li>
+<li><p><strong>properties</strong> – 组件属性，包含cpu_cores、memory_mb和processing_factor</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.CPUComponent.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.computation.CPUComponent.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.CPUComponent.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.computation.CPUComponent.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="computationcomponent">
+<h3>ComputationComponent<a class="headerlink" href="#computationcomponent" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.ComputationComponent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.component.computation.</span></span><span class="sig-name descname"><span class="pre">ComputationComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['computation_metrics_changed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/computation.html#ComputationComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.computation.ComputationComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">Component</span></code></a></p>
+<p>代表代理的高级计算能力，提供文件处理的性能指标</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.ComputationComponent.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['processing_power',</span> <span class="pre">'computation_efficiency']</span></em><a class="headerlink" href="#aeroagentsim.component.computation.ComputationComponent.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.ComputationComponent.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['battery_level',</span> <span class="pre">'cpu_usage',</span> <span class="pre">'memory_usage',</span> <span class="pre">'computing_status']</span></em><a class="headerlink" href="#aeroagentsim.component.computation.ComputationComponent.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.ComputationComponent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['computation_metrics_changed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/computation.html#ComputationComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.computation.ComputationComponent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化计算组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称</p></li>
+<li><p><strong>supported_events</strong> – 支持的额外事件</p></li>
+<li><p><strong>properties</strong> – 组件属性，包含cpu_cores、memory_mb、processing_factor和computation_capabilities</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.ComputationComponent.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.computation.ComputationComponent.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.computation.ComputationComponent.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.computation.ComputationComponent.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="sensing-components">
+<h2>Sensing Components<a class="headerlink" href="#sensing-components" title="Permalink to this heading">¶</a></h2>
+<section id="imagesensingcomponent">
+<h3>ImageSensingComponent<a class="headerlink" href="#imagesensingcomponent" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.component.img_sensor.ImageSensingComponent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.component.img_sensor.</span></span><span class="sig-name descname"><span class="pre">ImageSensingComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['sensing_metrics_changed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/img_sensor.html#ImageSensingComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.img_sensor.ImageSensingComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">Component</span></code></a></p>
+<p>代表代理的感知能力，提供环境感知的性能指标</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.img_sensor.ImageSensingComponent.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['sensing_capability',</span> <span class="pre">'sensing_efficiency',</span> <span class="pre">'sensing_range']</span></em><a class="headerlink" href="#aeroagentsim.component.img_sensor.ImageSensingComponent.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.img_sensor.ImageSensingComponent.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['battery_level',</span> <span class="pre">'image_sensing_status',</span> <span class="pre">'position']</span></em><a class="headerlink" href="#aeroagentsim.component.img_sensor.ImageSensingComponent.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.img_sensor.ImageSensingComponent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['sensing_metrics_changed']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/img_sensor.html#ImageSensingComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.img_sensor.ImageSensingComponent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化感知组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称</p></li>
+<li><p><strong>supported_events</strong> – 支持的额外事件</p></li>
+<li><p><strong>properties</strong> – 组件属性，包含sensing_capability、sensing_range和sensing_types</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.img_sensor.ImageSensingComponent.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.img_sensor.ImageSensingComponent.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.img_sensor.ImageSensingComponent.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.img_sensor.ImageSensingComponent.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="emsensingcomponent">
+<h3>EMSensingComponent<a class="headerlink" href="#emsensingcomponent" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.component.em_sensor.</span></span><span class="sig-name descname"><span class="pre">EMSensingComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['signal_detected',</span> <span class="pre">'signal_lost']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">Component</span></code></a></p>
+<p>电磁感知组件，用于感知周围环境中的电磁信号</p>
+<p>该组件利用SignalDataProvider获取周围信号的信息，
+模拟传感器的不确定性（如信号类型识别错误、功率测量误差等），
+并将感知到的信号更新到Agent的状态中。</p>
+<p>性能指标：
+- em_sensor_sensitivity: 传感器灵敏度 (dBm)
+- em_sensor_power_consumption: 传感器功耗
+- em_sensor_accuracy_identification: 信号类型识别精度 (错误率)
+- em_sensor_accuracy_power: 功率测量精度 (dB标准差)
+- em_sensor_accuracy_frequency: 频率测量精度 (MHz标准差)
+- em_sensor_accuracy_direction: 方向测量精度 (度标准差)</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['em_sensor_sensitivity',</span> <span class="pre">'em_sensor_power_consumption',</span> <span class="pre">'em_sensor_accuracy_identification',</span> <span class="pre">'em_sensor_accuracy_power',</span> <span class="pre">'em_sensor_accuracy_frequency',</span> <span class="pre">'em_sensor_accuracy_direction']</span></em><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['position',</span> <span class="pre">'status',</span> <span class="pre">'battery_level']</span></em><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['signal_detected',</span> <span class="pre">'signal_lost']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化电磁感知组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称</p></li>
+<li><p><strong>supported_events</strong> – 支持的额外事件</p></li>
+<li><p><strong>properties</strong> – 组件属性，包含传感器配置参数</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.scan_frequency_band">
+<span class="sig-name descname"><span class="pre">scan_frequency_band</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.scan_frequency_band"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.scan_frequency_band" title="Permalink to this definition">¶</a></dt>
+<dd><p>扫描特定频段</p>
+<p>此方法可以由任务调用，用于主动扫描特定频段。
+与持续感知进程不同，此方法不会触发信号检测/丢失事件，
+也不会更新代理的 detected_signals 状态。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>min_freq</strong> – 最小频率 (MHz)</p></li>
+<li><p><strong>max_freq</strong> – 最大频率 (MHz)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>检测到的信号列表（已应用模拟误差）</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Dict]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.set_frequency_bands">
+<span class="sig-name descname"><span class="pre">set_frequency_bands</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frequency_bands</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.set_frequency_bands"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_frequency_bands" title="Permalink to this definition">¶</a></dt>
+<dd><p>设置频率扫描范围</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>frequency_bands</strong> – 频率扫描范围列表，每个元素为 (min_freq, max_freq)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.set_sensitivity_threshold">
+<span class="sig-name descname"><span class="pre">set_sensitivity_threshold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.set_sensitivity_threshold"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_sensitivity_threshold" title="Permalink to this definition">¶</a></dt>
+<dd><p>设置灵敏度阈值</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>threshold</strong> – 灵敏度阈值 (dBm)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.set_accuracy_parameters">
+<span class="sig-name descname"><span class="pre">set_accuracy_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">identification_error_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power_accuracy_stddev</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frequency_accuracy_stddev</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction_accuracy_stddev</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.set_accuracy_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_accuracy_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>设置传感器精度参数</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identification_error_rate</strong> – 信号类型识别错误率 (0.0-1.0)</p></li>
+<li><p><strong>power_accuracy_stddev</strong> – 功率测量误差标准差 (dB)</p></li>
+<li><p><strong>frequency_accuracy_stddev</strong> – 频率测量误差标准差 (MHz)</p></li>
+<li><p><strong>direction_accuracy_stddev</strong> – 方向测量误差标准差 (度)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.disable">
+<span class="sig-name descname"><span class="pre">disable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.disable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.disable" title="Permalink to this definition">¶</a></dt>
+<dd><p>禁用组件，将其设置为错误状态并取消所有正在执行的任务
+同时停止持续感知进程</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.enable">
+<span class="sig-name descname"><span class="pre">enable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.enable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.enable" title="Permalink to this definition">¶</a></dt>
+<dd><p>启用组件，将其从错误状态恢复
+重新启动持续感知进程</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="objectsensorcomponent">
+<h3>ObjectSensorComponent<a class="headerlink" href="#objectsensorcomponent" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.component.object_sensor.ObjectSensorComponent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.component.object_sensor.</span></span><span class="sig-name descname"><span class="pre">ObjectSensorComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['object_detected',</span> <span class="pre">'object_lost']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/object_sensor.html#ObjectSensorComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">Component</span></code></a></p>
+<p>物理对象感知组件，持续感知周围环境中的物理对象。</p>
+<p>该组件利用 AirspaceManager 获取周围对象的”真实”信息，然后模拟传感器的不确定性
+（如位置误差、分类错误），最终将带有模拟误差的”感知到的”对象信息更新到 Agent 的状态中。</p>
+<p>性能指标：
+- sensor_accuracy_position: 传感器位置精度指标（误差标准差）
+- sensor_accuracy_classification: 传感器分类精度指标（错误率）
+- sensor_power_consumption: 传感器基础功耗</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.object_sensor.ObjectSensorComponent.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['sensor_accuracy_position',</span> <span class="pre">'sensor_accuracy_classification',</span> <span class="pre">'sensor_power_consumption']</span></em><a class="headerlink" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.object_sensor.ObjectSensorComponent.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['position',</span> <span class="pre">'status']</span></em><a class="headerlink" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.object_sensor.ObjectSensorComponent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['object_detected',</span> <span class="pre">'object_lost']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/object_sensor.html#ObjectSensorComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化物理对象感知组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称</p></li>
+<li><p><strong>supported_events</strong> – 支持的额外事件</p></li>
+<li><p><strong>properties</strong> – 组件属性，包含传感器配置参数</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.object_sensor.ObjectSensorComponent.disable">
+<span class="sig-name descname"><span class="pre">disable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/object_sensor.html#ObjectSensorComponent.disable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.disable" title="Permalink to this definition">¶</a></dt>
+<dd><p>禁用组件，将其设置为错误状态并取消所有正在执行的任务
+同时停止持续感知进程</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.object_sensor.ObjectSensorComponent.enable">
+<span class="sig-name descname"><span class="pre">enable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/object_sensor.html#ObjectSensorComponent.enable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.enable" title="Permalink to this definition">¶</a></dt>
+<dd><p>启用组件，将其从错误状态恢复
+重新启动持续感知进程</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.object_sensor.ObjectSensorComponent.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.object_sensor.ObjectSensorComponent.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="logistics-components">
+<h2>Logistics Components<a class="headerlink" href="#logistics-components" title="Permalink to this heading">¶</a></h2>
+<section id="logisticscomponent">
+<h3>LogisticsComponent<a class="headerlink" href="#logisticscomponent" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.component.logistics.LogisticsComponent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.component.logistics.</span></span><span class="sig-name descname"><span class="pre">LogisticsComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Logistics'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/logistics.html#LogisticsComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.logistics.LogisticsComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><code class="xref py py-class docutils literal notranslate"><span class="pre">Component</span></code></a></p>
+<p>物流组件，负责处理无人机的物流任务</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.logistics.LogisticsComponent.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['pickup_processing_time',</span> <span class="pre">'handover_processing_time']</span></em><a class="headerlink" href="#aeroagentsim.component.logistics.LogisticsComponent.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.logistics.LogisticsComponent.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['position',</span> <span class="pre">'battery_level',</span> <span class="pre">'payload_ids',</span> <span class="pre">'current_payload_weight',</span> <span class="pre">'max_payload_weight',</span> <span class="pre">'current_payload_volume',</span> <span class="pre">'max_payload_volume']</span></em><a class="headerlink" href="#aeroagentsim.component.logistics.LogisticsComponent.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.logistics.LogisticsComponent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Logistics'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/component/logistics.html#LogisticsComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.logistics.LogisticsComponent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化物流组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称，默认为”Logistics”</p></li>
+<li><p><strong>supported_events</strong> – 支持的事件列表</p></li>
+<li><p><strong>properties</strong> – 组件属性，可包含以下内容：
+- pickup_speed: 取件速度（默认为1.0，单位：件/分钟）
+- handover_speed: 交付速度（默认为1.0，单位：件/分钟）
+- max_payload_weight: 最大载重（默认为5.0，单位：kg）
+- max_payload_dimensions: 最大货物尺寸（默认为[0.5, 0.5, 0.5]，单位：m）</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.logistics.LogisticsComponent.can_execute">
+<span class="sig-name descname"><span class="pre">can_execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/component/logistics.html#LogisticsComponent.can_execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.logistics.LogisticsComponent.can_execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查组件是否可以执行指定任务</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>task</strong> – 要执行的任务</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>是否可以执行</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.logistics.LogisticsComponent.get_details">
+<span class="sig-name descname"><span class="pre">get_details</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/component/logistics.html#LogisticsComponent.get_details"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.logistics.LogisticsComponent.get_details" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取组件详细信息</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.logistics.LogisticsComponent.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.logistics.LogisticsComponent.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.logistics.LogisticsComponent.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.component.logistics.LogisticsComponent.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="component-development-guide">
+<h2>Component Development Guide<a class="headerlink" href="#component-development-guide" title="Permalink to this heading">¶</a></h2>
+<section id="creating-custom-components">
+<h3>Creating Custom Components<a class="headerlink" href="#creating-custom-components" title="Permalink to this heading">¶</a></h3>
+<p>To create a custom component, inherit from the base Component class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.component</span> <span class="kn">import</span> <span class="n">Component</span>
+
+<span class="k">class</span> <span class="nc">CustomComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom component implementation.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Define which agent states this component monitors</span>
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="s1">&#39;position&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Define which metrics this component produces</span>
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;processing_speed&#39;</span><span class="p">,</span> <span class="s1">&#39;energy_consumption&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">supported_events</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;Custom&quot;</span><span class="p">,</span>
+                       <span class="n">supported_events</span> <span class="ow">or</span> <span class="p">[],</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{})</span>
+
+        <span class="c1"># Component-specific initialization</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">custom_property</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;custom_property&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">can_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if this component can execute the given task.&quot;&quot;&quot;</span>
+        <span class="c1"># Check task compatibility - default implementation checks component name</span>
+        <span class="k">return</span> <span class="n">task</span><span class="o">.</span><span class="n">component_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate performance metrics based on agent state.&quot;&quot;&quot;</span>
+        <span class="n">battery</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+
+        <span class="c1"># Example: processing speed depends on battery level</span>
+        <span class="n">processing_speed</span> <span class="o">=</span> <span class="n">battery</span> <span class="o">*</span> <span class="mf">0.01</span>  <span class="c1"># 1% per battery percent</span>
+        <span class="n">energy_consumption</span> <span class="o">=</span> <span class="mf">5.0</span>  <span class="c1"># Base consumption</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;processing_speed&#39;</span><span class="p">:</span> <span class="n">processing_speed</span><span class="p">,</span>
+            <span class="s1">&#39;energy_consumption&#39;</span><span class="p">:</span> <span class="n">energy_consumption</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="task-execution-framework">
+<h3>Task Execution Framework<a class="headerlink" href="#task-execution-framework" title="Permalink to this heading">¶</a></h3>
+<p>Components manage task execution through a standardized framework:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">execute_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute a task through this component.&quot;&quot;&quot;</span>
+    <span class="c1"># Framework automatically handles:</span>
+    <span class="c1"># 1. Task validation (via can_execute())</span>
+    <span class="c1"># 2. Performance metric calculation (via _calculate_performance_metrics())</span>
+    <span class="c1"># 3. State monitoring and metric updates</span>
+    <span class="c1"># 4. Task execution (calls task.execute() with metrics)</span>
+    <span class="c1"># 5. Event triggering (task_started, task_completed, etc.)</span>
+    <span class="c1"># 6. Cleanup and error handling</span>
+
+    <span class="c1"># Your component needs to implement:</span>
+    <span class="c1"># - can_execute(task) -&gt; bool</span>
+    <span class="c1"># - _calculate_performance_metrics() -&gt; Dict[str, Any]</span>
+</pre></div>
+</div>
+</section>
+<section id="performance-metrics">
+<h3>Performance Metrics<a class="headerlink" href="#performance-metrics" title="Permalink to this heading">¶</a></h3>
+<p>Components calculate performance metrics based on agent state:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_calculate_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate metrics based on current conditions.&quot;&quot;&quot;</span>
+    <span class="c1"># Get relevant agent states</span>
+    <span class="n">battery</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="n">weather</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;weather_condition&#39;</span><span class="p">,</span> <span class="s1">&#39;clear&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Calculate performance based on conditions</span>
+    <span class="n">base_speed</span> <span class="o">=</span> <span class="mf">10.0</span>  <span class="c1"># m/s</span>
+
+    <span class="c1"># Battery affects performance</span>
+    <span class="n">battery_factor</span> <span class="o">=</span> <span class="n">battery</span> <span class="o">/</span> <span class="mf">100.0</span>
+
+    <span class="c1"># Weather affects performance</span>
+    <span class="n">weather_factors</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;clear&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="s1">&#39;cloudy&#39;</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">,</span>
+        <span class="s1">&#39;rain&#39;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span>
+        <span class="s1">&#39;storm&#39;</span><span class="p">:</span> <span class="mf">0.3</span>
+    <span class="p">}</span>
+    <span class="n">weather_factor</span> <span class="o">=</span> <span class="n">weather_factors</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">weather</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="n">actual_speed</span> <span class="o">=</span> <span class="n">base_speed</span> <span class="o">*</span> <span class="n">battery_factor</span> <span class="o">*</span> <span class="n">weather_factor</span>
+    <span class="n">energy_consumption</span> <span class="o">=</span> <span class="mf">5.0</span> <span class="o">/</span> <span class="n">battery_factor</span>  <span class="c1"># More consumption when low battery</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s1">&#39;movement_speed&#39;</span><span class="p">:</span> <span class="n">actual_speed</span><span class="p">,</span>
+        <span class="s1">&#39;energy_consumption&#39;</span><span class="p">:</span> <span class="n">energy_consumption</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="state-monitoring">
+<h3>State Monitoring<a class="headerlink" href="#state-monitoring" title="Permalink to this heading">¶</a></h3>
+<p>Components automatically monitor specified agent states:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">WeatherSensitiveComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+    <span class="c1"># Monitor weather-related states</span>
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;weather_condition&#39;</span><span class="p">,</span> <span class="s1">&#39;wind_speed&#39;</span><span class="p">,</span> <span class="s1">&#39;temperature&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_on_agent_state_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Called when monitored states change.&quot;&quot;&quot;</span>
+        <span class="n">state_key</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">)</span>
+        <span class="n">new_value</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;new_value&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">state_key</span> <span class="o">==</span> <span class="s1">&#39;weather_condition&#39;</span><span class="p">:</span>
+            <span class="c1"># Custom handling for weather changes</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Weather changed to: </span><span class="si">{</span><span class="n">new_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># The framework automatically recalculates metrics</span>
+
+        <span class="c1"># Call parent implementation (handles metric recalculation)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_on_agent_state_changed</span><span class="p">(</span><span class="n">event_data</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="event-handling">
+<h3>Event Handling<a class="headerlink" href="#event-handling" title="Permalink to this heading">¶</a></h3>
+<p>Components trigger events during task execution:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Standard events triggered automatically:</span>
+<span class="c1"># - ComponentName.task_started</span>
+<span class="c1"># - ComponentName.task_completed</span>
+<span class="c1"># - ComponentName.task_failed</span>
+<span class="c1"># - ComponentName.task_canceled</span>
+<span class="c1"># - ComponentName.metric_changed</span>
+
+<span class="c1"># Trigger custom events</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;custom_event&#39;</span><span class="p">,</span> <span class="p">{</span>
+    <span class="s1">&#39;custom_data&#39;</span><span class="p">:</span> <span class="s1">&#39;value&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+</section>
+<section id="error-handling">
+<h3>Error Handling<a class="headerlink" href="#error-handling" title="Permalink to this heading">¶</a></h3>
+<p>Components should handle errors gracefully:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_calculate_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate metrics with error handling.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Normal calculation</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_do_calculation</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="c1"># Log error and return safe defaults</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error calculating metrics: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;processing_speed&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s1">&#39;energy_consumption&#39;</span><span class="p">:</span> <span class="mf">10.0</span>  <span class="c1"># High consumption in error state</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="component-lifecycle">
+<h3>Component Lifecycle<a class="headerlink" href="#component-lifecycle" title="Permalink to this heading">¶</a></h3>
+<p>Components have a defined lifecycle:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. Initialization</span>
+<span class="n">component</span> <span class="o">=</span> <span class="n">CustomComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;custom_property&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">})</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">component</span><span class="p">)</span>
+
+<span class="c1"># 2. Task execution (multiple times)</span>
+<span class="c1"># Tasks are executed through workflows, not directly</span>
+<span class="c1"># The component will receive tasks from the agent&#39;s task scheduler</span>
+
+<span class="c1"># 3. State monitoring (continuous)</span>
+<span class="c1"># Component automatically monitors MONITORED_STATES and updates metrics</span>
+
+<span class="c1"># 4. Error handling</span>
+<span class="k">if</span> <span class="n">error_condition</span><span class="p">:</span>
+    <span class="n">component</span><span class="o">.</span><span class="n">disable</span><span class="p">()</span>  <span class="c1"># Disables component and cancels tasks</span>
+
+<span class="c1"># 5. Recovery</span>
+<span class="n">component</span><span class="o">.</span><span class="n">enable</span><span class="p">()</span>  <span class="c1"># Re-enables component</span>
+</pre></div>
+</div>
+</section>
+<section id="best-practices">
+<h3>Best Practices<a class="headerlink" href="#best-practices" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>State Dependencies</strong>: Clearly define MONITORED_STATES for performance calculation</p></li>
+<li><p><strong>Metric Consistency</strong>: Ensure PRODUCED_METRICS match what _calculate_performance_metrics returns</p></li>
+<li><p><strong>Error Recovery</strong>: Implement graceful error handling and recovery mechanisms</p></li>
+<li><p><strong>Resource Management</strong>: Clean up resources in task completion/failure handlers</p></li>
+<li><p><strong>Event Communication</strong>: Use events for loose coupling with other components</p></li>
+<li><p><strong>Performance</strong>: Optimize metric calculations as they’re called frequently</p></li>
+</ol>
+</section>
+<section id="example-advanced-sensor-component">
+<h3>Example: Advanced Sensor Component<a class="headerlink" href="#example-advanced-sensor-component" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">AdvancedSensorComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Advanced sensor with environmental adaptation.&quot;&quot;&quot;</span>
+
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="s1">&#39;weather_condition&#39;</span><span class="p">,</span> <span class="s1">&#39;altitude&#39;</span><span class="p">]</span>
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sensing_accuracy&#39;</span><span class="p">,</span> <span class="s1">&#39;sensing_range&#39;</span><span class="p">,</span> <span class="s1">&#39;energy_consumption&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">supported_events</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;AdvancedSensor&quot;</span><span class="p">,</span>
+                       <span class="n">supported_events</span> <span class="ow">or</span> <span class="p">[],</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensor_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensor_type&#39;</span><span class="p">,</span> <span class="s1">&#39;optical&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calibration_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;calibration_factor&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate sensor performance based on conditions.&quot;&quot;&quot;</span>
+        <span class="n">battery</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="n">weather</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;weather_condition&#39;</span><span class="p">,</span> <span class="s1">&#39;clear&#39;</span><span class="p">)</span>
+        <span class="n">altitude</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;altitude&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Base performance</span>
+        <span class="n">base_accuracy</span> <span class="o">=</span> <span class="mf">0.95</span>
+        <span class="n">base_range</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># meters</span>
+        <span class="n">base_consumption</span> <span class="o">=</span> <span class="mf">3.0</span>  <span class="c1"># watts</span>
+
+        <span class="c1"># Battery impact</span>
+        <span class="n">battery_factor</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">battery</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">)</span>
+
+        <span class="c1"># Weather impact on optical sensors</span>
+        <span class="n">weather_impact</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;clear&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+            <span class="s1">&#39;cloudy&#39;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+            <span class="s1">&#39;rain&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+            <span class="s1">&#39;fog&#39;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+            <span class="s1">&#39;storm&#39;</span><span class="p">:</span> <span class="mf">0.1</span>
+        <span class="p">}</span>
+        <span class="n">weather_factor</span> <span class="o">=</span> <span class="n">weather_impact</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">weather</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># Altitude impact (atmospheric effects)</span>
+        <span class="n">altitude_factor</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="p">(</span><span class="n">altitude</span> <span class="o">/</span> <span class="mf">10000.0</span><span class="p">))</span>
+
+        <span class="c1"># Calculate final metrics</span>
+        <span class="n">accuracy</span> <span class="o">=</span> <span class="n">base_accuracy</span> <span class="o">*</span> <span class="n">battery_factor</span> <span class="o">*</span> <span class="n">weather_factor</span> <span class="o">*</span> <span class="n">altitude_factor</span>
+        <span class="n">sensing_range</span> <span class="o">=</span> <span class="n">base_range</span> <span class="o">*</span> <span class="n">battery_factor</span> <span class="o">*</span> <span class="n">weather_factor</span>
+        <span class="n">consumption</span> <span class="o">=</span> <span class="n">base_consumption</span> <span class="o">/</span> <span class="n">battery_factor</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;sensing_accuracy&#39;</span><span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">accuracy</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_factor</span><span class="p">),</span>
+            <span class="s1">&#39;sensing_range&#39;</span><span class="p">:</span> <span class="n">sensing_range</span><span class="p">,</span>
+            <span class="s1">&#39;energy_consumption&#39;</span><span class="p">:</span> <span class="n">consumption</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">can_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if sensor can execute sensing tasks.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">component_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span>
+                <span class="n">task</span><span class="o">.</span><span class="n">task_name</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;SensingTask&#39;</span><span class="p">,</span> <span class="s1">&#39;ScanTask&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>For more examples and detailed guides, see the component development documentation.</p>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Component Classes</a><ul>
+<li><a class="reference internal" href="#base-component">Base Component</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component"><code class="docutils literal notranslate"><span class="pre">Component</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">Component.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">Component.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.__init__"><code class="docutils literal notranslate"><span class="pre">Component.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.active_tasks"><code class="docutils literal notranslate"><span class="pre">Component.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.task_processes"><code class="docutils literal notranslate"><span class="pre">Component.task_processes</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.trigger_event"><code class="docutils literal notranslate"><span class="pre">Component.trigger_event()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.can_execute"><code class="docutils literal notranslate"><span class="pre">Component.can_execute()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.is_busy"><code class="docutils literal notranslate"><span class="pre">Component.is_busy</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.is_available"><code class="docutils literal notranslate"><span class="pre">Component.is_available()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.execute_task"><code class="docutils literal notranslate"><span class="pre">Component.execute_task()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.disable"><code class="docutils literal notranslate"><span class="pre">Component.disable()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.component.Component.enable"><code class="docutils literal notranslate"><span class="pre">Component.enable()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mobility-components">Mobility Components</a><ul>
+<li><a class="reference internal" href="#movetocomponent">MoveToComponent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.mobility.MoveToComponent"><code class="docutils literal notranslate"><span class="pre">MoveToComponent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.mobility.MoveToComponent.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">MoveToComponent.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.mobility.MoveToComponent.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">MoveToComponent.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.mobility.MoveToComponent.__init__"><code class="docutils literal notranslate"><span class="pre">MoveToComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.mobility.MoveToComponent.disable"><code class="docutils literal notranslate"><span class="pre">MoveToComponent.disable()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.mobility.MoveToComponent.active_tasks"><code class="docutils literal notranslate"><span class="pre">MoveToComponent.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.mobility.MoveToComponent.task_processes"><code class="docutils literal notranslate"><span class="pre">MoveToComponent.task_processes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#power-management">Power Management</a><ul>
+<li><a class="reference internal" href="#chargingcomponent">ChargingComponent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.charging.ChargingComponent"><code class="docutils literal notranslate"><span class="pre">ChargingComponent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.charging.ChargingComponent.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">ChargingComponent.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.charging.ChargingComponent.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">ChargingComponent.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.charging.ChargingComponent.__init__"><code class="docutils literal notranslate"><span class="pre">ChargingComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.charging.ChargingComponent.active_tasks"><code class="docutils literal notranslate"><span class="pre">ChargingComponent.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.charging.ChargingComponent.task_processes"><code class="docutils literal notranslate"><span class="pre">ChargingComponent.task_processes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#communication-components">Communication Components</a><ul>
+<li><a class="reference internal" href="#communicationcomponent">CommunicationComponent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.communication.CommunicationComponent"><code class="docutils literal notranslate"><span class="pre">CommunicationComponent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.communication.CommunicationComponent.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">CommunicationComponent.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.communication.CommunicationComponent.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">CommunicationComponent.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.communication.CommunicationComponent.__init__"><code class="docutils literal notranslate"><span class="pre">CommunicationComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.communication.CommunicationComponent.active_tasks"><code class="docutils literal notranslate"><span class="pre">CommunicationComponent.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.communication.CommunicationComponent.task_processes"><code class="docutils literal notranslate"><span class="pre">CommunicationComponent.task_processes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#computation-components">Computation Components</a><ul>
+<li><a class="reference internal" href="#cpucomponent">CPUComponent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.CPUComponent"><code class="docutils literal notranslate"><span class="pre">CPUComponent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.CPUComponent.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">CPUComponent.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.CPUComponent.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">CPUComponent.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.CPUComponent.__init__"><code class="docutils literal notranslate"><span class="pre">CPUComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.CPUComponent.active_tasks"><code class="docutils literal notranslate"><span class="pre">CPUComponent.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.CPUComponent.task_processes"><code class="docutils literal notranslate"><span class="pre">CPUComponent.task_processes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#computationcomponent">ComputationComponent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.ComputationComponent"><code class="docutils literal notranslate"><span class="pre">ComputationComponent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.ComputationComponent.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">ComputationComponent.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.ComputationComponent.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">ComputationComponent.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.ComputationComponent.__init__"><code class="docutils literal notranslate"><span class="pre">ComputationComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.ComputationComponent.active_tasks"><code class="docutils literal notranslate"><span class="pre">ComputationComponent.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.computation.ComputationComponent.task_processes"><code class="docutils literal notranslate"><span class="pre">ComputationComponent.task_processes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#sensing-components">Sensing Components</a><ul>
+<li><a class="reference internal" href="#imagesensingcomponent">ImageSensingComponent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.img_sensor.ImageSensingComponent"><code class="docutils literal notranslate"><span class="pre">ImageSensingComponent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.img_sensor.ImageSensingComponent.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">ImageSensingComponent.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.img_sensor.ImageSensingComponent.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">ImageSensingComponent.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.img_sensor.ImageSensingComponent.__init__"><code class="docutils literal notranslate"><span class="pre">ImageSensingComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.img_sensor.ImageSensingComponent.active_tasks"><code class="docutils literal notranslate"><span class="pre">ImageSensingComponent.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.img_sensor.ImageSensingComponent.task_processes"><code class="docutils literal notranslate"><span class="pre">ImageSensingComponent.task_processes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#emsensingcomponent">EMSensingComponent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.__init__"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.scan_frequency_band"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.scan_frequency_band()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_frequency_bands"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.set_frequency_bands()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_sensitivity_threshold"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.set_sensitivity_threshold()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_accuracy_parameters"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.set_accuracy_parameters()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.disable"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.disable()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.enable"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.enable()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.active_tasks"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.task_processes"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.task_processes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#objectsensorcomponent">ObjectSensorComponent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent"><code class="docutils literal notranslate"><span class="pre">ObjectSensorComponent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">ObjectSensorComponent.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">ObjectSensorComponent.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.__init__"><code class="docutils literal notranslate"><span class="pre">ObjectSensorComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.disable"><code class="docutils literal notranslate"><span class="pre">ObjectSensorComponent.disable()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.enable"><code class="docutils literal notranslate"><span class="pre">ObjectSensorComponent.enable()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.active_tasks"><code class="docutils literal notranslate"><span class="pre">ObjectSensorComponent.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.object_sensor.ObjectSensorComponent.task_processes"><code class="docutils literal notranslate"><span class="pre">ObjectSensorComponent.task_processes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#logistics-components">Logistics Components</a><ul>
+<li><a class="reference internal" href="#logisticscomponent">LogisticsComponent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.logistics.LogisticsComponent"><code class="docutils literal notranslate"><span class="pre">LogisticsComponent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.logistics.LogisticsComponent.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">LogisticsComponent.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.logistics.LogisticsComponent.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">LogisticsComponent.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.logistics.LogisticsComponent.__init__"><code class="docutils literal notranslate"><span class="pre">LogisticsComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.logistics.LogisticsComponent.can_execute"><code class="docutils literal notranslate"><span class="pre">LogisticsComponent.can_execute()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.logistics.LogisticsComponent.get_details"><code class="docutils literal notranslate"><span class="pre">LogisticsComponent.get_details()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.logistics.LogisticsComponent.active_tasks"><code class="docutils literal notranslate"><span class="pre">LogisticsComponent.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.logistics.LogisticsComponent.task_processes"><code class="docutils literal notranslate"><span class="pre">LogisticsComponent.task_processes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#component-development-guide">Component Development Guide</a><ul>
+<li><a class="reference internal" href="#creating-custom-components">Creating Custom Components</a></li>
+<li><a class="reference internal" href="#task-execution-framework">Task Execution Framework</a></li>
+<li><a class="reference internal" href="#performance-metrics">Performance Metrics</a></li>
+<li><a class="reference internal" href="#state-monitoring">State Monitoring</a></li>
+<li><a class="reference internal" href="#event-handling">Event Handling</a></li>
+<li><a class="reference internal" href="#error-handling">Error Handling</a></li>
+<li><a class="reference internal" href="#component-lifecycle">Component Lifecycle</a></li>
+<li><a class="reference internal" href="#best-practices">Best Practices</a></li>
+<li><a class="reference internal" href="#example-advanced-sensor-component">Example: Advanced Sensor Component</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="agent.html"
+                          title="previous chapter">Agent Classes</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="workflow.html"
+                          title="next chapter">Workflow Classes</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/component.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="workflow.html" title="Workflow Classes"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="agent.html" title="Agent Classes"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >API Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Component Classes</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

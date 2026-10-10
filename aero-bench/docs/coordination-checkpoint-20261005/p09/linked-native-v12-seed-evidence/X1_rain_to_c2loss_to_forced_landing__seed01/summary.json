@@ -1,0 +1,452 @@
+{
+  "schema_version": "p09.linked-native-causal/v12",
+  "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed01",
+  "seed": 1,
+  "scenario_id": "X1_rain_to_c2loss_to_forced_landing",
+  "source_refs": [
+    "Dataset/scenarios/X_cross_layer/X1_rain_to_c2loss_to_forced_landing/event_script.json",
+    "Dataset/scenarios/X_cross_layer/X1_rain_to_c2loss_to_forced_landing/scene_setup.json"
+  ],
+  "guard_version": null,
+  "healthy_control": false,
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_x1_forced_landing": 3000000000,
+    "x1_ped_approach": 12000000000,
+    "crowd_present": 15000000000,
+    "rain_onset": 18000000000,
+    "rain_threshold": 18500000000,
+    "c2_loss_tick": 26000000000,
+    "c2_loss_after_rain": 27000000000,
+    "c2_safe_hold": 37000000000,
+    "forced_landing_descent": 40000000000,
+    "crowd_reacts_to_landing": 45500000000,
+    "x1_recovery": 61500000000
+  },
+  "unfired_events": [],
+  "pose_and_visual_differences_from_same_seed_source_replay": {
+    "tower_x1_c2": {
+      "first_changed_tick": 181,
+      "fields": [
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "state": "rain_stressed",
+        "activity_type": "rain_stressed"
+      },
+      "after": {
+        "state": "online",
+        "activity_type": "online"
+      }
+    },
+    "uav_x1_forced_landing": {
+      "first_changed_tick": 266,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6369.849,
+          6550.439,
+          32.6
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          6.0
+        ],
+        "state": "airborne",
+        "activity_type": "airborne"
+      },
+      "after": {
+        "pos_enu": [
+          6369.849,
+          6550.439,
+          32.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "state": "cruise",
+        "activity_type": "cruise"
+      }
+    },
+    "ped_x1_crowd_x1_00": {
+      "first_changed_tick": 451,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6398.614421,
+          6577.188526,
+          0.0
+        ],
+        "vel_mps": [
+          0.584211,
+          -1.894737,
+          0.0
+        ],
+        "yaw_deg": -72.863725,
+        "state": "walking",
+        "activity_type": "walking"
+      },
+      "after": {
+        "pos_enu": [
+          6398.556,
+          6577.378,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -69.203,
+        "state": "observing",
+        "activity_type": "observing"
+      }
+    },
+    "ped_x1_crowd_x1_01": {
+      "first_changed_tick": 451,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6396.948823,
+          6581.250506,
+          0.0
+        ],
+        "vel_mps": [
+          0.818228,
+          -1.814937,
+          0.0
+        ],
+        "yaw_deg": -65.732722,
+        "state": "walking",
+        "activity_type": "walking"
+      },
+      "after": {
+        "pos_enu": [
+          6396.867,
+          6581.432,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -65.689,
+        "state": "observing",
+        "activity_type": "observing"
+      }
+    },
+    "ped_x1_crowd_x1_02": {
+      "first_changed_tick": 451,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6400.067813,
+          6572.876859,
+          0.0
+        ],
+        "vel_mps": [
+          0.448125,
+          -1.921406,
+          0.0
+        ],
+        "yaw_deg": -76.871722,
+        "state": "walking",
+        "activity_type": "walking"
+      },
+      "after": {
+        "pos_enu": [
+          6400.023,
+          6573.069,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -74.16,
+        "state": "observing",
+        "activity_type": "observing"
+      }
+    },
+    "ped_x1_crowd_x1_03": {
+      "first_changed_tick": 451,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6395.042068,
+          6585.452027,
+          0.0
+        ],
+        "vel_mps": [
+          -0.229315,
+          1.980274,
+          0.0
+        ],
+        "yaw_deg": 96.605412,
+        "state": "walking",
+        "activity_type": "walking"
+      },
+      "after": {
+        "pos_enu": [
+          6395.065,
+          6585.254,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -63.665,
+        "state": "observing",
+        "activity_type": "observing"
+      }
+    },
+    "ped_x1_crowd_x1_04": {
+      "first_changed_tick": 451,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6401.048857,
+          6568.276556,
+          0.0
+        ],
+        "vel_mps": [
+          -0.481429,
+          -1.934444,
+          0.0
+        ],
+        "yaw_deg": -103.975386,
+        "state": "walking",
+        "activity_type": "walking"
+      },
+      "after": {
+        "pos_enu": [
+          6401.097,
+          6568.47,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -80.662,
+        "state": "observing",
+        "activity_type": "observing"
+      }
+    },
+    "ped_x1_crowd_x1_05": {
+      "first_changed_tick": 451,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6393.12184,
+          6589.16398,
+          0.0
+        ],
+        "vel_mps": [
+          -0.2816,
+          1.9598,
+          0.0
+        ],
+        "yaw_deg": 98.176757,
+        "state": "walking",
+        "activity_type": "walking"
+      },
+      "after": {
+        "pos_enu": [
+          6393.15,
+          6588.968,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -62.063,
+        "state": "observing",
+        "activity_type": "observing"
+      }
+    },
+    "ped_x1_crowd_x1_06": {
+      "first_changed_tick": 451,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6401.395567,
+          6562.937183,
+          0.0
+        ],
+        "vel_mps": [
+          -0.954333,
+          -1.748167,
+          0.0
+        ],
+        "yaw_deg": -118.630357,
+        "state": "walking",
+        "activity_type": "walking"
+      },
+      "after": {
+        "pos_enu": [
+          6401.491,
+          6563.112,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -93.062,
+        "state": "observing",
+        "activity_type": "observing"
+      }
+    },
+    "ped_x1_crowd_x1_07": {
+      "first_changed_tick": 451,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6391.3385,
+          6592.71214,
+          0.0
+        ],
+        "vel_mps": [
+          1.345,
+          1.4714,
+          0.0
+        ],
+        "yaw_deg": 47.56971,
+        "state": "walking",
+        "activity_type": "walking"
+      },
+      "after": {
+        "pos_enu": [
+          6391.204,
+          6592.565,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -61.267,
+        "state": "observing",
+        "activity_type": "observing"
+      }
+    },
+    "ped_x1_crowd_x1_08": {
+      "first_changed_tick": 451,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6396.599711,
+          6582.709614,
+          0.0
+        ],
+        "vel_mps": [
+          -0.962892,
+          1.746145,
+          0.0
+        ],
+        "yaw_deg": 118.874039,
+        "state": "walking",
+        "activity_type": "walking"
+      },
+      "after": {
+        "pos_enu": [
+          6396.696,
+          6582.535,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -61.261046,
+        "state": "observing",
+        "activity_type": "observing"
+      }
+    }
+  },
+  "weather_changed": true,
+  "adoption_class": "A",
+  "published210_modified": false,
+  "collection_status": "one-shot collection pending final freeze",
+  "iteration_count": 3,
+  "backend": "p01.ns3.frozen-wifi/v8-switch-completion",
+  "duration_ticks": 900,
+  "motion_acquisition": null,
+  "output_dir": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed01/adopted",
+  "motion_scope": "authored waypoint engine; not PX4 motion feedback",
+  "missing_event_disposition": "complete",
+  "rf_weather_scope": "not amplified; dimensionless rain is not an observed mm/h rate"
+}

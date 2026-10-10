@@ -1,8 +1,8 @@
 import pytest
 
-from airfogsim.task.cooperative_charging_task import CooperativeChargingTask
-from airfogsim.core.cooperative_task import CooperativeTaskState
-from airfogsim.core.rendezvous_area import MockRendezvousArea, DockingRendezvousArea
+from aeroagentsim.task.cooperative_charging_task import CooperativeChargingTask
+from aeroagentsim.core.cooperative_task import CooperativeTaskState
+from aeroagentsim.core.rendezvous_area import MockRendezvousArea, DockingRendezvousArea
 
 # ---- Mocks ----
 class DummyEventRegistry:

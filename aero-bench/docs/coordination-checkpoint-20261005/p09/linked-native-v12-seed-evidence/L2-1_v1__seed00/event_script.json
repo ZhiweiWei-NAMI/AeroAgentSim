@@ -1,0 +1,1191 @@
+{
+  "$schema": "event_script_v1",
+  "scenario_id": "L2-1_v1",
+  "description": "Communication station failure with backup link recovery",
+  "parameters": {
+    "failure_tick": 260,
+    "resolution_tick": 520,
+    "semantic_event_contract": {
+      "schema": "low_altitude_event_chain_contract_v1",
+      "scenario_id": "L2-1_v1",
+      "exact_counts": {
+        "uav": 3,
+        "vehicle": 3,
+        "pedestrian": 2,
+        "facility": 3,
+        "logical": 8
+      },
+      "capture_boundary": {
+        "boundary_id": "capture_boundary_l2_1_v1",
+        "geometry_source": "event_entity",
+        "anchor_entity_roles": [
+          "capture_boundary",
+          "hazard_zone",
+          "airspace_constraint"
+        ],
+        "boundary_role": "capture_boundary",
+        "z_policy": "ground_to_event_altitude",
+        "source": "event_entity_envelope",
+        "source_entity_id": "uav_l2_1_v1",
+        "center_enu_m": [
+          7331.524,
+          6404.181,
+          0.0
+        ],
+        "polygon_enu_m": [
+          [
+            7230.213,
+            6350.156
+          ],
+          [
+            7432.835,
+            6350.156
+          ],
+          [
+            7432.835,
+            6458.205
+          ],
+          [
+            7230.213,
+            6458.205
+          ]
+        ],
+        "uav_boundary_crossing_required": true,
+        "pad_boundary_policy": "pads_may_be_outside_capture_boundary",
+        "inspect_fov_coverage_required": true,
+        "inspect_entity_role": "U_inspect"
+      },
+      "inspect": {
+        "role": "U_inspect",
+        "altitude_code": "I18",
+        "altitude_m": 18.0,
+        "min_path_length_m": 80.0,
+        "required_presence": "episode_full_duration",
+        "motion_policy": "fixed_altitude_closed_loop",
+        "corridor_policy": "inspect_capture_corridor",
+        "fov_coverage_required": true,
+        "sensor_profile_required": true
+      },
+      "pad_boundary_policy": {
+        "default": "outside_allowed",
+        "inside_required_for": []
+      },
+      "uav_boundary_crossing_required": true,
+      "inspect_fov_coverage_required": true,
+      "required_event": "tower degraded > backup link > patrol resume > land",
+      "required_intents": [
+        "digital_anomaly",
+        "patrol_resumption",
+        "landing_or_terminal_resolution"
+      ],
+      "background_semantics": {
+        "vehicle_role": "traffic continues during C2 degradation",
+        "pedestrian_role": "facility pedestrians near tower",
+        "policy": "semantic_context_not_decoration"
+      },
+      "weather": "clear",
+      "determinism": {
+        "fallback": "forbidden",
+        "guessing": "forbidden",
+        "compatibility_paths": "forbidden"
+      }
+    },
+    "target_uav_count": 3,
+    "target_vehicle_count": 3,
+    "target_pedestrian_count": 2,
+    "target_facility_count": 3,
+    "target_logical_count": 8,
+    "deterministic_sumo_traffic_template": {
+      "source_policy": "explicit_episode_plan_only_v1",
+      "min_vehicle_count": 12,
+      "seed_profiles": {
+        "seed00": {
+          "name": "morning_peak",
+          "direction_bias": "inbound_to_roi",
+          "direction_weights": {
+            "inbound": 0.7,
+            "outbound": 0.2,
+            "cross": 0.1
+          }
+        },
+        "seed01": {
+          "name": "midday",
+          "direction_bias": "balanced_cross_traffic",
+          "direction_weights": {
+            "inbound": 0.34,
+            "outbound": 0.33,
+            "cross": 0.33
+          }
+        },
+        "seed02": {
+          "name": "evening_peak",
+          "direction_bias": "outbound_from_roi",
+          "direction_weights": {
+            "inbound": 0.2,
+            "outbound": 0.7,
+            "cross": 0.1
+          }
+        }
+      },
+      "semantic_vehicle_roles": [
+        "semantic_event_vehicle",
+        "deterministic_background_vehicle"
+      ],
+      "route_source": "sumo_explicit_vehicle_plan"
+    },
+    "uav_corridor_policy": "repair_waypoints_then_visualize_corridors_v1",
+    "allow_building_impact": false,
+    "uav_corridor_segment_count": 20,
+    "uav_altitude_layers_m": [
+      30.0,
+      50.0,
+      80.0
+    ],
+    "uav_assigned_altitudes_m": {
+      "uav_l2_1_v1": 30.0,
+      "u_inspect_l2_1_v1": 18.0,
+      "uav_observer_l2_1_v1_3": 80.0
+    },
+    "uav_lateral_bypass_used": {
+      "uav_l2_1_v1": false,
+      "u_inspect_l2_1_v1": false,
+      "uav_observer_l2_1_v1_3": false
+    },
+    "uav_corridor_segments": [
+      {
+        "entity_id": "uav_l2_1_v1",
+        "point_count": 10,
+        "assigned_altitude_m": 30.0,
+        "used_lateral_bypass": false
+      },
+      {
+        "entity_id": "u_inspect_l2_1_v1",
+        "point_count": 11,
+        "assigned_altitude_m": 18.0,
+        "used_lateral_bypass": false
+      },
+      {
+        "entity_id": "uav_observer_l2_1_v1_3",
+        "point_count": 3,
+        "assigned_altitude_m": 80.0,
+        "used_lateral_bypass": false
+      }
+    ],
+    "uav_corridor_segment_details": [
+      {
+        "entity_id": "uav_l2_1_v1",
+        "segment_index": 0,
+        "segment_start_enu_m": [
+          7252.576,
+          6381.651,
+          3.0
+        ],
+        "segment_end_enu_m": [
+          7252.576,
+          6381.651,
+          24.0
+        ],
+        "assigned_altitude_m": 30.0
+      },
+      {
+        "entity_id": "uav_l2_1_v1",
+        "segment_index": 1,
+        "segment_start_enu_m": [
+          7252.576,
+          6381.651,
+          24.0
+        ],
+        "segment_end_enu_m": [
+          7257.213,
+          6374.569,
+          31.0
+        ],
+        "assigned_altitude_m": 30.0
+      },
+      {
+        "entity_id": "uav_l2_1_v1",
+        "segment_index": 2,
+        "segment_start_enu_m": [
+          7257.213,
+          6374.569,
+          31.0
+        ],
+        "segment_end_enu_m": [
+          7257.213,
+          6374.569,
+          30.0
+        ],
+        "assigned_altitude_m": 30.0
+      },
+      {
+        "entity_id": "uav_l2_1_v1",
+        "segment_index": 3,
+        "segment_start_enu_m": [
+          7257.213,
+          6374.569,
+          30.0
+        ],
+        "segment_end_enu_m": [
+          7267.213,
+          6384.569,
+          30.0
+        ],
+        "assigned_altitude_m": 30.0
+      },
+      {
+        "entity_id": "uav_l2_1_v1",
+        "segment_index": 4,
+        "segment_start_enu_m": [
+          7267.213,
+          6384.569,
+          30.0
+        ],
+        "segment_end_enu_m": [
+          7270.213,
+          6389.569,
+          30.0
+        ],
+        "assigned_altitude_m": 30.0
+      },
+      {
+        "entity_id": "uav_l2_1_v1",
+        "segment_index": 5,
+        "segment_start_enu_m": [
+          7270.213,
+          6389.569,
+          30.0
+        ],
+        "segment_end_enu_m": [
+          7246.213,
+          6376.569,
+          30.0
+        ],
+        "assigned_altitude_m": 30.0
+      },
+      {
+        "entity_id": "uav_l2_1_v1",
+        "segment_index": 6,
+        "segment_start_enu_m": [
+          7246.213,
+          6376.569,
+          30.0
+        ],
+        "segment_end_enu_m": [
+          7246.213,
+          6376.569,
+          36.0
+        ],
+        "assigned_altitude_m": 30.0
+      },
+      {
+        "entity_id": "uav_l2_1_v1",
+        "segment_index": 7,
+        "segment_start_enu_m": [
+          7246.213,
+          6376.569,
+          36.0
+        ],
+        "segment_end_enu_m": [
+          7252.576,
+          6381.651,
+          36.0
+        ],
+        "assigned_altitude_m": 30.0
+      },
+      {
+        "entity_id": "uav_l2_1_v1",
+        "segment_index": 8,
+        "segment_start_enu_m": [
+          7252.576,
+          6381.651,
+          36.0
+        ],
+        "segment_end_enu_m": [
+          7252.576,
+          6381.651,
+          3.0
+        ],
+        "assigned_altitude_m": 30.0
+      },
+      {
+        "entity_id": "u_inspect_l2_1_v1",
+        "segment_index": 0,
+        "segment_start_enu_m": [
+          7331.524,
+          6404.181,
+          18.0
+        ],
+        "segment_end_enu_m": [
+          7233.078,
+          6351.684,
+          18.0
+        ],
+        "assigned_altitude_m": 18.0
+      },
+      {
+        "entity_id": "u_inspect_l2_1_v1",
+        "segment_index": 1,
+        "segment_start_enu_m": [
+          7233.078,
+          6351.684,
+          18.0
+        ],
+        "segment_end_enu_m": [
+          7331.524,
+          6353.403,
+          18.0
+        ],
+        "assigned_altitude_m": 18.0
+      },
+      {
+        "entity_id": "u_inspect_l2_1_v1",
+        "segment_index": 2,
+        "segment_start_enu_m": [
+          7331.524,
+          6353.403,
+          18.0
+        ],
+        "segment_end_enu_m": [
+          7429.97,
+          6351.684,
+          18.0
+        ],
+        "assigned_altitude_m": 18.0
+      },
+      {
+        "entity_id": "u_inspect_l2_1_v1",
+        "segment_index": 3,
+        "segment_start_enu_m": [
+          7429.97,
+          6351.684,
+          18.0
+        ],
+        "segment_end_enu_m": [
+          7429.588,
+          6404.181,
+          18.0
+        ],
+        "assigned_altitude_m": 18.0
+      },
+      {
+        "entity_id": "u_inspect_l2_1_v1",
+        "segment_index": 4,
+        "segment_start_enu_m": [
+          7429.588,
+          6404.181,
+          18.0
+        ],
+        "segment_end_enu_m": [
+          7429.97,
+          6456.677,
+          18.0
+        ],
+        "assigned_altitude_m": 18.0
+      },
+      {
+        "entity_id": "u_inspect_l2_1_v1",
+        "segment_index": 5,
+        "segment_start_enu_m": [
+          7429.97,
+          6456.677,
+          18.0
+        ],
+        "segment_end_enu_m": [
+          7331.524,
+          6454.958,
+          18.0
+        ],
+        "assigned_altitude_m": 18.0
+      },
+      {
+        "entity_id": "u_inspect_l2_1_v1",
+        "segment_index": 6,
+        "segment_start_enu_m": [
+          7331.524,
+          6454.958,
+          18.0
+        ],
+        "segment_end_enu_m": [
+          7233.078,
+          6456.677,
+          18.0
+        ],
+        "assigned_altitude_m": 18.0
+      },
+      {
+        "entity_id": "u_inspect_l2_1_v1",
+        "segment_index": 7,
+        "segment_start_enu_m": [
+          7233.078,
+          6456.677,
+          18.0
+        ],
+        "segment_end_enu_m": [
+          7233.46,
+          6404.181,
+          18.0
+        ],
+        "assigned_altitude_m": 18.0
+      },
+      {
+        "entity_id": "u_inspect_l2_1_v1",
+        "segment_index": 8,
+        "segment_start_enu_m": [
+          7233.46,
+          6404.181,
+          18.0
+        ],
+        "segment_end_enu_m": [
+          7331.524,
+          6404.181,
+          18.0
+        ],
+        "assigned_altitude_m": 18.0
+      },
+      {
+        "entity_id": "uav_observer_l2_1_v1_3",
+        "segment_index": 0,
+        "segment_start_enu_m": [
+          7213.375,
+          6359.531,
+          80.0
+        ],
+        "segment_end_enu_m": [
+          7331.524,
+          6404.181,
+          80.0
+        ],
+        "assigned_altitude_m": 80.0
+      },
+      {
+        "entity_id": "uav_observer_l2_1_v1_3",
+        "segment_index": 1,
+        "segment_start_enu_m": [
+          7331.524,
+          6404.181,
+          80.0
+        ],
+        "segment_end_enu_m": [
+          7213.375,
+          6359.531,
+          80.0
+        ],
+        "assigned_altitude_m": 80.0
+      }
+    ],
+    "utm_service_plan": {
+      "schema_name": "utm_service_plan",
+      "schema_version": "1.0.0",
+      "model_id": "aeroworld_deterministic_utm_service",
+      "model_version": "1.0.0",
+      "global_uav_flow_policy": {
+        "source_contract": "uav_global_flow",
+        "intent_start_tick": 0,
+        "intent_end_tick": 900,
+        "authorization_status": "active",
+        "flight_plan_approval_status": "approved"
+      },
+      "uav_plans": [
+        {
+          "uav_id": "u_inspect_l2_1_v1",
+          "corridor_id": "utm_corridor:L2-1_v1:uav_00",
+          "intent_start_tick": 0,
+          "intent_end_tick": 900,
+          "authorization_schedule": [
+            {
+              "start_tick": 0,
+              "end_tick": 900,
+              "status": "active"
+            }
+          ],
+          "flight_plan_schedule": [
+            {
+              "start_tick": 0,
+              "end_tick": 900,
+              "approval_status": "approved"
+            }
+          ]
+        },
+        {
+          "uav_id": "uav_l2_1_v1",
+          "corridor_id": "utm_corridor:L2-1_v1:uav_01",
+          "intent_start_tick": 0,
+          "intent_end_tick": 900,
+          "authorization_schedule": [
+            {
+              "start_tick": 0,
+              "end_tick": 900,
+              "status": "active"
+            }
+          ],
+          "flight_plan_schedule": [
+            {
+              "start_tick": 0,
+              "end_tick": 900,
+              "approval_status": "approved"
+            }
+          ]
+        },
+        {
+          "uav_id": "uav_observer_l2_1_v1_3",
+          "corridor_id": "utm_corridor:L2-1_v1:uav_02",
+          "intent_start_tick": 0,
+          "intent_end_tick": 900,
+          "authorization_schedule": [
+            {
+              "start_tick": 0,
+              "end_tick": 900,
+              "status": "active"
+            }
+          ],
+          "flight_plan_schedule": [
+            {
+              "start_tick": 0,
+              "end_tick": 900,
+              "approval_status": "approved"
+            }
+          ]
+        }
+      ]
+    },
+    "capture_boundary": {
+      "boundary_id": "capture_boundary_l2_1_v1",
+      "source": "event_entity_envelope",
+      "source_entity_id": "uav_l2_1_v1",
+      "center_enu_m": [
+        7331.524,
+        6404.181,
+        0.0
+      ],
+      "polygon_enu_m": [
+        [
+          7230.213,
+          6350.156
+        ],
+        [
+          7432.835,
+          6350.156
+        ],
+        [
+          7432.835,
+          6458.205
+        ],
+        [
+          7230.213,
+          6458.205
+        ]
+      ],
+      "uav_boundary_crossing_required": true,
+      "pad_boundary_policy": "pads_may_be_outside_capture_boundary",
+      "inspect_fov_coverage_required": true,
+      "inspect_entity_role": "U_inspect"
+    },
+    "spatial_grid_assignment": {
+      "scenario_id": "L2-1_v1",
+      "event_space_class": "nontraffic_main_road_grid",
+      "target_center_enu_m": [
+        7269.1795,
+        6377.098,
+        0.0
+      ],
+      "grid_cell": {
+        "cell_id": "grid_005_001",
+        "center_enu_m": [
+          7268.855793,
+          6377.755972,
+          0.0
+        ],
+        "representative_enu_m": [
+          7269.1795,
+          6377.098,
+          0.0
+        ],
+        "edge_ids": [
+          "cg_edge_122_f_pl0",
+          "cg_edge_204_f_pl0",
+          "cg_edge_300_f_pl0",
+          "cg_edge_364_f_pl0",
+          "cg_edge_772_f_pl0",
+          "cg_edge_772_f_pl1"
+        ],
+        "main_edge_count": 6,
+        "total_main_edge_length_m": 509.611712,
+        "max_speed_mps": 11.11,
+        "incident_count": 0
+      },
+      "source": "main_road_grid.nonincident_cell",
+      "traffic_incident_id": "",
+      "accident_class": "",
+      "exclusion_radius_m": 180.0,
+      "policy": "city_grid_main_road_event_coverage_v1",
+      "provisional_capture_center_enu_m": [
+        7059.966,
+        6184.529,
+        39.182
+      ],
+      "applied_world_origin_enu_m": [
+        7209.213,
+        6392.569,
+        0.0
+      ],
+      "actual_capture_center_enu_m": [
+        7262.049,
+        6381.365,
+        16.455
+      ],
+      "expanded_capture_center_enu_m": [
+        7331.524,
+        6404.181,
+        0.0
+      ],
+      "target_error_m": 8.309712
+    }
+  },
+  "triggers": [
+    {
+      "trigger_id": "trig_lifecycle_takeoff_uav_l2_1_v1",
+      "type": "tick",
+      "tick": 30
+    },
+    {
+      "trigger_id": "trig_station_degraded",
+      "type": "tick",
+      "tick": 260
+    },
+    {
+      "trigger_id": "trig_after_station_degraded_delay_30",
+      "type": "event_fired_after",
+      "event_id": "p09_actor_observed_station_loss",
+      "delay_ticks": 30
+    },
+    {
+      "trigger_id": "trig_after_uav_link_response_delay_59",
+      "type": "event_fired_after",
+      "event_id": "uav_link_response",
+      "delay_ticks": 59
+    },
+    {
+      "trigger_id": "trig_after_patrol_resume_via_backup_link_delay_80",
+      "type": "event_fired_after",
+      "event_id": "patrol_resume_via_backup_link",
+      "delay_ticks": 80
+    },
+    {
+      "trigger_id": "p09_actor_observed_station_loss",
+      "type": "tick",
+      "tick": 260
+    }
+  ],
+  "events": [
+    {
+      "event_id": "lifecycle_takeoff_uav_l2_1_v1",
+      "trigger_ref": "trig_lifecycle_takeoff_uav_l2_1_v1",
+      "priority": 1,
+      "max_fire_count": 1,
+      "actions": [
+        {
+          "type": "move_entity",
+          "action_id": "move_uav_l2_1_v1_takeoff_entry",
+          "entity_id": "uav_l2_1_v1",
+          "waypoints_enu_m": [
+            [
+              7252.576,
+              6381.651,
+              3.0
+            ],
+            [
+              7252.576,
+              6381.651,
+              24.0
+            ],
+            [
+              7257.213,
+              6374.569,
+              31.0
+            ]
+          ],
+          "velocity_mps": 5.0,
+          "activity_type": "takeoff",
+          "post_activity_type": "cruise",
+          "uav_corridor_validation": {
+            "status": "low_altitude_waypoints_preserved_and_building_clear",
+            "assigned_altitude_m": 30.0,
+            "original_waypoints_enu_m": [
+              [
+                7252.576,
+                6381.651,
+                3.0
+              ],
+              [
+                7252.576,
+                6381.651,
+                24.0
+              ],
+              [
+                7257.213,
+                6374.569,
+                31
+              ]
+            ],
+            "preserved_action_type": "move_entity"
+          }
+        }
+      ],
+      "intent": "uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+      "intent_stage": "00.uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+      "causal_chain_id": "L2-1_v1.semantic_event_chain",
+      "causal_predecessor_intent": "",
+      "target_roles": [
+        "landing_pad",
+        "mission_uav"
+      ],
+      "log_event": {
+        "topic": "evt_L2-1_v1_lifecycle_takeoff_uav_l2_1_v1",
+        "category": "uav_lifecycle",
+        "title": "UAV takes off from visible home pad and enters mission airspace",
+        "severity": "info",
+        "overlay": "uav_lifecycle",
+        "target_ids": [
+          "uav_l2_1_v1",
+          "pad_home_uav_l2_1_v1"
+        ],
+        "intent": "uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+        "intent_stage": "00.uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+        "causal_chain_id": "L2-1_v1.semantic_event_chain",
+        "target_roles": [
+          "landing_pad",
+          "mission_uav"
+        ]
+      }
+    },
+    {
+      "event_id": "station_degraded",
+      "trigger_ref": "trig_station_degraded",
+      "priority": 1,
+      "max_fire_count": 1,
+      "actions": [
+        {
+          "type": "set_visual_state",
+          "action_id": "set_tower_degraded",
+          "entity_id": "tower_l2_1_v1",
+          "visual_state": {
+            "mode": "degraded"
+          }
+        },
+        {
+          "type": "set_runtime_state",
+          "action_id": "set_runtime_state_l2_1_v1_station_degraded_00",
+          "entity_id": "tower_l2_1_v1",
+          "delay_ticks": 0,
+          "state_patch": {
+            "communication_state": {
+              "station_unavailable": true
+            }
+          },
+          "runtime_state_schedule_profile_id": "l1_l3_runtime_state_schedule",
+          "runtime_state_schedule_semantics": "queued_after_event_actions_delay_ticks_0_next_tick"
+        },
+        {
+          "type": "set_runtime_state",
+          "action_id": "set_runtime_state_l2_1_v1_station_degraded_01",
+          "entity_id": "uav_l2_1_v1",
+          "delay_ticks": 0,
+          "state_patch": {
+            "communication_state": {
+              "communication_unavailable": true
+            },
+            "control_state": {
+              "safe_hold_active": true
+            }
+          },
+          "runtime_state_schedule_profile_id": "l1_l3_runtime_state_schedule",
+          "runtime_state_schedule_semantics": "queued_after_event_actions_delay_ticks_0_next_tick"
+        }
+      ],
+      "intent": "digital_anomaly",
+      "intent_stage": "01.digital_anomaly",
+      "causal_chain_id": "L2-1_v1.semantic_event_chain",
+      "causal_predecessor_intent": "uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+      "target_roles": [
+        "facility"
+      ],
+      "log_event": {
+        "topic": "evt_L2-1_v1_station_degraded",
+        "category": "infrastructure",
+        "title": "Communication station degraded",
+        "severity": "warning",
+        "overlay": "infrastructure",
+        "target_ids": [
+          "tower_l2_1_v1"
+        ],
+        "intent": "digital_anomaly",
+        "intent_stage": "01.digital_anomaly",
+        "causal_chain_id": "L2-1_v1.semantic_event_chain",
+        "causal_predecessor_intent": "uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+        "target_roles": [
+          "facility"
+        ]
+      }
+    },
+    {
+      "event_id": "uav_link_response",
+      "trigger_ref": "trig_after_station_degraded_delay_30",
+      "priority": 2,
+      "max_fire_count": 1,
+      "actions": [
+        {
+          "type": "move_entity",
+          "action_id": "move_uav_backup_loiter",
+          "entity_id": "uav_l2_1_v1",
+          "waypoints_enu_m": [
+            [
+              7257.213,
+              6374.569,
+              31.0
+            ],
+            [
+              7257.213,
+              6374.569,
+              30.0
+            ],
+            [
+              7267.213,
+              6384.569,
+              30.0
+            ],
+            [
+              7270.213,
+              6389.569,
+              30.0
+            ]
+          ],
+          "velocity_mps": 4.0,
+          "uav_corridor_validation": {
+            "status": "waypoints_repaired_for_building_clearance",
+            "assigned_altitude_m": 30.0,
+            "original_waypoints_enu_m": [
+              [
+                7257.213,
+                6374.569,
+                31
+              ],
+              [
+                7267.213,
+                6384.569,
+                30
+              ],
+              [
+                7270.213,
+                6389.569,
+                34
+              ]
+            ],
+            "preserved_action_type": "move_entity"
+          }
+        },
+        {
+          "type": "set_runtime_state",
+          "action_id": "set_runtime_state_l2_1_v1_uav_link_response_00",
+          "entity_id": "tower_l2_1_v1",
+          "delay_ticks": 0,
+          "state_patch": {
+            "communication_state": {
+              "station_unavailable": false,
+              "backup_link_active": true
+            }
+          },
+          "runtime_state_schedule_profile_id": "l1_l3_runtime_state_schedule",
+          "runtime_state_schedule_semantics": "queued_after_event_actions_delay_ticks_0_next_tick"
+        },
+        {
+          "type": "set_runtime_state",
+          "action_id": "set_runtime_state_l2_1_v1_uav_link_response_01",
+          "entity_id": "uav_l2_1_v1",
+          "delay_ticks": 0,
+          "state_patch": {
+            "communication_state": {
+              "alternate_link_active": true,
+              "communication_unavailable": false
+            },
+            "control_state": {
+              "safe_hold_active": false
+            }
+          },
+          "runtime_state_schedule_profile_id": "l1_l3_runtime_state_schedule",
+          "runtime_state_schedule_semantics": "queued_after_event_actions_delay_ticks_0_next_tick"
+        }
+      ],
+      "intent": "avoid_or_rth",
+      "intent_stage": "02.avoid_or_rth",
+      "causal_chain_id": "L2-1_v1.semantic_event_chain",
+      "causal_predecessor_intent": "receiver_observed_station_loss",
+      "target_roles": [
+        "facility",
+        "mission_uav"
+      ],
+      "log_event": {
+        "topic": "evt_L2-1_v1_uav_link_response",
+        "category": "uav_mission",
+        "title": "UAV changes behavior under degraded C2",
+        "severity": "warning",
+        "overlay": "uav_mission",
+        "target_ids": [
+          "uav_l2_1_v1",
+          "tower_l2_1_v1"
+        ],
+        "intent": "avoid_or_rth",
+        "intent_stage": "02.avoid_or_rth",
+        "causal_chain_id": "L2-1_v1.semantic_event_chain",
+        "causal_predecessor_intent": "receiver_observed_station_loss",
+        "target_roles": [
+          "facility",
+          "mission_uav"
+        ]
+      },
+      "causal_predecessor_event_ids": [
+        "p09_actor_observed_station_loss"
+      ]
+    },
+    {
+      "event_id": "patrol_resume_via_backup_link",
+      "trigger_ref": "trig_after_uav_link_response_delay_59",
+      "priority": 3,
+      "max_fire_count": 1,
+      "actions": [
+        {
+          "type": "set_visual_state",
+          "action_id": "set_tower_backup",
+          "entity_id": "tower_l2_1_v1",
+          "visual_state": {
+            "mode": "backup_link"
+          }
+        },
+        {
+          "type": "move_entity",
+          "action_id": "move_uav_resume_patrol",
+          "entity_id": "uav_l2_1_v1",
+          "waypoints_enu_m": [
+            [
+              7270.213,
+              6389.569,
+              30.0
+            ],
+            [
+              7246.213,
+              6376.569,
+              30.0
+            ]
+          ],
+          "velocity_mps": 7.0,
+          "uav_corridor_validation": {
+            "status": "waypoints_repaired_for_building_clearance",
+            "assigned_altitude_m": 30.0,
+            "original_waypoints_enu_m": [
+              [
+                7270.213,
+                6389.569,
+                34
+              ],
+              [
+                7246.213,
+                6376.569,
+                31
+              ]
+            ],
+            "preserved_action_type": "move_entity"
+          }
+        },
+        {
+          "type": "set_runtime_state",
+          "action_id": "p09_received_backup_path:active",
+          "entity_id": "uav_l2_1_v1",
+          "delay_ticks": 1,
+          "state_patch": {
+            "communication_state": {
+              "alternate_link_active": true
+            }
+          }
+        }
+      ],
+      "intent": "patrol_resumption",
+      "intent_stage": "03.patrol_resumption",
+      "causal_chain_id": "L2-1_v1.semantic_event_chain",
+      "causal_predecessor_intent": "avoid_or_rth",
+      "target_roles": [
+        "facility",
+        "mission_uav"
+      ],
+      "log_event": {
+        "topic": "evt_L2-1_v1_patrol_resume_via_backup_link",
+        "category": "infrastructure",
+        "title": "UAV resumes after a received response from its declared backup endpoint",
+        "severity": "info",
+        "overlay": "infrastructure",
+        "target_ids": [
+          "uav_l2_1_v1",
+          "contract_facility_l2_1_v1_03"
+        ],
+        "intent": "patrol_resumption",
+        "intent_stage": "03.patrol_resumption",
+        "causal_chain_id": "L2-1_v1.semantic_event_chain",
+        "causal_predecessor_intent": "avoid_or_rth",
+        "target_roles": [
+          "facility",
+          "mission_uav"
+        ]
+      }
+    },
+    {
+      "event_id": "lifecycle_landing_uav_l2_1_v1",
+      "trigger_ref": "trig_after_patrol_resume_via_backup_link_delay_80",
+      "priority": 9,
+      "max_fire_count": 1,
+      "actions": [
+        {
+          "type": "move_entity",
+          "action_id": "move_uav_l2_1_v1_landing_return",
+          "entity_id": "uav_l2_1_v1",
+          "waypoints_enu_m": [
+            [
+              7246.213,
+              6376.569,
+              30.0
+            ],
+            [
+              7246.213,
+              6376.569,
+              36.0
+            ],
+            [
+              7252.576,
+              6381.651,
+              36.0
+            ],
+            [
+              7252.576,
+              6381.651,
+              3.0
+            ]
+          ],
+          "velocity_mps": 4.0,
+          "activity_type": "return_to_pad",
+          "post_activity_type": "landed",
+          "uav_corridor_validation": {
+            "status": "low_altitude_waypoints_preserved_and_building_clear",
+            "assigned_altitude_m": 30.0,
+            "original_waypoints_enu_m": [
+              [
+                7246.213,
+                6376.569,
+                31.0
+              ],
+              [
+                7246.213,
+                6376.569,
+                36.0
+              ],
+              [
+                7252.576,
+                6381.651,
+                36.0
+              ],
+              [
+                7252.576,
+                6381.651,
+                3.0
+              ]
+            ],
+            "preserved_action_type": "move_entity"
+          },
+          "terminal_feasibility": {
+            "model": "constant_speed_path_with_explicit_landing_reference_v2",
+            "dispatch_upper_bound_tick": 430,
+            "route_length_m": 47.143371,
+            "available_ticks": 460,
+            "required_speed_mps": 1.024856,
+            "max_speed_mps": 8.0,
+            "home_pose_origin_z_m": 3.0,
+            "landing_reference_enu_m": [
+              7252.576,
+              6381.651,
+              3.0
+            ],
+            "touchdown_altitude_tolerance_m": 1.5,
+            "touchdown_dwell_ticks": 5
+          }
+        }
+      ],
+      "intent": "landing_or_terminal_resolution",
+      "intent_stage": "09.landing_or_terminal_resolution",
+      "causal_chain_id": "L2-1_v1.semantic_event_chain",
+      "causal_predecessor_intent": "patrol_resumption",
+      "target_roles": [
+        "landing_pad",
+        "mission_uav"
+      ],
+      "log_event": {
+        "topic": "evt_L2-1_v1_lifecycle_landing_uav_l2_1_v1",
+        "category": "uav_lifecycle",
+        "title": "UAV returns to the visible home pad and lands after mission resolution",
+        "severity": "info",
+        "overlay": "uav_lifecycle",
+        "target_ids": [
+          "uav_l2_1_v1",
+          "pad_home_uav_l2_1_v1"
+        ],
+        "intent": "landing_or_terminal_resolution",
+        "intent_stage": "09.landing_or_terminal_resolution",
+        "causal_chain_id": "L2-1_v1.semantic_event_chain",
+        "causal_predecessor_intent": "patrol_resumption",
+        "target_roles": [
+          "landing_pad",
+          "mission_uav"
+        ]
+      }
+    },
+    {
+      "event_id": "p09_actor_observed_station_loss",
+      "trigger_ref": "p09_actor_observed_station_loss",
+      "max_fire_count": 1,
+      "actions": [
+        {
+          "action_id": "p09_actor_observed_station_loss:hold",
+          "type": "set_visual_state",
+          "entity_id": "uav_l2_1_v1",
+          "visual_state": {
+            "mode": "hover"
+          }
+        },
+        {
+          "action_id": "p09_actor_observed_station_loss:state",
+          "type": "set_runtime_state",
+          "entity_id": "uav_l2_1_v1",
+          "delay_ticks": 1,
+          "state_patch": {
+            "control_state": {
+              "safe_hold_active": true
+            }
+          }
+        }
+      ],
+      "intent": "receiver_observed_station_loss",
+      "intent_stage": "01.receiver_observed_station_loss",
+      "causal_chain_id": "L2-1_v1.semantic_event_chain",
+      "causal_predecessor_intent": "digital_anomaly",
+      "causal_predecessor_event_ids": [
+        "station_degraded"
+      ],
+      "target_roles": [
+        "mission_uav"
+      ],
+      "log_event": {
+        "topic": "p09_actor_observed_station_loss",
+        "title": "Actor watchdog observes missing station heartbeats",
+        "target_ids": [
+          "uav_l2_1_v1"
+        ],
+        "intent": "receiver_observed_station_loss"
+      }
+    }
+  ]
+}

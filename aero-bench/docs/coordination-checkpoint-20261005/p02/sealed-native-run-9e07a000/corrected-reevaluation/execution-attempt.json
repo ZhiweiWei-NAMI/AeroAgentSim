@@ -1,0 +1,10 @@
+{
+  "logical_reevaluation_id": "e6a653a3646e2b94fec0f5851f34e8641435fb13937936a0fcf6e3e3d7d750c0",
+  "execution_attempt_id": "p02-verifier-enu-recheck-stage3",
+  "pid": 1296358,
+  "container": "p02-verifier-enu-recheck-stage3-verifier",
+  "prior_attempt_receipt": "stage2-receipt.json",
+  "prior_attempt_verifier_log": "stage2-verifier.log",
+  "output_volume_contract": "Executor-style named tmpfs, uid/gid65532 mode0750 size128MiB; non-root keeper retains mount for output copy.",
+  "keeper_container": "p02-verifier-enu-recheck-stage3-keeper"
+}

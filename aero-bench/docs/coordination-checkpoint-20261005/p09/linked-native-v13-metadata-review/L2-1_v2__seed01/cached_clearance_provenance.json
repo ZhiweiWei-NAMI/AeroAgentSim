@@ -1,0 +1,94 @@
+{
+  "schema_version": "p09.cached-clearance-provenance/v1",
+  "source_native_actions": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed01/adopted/actions.json",
+  "source_native_actions_sha256": "c864580fbd1be8286d7cf8b02d9defe6c393f25b339000d376cc237616ab1339",
+  "exported_actions_sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247",
+  "current_profile_sha256": "8235b3671756d4ce77b833d1cedd6eb384008b231afd97736a5c127306a0b5ff",
+  "annotations": [
+    {
+      "action_id": "move_uav_backup_loiter",
+      "actual_dispatch_tick": 300,
+      "cached_annotation_pointer": "/actions.json/6/action/uav_corridor_validation",
+      "cached_annotation": {
+        "status": "source_geometry_checked_p09_authored_contact_repair",
+        "assigned_altitude_m": 30.0,
+        "profile_version": "p09.l2-1-v2.backup-contact-route/v1",
+        "checker": "Dataset/tools/uav_corridor_planner.py:BuildingObstacleIndex.air_segment_clear",
+        "air_segments_clear": true
+      },
+      "disposition": "HISTORICAL_EXCLUDED_FROM_CURRENT_CLEARANCE_PROOF",
+      "current_receipt": "adoption_profile.json#/backup_contact_geometry/spatial_check",
+      "current_profile_version": "p09.l2-1-v2.backup-contact-route/v2-metadata",
+      "current_action_segments": [
+        {
+          "action_id": "move_uav_backup_loiter",
+          "segment_index": 0,
+          "start_enu_m": [
+            6341.975,
+            6137.542,
+            31.0
+          ],
+          "end_enu_m": [
+            6341.975,
+            6137.542,
+            30.0
+          ],
+          "clear": true,
+          "building_collision_id": null
+        },
+        {
+          "action_id": "move_uav_backup_loiter",
+          "segment_index": 1,
+          "start_enu_m": [
+            6341.975,
+            6137.542,
+            30.0
+          ],
+          "end_enu_m": [
+            6308.0,
+            6134.0,
+            30.0
+          ],
+          "clear": true,
+          "building_collision_id": null
+        }
+      ]
+    },
+    {
+      "action_id": "move_uav_resume_patrol",
+      "actual_dispatch_tick": 395,
+      "cached_annotation_pointer": "/actions.json/10/action/uav_corridor_validation",
+      "cached_annotation": {
+        "status": "source_geometry_checked_p09_authored_contact_repair",
+        "assigned_altitude_m": 30.0,
+        "profile_version": "p09.l2-1-v2.backup-contact-route/v1",
+        "checker": "Dataset/tools/uav_corridor_planner.py:BuildingObstacleIndex.air_segment_clear",
+        "air_segments_clear": true
+      },
+      "disposition": "HISTORICAL_EXCLUDED_FROM_CURRENT_CLEARANCE_PROOF",
+      "current_receipt": "adoption_profile.json#/backup_contact_geometry/spatial_check",
+      "current_profile_version": "p09.l2-1-v2.backup-contact-route/v2-metadata",
+      "current_action_segments": [
+        {
+          "action_id": "move_uav_resume_patrol",
+          "segment_index": 0,
+          "start_enu_m": [
+            6308.0,
+            6134.0,
+            30.0
+          ],
+          "end_enu_m": [
+            6330.975,
+            6139.542,
+            30.0
+          ],
+          "clear": true,
+          "building_collision_id": null
+        }
+      ]
+    }
+  ],
+  "cached_motion_and_receipts_rewritten": false,
+  "ns3_rerun": false,
+  "meaning": "The cached v1 Boolean annotation is not current checker evidence. The separate v2-metadata fitted-source geometry receipt is current; native motion records remain historical execution evidence."
+}

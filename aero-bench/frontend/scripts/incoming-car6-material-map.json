@@ -1,0 +1,25 @@
+{
+  "source_prefab": "Assets/UTS_PRO/Models/Cars/Car_Prefabs/Day Cars/Car_6.prefab",
+  "model": "Assets/UTS_PRO/Models/Cars/Models/Car_6.FBX",
+  "renderers": {
+    "Car_6_LOD0": ["Taxi_Body_empty", "glass", "Taxi_Light_D", "glass_light"],
+    "Car_6_LOD1": ["Taxi_Body_empty", "Taxi_Light_D"],
+    "Wheels_FR_LOD0": ["disk_sht6", "Tire_1"],
+    "Wheel_RR_LOD0": ["disk_sht6", "Tire_1"],
+    "Wheel_FL_LOD0": ["disk_sht6", "Tire_1"],
+    "Wheels_RL_LOD0": ["disk_sht6", "Tire_1"],
+    "Wheel_FR_LOD1": ["Tire_1", "disk_sht6"],
+    "Wheel_RR_LOD1": ["Tire_1", "disk_sht6"],
+    "Wheel_FL_LOD1": ["Tire_1", "disk_sht6"],
+    "Wheels_RL_LOD1": ["Tire_1", "disk_sht6"]
+  },
+  "materials": {
+    "Taxi_Body_empty": {"guid":"67fa6451ea65f7b49a432099e3916dcf","albedo":"Taxi_Body_empty.png","texture_guid":"334587c085f30e341abf53b94aab420f","normal":"Taxi_Body_N.png","normal_guid":"428d068b5fd341946bd7b85c650a7562","normal_scale":1,"color":[0,0.26161262,0.5661765,1],"roughness":0.453,"metalness":0.389},
+    "Taxi_Light_D": {"guid":"52cc14088c3bb08498ae07e558e8bfc3","albedo":"Taxi_Light_D.png","texture_guid":"56b474b6b1ab323439bd573be35ba69b","normal":"Taxi_Light_N.png","normal_guid":"63fcb7e8f9f50414d8128855708838e6","emissive":"Taxi_Light_D.png","emissive_color":[1.24,1.24,1.24],"color":[1,1,1,1],"roughness":1},
+    "glass": {"guid":"1a132634647676e4580d6ead5f715437","albedo":null,"color":[0.42647058,0.42647058,0.42647058,0.866]},
+    "glass_light": {"guid":"c4db87110ff6faa45b4fb260c0dae39f","albedo":null,"color":[0.588,0.588,0.588,0.45999998]},
+    "disk_sht6": {"guid":"fe5755dddcc84e644b7f92873bd3fb01","albedo":"disk8.png","texture_guid":"8477d52fc66714940b3c92e677f389cc","normal":"disk_sht6_norm.png","normal_guid":"4a7ac36a7f11b5b4fbd0a3853a5a6087"},
+    "Tire_1": {"guid":"536c2f59ebcf8b34aa66949ed8137605","albedo":"Tread_D.png","texture_guid":"8faea85d6904ea34aa1c921fd1238c11","normal":"Tread_N.png","normal_guid":"8dbb770bd61cc1e46bfb1101c2ccfd67"}
+  },
+  "unresolved_fbx_references": ["disk1.png", "disk3.png", "disk4.png", "disk5.png", "disk6.png"]
+}

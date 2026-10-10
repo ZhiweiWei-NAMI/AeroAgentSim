@@ -1,0 +1,471 @@
+{
+  "pinned_verifier_source": [
+    {
+      "layer_blob": "blobs/sha256/f6ff38fddb41f1e5a1010461dda3ace03836da51d1a59368ca576688bff812eb",
+      "path": "opt/aero-bench/aero_bench/tasks/inspection/formal_v2_sealed.py",
+      "sha256": "25a4c2a06ddfdd3d2c6e24456b2f18c69f5bb11c72e9fd443698442857b5e05d",
+      "region_prism_source": [
+        {
+          "line": 178,
+          "text": "def _region_prism(region: ResolvedRegion) -> PolygonPrismV2:"
+        },
+        {
+          "line": 179,
+          "text": "    lower_altitudes = tuple(vertex.amsl_m for vertex in region.lower_vertices)"
+        },
+        {
+          "line": 180,
+          "text": "    upper_altitudes = tuple(vertex.amsl_m for vertex in region.upper_vertices)"
+        },
+        {
+          "line": 181,
+          "text": "    if ("
+        },
+        {
+          "line": 182,
+          "text": "        max(lower_altitudes) - min(lower_altitudes) > _REGION_PLANE_TOLERANCE_M"
+        },
+        {
+          "line": 183,
+          "text": "        or max(upper_altitudes) - min(upper_altitudes)"
+        },
+        {
+          "line": 184,
+          "text": "        > _REGION_PLANE_TOLERANCE_M"
+        },
+        {
+          "line": 185,
+          "text": "    ):"
+        },
+        {
+          "line": 186,
+          "text": "        raise ValueError(\"resolved formal region altitude planes are not level\")"
+        },
+        {
+          "line": 187,
+          "text": "    lower_xy = tuple("
+        },
+        {
+          "line": 188,
+          "text": "        (vertex.enu.east_m, vertex.enu.north_m)"
+        },
+        {
+          "line": 189,
+          "text": "        for vertex in region.lower_vertices"
+        },
+        {
+          "line": 190,
+          "text": "    )"
+        },
+        {
+          "line": 191,
+          "text": "    upper_xy = tuple("
+        },
+        {
+          "line": 192,
+          "text": "        (vertex.enu.east_m, vertex.enu.north_m)"
+        },
+        {
+          "line": 193,
+          "text": "        for vertex in region.upper_vertices"
+        },
+        {
+          "line": 194,
+          "text": "    )"
+        },
+        {
+          "line": 195,
+          "text": "    if lower_xy != upper_xy:"
+        },
+        {
+          "line": 196,
+          "text": "        raise ValueError(\"resolved formal region lower and upper footprints differ\")"
+        },
+        {
+          "line": 197,
+          "text": "    return PolygonPrismV2("
+        },
+        {
+          "line": 198,
+          "text": "        prism_id=region.region_id,"
+        },
+        {
+          "line": 199,
+          "text": "        vertices_enu=tuple("
+        },
+        {
+          "line": 200,
+          "text": "            PolygonVertexV2(east_m=float(east), north_m=float(north))"
+        },
+        {
+          "line": 201,
+          "text": "            for east, north in lower_xy"
+        },
+        {
+          "line": 202,
+          "text": "        ),"
+        },
+        {
+          "line": 203,
+          "text": "        min_altitude_amsl_m=float(math.fsum(lower_altitudes) / len(lower_altitudes)),"
+        },
+        {
+          "line": 204,
+          "text": "        max_altitude_amsl_m=float(math.fsum(upper_altitudes) / len(upper_altitudes)),"
+        },
+        {
+          "line": 205,
+          "text": "    )"
+        },
+        {
+          "line": 206,
+          "text": ""
+        },
+        {
+          "line": 207,
+          "text": ""
+        },
+        {
+          "line": 208,
+          "text": "def _mission_context("
+        },
+        {
+          "line": 209,
+          "text": "    *,"
+        },
+        {
+          "line": 210,
+          "text": "    package: InspectionTaskPackage,"
+        },
+        {
+          "line": 211,
+          "text": "    scenario: ResolvedScenario,"
+        },
+        {
+          "line": 212,
+          "text": "    config: InspectionFormalVerifierConfigV3,"
+        },
+        {
+          "line": 213,
+          "text": ") -> InspectionMissionContextV2:"
+        },
+        {
+          "line": 214,
+          "text": "    if config.package_id != scenario.task.package_id:"
+        },
+        {
+          "line": 215,
+          "text": "        raise ValueError(\"formal verifier package_id differs from ResolvedScenario\")"
+        },
+        {
+          "line": 216,
+          "text": "    launch = _selected_launch(scenario)"
+        },
+        {
+          "line": 217,
+          "text": "    if launch.primary_uav_entity_id != config.vehicle_id:"
+        },
+        {
+          "line": 218,
+          "text": "        raise ValueError(\"formal vehicle_id is not the selected launch UAV\")"
+        },
+        {
+          "line": 219,
+          "text": "    entities = {entity.entity_id: entity for entity in scenario.entities}"
+        },
+        {
+          "line": 220,
+          "text": "    vehicle = entities.get(config.vehicle_id)"
+        },
+        {
+          "line": 221,
+          "text": "    if ("
+        },
+        {
+          "line": 222,
+          "text": "        vehicle is None"
+        },
+        {
+          "line": 223,
+          "text": "        or vehicle.kind != \"uav\""
+        },
+        {
+          "line": 224,
+          "text": "        or vehicle.state != \"dynamic\""
+        }
+      ]
+    }
+  ],
+  "pinned_constant_and_call_sites": [
+    {
+      "line": 70,
+      "text": "_REGION_PLANE_TOLERANCE_M = 1e-6"
+    },
+    {
+      "line": 333,
+      "text": "        geofences=tuple(_region_prism(region) for region in geofences if region),"
+    },
+    {
+      "line": 334,
+      "text": "        no_fly_prisms=tuple(_region_prism(region) for region in no_fly if region),"
+    }
+  ],
+  "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+  "compilation_id": "a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610",
+  "observed_at_utc": "2026-10-06T07:05:14.386002+00:00",
+  "actual_failure": {
+    "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_native_compiled_execution_r2/9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd/failure-diagnostic.wait_verifier.json",
+    "sha256": "652034e6f718f6333a5cec2e0683248ef4e5932249de3f7f0742123d21782b97",
+    "stage": "wait_verifier",
+    "exit_code": 1,
+    "message": "resolved formal region altitude planes are not level"
+  },
+  "pinned_verifier_image": "localhost:5000/aero-bench/verifier@sha256:082f4ecd3693d50fd6d6946f6b436de73d40da9eeabb00d8cc7e9c00db78713f",
+  "pinned_source_revision_label": "d9779b5412484051d4315e406cf1d2f8c2e615d2d7aadececbc8ff432d1311d4",
+  "operands": [
+    {
+      "region_id": "region.city-operational-geofence",
+      "kind": "geofence",
+      "declared_geometry": {
+        "footprint_enu_m": [
+          {
+            "east_m": -525.0,
+            "north_m": -525.0
+          },
+          {
+            "east_m": 480.0,
+            "north_m": -525.0
+          },
+          {
+            "east_m": 480.0,
+            "north_m": 480.0
+          },
+          {
+            "east_m": -525.0,
+            "north_m": 480.0
+          }
+        ],
+        "height_reference": "enu_up",
+        "max_altitude_m": 180.0,
+        "min_altitude_m": 0.0
+      },
+      "resolved_planes": {
+        "lower": {
+          "enu_up_m": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "enu_range_m": 0.0,
+          "amsl_m": [
+            20.043281184509397,
+            20.039739089086652,
+            20.036179520189762,
+            20.039721615612507
+          ],
+          "amsl_min_m": 20.036179520189762,
+          "amsl_max_m": 20.043281184509397,
+          "amsl_range_m": 0.0071016643196344376,
+          "vertex_xy_enu_m": [
+            [
+              -525.0,
+              -525.0
+            ],
+            [
+              480.0,
+              -525.0
+            ],
+            [
+              480.0,
+              480.0
+            ],
+            [
+              -525.0,
+              480.0
+            ]
+          ]
+        },
+        "upper": {
+          "enu_up_m": [
+            180.0,
+            180.0,
+            180.0,
+            180.0
+          ],
+          "enu_range_m": 0.0,
+          "amsl_m": [
+            200.04327996168286,
+            200.03973796684295,
+            200.03617849759758,
+            200.03972049243748
+          ],
+          "amsl_min_m": 200.03617849759758,
+          "amsl_max_m": 200.04327996168286,
+          "amsl_range_m": 0.007101464085280895,
+          "vertex_xy_enu_m": [
+            [
+              -525.0,
+              -525.0
+            ],
+            [
+              480.0,
+              -525.0
+            ],
+            [
+              480.0,
+              480.0
+            ],
+            [
+              -525.0,
+              480.0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "region_id": "region.city-no-fly-east",
+      "kind": "no_fly",
+      "declared_geometry": {
+        "footprint_enu_m": [
+          {
+            "east_m": 300.0,
+            "north_m": 250.0
+          },
+          {
+            "east_m": 350.0,
+            "north_m": 250.0
+          },
+          {
+            "east_m": 350.0,
+            "north_m": 300.0
+          },
+          {
+            "east_m": 300.0,
+            "north_m": 300.0
+          }
+        ],
+        "height_reference": "enu_up",
+        "max_altitude_m": 180.0,
+        "min_altitude_m": 0.0
+      },
+      "resolved_planes": {
+        "lower": {
+          "enu_up_m": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "enu_range_m": 0.0,
+          "amsl_m": [
+            20.011968169361353,
+            20.014513621106744,
+            20.016678079031408,
+            20.014132626354694
+          ],
+          "amsl_min_m": 20.011968169361353,
+          "amsl_max_m": 20.016678079031408,
+          "amsl_range_m": 0.004709909670054913,
+          "vertex_xy_enu_m": [
+            [
+              300.0,
+              250.0
+            ],
+            [
+              350.0,
+              250.0
+            ],
+            [
+              350.0,
+              300.0
+            ],
+            [
+              300.0,
+              300.0
+            ]
+          ]
+        },
+        "upper": {
+          "enu_up_m": [
+            180.0,
+            180.0,
+            180.0,
+            180.0
+          ],
+          "enu_range_m": 0.0,
+          "amsl_m": [
+            200.0119678294286,
+            200.0145132113248,
+            200.01667760778219,
+            200.01413222774863
+          ],
+          "amsl_min_m": 200.0119678294286,
+          "amsl_max_m": 200.01667760778219,
+          "amsl_range_m": 0.004709778353571892,
+          "vertex_xy_enu_m": [
+            [
+              300.0,
+              250.0
+            ],
+            [
+              350.0,
+              250.0
+            ],
+            [
+              350.0,
+              300.0
+            ],
+            [
+              300.0,
+              300.0
+            ]
+          ]
+        }
+      }
+    }
+  ],
+  "first_offending_region": "region.city-operational-geofence",
+  "producer_contract": {
+    "path": "aero_bench/world/resolved.py",
+    "region_assembly_lines": "2503–2536",
+    "vertices_lines": "1782–1820",
+    "enu_up_solver_lines": "1727–1732",
+    "coordinate_conversion_lines": "1621–1649",
+    "formula": "For height_reference=enu_up, return declared height unchanged. For each vertex independently, transform ENU to WGS84/ECEF; amsl_m = ellipsoid_height_m - sampled geoid separation. Horizontal ENU planes need not be constant AMSL."
+  },
+  "diagnosis": "Immutable compiled geometry and ResolvedRegion agree on level ENU 0m/180m planes. The pinned verifier image uses an older AMSL-only prism adapter, ignoring height_reference; it rejects expected millimetre-scale AMSL variation produced by the ENU/geodetic conversion. This is a verifier artifact/schema contract mismatch, not nonlevel compiled ENU planes.",
+  "current_source": {
+    "path": "/mnt/data2/weizhiwei/AERO_BENCH/aero_bench/tasks/inspection/formal_v2_sealed.py",
+    "sha256": "ed5f0c2686c8e1256e28202c3a522658a332ea6d2d1a2a500c601a0549b8c640",
+    "relevant_lines": "180–224",
+    "behavior": "Already selects vertex.enu.up_m for enu_up, vertex.amsl_m for amsl, binds pinned world geometry and validates plane/footprint/declared altitude at unchanged tolerance."
+  },
+  "source_artifacts": [
+    {
+      "path": "/mnt/data2/weizhiwei/AERO_BENCH/validation/platform-plan-20261001/final-verify/authoring-api/compilations-run2/a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610/bundle/validation/platform-plan-20261001/W1-I5/native-v7/resolved-run.json",
+      "sha256": "32b014fb7ce767f305b90c607303afa523f5035fcb6d8814ac9af51ea4ccdce3",
+      "role": "Historical geometry reference only; not sealed-run execution identity."
+    },
+    {
+      "path": "/mnt/data2/weizhiwei/AERO_BENCH/validation/platform-plan-20261001/final-verify/authoring-api/compilations-run2/a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610/bundle/validation/platform-plan-20261001/W1-I5/native-v7/world/package.json",
+      "sha256": "9daa91c6831747b215a2dfd8cbb46bf6243e82e80265a2daac97b22517a3e23d"
+    },
+    {
+      "path": "/mnt/data2/weizhiwei/AERO_BENCH/validation/platform-plan-20261001/final-verify/authoring-api/compilations-run2/a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610/bundle/validation/platform-plan-20261001/W1-I5/native-v7/configs/verifier.json",
+      "sha256": "6e4059fc7da5409510f02038cf3e32b9ea2a5c093bd5fd05cfc559324027ce52"
+    }
+  ],
+  "narrow_repair_recommendation": "Validate/package the current height-reference-aware formal projection and corresponding prism schema in a new digest-pinned verifier artifact; keep compiled world vertices, coordinate conversion and level-plane tolerance unchanged. If authorized, independently re-evaluate the existing sealed evidence with explicit new verifier identity while preserving the failed original receipt. No mission rerun is required to diagnose this contract failure.",
+  "changes_made": "Only this new sanitized diagnosis note; no source, packet README/manifest, original output, verifier image, service, credentials or simulation modified.",
+  "exact_sealed_execution_source": {
+    "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+    "seed": 20261002,
+    "compiled_record_source": "bundle/compiled-resolved-runs.json",
+    "canonical_record_sha256": "33265b1978f2c076570ac0c54ca70c14b78cb06cadc427866a76458736fb7e88",
+    "region_vertices_exactly_equal_to_diagnostic_operands": true,
+    "goal_ids_equal_previous_packet": true,
+    "verifier_config_sha256": "6e4059fc7da5409510f02038cf3e32b9ea2a5c093bd5fd05cfc559324027ce52"
+  }
+}

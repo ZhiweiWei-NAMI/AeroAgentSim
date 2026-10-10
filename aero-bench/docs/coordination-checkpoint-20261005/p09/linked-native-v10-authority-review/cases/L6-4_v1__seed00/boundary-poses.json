@@ -1,0 +1,3246 @@
+{
+  "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v10/L6-4_v1__seed00/adopted/trajectories.jsonl",
+  "scope": "unchanged field projection of bound owner-local participants, actors, stations and pad at event ticks +/-2",
+  "rows": [
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 28,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 28,
+      "pos_enu": [
+        6653.956,
+        6527.6,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 28,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 50.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 29,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 29,
+      "pos_enu": [
+        6653.956,
+        6527.6,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 29,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 50.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 30,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 30,
+      "pos_enu": [
+        6653.956,
+        6527.6,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 30,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 50.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 31,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 31,
+      "pos_enu": [
+        6653.956,
+        6527.6,
+        3.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 31,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 50.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 32,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 32,
+      "pos_enu": [
+        6653.956,
+        6527.6,
+        4.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 32,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 50.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 38,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 38,
+      "pos_enu": [
+        6653.956,
+        6527.6,
+        7.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 38,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 50.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 39,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 39,
+      "pos_enu": [
+        6653.956,
+        6527.6,
+        7.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 39,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 50.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 40,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 40,
+      "pos_enu": [
+        6653.956,
+        6527.6,
+        8.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 40,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 50.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 41,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 41,
+      "pos_enu": [
+        6653.956,
+        6527.6,
+        8.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 41,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 50.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 42,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 42,
+      "pos_enu": [
+        6653.956,
+        6527.6,
+        9.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 42,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        4.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 50.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 238,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 238,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 238,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 239,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 239,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 239,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 240,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 240,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 240,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 241,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 241,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 241,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 242,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 242,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 242,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 428,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 428,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 428,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 429,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 429,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 429,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 430,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 430,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 430,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 431,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 431,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        31.8
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 431,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.2
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 432,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 432,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        31.6
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 432,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.4
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 433,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 433,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        31.4
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 433,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.6
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 434,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 434,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        31.2
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 434,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        34.8
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 435,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 435,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 435,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        35.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 436,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 436,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        30.8
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 436,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        35.2
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 437,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 437,
+      "pos_enu": [
+        6634.035,
+        6525.817,
+        30.6
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "yaw_deg": -174.885453,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 437,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        35.4
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 458,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 458,
+      "pos_enu": [
+        6636.517759,
+        6528.299759,
+        30.0
+      ],
+      "vel_mps": [
+        1.37931,
+        1.37931,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 458,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        39.6
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 459,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 459,
+      "pos_enu": [
+        6636.65569,
+        6528.43769,
+        30.0
+      ],
+      "vel_mps": [
+        1.37931,
+        1.37931,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 459,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        39.8
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 460,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "jammed",
+      "activity_type": "jammed"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 460,
+      "pos_enu": [
+        6636.793621,
+        6528.575621,
+        30.0
+      ],
+      "vel_mps": [
+        1.37931,
+        1.37931,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 460,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        40.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 461,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 461,
+      "pos_enu": [
+        6636.931552,
+        6528.713552,
+        30.0
+      ],
+      "vel_mps": [
+        1.37931,
+        1.37931,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 461,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        40.2
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 462,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 462,
+      "pos_enu": [
+        6637.069483,
+        6528.851483,
+        30.0
+      ],
+      "vel_mps": [
+        1.37931,
+        1.37931,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 462,
+      "pos_enu": [
+        6622.035,
+        6532.817,
+        40.4
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "yaw_deg": 152.105096,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 558,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 558,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 558,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 559,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 559,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 559,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 560,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 560,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 560,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 561,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 561,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 561,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 562,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 562,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 562,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 563,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 563,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 563,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 564,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 564,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 564,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 565,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 565,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 565,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 566,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 566,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 566,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 567,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 567,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 567,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 623,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 623,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 623,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 624,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 624,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 624,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 625,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 625,
+      "pos_enu": [
+        6638.035,
+        6529.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 625,
+      "pos_enu": [
+        6627.035,
+        6537.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 626,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 626,
+      "pos_enu": [
+        6638.475,
+        6530.137,
+        30.0
+      ],
+      "vel_mps": [
+        4.4,
+        3.2,
+        0.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 626,
+      "pos_enu": [
+        6626.556739,
+        6538.07787,
+        50.0
+      ],
+      "vel_mps": [
+        -4.782609,
+        2.608696,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 627,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 627,
+      "pos_enu": [
+        6638.915,
+        6530.457,
+        30.0
+      ],
+      "vel_mps": [
+        4.4,
+        3.2,
+        0.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 627,
+      "pos_enu": [
+        6626.078478,
+        6538.338739,
+        50.0
+      ],
+      "vel_mps": [
+        -4.782609,
+        2.608696,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 628,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 628,
+      "pos_enu": [
+        6639.355,
+        6530.777,
+        30.0
+      ],
+      "vel_mps": [
+        4.4,
+        3.2,
+        0.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 628,
+      "pos_enu": [
+        6625.600217,
+        6538.599609,
+        50.0
+      ],
+      "vel_mps": [
+        -4.782609,
+        2.608696,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 629,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 629,
+      "pos_enu": [
+        6639.795,
+        6531.097,
+        30.0
+      ],
+      "vel_mps": [
+        4.4,
+        3.2,
+        0.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 629,
+      "pos_enu": [
+        6625.121957,
+        6538.860478,
+        50.0
+      ],
+      "vel_mps": [
+        -4.782609,
+        2.608696,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 630,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 630,
+      "pos_enu": [
+        6640.235,
+        6531.417,
+        30.0
+      ],
+      "vel_mps": [
+        4.4,
+        3.2,
+        0.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 630,
+      "pos_enu": [
+        6624.643696,
+        6539.121348,
+        50.0
+      ],
+      "vel_mps": [
+        -4.782609,
+        2.608696,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 631,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 631,
+      "pos_enu": [
+        6640.675,
+        6531.737,
+        30.0
+      ],
+      "vel_mps": [
+        4.4,
+        3.2,
+        0.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 631,
+      "pos_enu": [
+        6624.165435,
+        6539.382217,
+        50.0
+      ],
+      "vel_mps": [
+        -4.782609,
+        2.608696,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 632,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 632,
+      "pos_enu": [
+        6641.115,
+        6532.057,
+        30.0
+      ],
+      "vel_mps": [
+        4.4,
+        3.2,
+        0.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 632,
+      "pos_enu": [
+        6623.687174,
+        6539.643087,
+        50.0
+      ],
+      "vel_mps": [
+        -4.782609,
+        2.608696,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 708,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 708,
+      "pos_enu": [
+        6649.035,
+        6537.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 708,
+      "pos_enu": [
+        6616.035,
+        6543.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 709,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 709,
+      "pos_enu": [
+        6649.035,
+        6537.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 709,
+      "pos_enu": [
+        6616.035,
+        6543.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 710,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 710,
+      "pos_enu": [
+        6649.035,
+        6537.817,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 710,
+      "pos_enu": [
+        6616.035,
+        6543.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 711,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 711,
+      "pos_enu": [
+        6649.035,
+        6537.817,
+        30.4
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 711,
+      "pos_enu": [
+        6616.035,
+        6543.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 712,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 712,
+      "pos_enu": [
+        6649.035,
+        6537.817,
+        30.8
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 712,
+      "pos_enu": [
+        6616.035,
+        6543.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 713,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 713,
+      "pos_enu": [
+        6649.035,
+        6537.817,
+        31.2
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 713,
+      "pos_enu": [
+        6616.035,
+        6543.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 714,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 714,
+      "pos_enu": [
+        6649.035,
+        6537.817,
+        31.6
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 714,
+      "pos_enu": [
+        6616.035,
+        6543.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 715,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 715,
+      "pos_enu": [
+        6649.035,
+        6537.817,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 715,
+      "pos_enu": [
+        6616.035,
+        6543.817,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 716,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 716,
+      "pos_enu": [
+        6649.035,
+        6537.817,
+        32.4
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 716,
+      "pos_enu": [
+        6616.035,
+        6543.817,
+        49.6
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -4.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "tower_l6_4_v1",
+      "tick": 717,
+      "pos_enu": [
+        6633.091,
+        6530.449,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -92.54,
+      "label_class": "radio_tower",
+      "state": "alternate_channel",
+      "activity_type": "alternate_channel"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1",
+      "tick": 717,
+      "pos_enu": [
+        6649.035,
+        6537.817,
+        32.8
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "yaw_deg": 36.027373,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_digital_l6_4_v1_secondary",
+      "tick": 717,
+      "pos_enu": [
+        6616.035,
+        6543.817,
+        49.2
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -4.0
+      ],
+      "yaw_deg": 151.38954,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    }
+  ]
+}

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.manager.airspace &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.airspace</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.manager.airspace</h1><div class="highlight"><pre>
+<span></span><span class="c1"># manager/airspace.py</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Set</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<div class="viewcode-block" id="OctreeNode"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode">[docs]</a><span class="k">class</span> <span class="nc">OctreeNode</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    八叉树节点，用于高效维护和查询三维空间中的代理位置</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># 八叉树的八个象限索引</span>
+    <span class="n">FUL</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># 前上左 (Front Upper Left)</span>
+    <span class="n">FUR</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># 前上右 (Front Upper Right)</span>
+    <span class="n">FLL</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># 前下左 (Front Lower Left)</span>
+    <span class="n">FLR</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># 前下右 (Front Lower Right)</span>
+    <span class="n">BUL</span> <span class="o">=</span> <span class="mi">4</span>  <span class="c1"># 后上左 (Back Upper Left)</span>
+    <span class="n">BUR</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># 后上右 (Back Upper Right)</span>
+    <span class="n">BLL</span> <span class="o">=</span> <span class="mi">6</span>  <span class="c1"># 后下左 (Back Lower Left)</span>
+    <span class="n">BLR</span> <span class="o">=</span> <span class="mi">7</span>  <span class="c1"># 后下右 (Back Lower Right)</span>
+    
+<div class="viewcode-block" id="OctreeNode.__init__"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">boundary</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">capacity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">max_depth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化八叉树节点</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            boundary: 边界 (x_min, y_min, z_min, x_max, y_max, z_max)</span>
+<span class="sd">            capacity: 每个节点最多容纳的代理数量</span>
+<span class="sd">            depth: 当前节点深度</span>
+<span class="sd">            max_depth: 最大深度限制</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">boundary</span> <span class="o">=</span> <span class="n">boundary</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span> <span class="o">=</span> <span class="n">capacity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">=</span> <span class="n">depth</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span> <span class="o">=</span> <span class="n">max_depth</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 存储代理ID到位置的映射</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>  <span class="c1"># 八个子节点</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">divided</span> <span class="o">=</span> <span class="kc">False</span></div>
+    
+<div class="viewcode-block" id="OctreeNode.contains_point"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode.contains_point">[docs]</a>    <span class="k">def</span> <span class="nf">contains_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查点是否在边界内&quot;&quot;&quot;</span>
+        <span class="n">x_min</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">z_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">z_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boundary</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">x_min</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">x_max</span> <span class="ow">and</span> 
+                <span class="n">y_min</span> <span class="o">&lt;=</span> <span class="n">y</span> <span class="o">&lt;=</span> <span class="n">y_max</span> <span class="ow">and</span> 
+                <span class="n">z_min</span> <span class="o">&lt;=</span> <span class="n">z</span> <span class="o">&lt;=</span> <span class="n">z_max</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="OctreeNode.divide"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode.divide">[docs]</a>    <span class="k">def</span> <span class="nf">divide</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;将节点分为八个子节点&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">divided</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span><span class="p">:</span>
+            <span class="k">return</span>
+            
+        <span class="n">x_min</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">z_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">z_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boundary</span>
+        <span class="n">x_mid</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_min</span> <span class="o">+</span> <span class="n">x_max</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">y_mid</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_min</span> <span class="o">+</span> <span class="n">y_max</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">z_mid</span> <span class="o">=</span> <span class="p">(</span><span class="n">z_min</span> <span class="o">+</span> <span class="n">z_max</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        
+        <span class="c1"># 创建八个子节点</span>
+        <span class="c1"># 前上左 (Front Upper Left)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">FUL</span><span class="p">]</span> <span class="o">=</span> <span class="n">OctreeNode</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">y_mid</span><span class="p">,</span> <span class="n">z_mid</span><span class="p">,</span> <span class="n">x_mid</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">z_max</span><span class="p">),</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span>
+        <span class="p">)</span>
+        <span class="c1"># 前上右 (Front Upper Right)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">FUR</span><span class="p">]</span> <span class="o">=</span> <span class="n">OctreeNode</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">x_mid</span><span class="p">,</span> <span class="n">y_mid</span><span class="p">,</span> <span class="n">z_mid</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">z_max</span><span class="p">),</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span>
+        <span class="p">)</span>
+        <span class="c1"># 前下左 (Front Lower Left)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">FLL</span><span class="p">]</span> <span class="o">=</span> <span class="n">OctreeNode</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">z_mid</span><span class="p">,</span> <span class="n">x_mid</span><span class="p">,</span> <span class="n">y_mid</span><span class="p">,</span> <span class="n">z_max</span><span class="p">),</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span>
+        <span class="p">)</span>
+        <span class="c1"># 前下右 (Front Lower Right)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">FLR</span><span class="p">]</span> <span class="o">=</span> <span class="n">OctreeNode</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">x_mid</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">z_mid</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">y_mid</span><span class="p">,</span> <span class="n">z_max</span><span class="p">),</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span>
+        <span class="p">)</span>
+        <span class="c1"># 后上左 (Back Upper Left)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">BUL</span><span class="p">]</span> <span class="o">=</span> <span class="n">OctreeNode</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">y_mid</span><span class="p">,</span> <span class="n">z_min</span><span class="p">,</span> <span class="n">x_mid</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">z_mid</span><span class="p">),</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span>
+        <span class="p">)</span>
+        <span class="c1"># 后上右 (Back Upper Right)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">BUR</span><span class="p">]</span> <span class="o">=</span> <span class="n">OctreeNode</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">x_mid</span><span class="p">,</span> <span class="n">y_mid</span><span class="p">,</span> <span class="n">z_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">z_mid</span><span class="p">),</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span>
+        <span class="p">)</span>
+        <span class="c1"># 后下左 (Back Lower Left)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">BLL</span><span class="p">]</span> <span class="o">=</span> <span class="n">OctreeNode</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">z_min</span><span class="p">,</span> <span class="n">x_mid</span><span class="p">,</span> <span class="n">y_mid</span><span class="p">,</span> <span class="n">z_mid</span><span class="p">),</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span>
+        <span class="p">)</span>
+        <span class="c1"># 后下右 (Back Lower Right)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">BLR</span><span class="p">]</span> <span class="o">=</span> <span class="n">OctreeNode</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">x_mid</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">z_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">y_mid</span><span class="p">,</span> <span class="n">z_mid</span><span class="p">),</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span>
+        <span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">divided</span> <span class="o">=</span> <span class="kc">True</span>
+        
+        <span class="c1"># 将当前节点中的代理重新分配到子节点</span>
+        <span class="n">agents_to_redistribute</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 清空当前节点的代理</span>
+        
+        <span class="k">for</span> <span class="n">agent_id</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> <span class="ow">in</span> <span class="n">agents_to_redistribute</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="OctreeNode.insert"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode.insert">[docs]</a>    <span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        插入代理到八叉树</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+<span class="sd">            x: X坐标</span>
+<span class="sd">            y: Y坐标</span>
+<span class="sd">            z: Z坐标</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            插入是否成功</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 如果点不在边界内，返回失败</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">contains_point</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="c1"># 如果节点未分裂且有容量，直接添加</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">divided</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+            
+        <span class="c1"># 如果节点未分裂但已满，需要分裂</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">divided</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">divide</span><span class="p">()</span>
+            
+        <span class="c1"># 尝试将代理插入到子节点</span>
+        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">child</span> <span class="ow">and</span> <span class="n">child</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+                
+        <span class="c1"># 如果已经达到最大深度，强制添加到当前节点</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+            
+        <span class="k">return</span> <span class="kc">False</span></div>
+    
+<div class="viewcode-block" id="OctreeNode.update"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        更新代理位置</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+<span class="sd">            x: 新的X坐标</span>
+<span class="sd">            y: 新的Y坐标</span>
+<span class="sd">            z: 新的Z坐标</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            更新是否成功</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 先移除旧的位置</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="c1"># 然后插入新的位置</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="OctreeNode.remove"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode.remove">[docs]</a>    <span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        从八叉树中移除代理</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            移除是否成功</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 检查当前节点</span>
+        <span class="k">if</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span>
+            <span class="k">return</span> <span class="kc">True</span>
+            
+        <span class="c1"># 如果已分裂，检查子节点</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">divided</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">child</span> <span class="ow">and</span> <span class="n">child</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">agent_id</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+                    
+        <span class="k">return</span> <span class="kc">False</span></div>
+    
+<div class="viewcode-block" id="OctreeNode.query_range"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode.query_range">[docs]</a>    <span class="k">def</span> <span class="nf">query_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">range_boundary</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        查询指定范围内的所有代理</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            range_boundary: 查询范围 (x_min, y_min, z_min, x_max, y_max, z_max)</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            范围内的代理ID到位置的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_min</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">z_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">z_max</span> <span class="o">=</span> <span class="n">range_boundary</span>
+        <span class="n">found_agents</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="c1"># 如果查询范围与当前节点边界不相交，返回空</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_intersects</span><span class="p">(</span><span class="n">range_boundary</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">found_agents</span>
+            
+        <span class="c1"># 检查当前节点中的代理</span>
+        <span class="k">for</span> <span class="n">agent_id</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">x_min</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">x_max</span> <span class="ow">and</span> 
+                <span class="n">y_min</span> <span class="o">&lt;=</span> <span class="n">y</span> <span class="o">&lt;=</span> <span class="n">y_max</span> <span class="ow">and</span> 
+                <span class="n">z_min</span> <span class="o">&lt;=</span> <span class="n">z</span> <span class="o">&lt;=</span> <span class="n">z_max</span><span class="p">):</span>
+                <span class="n">found_agents</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+                
+        <span class="c1"># 如果已分裂，递归查询子节点</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">divided</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">child</span><span class="p">:</span>
+                    <span class="n">child_agents</span> <span class="o">=</span> <span class="n">child</span><span class="o">.</span><span class="n">query_range</span><span class="p">(</span><span class="n">range_boundary</span><span class="p">)</span>
+                    <span class="n">found_agents</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">child_agents</span><span class="p">)</span>
+                    
+        <span class="k">return</span> <span class="n">found_agents</span></div>
+    
+<div class="viewcode-block" id="OctreeNode.query_sphere"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode.query_sphere">[docs]</a>    <span class="k">def</span> <span class="nf">query_sphere</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center_x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">center_y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">center_z</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        查询以指定点为中心，指定半径范围内的所有代理</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            center_x: 球心X坐标</span>
+<span class="sd">            center_y: 球心Y坐标</span>
+<span class="sd">            center_z: 球心Z坐标</span>
+<span class="sd">            radius: 半径</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            球形范围内的代理ID到位置的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 创建一个包含球的立方体范围</span>
+        <span class="n">range_boundary</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">center_x</span> <span class="o">-</span> <span class="n">radius</span><span class="p">,</span>
+            <span class="n">center_y</span> <span class="o">-</span> <span class="n">radius</span><span class="p">,</span>
+            <span class="n">center_z</span> <span class="o">-</span> <span class="n">radius</span><span class="p">,</span>
+            <span class="n">center_x</span> <span class="o">+</span> <span class="n">radius</span><span class="p">,</span>
+            <span class="n">center_y</span> <span class="o">+</span> <span class="n">radius</span><span class="p">,</span>
+            <span class="n">center_z</span> <span class="o">+</span> <span class="n">radius</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># 先查询立方体范围内的代理</span>
+        <span class="n">candidate_agents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">query_range</span><span class="p">(</span><span class="n">range_boundary</span><span class="p">)</span>
+        
+        <span class="c1"># 过滤出球形范围内的代理</span>
+        <span class="n">sphere_agents</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">agent_id</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> <span class="ow">in</span> <span class="n">candidate_agents</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># 计算点到球心的距离</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">center_x</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">center_y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">z</span> <span class="o">-</span> <span class="n">center_z</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">distance</span> <span class="o">&lt;=</span> <span class="n">radius</span><span class="p">:</span>
+                <span class="n">sphere_agents</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+                
+        <span class="k">return</span> <span class="n">sphere_agents</span></div>
+    
+<div class="viewcode-block" id="OctreeNode.get_nearest_neighbors"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode.get_nearest_neighbors">[docs]</a>    <span class="k">def</span> <span class="nf">get_nearest_neighbors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取距离指定点最近的k个代理</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            x: X坐标</span>
+<span class="sd">            y: Y坐标</span>
+<span class="sd">            z: Z坐标</span>
+<span class="sd">            k: 返回的最近邻数量</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            最近的k个代理，格式为 [(agent_id, position, distance), ...]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 使用较大的初始搜索半径</span>
+        <span class="n">search_radius</span> <span class="o">=</span> <span class="mf">100.0</span>
+        <span class="n">neighbors</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbors</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">k</span><span class="p">:</span>
+            <span class="c1"># 查询球形范围内的代理</span>
+            <span class="n">agents_in_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">query_sphere</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">search_radius</span><span class="p">)</span>
+            
+            <span class="c1"># 计算每个代理到查询点的距离</span>
+            <span class="k">for</span> <span class="n">agent_id</span><span class="p">,</span> <span class="p">(</span><span class="n">agent_x</span><span class="p">,</span> <span class="n">agent_y</span><span class="p">,</span> <span class="n">agent_z</span><span class="p">)</span> <span class="ow">in</span> <span class="n">agents_in_range</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">distance</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">agent_x</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">agent_y</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">agent_z</span> <span class="o">-</span> <span class="n">z</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">neighbors</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">agent_id</span><span class="p">,</span> <span class="p">(</span><span class="n">agent_x</span><span class="p">,</span> <span class="n">agent_y</span><span class="p">,</span> <span class="n">agent_z</span><span class="p">),</span> <span class="n">distance</span><span class="p">))</span>
+            
+            <span class="c1"># 如果找到足够的邻居，按距离排序并返回前k个</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbors</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">k</span><span class="p">:</span>
+                <span class="n">neighbors</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>  <span class="c1"># 按距离排序</span>
+                <span class="k">return</span> <span class="n">neighbors</span><span class="p">[:</span><span class="n">k</span><span class="p">]</span>
+            
+            <span class="c1"># 否则增大搜索半径</span>
+            <span class="n">search_radius</span> <span class="o">*=</span> <span class="mi">2</span>
+            
+            <span class="c1"># 防止无限循环</span>
+            <span class="k">if</span> <span class="n">search_radius</span> <span class="o">&gt;</span> <span class="mi">10000</span><span class="p">:</span>
+                <span class="k">break</span>
+                
+        <span class="c1"># 如果找不到足够的邻居，返回所有找到的</span>
+        <span class="n">neighbors</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">neighbors</span></div>
+    
+    <span class="k">def</span> <span class="nf">_intersects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">range_boundary</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查两个立方体边界是否相交&quot;&quot;&quot;</span>
+        <span class="n">x_min1</span><span class="p">,</span> <span class="n">y_min1</span><span class="p">,</span> <span class="n">z_min1</span><span class="p">,</span> <span class="n">x_max1</span><span class="p">,</span> <span class="n">y_max1</span><span class="p">,</span> <span class="n">z_max1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boundary</span>
+        <span class="n">x_min2</span><span class="p">,</span> <span class="n">y_min2</span><span class="p">,</span> <span class="n">z_min2</span><span class="p">,</span> <span class="n">x_max2</span><span class="p">,</span> <span class="n">y_max2</span><span class="p">,</span> <span class="n">z_max2</span> <span class="o">=</span> <span class="n">range_boundary</span>
+        
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span><span class="n">x_max1</span> <span class="o">&lt;</span> <span class="n">x_min2</span> <span class="ow">or</span> <span class="n">x_max2</span> <span class="o">&lt;</span> <span class="n">x_min1</span> <span class="ow">or</span>
+                   <span class="n">y_max1</span> <span class="o">&lt;</span> <span class="n">y_min2</span> <span class="ow">or</span> <span class="n">y_max2</span> <span class="o">&lt;</span> <span class="n">y_min1</span> <span class="ow">or</span>
+                   <span class="n">z_max1</span> <span class="o">&lt;</span> <span class="n">z_min2</span> <span class="ow">or</span> <span class="n">z_max2</span> <span class="o">&lt;</span> <span class="n">z_min1</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="OctreeNode.calculate_distance_between_ids"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.OctreeNode.calculate_distance_between_ids">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_distance_between_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">id2</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算两个代理之间的距离</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            id1: 第一个代理ID</span>
+<span class="sd">            id2: 第二个代理ID</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            两个代理之间的距离，如果任意一个代理不存在则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">id1</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents</span> <span class="ow">or</span> <span class="n">id2</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+            
+        <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">z1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">[</span><span class="n">id1</span><span class="p">]</span>
+        <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">z2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">[</span><span class="n">id2</span><span class="p">]</span>
+        
+        <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y1</span> <span class="o">-</span> <span class="n">y2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">z1</span> <span class="o">-</span> <span class="n">z2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="AirspaceManager"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager">[docs]</a><span class="k">class</span> <span class="nc">AirspaceManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    空域管理器</span>
+<span class="sd">    </span>
+<span class="sd">    负责维护代理位置、着陆点位置、障碍物位置和进行碰撞检测</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="AirspaceManager.__init__"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">boundary</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化空域管理器</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            boundary: 整体空域边界 (x_min, y_min, z_min, x_max, y_max, z_max)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;airspace_manager_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">octree</span> <span class="o">=</span> <span class="n">OctreeNode</span><span class="p">(</span><span class="n">boundary</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 存储所有代理的当前位置</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">landing_positions</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 存储所有着陆点的位置</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">obstacle_positions</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 存储所有障碍物的位置</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collision_threshold</span> <span class="o">=</span> <span class="mf">5.0</span>  <span class="c1"># 碰撞检测阈值（米）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collision_events</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 记录已经触发的碰撞事件，避免重复触发</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">event_registry</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">event_registry</span>
+        
+        <span class="c1"># 通过event_registry监听所有agent state_changed事件</span>
+        <span class="k">if</span> <span class="n">env</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;event_registry&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+                <span class="s2">&quot;*&quot;</span><span class="p">,</span>  <span class="c1"># 使用通配符监听所有代理</span>
+                <span class="s2">&quot;state_changed&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">_position_monitor&quot;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_on_state_changed</span>
+            <span class="p">)</span></div>
+    
+    
+    
+<div class="viewcode-block" id="AirspaceManager.get_distance_between_objects"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.get_distance_between_objects">[docs]</a>    <span class="k">def</span> <span class="nf">get_distance_between_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_id1</span><span class="p">,</span> <span class="n">obj_id2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取两个代理之间的距离</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id1: 第一个代理ID</span>
+<span class="sd">            agent_id2: 第二个代理ID</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            两个代理之间的距离，如果任意一个代理不存在则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">octree</span><span class="o">.</span><span class="n">calculate_distance_between_ids</span><span class="p">(</span><span class="n">obj_id1</span><span class="p">,</span> <span class="n">obj_id2</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AirspaceManager.update_object_position"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.update_object_position">[docs]</a>    <span class="k">def</span> <span class="nf">update_object_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+                        <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                        <span class="n">landing_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">obstacle_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        更新代理位置</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            position: 新位置 (x, y, z) </span>
+<span class="sd">            agent_id: 代理ID (可选)</span>
+<span class="sd">            landing_id: 着陆点ID (可选)</span>
+<span class="sd">            obstacle_id: 障碍物ID (可选)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">position</span>
+        <span class="c1"># 确保只有一个ID被提供</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">agent_id</span> <span class="ow">or</span> <span class="n">landing_id</span> <span class="ow">or</span> <span class="n">obstacle_id</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;至少提供一个ID: agent_id, landing_id或obstacle_id&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">([</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">landing_id</span><span class="p">,</span> <span class="n">obstacle_id</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;只能提供一个ID: agent_id, landing_id或obstacle_id&quot;</span><span class="p">)</span>
+        <span class="n">anyway_id</span> <span class="o">=</span> <span class="n">agent_id</span> <span class="ow">or</span> <span class="n">landing_id</span> <span class="ow">or</span> <span class="n">obstacle_id</span>
+
+        <span class="c1"># 更新八叉树</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">octree</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">anyway_id</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+        
+        <span class="n">anyway_positions</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">agent_id</span><span class="p">:</span>
+            <span class="n">anyway_positions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span>
+        <span class="k">elif</span> <span class="n">landing_id</span><span class="p">:</span>
+            <span class="n">anyway_positions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">landing_positions</span>
+        <span class="k">elif</span> <span class="n">obstacle_id</span><span class="p">:</span>
+            <span class="n">anyway_positions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">obstacle_positions</span>
+        <span class="n">anyway_positions</span><span class="p">[</span><span class="n">anyway_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">position</span>
+        
+        <span class="c1"># 检测潜在碰撞</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_potential_collisions</span><span class="p">(</span><span class="n">anyway_id</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.get_object_position"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.get_object_position">[docs]</a>    <span class="k">def</span> <span class="nf">get_object_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">landing_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">obstacle_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取代理当前位置</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID (可选)</span>
+<span class="sd">            landing_id: 着陆点ID (可选)</span>
+<span class="sd">            obstacle_id: 障碍物ID (可选)</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            代理位置 (x, y, z)，如果代理不存在则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">agent_id</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">landing_id</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">landing_positions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">landing_id</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">obstacle_id</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">obstacle_positions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">obstacle_id</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;至少提供一个ID: agent_id, landing_id或obstacle_id&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AirspaceManager.register_object"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.register_object">[docs]</a>    <span class="k">def</span> <span class="nf">register_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+                      <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                      <span class="n">landing_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                      <span class="n">obstacle_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册新对象（代理、着陆点或障碍物）</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            position: 初始位置 (x, y, z)</span>
+<span class="sd">            agent_id: 代理ID (可选)</span>
+<span class="sd">            landing_id: 着陆点ID (可选)</span>
+<span class="sd">            obstacle_id: 障碍物ID (可选)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 确保只有一个ID被提供</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">agent_id</span> <span class="ow">or</span> <span class="n">landing_id</span> <span class="ow">or</span> <span class="n">obstacle_id</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;至少提供一个ID: agent_id, landing_id或obstacle_id&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">([</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">landing_id</span><span class="p">,</span> <span class="n">obstacle_id</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;只能提供一个ID: agent_id, landing_id或obstacle_id&quot;</span><span class="p">)</span>
+        
+        <span class="n">anyway_id</span> <span class="o">=</span> <span class="n">agent_id</span> <span class="ow">or</span> <span class="n">landing_id</span> <span class="ow">or</span> <span class="n">obstacle_id</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">position</span>
+        
+        <span class="c1"># 添加到八叉树</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">octree</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">anyway_id</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+        
+        <span class="c1"># 添加到相应的位置字典</span>
+        <span class="k">if</span> <span class="n">agent_id</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">position</span>
+        <span class="k">elif</span> <span class="n">landing_id</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">landing_positions</span><span class="p">[</span><span class="n">landing_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">position</span>
+        <span class="k">elif</span> <span class="n">obstacle_id</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">obstacle_positions</span><span class="p">[</span><span class="n">obstacle_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">position</span>
+        
+        <span class="c1"># 检测潜在碰撞</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_potential_collisions</span><span class="p">(</span><span class="n">anyway_id</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.register_agent"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.register_agent">[docs]</a>    <span class="k">def</span> <span class="nf">register_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册新代理</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+<span class="sd">            position: 初始位置 (x, y, z)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_object</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.register_landing"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.register_landing">[docs]</a>    <span class="k">def</span> <span class="nf">register_landing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">landing_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册新着陆点</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            landing_id: 着陆点ID</span>
+<span class="sd">            position: 初始位置 (x, y, z)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_object</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">landing_id</span><span class="o">=</span><span class="n">landing_id</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.register_obstacle"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.register_obstacle">[docs]</a>    <span class="k">def</span> <span class="nf">register_obstacle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obstacle_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册新障碍物</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            obstacle_id: 障碍物ID</span>
+<span class="sd">            position: 初始位置 (x, y, z)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_object</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">obstacle_id</span><span class="o">=</span><span class="n">obstacle_id</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.remove_object"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.remove_object">[docs]</a>    <span class="k">def</span> <span class="nf">remove_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">landing_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">obstacle_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        移除对象（代理、着陆点或障碍物）</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID (可选)</span>
+<span class="sd">            landing_id: 着陆点ID (可选)</span>
+<span class="sd">            obstacle_id: 障碍物ID (可选)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 确保只有一个ID被提供</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">agent_id</span> <span class="ow">or</span> <span class="n">landing_id</span> <span class="ow">or</span> <span class="n">obstacle_id</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;至少提供一个ID: agent_id, landing_id或obstacle_id&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">([</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">landing_id</span><span class="p">,</span> <span class="n">obstacle_id</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;只能提供一个ID: agent_id, landing_id或obstacle_id&quot;</span><span class="p">)</span>
+        
+        <span class="n">anyway_id</span> <span class="o">=</span> <span class="n">agent_id</span> <span class="ow">or</span> <span class="n">landing_id</span> <span class="ow">or</span> <span class="n">obstacle_id</span>
+        
+        <span class="c1"># 从八叉树中移除</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">octree</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">anyway_id</span><span class="p">)</span>
+        
+        <span class="c1"># 从相应的位置字典中移除</span>
+        <span class="k">if</span> <span class="n">agent_id</span> <span class="ow">and</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">landing_id</span> <span class="ow">and</span> <span class="n">landing_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">landing_positions</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">landing_positions</span><span class="p">[</span><span class="n">landing_id</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">obstacle_id</span> <span class="ow">and</span> <span class="n">obstacle_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">obstacle_positions</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">obstacle_positions</span><span class="p">[</span><span class="n">obstacle_id</span><span class="p">]</span>
+            
+        <span class="c1"># 清理相关的碰撞事件记录</span>
+        <span class="n">collision_keys_to_remove</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collision_events</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">anyway_id</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                <span class="n">collision_keys_to_remove</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">collision_keys_to_remove</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">collision_events</span><span class="p">[</span><span class="n">key</span><span class="p">]</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.remove_agent"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.remove_agent">[docs]</a>    <span class="k">def</span> <span class="nf">remove_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        移除代理</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove_object</span><span class="p">(</span><span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.remove_landing"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.remove_landing">[docs]</a>    <span class="k">def</span> <span class="nf">remove_landing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">landing_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        移除着陆点</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            landing_id: 着陆点ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove_object</span><span class="p">(</span><span class="n">landing_id</span><span class="o">=</span><span class="n">landing_id</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.remove_obstacle"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.remove_obstacle">[docs]</a>    <span class="k">def</span> <span class="nf">remove_obstacle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obstacle_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        移除障碍物</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            obstacle_id: 障碍物ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove_object</span><span class="p">(</span><span class="n">obstacle_id</span><span class="o">=</span><span class="n">obstacle_id</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.get_agent_position"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.get_agent_position">[docs]</a>    <span class="k">def</span> <span class="nf">get_agent_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取代理当前位置</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            代理位置 (x, y, z)，如果代理不存在则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.get_nearby_objects"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.get_nearby_objects">[docs]</a>    <span class="k">def</span> <span class="nf">get_nearby_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        查询指定位置附近的所有对象</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            position: 查询位置 (x, y, z)</span>
+<span class="sd">            radius: 查询半径</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            附近对象的ID到位置的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">position</span>
+        <span class="n">nearby_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">octree</span><span class="o">.</span><span class="n">query_sphere</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">radius</span><span class="p">)</span>
+                    
+        <span class="k">return</span> <span class="n">nearby_objects</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.check_collision"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.check_collision">[docs]</a>    <span class="k">def</span> <span class="nf">check_collision</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">agent_id2</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        检查两个代理之间是否有碰撞风险</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id1: 第一个代理ID</span>
+<span class="sd">            agent_id2: 第二个代理ID</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            是否有碰撞风险</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">agent_id1</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span> <span class="ow">or</span> <span class="n">agent_id2</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="n">pos1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span><span class="p">[</span><span class="n">agent_id1</span><span class="p">]</span>
+        <span class="n">pos2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span><span class="p">[</span><span class="n">agent_id2</span><span class="p">]</span>
+        
+        <span class="c1"># 计算三维距离</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">pos1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">pos2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">pos1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pos2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">pos1</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">pos2</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="c1"># 如果距离小于阈值，则认为有碰撞风险</span>
+        <span class="k">return</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">collision_threshold</span></div>
+    
+    <span class="k">def</span> <span class="nf">_check_potential_collisions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anyway_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        检查活动物体与周围其他代理的潜在碰撞</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            anyway_id: 任意活动的物体ID (代理/landing/障碍物)</span>
+<span class="sd">            position: 位置</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">:</span>
+            <span class="k">return</span>
+            
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">position</span>
+        
+        <span class="c1"># 查询附近的代理</span>
+        <span class="n">nearby_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">octree</span><span class="o">.</span><span class="n">query_sphere</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">collision_threshold</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+        
+        <span class="c1"># 移除查询代理自身</span>
+        <span class="k">if</span> <span class="n">anyway_id</span> <span class="ow">in</span> <span class="n">nearby_objects</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">nearby_objects</span><span class="p">[</span><span class="n">anyway_id</span><span class="p">]</span>
+            
+        <span class="c1"># 检查每个附近代理是否有碰撞风险</span>
+        <span class="k">for</span> <span class="n">other_id</span><span class="p">,</span> <span class="p">(</span><span class="n">other_x</span><span class="p">,</span> <span class="n">other_y</span><span class="p">,</span> <span class="n">other_z</span><span class="p">)</span> <span class="ow">in</span> <span class="n">nearby_objects</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># 计算三维距离</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">other_x</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">other_y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">z</span> <span class="o">-</span> <span class="n">other_z</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+            
+            <span class="c1"># 如果距离小于阈值，触发碰撞事件</span>
+            <span class="k">if</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">collision_threshold</span><span class="p">:</span>
+                <span class="c1"># 创建一个唯一的碰撞事件ID，确保相同的两个代理只触发一次</span>
+                <span class="n">collision_id</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">([</span><span class="n">anyway_id</span><span class="p">,</span> <span class="n">other_id</span><span class="p">]))</span>
+                
+                <span class="c1"># 如果这个碰撞事件已经触发过，跳过</span>
+                <span class="k">if</span> <span class="n">collision_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collision_events</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                    
+                <span class="c1"># 记录这个碰撞事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">collision_events</span><span class="p">[</span><span class="n">collision_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                
+                <span class="c1"># 触发碰撞事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                    <span class="n">anyway_id</span><span class="p">,</span>
+                    <span class="s1">&#39;collision_risk&#39;</span><span class="p">,</span>
+                    <span class="p">{</span>
+                        <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">anyway_id</span><span class="p">,</span>
+                        <span class="s1">&#39;other_id&#39;</span><span class="p">:</span> <span class="n">other_id</span><span class="p">,</span>
+                        <span class="s1">&#39;distance&#39;</span><span class="p">:</span> <span class="n">distance</span><span class="p">,</span>
+                        <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+                        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="n">position</span><span class="p">,</span>
+                        <span class="s1">&#39;other_position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">other_x</span><span class="p">,</span> <span class="n">other_y</span><span class="p">,</span> <span class="n">other_z</span><span class="p">)</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+                
+                <span class="c1"># 同时为另一个代理触发事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                    <span class="n">other_id</span><span class="p">,</span>
+                    <span class="s1">&#39;collision_risk&#39;</span><span class="p">,</span>
+                    <span class="p">{</span>
+                        <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">other_id</span><span class="p">,</span>
+                        <span class="s1">&#39;other_id&#39;</span><span class="p">:</span> <span class="n">anyway_id</span><span class="p">,</span>
+                        <span class="s1">&#39;distance&#39;</span><span class="p">:</span> <span class="n">distance</span><span class="p">,</span>
+                        <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+                        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">other_x</span><span class="p">,</span> <span class="n">other_y</span><span class="p">,</span> <span class="n">other_z</span><span class="p">),</span>
+                        <span class="s1">&#39;other_position&#39;</span><span class="p">:</span> <span class="n">position</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+    
+<div class="viewcode-block" id="AirspaceManager.clear_collision_event"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.clear_collision_event">[docs]</a>    <span class="k">def</span> <span class="nf">clear_collision_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">agent_id2</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        清除两个代理之间的碰撞事件记录</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id1: 第一个代理ID</span>
+<span class="sd">            agent_id2: 第二个代理ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">collision_id</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">([</span><span class="n">agent_id1</span><span class="p">,</span> <span class="n">agent_id2</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="n">collision_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collision_events</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">collision_events</span><span class="p">[</span><span class="n">collision_id</span><span class="p">]</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.get_objects_in_volume"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.get_objects_in_volume">[docs]</a>    <span class="k">def</span> <span class="nf">get_objects_in_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_min</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y_min</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">z_min</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+                           <span class="n">x_max</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y_max</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">z_max</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取指定体积内的所有物体,种类会以id的前缀来区分</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            x_min: 体积最小X坐标</span>
+<span class="sd">            y_min: 体积最小Y坐标</span>
+<span class="sd">            z_min: 体积最小Z坐标</span>
+<span class="sd">            x_max: 体积最大X坐标</span>
+<span class="sd">            y_max: 体积最大Y坐标</span>
+<span class="sd">            z_max: 体积最大Z坐标</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            体积内物体的ID到位置的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">octree</span><span class="o">.</span><span class="n">query_range</span><span class="p">((</span><span class="n">x_min</span><span class="p">,</span> <span class="n">y_min</span><span class="p">,</span> <span class="n">z_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">z_max</span><span class="p">))</span></div>
+    
+<div class="viewcode-block" id="AirspaceManager.get_objects_in_sphere"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.get_objects_in_sphere">[docs]</a>    <span class="k">def</span> <span class="nf">get_objects_in_sphere</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center_x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">center_y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">center_z</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取指定球形范围内的所有物体</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            center_x: 球心X坐标</span>
+<span class="sd">            center_y: 球心Y坐标</span>
+<span class="sd">            center_z: 球心Z坐标</span>
+<span class="sd">            radius: 半径</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            球形范围内物体的ID到位置的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">octree</span><span class="o">.</span><span class="n">query_sphere</span><span class="p">(</span><span class="n">center_x</span><span class="p">,</span> <span class="n">center_y</span><span class="p">,</span> <span class="n">center_z</span><span class="p">,</span> <span class="n">radius</span><span class="p">)</span></div>
+    
+    <span class="k">def</span> <span class="nf">_on_state_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理代理状态变化事件</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            event含代理ID,landing ID, obstacle ID、状态名称和新值</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">event_data</span> <span class="ow">or</span> <span class="p">(</span><span class="s1">&#39;agent_id&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">event_data</span> <span class="ow">and</span> 
+                              <span class="s1">&#39;landing_id&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">event_data</span> <span class="ow">and</span> 
+                              <span class="s1">&#39;obstacle_id&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">event_data</span><span class="p">):</span>
+            <span class="k">return</span>
+            
+        <span class="n">agent_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+        <span class="n">landing_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;landing_id&#39;</span><span class="p">)</span>
+        <span class="n">obstacle_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;obstacle_id&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">)</span>
+        <span class="n">new_value</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;new_value&#39;</span><span class="p">)</span>
+        
+        <span class="c1"># 只关注position状态变化</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;position&#39;</span> <span class="ow">and</span> <span class="n">new_value</span><span class="p">:</span>
+            <span class="c1"># 确保位置是有效的三维坐标</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="c1"># 更新代理位置</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_object_position</span><span class="p">(</span><span class="n">new_value</span><span class="p">,</span> <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+                                     <span class="n">landing_id</span><span class="o">=</span><span class="n">landing_id</span><span class="p">,</span>
+                                     <span class="n">obstacle_id</span><span class="o">=</span><span class="n">obstacle_id</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="AirspaceManager.get_all_agents"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.get_all_agents">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_agents</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有代理的位置</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            所有代理的ID到位置的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+        
+<div class="viewcode-block" id="AirspaceManager.get_all_landings"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.airspace.AirspaceManager.get_all_landings">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_landings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有着陆点的位置</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            所有着陆点的ID到位置的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 过滤出所有以landing_开头的对象</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">landing_positions</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.airspace</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

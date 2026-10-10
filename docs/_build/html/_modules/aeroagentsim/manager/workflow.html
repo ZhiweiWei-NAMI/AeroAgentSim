@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.manager.workflow &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.workflow</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.manager.workflow</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">WorkflowStatus</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core</span> <span class="kn">import</span> <span class="n">Workflow</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Callable</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.trigger</span> <span class="kn">import</span> <span class="n">Trigger</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="c1"># 获取logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="WorkflowManager"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.workflow.WorkflowManager">[docs]</a><span class="k">class</span> <span class="nc">WorkflowManager</span><span class="p">:</span>
+<div class="viewcode-block" id="WorkflowManager.__init__"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.workflow.WorkflowManager.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflows</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;workflow_manager_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflow_triggers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_manager_events</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subscribe_to_manager_events</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="WorkflowManager.get_all_workflows"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.workflow.WorkflowManager.get_all_workflows">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_workflows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
+
+    <span class="k">def</span> <span class="nf">_register_manager_events</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_registered&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_started&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_completed&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_failed&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_canceled&#39;</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_subscribe_to_manager_events</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_registered&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span>
+                                             <span class="k">lambda</span> <span class="n">ev</span><span class="p">:</span> <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: WMgr: Registered Workflow </span><span class="si">{</span><span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;workflow_id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
+
+<div class="viewcode-block" id="WorkflowManager.register_workflow"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.workflow.WorkflowManager.register_workflow">[docs]</a>    <span class="k">def</span> <span class="nf">register_workflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span>
+                          <span class="n">start_trigger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Trigger</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                          <span class="n">max_starts</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册工作流，可以使用简单的事件触发器或高级触发器</span>
+
+<span class="sd">        参数:</span>
+<span class="sd">            workflow: 要注册的工作流</span>
+<span class="sd">            start_trigger: 启动触发器，可以是(source_id, event_name)元组或Trigger对象</span>
+<span class="sd">            max_starts: 最大启动次数，None表示无限次</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">workflow</span><span class="o">.</span><span class="n">id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflows</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Workflow </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> already registered.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">max_starts</span> <span class="ow">and</span> <span class="n">max_starts</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid max_starts value for workflow </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflows</span><span class="p">[</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">workflow</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subscribe_manager_to_workflow</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span>
+
+        <span class="c1"># 处理触发器</span>
+        <span class="k">if</span> <span class="n">start_trigger</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">start_trigger</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">start_trigger</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="c1"># 将简单触发器转换为高级触发器</span>
+                <span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span> <span class="o">=</span> <span class="n">start_trigger</span>
+                <span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">EventTrigger</span>
+                <span class="n">trigger</span> <span class="o">=</span> <span class="n">EventTrigger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;start_trigger_</span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">trigger</span><span class="o">.</span><span class="n">set_max_triggers</span><span class="p">(</span><span class="n">max_starts</span><span class="p">)</span>
+                <span class="n">trigger</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">context</span><span class="p">,</span> <span class="n">w_id</span><span class="o">=</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_advanced_trigger</span><span class="p">(</span><span class="n">w_id</span><span class="p">,</span> <span class="n">context</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">workflow_triggers</span><span class="p">[</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trigger</span><span class="p">)</span>
+                <span class="n">trigger</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">start_trigger</span><span class="p">,</span> <span class="n">Trigger</span><span class="p">):</span>
+                <span class="c1"># 使用高级触发器</span>
+                <span class="n">trigger</span> <span class="o">=</span> <span class="n">start_trigger</span>
+                <span class="n">trigger</span><span class="o">.</span><span class="n">set_max_triggers</span><span class="p">(</span><span class="n">max_starts</span><span class="p">)</span>
+                <span class="n">trigger</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">context</span><span class="p">,</span> <span class="n">w_id</span><span class="o">=</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_advanced_trigger</span><span class="p">(</span><span class="n">w_id</span><span class="p">,</span> <span class="n">context</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">workflow_triggers</span><span class="p">[</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trigger</span><span class="p">)</span>
+                <span class="n">trigger</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid start_trigger format for workflow </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># else:</span>
+        <span class="c1">#     # 没有触发器，立即启动</span>
+        <span class="c1">#     self.start_workflow(workflow.id)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_registered&#39;</span><span class="p">,</span>
+            <span class="p">{</span><span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;workflow_name&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;workflow_class&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+             <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">workflow</span></div>
+
+    <span class="k">def</span> <span class="nf">_handle_advanced_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理高级触发器的回调&quot;&quot;&quot;</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: WMgr: Advanced trigger fired for workflow </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Trigger: </span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;trigger_name&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;trigger_type&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_workflow</span><span class="p">(</span><span class="n">workflow_id</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WMgr: Failed to start workflow </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="WorkflowManager.start_workflow"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.workflow.WorkflowManager.start_workflow">[docs]</a>    <span class="k">def</span> <span class="nf">start_workflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;手动启动工作流&quot;&quot;&quot;</span>
+        <span class="n">workflow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">workflow_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">workflow</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Workflow </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2"> not registered.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">workflow</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Workflow </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2"> is not in a startable state.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">started_process</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">started_process</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to start workflow </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+    <span class="k">def</span> <span class="nf">_subscribe_manager_to_workflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+                <span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;workflow_status_changed&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span>
+                <span class="k">lambda</span> <span class="n">ev</span><span class="p">,</span> <span class="n">w_id</span><span class="o">=</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_workflow_status_change</span><span class="p">(</span><span class="n">w_id</span><span class="p">,</span> <span class="n">ev</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error subscribing manager to workflow </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> events: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_workflow_status_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow_id</span><span class="p">,</span> <span class="n">event_value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理工作流状态变更事件&quot;&quot;&quot;</span>
+        <span class="n">workflow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">workflow_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">workflow</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">new_status_str</span> <span class="o">=</span> <span class="n">event_value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;new_status&#39;</span><span class="p">)</span>
+        <span class="n">old_status_str</span> <span class="o">=</span> <span class="n">event_value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;old_status&#39;</span><span class="p">)</span>
+        <span class="n">sm_state</span> <span class="o">=</span> <span class="n">event_value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sm_state&#39;</span><span class="p">)</span>
+        <span class="n">timestamp</span> <span class="o">=</span> <span class="n">event_value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="n">event_value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;event_details&#39;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">reason</span> <span class="o">=</span> <span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;State machine reached &#39;</span><span class="si">{</span><span class="n">sm_state</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">details</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">details</span><span class="p">)</span> <span class="k">if</span> <span class="n">details</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="c1"># 检查当前状态</span>
+        <span class="k">if</span> <span class="n">new_status_str</span> <span class="o">==</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">RUNNING</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="c1"># 当工作流开始运行时，触发manager的工作流开始事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_started&#39;</span><span class="p">,</span>
+                <span class="p">{</span><span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">workflow_id</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">}</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: WorkflowManager: 工作流 </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2"> 已开始运行&quot;</span><span class="p">)</span>
+
+            <span class="c1"># 更新代理的current_workflow_id状态</span>
+            <span class="k">if</span> <span class="n">workflow</span><span class="o">.</span><span class="n">owner</span><span class="p">:</span>
+                <span class="n">workflow</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;current_workflow_id&#39;</span><span class="p">,</span> <span class="n">workflow_id</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">new_status_str</span> <span class="ow">in</span> <span class="p">(</span><span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">CANCELED</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+            <span class="c1"># 当工作流结束时，触发manager的相应事件</span>
+            <span class="n">event_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;workflow_</span><span class="si">{</span><span class="n">new_status_str</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">event_data</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">workflow_id</span><span class="p">,</span>
+                <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">timestamp</span>
+            <span class="p">}</span>
+
+            <span class="c1"># 打印日志</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: WorkflowManager: 工作流 </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2"> 状态变为 </span><span class="si">{</span><span class="n">new_status_str</span><span class="si">}</span><span class="s2">，触发事件 </span><span class="si">{</span><span class="n">event_name</span><span class="si">}</span><span class="se">\</span>
+<span class="s2">                        </span><span class="se">\n</span><span class="s2">  - 事件数据: </span><span class="si">{</span><span class="n">event_data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># 触发事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span>
+                <span class="n">event_name</span><span class="p">,</span>
+                <span class="n">event_data</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 清除代理的current_workflow_id状态</span>
+            <span class="k">if</span> <span class="n">workflow</span><span class="o">.</span><span class="n">owner</span><span class="p">:</span>
+                <span class="n">workflow</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;current_workflow_id&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+            <span class="c1"># 判断是否仍能触发</span>
+            <span class="n">can_trigger_again</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="n">workflow_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_triggers</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">trigger</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_triggers</span><span class="p">[</span><span class="n">workflow_id</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">trigger</span><span class="o">.</span><span class="n">has_reached_max</span><span class="p">():</span>
+                        <span class="n">can_trigger_again</span> <span class="o">=</span> <span class="kc">True</span>
+                        <span class="c1"># 重新激活触发器</span>
+                        <span class="n">trigger</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+                        <span class="k">break</span>
+
+            <span class="k">if</span> <span class="n">can_trigger_again</span><span class="p">:</span>
+                <span class="c1"># 如果可以再次触发，调用reset方法重置工作流</span>
+                <span class="n">workflow</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: WMgr: Workflow </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2"> reset for re-triggering&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># 如果达到触发上限，清理触发器</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_workflow_triggers</span><span class="p">(</span><span class="n">workflow_id</span><span class="p">)</span>
+
+            <span class="c1"># 执行回调函数</span>
+            <span class="k">if</span> <span class="n">workflow</span><span class="o">.</span><span class="n">callback</span> <span class="ow">and</span> <span class="nb">callable</span><span class="p">(</span><span class="n">workflow</span><span class="o">.</span><span class="n">callback</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">workflow</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">cb_e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in workflow </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2"> callback: </span><span class="si">{</span><span class="n">cb_e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_cleanup_workflow_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;清理工作流相关的所有触发器&quot;&quot;&quot;</span>
+        <span class="c1"># 清理所有触发器</span>
+        <span class="k">if</span> <span class="n">workflow_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_triggers</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">trigger</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_triggers</span><span class="p">[</span><span class="n">workflow_id</span><span class="p">]:</span>
+                <span class="n">trigger</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_triggers</span><span class="p">[</span><span class="n">workflow_id</span><span class="p">]</span>
+
+<div class="viewcode-block" id="WorkflowManager.get_active_workflows"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.workflow.WorkflowManager.get_active_workflows">[docs]</a>    <span class="k">def</span> <span class="nf">get_active_workflows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取所有活跃的工作流字典&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">is_active</span><span class="p">()}</span></div>
+
+<div class="viewcode-block" id="WorkflowManager.cancel_workflow"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.workflow.WorkflowManager.cancel_workflow">[docs]</a>    <span class="k">def</span> <span class="nf">cancel_workflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow_id</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;canceled_by_manager&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;取消工作流&quot;&quot;&quot;</span>
+        <span class="n">workflow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">workflow_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">workflow</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="n">workflow</span><span class="o">.</span><span class="n">sm_process</span> <span class="ow">and</span> <span class="n">workflow</span><span class="o">.</span><span class="n">sm_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="c1"># 如果状态机正在运行，中断它</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">workflow</span><span class="o">.</span><span class="n">sm_process</span><span class="o">.</span><span class="n">interrupt</span><span class="p">({</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;cancel&#39;</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">})</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error interrupting SM for </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="n">workflow</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span>  <span class="c1"># 在状态机启动前取消</span>
+            <span class="c1"># 更新工作流状态，并触发相应事件</span>
+            <span class="n">old_status</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">status</span>
+            <span class="n">workflow</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">CANCELED</span>
+            <span class="n">workflow</span><span class="o">.</span><span class="n">completion_reason</span> <span class="o">=</span> <span class="n">reason</span>
+            <span class="n">workflow</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+            <span class="c1"># 触发工作流状态变更事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;workflow_status_changed&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">workflow_id</span><span class="p">,</span>
+                <span class="s1">&#39;old_status&#39;</span><span class="p">:</span> <span class="n">old_status</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s1">&#39;new_status&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s1">&#39;sm_state&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>
+                <span class="s1">&#39;event_details&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">},</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">})</span>
+
+            <span class="c1"># 触发管理器取消事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_canceled&#39;</span><span class="p">,</span>
+                <span class="p">{</span><span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">workflow_id</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">}</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 清理触发器</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_workflow_triggers</span><span class="p">(</span><span class="n">workflow_id</span><span class="p">)</span>
+
+            <span class="c1"># 执行回调</span>
+            <span class="k">if</span> <span class="n">workflow</span><span class="o">.</span><span class="n">callback</span><span class="p">:</span>
+                <span class="n">workflow</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="WorkflowManager.get_workflow"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.workflow.WorkflowManager.get_workflow">[docs]</a>    <span class="k">def</span> <span class="nf">get_workflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">workflow_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="WorkflowManager.get_agent_workflows"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.workflow.WorkflowManager.get_agent_workflows">[docs]</a>    <span class="k">def</span> <span class="nf">get_agent_workflows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">agent_id</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="WorkflowManager.add_workflow_trigger"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.workflow.WorkflowManager.add_workflow_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">add_workflow_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">trigger</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;为工作流添加额外的触发器（不用于启动）&quot;&quot;&quot;</span>
+        <span class="n">workflow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_workflow</span><span class="p">(</span><span class="n">workflow_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">workflow</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot add trigger: Workflow </span><span class="si">{</span><span class="n">workflow_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflow_triggers</span><span class="p">[</span><span class="n">workflow_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trigger</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.workflow</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

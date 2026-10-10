@@ -1,0 +1,1113 @@
+[
+  {
+    "event_id": "clear_motion_baseline",
+    "decision_tick": 1,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "clear_motion_baseline",
+      "decision_ns": 100000000
+    }
+  },
+  {
+    "event_id": "clear_motion_baseline",
+    "decision_tick": 2,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "clear_motion_baseline",
+      "decision_ns": 200000000
+    }
+  },
+  {
+    "event_id": "clear_motion_baseline",
+    "decision_tick": 3,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "clear_motion_baseline",
+      "decision_ns": 300000000
+    }
+  },
+  {
+    "event_id": "clear_motion_baseline",
+    "decision_tick": 4,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "clear_motion_baseline",
+      "decision_ns": 400000000
+    }
+  },
+  {
+    "event_id": "clear_motion_baseline",
+    "decision_tick": 5,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "clear_motion_baseline",
+      "decision_ns": 500000000
+    }
+  },
+  {
+    "event_id": "lifecycle_takeoff_uav_weather_l5_1_v1",
+    "decision_tick": 30,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_weather_l5_1_v1",
+      "decision_ns": 3000000000
+    }
+  },
+  {
+    "event_id": "nominal_task_cruise",
+    "decision_tick": 175,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "nominal_task_cruise",
+      "decision_ns": 17500000000
+    }
+  },
+  {
+    "event_id": "weather_onset",
+    "decision_tick": 180,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "weather_onset",
+      "decision_ns": 18000000000
+    }
+  },
+  {
+    "event_id": "rain_condition_met",
+    "decision_tick": 186,
+    "allow": true,
+    "evidence": {
+      "rows": [
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "uav_weather_l5_1_v1",
+          "observation_ns": 18600000000,
+          "sample_ns": 18400000000,
+          "available_ns": 18500000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 5,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        },
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "weather_car_l5_1_v1",
+          "observation_ns": 18600000000,
+          "sample_ns": 18400000000,
+          "available_ns": 18500000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 5,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "rain_condition_met",
+    "decision_tick": 187,
+    "allow": true,
+    "evidence": {
+      "rows": [
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "uav_weather_l5_1_v1",
+          "observation_ns": 18700000000,
+          "sample_ns": 18500000000,
+          "available_ns": 18600000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 6,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        },
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "weather_car_l5_1_v1",
+          "observation_ns": 18700000000,
+          "sample_ns": 18500000000,
+          "available_ns": 18600000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 6,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "rain_condition_met",
+    "decision_tick": 188,
+    "allow": true,
+    "evidence": {
+      "rows": [
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "uav_weather_l5_1_v1",
+          "observation_ns": 18800000000,
+          "sample_ns": 18600000000,
+          "available_ns": 18700000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 7,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        },
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "weather_car_l5_1_v1",
+          "observation_ns": 18800000000,
+          "sample_ns": 18600000000,
+          "available_ns": 18700000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 7,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "rain_condition_met",
+    "decision_tick": 189,
+    "allow": true,
+    "evidence": {
+      "rows": [
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "uav_weather_l5_1_v1",
+          "observation_ns": 18900000000,
+          "sample_ns": 18700000000,
+          "available_ns": 18800000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 8,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        },
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "weather_car_l5_1_v1",
+          "observation_ns": 18900000000,
+          "sample_ns": 18700000000,
+          "available_ns": 18800000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 8,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "rain_condition_met",
+    "decision_tick": 190,
+    "allow": true,
+    "evidence": {
+      "rows": [
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "uav_weather_l5_1_v1",
+          "observation_ns": 19000000000,
+          "sample_ns": 18800000000,
+          "available_ns": 18900000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 9,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        },
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "weather_car_l5_1_v1",
+          "observation_ns": 19000000000,
+          "sample_ns": 18800000000,
+          "available_ns": 18900000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 9,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "rain_speed_reduction",
+    "decision_tick": 220,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "rain_speed_reduction",
+      "decision_ns": 22000000000
+    }
+  },
+  {
+    "event_id": "p09.weather-update:rain_intensifies",
+    "decision_tick": 292,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "p09.weather-update:rain_intensifies",
+      "decision_ns": 29200000000
+    }
+  },
+  {
+    "event_id": "p09.weather-update:rain_intensifies",
+    "decision_tick": 293,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "p09.weather-update:rain_intensifies",
+      "decision_ns": 29300000000
+    }
+  },
+  {
+    "event_id": "p09.weather-update:rain_intensifies",
+    "decision_tick": 294,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "p09.weather-update:rain_intensifies",
+      "decision_ns": 29400000000
+    }
+  },
+  {
+    "event_id": "p09.weather-update:rain_intensifies",
+    "decision_tick": 295,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "p09.weather-update:rain_intensifies",
+      "decision_ns": 29500000000
+    }
+  },
+  {
+    "event_id": "rain_intensifies",
+    "decision_tick": 296,
+    "allow": false,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_intensifies:local:uav_weather_l5_1_v1": null,
+        "rain_intensifies:local:weather_car_l5_1_v1": null
+      }
+    }
+  },
+  {
+    "event_id": "rain_intensifies:local:uav_weather_l5_1_v1",
+    "decision_tick": 296,
+    "allow": false,
+    "evidence": {
+      "owner": "uav_weather_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 29400000000,
+        "available_ns": 29500000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.55,
+          "wetness": 0.72,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 2200.0,
+          "visibility": 2200.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.72,
+        "wetness": 0.82,
+        "visibility_m": 1100.0
+      },
+      "weather_update_tick": 295,
+      "decision_ns": 29600000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_intensifies:local:weather_car_l5_1_v1",
+    "decision_tick": 296,
+    "allow": false,
+    "evidence": {
+      "owner": "weather_car_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 29400000000,
+        "available_ns": 29500000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.55,
+          "wetness": 0.72,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 2200.0,
+          "visibility": 2200.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.72,
+        "wetness": 0.82,
+        "visibility_m": 1100.0
+      },
+      "weather_update_tick": 295,
+      "decision_ns": 29600000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_intensifies:local:uav_weather_l5_1_v1",
+    "decision_tick": 298,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_weather_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 29600000000,
+        "available_ns": 29700000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.72,
+          "wetness": 0.82,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 1100.0,
+          "visibility": 1100.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.72,
+        "wetness": 0.82,
+        "visibility_m": 1100.0
+      },
+      "weather_update_tick": 295,
+      "decision_ns": 29800000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_intensifies:local:weather_car_l5_1_v1",
+    "decision_tick": 298,
+    "allow": true,
+    "evidence": {
+      "owner": "weather_car_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 29600000000,
+        "available_ns": 29700000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.72,
+          "wetness": 0.82,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 1100.0,
+          "visibility": 1100.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.72,
+        "wetness": 0.82,
+        "visibility_m": 1100.0
+      },
+      "weather_update_tick": 295,
+      "decision_ns": 29800000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_intensifies:local:uav_weather_l5_1_v1",
+    "decision_tick": 299,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_weather_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 29700000000,
+        "available_ns": 29800000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.72,
+          "wetness": 0.82,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 1100.0,
+          "visibility": 1100.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.72,
+        "wetness": 0.82,
+        "visibility_m": 1100.0
+      },
+      "weather_update_tick": 295,
+      "decision_ns": 29900000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_intensifies:local:weather_car_l5_1_v1",
+    "decision_tick": 299,
+    "allow": true,
+    "evidence": {
+      "owner": "weather_car_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 29700000000,
+        "available_ns": 29800000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.72,
+          "wetness": 0.82,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 1100.0,
+          "visibility": 1100.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.72,
+        "wetness": 0.82,
+        "visibility_m": 1100.0
+      },
+      "weather_update_tick": 295,
+      "decision_ns": 29900000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_intensifies:local:uav_weather_l5_1_v1",
+    "decision_tick": 300,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_weather_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 29800000000,
+        "available_ns": 29900000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.72,
+          "wetness": 0.82,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 1100.0,
+          "visibility": 1100.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.72,
+        "wetness": 0.82,
+        "visibility_m": 1100.0
+      },
+      "weather_update_tick": 295,
+      "decision_ns": 30000000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_intensifies:local:weather_car_l5_1_v1",
+    "decision_tick": 300,
+    "allow": true,
+    "evidence": {
+      "owner": "weather_car_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 29800000000,
+        "available_ns": 29900000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.72,
+          "wetness": 0.82,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 1100.0,
+          "visibility": 1100.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.72,
+        "wetness": 0.82,
+        "visibility_m": 1100.0
+      },
+      "weather_update_tick": 295,
+      "decision_ns": 30000000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_intensifies",
+    "decision_tick": 301,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_intensifies:local:uav_weather_l5_1_v1": 300,
+        "rain_intensifies:local:weather_car_l5_1_v1": 300
+      }
+    }
+  },
+  {
+    "event_id": "rain_intensifies",
+    "decision_tick": 302,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_intensifies:local:uav_weather_l5_1_v1": 300,
+        "rain_intensifies:local:weather_car_l5_1_v1": 300
+      }
+    }
+  },
+  {
+    "event_id": "rain_intensifies",
+    "decision_tick": 303,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_intensifies:local:uav_weather_l5_1_v1": 300,
+        "rain_intensifies:local:weather_car_l5_1_v1": 300
+      }
+    }
+  },
+  {
+    "event_id": "rain_intensifies",
+    "decision_tick": 304,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_intensifies:local:uav_weather_l5_1_v1": 300,
+        "rain_intensifies:local:weather_car_l5_1_v1": 300
+      }
+    }
+  },
+  {
+    "event_id": "rain_intensifies",
+    "decision_tick": 305,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_intensifies:local:uav_weather_l5_1_v1": 300,
+        "rain_intensifies:local:weather_car_l5_1_v1": 300
+      }
+    }
+  },
+  {
+    "event_id": "p09.weather-update:rain_recovery",
+    "decision_tick": 373,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "p09.weather-update:rain_recovery",
+      "decision_ns": 37300000000
+    }
+  },
+  {
+    "event_id": "p09.weather-update:rain_recovery",
+    "decision_tick": 374,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "p09.weather-update:rain_recovery",
+      "decision_ns": 37400000000
+    }
+  },
+  {
+    "event_id": "p09.weather-update:rain_recovery",
+    "decision_tick": 375,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "p09.weather-update:rain_recovery",
+      "decision_ns": 37500000000
+    }
+  },
+  {
+    "event_id": "rain_recovery",
+    "decision_tick": 376,
+    "allow": false,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_recovery:local:uav_weather_l5_1_v1": null,
+        "rain_recovery:local:weather_car_l5_1_v1": null
+      }
+    }
+  },
+  {
+    "event_id": "rain_recovery:local:uav_weather_l5_1_v1",
+    "decision_tick": 376,
+    "allow": false,
+    "evidence": {
+      "owner": "uav_weather_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 37400000000,
+        "available_ns": 37500000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.72,
+          "wetness": 0.82,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 1100.0,
+          "visibility": 1100.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.02,
+        "wetness": 0.2,
+        "visibility_m": 7000.0
+      },
+      "weather_update_tick": 375,
+      "decision_ns": 37600000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_recovery:local:weather_car_l5_1_v1",
+    "decision_tick": 376,
+    "allow": false,
+    "evidence": {
+      "owner": "weather_car_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 37400000000,
+        "available_ns": 37500000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.72,
+          "wetness": 0.82,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 1100.0,
+          "visibility": 1100.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.02,
+        "wetness": 0.2,
+        "visibility_m": 7000.0
+      },
+      "weather_update_tick": 375,
+      "decision_ns": 37600000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_recovery:local:uav_weather_l5_1_v1",
+    "decision_tick": 378,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_weather_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 37600000000,
+        "available_ns": 37700000000,
+        "weather": {
+          "condition": "clear",
+          "rain": 0.02,
+          "wetness": 0.2,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 2.0,
+          "wind_direction_deg": 0.0,
+          "visibility_m": 7000.0,
+          "visibility": 7000.0,
+          "temperature_c": 24.0,
+          "illumination_lux": 12000.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.02,
+        "wetness": 0.2,
+        "visibility_m": 7000.0
+      },
+      "weather_update_tick": 375,
+      "decision_ns": 37800000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_recovery:local:weather_car_l5_1_v1",
+    "decision_tick": 378,
+    "allow": true,
+    "evidence": {
+      "owner": "weather_car_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 37600000000,
+        "available_ns": 37700000000,
+        "weather": {
+          "condition": "clear",
+          "rain": 0.02,
+          "wetness": 0.2,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 2.0,
+          "wind_direction_deg": 0.0,
+          "visibility_m": 7000.0,
+          "visibility": 7000.0,
+          "temperature_c": 24.0,
+          "illumination_lux": 12000.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.02,
+        "wetness": 0.2,
+        "visibility_m": 7000.0
+      },
+      "weather_update_tick": 375,
+      "decision_ns": 37800000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_recovery:local:uav_weather_l5_1_v1",
+    "decision_tick": 379,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_weather_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 37700000000,
+        "available_ns": 37800000000,
+        "weather": {
+          "condition": "clear",
+          "rain": 0.02,
+          "wetness": 0.2,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 2.0,
+          "wind_direction_deg": 0.0,
+          "visibility_m": 7000.0,
+          "visibility": 7000.0,
+          "temperature_c": 24.0,
+          "illumination_lux": 12000.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.02,
+        "wetness": 0.2,
+        "visibility_m": 7000.0
+      },
+      "weather_update_tick": 375,
+      "decision_ns": 37900000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_recovery:local:weather_car_l5_1_v1",
+    "decision_tick": 379,
+    "allow": true,
+    "evidence": {
+      "owner": "weather_car_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 37700000000,
+        "available_ns": 37800000000,
+        "weather": {
+          "condition": "clear",
+          "rain": 0.02,
+          "wetness": 0.2,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 2.0,
+          "wind_direction_deg": 0.0,
+          "visibility_m": 7000.0,
+          "visibility": 7000.0,
+          "temperature_c": 24.0,
+          "illumination_lux": 12000.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.02,
+        "wetness": 0.2,
+        "visibility_m": 7000.0
+      },
+      "weather_update_tick": 375,
+      "decision_ns": 37900000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_recovery:local:uav_weather_l5_1_v1",
+    "decision_tick": 380,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_weather_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 37800000000,
+        "available_ns": 37900000000,
+        "weather": {
+          "condition": "clear",
+          "rain": 0.02,
+          "wetness": 0.2,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 2.0,
+          "wind_direction_deg": 0.0,
+          "visibility_m": 7000.0,
+          "visibility": 7000.0,
+          "temperature_c": 24.0,
+          "illumination_lux": 12000.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.02,
+        "wetness": 0.2,
+        "visibility_m": 7000.0
+      },
+      "weather_update_tick": 375,
+      "decision_ns": 38000000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_recovery:local:weather_car_l5_1_v1",
+    "decision_tick": 380,
+    "allow": true,
+    "evidence": {
+      "owner": "weather_car_l5_1_v1",
+      "rule_version": "p09.actor-available-weather/v1",
+      "observation": {
+        "sample_ns": 37800000000,
+        "available_ns": 37900000000,
+        "weather": {
+          "condition": "clear",
+          "rain": 0.02,
+          "wetness": 0.2,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 2.0,
+          "wind_direction_deg": 0.0,
+          "visibility_m": 7000.0,
+          "visibility": 7000.0,
+          "temperature_c": 24.0,
+          "illumination_lux": 12000.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "expected_operands": {
+        "rain": 0.02,
+        "wetness": 0.2,
+        "visibility_m": 7000.0
+      },
+      "weather_update_tick": 375,
+      "decision_ns": 38000000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "rain_recovery",
+    "decision_tick": 381,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_recovery:local:uav_weather_l5_1_v1": 380,
+        "rain_recovery:local:weather_car_l5_1_v1": 380
+      }
+    }
+  },
+  {
+    "event_id": "rain_recovery",
+    "decision_tick": 382,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_recovery:local:uav_weather_l5_1_v1": 380,
+        "rain_recovery:local:weather_car_l5_1_v1": 380
+      }
+    }
+  },
+  {
+    "event_id": "rain_recovery",
+    "decision_tick": 383,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_recovery:local:uav_weather_l5_1_v1": 380,
+        "rain_recovery:local:weather_car_l5_1_v1": 380
+      }
+    }
+  },
+  {
+    "event_id": "rain_recovery",
+    "decision_tick": 384,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_recovery:local:uav_weather_l5_1_v1": 380,
+        "rain_recovery:local:weather_car_l5_1_v1": 380
+      }
+    }
+  },
+  {
+    "event_id": "rain_recovery",
+    "decision_tick": 385,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "rain_recovery:local:uav_weather_l5_1_v1": 380,
+        "rain_recovery:local:weather_car_l5_1_v1": 380
+      }
+    }
+  },
+  {
+    "event_id": "weather_vehicle_leaves_after_recovery",
+    "decision_tick": 465,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "weather_vehicle_leaves_after_recovery",
+      "decision_ns": 46500000000
+    }
+  },
+  {
+    "event_id": "lifecycle_landing_uav_weather_l5_1_v1",
+    "decision_tick": 545,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_landing_uav_weather_l5_1_v1",
+      "decision_ns": 54500000000
+    }
+  }
+]

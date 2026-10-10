@@ -1,0 +1,53 @@
+[
+  {
+    "tick": 0,
+    "condition": "clear",
+    "rain": 0.0,
+    "wetness": 0.0,
+    "fog": 0.0,
+    "fog_density": 0.0,
+    "wind_speed": 2.0,
+    "wind_direction_deg": 0.0,
+    "visibility_m": 20000.0,
+    "visibility": 20000.0,
+    "temperature_c": 24.0,
+    "illumination_lux": 12000.0,
+    "hazard_source_active": false,
+    "hazard_concentration_ppm": 0.0,
+    "hazard_radius_m": 0.0
+  },
+  {
+    "tick": 180,
+    "condition": "rain",
+    "rain": 0.62,
+    "wetness": 0.75,
+    "fog": 0.0,
+    "fog_density": 0.0,
+    "wind_speed": 4.0,
+    "wind_direction_deg": 110.0,
+    "visibility_m": 1600.0,
+    "visibility": 1600.0,
+    "temperature_c": 21.0,
+    "illumination_lux": 2400.0,
+    "hazard_source_active": false,
+    "hazard_concentration_ppm": 0.0,
+    "hazard_radius_m": 0.0
+  },
+  {
+    "tick": 186,
+    "condition": "rain",
+    "rain": 0.65,
+    "wetness": 0.75,
+    "fog": 0.0,
+    "fog_density": 0.0,
+    "wind_speed": 4.0,
+    "wind_direction_deg": 110.0,
+    "visibility_m": 1500.0,
+    "visibility": 1500.0,
+    "temperature_c": 21.0,
+    "illumination_lux": 2400.0,
+    "hazard_source_active": false,
+    "hazard_concentration_ppm": 0.0,
+    "hazard_radius_m": 0.0
+  }
+]

@@ -1,0 +1,380 @@
+{
+  "base": "http://127.0.0.1:4493",
+  "tick": 44,
+  "files": {
+    "host-demo-zh.png": {
+      "language": "zh",
+      "mobile": false,
+      "tick": 44,
+      "selection": "parcel.p1042",
+      "timeText": "00:44.0",
+      "tickText": "帧 44 / 85",
+      "selectedJson": "{\"kind\":\"entity\",\"id\":\"parcel.p1042\"}",
+      "sourceMode": "来源：演示数据（demo.motion / demo.* 指针）· 非真实 BENCH 数据",
+      "fixtureNote": "主机挂载示例：运动与包裹 / 保管 / Atlas 证据均为演示数据（demo.motion），未接入任何真实来源",
+      "runLabel": "HOST · ONE CLOCK · DEMO FEED",
+      "footerSource": "主机挂载示例 · 运动与包裹 / 保管 / Atlas 证据均为演示数据（demo.motion）",
+      "feedMotion": "demo",
+      "parcelEvidenceKnown": true,
+      "ruleTruth": "真",
+      "stateBanner": "悬停等待",
+      "sceneBackground": "rgb(232, 242, 253)",
+      "rootBackground": "rgba(0, 0, 0, 0)",
+      "selectedMarker": true,
+      "identityNotePresent": false,
+      "responseNode": "03 · 响应记录主机响应记录响应未绑定：该事件未声明针对本规则翻转的因果引用",
+      "responseUnbound": true,
+      "resetControl": {
+        "visibleText": "回到起点",
+        "ariaLabel": "回到起点"
+      },
+      "playControl": "▶ 播放",
+      "languageButtons": [
+        {
+          "language": "zh",
+          "ariaPressed": "true",
+          "ariaLabel": "中文",
+          "whiteSpace": "nowrap",
+          "width": 44.015625,
+          "textLines": 1
+        },
+        {
+          "language": "en",
+          "ariaPressed": "false",
+          "ariaLabel": "English (EN)",
+          "whiteSpace": "nowrap",
+          "width": 42,
+          "textLines": 1
+        }
+      ],
+      "labelChips": [],
+      "attachmentCell": "uav.delivery.alpha",
+      "noHorizontalOverflow": true,
+      "parcelEvidencePointer": "SceneState.samples[entity_id=parcel.p1042]",
+      "labelOverlapPairs": []
+    },
+    "host-demo-zh-mobile.png": {
+      "language": "zh",
+      "mobile": true,
+      "tick": 44,
+      "selection": "parcel.p1042",
+      "timeText": "00:44.0",
+      "tickText": "帧 44 / 85",
+      "selectedJson": "{\"kind\":\"entity\",\"id\":\"parcel.p1042\"}",
+      "sourceMode": "来源：演示数据（demo.motion / demo.* 指针）· 非真实 BENCH 数据",
+      "fixtureNote": "主机挂载示例：运动与包裹 / 保管 / Atlas 证据均为演示数据（demo.motion），未接入任何真实来源",
+      "runLabel": "HOST · ONE CLOCK · DEMO FEED",
+      "footerSource": "主机挂载示例 · 运动与包裹 / 保管 / Atlas 证据均为演示数据（demo.motion）",
+      "feedMotion": "demo",
+      "parcelEvidenceKnown": true,
+      "ruleTruth": "真",
+      "stateBanner": "悬停等待",
+      "sceneBackground": "rgb(232, 242, 253)",
+      "rootBackground": "rgba(0, 0, 0, 0)",
+      "selectedMarker": true,
+      "identityNotePresent": false,
+      "responseNode": "03 · 响应记录主机响应记录响应未绑定：该事件未声明针对本规则翻转的因果引用",
+      "responseUnbound": true,
+      "resetControl": {
+        "visibleText": "回到起点",
+        "ariaLabel": "回到起点"
+      },
+      "playControl": "▶ 播放",
+      "languageButtons": [
+        {
+          "language": "zh",
+          "ariaPressed": "true",
+          "ariaLabel": "中文",
+          "whiteSpace": "nowrap",
+          "width": 44.015625,
+          "textLines": 1
+        },
+        {
+          "language": "en",
+          "ariaPressed": "false",
+          "ariaLabel": "English (EN)",
+          "whiteSpace": "nowrap",
+          "width": 42,
+          "textLines": 1
+        }
+      ],
+      "labelChips": [
+        {
+          "id": "parcel.p1042",
+          "selected": true,
+          "left": "220.7px",
+          "top": "129px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 239.6875,
+            "y": 692,
+            "width": 107.59375,
+            "height": 41.375
+          }
+        },
+        {
+          "id": "warehouse",
+          "selected": false,
+          "left": "97.8px",
+          "top": "225.2px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 116.796875,
+            "y": 788.1875,
+            "width": 81.03125,
+            "height": 24.1875
+          }
+        },
+        {
+          "id": "pad",
+          "selected": false,
+          "left": "169px",
+          "top": "192px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 188,
+            "y": 755,
+            "width": 37.6875,
+            "height": 24.1875
+          }
+        },
+        {
+          "id": "locker",
+          "selected": false,
+          "left": "255.7px",
+          "top": "193.8px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 274.6875,
+            "y": 756.796875,
+            "width": 59.359375,
+            "height": 24.1875
+          }
+        },
+        {
+          "id": "ugv.delivery.alpha",
+          "selected": false,
+          "left": "6px",
+          "top": "169.4px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 25,
+            "y": 732.390625,
+            "width": 146.046875,
+            "height": 24.1875
+          }
+        },
+        {
+          "id": "uav.delivery.alpha",
+          "selected": false,
+          "left": "54.7px",
+          "top": "114.7px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 73.6875,
+            "y": 677.6875,
+            "width": 146.046875,
+            "height": 24.1875
+          }
+        }
+      ],
+      "attachmentCell": "uav.delivery.alpha",
+      "noHorizontalOverflow": true,
+      "parcelEvidencePointer": "SceneState.samples[entity_id=parcel.p1042]",
+      "labelOverlapPairs": []
+    },
+    "host-demo-en.png": {
+      "language": "en",
+      "mobile": false,
+      "tick": 44,
+      "selection": "parcel.p1042",
+      "timeText": "00:44.0",
+      "tickText": "Tick 44 / 85",
+      "selectedJson": "{\"kind\":\"entity\",\"id\":\"parcel.p1042\"}",
+      "sourceMode": "Source: demo data (demo.motion / demo.* pointers) · not real BENCH data",
+      "fixtureNote": "Host-mount example: motion and parcel / custody / Atlas evidence are all demo data (demo.motion), bound to no real source",
+      "runLabel": "HOST · ONE CLOCK · DEMO FEED",
+      "footerSource": "Host-mount example · motion and parcel / custody / Atlas evidence are all demo data (demo.motion)",
+      "feedMotion": "demo",
+      "parcelEvidenceKnown": true,
+      "ruleTruth": "True",
+      "stateBanner": "Holding position",
+      "sceneBackground": "rgb(232, 242, 253)",
+      "rootBackground": "rgba(0, 0, 0, 0)",
+      "selectedMarker": true,
+      "identityNotePresent": false,
+      "responseNode": "03 · Response recordsHost response recordsResponse unbound: this event declares no causal reference to this rule flip",
+      "responseUnbound": true,
+      "resetControl": {
+        "visibleText": "Start",
+        "ariaLabel": "Back to start"
+      },
+      "playControl": "▶ Play",
+      "languageButtons": [
+        {
+          "language": "zh",
+          "ariaPressed": "false",
+          "ariaLabel": "中文",
+          "whiteSpace": "nowrap",
+          "width": 44.015625,
+          "textLines": 1
+        },
+        {
+          "language": "en",
+          "ariaPressed": "true",
+          "ariaLabel": "English (EN)",
+          "whiteSpace": "nowrap",
+          "width": 42,
+          "textLines": 1
+        }
+      ],
+      "labelChips": [],
+      "attachmentCell": "uav.delivery.alpha",
+      "noHorizontalOverflow": true,
+      "parcelEvidencePointer": "SceneState.samples[entity_id=parcel.p1042]",
+      "labelOverlapPairs": []
+    },
+    "host-demo-en-mobile.png": {
+      "language": "en",
+      "mobile": true,
+      "tick": 44,
+      "selection": "parcel.p1042",
+      "timeText": "00:44.0",
+      "tickText": "Tick 44 / 85",
+      "selectedJson": "{\"kind\":\"entity\",\"id\":\"parcel.p1042\"}",
+      "sourceMode": "Source: demo data (demo.motion / demo.* pointers) · not real BENCH data",
+      "fixtureNote": "Host-mount example: motion and parcel / custody / Atlas evidence are all demo data (demo.motion), bound to no real source",
+      "runLabel": "HOST · ONE CLOCK · DEMO FEED",
+      "footerSource": "Host-mount example · motion and parcel / custody / Atlas evidence are all demo data (demo.motion)",
+      "feedMotion": "demo",
+      "parcelEvidenceKnown": true,
+      "ruleTruth": "True",
+      "stateBanner": "Holding position",
+      "sceneBackground": "rgb(232, 242, 253)",
+      "rootBackground": "rgba(0, 0, 0, 0)",
+      "selectedMarker": true,
+      "identityNotePresent": false,
+      "responseNode": "03 · Response recordsHost response recordsResponse unbound: this event declares no causal reference to this rule flip",
+      "responseUnbound": true,
+      "resetControl": {
+        "visibleText": "Start",
+        "ariaLabel": "Back to start"
+      },
+      "playControl": "▶ Play",
+      "languageButtons": [
+        {
+          "language": "zh",
+          "ariaPressed": "false",
+          "ariaLabel": "中文",
+          "whiteSpace": "nowrap",
+          "width": 44.015625,
+          "textLines": 1
+        },
+        {
+          "language": "en",
+          "ariaPressed": "true",
+          "ariaLabel": "English (EN)",
+          "whiteSpace": "nowrap",
+          "width": 42,
+          "textLines": 1
+        }
+      ],
+      "labelChips": [
+        {
+          "id": "parcel.p1042",
+          "selected": true,
+          "left": "220.7px",
+          "top": "129px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 239.6875,
+            "y": 676,
+            "width": 107.59375,
+            "height": 41.375
+          }
+        },
+        {
+          "id": "warehouse",
+          "selected": false,
+          "left": "97.8px",
+          "top": "225.2px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 116.796875,
+            "y": 772.1875,
+            "width": 81.03125,
+            "height": 24.1875
+          }
+        },
+        {
+          "id": "pad",
+          "selected": false,
+          "left": "169px",
+          "top": "192px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 188,
+            "y": 739,
+            "width": 37.6875,
+            "height": 24.1875
+          }
+        },
+        {
+          "id": "locker",
+          "selected": false,
+          "left": "255.7px",
+          "top": "193.8px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 274.6875,
+            "y": 740.796875,
+            "width": 59.359375,
+            "height": 24.1875
+          }
+        },
+        {
+          "id": "ugv.delivery.alpha",
+          "selected": false,
+          "left": "6px",
+          "top": "169.4px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 25,
+            "y": 716.390625,
+            "width": 146.046875,
+            "height": 24.1875
+          }
+        },
+        {
+          "id": "uav.delivery.alpha",
+          "selected": false,
+          "left": "54.7px",
+          "top": "114.7px",
+          "fontSize": "12px",
+          "bounds": {
+            "x": 73.6875,
+            "y": 661.6875,
+            "width": 146.046875,
+            "height": 24.1875
+          }
+        }
+      ],
+      "attachmentCell": "uav.delivery.alpha",
+      "noHorizontalOverflow": true,
+      "parcelEvidencePointer": "SceneState.samples[entity_id=parcel.p1042]",
+      "labelOverlapPairs": []
+    }
+  },
+  "pageErrors": [],
+  "capturedAt": "2026-10-05T11:32:51.976Z",
+  "startedAt": "2026-10-05T11:32:44.791Z",
+  "tool": "playwright (existing frontend/node_modules + cached chromium); no installs",
+  "demoFeed": "authored demo motion + labelled demo parcel/custody/rule evidence (authority host-demo-evidence, provider demo.motion)",
+  "evidence": "fixture-only: labelled demo host evidence; no real BENCH motion and no Atlas runtime evidence in any capture",
+  "realBenchMotion": false,
+  "realBenchMotionReason": "No sealed public replay artifact exists in this export; captures show the demo feed only.",
+  "feedMotion": "demo (typed FEED_MOTION_DEMO, declared by demo.js; never inferred)",
+  "parcelEvidenceStatus": "demo — the BENCH public contract publishes no parcel sample kind, so parcel/custody/Atlas evidence is demo or unknown, never live",
+  "responseStatus": "UNKNOWN/unbound — the demo ledger declares no explicit causal reference to the rule flip, so the response node shows responseUnbound in every capture",
+  "visualAcceptance": "pending — captures are actual page states, but visual acceptance of the PR12 fixes belongs to the parent review"
+}

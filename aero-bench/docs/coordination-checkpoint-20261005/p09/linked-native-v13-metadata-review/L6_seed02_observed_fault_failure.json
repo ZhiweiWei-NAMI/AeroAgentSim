@@ -1,0 +1,262 @@
+[
+  {
+    "episode_id": "L6-4_v1__seed02",
+    "scope_half_open_ns": [
+      24000000000,
+      46000000000
+    ],
+    "seed": 2,
+    "native_revision": "p09.linked-native-causal/v12",
+    "owners": [
+      {
+        "owner": "uav_digital_l6_4_v1",
+        "node_id": "L6-4_v1__seed02:uav_digital_l6_4_v1:life0",
+        "tx_rows_in_fault_window": 220,
+        "accepted_tx_rows": 220,
+        "not_received_by_trace_horizon": 0,
+        "rx_later_than_200ms_ttl": 5,
+        "max_observed_consecutive_missing": 1,
+        "max_row": {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 26500000000,
+          "receiver_owner": "uav_digital_l6_4_v1",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 7,
+          "ttl_not_timely": 1,
+          "observed_late": 1,
+          "pending_expected": 2,
+          "loss_ratio": 0.125,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 1,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss",
+          "decision_tick": 266,
+          "available_ns": 26500000000
+        },
+        "max_sorted_rx_gap_ns": 376232735,
+        "max_rx_gap_boundaries_ns": [
+          45801011413,
+          46177244148
+        ],
+        "first_true_observation": null
+      },
+      {
+        "owner": "uav_digital_l6_4_v1_secondary",
+        "node_id": "L6-4_v1__seed02:uav_digital_l6_4_v1_secondary:life0",
+        "tx_rows_in_fault_window": 220,
+        "accepted_tx_rows": 220,
+        "not_received_by_trace_horizon": 0,
+        "rx_later_than_200ms_ttl": 7,
+        "max_observed_consecutive_missing": 1,
+        "max_row": {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 26500000000,
+          "receiver_owner": "uav_digital_l6_4_v1_secondary",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 7,
+          "ttl_not_timely": 1,
+          "observed_late": 1,
+          "pending_expected": 2,
+          "loss_ratio": 0.125,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 1,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss",
+          "decision_tick": 266,
+          "available_ns": 26500000000
+        },
+        "max_sorted_rx_gap_ns": 376988735,
+        "max_rx_gap_boundaries_ns": [
+          45806579680,
+          46183568415
+        ],
+        "first_true_observation": null
+      }
+    ],
+    "actual_unfired_events": [
+      "multi_uav_hold_entry",
+      "multi_uav_safe_hold",
+      "alternate_channel",
+      "lifecycle_landing_uav_digital_l6_4_v1",
+      "lifecycle_landing_uav_digital_l6_4_v1_secondary",
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v1",
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v1_secondary",
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v1",
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v1_secondary",
+      "alternate_channel:local:uav_digital_l6_4_v1",
+      "alternate_channel:local:uav_digital_l6_4_v1_secondary"
+    ],
+    "radio_actions_ref": "L6-4_v1__seed02/native_raw/radio_actions.jsonl",
+    "native_config_ref": "L6-4_v1__seed02/native_raw/final_native_run_config.json",
+    "unchanged_guard": {
+      "period_ns": 100000000,
+      "payload_bytes": 256,
+      "ttl_ns": 200000000,
+      "window_ns": 1000000000,
+      "loss_limit": 0.05,
+      "consecutive_limit": 3
+    },
+    "offered_cochannel_bps": 8000000,
+    "rendezvous": {
+      "version": "p09.preloaded-absolute-rendezvous/v1",
+      "tick": 460,
+      "time_ns": 46000000000,
+      "owners": [
+        "tower_l6_4_v1",
+        "uav_digital_l6_4_v1",
+        "uav_digital_l6_4_v1_secondary"
+      ],
+      "authority": "absolute original authored nominal plan installed before fault; independent of actor watchdogs/RX",
+      "channel_number": 6
+    },
+    "diagnosis": "Actual stochastic receipt history does not satisfy both prescribed local watchdogs. This is a story/profile sufficiency issue; no fabricated loss or weakened predicate is allowed. Preloaded channel change is not local recovery evidence.",
+    "adoption_status": "BLOCKED_UNFIRED_EVENTS",
+    "further_native_generation": false
+  },
+  {
+    "episode_id": "L6-4_v2__seed02",
+    "scope_half_open_ns": [
+      24000000000,
+      46000000000
+    ],
+    "seed": 2,
+    "native_revision": "p09.linked-native-causal/v12",
+    "owners": [
+      {
+        "owner": "uav_digital_l6_4_v2",
+        "node_id": "L6-4_v2__seed02:uav_digital_l6_4_v2:life0",
+        "tx_rows_in_fault_window": 220,
+        "accepted_tx_rows": 220,
+        "not_received_by_trace_horizon": 0,
+        "rx_later_than_200ms_ttl": 3,
+        "max_observed_consecutive_missing": 2,
+        "max_row": {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 32500000000,
+          "receiver_owner": "uav_digital_l6_4_v2",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 6,
+          "ttl_not_timely": 2,
+          "observed_late": 2,
+          "pending_expected": 2,
+          "loss_ratio": 0.25,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 2,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss",
+          "decision_tick": 326,
+          "available_ns": 32500000000
+        },
+        "max_sorted_rx_gap_ns": 415429220,
+        "max_rx_gap_boundaries_ns": [
+          32009682055,
+          32425111275
+        ],
+        "first_true_observation": null
+      },
+      {
+        "owner": "uav_digital_l6_4_v2_secondary",
+        "node_id": "L6-4_v2__seed02:uav_digital_l6_4_v2_secondary:life0",
+        "tx_rows_in_fault_window": 220,
+        "accepted_tx_rows": 220,
+        "not_received_by_trace_horizon": 0,
+        "rx_later_than_200ms_ttl": 7,
+        "max_observed_consecutive_missing": 3,
+        "max_row": {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 32500000000,
+          "receiver_owner": "uav_digital_l6_4_v2_secondary",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 5,
+          "ttl_not_timely": 3,
+          "observed_late": 3,
+          "pending_expected": 2,
+          "loss_ratio": 0.375,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 3,
+          "degraded": true,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss",
+          "decision_tick": 326,
+          "available_ns": 32500000000
+        },
+        "max_sorted_rx_gap_ns": 503894912,
+        "max_rx_gap_boundaries_ns": [
+          31908987969,
+          32412882881
+        ],
+        "first_true_observation": {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 32500000000,
+          "receiver_owner": "uav_digital_l6_4_v2_secondary",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 5,
+          "ttl_not_timely": 3,
+          "observed_late": 3,
+          "pending_expected": 2,
+          "loss_ratio": 0.375,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 3,
+          "degraded": true,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss",
+          "decision_tick": 326,
+          "available_ns": 32500000000
+        }
+      }
+    ],
+    "actual_unfired_events": [
+      "multi_uav_hold_entry",
+      "multi_uav_safe_hold",
+      "alternate_channel",
+      "lifecycle_landing_uav_digital_l6_4_v2",
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2",
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2",
+      "alternate_channel:local:uav_digital_l6_4_v2"
+    ],
+    "radio_actions_ref": "L6-4_v2__seed02/native_raw/radio_actions.jsonl",
+    "native_config_ref": "L6-4_v2__seed02/native_raw/final_native_run_config.json",
+    "unchanged_guard": {
+      "period_ns": 100000000,
+      "payload_bytes": 256,
+      "ttl_ns": 200000000,
+      "window_ns": 1000000000,
+      "loss_limit": 0.05,
+      "consecutive_limit": 3
+    },
+    "offered_cochannel_bps": 8000000,
+    "rendezvous": {
+      "version": "p09.preloaded-absolute-rendezvous/v1",
+      "tick": 460,
+      "time_ns": 46000000000,
+      "owners": [
+        "tower_l6_4_v2",
+        "uav_digital_l6_4_v2",
+        "uav_digital_l6_4_v2_secondary"
+      ],
+      "authority": "absolute original authored nominal plan installed before fault; independent of actor watchdogs/RX",
+      "channel_number": 6
+    },
+    "diagnosis": "Actual stochastic receipt history does not satisfy both prescribed local watchdogs. This is a story/profile sufficiency issue; no fabricated loss or weakened predicate is allowed. Preloaded channel change is not local recovery evidence.",
+    "adoption_status": "BLOCKED_UNFIRED_EVENTS",
+    "further_native_generation": false
+  }
+]

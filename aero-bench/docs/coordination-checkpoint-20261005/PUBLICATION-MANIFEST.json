@@ -1,0 +1,113 @@
+{
+  "scope": "Authorized public derived evidence/screenshot package; no raw private material",
+  "created_at": "2026-10-05T17:38:17.664735-07:00",
+  "files": {
+    "README.md": {
+      "bytes": 3902,
+      "sha256": "b746176c324c1f2df1417b4585b6a477efe735deb7dc9ef6558707091f888aba"
+    },
+    "p01/first_epoch_820_result.json": {
+      "bytes": 8552,
+      "sha256": "9110355681de5a4f154585a86b3d5e6b27bf344499aa088558a93f1ca49c3bc9"
+    },
+    "p01/first_epoch_820_result.md": {
+      "bytes": 2641,
+      "sha256": "d1a40b0617695ee0f0405940bbdae3063b378a79b6d7347041876ebe91dd13ab"
+    },
+    "p01/first_epoch_820_result_review.json": {
+      "bytes": 6148,
+      "sha256": "c0346582de06c48b00804882739a6db3346cd5da14237c666b06757b04a716f6"
+    },
+    "p01/training_hold_status.json": {
+      "bytes": 3815,
+      "sha256": "35b85bb463d48f519f61f5d53e5c4ffb23f065f712e0369f24ba13c8afea5b93"
+    },
+    "p02/13-config-light-en.png": {
+      "bytes": 730324,
+      "sha256": "a87b40f034e9740e65c325a2b5c3db01f6832c33fbf729e7814097eb25209829"
+    },
+    "p02/14-compile-light-en.png": {
+      "bytes": 770142,
+      "sha256": "8712893c32f2ec6e9455452ff1d35c44262375a6aef1ffd5dbb5f839e1cc9020"
+    },
+    "p02/README.md": {
+      "bytes": 1606,
+      "sha256": "661d8e6f629016735965a066eef1f00a40ef6861e55521c8a5d320a358dff330"
+    },
+    "p02/config-light-result.json": {
+      "bytes": 2973,
+      "sha256": "2d1d27e8a0ebd281f87f2dcc7b0d284d1e12b3516578f4ee3f2a1b5aa434bfb0"
+    },
+    "p02/config-light-source.patch": {
+      "bytes": 51232,
+      "sha256": "11dcad1c0532dcbbf4295971ae342d14d483bbf945e1342c332cbe3303c3da09"
+    },
+    "p02/config-translations.txt": {
+      "bytes": 17284,
+      "sha256": "f25837f99d3dc9df74d7e552ea6260c2ca79348377ccf8f6b12a83b6f2a95c3a"
+    },
+    "p02/startup_boundary_public.json": {
+      "bytes": 2057,
+      "sha256": "30fdf2c8300b39a1805d6191c9e4fdceb2dc226511005903dc8572b2d4d9f573"
+    },
+    "p08/first_provider_implementation.json": {
+      "bytes": 8028,
+      "sha256": "e8a16cb89afcae46d788597003dc7fb381982e9f7bf09d7aab2c1db8c2398a38"
+    },
+    "p08/first_provider_implementation.md": {
+      "bytes": 1794,
+      "sha256": "e8d0f7fdde40f47ee06de8b6c68838f550fc1519ff39670df4312099f9ae145c"
+    },
+    "p09/communication_group_summary.json": {
+      "bytes": 19056,
+      "sha256": "31d11090ef55bdf1ea2329e7b8372e303a8aa592c75f91f2d744d16bae409fb6"
+    },
+    "p09/current_episode_change_table.csv": {
+      "bytes": 141932,
+      "sha256": "6dd87d21b6013b9307e757ee1e36273e7b7d10980e2e4a86d10b57960245294e"
+    },
+    "p09/current_radio_checkpoint.json": {
+      "bytes": 7466,
+      "sha256": "35bc7d216df3add7a35e518f591de85cc85957e01dd103ae0817f70a272915cb"
+    },
+    "p09/current_radio_checkpoint.md": {
+      "bytes": 3562,
+      "sha256": "0d91f74b0925437f80bf4069a4ee09334cdec8ff3923b1365ca0706b0d52601b"
+    },
+    "p09/current_state_facts.json": {
+      "bytes": 74798,
+      "sha256": "58f8ac38e36d4fb20795374d8fb7346e57c9285481e58f4b6411a9ad1dd4b390"
+    },
+    "p09/current_state_facts.md": {
+      "bytes": 4031,
+      "sha256": "a84d4f5ef682e2e1c6d622d15928d9201056a6ce4bd047cb5cbee22f96c5a2b9"
+    },
+    "p09/current_state_fields.csv": {
+      "bytes": 22631,
+      "sha256": "2bed9091e9b8ee0e6021d711346f85ad471252ce9ffe21475cbb4006de38fbf7"
+    },
+    "p09/published_capture_episode_index.csv": {
+      "bytes": 80673,
+      "sha256": "676d4d2e6ff8879ee80a72caf64ebf516c24a1d09ff9dd6419e3abd9fe43c6d8"
+    },
+    "p09/receipt_onset_explanation.json": {
+      "bytes": 9407,
+      "sha256": "9a9bda63da8e62cc811776a02529a8be0c33506a506e04bac61d93bf3f7adf0d"
+    },
+    "p09/receipt_onset_explanation.md": {
+      "bytes": 3451,
+      "sha256": "75297ae3bf5750e4a3eb5305fb2575699a4b4c981a165e82f65b09a91380dc95"
+    },
+    "p09/six_episode_adoption.md": {
+      "bytes": 2631,
+      "sha256": "5876794b450923b9fdc0c64c7ef6bc6ac3d4f96774193adddfd13ff4ac2f6158"
+    },
+    "p09/six_episode_adoption_review_summary.json": {
+      "bytes": 8825,
+      "sha256": "960ecde8f729635904ba6d2e5f777f521af11d081c5c2742e4d4deafe09677ef"
+    }
+  },
+  "total_bytes": 1988961,
+  "updated_at": "2026-10-05T17:46:04.007262-07:00",
+  "csv_export_note": "CSV line endings normalized to LF; parsed headers/row values unchanged. Source files untouched."
+}

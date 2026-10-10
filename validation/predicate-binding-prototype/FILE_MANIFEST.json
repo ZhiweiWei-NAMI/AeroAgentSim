@@ -1,0 +1,114 @@
+{
+  "schema": "prototype.source-manifest/v1",
+  "scope": "New standalone source, synthetic fixtures, documentation and verification only. External Atlas/BENCH implementation and private raw data are excluded.",
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 59,
+      "sha256": "0353582bf36033fdc104c9fe4d3bf72357459a90073f16b2951f8131a47ac83c",
+      "git_blob_sha1": "52e3bba39e8404ce37d4b242d6f5317ee2c374e1"
+    },
+    {
+      "path": "HANDOFF.md",
+      "bytes": 5405,
+      "sha256": "4e10d0c6e4ad2d7b79611c9f01cc746637d34cea83332647b25083986709bac1",
+      "git_blob_sha1": "2948d5b0716261ea6010065b56d58f8627b6b766"
+    },
+    {
+      "path": "README.md",
+      "bytes": 10961,
+      "sha256": "2fa5b5d59832a5d6ab07d55774dc382cfcce3b35886970deef80b0e82ddaf669",
+      "git_blob_sha1": "02980268c0dcc1657fe2588e096d290a06a3fbb6"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "bytes": 1474,
+      "sha256": "3f7376524eb57f8a31f880f5bf83fa30450798c50acb9d1502c0da9fa7da8852",
+      "git_blob_sha1": "a10a318f9f408286e263960b2c5f7e394f6e7908"
+    },
+    {
+      "path": "__init__.py",
+      "bytes": 405,
+      "sha256": "740cfeabff65951a89cb742ca28ef7ca1d584e7e9a27dd39e6b6a62668fbe61e",
+      "git_blob_sha1": "e91dc532fab5696136ce4b4b025eedd7d9efa2b0"
+    },
+    {
+      "path": "adapter.py",
+      "bytes": 19664,
+      "sha256": "385e4bff991df17813640b51079c2dd4cd7767ee04dd1d7630d8fedd2eefdfac",
+      "git_blob_sha1": "7693af83880097e2726897bea5a31bd549906da0"
+    },
+    {
+      "path": "contracts.py",
+      "bytes": 10865,
+      "sha256": "65bf1fe4c0777a4aac1228fdaf9d0d75da1166f50bd4d5f85999eca810a06514",
+      "git_blob_sha1": "d845abd2101135bf2b2d5215a287b98f27c15109"
+    },
+    {
+      "path": "demo.py",
+      "bytes": 6034,
+      "sha256": "2e65eba1c8ca19f8582b4b12d970edef9a2e42d782636192b3245b57bc452d0f",
+      "git_blob_sha1": "de1166e04a0a4ee6db53ff3bbd43200d5f30da5a"
+    },
+    {
+      "path": "fixtures.json",
+      "bytes": 32179,
+      "sha256": "e58a298b5834577fc6baedf8047c93e22601bc9613ffe4d16a67df9c7695e517",
+      "git_blob_sha1": "5777ac9cc74a53042588c71d0f37b90a82c7318f"
+    },
+    {
+      "path": "json_io.py",
+      "bytes": 2390,
+      "sha256": "44c60273d051b3e4e0fd24d711acfb939b1c340a8b851867337d399817825861",
+      "git_blob_sha1": "43fcc751c471eae7c10fd40ef1295b1039a96400"
+    },
+    {
+      "path": "ledger.py",
+      "bytes": 27811,
+      "sha256": "0b745a483bec2d71b3cd6140e0c17214c61af7ed5fa08bce1fba07c861a43f08",
+      "git_blob_sha1": "a79f796feeee712e44b18672be17615f6427e202"
+    },
+    {
+      "path": "ledger_fixtures.json",
+      "bytes": 2331,
+      "sha256": "179da1708a6623bdda33321e6984274cccdc933c091c18e2b3f8b224c1067372",
+      "git_blob_sha1": "b9b32346a3c863f0d4c1005e53c0545bc7b67406"
+    },
+    {
+      "path": "parcel_mapping.json",
+      "bytes": 3350,
+      "sha256": "d869bf74d67a1ff33f22037eb615109c40742ec44a247898bea93465c6625d06",
+      "git_blob_sha1": "63634923b56e1044a5b65b049a28131d73f6f524"
+    },
+    {
+      "path": "run_checks.py",
+      "bytes": 1586,
+      "sha256": "7a792869102fe45ce07ef47d680c03cea91621dc07727ff4e9f905cc52d1f368",
+      "git_blob_sha1": "a331c6b50fe2a233d44083a5543faea83af52ce4"
+    },
+    {
+      "path": "test_adapter.py",
+      "bytes": 21518,
+      "sha256": "de42127163f6cd878d378c2304bbf956650b793fa98895fb2a5cc776237a6cc5",
+      "git_blob_sha1": "bacfd0da4c6c9e1756c909928cb92bd697d00547"
+    },
+    {
+      "path": "test_ledger.py",
+      "bytes": 27487,
+      "sha256": "02c67b4dacbf91dd2172c0815cd5267d01739e38fad541d8bf02ac5e3006d98e",
+      "git_blob_sha1": "07c48a2e57aa24bb714a32d0a8cf1c5e8332a8c9"
+    },
+    {
+      "path": "verification_native.json",
+      "bytes": 5790,
+      "sha256": "9d476e66c6546e9761c4ea66364ebde551116d906290f12fefec94fc4cd6116d",
+      "git_blob_sha1": "9e76e6743acc5cc5f5d649b789cfa07dd12dc04f"
+    },
+    {
+      "path": "verification_standalone.json",
+      "bytes": 7487,
+      "sha256": "698cf97c6bffd52eeb3f86114668df2d8e790e12e43146239a8045ef50514309",
+      "git_blob_sha1": "ef8c7d878fc6cac5a7358157fd5c64ce5a29c7d6"
+    }
+  ]
+}

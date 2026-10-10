@@ -1,0 +1,51 @@
+{
+  "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+  "public_trace_exported": false,
+  "artifacts": [
+    {
+      "file": "in-flight-tick120.png",
+      "bytes": 719888,
+      "sha256": "626e7900574f5fcea98cebfe546cfadeaa522a4e656052b641e8c48e8a0617b1"
+    },
+    {
+      "file": "in-flight-tick240.png",
+      "bytes": 726854,
+      "sha256": "8ed19d459294c2ad66fec90bf77de66176686d1b44a5b97dce5b0fc44d899f62"
+    },
+    {
+      "file": "touchdown-tick300.png",
+      "bytes": 736612,
+      "sha256": "a5d21843f249f23a3fd3973e43548baf4821ab678869c21ca614744353b472f7"
+    },
+    {
+      "file": "narrow-tick240.png",
+      "bytes": 537957,
+      "sha256": "7081dab1ab49c62408e98f6315b9220c2315e5e3db13c8412de20a027b3f85f5"
+    },
+    {
+      "file": "same-run-post-run-replay.gif",
+      "bytes": 5836722,
+      "sha256": "c769b2bbda7feeb7f711c185d6f3cddb882a8d118593170e3736bf23bfa263b0"
+    },
+    {
+      "file": "visual-receipt.json",
+      "bytes": 184684,
+      "sha256": "77255cf67776605b54e43de09cf411cae6e13dd319c37d73befe5c56d16aca68"
+    },
+    {
+      "file": "source-version.json",
+      "bytes": 1210,
+      "sha256": "94a65ebf07664b24dda1c9654b3f902608dc2ffd9bf258527932d3efe2417a96"
+    },
+    {
+      "file": "capture.mjs",
+      "bytes": 5179,
+      "sha256": "333f402a51b2f711cbd3cc4cb42015b5f2efea4968e9f0f777c0b04b10273f6b"
+    },
+    {
+      "file": "pose-correlations.json",
+      "bytes": 2559,
+      "sha256": "44415958fb74356de3cc5b8c4fcd50d04b5b103177515aff46f3e7866073d688"
+    }
+  ]
+}

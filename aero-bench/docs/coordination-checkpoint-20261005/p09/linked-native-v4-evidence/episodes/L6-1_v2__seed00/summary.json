@@ -1,0 +1,86 @@
+{
+  "schema_version": "p09.linked-native-causal/v4",
+  "episode_id": "L6-1_v2__seed00",
+  "seed": 0,
+  "scenario_id": "L6-1_v2",
+  "source_refs": [
+    "Dataset/scenarios/L6_digital_layer/failure/L6-1_v2/event_script.json",
+    "Dataset/scenarios/L6_digital_layer/failure/L6-1_v2/scene_setup.json"
+  ],
+  "guard_version": null,
+  "healthy_control": false,
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_digital_l6_1_v2": 3000000000,
+    "c2_loss": 25000000000,
+    "rth_engaged": 28500000000,
+    "c2_recovered": 33500000000,
+    "lifecycle_landing_uav_digital_l6_1_v2": 41500000000
+  },
+  "unfired_events": [],
+  "pose_and_visual_differences_from_same_seed_source_replay": {
+    "tower_l6_1_v2": {
+      "first_changed_tick": 241,
+      "fields": [
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "state": "link_lost",
+        "activity_type": "link_lost"
+      },
+      "after": {
+        "state": "online",
+        "activity_type": "online"
+      }
+    },
+    "uav_digital_l6_1_v2": {
+      "first_changed_tick": 241,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6606.838,
+          6521.141,
+          31.5
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          -5.0
+        ],
+        "state": "descending",
+        "activity_type": "descending"
+      },
+      "after": {
+        "pos_enu": [
+          6606.838,
+          6521.141,
+          32.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "state": "cruise",
+        "activity_type": "cruise"
+      }
+    }
+  },
+  "weather_changed": false,
+  "adoption_class": "A",
+  "published210_modified": false,
+  "collection_status": "one-shot collection pending final freeze",
+  "iteration_count": 2,
+  "backend": "p01.ns3.frozen-wifi/v8-switch-completion",
+  "duration_ticks": 900,
+  "motion_acquisition": null,
+  "output_dir": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-1_v2__seed00/adopted",
+  "motion_scope": "authored waypoint engine; not PX4 motion feedback",
+  "missing_event_disposition": "complete",
+  "rf_weather_scope": "not amplified; dimensionless rain is not an observed mm/h rate"
+}

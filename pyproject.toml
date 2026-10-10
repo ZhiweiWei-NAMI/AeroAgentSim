@@ -3,9 +3,9 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "airfogsim"
+name = "aeroagentsim"
 version = "1.1.1"
-description = "Low Altitude Space Simulation System"
+description = "Discrete-event simulation and developer workbench for low-altitude autonomous systems"
 readme = "README.md"
 authors = [
     {name = "Zhiwei Wei", email = "2311769@tongji.edu.cn"}
@@ -24,7 +24,8 @@ dependencies = [
     "fastapi",
     "tabulate",
     "pydantic",
-    "uvicorn[standard]" # 添加 uvicorn, [standard] 包含性能优化库
+    "uvicorn[standard]", # 添加 uvicorn, [standard] 包含性能优化库
+    "pyyaml" # 用于YAML配置文件解析
 ]
 
 [project.optional-dependencies]
@@ -50,7 +51,8 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["airfogsim", "airfogsim.*"]
+include = ["aeroagentsim", "aeroagentsim.*", "airfogsim"]
 
 [project.scripts]
-airfogsim = "airfogsim.cli:main"
+airfogsim = "aeroagentsim.cli:main"
+aeroagentsim = "aeroagentsim.cli:main"

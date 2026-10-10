@@ -1,0 +1,2027 @@
+{
+  "episodes": [
+    {
+      "episode_id": "L1-1_v1__seed00",
+      "scenario_id": "L1-1_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-1_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-1_v1__seed01",
+      "scenario_id": "L1-1_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-1_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-1_v1__seed02",
+      "scenario_id": "L1-1_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-1_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-1_v2__seed00",
+      "scenario_id": "L1-1_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-1_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-1_v2__seed01",
+      "scenario_id": "L1-1_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-1_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-1_v2__seed02",
+      "scenario_id": "L1-1_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-1_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-2_v1__seed00",
+      "scenario_id": "L1-2_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-2_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-2_v1__seed01",
+      "scenario_id": "L1-2_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-2_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-2_v1__seed02",
+      "scenario_id": "L1-2_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-2_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-3_v1__seed00",
+      "scenario_id": "L1-3_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-3_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-3_v1__seed01",
+      "scenario_id": "L1-3_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-3_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-3_v1__seed02",
+      "scenario_id": "L1-3_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-3_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-3_v2__seed00",
+      "scenario_id": "L1-3_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-3_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-3_v2__seed01",
+      "scenario_id": "L1-3_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-3_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-3_v2__seed02",
+      "scenario_id": "L1-3_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-3_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-4_v1__seed00",
+      "scenario_id": "L1-4_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-4_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-4_v1__seed01",
+      "scenario_id": "L1-4_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-4_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-4_v1__seed02",
+      "scenario_id": "L1-4_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-4_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-4_v2__seed00",
+      "scenario_id": "L1-4_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-4_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-4_v2__seed01",
+      "scenario_id": "L1-4_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-4_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L1-4_v2__seed02",
+      "scenario_id": "L1-4_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L1-4_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-1_v1__seed00",
+      "scenario_id": "L2-1_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-1_v1__seed00/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L2-1_v1__seed00",
+      "ue_entry": "capture_filtered_updates/L2-1_v1__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L2-1_v1__seed00/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L2-1_v1__seed01",
+      "scenario_id": "L2-1_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-1_v1__seed01/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L2-1_v1__seed01",
+      "ue_entry": "capture_filtered_updates/L2-1_v1__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L2-1_v1__seed01/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L2-1_v1__seed02",
+      "scenario_id": "L2-1_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-1_v1__seed02/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L2-1_v1__seed02",
+      "ue_entry": "capture_filtered_updates/L2-1_v1__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L2-1_v1__seed02/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L2-1_v2__seed00",
+      "scenario_id": "L2-1_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-1_v2__seed00/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L2-1_v2__seed00",
+      "ue_entry": "capture_filtered_updates/L2-1_v2__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L2-1_v2__seed00/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L2-1_v2__seed01",
+      "scenario_id": "L2-1_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-1_v2__seed01/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L2-1_v2__seed01",
+      "ue_entry": "capture_filtered_updates/L2-1_v2__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L2-1_v2__seed01/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L2-1_v2__seed02",
+      "scenario_id": "L2-1_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-1_v2__seed02/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L2-1_v2__seed02",
+      "ue_entry": "capture_filtered_updates/L2-1_v2__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L2-1_v2__seed02/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L2-2_v1__seed00",
+      "scenario_id": "L2-2_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-2_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-2_v1__seed01",
+      "scenario_id": "L2-2_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-2_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-2_v1__seed02",
+      "scenario_id": "L2-2_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-2_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-2_v2__seed00",
+      "scenario_id": "L2-2_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-2_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-2_v2__seed01",
+      "scenario_id": "L2-2_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-2_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-2_v2__seed02",
+      "scenario_id": "L2-2_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-2_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-3_v1__seed00",
+      "scenario_id": "L2-3_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-3_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-3_v1__seed01",
+      "scenario_id": "L2-3_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-3_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-3_v1__seed02",
+      "scenario_id": "L2-3_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-3_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-3_v2__seed00",
+      "scenario_id": "L2-3_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-3_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-3_v2__seed01",
+      "scenario_id": "L2-3_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-3_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-3_v2__seed02",
+      "scenario_id": "L2-3_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-3_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-4_v1__seed00",
+      "scenario_id": "L2-4_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-4_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-4_v1__seed01",
+      "scenario_id": "L2-4_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-4_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-4_v1__seed02",
+      "scenario_id": "L2-4_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-4_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-4_v2__seed00",
+      "scenario_id": "L2-4_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-4_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-4_v2__seed01",
+      "scenario_id": "L2-4_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-4_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-4_v2__seed02",
+      "scenario_id": "L2-4_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-4_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-5_v1__seed00",
+      "scenario_id": "L2-5_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-5_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-5_v1__seed01",
+      "scenario_id": "L2-5_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-5_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L2-5_v1__seed02",
+      "scenario_id": "L2-5_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L2-5_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-1_v1__seed00",
+      "scenario_id": "L3-1_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-1_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-1_v1__seed01",
+      "scenario_id": "L3-1_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-1_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-1_v1__seed02",
+      "scenario_id": "L3-1_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-1_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-2_v1__seed00",
+      "scenario_id": "L3-2_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-2_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-2_v1__seed01",
+      "scenario_id": "L3-2_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-2_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-2_v1__seed02",
+      "scenario_id": "L3-2_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-2_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-2_v2__seed00",
+      "scenario_id": "L3-2_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-2_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-2_v2__seed01",
+      "scenario_id": "L3-2_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-2_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-2_v2__seed02",
+      "scenario_id": "L3-2_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-2_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-3_v1__seed00",
+      "scenario_id": "L3-3_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-3_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-3_v1__seed01",
+      "scenario_id": "L3-3_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-3_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-3_v1__seed02",
+      "scenario_id": "L3-3_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-3_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-3_v2__seed00",
+      "scenario_id": "L3-3_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-3_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-3_v2__seed01",
+      "scenario_id": "L3-3_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-3_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L3-3_v2__seed02",
+      "scenario_id": "L3-3_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L3-3_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-10_v1__seed00",
+      "scenario_id": "L4-10_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-10_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-10_v1__seed01",
+      "scenario_id": "L4-10_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-10_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-10_v1__seed02",
+      "scenario_id": "L4-10_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-10_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-10_v2__seed00",
+      "scenario_id": "L4-10_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-10_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-10_v2__seed01",
+      "scenario_id": "L4-10_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-10_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-10_v2__seed02",
+      "scenario_id": "L4-10_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-10_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-11_v1__seed00",
+      "scenario_id": "L4-11_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-11_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-11_v1__seed01",
+      "scenario_id": "L4-11_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-11_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-11_v1__seed02",
+      "scenario_id": "L4-11_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-11_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-11_v2__seed00",
+      "scenario_id": "L4-11_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-11_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-11_v2__seed01",
+      "scenario_id": "L4-11_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-11_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-11_v2__seed02",
+      "scenario_id": "L4-11_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-11_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-1_v1__seed00",
+      "scenario_id": "L4-1_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-1_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-1_v1__seed01",
+      "scenario_id": "L4-1_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-1_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-1_v1__seed02",
+      "scenario_id": "L4-1_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-1_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-1_v2__seed00",
+      "scenario_id": "L4-1_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-1_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-1_v2__seed01",
+      "scenario_id": "L4-1_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-1_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-1_v2__seed02",
+      "scenario_id": "L4-1_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-1_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-2_v1__seed00",
+      "scenario_id": "L4-2_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-2_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-2_v1__seed01",
+      "scenario_id": "L4-2_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-2_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-2_v1__seed02",
+      "scenario_id": "L4-2_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-2_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-2_v2__seed00",
+      "scenario_id": "L4-2_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-2_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-2_v2__seed01",
+      "scenario_id": "L4-2_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-2_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-2_v2__seed02",
+      "scenario_id": "L4-2_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-2_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-3_v1__seed00",
+      "scenario_id": "L4-3_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-3_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-3_v1__seed01",
+      "scenario_id": "L4-3_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-3_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-3_v1__seed02",
+      "scenario_id": "L4-3_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-3_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-3_v2__seed00",
+      "scenario_id": "L4-3_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-3_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-3_v2__seed01",
+      "scenario_id": "L4-3_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-3_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-3_v2__seed02",
+      "scenario_id": "L4-3_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-3_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-3_v3__seed00",
+      "scenario_id": "L4-3_v3",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-3_v3__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-3_v3__seed01",
+      "scenario_id": "L4-3_v3",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-3_v3__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-3_v3__seed02",
+      "scenario_id": "L4-3_v3",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-3_v3__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-4_v1__seed00",
+      "scenario_id": "L4-4_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-4_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-4_v1__seed01",
+      "scenario_id": "L4-4_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-4_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-4_v1__seed02",
+      "scenario_id": "L4-4_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-4_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-4_v2__seed00",
+      "scenario_id": "L4-4_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-4_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-4_v2__seed01",
+      "scenario_id": "L4-4_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-4_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-4_v2__seed02",
+      "scenario_id": "L4-4_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-4_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-5_v1__seed00",
+      "scenario_id": "L4-5_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-5_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-5_v1__seed01",
+      "scenario_id": "L4-5_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-5_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-5_v1__seed02",
+      "scenario_id": "L4-5_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-5_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-5_v2__seed00",
+      "scenario_id": "L4-5_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-5_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-5_v2__seed01",
+      "scenario_id": "L4-5_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-5_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-5_v2__seed02",
+      "scenario_id": "L4-5_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-5_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-5_v3__seed00",
+      "scenario_id": "L4-5_v3",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-5_v3__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-5_v3__seed01",
+      "scenario_id": "L4-5_v3",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-5_v3__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-5_v3__seed02",
+      "scenario_id": "L4-5_v3",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-5_v3__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-6_v1__seed00",
+      "scenario_id": "L4-6_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-6_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-6_v1__seed01",
+      "scenario_id": "L4-6_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-6_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-6_v1__seed02",
+      "scenario_id": "L4-6_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-6_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-6_v2__seed00",
+      "scenario_id": "L4-6_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-6_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-6_v2__seed01",
+      "scenario_id": "L4-6_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-6_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-6_v2__seed02",
+      "scenario_id": "L4-6_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-6_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-7_v1__seed00",
+      "scenario_id": "L4-7_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-7_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-7_v1__seed01",
+      "scenario_id": "L4-7_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-7_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-7_v1__seed02",
+      "scenario_id": "L4-7_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-7_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-7_v2__seed00",
+      "scenario_id": "L4-7_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-7_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-7_v2__seed01",
+      "scenario_id": "L4-7_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-7_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-7_v2__seed02",
+      "scenario_id": "L4-7_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-7_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-8_v1__seed00",
+      "scenario_id": "L4-8_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-8_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-8_v1__seed01",
+      "scenario_id": "L4-8_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-8_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-8_v1__seed02",
+      "scenario_id": "L4-8_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-8_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-8_v2__seed00",
+      "scenario_id": "L4-8_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-8_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-8_v2__seed01",
+      "scenario_id": "L4-8_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-8_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-8_v2__seed02",
+      "scenario_id": "L4-8_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-8_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-9_v1__seed00",
+      "scenario_id": "L4-9_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-9_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-9_v1__seed01",
+      "scenario_id": "L4-9_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-9_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-9_v1__seed02",
+      "scenario_id": "L4-9_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-9_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-9_v2__seed00",
+      "scenario_id": "L4-9_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-9_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-9_v2__seed01",
+      "scenario_id": "L4-9_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-9_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L4-9_v2__seed02",
+      "scenario_id": "L4-9_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L4-9_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-1_v1__seed00",
+      "scenario_id": "L5-1_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-1_v1__seed00/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L5-1_v1__seed00",
+      "ue_entry": "capture_filtered_updates/L5-1_v1__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L5-1_v1__seed00/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L5-1_v1__seed01",
+      "scenario_id": "L5-1_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-1_v1__seed01/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L5-1_v1__seed01",
+      "ue_entry": "capture_filtered_updates/L5-1_v1__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L5-1_v1__seed01/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L5-1_v1__seed02",
+      "scenario_id": "L5-1_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-1_v1__seed02/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L5-1_v1__seed02",
+      "ue_entry": "capture_filtered_updates/L5-1_v1__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L5-1_v1__seed02/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L5-1_v2__seed00",
+      "scenario_id": "L5-1_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-1_v2__seed00/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L5-1_v2__seed00",
+      "ue_entry": "capture_filtered_updates/L5-1_v2__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L5-1_v2__seed00/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L5-1_v2__seed01",
+      "scenario_id": "L5-1_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-1_v2__seed01/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L5-1_v2__seed01",
+      "ue_entry": "capture_filtered_updates/L5-1_v2__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L5-1_v2__seed01/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L5-1_v2__seed02",
+      "scenario_id": "L5-1_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-1_v2__seed02/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L5-1_v2__seed02",
+      "ue_entry": "capture_filtered_updates/L5-1_v2__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L5-1_v2__seed02/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L5-1_v3__seed00",
+      "scenario_id": "L5-1_v3",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-1_v3__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-1_v3__seed01",
+      "scenario_id": "L5-1_v3",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-1_v3__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-1_v3__seed02",
+      "scenario_id": "L5-1_v3",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-1_v3__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-2_v1__seed00",
+      "scenario_id": "L5-2_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-2_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-2_v1__seed01",
+      "scenario_id": "L5-2_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-2_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-2_v1__seed02",
+      "scenario_id": "L5-2_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-2_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-2_v2__seed00",
+      "scenario_id": "L5-2_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-2_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-2_v2__seed01",
+      "scenario_id": "L5-2_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-2_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-2_v2__seed02",
+      "scenario_id": "L5-2_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-2_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-3_v1__seed00",
+      "scenario_id": "L5-3_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-3_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-3_v1__seed01",
+      "scenario_id": "L5-3_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-3_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-3_v1__seed02",
+      "scenario_id": "L5-3_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-3_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-3_v2__seed00",
+      "scenario_id": "L5-3_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-3_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-3_v2__seed01",
+      "scenario_id": "L5-3_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-3_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-3_v2__seed02",
+      "scenario_id": "L5-3_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-3_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-4_v1__seed00",
+      "scenario_id": "L5-4_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-4_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-4_v1__seed01",
+      "scenario_id": "L5-4_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-4_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-4_v1__seed02",
+      "scenario_id": "L5-4_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-4_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-5_v1__seed00",
+      "scenario_id": "L5-5_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-5_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-5_v1__seed01",
+      "scenario_id": "L5-5_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-5_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L5-5_v1__seed02",
+      "scenario_id": "L5-5_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L5-5_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-1_v1__seed00",
+      "scenario_id": "L6-1_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-1_v1__seed00/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L6-1_v1__seed00",
+      "ue_entry": "capture_filtered_updates/L6-1_v1__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-1_v1__seed00/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-1_v1__seed01",
+      "scenario_id": "L6-1_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-1_v1__seed01/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L6-1_v1__seed01",
+      "ue_entry": "capture_filtered_updates/L6-1_v1__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-1_v1__seed01/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-1_v1__seed02",
+      "scenario_id": "L6-1_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-1_v1__seed02/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L6-1_v1__seed02",
+      "ue_entry": "capture_filtered_updates/L6-1_v1__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-1_v1__seed02/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-1_v2__seed00",
+      "scenario_id": "L6-1_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-1_v2__seed00/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L6-1_v2__seed00",
+      "ue_entry": "capture_filtered_updates/L6-1_v2__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-1_v2__seed00/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-1_v2__seed01",
+      "scenario_id": "L6-1_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-1_v2__seed01/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L6-1_v2__seed01",
+      "ue_entry": "capture_filtered_updates/L6-1_v2__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-1_v2__seed01/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-1_v2__seed02",
+      "scenario_id": "L6-1_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-1_v2__seed02/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/L6-1_v2__seed02",
+      "ue_entry": "capture_filtered_updates/L6-1_v2__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-1_v2__seed02/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-2_v1__seed00",
+      "scenario_id": "L6-2_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-2_v1__seed00/episode_manifest.json",
+      "update_status": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "package_source": "sources/L6-2_v1__seed00",
+      "ue_entry": "capture_filtered_updates/L6-2_v1__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-2_v1__seed00/capture_window.json",
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-2_v1__seed01",
+      "scenario_id": "L6-2_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-2_v1__seed01/episode_manifest.json",
+      "update_status": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "package_source": "sources/L6-2_v1__seed01",
+      "ue_entry": "capture_filtered_updates/L6-2_v1__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-2_v1__seed01/capture_window.json",
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-2_v1__seed02",
+      "scenario_id": "L6-2_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-2_v1__seed02/episode_manifest.json",
+      "update_status": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "package_source": "sources/L6-2_v1__seed02",
+      "ue_entry": "capture_filtered_updates/L6-2_v1__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-2_v1__seed02/capture_window.json",
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-2_v2__seed00",
+      "scenario_id": "L6-2_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-2_v2__seed00/episode_manifest.json",
+      "update_status": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "package_source": "sources/L6-2_v2__seed00",
+      "ue_entry": "capture_filtered_updates/L6-2_v2__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-2_v2__seed00/capture_window.json",
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-2_v2__seed01",
+      "scenario_id": "L6-2_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-2_v2__seed01/episode_manifest.json",
+      "update_status": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "package_source": "sources/L6-2_v2__seed01",
+      "ue_entry": "capture_filtered_updates/L6-2_v2__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-2_v2__seed01/capture_window.json",
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-2_v2__seed02",
+      "scenario_id": "L6-2_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-2_v2__seed02/episode_manifest.json",
+      "update_status": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "package_source": "sources/L6-2_v2__seed02",
+      "ue_entry": "capture_filtered_updates/L6-2_v2__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-2_v2__seed02/capture_window.json",
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-3_v1__seed00",
+      "scenario_id": "L6-3_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-3_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-3_v1__seed01",
+      "scenario_id": "L6-3_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-3_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-3_v1__seed02",
+      "scenario_id": "L6-3_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-3_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-3_v2__seed00",
+      "scenario_id": "L6-3_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-3_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-3_v2__seed01",
+      "scenario_id": "L6-3_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-3_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-3_v2__seed02",
+      "scenario_id": "L6-3_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-3_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-4_v1__seed00",
+      "scenario_id": "L6-4_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-4_v1__seed00/episode_manifest.json",
+      "update_status": "RETAINED_SAME_OLD_PEER_GROUP_ACTUAL_RESULT",
+      "package_source": "sources/L6-4_v1__seed00",
+      "ue_entry": "capture_filtered_updates/L6-4_v1__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-4_v1__seed00/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-4_v1__seed01",
+      "scenario_id": "L6-4_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-4_v1__seed01/episode_manifest.json",
+      "update_status": "RETAINED_SAME_OLD_PEER_GROUP_ACTUAL_RESULT",
+      "package_source": "sources/L6-4_v1__seed01",
+      "ue_entry": "capture_filtered_updates/L6-4_v1__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-4_v1__seed01/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-4_v1__seed02",
+      "scenario_id": "L6-4_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-4_v1__seed02/episode_manifest.json",
+      "update_status": "RETAINED_SAME_OLD_PEER_GROUP_ACTUAL_RESULT",
+      "package_source": "sources/L6-4_v1__seed02",
+      "ue_entry": "capture_filtered_updates/L6-4_v1__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-4_v1__seed02/capture_window.json",
+      "story_status": "INCOMPLETE",
+      "unfired_events": [
+        "multi_uav_hold_entry",
+        "multi_uav_safe_hold",
+        "alternate_channel",
+        "lifecycle_landing_uav_digital_l6_4_v1",
+        "lifecycle_landing_uav_digital_l6_4_v1_secondary",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v1",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v1_secondary",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v1",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v1_secondary",
+        "alternate_channel:local:uav_digital_l6_4_v1",
+        "alternate_channel:local:uav_digital_l6_4_v1_secondary"
+      ]
+    },
+    {
+      "episode_id": "L6-4_v2__seed00",
+      "scenario_id": "L6-4_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-4_v2__seed00/episode_manifest.json",
+      "update_status": "RETAINED_SAME_OLD_PEER_GROUP_ACTUAL_RESULT",
+      "package_source": "sources/L6-4_v2__seed00",
+      "ue_entry": "capture_filtered_updates/L6-4_v2__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-4_v2__seed00/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-4_v2__seed01",
+      "scenario_id": "L6-4_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-4_v2__seed01/episode_manifest.json",
+      "update_status": "RETAINED_SAME_OLD_PEER_GROUP_ACTUAL_RESULT",
+      "package_source": "sources/L6-4_v2__seed01",
+      "ue_entry": "capture_filtered_updates/L6-4_v2__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-4_v2__seed01/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "L6-4_v2__seed02",
+      "scenario_id": "L6-4_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-4_v2__seed02/episode_manifest.json",
+      "update_status": "RETAINED_SAME_OLD_PEER_GROUP_ACTUAL_RESULT",
+      "package_source": "sources/L6-4_v2__seed02",
+      "ue_entry": "capture_filtered_updates/L6-4_v2__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/L6-4_v2__seed02/capture_window.json",
+      "story_status": "INCOMPLETE",
+      "unfired_events": [
+        "multi_uav_hold_entry",
+        "multi_uav_safe_hold",
+        "alternate_channel",
+        "lifecycle_landing_uav_digital_l6_4_v2",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v2",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v2",
+        "alternate_channel:local:uav_digital_l6_4_v2"
+      ]
+    },
+    {
+      "episode_id": "L6-5_v1__seed00",
+      "scenario_id": "L6-5_v1",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-5_v1__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-5_v1__seed01",
+      "scenario_id": "L6-5_v1",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-5_v1__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-5_v1__seed02",
+      "scenario_id": "L6-5_v1",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-5_v1__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-5_v2__seed00",
+      "scenario_id": "L6-5_v2",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-5_v2__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-5_v2__seed01",
+      "scenario_id": "L6-5_v2",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-5_v2__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "L6-5_v2__seed02",
+      "scenario_id": "L6-5_v2",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/L6-5_v2__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed00",
+      "scenario_id": "X1_rain_to_c2loss_to_forced_landing",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X1_rain_to_c2loss_to_forced_landing__seed00/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/X1_rain_to_c2loss_to_forced_landing__seed00",
+      "ue_entry": "capture_filtered_updates/X1_rain_to_c2loss_to_forced_landing__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/X1_rain_to_c2loss_to_forced_landing__seed00/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed01",
+      "scenario_id": "X1_rain_to_c2loss_to_forced_landing",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X1_rain_to_c2loss_to_forced_landing__seed01/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/X1_rain_to_c2loss_to_forced_landing__seed01",
+      "ue_entry": "capture_filtered_updates/X1_rain_to_c2loss_to_forced_landing__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/X1_rain_to_c2loss_to_forced_landing__seed01/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed02",
+      "scenario_id": "X1_rain_to_c2loss_to_forced_landing",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X1_rain_to_c2loss_to_forced_landing__seed02/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/X1_rain_to_c2loss_to_forced_landing__seed02",
+      "ue_entry": "capture_filtered_updates/X1_rain_to_c2loss_to_forced_landing__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/X1_rain_to_c2loss_to_forced_landing__seed02/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "X2_gnss_spoof_to_geofence_violation__seed00",
+      "scenario_id": "X2_gnss_spoof_to_geofence_violation",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X2_gnss_spoof_to_geofence_violation__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X2_gnss_spoof_to_geofence_violation__seed01",
+      "scenario_id": "X2_gnss_spoof_to_geofence_violation",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X2_gnss_spoof_to_geofence_violation__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X2_gnss_spoof_to_geofence_violation__seed02",
+      "scenario_id": "X2_gnss_spoof_to_geofence_violation",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X2_gnss_spoof_to_geofence_violation__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X3_pedestrian_fall_to_emergency_response__seed00",
+      "scenario_id": "X3_pedestrian_fall_to_emergency_response",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X3_pedestrian_fall_to_emergency_response__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X3_pedestrian_fall_to_emergency_response__seed01",
+      "scenario_id": "X3_pedestrian_fall_to_emergency_response",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X3_pedestrian_fall_to_emergency_response__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X3_pedestrian_fall_to_emergency_response__seed02",
+      "scenario_id": "X3_pedestrian_fall_to_emergency_response",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X3_pedestrian_fall_to_emergency_response__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X4_fog_to_uav_conflict__seed00",
+      "scenario_id": "X4_fog_to_uav_conflict",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X4_fog_to_uav_conflict__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X4_fog_to_uav_conflict__seed01",
+      "scenario_id": "X4_fog_to_uav_conflict",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X4_fog_to_uav_conflict__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X4_fog_to_uav_conflict__seed02",
+      "scenario_id": "X4_fog_to_uav_conflict",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X4_fog_to_uav_conflict__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed00",
+      "scenario_id": "X5_comm_failure_to_pad_contention",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X5_comm_failure_to_pad_contention__seed00/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/X5_comm_failure_to_pad_contention__seed00",
+      "ue_entry": "capture_filtered_updates/X5_comm_failure_to_pad_contention__seed00/render_host_config.json",
+      "capture_window": "capture_filtered_updates/X5_comm_failure_to_pad_contention__seed00/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed01",
+      "scenario_id": "X5_comm_failure_to_pad_contention",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X5_comm_failure_to_pad_contention__seed01/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/X5_comm_failure_to_pad_contention__seed01",
+      "ue_entry": "capture_filtered_updates/X5_comm_failure_to_pad_contention__seed01/render_host_config.json",
+      "capture_window": "capture_filtered_updates/X5_comm_failure_to_pad_contention__seed01/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed02",
+      "scenario_id": "X5_comm_failure_to_pad_contention",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X5_comm_failure_to_pad_contention__seed02/episode_manifest.json",
+      "update_status": "SOURCE_SELECTED_FOR_UPDATE_ASSEMBLY",
+      "package_source": "sources/X5_comm_failure_to_pad_contention__seed02",
+      "ue_entry": "capture_filtered_updates/X5_comm_failure_to_pad_contention__seed02/render_host_config.json",
+      "capture_window": "capture_filtered_updates/X5_comm_failure_to_pad_contention__seed02/capture_window.json",
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": []
+    },
+    {
+      "episode_id": "X6_crowd_evacuation_to_airspace_lockdown__seed00",
+      "scenario_id": "X6_crowd_evacuation_to_airspace_lockdown",
+      "seed": 0,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X6_crowd_evacuation_to_airspace_lockdown__seed00/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X6_crowd_evacuation_to_airspace_lockdown__seed01",
+      "scenario_id": "X6_crowd_evacuation_to_airspace_lockdown",
+      "seed": 1,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X6_crowd_evacuation_to_airspace_lockdown__seed01/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    },
+    {
+      "episode_id": "X6_crowd_evacuation_to_airspace_lockdown__seed02",
+      "scenario_id": "X6_crowd_evacuation_to_airspace_lockdown",
+      "seed": 2,
+      "original_capture_reference": "aw_data/render_ready_episodes_capture_filtered/X6_crowd_evacuation_to_airspace_lockdown__seed02/episode_manifest.json",
+      "update_status": "ORIGINAL_REFERENCE_RETAINED_NOT_FINAL_C_CLASSIFICATION",
+      "package_source": null,
+      "ue_entry": null
+    }
+  ],
+  "source_reference_index": "/mnt/data2/weizhiwei/AERO_WORLD/design/p09/source_group_plan/published_capture_episode_index.csv",
+  "original_source_untouched": true,
+  "final_ready": false,
+  "updated_overlay_technical_ready": true,
+  "final_ready_scope": "Full210/ARM adoption remains separate; this index preserves the original174 references."
+}

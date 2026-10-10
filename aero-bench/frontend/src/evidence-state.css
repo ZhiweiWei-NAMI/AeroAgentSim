@@ -1,0 +1,64 @@
+/* Evidence-state badge. Each state differs in hue, mark shape and text, so the
+   distinction survives colour-vision differences and greyscale screenshots. */
+.evidence-badge {
+  --evidence-tone: #9fb3c1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 4px 12px 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--evidence-tone) 55%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--evidence-tone) 10%, rgba(6, 16, 24, 0.92));
+  color: #e6f2f8;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.evidence-badge-mark {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  background: var(--evidence-tone);
+}
+.evidence-badge-label {
+  color: var(--evidence-tone);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.evidence-badge-detail {
+  overflow: hidden;
+  min-width: 0;
+  color: #b7ccd8;
+  text-overflow: ellipsis;
+}
+/* preview: hollow square — authored, nothing executed */
+.evidence-badge[data-evidence-state="preview"] { --evidence-tone: #9fb3c1; }
+.evidence-badge[data-evidence-state="preview"] .evidence-badge-mark {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--evidence-tone);
+}
+/* blocked: diamond — a named gate stops execution */
+.evidence-badge[data-evidence-state="blocked"] { --evidence-tone: #f2bd5e; }
+.evidence-badge[data-evidence-state="blocked"] .evidence-badge-mark { transform: rotate(45deg) scale(0.9); }
+/* live: pulsing dot — streaming, unsealed */
+.evidence-badge[data-evidence-state="live"] { --evidence-tone: #4fd8f5; }
+.evidence-badge[data-evidence-state="live"] .evidence-badge-mark {
+  border-radius: 50%;
+  animation: evidence-live 1.6s ease-in-out infinite;
+}
+/* verified: check — sealed and independently verified */
+.evidence-badge[data-evidence-state="verified"] { --evidence-tone: #55d69a; }
+.evidence-badge[data-evidence-state="verified"] .evidence-badge-mark {
+  width: 10px;
+  height: 6px;
+  border-bottom: 2px solid var(--evidence-tone);
+  border-left: 2px solid var(--evidence-tone);
+  background: transparent;
+  transform: translateY(-2px) rotate(-45deg);
+}
+@keyframes evidence-live { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .evidence-badge[data-evidence-state="live"] .evidence-badge-mark { animation: none; }
+}

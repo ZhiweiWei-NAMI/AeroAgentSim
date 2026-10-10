@@ -139,7 +139,7 @@ class TestExamplesIntegration:
     @pytest.fixture(scope="class")
     def examples_dir(self):
         """Get the examples directory path."""
-        src_path = Path(__file__).parent.parent.parent / "src" / "airfogsim" / "examples"
+        src_path = Path(__file__).parent.parent.parent / "src" / "aeroagentsim" / "examples"
         return src_path
 
     def test_examples_directory_exists(self, examples_dir):

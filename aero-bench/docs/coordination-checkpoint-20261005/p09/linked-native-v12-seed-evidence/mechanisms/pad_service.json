@@ -1,0 +1,637 @@
+{
+  "mechanism": "pad_service",
+  "source_commit": "fd407a065d4eb6f4ff5863c3bfb175eb64d17515",
+  "scope": "Actual same-version generation receipts; independent review and final adoption remain separate",
+  "episodes": [
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed00",
+      "seed": 0,
+      "guard_version": null,
+      "event_times_ns": {
+        "lifecycle_takeoff_uav_x5_priority": 3000000000,
+        "lifecycle_takeoff_uav_x5_second": 4000000000,
+        "station_failure": 22000000000,
+        "backup_pad_unavailable": 25000000000,
+        "dual_uav_pad_contention": 28500000000,
+        "pad_priority_arbitration": 58000000000,
+        "second_uav_reroute": 61000000000,
+        "station_recovered": 65500000000,
+        "lifecycle_landing_uav_x5_priority": 69000000000,
+        "lifecycle_landing_uav_x5_second": 74500000000,
+        "dual_uav_pad_contention:local:uav_x5_priority": 28000000000,
+        "p09.pad-request-intent:local:uav_x5_priority": 57500000000,
+        "dual_uav_pad_contention:local:uav_x5_second": 28000000000,
+        "p09.pad-request-intent:local:uav_x5_second": 33500000000,
+        "station_recovered:local:uav_x5_priority": 66000000000,
+        "station_recovered:local:uav_x5_second": 66000000000
+      },
+      "actual_accepted_receipts": [
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_priority",
+          "packet_id": "packet-1155",
+          "source_owner": "uav_x5_priority",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 57500000000,
+          "decision_ns": 57600000000,
+          "send_ns": 57600000000,
+          "deadline_ns": 62600000000,
+          "action": "request_pad",
+          "receive_ns": 57607282351,
+          "accepted_ns": 57607282351,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_second",
+          "packet_id": "packet-672",
+          "source_owner": "uav_x5_second",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 33500000000,
+          "decision_ns": 33600000000,
+          "send_ns": 33600000000,
+          "deadline_ns": 38600000000,
+          "action": "request_pad",
+          "receive_ns": 33607303683,
+          "accepted_ns": 33607303683,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_priority",
+          "packet_id": "packet-1176",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "priority_granted",
+          "receive_ns": 58502690717,
+          "accepted_ns": 58502690717,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_second",
+          "packet_id": "packet-1177",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "reroute",
+          "receive_ns": 58503246845,
+          "accepted_ns": 58503246845,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+          "packet_id": "packet-1382",
+          "source_owner": "tower_x5_comm",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 65500000000,
+          "decision_ns": 68500000000,
+          "send_ns": 68500000000,
+          "deadline_ns": 70500000000,
+          "action": "lifecycle_landing_uav_x5_priority",
+          "receive_ns": 68500224964,
+          "accepted_ns": 68500224964,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second",
+          "packet_id": "packet-1501",
+          "source_owner": "tower_x5_comm",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 65500000000,
+          "decision_ns": 74300000000,
+          "send_ns": 74300000000,
+          "deadline_ns": 76300000000,
+          "action": "lifecycle_landing_uav_x5_second",
+          "receive_ns": 74300213321,
+          "accepted_ns": 74300213321,
+          "status": "accepted"
+        }
+      ],
+      "capture_dependency": {
+        "proposed_class": "A",
+        "changed_owners_and_first_recorded_fields": {
+          "pad_x5_primary": {
+            "first_changed_tick": 561,
+            "fields": [
+              "state",
+              "activity_type"
+            ],
+            "before": {
+              "state": "reserved",
+              "activity_type": "reserved"
+            },
+            "after": {
+              "state": "available",
+              "activity_type": "available"
+            }
+          },
+          "uav_x5_second": {
+            "first_changed_tick": 561,
+            "fields": [
+              "state",
+              "activity_type"
+            ],
+            "before": {
+              "state": "hold",
+              "activity_type": "hold"
+            },
+            "after": {
+              "state": "airborne",
+              "activity_type": "airborne"
+            }
+          },
+          "uav_x5_priority": {
+            "first_changed_tick": 686,
+            "fields": [
+              "pos_enu",
+              "vel_mps",
+              "yaw_deg",
+              "state",
+              "activity_type"
+            ],
+            "before": {
+              "pos_enu": [
+                6637.659,
+                6528.041,
+                6.0
+              ],
+              "vel_mps": [
+                0.0,
+                8.0,
+                0.0
+              ],
+              "yaw_deg": 90.0,
+              "state": "return_to_pad",
+              "activity_type": "return_to_pad"
+            },
+            "after": {
+              "pos_enu": [
+                6637.659,
+                6527.241,
+                6.0
+              ],
+              "vel_mps": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "yaw_deg": -93.210221,
+              "state": "airborne",
+              "activity_type": "airborne"
+            }
+          }
+        },
+        "weather_changed": false,
+        "source_sensor_geometry_modified": false,
+        "comparison": "same-seed current authored source replay; historical captured trajectory hash unavailable",
+        "first_changed_pixel": "NOT_MEASURED",
+        "formal_capture_channel_ids": "NOT_RESOLVED_FROM_THIS_PACKET"
+      },
+      "unfired_events": [],
+      "adoption_status": "PARENT_ACCEPTED_REPRESENTATIVE_ONLY",
+      "receipt_path": "X5_comm_failure_to_pad_contention__seed00/scoped_receipt.json"
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed01",
+      "seed": 1,
+      "guard_version": null,
+      "event_times_ns": {
+        "lifecycle_takeoff_uav_x5_priority": 3000000000,
+        "lifecycle_takeoff_uav_x5_second": 4000000000,
+        "station_failure": 22000000000,
+        "backup_pad_unavailable": 25000000000,
+        "dual_uav_pad_contention": 28500000000,
+        "pad_priority_arbitration": 58000000000,
+        "second_uav_reroute": 61000000000,
+        "station_recovered": 65500000000,
+        "lifecycle_landing_uav_x5_priority": 69000000000,
+        "lifecycle_landing_uav_x5_second": 74500000000,
+        "dual_uav_pad_contention:local:uav_x5_priority": 28000000000,
+        "p09.pad-request-intent:local:uav_x5_priority": 57500000000,
+        "dual_uav_pad_contention:local:uav_x5_second": 28000000000,
+        "p09.pad-request-intent:local:uav_x5_second": 33500000000,
+        "station_recovered:local:uav_x5_priority": 66000000000,
+        "station_recovered:local:uav_x5_second": 66000000000
+      },
+      "actual_accepted_receipts": [
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_priority",
+          "packet_id": "packet-1155",
+          "source_owner": "uav_x5_priority",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 57500000000,
+          "decision_ns": 57600000000,
+          "send_ns": 57600000000,
+          "deadline_ns": 62600000000,
+          "action": "request_pad",
+          "receive_ns": 57604322351,
+          "accepted_ns": 57604322351,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_second",
+          "packet_id": "packet-672",
+          "source_owner": "uav_x5_second",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 33500000000,
+          "decision_ns": 33600000000,
+          "send_ns": 33600000000,
+          "deadline_ns": 38600000000,
+          "action": "request_pad",
+          "receive_ns": 33603363683,
+          "accepted_ns": 33603363683,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_priority",
+          "packet_id": "packet-1176",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "priority_granted",
+          "receive_ns": 58503810717,
+          "accepted_ns": 58503810717,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_second",
+          "packet_id": "packet-1177",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "reroute",
+          "receive_ns": 58504266845,
+          "accepted_ns": 58504266845,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+          "packet_id": "packet-1382",
+          "source_owner": "tower_x5_comm",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 65500000000,
+          "decision_ns": 68500000000,
+          "send_ns": 68500000000,
+          "deadline_ns": 70500000000,
+          "action": "lifecycle_landing_uav_x5_priority",
+          "receive_ns": 68500213001,
+          "accepted_ns": 68500213001,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second",
+          "packet_id": "packet-1501",
+          "source_owner": "tower_x5_comm",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 65500000000,
+          "decision_ns": 74300000000,
+          "send_ns": 74300000000,
+          "deadline_ns": 76300000000,
+          "action": "lifecycle_landing_uav_x5_second",
+          "receive_ns": 74300221358,
+          "accepted_ns": 74300221358,
+          "status": "accepted"
+        }
+      ],
+      "capture_dependency": {
+        "proposed_class": "A",
+        "changed_owners_and_first_recorded_fields": {
+          "pad_x5_primary": {
+            "first_changed_tick": 561,
+            "fields": [
+              "state",
+              "activity_type"
+            ],
+            "before": {
+              "state": "reserved",
+              "activity_type": "reserved"
+            },
+            "after": {
+              "state": "available",
+              "activity_type": "available"
+            }
+          },
+          "uav_x5_second": {
+            "first_changed_tick": 561,
+            "fields": [
+              "state",
+              "activity_type"
+            ],
+            "before": {
+              "state": "hold",
+              "activity_type": "hold"
+            },
+            "after": {
+              "state": "airborne",
+              "activity_type": "airborne"
+            }
+          },
+          "uav_x5_priority": {
+            "first_changed_tick": 686,
+            "fields": [
+              "pos_enu",
+              "vel_mps",
+              "yaw_deg",
+              "state",
+              "activity_type"
+            ],
+            "before": {
+              "pos_enu": [
+                6637.659,
+                6528.041,
+                6.0
+              ],
+              "vel_mps": [
+                0.0,
+                8.0,
+                0.0
+              ],
+              "yaw_deg": 90.0,
+              "state": "return_to_pad",
+              "activity_type": "return_to_pad"
+            },
+            "after": {
+              "pos_enu": [
+                6637.659,
+                6527.241,
+                6.0
+              ],
+              "vel_mps": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "yaw_deg": -93.210221,
+              "state": "airborne",
+              "activity_type": "airborne"
+            }
+          }
+        },
+        "weather_changed": false,
+        "source_sensor_geometry_modified": false,
+        "comparison": "same-seed current authored source replay; historical captured trajectory hash unavailable",
+        "first_changed_pixel": "NOT_MEASURED",
+        "formal_capture_channel_ids": "NOT_RESOLVED_FROM_THIS_PACKET"
+      },
+      "unfired_events": [],
+      "adoption_status": "PENDING",
+      "receipt_path": "X5_comm_failure_to_pad_contention__seed01/scoped_receipt.json"
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed02",
+      "seed": 2,
+      "guard_version": null,
+      "event_times_ns": {
+        "lifecycle_takeoff_uav_x5_priority": 3000000000,
+        "lifecycle_takeoff_uav_x5_second": 4000000000,
+        "station_failure": 22000000000,
+        "backup_pad_unavailable": 25000000000,
+        "dual_uav_pad_contention": 28500000000,
+        "pad_priority_arbitration": 58000000000,
+        "second_uav_reroute": 61000000000,
+        "station_recovered": 65500000000,
+        "lifecycle_landing_uav_x5_priority": 69000000000,
+        "lifecycle_landing_uav_x5_second": 74500000000,
+        "dual_uav_pad_contention:local:uav_x5_priority": 28000000000,
+        "p09.pad-request-intent:local:uav_x5_priority": 57500000000,
+        "dual_uav_pad_contention:local:uav_x5_second": 28000000000,
+        "p09.pad-request-intent:local:uav_x5_second": 33500000000,
+        "station_recovered:local:uav_x5_priority": 66000000000,
+        "station_recovered:local:uav_x5_second": 66000000000
+      },
+      "actual_accepted_receipts": [
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_priority",
+          "packet_id": "packet-1155",
+          "source_owner": "uav_x5_priority",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 57500000000,
+          "decision_ns": 57600000000,
+          "send_ns": 57600000000,
+          "deadline_ns": 62600000000,
+          "action": "request_pad",
+          "receive_ns": 57610362351,
+          "accepted_ns": 57610362351,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-request:uav_x5_second",
+          "packet_id": "packet-672",
+          "source_owner": "uav_x5_second",
+          "source_epoch": 0,
+          "receiver_owner": "pad_x5_primary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 33500000000,
+          "decision_ns": 33600000000,
+          "send_ns": 33600000000,
+          "deadline_ns": 38600000000,
+          "action": "request_pad",
+          "receive_ns": 33610443683,
+          "accepted_ns": 33610443683,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_priority",
+          "packet_id": "packet-1176",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "priority_granted",
+          "receive_ns": 58502280505,
+          "accepted_ns": 58502280505,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "pad-result:uav_x5_second",
+          "packet_id": "packet-1177",
+          "source_owner": "pad_x5_primary",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 58000000000,
+          "decision_ns": 58500000000,
+          "send_ns": 58500000000,
+          "deadline_ns": 60500000000,
+          "action": "reroute",
+          "receive_ns": 58503966845,
+          "accepted_ns": 58503966845,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+          "packet_id": "packet-1382",
+          "source_owner": "tower_x5_comm",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 65500000000,
+          "decision_ns": 68500000000,
+          "send_ns": 68500000000,
+          "deadline_ns": 70500000000,
+          "action": "lifecycle_landing_uav_x5_priority",
+          "receive_ns": 68500225001,
+          "accepted_ns": 68500225001,
+          "status": "accepted"
+        },
+        {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second",
+          "packet_id": "packet-1501",
+          "source_owner": "tower_x5_comm",
+          "source_epoch": 0,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 65500000000,
+          "decision_ns": 74300000000,
+          "send_ns": 74300000000,
+          "deadline_ns": 76300000000,
+          "action": "lifecycle_landing_uav_x5_second",
+          "receive_ns": 74300213358,
+          "accepted_ns": 74300213358,
+          "status": "accepted"
+        }
+      ],
+      "capture_dependency": {
+        "proposed_class": "A",
+        "changed_owners_and_first_recorded_fields": {
+          "pad_x5_primary": {
+            "first_changed_tick": 561,
+            "fields": [
+              "state",
+              "activity_type"
+            ],
+            "before": {
+              "state": "reserved",
+              "activity_type": "reserved"
+            },
+            "after": {
+              "state": "available",
+              "activity_type": "available"
+            }
+          },
+          "uav_x5_second": {
+            "first_changed_tick": 561,
+            "fields": [
+              "state",
+              "activity_type"
+            ],
+            "before": {
+              "state": "hold",
+              "activity_type": "hold"
+            },
+            "after": {
+              "state": "airborne",
+              "activity_type": "airborne"
+            }
+          },
+          "uav_x5_priority": {
+            "first_changed_tick": 686,
+            "fields": [
+              "pos_enu",
+              "vel_mps",
+              "yaw_deg",
+              "state",
+              "activity_type"
+            ],
+            "before": {
+              "pos_enu": [
+                6637.659,
+                6528.041,
+                6.0
+              ],
+              "vel_mps": [
+                0.0,
+                8.0,
+                0.0
+              ],
+              "yaw_deg": 90.0,
+              "state": "return_to_pad",
+              "activity_type": "return_to_pad"
+            },
+            "after": {
+              "pos_enu": [
+                6637.659,
+                6527.241,
+                6.0
+              ],
+              "vel_mps": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "yaw_deg": -93.210221,
+              "state": "airborne",
+              "activity_type": "airborne"
+            }
+          }
+        },
+        "weather_changed": false,
+        "source_sensor_geometry_modified": false,
+        "comparison": "same-seed current authored source replay; historical captured trajectory hash unavailable",
+        "first_changed_pixel": "NOT_MEASURED",
+        "formal_capture_channel_ids": "NOT_RESOLVED_FROM_THIS_PACKET"
+      },
+      "unfired_events": [],
+      "adoption_status": "PENDING",
+      "receipt_path": "X5_comm_failure_to_pad_contention__seed02/scoped_receipt.json"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/aero-bench-icon.svg" />
+    <meta name="description" content="AERO-BENCH 公开轨迹只读任务控制台" />
+    <title>AERO-BENCH · 任务控制台</title>
+    <style>
+      .viewer-startup { position: fixed; inset: 0; display: grid; place-content: center; gap: 16px;
+        padding: 24px; color: #eaf8fb; background: #0a1825; text-align: center;
+        font: 600 14px system-ui, sans-serif; }
+      .viewer-startup progress { width: min(360px, 80vw); height: 8px; accent-color: #58d9e8; }
+    </style>
+  </head>
+  <body>
+    <div id="app" aria-live="polite">
+      <div class="viewer-startup" role="status">
+        <span>AERO-BENCH · 正在启动城市控制台</span>
+        <progress aria-label="启动城市控制台"></progress>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/viewer-chrome-entry.ts"></script>
+  </body>
+</html>

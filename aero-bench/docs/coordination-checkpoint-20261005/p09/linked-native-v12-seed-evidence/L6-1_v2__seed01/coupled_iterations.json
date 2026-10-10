@@ -1,0 +1,28 @@
+[
+  {
+    "iteration": 0,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_1_v2": 3000000000,
+      "c2_loss": 25000000000,
+      "rth_engaged": 28500000000,
+      "c2_recovered": 33500000000,
+      "lifecycle_landing_uav_digital_l6_1_v2": 41500000000
+    },
+    "packet_count": 900,
+    "accepted_messages": {},
+    "native_wall_time_s": 0.29100617952644825
+  },
+  {
+    "iteration": 1,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_1_v2": 3000000000,
+      "c2_loss": 25000000000,
+      "rth_engaged": 28500000000,
+      "c2_recovered": 33500000000,
+      "lifecycle_landing_uav_digital_l6_1_v2": 41500000000
+    },
+    "packet_count": 900,
+    "accepted_messages": {},
+    "native_wall_time_s": 0.2947996836155653
+  }
+]

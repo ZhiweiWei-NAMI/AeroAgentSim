@@ -1,0 +1,50 @@
+{
+  "source_feature_count": 1261,
+  "loaded_obstacle_count": 1261,
+  "skipped_feature_count": 0,
+  "polygon_count": 1260,
+  "multipolygon_count": 1,
+  "hole_count": 0,
+  "segments": [
+    {
+      "action_id": "move_uav_backup_loiter",
+      "segment_index": 0,
+      "line_xy_bounds_m": [
+        6341.975,
+        6137.542,
+        6341.975,
+        6137.542
+      ],
+      "candidate_feature_indices": [],
+      "selection_rule": "Inclusive XY bounds intersection after actual Shapely 6m buffer; no height prefilter",
+      "candidate_count": 0
+    },
+    {
+      "action_id": "move_uav_backup_loiter",
+      "segment_index": 1,
+      "line_xy_bounds_m": [
+        6308.0,
+        6134.0,
+        6341.975,
+        6137.542
+      ],
+      "candidate_feature_indices": [],
+      "selection_rule": "Inclusive XY bounds intersection after actual Shapely 6m buffer; no height prefilter",
+      "candidate_count": 0
+    },
+    {
+      "action_id": "move_uav_resume_patrol",
+      "segment_index": 0,
+      "line_xy_bounds_m": [
+        6308.0,
+        6134.0,
+        6330.975,
+        6139.542
+      ],
+      "candidate_feature_indices": [],
+      "selection_rule": "Inclusive XY bounds intersection after actual Shapely 6m buffer; no height prefilter",
+      "candidate_count": 0
+    }
+  ],
+  "completeness_limit": "The private full source building GeoJSON and all expanded bounds are included. Empty candidate subsets alone cannot independently certify global exclusion."
+}

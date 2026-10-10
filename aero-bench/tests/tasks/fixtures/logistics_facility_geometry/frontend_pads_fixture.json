@@ -1,0 +1,508 @@
+{
+  "schema": "frontend_facility_landing_pads_v1",
+  "frame": "scene_east_south_m",
+  "generated_at": "2026-09-29",
+  "frontend_commit": "2b95c64f096760a87a9212e4fed92b52fc6d3159",
+  "model_source_sha256": "06c10b7a4ed481c9198ddda125b927a55267d1c993be9bbb9ca18375564f8f47",
+  "route_source_sha256": "76ae198524c8943b72ed0c2c04d0cfe8e5be134756fedc5c1d77473377aca4f3",
+  "node_version": "v22.23.2",
+  "three_version": "0.185.1",
+  "cases": [
+    {
+      "case_id": "vp_ground_3pads_rot35",
+      "facility": {
+        "id": "vp-ground-3",
+        "name": "Ground Vertiport 3",
+        "kind": "vertiport",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": 125,
+          "z": -63
+        },
+        "rotationDeg": 35,
+        "widthM": 20,
+        "depthM": 20,
+        "heightM": 5,
+        "landing": {
+          "parkingSlots": 3,
+          "movementsPerHour": 30
+        },
+        "cargo": null,
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": -5.4,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        },
+        {
+          "x": 0,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        },
+        {
+          "x": 5.4,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "vp-ground-3",
+          "pad_index": 0,
+          "x": 120.62246507574753,
+          "y": 0.72,
+          "z": -59.83715508016123,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 35,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "vp-ground-3",
+          "pad_index": 1,
+          "x": 125.04588611490809,
+          "y": 0.72,
+          "z": -62.93446783645688,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 35,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "vp-ground-3",
+          "pad_index": 2,
+          "x": 129.46930715406864,
+          "y": 0.72,
+          "z": -66.03178059275253,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 35,
+          "frame": "scene_east_south_m"
+        }
+      ]
+    },
+    {
+      "case_id": "vp_ground_1pad_rot90",
+      "facility": {
+        "id": "vp-ground-1",
+        "name": "Ground Vertiport 1",
+        "kind": "vertiport",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": 12,
+          "z": -28
+        },
+        "rotationDeg": 90,
+        "widthM": 14,
+        "depthM": 10,
+        "heightM": 4.5,
+        "landing": {
+          "parkingSlots": 1,
+          "movementsPerHour": 60
+        },
+        "cargo": null,
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": 0,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "vp-ground-1",
+          "pad_index": 0,
+          "x": 12.08,
+          "y": 0.72,
+          "z": -28,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 90,
+          "frame": "scene_east_south_m"
+        }
+      ]
+    },
+    {
+      "case_id": "vp_rooftop_2pads_support150_rot90",
+      "facility": {
+        "id": "vp-rooftop-2",
+        "name": "Rooftop Vertiport 2",
+        "kind": "vertiport",
+        "placement": "rooftop",
+        "buildingId": "building.42",
+        "supportHeightM": 150,
+        "position": {
+          "x": 10,
+          "z": -20
+        },
+        "rotationDeg": 90,
+        "widthM": 20,
+        "depthM": 20,
+        "heightM": 5,
+        "landing": {
+          "parkingSlots": 2,
+          "movementsPerHour": 15
+        },
+        "cargo": null,
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": -2.7,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        },
+        {
+          "x": 2.7,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "vp-rooftop-2",
+          "pad_index": 0,
+          "x": 10.08,
+          "y": 150.72,
+          "z": -17.3,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 90,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "vp-rooftop-2",
+          "pad_index": 1,
+          "x": 10.08,
+          "y": 150.72,
+          "z": -22.7,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 90,
+          "frame": "scene_east_south_m"
+        }
+      ]
+    },
+    {
+      "case_id": "vp_rooftop_1pad_support150_rot30",
+      "facility": {
+        "id": "vp-rooftop-1",
+        "name": "Rooftop Vertiport 1",
+        "kind": "vertiport",
+        "placement": "rooftop",
+        "buildingId": "building.7",
+        "supportHeightM": 150,
+        "position": {
+          "x": 204,
+          "z": 118
+        },
+        "rotationDeg": 30,
+        "widthM": 14,
+        "depthM": 10,
+        "heightM": 4.5,
+        "landing": {
+          "parkingSlots": 1,
+          "movementsPerHour": 45
+        },
+        "cargo": null,
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": 0,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "vp-rooftop-1",
+          "pad_index": 0,
+          "x": 204.04,
+          "y": 150.72,
+          "z": 118.06928203230275,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        }
+      ]
+    },
+    {
+      "case_id": "hub_ground_2pads_rot30",
+      "facility": {
+        "id": "hub-ground-2",
+        "name": "Cargo Hub 2",
+        "kind": "hub",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": 30,
+          "z": -40
+        },
+        "rotationDeg": 30,
+        "widthM": 18,
+        "depthM": 14,
+        "heightM": 5.2,
+        "landing": {
+          "parkingSlots": 2,
+          "movementsPerHour": 20
+        },
+        "cargo": {
+          "storageCapacityKg": 10000,
+          "throughputPerHourKg": 10000
+        },
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": -2.98,
+          "y": 3.3625,
+          "z": -1.155,
+          "widthM": 4.76,
+          "depthM": 4.4
+        },
+        {
+          "x": 2.98,
+          "y": 3.3625,
+          "z": -1.155,
+          "widthM": 4.76,
+          "depthM": 4.4
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "hub-ground-2",
+          "pad_index": 0,
+          "x": 26.841744296722375,
+          "y": 3.3625,
+          "z": -39.510259341371025,
+          "width_m": 4.76,
+          "depth_m": 4.4,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "hub-ground-2",
+          "pad_index": 1,
+          "x": 32.00325570327763,
+          "y": 3.3625,
+          "z": -42.49025934137103,
+          "width_m": 4.76,
+          "depth_m": 4.4,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        }
+      ]
+    },
+    {
+      "case_id": "hub_ground_1pad_rot0",
+      "facility": {
+        "id": "hub-ground-1",
+        "name": "Cargo Hub 1",
+        "kind": "hub",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": -8,
+          "z": 66
+        },
+        "rotationDeg": 0,
+        "widthM": 18,
+        "depthM": 14,
+        "heightM": 5.2,
+        "landing": {
+          "parkingSlots": 1,
+          "movementsPerHour": 40
+        },
+        "cargo": {
+          "storageCapacityKg": 10000,
+          "throughputPerHourKg": 10000
+        },
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": 0,
+          "y": 3.3625,
+          "z": -1.155,
+          "widthM": 4.76,
+          "depthM": 4.4
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "hub-ground-1",
+          "pad_index": 0,
+          "x": -8,
+          "y": 3.3625,
+          "z": 64.845,
+          "width_m": 4.76,
+          "depth_m": 4.4,
+          "rotation_deg": 0,
+          "frame": "scene_east_south_m"
+        }
+      ]
+    },
+    {
+      "case_id": "ch_ground_3pads_rot30",
+      "facility": {
+        "id": "ch-ground-3",
+        "name": "Charger 3",
+        "kind": "charger",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": 50,
+          "z": -60
+        },
+        "rotationDeg": 30,
+        "widthM": 10,
+        "depthM": 8,
+        "heightM": 3.2,
+        "landing": null,
+        "cargo": null,
+        "charging": {
+          "slots": 3,
+          "powerW": 5000,
+          "priceAmount": 1.2,
+          "priceCurrency": "CNY",
+          "priceUnit": "kWh"
+        }
+      },
+      "local_pads": [
+        {
+          "x": -3,
+          "y": 0.12,
+          "z": 1,
+          "widthM": 2.2,
+          "depthM": 2.2
+        },
+        {
+          "x": 0,
+          "y": 0.12,
+          "z": 1,
+          "widthM": 2.2,
+          "depthM": 2.2
+        },
+        {
+          "x": 3,
+          "y": 0.12,
+          "z": 1,
+          "widthM": 2.2,
+          "depthM": 2.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "ch-ground-3",
+          "pad_index": 0,
+          "x": 47.901923788646684,
+          "y": 0.12,
+          "z": -57.63397459621556,
+          "width_m": 2.2,
+          "depth_m": 2.2,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "ch-ground-3",
+          "pad_index": 1,
+          "x": 50.5,
+          "y": 0.12,
+          "z": -59.13397459621556,
+          "width_m": 2.2,
+          "depth_m": 2.2,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "ch-ground-3",
+          "pad_index": 2,
+          "x": 53.098076211353316,
+          "y": 0.12,
+          "z": -60.63397459621556,
+          "width_m": 2.2,
+          "depth_m": 2.2,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        }
+      ]
+    },
+    {
+      "case_id": "ch_ground_1pad_rot90",
+      "facility": {
+        "id": "ch-ground-1",
+        "name": "Charger 1",
+        "kind": "charger",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": -40,
+          "z": 5
+        },
+        "rotationDeg": 90,
+        "widthM": 10,
+        "depthM": 8,
+        "heightM": 3.2,
+        "landing": null,
+        "cargo": null,
+        "charging": {
+          "slots": 1,
+          "powerW": 7500,
+          "priceAmount": 0.8,
+          "priceCurrency": "USD",
+          "priceUnit": "kWh"
+        }
+      },
+      "local_pads": [
+        {
+          "x": 0,
+          "y": 0.12,
+          "z": 1,
+          "widthM": 2.2,
+          "depthM": 2.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "ch-ground-1",
+          "pad_index": 0,
+          "x": -39,
+          "y": 0.12,
+          "z": 5,
+          "width_m": 2.2,
+          "depth_m": 2.2,
+          "rotation_deg": 90,
+          "frame": "scene_east_south_m"
+        }
+      ]
+    }
+  ]
+}

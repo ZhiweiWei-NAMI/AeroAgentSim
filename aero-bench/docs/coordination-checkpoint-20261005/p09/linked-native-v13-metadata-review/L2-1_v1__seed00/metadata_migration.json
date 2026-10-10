@@ -1,0 +1,58 @@
+{
+  "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+  "episode_id": "L2-1_v1__seed00",
+  "simulation_source_revision": "p09.linked-native-causal/v12",
+  "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+  "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed00/adopted",
+  "source_trajectory_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+  "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed00/adopted/trajectories.jsonl",
+  "current_trajectory_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+  "changed_trajectory_rows": 0,
+  "physical_rows_verified_unchanged": 18020,
+  "numeric_motion_actions_unchanged": true,
+  "ns3_rerun": false,
+  "provider_endpoint_poses_unchanged": true,
+  "render_changes": [],
+  "route_field_owner": null,
+  "landing_execution_receipts": [
+    {
+      "action_id": "move_uav_l2_1_v1_landing_return",
+      "owner": "uav_l2_1_v1",
+      "dispatch_tick": 440,
+      "actual_motion_schedule": {
+        "terminal_tick": 559,
+        "endpoint_enu_m": [
+          7252.576,
+          6381.651,
+          3.0
+        ]
+      },
+      "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+      "operating_inputs": {
+        "model": "p09.landing-reference-operating-inputs/v1",
+        "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+        "landing_reference_enu_m": [
+          7252.576,
+          6381.651,
+          3.0
+        ],
+        "home_pose_origin_z_m": 3.0,
+        "touchdown_altitude_tolerance_m": 1.5,
+        "touchdown_dwell_ticks": 5,
+        "max_speed_mps": 8.0
+      }
+    }
+  ],
+  "late_historical_planning_bounds": [
+    {
+      "action_id": "move_uav_l2_1_v1_landing_return",
+      "owner": "uav_l2_1_v1",
+      "old_dispatch_upper_bound_tick": 430,
+      "actual_dispatch_tick": 440
+    }
+  ],
+  "actual_unfired_events": [],
+  "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+  "published210_modified": false,
+  "UE_capture_started": false
+}

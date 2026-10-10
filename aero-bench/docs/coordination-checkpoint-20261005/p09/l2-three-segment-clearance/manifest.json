@@ -1,0 +1,58 @@
+{
+  "README.md": {
+    "bytes": 2191,
+    "sha256": "c85d989c36c405fcbd4349d51b50d86a580cd19856d4ed1baf33be7cda43aa3c"
+  },
+  "bindings.json": {
+    "bytes": 5580,
+    "sha256": "82df6de390a46a824d9166c36460090c797cd304f7ff514d5a6c5f8664be49a1"
+  },
+  "candidate-buildings.geojson": {
+    "bytes": 52,
+    "sha256": "b3049ad7a1062091e169bd352424d59721a26b8b6229942aef26d11b0c6a96e1"
+  },
+  "code/Dataset/semantic_simulation/ns3_episode/linked_route_geometry.py": {
+    "bytes": 2350,
+    "sha256": "3031c964be2b2e1731e7b510b0c08fce3a090ad585f03b3450abff1c73351f18"
+  },
+  "code/Dataset/tools/map_spatial_index.py": {
+    "bytes": 42480,
+    "sha256": "22078eb5d1a77103c83cc3624cbdd599d3c6c3b83069130de0ca8cf18dce336f"
+  },
+  "code/Dataset/tools/uav_corridor_planner.py": {
+    "bytes": 28383,
+    "sha256": "46c0962375efeb25a0423ccda02edf211e2fb3c846b7597dca6956a5d799c0d2"
+  },
+  "parameters.json": {
+    "bytes": 230,
+    "sha256": "b13f6a0ca4902aea8eed1be2b3c6eee37d271439fa0c8550ff97e02d2bf917ab"
+  },
+  "profiles/L2-1_v2__seed00.json": {
+    "bytes": 8833,
+    "sha256": "8b41faf458a7538da02fec45b1de17fa3645ceea2d6887d982e32913399402b3"
+  },
+  "profiles/L2-1_v2__seed01.json": {
+    "bytes": 8833,
+    "sha256": "8235b3671756d4ce77b833d1cedd6eb384008b231afd97736a5c127306a0b5ff"
+  },
+  "profiles/L2-1_v2__seed02.json": {
+    "bytes": 8833,
+    "sha256": "01f9d0895d63501399e9055b1eedba575067f930dcf8e84e48db0b8a9b69e266"
+  },
+  "receipt.json": {
+    "bytes": 3825,
+    "sha256": "22ca8228fef603558146dacef2e022e902182d7e0d54a3f2f7733828d19f65ed"
+  },
+  "selection.json": {
+    "bytes": 1474,
+    "sha256": "cd2a398ab054fb4b0a5d86ea0915baec8fce95d0e3fe4f78cf6085d07270ead6"
+  },
+  "source-index.json": {
+    "bytes": 3760,
+    "sha256": "7fdc714b4433d9a8e34ac271f73ef9a3143ffd1e11ed6170625d3d6c18beeb26"
+  },
+  "versions.json": {
+    "bytes": 126,
+    "sha256": "6f3f03f177355fd29eb360c1ef48bf7062fbc6a4a2240b75cc55e5a1ad407520"
+  }
+}

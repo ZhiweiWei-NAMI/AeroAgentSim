@@ -1,0 +1,111 @@
+{
+  "map_package": "Config/LowAltitude/Maps/donghu_road_topo/map_package.json",
+  "buildings": "Content/Maps/donghu_road_topo/building/building.geojson",
+  "checker": "Dataset/tools/uav_corridor_planner.py:BuildingObstacleIndex.air_segment_clear",
+  "horizontal_clearance_m": 6.0,
+  "vertical_clearance_m": 5.0,
+  "fallback_building_height_m": 18.0,
+  "fitted_geojson_center_xy_m": [
+    12611088.0,
+    2646000.0
+  ],
+  "fitted_geojson_transform": {
+    "matrix": [
+      [
+        1.0000015815806307,
+        -1.5984744385484467e-06
+      ],
+      [
+        1.0995904773380971e-06,
+        -1.0000007238309223
+      ],
+      [
+        7056.163108432631,
+        7053.8895503307995
+      ]
+    ],
+    "mean_error_m": 0.003573095,
+    "max_error_m": 0.049919045,
+    "pair_count": 1130
+  },
+  "checked_segments": 3,
+  "all_clear": true,
+  "segments": [
+    {
+      "action_id": "move_uav_backup_loiter",
+      "segment_index": 0,
+      "start_enu_m": [
+        6341.975,
+        6137.542,
+        31.0
+      ],
+      "end_enu_m": [
+        6341.975,
+        6137.542,
+        30.0
+      ],
+      "clear": true,
+      "building_collision_id": null
+    },
+    {
+      "action_id": "move_uav_backup_loiter",
+      "segment_index": 1,
+      "start_enu_m": [
+        6341.975,
+        6137.542,
+        30.0
+      ],
+      "end_enu_m": [
+        6308.0,
+        6134.0,
+        30.0
+      ],
+      "clear": true,
+      "building_collision_id": null
+    },
+    {
+      "action_id": "move_uav_resume_patrol",
+      "segment_index": 0,
+      "start_enu_m": [
+        6308.0,
+        6134.0,
+        30.0
+      ],
+      "end_enu_m": [
+        6330.975,
+        6139.542,
+        30.0
+      ],
+      "clear": true,
+      "building_collision_id": null
+    }
+  ],
+  "meaning": "Executed fitted source geometry check, with explicit fallback heights; not surveyed physical clearance",
+  "reproduction_binding": {
+    "code_and_inputs_sha256": {
+      "private-inputs/Dataset/semantic_simulation/ns3_episode/linked_route_geometry.py": "3031c964be2b2e1731e7b510b0c08fce3a090ad585f03b3450abff1c73351f18",
+      "private-inputs/Dataset/tools/map_spatial_index.py": "22078eb5d1a77103c83cc3624cbdd599d3c6c3b83069130de0ca8cf18dce336f",
+      "private-inputs/Dataset/tools/uav_corridor_planner.py": "46c0962375efeb25a0423ccda02edf211e2fb3c846b7597dca6956a5d799c0d2",
+      "private-inputs/Config/LowAltitude/Maps/donghu_road_topo/map_package.json": "114a92d637b44ad9bfee1bd1f60545403e17e1ddc90e27874127319f768719b5",
+      "private-inputs/Config/LowAltitude/Maps/donghu_road_topo/map_context.json": "d77999e1f288c4bea962781eb5964c2e347b819ab53a8059409d32cbed189dba",
+      "private-inputs/Config/LowAltitude/Maps/donghu_road_topo/traffic_bundle/road_geojson_transform.json": "6d7946f54fe4d97be81f6c0f9778c7fe8968e669bb6b955ec135b26504e94705",
+      "private-inputs/Content/Maps/donghu_road_topo/bounds.geojson": "d949c60ee998be49ebc96b7aeaa966e272105f13bad4b886eda60e6502c40a3e",
+      "private-inputs/Content/Maps/donghu_road_topo/building/building.geojson": "b2cb210d282152e7f941a3c36ffa823b62d8adb75b3efe9793a844b8dbc26e30"
+    },
+    "parameters_sha256": "b13f6a0ca4902aea8eed1be2b3c6eee37d271439fa0c8550ff97e02d2bf917ab",
+    "bindings_sha256": "82df6de390a46a824d9166c36460090c797cd304f7ff514d5a6c5f8664be49a1",
+    "versions": {
+      "python": "3.10.14",
+      "shapely": "2.0.7",
+      "geos": "3.11.4",
+      "geos_capi": "3.11.4-CAPI-1.17.4",
+      "numpy": "1.26.4"
+    },
+    "profile_hashes": {
+      "L2-1_v2__seed00": "8b41faf458a7538da02fec45b1de17fa3645ceea2d6887d982e32913399402b3",
+      "L2-1_v2__seed01": "8235b3671756d4ce77b833d1cedd6eb384008b231afd97736a5c127306a0b5ff",
+      "L2-1_v2__seed02": "01f9d0895d63501399e9055b1eedba575067f930dcf8e84e48db0b8a9b69e266"
+    },
+    "matches_all_three_profile_receipts": true
+  }
+}

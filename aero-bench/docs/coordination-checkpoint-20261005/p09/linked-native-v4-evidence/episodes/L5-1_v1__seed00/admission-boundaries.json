@@ -1,0 +1,131 @@
+[
+  {
+    "event_id": "clear_motion_baseline",
+    "decision_tick": 1,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "clear_motion_baseline",
+      "decision_ns": 100000000
+    }
+  },
+  {
+    "event_id": "lifecycle_takeoff_uav_weather_l5_1_v1",
+    "decision_tick": 30,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_weather_l5_1_v1",
+      "decision_ns": 3000000000
+    }
+  },
+  {
+    "event_id": "nominal_task_cruise",
+    "decision_tick": 175,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "nominal_task_cruise",
+      "decision_ns": 17500000000
+    }
+  },
+  {
+    "event_id": "weather_onset",
+    "decision_tick": 180,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "weather_onset",
+      "decision_ns": 18000000000
+    }
+  },
+  {
+    "event_id": "rain_condition_met",
+    "decision_tick": 186,
+    "allow": true,
+    "evidence": {
+      "rows": [
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "uav_weather_l5_1_v1",
+          "observation_ns": 18600000000,
+          "sample_ns": 18400000000,
+          "available_ns": 18500000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 5,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        },
+        {
+          "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+          "owner": "weather_car_l5_1_v1",
+          "observation_ns": 18600000000,
+          "sample_ns": 18400000000,
+          "available_ns": 18500000000,
+          "rain": 0.55,
+          "threshold": 0.5,
+          "sample_period_ns": 100000000,
+          "required_consecutive_samples": 5,
+          "consecutive_samples": 5,
+          "predicate": true,
+          "availability": "KNOWN",
+          "source": "authored weather state sampled locally; not a calibrated rain sensor"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "rain_speed_reduction",
+    "decision_tick": 220,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "rain_speed_reduction",
+      "decision_ns": 22000000000
+    }
+  },
+  {
+    "event_id": "rain_intensifies",
+    "decision_tick": 292,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "rain_intensifies",
+      "decision_ns": 29200000000
+    }
+  },
+  {
+    "event_id": "rain_recovery",
+    "decision_tick": 363,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "rain_recovery",
+      "decision_ns": 36300000000
+    }
+  },
+  {
+    "event_id": "weather_vehicle_leaves_after_recovery",
+    "decision_tick": 445,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "weather_vehicle_leaves_after_recovery",
+      "decision_ns": 44500000000
+    }
+  },
+  {
+    "event_id": "lifecycle_landing_uav_weather_l5_1_v1",
+    "decision_tick": 525,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_landing_uav_weather_l5_1_v1",
+      "decision_ns": 52500000000
+    }
+  }
+]

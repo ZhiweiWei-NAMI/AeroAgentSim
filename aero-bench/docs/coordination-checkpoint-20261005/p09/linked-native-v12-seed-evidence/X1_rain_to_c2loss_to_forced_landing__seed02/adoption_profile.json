@@ -1,0 +1,56 @@
+{
+  "schema_version": "p09.linked-source-adoption/v12",
+  "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed02",
+  "scenario_id": "X1_rain_to_c2loss_to_forced_landing",
+  "seed": 2,
+  "ns3_seed": 3,
+  "ns3_run": 1,
+  "mechanism": "rain_service_descent",
+  "actor_ids": [
+    "uav_x1_forced_landing"
+  ],
+  "primary_station": "tower_x1_c2",
+  "backup_station": null,
+  "heartbeat": {
+    "period_ns": 100000000,
+    "payload_bytes": 256,
+    "ttl_ns": 200000000,
+    "window_ns": 1000000000,
+    "loss_limit": 0.05,
+    "consecutive_limit": 3
+  },
+  "receiver_state_namespace": "p09.actor-heartbeat-watchdog/v1",
+  "receiver_state_definitions": {
+    "loss_ratio": "unit1; mature expected local slots not received before strict generation+TTL; includes unsent expected slots",
+    "consecutive_missing": "packet; trailing mature missing sequence slots",
+    "degraded": "bool/UNKNOWN; loss_ratio>0.05 AND consecutive_missing>=3",
+    "observation_ns": "ns; local window close/available time, consumed strictly before actor decision"
+  },
+  "legacy_state_disposition": "old global accepted-TX/reference and initial runtime flags are separate; no actor-control causality claim from those flags",
+  "command": {
+    "payload_bytes": 64,
+    "attempts": 3,
+    "period_ns": 100000000,
+    "deadline_ns": 2000000000,
+    "policy_delay_ns": 0
+  },
+  "application_message_policy": "modeled report payload frozen at submission and bound to exact native flow/packet RX through immutable ledger; not hardware ACK or PX4 receipt",
+  "source_script": "Dataset/scenarios/X_cross_layer/X1_rain_to_c2loss_to_forced_landing/event_script.json",
+  "source_scene": "Dataset/scenarios/X_cross_layer/X1_rain_to_c2loss_to_forced_landing/scene_setup.json",
+  "source_script_sha256": "34b9b1dd71c7ae47fd6a03635374e856a447171f82ecb15bdd808a7e9446f77f",
+  "source_scene_sha256": "180217e9619a20ffd6fd80b4d7d67163cab7638e432bd024f658993e9f560b30",
+  "corrections": [
+    {
+      "event_id": "rain_threshold",
+      "change": "local weather availability and service-failure assumption; original sustain_ticks retained"
+    }
+  ],
+  "assumptions": [
+    "receiver-visible periodic heartbeat is configured application traffic",
+    "actor observes local weather/nearby geometry after one original tick",
+    "10Hz authored waypoint engine, not PX4 aerodynamic flight"
+  ],
+  "rain_rf": "not amplified; dimensionless rain is not an observed mm/h rate",
+  "rf_profile": "R1:2412MHz/20MHz/HtMcs0/16dBm/NF7/n3/L0=40.09532929124565",
+  "rain_service_assumption": "authored wet-weather station service failure, not RF rain attenuation"
+}

@@ -1,0 +1,66 @@
+{
+  "receipt": "source_frozen",
+  "to": "independent GLM reviewer (preliminary review / finding verification role)",
+  "from": "B01 author (single writer, same session)",
+  "concern_addressed": "provenance.py, test_split_provenance.py and windows.py had changed after author_result.json (moving target). All writes are now finished; the source is FROZEN as of this receipt.",
+  "authoritative_state": {
+    "final_run": {
+      "command": "cd Dataset/world_model/p01_schema_rollout_v4 && CUDA_VISIBLE_DEVICES= python -B -m pytest tests/unit -q -p no:cacheprovider --junitxml <results>/reports/S01.04/junit.xml",
+      "exit": 0,
+      "passed": 82,
+      "failed": 0,
+      "wall_seconds": 76.17,
+      "max_rss_kbytes": 1608376,
+      "python": "/mnt/data2/weizhiwei/AERO_WORLD/Dataset/world_model/runtimes/qwen35/bin/python",
+      "cpu_only": true
+    },
+    "collected_test_total": 82,
+    "per_file_counts": {
+      "tests/unit/test_schema.py": 13,
+      "tests/unit/test_import_episode.py": 11,
+      "tests/unit/test_roundtrip.py": 12,
+      "tests/unit/test_no_future_leak.py": 14,
+      "tests/unit/test_split_provenance.py": 32
+    },
+    "junit_xml": {
+      "reports/S01.01/junit.xml": "13 tests, errors=0 failures=0 skipped=0",
+      "reports/S01.02/junit.xml": "11 tests, errors=0 failures=0 skipped=0",
+      "reports/S01.03/junit.xml": "12 tests, errors=0 failures=0 skipped=0",
+      "reports/S01.04/junit.xml": "82 tests (final combined run), errors=0 failures=0 skipped=0"
+    },
+    "exact_test_names": "reports/B01/author_result.json -> freeze.frozen_test_list (authoritative, matches --collect-only)"
+  },
+  "frozen_source_files": [
+    "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/contracts/schema.py",
+    "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/import_episode.py",
+    "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/serialization.py",
+    "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/windows.py",
+    "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/normalization.py",
+    "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/provenance.py",
+    "Dataset/world_model/p01_schema_rollout_v4/contracts/schema-v1.json",
+    "Dataset/world_model/p01_schema_rollout_v4/tests/unit/test_schema.py",
+    "Dataset/world_model/p01_schema_rollout_v4/tests/unit/test_import_episode.py",
+    "Dataset/world_model/p01_schema_rollout_v4/tests/unit/test_roundtrip.py",
+    "Dataset/world_model/p01_schema_rollout_v4/tests/unit/test_no_future_leak.py",
+    "Dataset/world_model/p01_schema_rollout_v4/tests/unit/test_split_provenance.py",
+    "Dataset/world_model/p01_schema_rollout_v4/tests/fixtures/schema_cases.json",
+    "design/p01_generic/schema_rollout_v4/configs/serialization.json",
+    "design/p01_generic/schema_rollout_v4/configs/pilot-windows.json",
+    "design/p01_generic/schema_rollout_v4/manifests/episode-pilot.json",
+    "design/p01_generic/schema_rollout_v4/manifests/pilot-import.json",
+    "design/p01_generic/schema_rollout_v4/derived/pilot_L4-1_v1__seed00.canonical.jsonl",
+    "design/p01_generic/schema_rollout_v4/derived/pilot-norm-scope.json"
+  ],
+  "evidence_kept_as_requested": {
+    "pilot": "episode L4-1_v1__seed00, 180413 canonical records, tick 0..900 gapless, actual counted modalities 11 rgb + 11 lidar (no planned-count substitution)",
+    "scaler": "TRAIN-only fit, tick<=250, count 9038, max_fit_tick 250, mean 1.9817456184996578, std 2.7378114247020586 (derived/pilot-norm-scope.json)",
+    "cutoff": "250 with target times 300..350 step 5; physical columns tick_hz=10 / dt_s=0.1 -> horizons 5.0..10.0 s",
+    "source_family": "original scenario+seed split-group rule with all versions/overlays/branches/windows sharing one split; transported_q ORACLE_ONLY; distinct legacy-q vs TTL L/P definition ids"
+  },
+  "commitment": [
+    "no further source, config, test, or implementation changes for B01 after this receipt",
+    "no B02, no new experiments, no new modalities, no research sweep",
+    "coordinator may snapshot the frozen files above plus reports for parent native review"
+  ],
+  "written_after_this_receipt": "none"
+}

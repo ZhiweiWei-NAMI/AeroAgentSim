@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.manager.landing &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.landing</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.manager.landing</h1><div class="highlight"><pre>
+<span></span><span class="c1"># manager/landing.py</span>
+
+<span class="kn">import</span> <span class="nn">functools</span> <span class="c1"># Added for partial</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.resource</span> <span class="kn">import</span> <span class="n">ResourceManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.resource.landing</span> <span class="kn">import</span> <span class="n">LandingResource</span>
+<span class="c1"># from aeroagentsim.manager.airspace import AirspaceManager  # 不需要导入，通过env获取</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">ResourceStatus</span> <span class="c1"># Added</span>
+<span class="kn">from</span> <span class="nn">queue</span> <span class="kn">import</span> <span class="n">PriorityQueue</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<div class="viewcode-block" id="LandingManager"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager">[docs]</a><span class="k">class</span> <span class="nc">LandingManager</span><span class="p">(</span><span class="n">ResourceManager</span><span class="p">[</span><span class="n">LandingResource</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    着陆区资源管理器</span>
+
+<span class="sd">    管理、分配和查询着陆区资源</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="LandingManager.__init__"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+        <span class="c1"># 存储资源分配信息：{resource_id: {agent_id: (agent, listener_id)}}</span>
+        <span class="c1"># 存储资源请求队列</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">request_queues</span> <span class="o">=</span> <span class="n">PriorityQueue</span><span class="p">()</span>
+
+        <span class="c1"># 空域管理器引用，用于高效的空间查询</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">airspace_manager</span>
+
+        <span class="c1"># Setup subscriptions to DataProvider events</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_data_provider_subscriptions</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="LandingManager.find_resource_by_id"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.find_resource_by_id">[docs]</a>    <span class="k">def</span> <span class="nf">find_resource_by_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">LandingResource</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        根据资源ID查找资源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource_id: 资源ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            LandingResource对象，如果不存在则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resource_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingManager.find_resources"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.find_resources">[docs]</a>    <span class="k">def</span> <span class="nf">find_resources</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requirements</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">LandingResource</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        查找符合要求的着陆区资源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            requirements: 资源需求，可能包含如下字段：</span>
+<span class="sd">                - x_pos: float，期望的x坐标</span>
+<span class="sd">                - y_pos: float，期望的y坐标</span>
+<span class="sd">                - max_distance: float，到坐标的最大距离</span>
+<span class="sd">                - require_charging: bool，是否需要充电功能</span>
+<span class="sd">                - require_data_transfer: bool，是否需要数据传输功能</span>
+<span class="sd">                - min_radius: float，着陆区最小半径要求</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            符合要求的资源列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">suitable_resources</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 如果有空域管理器且有位置要求，使用空间查询</span>
+        <span class="k">if</span> <span class="s1">&#39;x_pos&#39;</span> <span class="ow">in</span> <span class="n">requirements</span> <span class="ow">and</span> <span class="s1">&#39;y_pos&#39;</span> <span class="ow">in</span> <span class="n">requirements</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">requirements</span><span class="p">[</span><span class="s1">&#39;x_pos&#39;</span><span class="p">]</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">requirements</span><span class="p">[</span><span class="s1">&#39;y_pos&#39;</span><span class="p">]</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">requirements</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;z_pos&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># 默认高度为0</span>
+
+            <span class="c1"># 查询范围</span>
+            <span class="n">max_distance</span> <span class="o">=</span> <span class="n">requirements</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_distance&#39;</span><span class="p">,</span> <span class="mf">1000.0</span><span class="p">)</span>  <span class="c1"># 默认搜索半径</span>
+
+            <span class="c1"># 使用八叉树查询指定范围内的所有对象</span>
+            <span class="n">position</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+            <span class="n">nearby_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_nearby_objects</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="n">position</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">max_distance</span><span class="p">)</span>
+
+            <span class="c1"># 过滤出着陆点（ID以landing_开头）</span>
+            <span class="n">landing_ids</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">obj_id</span>
+                <span class="k">for</span> <span class="n">obj_id</span> <span class="ow">in</span> <span class="n">nearby_objects</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">obj_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;landing_&#39;</span><span class="p">)</span>
+            <span class="p">]</span>
+
+            <span class="c1"># 检查每个着陆点是否符合其他要求</span>
+            <span class="k">for</span> <span class="n">landing_id</span> <span class="ow">in</span> <span class="n">landing_ids</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">landing_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">:</span>
+                    <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">landing_id</span><span class="p">]</span>
+
+                    <span class="c1"># 检查资源状态</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">resource</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span><span class="p">:</span> <span class="c1"># 使用枚举</span>
+                        <span class="k">continue</span>
+
+                    <span class="c1"># 检查容量要求</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">has_capacity</span><span class="p">():</span>
+                        <span class="k">continue</span>
+
+                    <span class="c1"># 检查充电功能需求</span>
+                    <span class="k">if</span> <span class="n">requirements</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;require_charging&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">has_charging</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="c1"># 检查数据传输功能需求</span>
+                    <span class="k">if</span> <span class="n">requirements</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;require_data_transfer&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">has_data_transfer</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="c1"># 检查半径需求</span>
+                    <span class="k">if</span> <span class="s1">&#39;min_radius&#39;</span> <span class="ow">in</span> <span class="n">requirements</span> <span class="ow">and</span> <span class="n">resource</span><span class="o">.</span><span class="n">radius</span> <span class="o">&lt;</span> <span class="n">requirements</span><span class="p">[</span><span class="s1">&#39;min_radius&#39;</span><span class="p">]:</span>
+                        <span class="k">continue</span>
+
+                    <span class="c1"># 检查着陆区状态</span>
+                    <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">condition</span> <span class="o">!=</span> <span class="s1">&#39;normal&#39;</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="n">suitable_resources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">suitable_resources</span></div>
+
+<div class="viewcode-block" id="LandingManager.get_landing_spot"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.get_landing_spot">[docs]</a>    <span class="k">def</span> <span class="nf">get_landing_spot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">LandingResource</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取指定ID的着陆点</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource_id: 着陆点ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            着陆点资源，如果不存在则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">resource_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingManager.find_nearest_landing_spot"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.find_nearest_landing_spot">[docs]</a>    <span class="k">def</span> <span class="nf">find_nearest_landing_spot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">altitude</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">max_distance</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+                                 <span class="n">require_charging</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">LandingResource</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        查找最近的着陆点</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x: X坐标</span>
+<span class="sd">            y: Y坐标</span>
+<span class="sd">            altitude: 高度坐标</span>
+<span class="sd">            require_charging: 是否需要充电功能</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            最近的符合要求的available着陆点，如果没有符合要求的则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 过滤出着陆点</span>
+        <span class="n">landing_candidates</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">obj_id</span><span class="p">,</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">resource_id</span> <span class="o">=</span> <span class="n">obj_id</span>
+            <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span>
+
+            <span class="c1"># 检查资源状态和容量</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">hasattr</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">resource</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">has_capacity</span><span class="p">():</span> <span class="c1"># 使用枚举</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># 检查充电需求</span>
+            <span class="k">if</span> <span class="n">require_charging</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">has_charging</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># 检查着陆区状态</span>
+            <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">condition</span> <span class="o">!=</span> <span class="s1">&#39;normal&#39;</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_object_position</span><span class="p">(</span><span class="n">landing_id</span><span class="o">=</span><span class="n">resource_id</span><span class="p">)</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span>
+                <span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span>
+                <span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">altitude</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="p">)</span>
+            <span class="c1"># 添加到候选列表</span>
+            <span class="n">landing_candidates</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">resource</span><span class="p">,</span> <span class="n">distance</span><span class="p">))</span>
+
+        <span class="c1"># 按距离排序并返回最近的</span>
+        <span class="k">if</span> <span class="n">landing_candidates</span><span class="p">:</span>
+            <span class="n">landing_candidates</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">landing_candidates</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="LandingManager.update_landing_conditions"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.update_landing_conditions">[docs]</a>    <span class="k">def</span> <span class="nf">update_landing_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">condition_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        批量更新着陆区状态</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            condition_map: 资源ID到状态的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">condition_map</span> <span class="o">=</span> <span class="n">condition_map</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">resource_id</span><span class="p">,</span> <span class="n">condition</span> <span class="ow">in</span> <span class="n">condition_map</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">resource_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span><span class="o">.</span><span class="n">update_condition</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingManager.get_charging_locations"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.get_charging_locations">[docs]</a>    <span class="k">def</span> <span class="nf">get_charging_locations</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">LandingResource</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有具备充电功能的着陆区</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            具备充电功能的着陆区列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 获取所有着陆点</span>
+        <span class="n">charging_spots</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">resource_id</span><span class="p">,</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">has_charging</span><span class="p">:</span>
+                <span class="n">charging_spots</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">charging_spots</span></div>
+
+<div class="viewcode-block" id="LandingManager.get_data_transfer_locations"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.get_data_transfer_locations">[docs]</a>    <span class="k">def</span> <span class="nf">get_data_transfer_locations</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">LandingResource</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有具备数据传输功能的着陆区</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            具备数据传输功能的着陆区列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 获取所有着陆点</span>
+        <span class="n">data_spots</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">has_data_transfer</span><span class="p">:</span>
+                <span class="n">data_spots</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">data_spots</span></div>
+
+<div class="viewcode-block" id="LandingManager.request_resource"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.request_resource">[docs]</a>    <span class="k">def</span> <span class="nf">request_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">priority</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        请求资源，如果资源可用则立即分配，否则加入请求队列</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource_id: 资源ID</span>
+<span class="sd">            agent: 请求的代理</span>
+<span class="sd">            priority: 优先级（数字越小优先级越高）</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功分配资源</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 检查资源是否存在</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_resource_by_id</span><span class="p">(</span><span class="n">resource_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 资源 </span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2"> 不存在&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 检查代理是否已经分配了此资源</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_allocated_to</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 已经分配了资源 </span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># 检查资源是否有可用容量</span>
+        <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">has_capacity</span><span class="p">():</span>
+            <span class="c1"># 立即分配资源</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 请求资源 </span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2">，立即分配&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocate_resource</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="n">agent</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_requesting</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+            <span class="c1"># 加入请求队列</span>
+            <span class="n">request_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">request_queues</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">priority</span><span class="p">,</span> <span class="n">request_time</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">,</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">agent</span><span class="p">))</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 请求资源 </span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2"> 已加入队列，优先级 </span><span class="si">{</span><span class="n">priority</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>            
+            <span class="k">return</span> <span class="kc">False</span></div>
+        
+<div class="viewcode-block" id="LandingManager.is_allocated_to"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.is_allocated_to">[docs]</a>    <span class="k">def</span> <span class="nf">is_allocated_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        检查资源是否已分配给指定代理</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource_id: 资源ID</span>
+<span class="sd">            agent_id: 代理ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否已分配</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">resource_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span> <span class="ow">and</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span></div>
+        
+<div class="viewcode-block" id="LandingManager.is_requesting"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.is_requesting">[docs]</a>    <span class="k">def</span> <span class="nf">is_requesting</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        检查代理是否正在请求资源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource_id: 资源ID</span>
+<span class="sd">            agent_id: 代理ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否正在请求</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">agent_id</span> <span class="o">==</span> <span class="n">agent_id</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queues</span><span class="o">.</span><span class="n">queue</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingManager.allocate_resource"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.allocate_resource">[docs]</a>    <span class="k">def</span> <span class="nf">allocate_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">agent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        分配资源给代理</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource_id: 资源ID</span>
+<span class="sd">            agent: 代理</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功分配</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_resource_by_id</span><span class="p">(</span><span class="n">resource_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 检查资源是否有可用容量</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">has_capacity</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 初始化资源分配字典</span>
+        <span class="k">if</span> <span class="n">resource_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 分配资源</span>
+        <span class="n">agent_id</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span>
+
+        <span class="c1"># 注册监听器，监听代理移除对象事件</span>
+        <span class="n">listener_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;resource_</span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2">_agent_</span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">def</span> <span class="nf">on_agent_object_removed</span><span class="p">(</span><span class="n">event_data</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event_data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_id&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">resource_id</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">release_resource</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+            <span class="n">agent_id</span><span class="p">,</span> <span class="s1">&#39;possessing_object_removed&#39;</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">,</span> <span class="n">on_agent_object_removed</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 记录分配信息</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource_id</span><span class="p">][</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">)</span>
+
+        <span class="c1"># 更新资源状态</span>
+        <span class="n">resource</span><span class="o">.</span><span class="n">allocate</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 资源 </span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2"> 已分配给代理 </span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="LandingManager.release_resource"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.release_resource">[docs]</a>    <span class="k">def</span> <span class="nf">release_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        释放资源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource_id: 资源ID</span>
+<span class="sd">            agent_id: 代理ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功释放</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 检查资源是否存在</span>
+        <span class="k">if</span> <span class="n">resource_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 检查资源是否已分配给该代理</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">resource_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span> <span class="ow">or</span>
+            <span class="n">agent_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 获取代理和监听器ID</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">listener_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource_id</span><span class="p">][</span><span class="n">agent_id</span><span class="p">]</span>
+
+        <span class="c1"># 取消监听</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">unsubscribe</span><span class="p">(</span><span class="n">agent_id</span><span class="p">,</span> <span class="s1">&#39;possessing_object_removed&#39;</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">)</span>
+
+        <span class="c1"># 移除分配记录</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource_id</span><span class="p">][</span><span class="n">agent_id</span><span class="p">]</span>
+
+        <span class="c1"># 更新资源状态</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span>
+        <span class="n">resource</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 释放了资源 </span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 处理请求队列</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_process_request_queue</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+    <span class="k">def</span> <span class="nf">_process_request_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理请求队列，尝试分配可用资源&quot;&quot;&quot;</span>
+        <span class="c1"># 检查队列是否为空</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queues</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 创建一个临时列表存储无法处理的请求</span>
+        <span class="n">pending_requests</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 处理队列中的所有请求</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queues</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+            <span class="n">priority</span><span class="p">,</span> <span class="n">request_time</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">agent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queues</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+            <span class="c1"># 检查资源是否存在</span>
+            <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_resource_by_id</span><span class="p">(</span><span class="n">resource_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># 检查资源是否有可用容量</span>
+            <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">has_capacity</span><span class="p">():</span>
+                <span class="c1"># 分配资源</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">allocate_resource</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="n">agent</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># 将请求放回临时列表</span>
+                <span class="n">pending_requests</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">priority</span><span class="p">,</span> <span class="n">request_time</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">agent</span><span class="p">))</span>
+
+        <span class="c1"># 将未处理的请求重新加入队列</span>
+        <span class="k">for</span> <span class="n">request</span> <span class="ow">in</span> <span class="n">pending_requests</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">request_queues</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LandingManager.register_resource"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.register_resource">[docs]</a>    <span class="k">def</span> <span class="nf">register_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">:</span> <span class="n">LandingResource</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册着陆区资源到管理器，并在空域管理器中注册位置</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource: 着陆区资源对象</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            注册是否成功</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">resource</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span>
+        <span class="c1"># 调用父类的注册方法</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">register_resource</span><span class="p">(</span><span class="n">resource</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 如果有空域管理器，则在空域中注册着陆点位置</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="p">:</span>
+            <span class="c1"># 确保位置是三维坐标</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">location</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">location</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">location</span> <span class="o">=</span> <span class="p">(</span><span class="n">location</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">location</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># 在空域管理器中注册着陆点位置，使用landing_前缀区分代理</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">register_landing</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">location</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="LandingManager.unregister_resource"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.unregister_resource">[docs]</a>    <span class="k">def</span> <span class="nf">unregister_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        从管理器移除资源，并从空域管理器中移除位置</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource_id: 资源ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            移除是否成功</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 如果有空域管理器，先从空域中移除着陆点位置</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span> <span class="ow">and</span> <span class="n">resource_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">remove_landing</span><span class="p">(</span><span class="n">resource_id</span><span class="p">)</span>
+
+        <span class="c1"># 调用父类的移除方法</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">unregister_resource</span><span class="p">(</span><span class="n">resource_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingManager.create_landing_spot"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.create_landing_spot">[docs]</a>    <span class="k">def</span> <span class="nf">create_landing_spot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                           <span class="n">location</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span>
+                           <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span>
+                           <span class="n">max_capacity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                           <span class="n">has_charging</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                           <span class="n">has_data_transfer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                           <span class="n">attributes</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建并注册新的着陆区资源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            location: 坐标 (x, y) 或 (x, y, z)</span>
+<span class="sd">            radius: 半径 (米)</span>
+<span class="sd">            max_capacity: 最大容量</span>
+<span class="sd">            has_charging: 是否具备充电功能</span>
+<span class="sd">            has_data_transfer: 是否具备数据传输功能</span>
+<span class="sd">            attributes: 附加属性</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            创建的资源ID，如果创建失败则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 生成资源ID</span>
+        <span class="n">resource_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;landing_</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># 创建新资源</span>
+        <span class="n">landing_spot</span> <span class="o">=</span> <span class="n">LandingResource</span><span class="p">(</span>
+            <span class="n">resource_id</span><span class="o">=</span><span class="n">resource_id</span><span class="p">,</span>
+            <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
+            <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span>
+            <span class="n">max_capacity</span><span class="o">=</span><span class="n">max_capacity</span><span class="p">,</span>
+            <span class="n">has_charging</span><span class="o">=</span><span class="n">has_charging</span><span class="p">,</span>
+            <span class="n">has_data_transfer</span><span class="o">=</span><span class="n">has_data_transfer</span><span class="p">,</span>
+            <span class="n">attributes</span><span class="o">=</span><span class="n">attributes</span><span class="p">,</span>
+            <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 注册资源</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_resource</span><span class="p">(</span><span class="n">landing_spot</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">resource_id</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="LandingManager.create_charging_spot"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.create_charging_spot">[docs]</a>    <span class="k">def</span> <span class="nf">create_charging_spot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span><span class="p">,</span> <span class="n">max_capacity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+                            <span class="n">charging_power</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">300.0</span><span class="p">,</span> <span class="n">has_data_transfer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                            <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">attributes</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建并注册充电站着陆点</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            location: 坐标 (x, y) 或 (x, y, z)</span>
+<span class="sd">            radius: 半径 (米)</span>
+<span class="sd">            max_capacity: 最大容量</span>
+<span class="sd">            charging_power: 充电功率 (W)</span>
+<span class="sd">            has_data_transfer: 是否具备数据传输功能</span>
+<span class="sd">            name: 名称</span>
+<span class="sd">            attributes: 附加属性</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            创建的资源ID，如果创建失败则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 准备属性</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="n">attributes</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;充电站_</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;charging_power&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">charging_power</span>
+
+        <span class="k">if</span> <span class="n">has_data_transfer</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;data_transfer_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data_transfer_rate&#39;</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)</span>
+
+        <span class="c1"># 创建着陆点</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_landing_spot</span><span class="p">(</span>
+            <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
+            <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span>
+            <span class="n">max_capacity</span><span class="o">=</span><span class="n">max_capacity</span><span class="p">,</span>
+            <span class="n">has_charging</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">has_data_transfer</span><span class="o">=</span><span class="n">has_data_transfer</span><span class="p">,</span>
+            <span class="n">attributes</span><span class="o">=</span><span class="n">attrs</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingManager.create_data_station"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.create_data_station">[docs]</a>    <span class="k">def</span> <span class="nf">create_data_station</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">12.0</span><span class="p">,</span> <span class="n">max_capacity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+                           <span class="n">data_transfer_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span> <span class="n">has_charging</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                           <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">attributes</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建并注册数据站着陆点</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            location: 坐标 (x, y) 或 (x, y, z)</span>
+<span class="sd">            radius: 半径 (米)</span>
+<span class="sd">            max_capacity: 最大容量</span>
+<span class="sd">            data_transfer_rate: 数据传输速率 (Mbps)</span>
+<span class="sd">            has_charging: 是否具备充电功能</span>
+<span class="sd">            name: 名称</span>
+<span class="sd">            attributes: 附加属性</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            创建的资源ID，如果创建失败则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 准备属性</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="n">attributes</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;数据站_</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;data_transfer_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_transfer_rate</span>
+
+        <span class="k">if</span> <span class="n">has_charging</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;charging_power&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;charging_power&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+
+        <span class="c1"># 创建着陆点</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_landing_spot</span><span class="p">(</span>
+            <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
+            <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span>
+            <span class="n">max_capacity</span><span class="o">=</span><span class="n">max_capacity</span><span class="p">,</span>
+            <span class="n">has_charging</span><span class="o">=</span><span class="n">has_charging</span><span class="p">,</span>
+            <span class="n">has_data_transfer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">attributes</span><span class="o">=</span><span class="n">attrs</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingManager.create_base_station"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.create_base_station">[docs]</a>    <span class="k">def</span> <span class="nf">create_base_station</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">50.0</span><span class="p">,</span> <span class="n">max_capacity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+                           <span class="n">charging_power</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">500.0</span><span class="p">,</span> <span class="n">data_transfer_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+                           <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">attributes</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建并注册基地站着陆点（同时具备充电和数据传输功能）</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            location: 坐标 (x, y) 或 (x, y, z)</span>
+<span class="sd">            radius: 半径 (米)</span>
+<span class="sd">            max_capacity: 最大容量</span>
+<span class="sd">            charging_power: 充电功率 (W)</span>
+<span class="sd">            data_transfer_rate: 数据传输速率 (Mbps)</span>
+<span class="sd">            name: 名称</span>
+<span class="sd">            attributes: 附加属性</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            创建的资源ID，如果创建失败则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 准备属性</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="n">attributes</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;基地站_</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;charging_power&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">charging_power</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;data_transfer_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_transfer_rate</span>
+
+        <span class="c1"># 创建着陆点</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_landing_spot</span><span class="p">(</span>
+            <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
+            <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span>
+            <span class="n">max_capacity</span><span class="o">=</span><span class="n">max_capacity</span><span class="p">,</span>
+            <span class="n">has_charging</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">has_data_transfer</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">attributes</span><span class="o">=</span><span class="n">attrs</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingManager.create_emergency_landing_spot"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.create_emergency_landing_spot">[docs]</a>    <span class="k">def</span> <span class="nf">create_emergency_landing_spot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">max_capacity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                                     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">attributes</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建并注册紧急着陆点（无充电和数据传输功能）</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            location: 坐标 (x, y) 或 (x, y, z)</span>
+<span class="sd">            radius: 半径 (米)</span>
+<span class="sd">            max_capacity: 最大容量</span>
+<span class="sd">            name: 名称</span>
+<span class="sd">            attributes: 附加属性</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            创建的资源ID，如果创建失败则返回None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 准备属性</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="n">attributes</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;紧急着陆点_</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;emergency&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># 创建着陆点</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_landing_spot</span><span class="p">(</span>
+            <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
+            <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span>
+            <span class="n">max_capacity</span><span class="o">=</span><span class="n">max_capacity</span><span class="p">,</span>
+            <span class="n">has_charging</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">has_data_transfer</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">attributes</span><span class="o">=</span><span class="n">attrs</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingManager.create_landing_grid"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.create_landing_grid">[docs]</a>    <span class="k">def</span> <span class="nf">create_landing_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">cols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">spacing</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+                           <span class="n">spot_radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span> <span class="n">max_capacity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                           <span class="n">has_charging</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">has_data_transfer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                           <span class="n">name_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;网格着陆点&quot;</span><span class="p">,</span> <span class="n">attributes</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建网格状的多个着陆点</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            center: 网格中心坐标 (x, y) 或 (x, y, z)</span>
+<span class="sd">            rows: 行数</span>
+<span class="sd">            cols: 列数</span>
+<span class="sd">            spacing: 着陆点间距 (米)</span>
+<span class="sd">            spot_radius: 每个着陆点的半径 (米)</span>
+<span class="sd">            max_capacity: 每个着陆点的最大容量</span>
+<span class="sd">            has_charging: 是否具备充电功能</span>
+<span class="sd">            has_data_transfer: 是否具备数据传输功能</span>
+<span class="sd">            name_prefix: 名称前缀</span>
+<span class="sd">            attributes: 附加属性</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            创建的资源ID列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 确保中心点是三维坐标</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">center</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">center</span> <span class="o">=</span> <span class="p">(</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># 计算网格的起始点（左上角）</span>
+        <span class="n">start_x</span> <span class="o">=</span> <span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">spacing</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">start_y</span> <span class="o">=</span> <span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">rows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">spacing</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">center</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># 创建网格中的每个着陆点</span>
+        <span class="n">landing_ids</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rows</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cols</span><span class="p">):</span>
+                <span class="c1"># 计算当前着陆点的位置</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">start_x</span> <span class="o">+</span> <span class="n">col</span> <span class="o">*</span> <span class="n">spacing</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">start_y</span> <span class="o">+</span> <span class="n">row</span> <span class="o">*</span> <span class="n">spacing</span>
+
+                <span class="c1"># 准备属性</span>
+                <span class="n">attrs</span> <span class="o">=</span> <span class="n">attributes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="n">attributes</span> <span class="k">else</span> <span class="p">{}</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name_prefix</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">row</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">col</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;grid_row&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">row</span>
+                <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;grid_col&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">col</span>
+
+                <span class="c1"># 创建着陆点</span>
+                <span class="n">landing_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_landing_spot</span><span class="p">(</span>
+                    <span class="n">location</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">),</span>
+                    <span class="n">radius</span><span class="o">=</span><span class="n">spot_radius</span><span class="p">,</span>
+                    <span class="n">max_capacity</span><span class="o">=</span><span class="n">max_capacity</span><span class="p">,</span>
+                    <span class="n">has_charging</span><span class="o">=</span><span class="n">has_charging</span><span class="p">,</span>
+                    <span class="n">has_data_transfer</span><span class="o">=</span><span class="n">has_data_transfer</span><span class="p">,</span>
+                    <span class="n">attributes</span><span class="o">=</span><span class="n">attrs</span>
+                <span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">landing_id</span><span class="p">:</span>
+                    <span class="n">landing_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">landing_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">landing_ids</span></div>
+
+    <span class="k">def</span> <span class="nf">_setup_data_provider_subscriptions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sets up subscriptions to events from registered DataProviders.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Import locally if needed, or ensure it&#39;s imported at the top</span>
+            <span class="kn">from</span> <span class="nn">aeroagentsim.dataprovider.weather</span> <span class="kn">import</span> <span class="n">WeatherDataProvider</span>
+
+            <span class="n">weather_provider</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">get_data_provider</span><span class="p">(</span><span class="s1">&#39;weather&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">weather_provider</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">weather_provider</span><span class="p">,</span> <span class="n">WeatherDataProvider</span><span class="p">):</span>
+                <span class="c1"># Use functools.partial to bind &#39;self&#39; (the manager instance) to the callback</span>
+                <span class="n">bound_callback</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">weather_provider</span><span class="o">.</span><span class="n">on_weather_changed</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+                <span class="n">listener_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">_weather_listener&quot;</span> <span class="c1"># Unique listener ID</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+                    <span class="n">event_name</span><span class="o">=</span><span class="n">WeatherDataProvider</span><span class="o">.</span><span class="n">EVENT_WEATHER_CHANGED</span><span class="p">,</span>
+                    <span class="n">callback</span><span class="o">=</span><span class="n">bound_callback</span><span class="p">,</span>
+                    <span class="n">listener_id</span><span class="o">=</span><span class="n">listener_id</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> subscribed to </span><span class="si">{</span><span class="n">WeatherDataProvider</span><span class="o">.</span><span class="n">EVENT_WEATHER_CHANGED</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Add subscriptions for other relevant data providers here</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;WeatherDataProvider not found, cannot subscribe to weather events.&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error setting up DataProvider subscriptions for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="LandingManager.update_resource_status_by_region"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.landing.LandingManager.update_resource_status_by_region">[docs]</a>    <span class="k">def</span> <span class="nf">update_resource_status_by_region</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">region_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">new_status</span><span class="p">:</span> <span class="n">ResourceStatus</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Updates the status of landing resources within a specified region based on external conditions (e.g., weather).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            region_data: Data defining the affected region (e.g., polygon, zone ID).</span>
+<span class="sd">                         Interpretation depends on implementation of _is_resource_in_region.</span>
+<span class="sd">            new_status (ResourceStatus): The new status to potentially set (e.g., UNAVAILABLE_WEATHER, AVAILABLE).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">updated_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">resource_id</span><span class="p">,</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_resource_in_region</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="n">region_data</span><span class="p">):</span>
+                <span class="n">current_status</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">status</span>
+                <span class="n">status_changed</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="k">if</span> <span class="n">new_status</span> <span class="o">==</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">UNAVAILABLE_WEATHER</span><span class="p">:</span>
+                    <span class="c1"># Directly set to unavailable due to weather</span>
+                    <span class="k">if</span> <span class="n">current_status</span> <span class="o">!=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">UNAVAILABLE_WEATHER</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                        <span class="n">resource</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">ResourceStatus</span><span class="o">.</span><span class="n">UNAVAILABLE_WEATHER</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+                        <span class="n">status_changed</span> <span class="o">=</span> <span class="kc">True</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Landing resource </span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2"> status set to UNAVAILABLE_WEATHER at time </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="k">elif</span> <span class="n">new_status</span> <span class="o">==</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span><span class="p">:</span>
+                    <span class="c1"># Try to set back to available only if previously unavailable due to weather</span>
+                    <span class="c1"># and other conditions are met (normal condition, no allocations).</span>
+                    <span class="k">if</span> <span class="n">current_status</span> <span class="o">==</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">UNAVAILABLE_WEATHER</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">condition</span> <span class="o">==</span> <span class="s2">&quot;normal&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">current_allocations</span><span class="p">:</span>
+                            <span class="n">resource</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+                            <span class="n">status_changed</span> <span class="o">=</span> <span class="kc">True</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Landing resource </span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2"> status set back to AVAILABLE from weather at time </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="c1"># else:</span>
+                            <span class="c1"># logger.debug(f&quot;Landing resource {resource_id} weather cleared, but condition ({resource.condition}) or allocations ({len(resource.current_allocations)}) prevent setting AVAILABLE.&quot;)</span>
+                <span class="c1"># else: Handle other potential statuses if needed</span>
+
+                <span class="k">if</span> <span class="n">status_changed</span><span class="p">:</span>
+                    <span class="n">updated_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">updated_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated status for </span><span class="si">{</span><span class="n">updated_count</span><span class="si">}</span><span class="s2"> landing resources in region due to external condition at time </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_is_resource_in_region</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">landing_resource</span><span class="p">:</span> <span class="n">LandingResource</span><span class="p">,</span> <span class="n">region_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Placeholder: Checks if a landing resource is within the specified region.</span>
+<span class="sd">        Needs actual implementation based on how regions are defined (polygons, zones, etc.).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement actual region checking logic.</span>
+        <span class="c1"># Example using simple bounding box if region_data is like {&#39;min_x&#39;: ..., &#39;max_x&#39;: ...}</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">region_data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;min_x&#39;</span> <span class="ow">in</span> <span class="n">region_data</span><span class="p">:</span>
+            <span class="n">loc</span> <span class="o">=</span> <span class="n">landing_resource</span><span class="o">.</span><span class="n">location</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">region_data</span><span class="p">[</span><span class="s1">&#39;min_x&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">loc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">region_data</span><span class="p">[</span><span class="s1">&#39;max_x&#39;</span><span class="p">]</span> <span class="ow">and</span>
+                    <span class="n">region_data</span><span class="p">[</span><span class="s1">&#39;min_y&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">loc</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">region_data</span><span class="p">[</span><span class="s1">&#39;max_y&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Example using AirspaceManager if region_data is a center point and radius</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">region_data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;center&#39;</span> <span class="ow">in</span> <span class="n">region_data</span> <span class="ow">and</span> <span class="s1">&#39;radius&#39;</span> <span class="ow">in</span> <span class="n">region_data</span><span class="p">:</span>
+            <span class="n">loc</span> <span class="o">=</span> <span class="n">landing_resource</span><span class="o">.</span><span class="n">location</span>
+            <span class="n">dist_sq</span> <span class="o">=</span> <span class="p">(</span><span class="n">loc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">region_data</span><span class="p">[</span><span class="s1">&#39;center&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> \
+                      <span class="p">(</span><span class="n">loc</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">region_data</span><span class="p">[</span><span class="s1">&#39;center&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> \
+                      <span class="p">(</span><span class="n">loc</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">region_data</span><span class="p">[</span><span class="s1">&#39;center&#39;</span><span class="p">][</span><span class="mi">2</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span>
+            <span class="k">return</span> <span class="n">dist_sq</span> <span class="o">&lt;=</span> <span class="n">region_data</span><span class="p">[</span><span class="s1">&#39;radius&#39;</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span>
+
+        <span class="c1"># Simplified default: Assume affects all resources if region_data is not None</span>
+        <span class="k">return</span> <span class="n">region_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.landing</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

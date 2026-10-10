@@ -1,0 +1,11 @@
+{
+  "source_packet": "65423f411d2f51e3ccbec758ee38b843c5f3ebf6",
+  "scope": "Exact same v12 native executions with v13 derived metadata only; no new native generation or UE capture",
+  "episodes": 30,
+  "two_unfired_L6_preserved": true,
+  "final210_frozen": false,
+  "ARM_replayed": false,
+  "missing_old_L2_v10_diagnostic_rows": "network_diagnostics.jsonl was not persisted; no rerun or inferred raw ARP evidence provided",
+  "clock": "original tick=100000000ns; receipt/availability preserved in integer absolute ns",
+  "sensor_index": "Source scene cameras/map/placements are exact here; actual UE/ARM capture clock/extrinsics linkage remains unresolved, no certification"
+}
