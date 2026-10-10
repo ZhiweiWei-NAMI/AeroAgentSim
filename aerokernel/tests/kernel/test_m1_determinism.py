@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import itertools
 import os
+import re
 import subprocess
 import sys
 import unittest.mock
@@ -60,16 +61,29 @@ LITERAL_FIRST_GETRENDBITS64 = {
     "b": [17167956920280897917, 6674005087104440968],
     "c": [11480091421325811636, 12564448299957212986],
 }
-# sha256 of the complete committed toy journal (make_toy(); start; run_until(13ms)).
-TOY_JOURNAL_SHA256 = "415bd04e584b14b1da01853f14ad2c43551a5583438a01e7b6495294d45ef164"
+# The header records the interpreter version as RNG/serializer provenance, so the
+# portable digest masks only those values; every other byte is pinned.
+PYTHON_VERSION_FIELD = re.compile(rb'"python":"[^"]*"')
+
+
+def portable_digest(journal: bytes) -> str:
+    return hashlib.sha256(
+        PYTHON_VERSION_FIELD.sub(b'"python":"*"', journal)
+    ).hexdigest()
+
+
+# Portable sha256 of the committed toy journal (make_toy(); start; run_until(13ms)).
+TOY_JOURNAL_SHA256 = "c23d5c4d5852623aeaffe858271dcb782b25e54a9013bd6cf817a20e3fafbfcc"
 
 CHILD_JOURNAL_SHA = (
-    "import hashlib\n"
+    "import hashlib, re\n"
     "from examples.two_engine_toy import MS, make_toy\n"
     "kernel = make_toy()\n"
     "kernel.start()\n"
     "kernel.run_until(13 * MS)\n"
-    "print(hashlib.sha256(kernel.journal.bytes).hexdigest())\n"
+    'pattern = rb\'"python":"[^"]*"\'\n'
+    'data = re.sub(pattern, b\'"python":"*"\', kernel.journal.bytes)\n'
+    "print(hashlib.sha256(data).hexdigest())\n"
 )
 
 
@@ -156,7 +170,7 @@ def test_engine_registration_order_does_not_change_journal(
         kernel = make_toy()
     kernel.start()
     kernel.run_until(13 * MS)
-    digest = hashlib.sha256(kernel.journal.bytes).hexdigest()
+    digest = portable_digest(kernel.journal.bytes)
     assert digest == TOY_JOURNAL_SHA256
     kernel.close()
 
@@ -195,6 +209,6 @@ def test_all_registration_permutations_share_one_journal_digest() -> None:
             kernel = make_toy()
         kernel.start()
         kernel.run_until(13 * MS)
-        digests.add(hashlib.sha256(kernel.journal.bytes).hexdigest())
+        digests.add(portable_digest(kernel.journal.bytes))
         kernel.close()
     assert digests == {TOY_JOURNAL_SHA256}
