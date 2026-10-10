@@ -44,7 +44,7 @@ test('Edit the shared battery reserve and follow predicate → chain → committ
  const timeline=page.locator('.simple-timeline').getByRole('slider');
  await expect(timeline).toHaveAttribute('aria-valuemax',String(finalCut-1),{timeout:120_000});
  await timeline.focus();await timeline.press('End');
- const event=page.locator('.newc-event-item').filter({hasText:'battery low'}).first();
+ const event=page.locator('.newc-event-item').filter({hasText:/battery low|low battery/}).first();
  await expect(event).toBeVisible({timeout:30_000});
  await segment(page,async()=>{await click(event.getByRole('button',{name:'Why did this happen?',exact:true}));},'Replay the edited policy · ask why the battery event happened');
  const trace=page.getByTestId('cause-trace');
