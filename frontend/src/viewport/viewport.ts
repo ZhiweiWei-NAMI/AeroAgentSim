@@ -7,6 +7,9 @@ import { Assets, disposeObject, type AssetOptions } from './assets';
 import { StaticOcclusion } from './occlusion';
 import { GpuTimer } from './gpu-timer';
 import { EntityLayer } from './entities';
+import { SemanticLayer } from './semantic-layer';
+import {activeZones,semanticSites} from './semantic';
+import {ProceduralDistrict} from '../scene/procedural-district';
 import { pipeline, PRESETS, type Quality } from './pipeline';
 import { setupScene } from './scene';
 import { scenePresentation, type ScenePresentation } from '../scene/presentation';
@@ -21,6 +24,10 @@ export interface ViewportOptions extends AssetOptions {
   onError?: (error: unknown) => void;
   onQuality?: (quality: Quality, fps?: number) => void;
   onStatus?: (status: string) => void;
+  /** Newcomer semantic overlay: friendly labels, zones and site markers. */
+  semantic?: boolean;
+  showAllLabels?: boolean;
+  onLegend?: (legend: Array<{ label: string; color: string }>, zoneCount: number) => void;
 }
 /** Imperative display renderer; never writes simulation state or infers domain kinds. */
 export class Viewport {
@@ -58,6 +65,8 @@ export class Viewport {
   private renderedFrames = 0;
   private shadowKey = '';
   private shadowRevision = -1;
+  private semanticLayer?: SemanticLayer;
+  private district?:ProceduralDistrict;
   private assetIssues = new Set<string>();
   constructor(private container: HTMLElement, header: RunHeader, private options: ViewportOptions = {}) {
     const canvas = document.createElement('canvas');
@@ -78,11 +87,16 @@ export class Viewport {
     this.controls.maxPolarAngle = Math.PI * 0.485; this.controls.minDistance = 3; this.controls.maxDistance = 9000;
     this.lighting = setupScene(this.renderer, this.scene); this.assets = new Assets(this.renderer, options);
     this.layer = new EntityLayer(header, this.assets, this.overlay, key => options.onSelect?.(key), error => options.onError?.(error), this.status);
+    if(options.semantic!==undefined)this.layer.semantic=options.semantic;
+    if(options.showAllLabels!==undefined)this.layer.showAllLabels=options.showAllLabels;
     this.scene.add(this.layer.root, this.staticRoot);
+    if(options.semantic){this.semanticLayer=new SemanticLayer(header,{onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
     this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.applyPreset();
     this.observer = new ResizeObserver(this.resize); this.observer.observe(container);
-    canvas.addEventListener('pointerdown', this.pointerDown); canvas.addEventListener('pointerup', this.pointerUp); this.resize();
+    canvas.addEventListener('pointerdown', this.pointerDown); canvas.addEventListener('pointerup', this.pointerUp);
+    if(options.semantic)canvas.addEventListener('pointermove', this.pointerMove); this.resize();
     const presentation: ScenePresentation | undefined = options.city || options.hdri ? { city: options.city, hdri: options.hdri } : scenePresentation(header);
+    if(options.semantic&&!presentation?.city){this.district=new ProceduralDistrict();this.scene.add(this.district.root);this.container.dataset.context='illustrative';this.container.dataset.attribution='Illustrative city · recorded actors and airspace';}
     if(presentation?.camera){this.camera.position.fromArray(presentation.camera.position);this.controls.target.fromArray(presentation.camera.target);this.authoredCamera=true;}
     if(presentation){
       if(presentation.attribution)container.dataset.attribution=presentation.attribution;
@@ -141,11 +155,17 @@ export class Viewport {
     const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.camera.position.toArray()}/${this.camera.quaternion.toArray()}/${this.controls.target.toArray()}`;
     if(this.mode!=='cinematic'&&frameKey===this.lastFrame){this.container.dataset.idle='true';return;}
     this.lastFrame=frameKey;this.container.dataset.idle='false';
+    this.district?.update(store,this.origin);
     const chosen = this.mode === 'cinematic' ? this.director.choose(store,ns,deltaSeconds,this.selected) : this.selected;
     this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion);
+    if(this.semanticLayer){
+      this.semanticLayer.update(store,ns,this.origin);
+      this.semanticLayer.root.visible=true;
+      if(this.options.onLegend)this.emitLegend(store);
+    }
     const entitiesFinished = performance.now();
     if(!this.framed && this.layer.positions.size){
-      const bounds=new T.Box3().setFromPoints([...this.layer.positions.values()]),center=bounds.getCenter(new T.Vector3());
+      const bounds=this.district?.bounds?.clone().translate(this.origin.clone().negate())??new T.Box3().setFromPoints([...this.layer.positions.values()]),center=bounds.getCenter(new T.Vector3());
       if(!this.authoredCamera){const span=Math.max(100,bounds.getSize(new T.Vector3()).length());this.controls.target.copy(center);this.camera.position.copy(center).add(new T.Vector3(0.7,0.55,0.9).multiplyScalar(span));}
       this.framed=true;
     }
@@ -208,23 +228,53 @@ export class Viewport {
       }
     }
   }
+  /** Legend from actual business kinds present in the committed cut, plus active zones. */
+  private emitLegend(store: FeedStore) {
+    const entries = new Map<string, string>();
+    for (const [label, color] of this.layer.businessLegend(store)) entries.set(label, color);
+    const activeKinds=new Set(activeZones(store.header,store).map(zone=>zone.kind));
+    const labels={no_fly:'No-fly zone',restricted:'Restricted zone',altitude_band:'Altitude band',corridor:'Corridor'};
+    for (const [label,color] of SemanticLayer.zoneLegend()) if([...activeKinds].some(kind=>labels[kind]===label))entries.set(label,color);
+    const sites=semanticSites(store.header,store);if(sites.some(site=>site.isVertiport))entries.set('Vertiport','#009e73');if(sites.some(site=>site.isPad))entries.set('Charging pad','#e69f00');
+    this.options.onLegend?.([...entries].map(([label, color]) => ({ label, color })), this.layer.activeZoneCount(store));
+  }
+  setSemantic(next: { semantic?: boolean; showAllLabels?: boolean }) {
+    if (next.semantic !== undefined) this.layer.semantic = next.semantic;
+    if (next.showAllLabels !== undefined) this.layer.showAllLabels = next.showAllLabels;
+    this.revision++;
+  }
   private resize = () => {
     this.revision++;
     const width=Math.max(1,this.container.clientWidth),height=Math.max(1,this.container.clientHeight);
     this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.renderer.setSize(width,height);this.composer.setSize(width,height);
   };
   private press?: {x:number;y:number};
+  private pointerMove=(event:PointerEvent)=>{
+    if(!this.semanticLayer)return;
+    const rect=this.renderer.domElement.getBoundingClientRect(),raycaster=new T.Raycaster();
+    raycaster.setFromCamera(new T.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1),this.camera);
+    const marker=this.semanticLayer.pick(raycaster);
+    const id=marker?`${marker.key.id}:${marker.key.generation}`:undefined;
+    const entityKey=this.layer.pick(raycaster);
+    this.layer.setHover(entityKey?`${entityKey.id}:${entityKey.generation}`:id);this.revision++;
+    this.container.dataset.semanticHover=marker?.label??'';
+  };
   private pointerDown=(event:PointerEvent)=>{this.press={x:event.clientX,y:event.clientY};};
   private pointerUp=(event:PointerEvent)=>{
     if(!this.press||Math.hypot(event.clientX-this.press.x,event.clientY-this.press.y)>5)return;
     const rect=this.renderer.domElement.getBoundingClientRect(),raycaster=new T.Raycaster();
     raycaster.setFromCamera(new T.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1),this.camera);
-    const key=this.layer.pick(raycaster);if(key)this.options.onSelect?.(key);
+    const key=this.layer.pick(raycaster);
+    if(!key&&this.semanticLayer){const marker=this.semanticLayer.pick(raycaster);if(marker)this.options.onSelect?.(marker.key);}
+    if(key)this.options.onSelect?.(key);
   };
   dispose(){
     this.disposed=true;this.abort.abort();this.observer.disconnect();
     this.renderer.domElement.removeEventListener('pointerdown',this.pointerDown);this.renderer.domElement.removeEventListener('pointerup',this.pointerUp);
+    if(this.options.semantic)this.renderer.domElement.removeEventListener('pointermove',this.pointerMove);
     this.controls.dispose();this.occlusion.dispose();this.layer.dispose();this.assets.dispose();disposeObject(this.scene);this.lighting.dispose();this.environment?.dispose();
+    this.district?.dispose();
+    if(this.semanticLayer){this.semanticLayer.dispose();}
     this.gpuTimer?.dispose();this.composer.dispose();this.renderer.dispose();this.renderer.domElement.remove();this.overlay.remove();
   }
 }

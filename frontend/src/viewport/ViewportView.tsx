@@ -14,6 +14,7 @@ interface Props {
   onSelect: (key: EntityKey) => void; onTick: () => void; onError: (error: unknown) => void;
   onQuality: (quality: Quality, fps?: number) => void;
 }
+interface LegendEntry { label: string; color: string }
 export function ViewportView(props: Props) {
   const root=useRef<HTMLDivElement>(null),viewport=useRef<Viewport>();
   const current=useRef(props);current.current=props;
@@ -22,6 +23,10 @@ export function ViewportView(props: Props) {
   });
   const [quality,setQuality]=useState<Quality>(props.quality),[fps,setFps]=useState<number>(),[status,setStatus]=useState(''),[collapsed,setCollapsed]=useState(false);
   const [dusk,setDusk]=useState(new URLSearchParams(location.search).get('lighting')==='dusk');
+  // Simple-mode semantic overlay state; Expert keeps the plain defaults.
+  const [showAllLabels,setShowAllLabels]=useState(false);
+  const [legend,setLegend]=useState<LegendEntry[]>([]);
+  const [zoneCount,setZoneCount]=useState(0);
   // The lite demo serves a scenario-snapshot catalog; surface the header's own
   // notice when present. No catalog inference is performed here.
   const catalogNotice=(props.store.header as typeof props.store.header & {catalogNotice?:string}).catalogNotice;
@@ -32,6 +37,8 @@ export function ViewportView(props: Props) {
       viewport.current=new Viewport(root.current!,props.store.header,{
         quality:props.quality,onSelect:key=>current.current.onSelect(key),onError:error=>current.current.onError(error),onStatus:setStatus,
         onQuality:(quality,fps)=>{setQuality(quality);setFps(fps);current.current.onQuality(quality,fps);},
+        semantic:props.simple===true,showAllLabels:showAllLabels,
+        onLegend:(entries,zones)=>{setLegend(entries);setZoneCount(zones);},
       });
       viewport.current.setDusk(dusk);viewport.current.setCameraMode(mode ?? props.mode);viewport.current.setSelection(props.selected);
       const animate=(now:number)=>{
@@ -54,6 +61,7 @@ export function ViewportView(props: Props) {
     return()=>{cancelAnimationFrame(frame);viewport.current?.dispose();viewport.current=undefined;root.current?.closest('.viewer-main')?.removeAttribute('data-inspector-collapsed');};
   },[props.store,props.clock]);
   useEffect(()=>{viewport.current?.setSelection(props.selected);},[props.selected]);
+  useEffect(()=>{viewport.current?.setSemantic({showAllLabels});},[showAllLabels]);
   useEffect(()=>{viewport.current?.setCameraMode(mode ?? props.mode);},[props.mode,mode]);
   useEffect(()=>{viewport.current?.setQuality(props.quality);},[props.quality]);
   useEffect(()=>{if(props.focus){setMode(undefined);viewport.current?.focusPosition(props.focus.position);}},[props.focus]);
@@ -72,6 +80,15 @@ export function ViewportView(props: Props) {
       <button aria-label="Toggle inspector" aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>Inspector {collapsed?'＋':'−'}</button>
     </div>}
     {!props.simple&&<div className="scene-status" title={status}>{status} · Facades, landscaping, light, haze & screen-sized glyphs are display effects</div>}
+    {props.simple&&<div className="semantic-legend" data-testid="semantic-legend" aria-label="Map legend">
+      <div className="semantic-legend-title">Airspace &amp; operations</div>
+      <div className="semantic-legend-entries">
+        {legend.map(entry=><span key={entry.label} className="semantic-legend-entry"><i style={{background:entry.color}}/>{entry.label}</span>)}
+        {!legend.length&&<span className="semantic-legend-entry muted">Legend appears with scenario data</span>}
+      </div>
+      <label className="semantic-showall"><input type="checkbox" checked={showAllLabels} aria-label="Show all labels" onChange={event=>setShowAllLabels(event.target.checked)}/>Show all labels</label>
+      <span className="semantic-zone-count" data-testid="semantic-zone-count">{zoneCount===1?'1 active zone':`${zoneCount} active zones`}</span>
+    </div>}
     {!props.simple&&catalogNotice&&<div className="scene-attribution" style={{bottom:24}} data-testid="catalog-notice">{catalogNotice}</div>}
     <div className="scene-attribution">{root.current?.dataset.attribution}</div>
     {!props.simple&&<div className="mission-overlay"><MissionTimeline store={props.store} selected={props.selected} />

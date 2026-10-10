@@ -69,9 +69,9 @@ describe('CompareRuns', () => {
     };
     const api = { compare: vi.fn().mockResolvedValue(comparison) } as unknown as TemplateApi;
     render(<CompareRuns api={api} ids={['r1', 'r2']} onBack={() => {}} />);
-    await waitFor(() => expect(screen.getByText('Nearest fleet')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading',{name:'Run 1 · Nearest fleet',exact:true})).toBeInTheDocument());
     // Two columns, one per run.
-    expect(screen.getByText('Auction fleet')).toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:'Run 2 · Auction fleet',exact:true})).toBeInTheDocument();
     // Energy used honors direction=min: the lower run (700) is the best, not the max.
     const energyCells = screen.getAllByText(/kJ/);
     expect(energyCells[1]).toHaveClass('is-best'); // r2 = 700 kJ, second column

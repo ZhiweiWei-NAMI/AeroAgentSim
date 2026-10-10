@@ -5,6 +5,7 @@ import './results.css';
 
 export interface KpiPanelProps {
   values: KpiValues;
+  ids?:string[];
   series: KpiSample[];
   loading?: boolean;
   error?: string;
@@ -53,7 +54,7 @@ function Sparkline({ series, kpiId }: { series: KpiSample[]; kpiId: string }) {
  * unit and a mini trend line. While the first result has not landed yet the
  * panel says so instead of showing zeros.
  */
-export function KpiPanel({ values, series, loading, error, onRetry }: KpiPanelProps) {
+export function KpiPanel({ids, values, series, loading, error, onRetry }: KpiPanelProps) {
   if (error) {
     return (
       <PageState kind="error" title="Could not load the results"
@@ -64,7 +65,7 @@ export function KpiPanel({ values, series, loading, error, onRetry }: KpiPanelPr
   if (loading && Object.keys(values).length === 0) {
     return <PageState kind="loading" title="Waiting for the first results" description="Metrics appear here as soon as the simulation produces them." />;
   }
-  const entries = Object.entries(values);
+  const entries = ids?ids.flatMap(id=>values[id]?[[id,values[id]] as const]:[]):Object.entries(values);
   if (entries.length === 0) {
     return (
       <PageState kind="empty" title="No results yet"

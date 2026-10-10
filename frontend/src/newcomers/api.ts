@@ -5,8 +5,8 @@ export type Category = 'logistics'|'emergency'|'inspection'|'agriculture'|'mobil
 export type Severity = 'info'|'notice'|'warning'|'critical';
 export type KnobValue = string|number|boolean;
 export interface TemplateKnob {id:string;label:string;type:'integer'|'number'|'choice'|'boolean';default:KnobValue;min?:number;max?:number;options?:KnobValue[];pointer?:string;apply?:string;description?:string}
-export interface ScenarioTemplate {format:'aeroagentsim.template/v1';id:string;title:string;summary:string;category:Category;difficulty:'beginner'|'intermediate'|'advanced';duration_s:number;scenario:string;thumbnail?:string;observe:string[];try:string[];knobs:TemplateKnob[];kpis:string[]}
-export interface BusinessEvent {at_ns:string;category:Exclude<Category,'mixed'>;severity:Severity;text:string;entities:string[];position?:[number,number,number]}
+export interface ScenarioTemplate {format:'aeroagentsim.template/v1';id:string;title:string;summary:string;category:Category;difficulty:'beginner'|'intermediate'|'advanced';duration_s:number;scenario:string;thumbnail?:string;thumbnail_url?:string;observe:string[];try:string[];knobs:TemplateKnob[];kpis:string[]}
+export interface BusinessEvent {at_ns:string;category:Category;severity:Severity;text:string;entities:string[];position?:[number,number,number]}
 export interface KpiValue {value:number|null;unit:string;label:string;direction?:'min'|'max'|'neutral'}
 export type KpiValues = Record<string,KpiValue>;
 export interface KpiSample {commitIndex?:number;at_ns:string;kpis:KpiValues}

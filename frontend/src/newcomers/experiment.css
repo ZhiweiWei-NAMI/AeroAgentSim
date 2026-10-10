@@ -1,0 +1,110 @@
+/* ExperimentPanel styles — namespaced under `.exp-`, reusing the shared
+ * console tokens (`--csl-*`) so gallery and viewport styles stay untouched. */
+
+.exp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--csl-sp-4, 16px);
+  padding: var(--csl-sp-4, 20px);
+  background: var(--csl-surface, #fff);
+  border: 1px solid var(--csl-border, #cdd7e0);
+  border-radius: 12px;
+  color: var(--csl-text, #17222e);
+  font-family: var(--csl-font, inherit);
+}
+
+.exp-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.exp-panel-header h2 { margin: 0 0 4px; font-size: 18px; }
+.exp-panel-sub { margin: 0; color: var(--csl-text-muted, #5b6b7a); font-size: 13px; }
+
+.exp-step h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--csl-text-muted, #5b6b7a); }
+.exp-step { display: flex; flex-direction: column; gap: 8px; }
+.exp-template-meta { margin: 0; font-size: 12px; color: var(--csl-text-muted, #5b6b7a); display: flex; align-items: center; gap: 6px; }
+
+.exp-knob-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.exp-knob-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--csl-border, #cdd7e0);
+  border-radius: 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.exp-knob-toggle.is-active { border-color: var(--csl-teal-500, #0d7f74); color: var(--csl-teal-600, #086b60); background: var(--csl-teal-050, #e4f3f0); }
+.exp-knob-toggle input { accent-color: var(--csl-teal-500, #0d7f74); }
+
+.exp-axis {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid var(--csl-border, #cdd7e0);
+  border-radius: 8px;
+}
+.exp-axis-knob { font-weight: 600; font-size: 13px; min-width: 120px; }
+.exp-axis-values { display: flex; flex-wrap: wrap; gap: 6px; }
+.exp-axis-empty { font-size: 12px; color: var(--csl-text-muted, #5b6b7a); }
+.exp-value-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--csl-teal-050, #e4f3f0);
+  border: 1px solid var(--csl-teal-500, #0d7f74);
+  color: var(--csl-teal-600, #086b60);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.exp-value-chip button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  color: inherit;
+  padding: 0;
+}
+.exp-number-adder { display: inline-flex; align-items: center; gap: 6px; }
+
+.exp-run-options { display: flex; flex-wrap: wrap; gap: 16px; }
+.exp-option { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--csl-text-muted, #5b6b7a); }
+.exp-preview { margin: 0; font-size: 13px; color: var(--csl-text-muted, #5b6b7a); }
+.exp-panel-actions { display: flex; gap: 8px; }
+
+.exp-progress-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.exp-progress-row progress { flex: 1; min-width: 140px; accent-color: var(--csl-teal-500, #0d7f74); height: 8px; }
+.exp-progress-label { font-size: 13px; }
+.exp-progress-count { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--csl-text-muted, #5b6b7a); }
+
+.exp-report { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--csl-border, #cdd7e0); padding-top: 12px; }
+.exp-report-meta { margin: 0; font-size: 12px; color: var(--csl-text-muted, #5b6b7a); }
+
+.exp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.exp-table th, .exp-table td { border: 1px solid var(--csl-border, #cdd7e0); padding: 6px 10px; text-align: left; }
+.exp-table thead th { background: var(--csl-surface-muted, #f4f7fa); font-size: 12px; }
+.exp-table tbody th[scope=row] { font-weight: 500; }
+.exp-config-id { display: block; font-weight: 650; }
+.exp-config-knobs { display: block; font-size: 11px; color: var(--csl-text-muted, #5b6b7a); font-variant-numeric: tabular-nums; }
+.exp-cell { font-variant-numeric: tabular-nums; }
+.exp-cell-n { display: block; font-size: 11px; color: var(--csl-text-muted, #5b6b7a); }
+.exp-cell.is-best { background: var(--csl-teal-050, #e4f3f0); border-color: var(--csl-teal-500, #0d7f74); font-weight: 650; }
+.exp-cell.is-best::before { content: '★ '; color: var(--csl-teal-600, #086b60); }
+.exp-results-note { margin: 0; font-size: 12px; color: var(--csl-text-muted, #5b6b7a); }
+
+.exp-runs h3 { margin: 0 0 6px; font-size: 13px; }
+.exp-run-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.exp-run-list li { display: flex; align-items: center; gap: 10px; font-size: 12px; flex-wrap: wrap; }
+.exp-run-label { font-variant-numeric: tabular-nums; }
+.exp-run-status { border-radius: 10px; padding: 1px 8px; border: 1px solid var(--csl-border, #cdd7e0); }
+.exp-run-status.is-completed { color: #086b60; border-color: #0d7f74; background: #e4f3f0; }
+.exp-run-status.is-faulted, .exp-run-status.is-failed { color: #8f2a2a; border-color: #c25656; background: #fbecec; }
+.exp-run-error { color: #8f2a2a; }

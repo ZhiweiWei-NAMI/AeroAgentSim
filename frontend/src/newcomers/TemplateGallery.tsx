@@ -5,6 +5,7 @@ import {Details} from '../console/Details';
 import { TemplateApi, templateRunUrl, type KnobValue, type ScenarioTemplate, type TemplateRunReceipt } from './api';
 import { categoryMetadata, TEMPLATE_CATEGORIES, CategoryIcon } from './categories';
 import CustomizeTemplate from './CustomizeTemplate';
+import ExperimentPanel from './ExperimentPanel';
 import { parseAuthoringJson } from '../feeds/lossless-json';
 import './gallery.css';
 
@@ -19,9 +20,9 @@ function hashOf(id: string): number {
 }
 
 /** Deterministic inline-SVG placeholder used when a template has no thumbnail.png. */
-export function TemplateThumb({ template, height = 96 }: { template: ScenarioTemplate; height?: number }) {
-  if (template.thumbnail) {
-    return <img className="template-card-thumb" src={template.thumbnail} alt="" loading="lazy" />;
+export function TemplateThumb({ template, apiBase, height = 96 }: { template: ScenarioTemplate; apiBase?:string; height?: number }) {
+  if (template.thumbnail || template.thumbnail_url) {
+    return <img className="template-card-thumb" src={new URL(template.thumbnail_url??`/v1/templates/${encodeURIComponent(template.id)}/thumbnail`,apiBase??window.location.origin).href} alt="" loading="lazy" />;
   }
   const h = hashOf(template.id);
   const w = 280;
@@ -87,7 +88,7 @@ export function TemplateCard({ template, api, apiBase, onCustomize }: {
   const studio=async()=>{setRunning(true);setError(undefined);try{const receipt=await api.workspace(template.id);navigate(`/studio?workspace=${encodeURIComponent(receipt.workspace_id)}&api=${encodeURIComponent(apiBase)}`);}catch(problem){setError(String(problem));}finally{setRunning(false);}};
   return (
     <li className="template-card" data-testid={`template-${template.id}`} style={{ '--category-color': meta.color } as React.CSSProperties}>
-      <TemplateThumb template={template} />
+      <TemplateThumb template={template} apiBase={apiBase} />
       <h3>{template.title}</h3>
       <p className="template-card-summary">{template.summary}</p>
       <div className="template-card-meta">
@@ -121,6 +122,7 @@ export default function TemplateGallery({ apiBase }: { apiBase: string }) {
   const [state, setState] = useState<GalleryState>({ status: 'loading', templates: [] });
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [customizing, setCustomizing] = useState<ScenarioTemplate>();
+  const [experiment,setExperiment]=useState(false);
   const attempt=useRef(0);
 
   const load = () => {
@@ -165,6 +167,7 @@ export default function TemplateGallery({ apiBase }: { apiBase: string }) {
       {state.status === 'ready' && state.templates.length > 0 && (
         <>
           <div className="template-filter-row" role="group" aria-label="Filter scenarios by category">
+            <button className="console-btn" data-testid="gallery-experiment" onClick={()=>setExperiment(true)}>Compare changes · Experiment</button>
             <button type="button" className="template-filter" aria-pressed={selectedCategory === 'all'} onClick={() => setSelectedCategory('all')} data-testid="filter-all">
               All ({state.templates.length})
             </button>
@@ -187,6 +190,7 @@ export default function TemplateGallery({ apiBase }: { apiBase: string }) {
           {visible.length === 0 && <div className="console-empty">No templates in this category yet.</div>}
         </>
       )}
+      <Drawer open={experiment} onClose={()=>setExperiment(false)} title="Compare changes" width={920} destroyOnClose>{experiment&&<ExperimentPanel base={apiBase} templates={state.templates}/>}</Drawer>
       <Drawer open={!!customizing} onClose={()=>setCustomizing(undefined)} title={customizing?`Customize · ${customizing.title}`:'Customize'} width={520} destroyOnClose>
         {customizing&&<CustomizeTemplate key={customizing.id} template={customizing} api={api} apiBase={apiBase}/>}
       </Drawer>

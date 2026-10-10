@@ -26,7 +26,7 @@ function Harness({ initial, changed }: { initial?: Partial<Record<AlgorithmSlot,
 
 describe('AlgorithmsPanel', () => {
   it('lists only server-advertised algorithms per slot and reports one-line descriptions', async () => {
-    vi.stubGlobal('fetch', fetchMock.mockResolvedValue(jsonResponse(200, catalog)));
+    vi.stubGlobal('fetch', fetchMock.mockResolvedValue(jsonResponse(200, Object.fromEntries(['allocation','path_planning','conflict_resolution','charging'].map(slot=>[slot,catalog.filter(row=>row.slot===slot)])))));
     render(<Harness changed={() => {}} />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     // Four slots, all enabled once the real catalog arrives.
@@ -47,7 +47,7 @@ describe('AlgorithmsPanel', () => {
     expect(screen.getByRole('combobox', { name: 'Allocation' })).toBeDisabled();
     expect(screen.queryByText('Nearest free vehicle')).not.toBeInTheDocument();
     // Retry against a recovered service restores the real list.
-    fetchMock.mockResolvedValue(jsonResponse(200, catalog));
+    fetchMock.mockResolvedValue(jsonResponse(200, Object.fromEntries(['allocation','path_planning','conflict_resolution','charging'].map(slot=>[slot,catalog.filter(row=>row.slot===slot)]))));
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Allocation' })).toBeEnabled());
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Allocation' }));
@@ -55,7 +55,7 @@ describe('AlgorithmsPanel', () => {
   });
 
   it('keeps authored selections (including unknown ids) and forwards edits unchanged in shape', async () => {
-    vi.stubGlobal('fetch', fetchMock.mockResolvedValue(jsonResponse(200, catalog)));
+    vi.stubGlobal('fetch', fetchMock.mockResolvedValue(jsonResponse(200, Object.fromEntries(['allocation','path_planning','conflict_resolution','charging'].map(slot=>[slot,catalog.filter(row=>row.slot===slot)])))));
     const changed = vi.fn();
     render(<Harness initial={{ allocation: 'llm', path_planning: 'corridor_astar' }} changed={changed} />);
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Allocation' })).toBeEnabled());

@@ -1,7 +1,6 @@
 import {test as base,expect,type Locator,type Page} from '@playwright/test';
 import {readFileSync,writeFileSync,existsSync,mkdirSync} from 'node:fs';
 import {join,basename,dirname} from 'node:path';
-import {installUxApiFixtures} from '../ux-fixtures';
 import {parseAuthoringJson,stringifyLossless} from '../../src/feeds/lossless-json';
 
 interface RecordingContext {baseURL:string;workspaceId:string;runId:string;events:Record<string,{cut:number;ns:string}>;finalCut:number}
@@ -16,7 +15,7 @@ export const flowTest=base.extend({
  page:async({page,baseURL},use,testInfo)=>{
   if(!baseURL)throw Error('Recording requires a backend URL');
   const templates=await page.request.get(baseURL+'/v1/templates');
-  if(templates.status()===404){if(process.env.AEROAGENTSIM_UX_API_FIXTURES!=='1')throw Error('Recording needs the templates API. For a labelled fixture preview only, set AEROAGENTSIM_UX_API_FIXTURES=1.');await installUxApiFixtures(page,baseURL);await page.addInitScript(()=>{const install=()=>{const note=document.createElement('div');note.textContent='API fixture preview · accident run uses the real backend';Object.assign(note.style,{position:'fixed',top:'4px',right:'20px',background:'#fff7df',padding:'5px 10px',color:'#604500',font:'11px system-ui',zIndex:'2147483647'});document.body.append(note);};document.readyState==='loading'?document.addEventListener('DOMContentLoaded',install):install();});}else if(!templates.ok())throw Error('Template API: '+templates.status());
+  if(!templates.ok())throw Error('Template API: '+templates.status());
   await page.addInitScript(()=>localStorage.setItem('aas:welcome-dismissed','1'));
   const clock={start:Date.now(),segments:[] as Segment[]};recordings.set(page,clock);
   await page.addInitScript(()=>{

@@ -6,6 +6,7 @@ import './results.css';
 
 export interface EventFeedProps {
   events: BusinessEvent[];
+  entityNames?:Map<string,string>;
   available?:boolean;onExplore?:()=>void;
   onSelect?: (event: BusinessEvent) => void;
   /** Entity ids currently selected elsewhere (e.g. clicked in the 3D view); matching events are highlighted. */
@@ -25,7 +26,7 @@ function severityClass(severity: Severity): string {
  * Category chips filter the list; clicking a card reports it via `onSelect`
  * (the Runs page owns what that does, e.g. flying the camera).
  */
-export function EventFeed({ events, onSelect, selectedEntities,available=true,onExplore }: EventFeedProps) {
+export function EventFeed({ events, onSelect, selectedEntities,available=true,onExplore,entityNames }: EventFeedProps) {
   const [category, setCategory] = useState<Category | 'all'>('all');
   const [severity, setSeverity] = useState<Severity | 'all'>('all');
 
@@ -84,7 +85,7 @@ export function EventFeed({ events, onSelect, selectedEntities,available=true,on
                       <span>{style.label}</span>
                       <span className={severityClass(event.severity)}>{event.severity}</span>
                     </span>
-                    <span className="newc-event-text">{event.text}</span>
+                    <span className="newc-event-text">{event.entities.reduce((text,id)=>text.replace(new RegExp(`(?<![\\w-])${id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?![\\w-])`,'g'),entityNames?.get(id)??id),event.text)}</span>
                   </span>
                 </button>
               </li>

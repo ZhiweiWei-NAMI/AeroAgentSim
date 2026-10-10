@@ -26,7 +26,7 @@ export const algorithmFixtures:AlgorithmDescriptor[]=[
 async function realJson(page:Page,base:string,path:string,body?:unknown):Promise<any>{const response=body===undefined?await page.request.get(base+path):await page.request.post(base+path,{headers:{'Content-Type':'application/json'},data:stringifyLossless(body)});if(!response.ok())throw Error(`${path}: ${response.status()} ${await response.text()}`);return parseAuthoringJson(await response.text());}
 export async function installUxApiFixtures(page:Page,base:string){
  const json=(route:Route,value:unknown,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(value)});
- await page.route('**/v1/algorithms',route=>json(route,algorithmFixtures));
+ await page.route('**/v1/algorithms',route=>json(route,Object.fromEntries(['allocation','path_planning','conflict_resolution','charging'].map(slot=>[slot,algorithmFixtures.filter(row=>row.slot===slot)]))));
  await page.route('**/v1/templates**',async route=>{
   const url=new URL(route.request().url()),match=url.pathname.match(/^\/v1\/templates(?:\/([^/]+)(?:\/(runs|workspace))?)?$/);
   if(!match)return route.continue();
@@ -46,9 +46,6 @@ export async function installUxApiFixtures(page:Page,base:string){
  });
  // Results intentionally remain unavailable until the API job supplies committed
  // measurements. A separate comparison screenshot uses explicitly marked data.
-}
-export async function fixtureNotice(page:Page,text='Preview: template catalog fixtures; the accident run uses the real backend'){
- await page.evaluate(text=>{const el=document.getElementById('ux-fixture-notice')??document.createElement('div');el.id='ux-fixture-notice';el.textContent=text;Object.assign(el.style,{position:'fixed',bottom:'4px',left:'200px',zIndex:'99999',font:'11px system-ui',padding:'5px 10px',background:'#fff7df',color:'#604500',border:'1px solid #d9bb66',borderRadius:'4px',pointerEvents:'none'});document.body.append(el);},text);
 }
 /** The demo's authored accident is at 8 s, once its cars reach the junction.
  * Earlier injections are admitted but cannot satisfy its proximity predicate.
