@@ -84,6 +84,16 @@ frontend/yarn-error.log*
 =1.21.0
 # dev_plan/
 
+# --- Paper related ---
+paper.md
+paper.bib
+paper_refs.txt
+bib_refs.txt
+airfogsim_paper.pdf
+large_scale_image_transfer_results.png
+file_renaming_plan.txt
+airfogsim_env/
+
 # Generated standalone authoring route, built from console-prototype source
 /frontend/public/configuration/
 
