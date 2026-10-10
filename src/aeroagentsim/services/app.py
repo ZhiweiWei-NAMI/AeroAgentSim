@@ -80,6 +80,9 @@ def create_app(
             connection.close()
 
     app = FastAPI(title="AeroAgentSim", lifespan=lifespan)
+    from .algorithm_catalog import mount_algorithm_catalog
+
+    mount_algorithm_catalog(app)
     console_origin = os.environ.get("AEROAGENTSIM_CONSOLE_URL")
     app.add_middleware(RequestBoundary, console_origin=console_origin)
     app.add_middleware(
@@ -162,6 +165,9 @@ def create_app(
             metadata = storage.metadata()
             metadata["template"] = template
             storage._atomic("manifest.json", metadata)
+            from .template_execution import snapshot_template_scene
+
+            snapshot_template_scene(template["id"], scenario.document, path)
         if workspace_id is not None and hasattr(app.state, "studio"):
             from aeroagentsim.authoring.replay import snapshot_scene
 

@@ -76,7 +76,7 @@ function differences(runs: ComparisonRun[]): { label: string; values: string[] }
 function Column({ run, rows,index }: { run: ComparisonRun; rows: KpiRow[];index:number }) {
   return (
     <section className="newc-compare-col">
-      <h3>{run.title || humanize(run.id)}</h3>
+      <h3>Run {index+1} · {run.title || humanize(run.id)}</h3>
       {run.template_id && <p className="newc-compare-template">{humanize(run.template_id)}</p>}
       <table className="newc-compare-table">
         <caption>Results · preferred value highlighted</caption>

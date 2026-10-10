@@ -7,6 +7,14 @@ import { proceduralModel } from './procedural-traffic';
 import { Assets } from './assets';
 import type { StaticOcclusion } from './occlusion';
 import { worldOrientation, worldPosition } from './coordinates';
+import type { EntityState } from './feed-store';
+import { semanticVehicle, businessStyle, semanticLabel, labelInterest, recentlyInvolved, taskByVehicle, activeZones } from './semantic';
+
+/** A task counts as active unless its committed state says it is finished. */
+function isFinishedTask(task: { fields: Map<string, { value: unknown }> }): boolean {
+  const state = task.fields.get('lowalt.task_state')?.value;
+  return state === 'completed' || state === 'failed' || state === 'canceled' || state === 'unreleased';
+}
 
 interface Batch { meshes: T.InstancedMesh[]; transforms: T.Matrix4[]; keys: EntityKey[]; capacity: number; loaded: boolean; far?: { mesh: T.InstancedMesh; keys: EntityKey[] }; outline?: T.Mesh[]; assetBasis?: T.Quaternion }
 // Generic accent for uncoloured bound glyphs: a warm coral complementary to the
@@ -22,7 +30,16 @@ export class EntityLayer {
   labelsMs = 0;
   transformsChanged = false;
   readonly selection: T.Object3D[]=[];
+  /** Semantic overlay policy (newcomer mode); inert defaults keep Expert behavior. */
+  semantic = false;
+  showAllLabels = false;
+  private hoverId?: string;
+  private semanticTasks = new Map<string, EntityState>();
+  private semanticInvolved = new Set<string>();
+  private semanticStamp = '';
   private batches = new Map<PresentationBinding, Batch>();
+  private semanticBindings=new Map<PresentationBinding,Map<string,PresentationBinding>>();
+  private glyphs=new WeakMap<PresentationBinding,string>();
   private labels = new Map<string, HTMLButtonElement>();
   private trail: T.Line;
   private dummy = new T.Object3D();
@@ -42,7 +59,8 @@ export class EntityLayer {
     this.trail.frustumCulled=false; this.root.add(this.trail);
   }
   private createBatch(binding: PresentationBinding, capacity: number) {
-    const geometry = binding.visual.kind==='model'&&binding.orientationField?new T.ConeGeometry(0.65,1.8,4).rotateX(Math.PI/2):new T.IcosahedronGeometry(0.85, 1);
+    const glyph=this.glyphs.get(binding);
+    const geometry = glyph==='package'?new T.BoxGeometry(1.4,1.0,1.4):glyph==='cross'?new T.OctahedronGeometry(1):glyph==='eye'?new T.TorusGeometry(0.75,0.3,6,12).rotateX(Math.PI/2):glyph==='person'?new T.ConeGeometry(0.8,1.6,8):binding.visual.kind==='model'&&binding.orientationField?new T.ConeGeometry(0.65,1.8,4).rotateX(Math.PI/2):new T.IcosahedronGeometry(0.85, 1);
     // The per-batch accent stays readable at marker and far-LOD sizes.
     // Full model assets retain their source materials.
     const styled = binding.visual.color != null;
@@ -115,14 +133,24 @@ export class EntityLayer {
   update(store: FeedStore, ns: string, camera: T.Camera, selected?: EntityKey, showTrails = true,
     renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion) {
     this.transformsChanged=false;
+    if(this.semantic){
+      const stamp=`${store.revision}/${ns}`;
+      if(stamp!==this.semanticStamp){this.semanticStamp=stamp;this.semanticTasks=taskByVehicle(store);this.semanticInvolved=recentlyInvolved(store.messages,10_000_000_000,ns);
+        const known=(store as FeedStore & {viewCursor?:{knownAt:number}}).viewCursor?.knownAt;
+        for(const commit of store.commits){if(known!==undefined&&commit.commitIndex>known)break;for(const event of commit.events??[]){const age=BigInt(ns)-BigInt(event.at_ns);if(age<0n||age>10_000_000_000n)continue;for(const entityId of event.entities)for(const [key,entity] of store.entities)if(entity.key.id===entityId)this.semanticInvolved.add(key);}}}
+    }
     for(const batch of this.batches.values())for(const mesh of [...batch.meshes,...(batch.far?[batch.far.mesh]:[])]){mesh.userData.viewportCount=mesh.count;mesh.userData.viewportChanged=false;}
     this.positions.clear(); this.orientations.clear();this.selection.length=0;for(const batch of this.batches.values())for(const mesh of batch.outline ?? [])mesh.visible=false;
     for (const batch of this.batches.values()) { batch.keys = []; for(const mesh of batch.meshes)mesh.count=0; if(batch.far){batch.far.keys=[];batch.far.mesh.count=0;} }
     const width=this.overlay.clientWidth,height=this.overlay.clientHeight;
     const visibleLabels=new Set<string>();
-    const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean }> = [];
+    const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean }> = [];
     for (const [id, entity] of store.entities) {
-      const binding = resolveBinding(this.header, entity.typeId); if (!binding) continue;
+      let binding = resolveBinding(this.header, entity.typeId); if (!binding) continue;
+      if(this.semantic&&entity.typeId==='lowalt:UAV'&&binding.visual.kind==='marker'){
+        const style=businessStyle(semanticVehicle(entity,this.semanticTasks.get(id)));
+        if(style.label){let options=this.semanticBindings.get(binding);if(!options){options=new Map();this.semanticBindings.set(binding,options);}let styled=options.get(style.label);if(!styled){styled={...binding,visual:{...binding.visual,color:style.color}};options.set(style.label,styled);this.glyphs.set(styled,style.glyph);}binding=styled;}
+      }
       const sample = store.sample(entity.key, binding.positionField, ns); if (!sample) continue;
       const position = worldPosition(sample, binding.frame, this.header.origin).sub(renderOrigin); this.positions.set(id, position);
       const orientation = binding.orientationField ? store.sample(entity.key, binding.orientationField, ns, true) : undefined;
@@ -159,6 +187,19 @@ export class EntityLayer {
       const isSelected=!!selected && entityId(selected)===id;
       candidates.push({id,key:entity.key,position,selected:isSelected,forced:binding.visual.kind==='label'});
     }
+    // Semantic label policy (newcomer mode): selected / task-active /
+    // recently event-involved entities always label; others only on real
+    // raycast hover or when show-all is on. Expert mode keeps forced labels.
+    const entityHover=this.hoverId!==undefined&&this.positions.has(this.hoverId)?this.hoverId:undefined;
+    for(const item of candidates){
+      if(this.semantic&&!item.selected){
+        const entity=store.entities.get(item.id)!;
+        const task=this.semanticTasks.get(item.id);
+        const interested=labelInterest(entity,selected,this.semanticInvolved,!!task&&!isFinishedTask(task));
+        if(!interested&&item.id!==entityHover&&!this.showAllLabels)continue;
+      }
+      if(this.semantic)item.interest=true;
+    }
     for(const batch of this.batches.values())for(const mesh of [...batch.meshes,...(batch.far?[batch.far.mesh]:[])]){
       if(mesh.userData.viewportChanged)mesh.instanceMatrix.needsUpdate=true;
       if(mesh.userData.viewportChanged||mesh.count!==mesh.userData.viewportCount)this.transformsChanged=true;
@@ -168,21 +209,25 @@ export class EntityLayer {
     const occupied: Array<[number,number]>=[];let labelAttempts=0;
     candidates.sort((a,b)=>Number(b.selected)-Number(a.selected)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
     for(const item of candidates) {
-      if(!item.selected&&!item.forced&&(occupied.length>=12||labelAttempts>=32))continue;
+      if(this.semantic&&!item.interest)continue;
+      if(!item.interest&&!item.selected&&!item.forced&&(occupied.length>=12||labelAttempts>=32))continue;
       const world=this.labelWorld.copy(item.position);world.y+=2;
       const projected=this.labelProjected.copy(world).project(camera);
       if(projected.z<-1||projected.z>1||Math.abs(projected.x)>0.96||Math.abs(projected.y)>0.96)continue;
       const x=(projected.x+1)*width/2,y=(1-projected.y)*height/2;
-      if(!item.selected&&occupied.some(([px,py])=>Math.abs(px-x)<110&&Math.abs(py-y)<32))continue;
+      if(!item.interest&&!item.selected&&occupied.some(([px,py])=>Math.abs(px-x)<110&&Math.abs(py-y)<32))continue;
       // Selected labels remain readable; nonselected labels do not shine through buildings.
-      if(!item.selected&&occlusion) {
+      if(!item.selected&&!item.interest&&occlusion) {
         labelAttempts++;
         const direction=this.labelDirection.subVectors(world,camera.position);
         const endpoint=this.labelEndpoint.copy(world).addScaledVector(direction.normalize(),-0.2);
         if(world.distanceToSquared(camera.position)>0.04&&occlusion.blocked(camera.position,endpoint))continue;
       }
       let label=this.labels.get(item.id);
-      if(!label){label=document.createElement('button');label.className='entity-label';label.textContent=item.key.id;label.onclick=()=>this.onSelect(item.key);this.overlay.append(label);this.labels.set(item.id,label);}
+      if(!label){label=document.createElement('button');label.className='entity-label';label.onclick=()=>this.onSelect(item.key);this.overlay.append(label);this.labels.set(item.id,label);}
+      const semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header):item.key.id;
+      if(this.semantic){const style=businessStyle(semanticVehicle(store.entities.get(item.id)!,this.semanticTasks.get(item.id)));label.dataset.glyph=style.glyph;label.style.borderColor=style.color;}
+      if(label.textContent!==semanticText)label.textContent=semanticText;
       visibleLabels.add(item.id);
       if(label.hidden)label.hidden=false;
       const left=`${x}px`,top=`${y}px`;
@@ -204,6 +249,22 @@ export class EntityLayer {
         if(!point){points.length=0;continue;}points.push(worldPosition(point,binding.frame,this.header.origin).sub(renderOrigin));}
       this.trail.geometry.dispose();this.trail.geometry=new T.BufferGeometry().setFromPoints(points);this.trail.visible=points.length>1;this.lastTrail=stamp;
     }
+  }
+  /** Raycast hover from the viewport; only a real hover shows a label. */
+  setHover(id?: string) { this.hoverId = id; }
+  /** Legend entries from actual business kinds on committed vehicles. */
+  businessLegend(store: FeedStore): Array<[string, string]> {
+    const entries = new Map<string, string>();
+    for (const entity of store.entities.values()) {
+      if (entity.typeId !== 'lowalt:UAV') continue;
+      const style = businessStyle(semanticVehicle(entity, this.semanticTasks.get(`${entity.key.id}:${entity.key.generation}`)));
+      if (style.label && !entries.has(style.label)) entries.set(style.label, style.color);
+    }
+    return [...entries];
+  }
+  /** Active zone count from committed facts; malformed zones surface in the 3D path, not here. */
+  activeZoneCount(store: FeedStore): number {
+    return activeZones(this.header, store).length;
   }
   pick(raycaster:T.Raycaster):EntityKey|undefined {
     for(const hit of raycaster.intersectObject(this.root,true))for(const batch of this.batches.values()){if(batch.meshes.includes(hit.object as T.InstancedMesh)&&hit.instanceId!==undefined)return batch.keys[hit.instanceId];if(hit.object===batch.far?.mesh&&hit.instanceId!==undefined)return batch.far.keys[hit.instanceId];}

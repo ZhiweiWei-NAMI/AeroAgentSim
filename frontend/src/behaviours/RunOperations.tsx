@@ -65,7 +65,7 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
   const notify=useConsoleNotice();
   const cardRef=useRef<HTMLDivElement>(null),injectionRef=useRef<HTMLSelectElement>(null),pointInitialized=useRef(false);
   const [fields,setFields]=useState(emptyTransport()),[payload,setPayload]=useState<unknown>({}),[point,setPoint]=useState(''),[points,setPoints]=useState<Draft[]>([]),[error,setError]=useState(''),[admissions,setAdmissions]=useState<unknown[]>([]),[busy,setBusy]=useState(false),[operation,setOperation]=useState<Draft>(),[effective,setEffective]=useState<string>();
-  const [operator,setOperator]=useState(false),[horizon,setHorizon]=useState('0');
+  const [operator,setOperator]=useState(false),[horizon,setHorizon]=useState('0'),[scheduledOnly,setScheduledOnly]=useState(false);
   const operatorNs=useRef(0n), operatorStep=useRef(1000000000n), operatorEnd=useRef<bigint>(), operations=useRef<Promise<unknown>>(Promise.resolve());
   const serialized=(action:()=>Promise<unknown>)=>{const result=operations.current.then(action,action);operations.current=result;return result;};
   const [payloadValid,setPayloadValid]=useState(true);
@@ -93,12 +93,12 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
     const defaults=schemaDefaults(event?.schema,definitions);
     setPayload(mapping(defaults)?{...defaults,...(point==='accident'?recordedAccidentPayload(store):{})}:point==='accident'?(recordedAccidentPayload(store)??{}):{});
   },[point,event?.schema]);
-  useEffect(()=>{onInjections?.(points.length>0);},[points,onInjections]);
+  useEffect(()=>{onInjections?.(points.length>0&&!scheduledOnly);},[points,scheduledOnly,onInjections]);
   const friendly=()=>{onRequestInject?.();requestAnimationFrame(()=>{cardRef.current?.scrollIntoView({block:'center'});cardRef.current?.querySelector<HTMLButtonElement>('[data-injection-submit]')?.focus();});};
   useEffect(()=>{const declared=store.header.behaviour?.injectionPoints??store.header.behaviour?.injection_points;if(declared)setPoints(declared);
     const abort=new AbortController();void awaitRunConfiguration(api, runId, abort.signal).then(value=>{
       if(!mapping(value)||!mapping(value.scenario))throw Error('Run configuration is malformed');
-      if(!abort.signal.aborted){setPoints(injectionPointsFromScenario(value.scenario));if(value.scenario.id==='traffic-accident'){const timing=operatorTiming(value.scenario);operatorStep.current=timing.step;const until=mapping(value.scenario.run)?value.scenario.run.until_ns:undefined;const end=typeof until==='number'&&Number.isSafeInteger(until)?String(until):mapping(until)?until.$integer:undefined;if(typeof end!=='string'||!/^(0|[1-9]\d*)$/.test(end))throw Error('Operator run limit must be a declared exact nonnegative integer');operatorEnd.current=BigInt(end);const recorded=store.commits.at(-1);operatorNs.current=recorded&&BigInt(recorded.at.ns)>timing.initial?BigInt(recorded.at.ns):timing.initial;setHorizon(operatorNs.current.toString());setOperator(true);}}
+      if(!abort.signal.aborted){setPoints(injectionPointsFromScenario(value.scenario));if(value.scenario.id==='traffic-accident'){const timing=operatorTiming(value.scenario);operatorStep.current=timing.step;const until=mapping(value.scenario.run)?value.scenario.run.until_ns:undefined;const end=typeof until==='number'&&Number.isSafeInteger(until)?String(until):mapping(until)?until.$integer:undefined;if(typeof end!=='string'||!/^(0|[1-9]\d*)$/.test(end))throw Error('Operator run limit must be a declared exact nonnegative integer');operatorEnd.current=BigInt(end);const recorded=store.commits.at(-1);operatorNs.current=recorded&&BigInt(recorded.at.ns)>timing.initial?BigInt(recorded.at.ns):timing.initial;setHorizon(operatorNs.current.toString());setScheduledOnly(timing.initial>=BigInt(end));setOperator(timing.initial<BigInt(end));}}
     }).catch(problem=>{if(!abort.signal.aborted)setError(String(problem));});return()=>abort.abort();
   },[api,runId,store]);
   // Select the single authored point by default and prefill its transport from
@@ -160,8 +160,8 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
       <h3>Inject {readableLabel(String(injection.id)).toLowerCase()}</h3>
       <p>{actualTargetSummary(injection,store)}</p>
       <TypedPayloadForm schema={payloadSchema} value={payload} onChange={setPayload} definitions={definitions} onValidityChange={setPayloadValid} entityChoices={choices}/>
-      <button className="console-btn console-btn-primary" data-injection-submit data-testid={`inject-${point}`} aria-label="Submit typed ingress" disabled={busy||!payloadValid||mode!=='live'||!ready} onClick={()=>void serialized(submit)}>Inject {readableLabel(String(injection.id)).toLowerCase()}</button>
-      <p className="injection-hint">Ready to send. Timing and request information are filled in automatically.</p>
+      <button className="console-btn console-btn-primary" data-injection-submit data-testid={`inject-${point}`} aria-label="Submit typed ingress" disabled={busy||!payloadValid||mode!=='live'||!ready||scheduledOnly} onClick={()=>void serialized(submit)}>Inject {readableLabel(String(injection.id)).toLowerCase()}</button>
+      <p className="injection-hint">{scheduledOnly?'This run uses a scheduled accident. Change Accident time in Customize to try a different moment.':point==='accident'?'You can introduce an accident at any time. Detection follows when the reporter is nearby and the vehicles have stopped.':'Timing and request information are filled in automatically.'}</p>
       <Details title="Injection transport" buttonLabel="Advanced">{Object.entries(fields).map(([key,value])=><label key={key}>{key}<input aria-label={`Ingress ${key}`} value={value} onChange={event=>setFields({...fields,[key]:event.target.value})}/></label>)}<pre>{exactValue({request_id:'generated when sent',source_cut:store.viewCursor?.knownAt,point:injection})}</pre></Details>
     </div>:<div className="injection-card"><h3>Issue command</h3>
       <label>Command <select aria-label="Command schema" value={fields.schema} onChange={event=>{setFields({...fields,schema:event.target.value});setPayload({});}}><option value="">Select registered command</option>{commands.map(row=><option key={String(row.id)} value={String(row.id)}>{readableLabel(String(row.id))}</option>)}</select></label>

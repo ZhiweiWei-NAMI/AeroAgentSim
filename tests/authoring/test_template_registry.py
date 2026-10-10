@@ -115,3 +115,17 @@ def test_json_pointer_escaping_and_explicit_custom_hook(tmp_path: Path) -> None:
     assert prepared.document["engines"]["test"]["config"]["a/b"]["~rate"] == [4]
     assert prepared.document["run"]["seed"] == 9
     assert yaml.safe_load((source / "scenario.yaml").read_text()) == scenario
+
+
+def test_number_knob_accepts_whole_json_number_as_kernel_number() -> None:
+    from aeroagentsim.authoring.templates import TemplateRegistry
+
+    prepared = TemplateRegistry().apply("parcel-delivery", {"wind_speed": 4})
+    assert prepared.knobs["wind_speed"] == 4.0
+    assert isinstance(prepared.knobs["wind_speed"], float)
+    assert (
+        prepared.document["engines"]["environment"]["config"]["profiles"]["weather"][
+            "lowalt.wind"
+        ]["value"][0]
+        == 4.0
+    )

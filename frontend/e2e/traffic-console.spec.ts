@@ -1,13 +1,12 @@
-import {installUxApiFixtures,fixtureNotice,waitForTrafficJunction} from './ux-fixtures';
+
 import { test, expect } from '@playwright/test';
 
-test('real traffic console: draft, compiler, operator accident, award, city photo and shared cut',async({page,baseURL})=>{
+test('real traffic template: draft, compiler, run now, scheduled accident, award, city photo and shared cut',async({page,baseURL})=>{
  const screenshot=(name:string)=>test.info().outputPath(`${name}.png`);
  if(!baseURL)throw Error('Console e2e requires its configured API URL');
- const templates=await page.request.get(baseURL+'/v1/templates');const fixtureMode=templates.status()===404;if(fixtureMode)await installUxApiFixtures(page,baseURL!);else expect(templates.ok()).toBe(true);
+ const templates=await page.request.get(baseURL+'/v1/templates');expect(templates.ok()).toBe(true);
  await page.goto(`/?api=${encodeURIComponent(baseURL)}`);
  await expect(page.getByTestId('home-page')).toBeVisible();
- if(fixtureMode)await fixtureNotice(page);
  await expect(page.getByTestId('template-traffic-accident')).toBeVisible();await page.waitForTimeout(300);
  await page.screenshot({path:screenshot('home-welcome')});
  if(await page.getByTestId('welcome-close').isVisible())await page.getByTestId('welcome-close').click();
@@ -33,12 +32,6 @@ test('real traffic console: draft, compiler, operator accident, award, city phot
  const run=page.url().match(/\/runs\/(run-[a-f0-9]+)/)![1];
  await expect(page.getByTestId('dual-run-views')).toBeVisible({timeout:60_000});
  await expect(page.getByTestId('simple-run-view')).toBeVisible();
- await waitForTrafficJunction(page);
- await page.getByTestId('simple-inject').click();
- await expect(page.getByRole('button',{name:'Submit typed ingress'})).toBeEnabled({timeout:60_000});
- await page.getByRole('button',{name:'Submit typed ingress'}).click();
- await expect(page.getByText('Admission receipts · 1')).toBeVisible({timeout:30_000});
- await page.getByRole('dialog',{name:'External events & run controls'}).getByRole('button',{name:'Close',exact:true}).click();
  await expect(page.getByTestId('viewport')).toHaveAttribute('data-city','loaded',{timeout:60_000});await page.screenshot({path:screenshot('simple-live')});
  await page.getByTestId('expert-toggle').click();
  await page.getByTestId('dual-run-views').scrollIntoViewIfNeeded();
@@ -46,9 +39,9 @@ test('real traffic console: draft, compiler, operator accident, award, city phot
  await expect(page.getByRole('button',{name:/^Seek award at /}).first()).toBeVisible({timeout:180_000});
  await expect.poll(async()=>{const alerts=await page.getByRole('alert').allTextContents();if(alerts.length)throw Error(`Console error: ${alerts.join('; ')}`);const failed=page.getByText('traffic.capture.failed',{exact:true});if(await failed.count())throw Error(`Recorded capture failure: ${await failed.first().locator('..').textContent()}`);return page.evaluate(async id=>{const r=await fetch(`/v1/runs/${id}/artifacts`);if(!r.ok)throw Error(`Artifact HTTP ${r.status}: ${await r.text()}`);const rows:unknown=await r.json();if(!Array.isArray(rows))throw Error('Artifact response must be an array');if(!rows.length){const status=await fetch('/v1/runs');if(!status.ok)throw Error(`Run status HTTP ${status.status}`);const runs=await status.json();const run=runs.find((row:{id:string})=>row.id===id);if(!run)throw Error('Run status is unavailable');if(['faulted','interrupted','stopped','completed'].includes(run.status)){const latest=await fetch(`/v1/runs/${id}/artifacts`);if(!latest.ok)throw Error(`Artifact HTTP ${latest.status}`);const current=await latest.json();if(!Array.isArray(current))throw Error('Artifact response must be an array');if(current.length)return current.length;throw Error(`Run ${run.status} before capture: ${run.error??'no artifact recorded'}`);}}return rows.length;},run);},{timeout:900_000,intervals:[5000]}).toBeGreaterThan(0);
  const photos=await page.evaluate(async id=>(await fetch(`/v1/runs/${id}/artifacts`)).json(),run);
- expect(photos[0].renderer_mode).toBe('browser');
- expect(photos[0].request.camera.preset).toBe('actor-nadir');
- expect(photos[0].request.width).toBe(1024);
+ expect(['browser','traffic_browser']).toContain(photos[0].renderer_mode);
+ expect(photos[0].request.camera.revision).toBe('traffic-nadir/v1');
+ expect(photos[0].request.width).toBe(256);
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  await page.getByRole('button',{name:'Refresh stored artifacts'}).click();
  await page.getByRole('button',{name:'Open photo'}).first().click();

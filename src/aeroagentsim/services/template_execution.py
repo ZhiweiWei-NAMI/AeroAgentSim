@@ -3,8 +3,27 @@
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 from typing import Any
+
+
+def snapshot_template_scene(
+    template_id: str, document: dict[str, Any], run: Path
+) -> None:
+    """Attach the shipped city used by the template's actual camera renderer."""
+    if template_id != "traffic-accident":
+        return
+    renderer = document["engines"]["capture"]["config"]["renderer"]
+    if renderer["mode"] != "traffic_browser":
+        return
+    scene = {
+        "id": "Traffic accident · lite city",
+        "city": {"kind": "traffic-city", "url": "/v1/studio/demo-assets/scene.json"},
+        "camera": {"position": [280, 220, 300], "target": [91.95, 0, 93.04]},
+        "attribution": "© OpenStreetMap contributors, ODbL 1.0 · procedural buildings and vehicles",
+    }
+    (run / "console-scene.json").write_text(json.dumps(scene), encoding="utf-8")
 
 
 def execution_document(

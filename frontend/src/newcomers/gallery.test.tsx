@@ -85,7 +85,7 @@ it('posts edited settings with their declared numeric type',async()=>{
  const number=screen.getByRole('spinbutton',{name:'Number of drones'});fireEvent.change(number,{target:{value:'10'}});fireEvent.blur(number);
  fireEvent.click(screen.getByTestId('custom-run-parcel-delivery'));
  await waitFor(()=>expect(screen.getByTestId('destination')).toHaveTextContent('/runs/run-2'));
- expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))).toEqual({knobs:{fleet_size:10,allocator:'nearest'}});
+ const post=fetchSpy.mock.calls.find(([,init])=>init?.method==='POST');expect(JSON.parse(String(post?.[1]?.body))).toEqual({knobs:{fleet_size:10,allocator:'nearest'}});
 });
 
 it('shows the welcome once, dismisses to localStorage and reopens on the exported event', async () => {

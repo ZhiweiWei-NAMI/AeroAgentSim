@@ -211,3 +211,17 @@ def test_traffic_template_api_completes_without_aerograph(
             "upload" in event["text"].lower() or "accepted" in event["text"].lower()
             for event in events
         )
+
+
+def test_traffic_template_snapshots_its_rendered_city(tmp_path: Path) -> None:
+    from aeroagentsim.authoring.replay import scene_header
+    from aeroagentsim.services.template_execution import snapshot_template_scene
+
+    snapshot_template_scene(
+        "traffic-accident",
+        {"engines": {"capture": {"config": {"renderer": {"mode": "traffic_browser"}}}}},
+        tmp_path,
+    )
+    scene = scene_header(tmp_path, "http://localhost:9000")["scene"]
+    assert scene["city"]["url"] == "/v1/studio/demo-assets/scene.json"
+    assert scene["camera"]["target"] == [91.95, 0, 93.04]

@@ -533,6 +533,10 @@ class TemplateRegistry:
         }
         for name, knob in declared.items():
             _knob_value(knob, values[name])
+            if knob["type"] == "number":
+                # JSON 2 and 2.0 represent the same number; kernel Number facts
+                # require a float. Keep integer knobs exact and independently typed.
+                values[name] = float(values[name])
             if "pointer" in knob:
                 _pointer(document, knob["pointer"], values[name])
             else:

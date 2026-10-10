@@ -75,3 +75,18 @@
 .viewer-stage:has(.inspector-first) > .viewport-caption { bottom: 8px; color: #25465b; background: #dceaf3; }
 .viewer-stage:has(.has-spatial) > .viewport-caption { bottom: 8px; }
 @media (max-width: 950px) { .has-spatial .nonspatial-pane { max-width: 55%; } .presentation-tabs span { display: none; } }
+/* Newcomer semantic overlay (simple mode only) */
+.semantic-legend { position: absolute; left: 10px; bottom: 10px; z-index: 6; background: #10283dd9; color: #e4f4fd; border: 1px solid #7799aa88; border-radius: 8px; padding: 8px 10px; font: 11px system-ui; display: flex; flex-direction: column; gap: 4px; max-width: 240px; }
+.semantic-legend-title { font-weight: 600; letter-spacing: .02em; }
+.semantic-legend-entries { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.semantic-legend-entry { display: inline-flex; align-items: center; gap: 4px; }
+.semantic-legend-entry.muted { color: #9db9ca; }
+.semantic-legend-entry i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.semantic-showall { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.semantic-zone-count { color: #9fdac4; }
+
+.entity-label[data-glyph]:before{display:inline-block;margin-right:5px;font-size:13px;}
+.entity-label[data-glyph="package"]:before{content:"▣";color:#e69f00}.entity-label[data-glyph="cross"]:before{content:"✚";color:#cc79a7}.entity-label[data-glyph="eye"]:before{content:"◉";color:#56b4e9}.entity-label[data-glyph="person"]:before{content:"●";color:#009e73}.entity-label[data-glyph="road"]:before{content:"▰";color:#e69f00}
+.viewport-canvas[data-semantic-hover]:not([data-semantic-hover=""]):after{content:attr(data-semantic-hover);position:absolute;top:12px;left:12px;padding:7px 10px;background:#17354e;color:white;border-radius:6px;pointer-events:none;}
+
+.entity-label[data-glyph="shield"]:before{content:"⬟";color:#0072b2}.entity-label[data-glyph="spray"]:before{content:"✿";color:#009e73}

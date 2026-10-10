@@ -1,5 +1,5 @@
 import type { BusinessEvent, Category, KpiValues } from './api';
-const categories=['logistics','emergency','inspection','agriculture','mobility','security','airspace','weather','energy'];
+const categories=['logistics','emergency','inspection','agriculture','mobility','security','airspace','weather','energy','mixed'];
 function record(value:unknown):Record<string,unknown>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Expected a business-summary object.');return value as Record<string,unknown>;}
 function text(value:unknown):asserts value is string{if(typeof value!=='string')throw Error('Expected text in a business summary.');}
 export function validateKpiValues(value:unknown):KpiValues{
