@@ -25,6 +25,7 @@ def eligible(task: Task, vehicle: Vehicle) -> bool:
     return (
         vehicle.available
         and vehicle.soc > 0
+        and (not vehicle.task_kinds or task.kind in vehicle.task_kinds)
         and task.payload_kg <= vehicle.payload_capacity_kg
     )
 
@@ -253,7 +254,12 @@ class AltitudeLayers:
         affected = sorted({identity for c in conflicts for identity in (c.a, c.b)})
         if not affected:
             return ()
-        base = min(vehicles[i].position[2] for i in affected)
+        external = dict(snapshot.monitored_positions)
+        if external:
+            base = max(p[2] for p in external.values()) + self.spacing
+            affected = [i for i in affected if i not in external]
+        else:
+            base = min(vehicles[i].position[2] for i in affected)
         return tuple(
             Resolution(identity, "altitude", base + index * self.spacing)
             for index, identity in enumerate(affected)
@@ -273,7 +279,19 @@ class HoldAndGo:
     ) -> tuple[Resolution, ...]:
         return tuple(
             Resolution(identity, "hold", hold_s=self.hold_s)
-            for identity in sorted({max(c.a, c.b) for c in conflicts})
+            for identity in sorted(
+                {
+                    max(
+                        i
+                        for i in (c.a, c.b)
+                        if i not in dict(snapshot.monitored_positions)
+                    )
+                    for c in conflicts
+                    if any(
+                        i not in dict(snapshot.monitored_positions) for i in (c.a, c.b)
+                    )
+                }
+            )
         )
 
 

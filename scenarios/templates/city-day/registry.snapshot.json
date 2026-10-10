@@ -1,0 +1,1968 @@
+{
+  "compiler_version": "1",
+  "details": {
+    "admissions": [
+      {
+        "id": "he.aircraft.position_enu_m",
+        "integrationDisposition": null,
+        "kind": "field",
+        "research_admitted": true,
+        "reviewStatus": "proposed",
+        "source": {
+          "file": "semantic-directory/data/definitions/part-002.json",
+          "pointer": "/596"
+        }
+      },
+      {
+        "id": "oo:digital_twin.wind.horizontalVelocity",
+        "integrationDisposition": null,
+        "kind": "field",
+        "research_admitted": true,
+        "reviewStatus": "proposed",
+        "source": {
+          "file": "semantic-directory/data/definitions/part-002.json",
+          "pointer": "/383"
+        }
+      }
+    ],
+    "effective_fields": {
+      "oo:ComputeNode": [],
+      "oo:GroundVehicle": [],
+      "oo:ObservationRecord": [],
+      "oo:Task": [],
+      "oo:UAV": [
+        "he.aircraft.position_enu_m"
+      ],
+      "oo:WindField": [
+        "oo:digital_twin.wind.horizontalVelocity"
+      ]
+    },
+    "exclusions": [],
+    "normalizations": [
+      {
+        "after": {
+          "length": 2
+        },
+        "before": [
+          2
+        ],
+        "file": "semantic-directory/data/definitions/part-002.json",
+        "id": "oo:digital_twin.wind.horizontalVelocity",
+        "pointer": "/383/valueSchema/items/shape",
+        "rule": "schema.shape"
+      },
+      {
+        "after": {
+          "length": 3
+        },
+        "before": [
+          3
+        ],
+        "file": "semantic-directory/data/definitions/part-002.json",
+        "id": "he.aircraft.position_enu_m",
+        "pointer": "/596/valueSchema/shape",
+        "rule": "schema.shape"
+      },
+      {
+        "after": {
+          "min_length": 1
+        },
+        "before": 1,
+        "file": "semantic-directory/data/definitions/part-002.json",
+        "id": "oo:digital_twin.wind.horizontalVelocity",
+        "pointer": "/383/valueSchema/minItems",
+        "rule": "schema.bound"
+      },
+      {
+        "after": {
+          "status": "exact",
+          "symbol": "m/s"
+        },
+        "before": "m/s",
+        "file": "semantic-directory/data/definitions/part-002.json",
+        "id": "oo:digital_twin.wind.horizontalVelocity",
+        "pointer": "/383/valueSchema/items/items/unit",
+        "rule": "unit.string"
+      }
+    ],
+    "policy": {
+      "admit_proposed": false,
+      "admitted_ids": [],
+      "excluded_ids": [],
+      "strict_reviewed": false
+    },
+    "producer_hints": {
+      "he.aircraft.position_enu_m": {
+        "authority": false,
+        "descriptions": {
+          "legacyRefs": [
+            "he.aircraft.position_enu_m"
+          ],
+          "ownerSubject": {
+            "bindingStatus": "owner_role_alias_only",
+            "classId": "oo:UAV",
+            "kind": "class_subject",
+            "legacyOwnerRoles": [
+              "aircraft"
+            ]
+          },
+          "writer": {
+            "description": "A concrete writer/module and subject binding must be selected in the instance profile; old owner labels do not establish this.",
+            "kind": "declared_estimator"
+          }
+        },
+        "source": {
+          "file": "semantic-directory/data/definitions/part-002.json",
+          "pointer": "/596"
+        }
+      },
+      "oo:digital_twin.wind.horizontalVelocity": {
+        "authority": false,
+        "descriptions": {
+          "legacyRefs": [],
+          "ownerSubject": {
+            "bindingStatus": "typed_reference_contract_only; example references are synthetic",
+            "classId": "oo:WindField",
+            "kind": "observation_subject"
+          },
+          "writer": {
+            "description": "Configured producer/importer must be explicitly bound; this proposal does not create runtime ownership.",
+            "kind": "author_contract"
+          }
+        },
+        "source": {
+          "file": "semantic-directory/data/definitions/part-002.json",
+          "pointer": "/383"
+        }
+      }
+    },
+    "provenance": {
+      "descriptors": {
+        "fields": {
+          "he.aircraft.position_enu_m": {
+            "file": "semantic-directory/data/definitions/part-002.json",
+            "pointer": "/596"
+          },
+          "oo:digital_twin.wind.horizontalVelocity": {
+            "file": "semantic-directory/data/definitions/part-002.json",
+            "pointer": "/383"
+          }
+        },
+        "relations": {},
+        "types": {
+          "oo:Aircraft": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/58"
+          },
+          "oo:ComputeEquipment": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/121"
+          },
+          "oo:ComputeNode": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/123"
+          },
+          "oo:EnvironmentalField": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/165"
+          },
+          "oo:Equipment": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/166"
+          },
+          "oo:GroundVehicle": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/214"
+          },
+          "oo:ModelObject": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/284"
+          },
+          "oo:ObservationRecord": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/310"
+          },
+          "oo:PhysicalAsset": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/338"
+          },
+          "oo:SampledEnvironmentalField": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/424"
+          },
+          "oo:Task": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/462"
+          },
+          "oo:UAV": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/483"
+          },
+          "oo:Vehicle": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/495"
+          },
+          "oo:WindField": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/513"
+          },
+          "oo:WorkObject": {
+            "file": "entity-directory/data/concepts.json",
+            "pointer": "/concepts/514"
+          }
+        }
+      }
+    },
+    "raw_types": {
+      "oo:Aircraft": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u80fd\u591f\u5728\u5927\u6c14\u4e2d\u83b7\u5f97\u652f\u627f\u7684\u822a\u7a7a\u5668\u672c\u4f53\uff0c\u5305\u542b\u6c14\u52a8\u5347\u529b\u3001\u65cb\u7ffc\u5347\u529b\u3001\u6d6e\u529b\u7b49\uff1b\u4e0e\u7a7a\u57df\u3001\u63a7\u5236\u7cfb\u7edf\u548c\u4efb\u52a1\u5206\u5f00\u3002",
+        "domain": "shared",
+        "id": "oo:Aircraft",
+        "informationRecord": false,
+        "name": "\u822a\u7a7a\u5668",
+        "navigation": {
+          "browsePath": [
+            "\u8f7d\u5177",
+            "\u822a\u7a7a\u5668"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u822a\u7a7a\u5668",
+          "cross": [],
+          "primaryRaw": "\u7269\u7406\u5b9e\u4f53",
+          "topic": "\u822a\u7a7a\u5668",
+          "view": "\u7269\u7406\u5b9e\u4f53"
+        },
+        "objectAssociations": [],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "taxonomy.t01.Aircraft.liftArchitecture",
+          "taxonomy.t01.Aircraft.propulsionArchitecture",
+          "taxonomy.t01.Aircraft.airframeLayout",
+          "taxonomy.t01.Aircraft.launchRecoveryModes"
+        ],
+        "parent": "oo:Vehicle",
+        "parentDepth": 4,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:ComputeEquipment": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u627f\u8f7d\u8ba1\u7b97\u7684\u7269\u7406\u8bbe\u5907\uff1b\u8d44\u6e90\u989d\u5ea6\u53e6\u884c\u5efa\u6a21\u3002",
+        "domain": "shared",
+        "id": "oo:ComputeEquipment",
+        "informationRecord": false,
+        "name": "\u8ba1\u7b97\u8bbe\u5907",
+        "navigation": {
+          "browsePath": [
+            "\u8bbe\u5907\u4e0e\u90e8\u4ef6",
+            "\u8ba1\u7b97\u4e0e\u5b58\u50a8\u8bbe\u5907"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u8ba1\u7b97\u4e0e\u5b58\u50a8\u8bbe\u5907",
+          "cross": [],
+          "primaryRaw": "\u7269\u7406\u5b9e\u4f53",
+          "topic": "\u8ba1\u7b97\u4e0e\u5b58\u50a8\u8bbe\u5907",
+          "view": "\u7269\u7406\u5b9e\u4f53"
+        },
+        "objectAssociations": [],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "he.legacy.power_limit_w",
+          "he.legacy.measured_power_w"
+        ],
+        "parent": "oo:Equipment",
+        "parentDepth": 3,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:ComputeNode": {
+        "abstract": false,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "A physical host that contains processors, memory, storage and interfaces. Scheduling capacity and usage records are related objects.",
+        "domain": "machine_network",
+        "id": "oo:ComputeNode",
+        "informationRecord": false,
+        "name": "\u8ba1\u7b97\u8282\u70b9 / Compute node",
+        "navigation": {
+          "browsePath": [
+            "\u8bbe\u5907\u4e0e\u90e8\u4ef6",
+            "\u8ba1\u7b97\u4e0e\u5b58\u50a8\u8bbe\u5907"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u8ba1\u7b97\u4e0e\u5b58\u50a8\u8bbe\u5907",
+          "cross": [],
+          "primaryRaw": "\u7269\u7406\u5b9e\u4f53",
+          "topic": "\u8ba1\u7b97\u4e0e\u5b58\u50a8\u8bbe\u5907",
+          "view": "\u7269\u7406\u5b9e\u4f53"
+        },
+        "objectAssociations": [
+          {
+            "direction": "outgoing",
+            "name": "\u8ba1\u7b97\u8282\u70b9\u5305\u542bCPU",
+            "relationId": "oo:machine_network.relation.node_cpu",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:CPU"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u8ba1\u7b97\u8282\u70b9\u5305\u542bGPU",
+            "relationId": "oo:machine_network.relation.node_gpu",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:GPU"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u8ba1\u7b97\u8282\u70b9\u5305\u542b\u5185\u5b58",
+            "relationId": "oo:machine_network.relation.node_memory",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:MemoryDevice"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u8ba1\u7b97\u8282\u70b9\u5305\u542b\u5b58\u50a8",
+            "relationId": "oo:machine_network.relation.node_storage",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:StorageDevice"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u8ba1\u7b97\u8282\u70b9\u5305\u542b\u63a5\u53e3",
+            "relationId": "oo:machine_network.relation.node_interface",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:NetworkInterface"
+            ]
+          }
+        ],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "mn.node.ready",
+          "mn.node.memory_pressure",
+          "mn.node.disk_pressure",
+          "mn.node.pid_pressure",
+          "mn.node.heartbeat_age_s"
+        ],
+        "parent": "oo:ComputeEquipment",
+        "parentDepth": 4,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:EnvironmentalField": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u5728\u660e\u786e\u7a7a\u95f4\u3001\u65f6\u95f4\u548c\u5750\u6807\u7ea6\u5b9a\u4e0b\u5b9a\u4e49\u7684\u73af\u5883\u91cf\u3002",
+        "domain": "shared",
+        "id": "oo:EnvironmentalField",
+        "informationRecord": false,
+        "name": "\u73af\u5883\u573a",
+        "navigation": {
+          "browsePath": [],
+          "browseRole": "domain_base",
+          "browseTopic": "\u4e0a\u4f4d\u603b\u7c7b",
+          "cross": [],
+          "primaryRaw": "\u73af\u5883\u4e0e\u7a7a\u95f4",
+          "topic": "\u4e0a\u4f4d\u603b\u7c7b",
+          "view": "\u73af\u5883\u4e0e\u7a7a\u95f4"
+        },
+        "objectAssociations": [
+          {
+            "direction": "outgoing",
+            "name": "\u73af\u5883\u573a\u5173\u8054\u751f\u547d\u66b4\u9732",
+            "relationId": "proposal:taxonomy:T04.relation.FieldExposesLivingSubject",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:LivingSubject"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u73af\u5883\u573a\u9002\u7528\u4e8e\u7a7a\u95f4\u5bf9\u8c61",
+            "relationId": "proposal:taxonomy:T04.relation.FieldAppliesToSpatialObject",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:SpatialObject"
+            ]
+          }
+        ],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [],
+        "parent": "oo:ModelObject",
+        "parentDepth": 1,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:Equipment": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u5177\u6709\u578b\u53f7\u3001\u914d\u7f6e\u3001\u7ec4\u4ef6\u548c\u751f\u547d\u5468\u671f\u7684\u6280\u672f\u8bbe\u5907\u3002",
+        "domain": "shared",
+        "id": "oo:Equipment",
+        "informationRecord": false,
+        "name": "\u8bbe\u5907",
+        "navigation": {
+          "browsePath": [
+            "\u8bbe\u5907\u4e0e\u90e8\u4ef6"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u4e0a\u4f4d\u603b\u7c7b",
+          "cross": [],
+          "primaryRaw": "\u7269\u7406\u5b9e\u4f53",
+          "topic": "\u4e0a\u4f4d\u603b\u7c7b",
+          "view": "\u7269\u7406\u5b9e\u4f53"
+        },
+        "objectAssociations": [
+          {
+            "direction": "outgoing",
+            "name": "\u8bbe\u5907\u91c7\u7528\u578b\u53f7",
+            "relationId": "oo:relation:equipment-model",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:EquipmentModel"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u8bbe\u5907\u91c7\u7528\u914d\u7f6e",
+            "relationId": "oo:relation:equipment-config",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:InstanceConfiguration"
+            ]
+          }
+        ],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "oo:shared.equipment.equipmentModelRef",
+          "oo:shared.equipment.configurationRef",
+          "oo:shared.equipment.lifecycleStatus",
+          "taxonomy.t02.Equipment.functionalCapabilities",
+          "taxonomy.t02.Equipment.realizationBoundary"
+        ],
+        "parent": "oo:PhysicalAsset",
+        "parentDepth": 2,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:GroundVehicle": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u5728\u5730\u9762\u8fd0\u884c\u7684\u8f7d\u5177\u3002",
+        "domain": "shared",
+        "id": "oo:GroundVehicle",
+        "informationRecord": false,
+        "name": "\u5730\u9762\u8f7d\u5177",
+        "navigation": {
+          "browsePath": [
+            "\u8f7d\u5177",
+            "\u5730\u9762\u3001\u6c34\u9762\u4e0e\u8de8\u4ecb\u8d28\u8f7d\u5177"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u5730\u9762\u3001\u6c34\u9762\u4e0e\u8de8\u4ecb\u8d28\u8f7d\u5177",
+          "cross": [],
+          "primaryRaw": "\u7269\u7406\u5b9e\u4f53",
+          "topic": "\u5730\u9762\u3001\u6c34\u9762\u4e0e\u8de8\u4ecb\u8d28\u8f7d\u5177",
+          "view": "\u7269\u7406\u5b9e\u4f53"
+        },
+        "objectAssociations": [],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "taxonomy.t01.GroundVehicle.mobilityArchitecture",
+          "taxonomy.t01.GroundVehicle.traversalCapabilityProfile"
+        ],
+        "parent": "oo:Vehicle",
+        "parentDepth": 4,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:ModelObject": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u53ef\u88ab\u7248\u672c\u5316\u5f15\u7528\u7684\u5bf9\u8c61\uff1b\u7c7b\u5b9a\u4e49\u3001\u5b9e\u4f8b\u8eab\u4efd\u4e0e\u89d2\u8272\u522b\u540d\u4e25\u683c\u5206\u5f00\u3002",
+        "domain": "shared",
+        "id": "oo:ModelObject",
+        "informationRecord": false,
+        "name": "\u6a21\u578b\u5bf9\u8c61",
+        "navigation": {
+          "browsePath": [
+            "\u7edf\u4e00\u6280\u672f\u6839\u4e0e\u8de8\u57df\u4e0a\u4f4d\u7c7b\u578b"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u7edf\u4e00\u6280\u672f\u6839\u4e0e\u8de8\u57df\u4e0a\u4f4d\u7c7b\u578b",
+          "cross": [],
+          "primaryRaw": "\u6280\u672f\u652f\u6301\uff08\u4e0d\u4f5c\u4e1a\u52a1\u5206\u7c7b\uff09",
+          "topic": "\u7edf\u4e00\u6280\u672f\u6839\u4e0e\u8de8\u57df\u4e0a\u4f4d\u7c7b\u578b",
+          "view": "\u6280\u672f\u652f\u6301\uff08\u4e0d\u4f5c\u4e1a\u52a1\u5206\u7c7b\uff09"
+        },
+        "objectAssociations": [
+          {
+            "direction": "outgoing",
+            "name": "\u5bf9\u8c61\u5177\u6709\u6570\u5b57\u8868\u793a",
+            "relationId": "proposal:taxonomy:T03.relation.SubjectHasDigitalRepresentation",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "proposal:taxonomy:T03.TwinRepresentation"
+            ]
+          }
+        ],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "oo:shared.modelObject.classRevisionRef",
+          "oo:shared.modelObject.instanceRef",
+          "oo:shared.modelObject.displayName",
+          "oo:shared.modelObject.provenance",
+          "oo:shared.modelObject.validInterval"
+        ],
+        "parent": null,
+        "parentDepth": 0,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:ObservationRecord": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u67d0\u4e3b\u4f53\u5728\u91c7\u96c6\u65f6\u523b\u53d6\u5f97\u3001\u5728\u53ef\u7528\u65f6\u523b\u53ef\u77e5\u7684\u8bb0\u5f55\u3002",
+        "domain": "shared",
+        "id": "oo:ObservationRecord",
+        "informationRecord": false,
+        "name": "\u89c2\u6d4b\u8bb0\u5f55",
+        "navigation": {
+          "browsePath": [
+            "\u89c2\u6d4b\u4e0e\u62a5\u544a"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u89c2\u6d4b\u3001\u72b6\u6001\u3001\u62a5\u544a\u4e0e\u8bc1\u636e",
+          "cross": [],
+          "primaryRaw": "\u4fe1\u606f\u8bb0\u5f55\u89c6\u56fe\uff08\u5e76\u5728\u9886\u57df\u9875\u5173\u8054\uff09",
+          "topic": "\u89c2\u6d4b\u3001\u72b6\u6001\u3001\u62a5\u544a\u4e0e\u8bc1\u636e",
+          "view": "\u4fe1\u606f\u8de8\u57df\u89c6\u56fe"
+        },
+        "objectAssociations": [
+          {
+            "direction": "outgoing",
+            "name": "\u89c2\u6d4b\u63cf\u8ff0\u4e3b\u4f53",
+            "relationId": "oo:relation:observation-subject",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:ModelObject"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u8bb0\u5f55\u4f7f\u7528\u8f68\u8ff9\u8868\u793a",
+            "relationId": "proposal:taxonomy:T03.relation.RecordTrajectory",
+            "sourceStatus": {
+              "integrationDisposition": "quarantined",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "proposal:taxonomy:T03.TrajectoryArtifact"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u89c2\u6d4b\u5c5e\u4e8e\u901a\u9053",
+            "relationId": "agp:relation:observation_channel",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:OutputChannel"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u89c2\u6d4b\u76ee\u6807\u5bf9\u8c61",
+            "relationId": "agp:relation:observes_feature",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:ModelObject"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u89c2\u6d4b\u7ed3\u679c\u6570\u636e",
+            "relationId": "agp:relation:observation_result",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "quarantined",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "agp:type:DataArtifact"
+            ]
+          }
+        ],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "oo:shared.observationRecord.observedSubjectRef",
+          "oo:shared.observationRecord.channelRef",
+          "oo:shared.observationRecord.acquisitionTime",
+          "oo:shared.observationRecord.availableTime",
+          "oo:shared.observationRecord.frameRef",
+          "taxonomy.t03.ObservationRecord.resultBinding"
+        ],
+        "parent": "oo:ModelObject",
+        "parentDepth": 1,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:PhysicalAsset": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u5b58\u5728\u4e8e\u7269\u7406\u6216\u660e\u786e\u4eff\u771f\u4e16\u754c\u7684\u8d44\u4ea7\u3002",
+        "domain": "shared",
+        "id": "oo:PhysicalAsset",
+        "informationRecord": false,
+        "name": "\u7269\u7406\u8d44\u4ea7",
+        "navigation": {
+          "browsePath": [],
+          "browseRole": "domain_base",
+          "browseTopic": "\u4e0a\u4f4d\u603b\u7c7b",
+          "cross": [],
+          "primaryRaw": "\u7269\u7406\u5b9e\u4f53",
+          "topic": "\u4e0a\u4f4d\u603b\u7c7b",
+          "view": "\u7269\u7406\u5b9e\u4f53"
+        },
+        "objectAssociations": [],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [],
+        "parent": "oo:ModelObject",
+        "parentDepth": 1,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:SampledEnvironmentalField": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "A spatial/temporal environmental field represented at declared sample locations, with a named producer/method. This is not a physical instrument.",
+        "domain": "digital_twin",
+        "id": "oo:SampledEnvironmentalField",
+        "informationRecord": false,
+        "name": "\u91c7\u6837\u73af\u5883\u573a",
+        "navigation": {
+          "browsePath": [
+            "\u6c14\u8c61\u4e0e\u73af\u5883\u573a",
+            "\u73af\u5883\u573a\u91c7\u6837\u8868\u8fbe"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u73af\u5883\u573a\u91c7\u6837\u8868\u8fbe\uff08\u62bd\u8c61\uff09",
+          "cross": [
+            {
+              "domain": "\u4fe1\u606f\u8de8\u57df\u89c6\u56fe",
+              "note": null,
+              "raw": "\u4fe1\u606f\u8de8\u57df\u89c6\u56fe \u2192 \u91c7\u6837\u3001\u89c2\u6d4b\u4e0e\u573a\u8868\u793a",
+              "section": "\u91c7\u6837\u3001\u89c2\u6d4b\u4e0e\u573a\u8868\u793a",
+              "status": null,
+              "targetView": "\u4fe1\u606f\u8de8\u57df\u89c6\u56fe"
+            }
+          ],
+          "primaryRaw": "\u73af\u5883\u4e0e\u7a7a\u95f4",
+          "topic": "\u73af\u5883\u573a\u91c7\u6837\u8868\u8fbe\uff08\u62bd\u8c61\uff09",
+          "view": "\u73af\u5883\u4e0e\u7a7a\u95f4"
+        },
+        "objectAssociations": [
+          {
+            "direction": "outgoing",
+            "name": "environment supported by observations",
+            "relationId": "relation:dt:environment_supported_by_observations",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:ObservationRecord"
+            ]
+          }
+        ],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "oo:digital_twin.environment.sampleLocations",
+          "oo:digital_twin.environment.frameRef",
+          "oo:digital_twin.environment.validInterval",
+          "oo:digital_twin.environment.sourceObservationRefs",
+          "oo:digital_twin.environment.representationMethod"
+        ],
+        "parent": "oo:EnvironmentalField",
+        "parentDepth": 2,
+        "parentStatus": "source",
+        "presentation": {
+          "crossNavigation": [
+            "\u4fe1\u606f\u8de8\u57df\u89c6\u56fe \u2192 \u91c7\u6837\u3001\u89c2\u6d4b\u4e0e\u573a\u8868\u793a"
+          ],
+          "navigationTopic": "\u73af\u5883\u573a\u91c7\u6837\u8868\u8fbe\uff08\u62bd\u8c61\uff09",
+          "primaryNavigation": "\u73af\u5883\u4e0e\u7a7a\u95f4",
+          "reviewNote": "\u5728\u58f0\u660e\u91c7\u6837\u4f4d\u7f6e\u8868\u8fbe\u65f6\u7a7a\u73af\u5883\u573a\u5e76\u6ce8\u660e\u751f\u4ea7\u8005\u6216\u65b9\u6cd5\u7684\u62bd\u8c61\u7c7b\u578b\u3002\u5f53\u524d\u7236\u7c7b oo:EnvironmentalField\uff1b\u81ea\u6709\u5b57\u6bb5 sampleLocations\u3001frameRef\u3001validInterval\u3001sourceObservationRefs\u3001representationMethod\u3002\u91c7\u6837\u8868\u8fbe\u4e0d\u53e6\u5efa\u81ea\u7136\u73b0\u8c61\u7c7b\u522b\u3002",
+          "semanticReview": "source_definition_classified"
+        },
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:Task": {
+        "abstract": false,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "Bounded work assignment with exact episode, goal and assignee references.",
+        "domain": "human_urban",
+        "id": "oo:Task",
+        "informationRecord": false,
+        "name": "\u4efb\u52a1",
+        "navigation": {
+          "browsePath": [
+            "\u4efb\u52a1\u4e0e\u8ba1\u5212",
+            "\u4e1a\u52a1\u4efb\u52a1\u3001\u670d\u52a1\u8981\u6c42\u4e0e\u5de1\u68c0\u53d1\u73b0"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u4e1a\u52a1\u4efb\u52a1\u3001\u670d\u52a1\u8981\u6c42\u4e0e\u5de1\u68c0\u53d1\u73b0",
+          "cross": [
+            {
+              "domain": "\u4efb\u52a1\u4e0e\u8fd0\u884c",
+              "note": null,
+              "raw": "\u4efb\u52a1\u4e0e\u8fd0\u884c/\u4e1a\u52a1\u4efb\u52a1\u4e0e\u670d\u52a1\u4f9b\u7ed9",
+              "section": "\u4e1a\u52a1\u4efb\u52a1\u4e0e\u670d\u52a1\u4f9b\u7ed9",
+              "status": null,
+              "targetView": "\u4e1a\u52a1\u4e0e\u8fd0\u884c"
+            }
+          ],
+          "primaryRaw": "\u4efb\u52a1\u4e0e\u573a\u666f",
+          "topic": "\u4e1a\u52a1\u4efb\u52a1\u4e0e\u670d\u52a1\u4f9b\u7ed9",
+          "view": "\u4e1a\u52a1\u4e0e\u8fd0\u884c"
+        },
+        "objectAssociations": [
+          {
+            "direction": "incoming",
+            "name": "\u5206\u914d\u7ed9\u5de5\u4f5c\u6216\u4e3b\u4f53",
+            "relationId": "agp:relation:allocation_consumer",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "quarantined",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "agp:type:Allocation"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u4f7f\u547d\u5305\u542b\u4efb\u52a1",
+            "relationId": "agp:relation:mission_has_task",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Mission"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u8ba2\u5355\u7531\u4efb\u52a1\u5c65\u7ea6",
+            "relationId": "agp:relation:order_fulfilled_by",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Order"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u9884\u7ea6\u8bf7\u6c42\u65b9",
+            "relationId": "agp:relation:reservation_requester",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "quarantined",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "agp:type:Reservation"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u4efb\u52a1\u54cd\u5e94\u4e8b\u6545",
+            "relationId": "agp:relation:responds_to",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "quarantined",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Incident"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u8bbe\u65bd\u670d\u52a1\u4efb\u52a1",
+            "relationId": "agp:relation:serves_task",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "quarantined",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Facility",
+              "agp:type:LandingSite",
+              "oo:Service"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u4efb\u52a1\u6d89\u53ca\u7269\u54c1",
+            "relationId": "agp:relation:task_payload",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Cargo",
+              "oo:Container"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u4efb\u52a1\u8981\u6c42\u6761\u4ef6",
+            "relationId": "agp:relation:task_requires",
+            "sourceStatus": {
+              "bindingStatus": "source_only_binding_pending",
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:TaskRequirement",
+              "oo:ServiceRequirement",
+              "oo:ResourceRequirement",
+              "oo:AirOperationRequirement",
+              "oo:GeometrySafetyRequirement",
+              "oo:UrbanRequirement"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u4efb\u52a1\u9a8c\u6536\u8d23\u4efb\u4e3b\u4f53",
+            "relationId": "proposal:taxonomy:T05.relation.TaskAcceptedBy",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Organization",
+              "oo:Person"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u4efb\u52a1\u5904\u7406\u5dee\u5f02\u8bb0\u5f55",
+            "relationId": "rel:frontier:task-addresses-discrepancy",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:frontier.DiscrepancyRecord"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u4f7f\u547d\u4efb\u52a1\u5b50\u4efb\u52a1",
+            "relationId": "rel:hu:mission-tasks",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Mission"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u8ba2\u5355\u8bf7\u6c42\u4efb\u52a1",
+            "relationId": "rel:hu:order-tasks",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Order"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u8ba1\u5212\u5305\u542b\u4efb\u52a1",
+            "relationId": "rel:hu:plan-tasks",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Plan"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u5904\u7f6e\u8bc1\u636e\u5173\u8054\u7684\u4efb\u52a1",
+            "relationId": "rel:hu:response-report-task",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:IncidentResponseReport"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u4efb\u52a1\u5bf9\u5e94\u4e1a\u52a1\u6d3b\u52a8",
+            "relationId": "rel:hu:task-activity",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Activity"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u4efb\u52a1\u6267\u884c\u4e3b\u4f53",
+            "relationId": "rel:hu:task-assignee",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:ModelObject"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u4efb\u52a1\u76ee\u6807",
+            "relationId": "rel:hu:task-objective",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Objective"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u4efb\u52a1\u6240\u4f9d\u8d56\u7684\u8bb8\u53ef",
+            "relationId": "rel:hu:task-permit",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Permit"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u4efb\u52a1\u54cd\u5e94\u7684\u4e8b\u4ef6",
+            "relationId": "rel:hu:task-responds-to-incident",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Incident"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "checkpoint for task",
+            "relationId": "relation:dt:checkpoint_for_task",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Checkpoint"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "facility allocation task",
+            "relationId": "relation:dt:facility_allocation_task",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:FacilityAllocationRecord"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "task assignment task",
+            "relationId": "relation:dt:task_assignment_task",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:TaskAssignment"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "task execution describes task",
+            "relationId": "relation:dt:task_execution_describes_task",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:TaskExecutionReport"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "task stage parent task",
+            "relationId": "relation:dt:task_stage_parent_task",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:TaskStageRecord"
+            ]
+          }
+        ],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "hu.task.ack_age_s",
+          "hu.task.ack_received",
+          "hu.task.completed_units",
+          "hu.task.paused",
+          "hu.task.physical_path_available",
+          "hu.task.progress_m",
+          "hu.task.remaining_time_s",
+          "hu.task.required_capability_present",
+          "hu.task.resume_authorized",
+          "hu.task.retry_count",
+          "hu.task.safety_stop",
+          "hu.task.stop_trigger_entity_id",
+          "hu.task.work_rate_per_s",
+          "hu.task.work_remaining",
+          "hu.wp.task.id",
+          "hu.wp.task.unload_zone_id",
+          "agp:state:Task.acceptance_criteria_ref",
+          "agp:state:Task.progress_fraction",
+          "agp:state:Task.progress_basis",
+          "taxonomy.t05.Task.executionState"
+        ],
+        "parent": "oo:WorkObject",
+        "parentDepth": 2,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:UAV": {
+        "abstract": false,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u4ee5\u65e0\u673a\u8f7d\u9a7e\u9a76\u5458\u7684\u8fd0\u884c\u6784\u578b\u64cd\u7eb5\u7684\u822a\u7a7a\u5668\u672c\u4f53\uff1b\u53ef\u9065\u63a7\u6216\u81ea\u52a8\uff0c\u4e0d\u4ee5\u65e0\u4e58\u5ba2\u4e3a\u6761\u4ef6\uff1b\u5730\u57df\u6cd5\u89c4\u5bf9\u81ea\u5907\u52a8\u529b\u7b49\u7684\u9650\u5236\u53e6\u7528profile\u3002",
+        "domain": "hardware_em",
+        "id": "oo:UAV",
+        "informationRecord": false,
+        "name": "\u65e0\u4eba\u673a / UAV",
+        "navigation": {
+          "browsePath": [
+            "\u8f7d\u5177",
+            "\u822a\u7a7a\u5668"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u822a\u7a7a\u5668",
+          "cross": [],
+          "primaryRaw": "\u7269\u7406\u5b9e\u4f53",
+          "topic": "\u822a\u7a7a\u5668",
+          "view": "\u7269\u7406\u5b9e\u4f53"
+        },
+        "objectAssociations": [
+          {
+            "direction": "outgoing",
+            "name": "\u4f9b\u80fd\u7535\u6c60",
+            "relationId": "oo:hardware_em.relation.uav.battery",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Battery"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u65e0\u7ebf\u901a\u4fe1\u8bbe\u5907",
+            "relationId": "oo:hardware_em.relation.uav.radio",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Radio"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u8ba1\u7b97\u8bbe\u5907",
+            "relationId": "oo:hardware_em.relation.uav.computenode",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:ComputeNode"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u52a8\u529b\u7ec4\u4ef6",
+            "relationId": "oo:hardware_em.relation.uav.propulsor",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Propulsor"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u642d\u8f7d\u4f20\u611f\u5668",
+            "relationId": "oo:hardware_em.relation.uav.sensors",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Sensor"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u5bfc\u822a\u63a5\u6536\u673a",
+            "relationId": "oo:hardware_em.relation.uav.navigationGnss",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:GNSSReceiver"
+            ]
+          },
+          {
+            "direction": "outgoing",
+            "name": "\u60ef\u5bfc\u4f20\u611f\u5668",
+            "relationId": "oo:hardware_em.relation.uav.navigationImu",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:IMU"
+            ]
+          }
+        ],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "he.aircraft.position_enu_m",
+          "he.aircraft.mass_kg",
+          "he.aircraft.span_m"
+        ],
+        "parent": "oo:Aircraft",
+        "parentDepth": 5,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:Vehicle": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u7528\u4e8e\u79fb\u52a8\u4e0e\u8fd0\u8f93\u7684\u8bbe\u5907\u3002",
+        "domain": "shared",
+        "id": "oo:Vehicle",
+        "informationRecord": false,
+        "name": "\u8f7d\u5177",
+        "navigation": {
+          "browsePath": [
+            "\u8f7d\u5177"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u4e0a\u4f4d\u603b\u7c7b",
+          "cross": [],
+          "primaryRaw": "\u7269\u7406\u5b9e\u4f53",
+          "topic": "\u4e0a\u4f4d\u603b\u7c7b",
+          "view": "\u7269\u7406\u5b9e\u4f53"
+        },
+        "objectAssociations": [
+          {
+            "direction": "outgoing",
+            "name": "\u8f7d\u5177\u4f4d\u4e8e\u8bbe\u65bd\u5185\u90e8",
+            "relationId": "proposal:taxonomy:T01.relation.VehicleWithinFacility",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:Facility"
+            ]
+          }
+        ],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "taxonomy.t01.Vehicle.pilotingArchitecture",
+          "taxonomy.t01.Vehicle.deploymentEnvelope",
+          "taxonomy.t01.Vehicle.operationProfiles"
+        ],
+        "parent": "oo:Equipment",
+        "parentDepth": 3,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:WindField": {
+        "abstract": false,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "Horizontal atmospheric velocity field, optionally accompanied by separately named upward air velocity. CF wind is two-dimensional; upward air velocity is not silently folded into it.",
+        "domain": "digital_twin",
+        "id": "oo:WindField",
+        "informationRecord": false,
+        "name": "\u98ce\u573a",
+        "navigation": {
+          "browsePath": [
+            "\u6c14\u8c61\u4e0e\u73af\u5883\u573a",
+            "\u98ce\u4e0e\u6c14\u8c61\u573a"
+          ],
+          "browseRole": "classified",
+          "browseTopic": "\u98ce\u4e0e\u6c14\u8c61\u573a",
+          "cross": [],
+          "primaryRaw": "\u73af\u5883\u4e0e\u7a7a\u95f4",
+          "topic": "\u98ce\u4e0e\u6c14\u8c61\u573a",
+          "view": "\u73af\u5883\u4e0e\u7a7a\u95f4"
+        },
+        "objectAssociations": [],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [
+          "oo:digital_twin.wind.horizontalVelocity",
+          "oo:digital_twin.wind.upwardAirVelocity",
+          "taxonomy.t04.WindField.turbulenceStatistics",
+          "taxonomy.t04.WindField.velocityGradientBySample"
+        ],
+        "parent": "oo:SampledEnvironmentalField",
+        "parentDepth": 3,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      },
+      "oo:WorkObject": {
+        "abstract": true,
+        "candidate": null,
+        "classification": "catalog",
+        "description": "\u4efb\u52a1\u3001\u8ba1\u5212\u3001\u6d3b\u52a8\u548c\u8ba2\u5355\u7b49\u76ee\u7684\u4e0e\u6267\u884c\u5bf9\u8c61\u3002",
+        "domain": "shared",
+        "id": "oo:WorkObject",
+        "informationRecord": false,
+        "name": "\u5de5\u4f5c\u5bf9\u8c61",
+        "navigation": {
+          "browsePath": [],
+          "browseRole": "domain_base",
+          "browseTopic": "\u4e0a\u4f4d\u603b\u7c7b",
+          "cross": [],
+          "primaryRaw": "\u4efb\u52a1\u4e0e\u573a\u666f",
+          "topic": "\u4e0a\u4f4d\u603b\u7c7b",
+          "view": "\u4e1a\u52a1\u4e0e\u8fd0\u884c"
+        },
+        "objectAssociations": [
+          {
+            "direction": "incoming",
+            "name": "\u6240\u5c5e\u4efb\u52a1",
+            "relationId": "oo:hardware_em.relation.missionEnergy.task",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:MissionEnergyRequirement"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u5206\u914d\u6388\u4e88\u8f6f\u4ef6\u5de5\u4f5c\u8d1f\u8f7d",
+            "relationId": "oo:machine_network.relation.allocation_beneficiary",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:ResourceAllocation"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u9884\u7559\u53d7\u76ca\u5bf9\u8c61",
+            "relationId": "proposal:taxonomy:T05.relation.ReservationBeneficiary",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "oo:ResourceReservation"
+            ]
+          },
+          {
+            "direction": "incoming",
+            "name": "\u8d23\u4efb\u9488\u5bf9\u5de5\u4f5c",
+            "relationId": "proposal:taxonomy:T05.relation.ResponsibilityWork",
+            "sourceStatus": {
+              "integrationDisposition": "candidate_not_accepted",
+              "reviewStatus": "proposed"
+            },
+            "typeIds": [
+              "proposal:taxonomy:T05.ResponsibilityAssignment"
+            ]
+          }
+        ],
+        "origin": "original950",
+        "originalOwnFieldIds": [],
+        "originalParent": null,
+        "ownFieldIds": [],
+        "parent": "oo:ModelObject",
+        "parentDepth": 1,
+        "parentStatus": "source",
+        "presentation": null,
+        "recordKind": "baseline_type",
+        "sourceReviewStatus": {
+          "identityDisposition": "candidate_identity_retained",
+          "integrationDisposition": "candidate_not_accepted",
+          "recordKind": "baseline_type",
+          "reviewStatus": "proposed"
+        }
+      }
+    },
+    "relations": [],
+    "review": {
+      "admitted_by_status": {
+        "proposed": 2,
+        "reviewed": 0,
+        "undeclared": 0
+      },
+      "admitted_unreviewed": 2
+    },
+    "selected_types": [
+      "oo:ComputeNode",
+      "oo:GroundVehicle",
+      "oo:ObservationRecord",
+      "oo:Task",
+      "oo:UAV",
+      "oo:WindField"
+    ],
+    "selection": {
+      "field_ids": [
+        "he.aircraft.position_enu_m",
+        "oo:digital_twin.wind.horizontalVelocity"
+      ],
+      "relation_ids": [],
+      "type_ids": [
+        "oo:ComputeNode",
+        "oo:GroundVehicle",
+        "oo:ObservationRecord",
+        "oo:Task",
+        "oo:UAV",
+        "oo:WindField"
+      ]
+    },
+    "statistics": {
+      "admitted_proposed_definitions": 2,
+      "admitted_reviewed_definitions": 0,
+      "admitted_unreviewed_definitions": 2,
+      "ancestry_types": 15,
+      "compile_blockers": 0,
+      "exclusions": 0,
+      "fields": 2,
+      "normalizations": 4,
+      "relations": 0,
+      "research_admissions": 2,
+      "selected_types": 6,
+      "types": 15
+    }
+  },
+  "format": "aeroagentsim.aerograph-registry/v1",
+  "registry": {
+    "fields": [
+      {
+        "declaring_type": "oo:UAV",
+        "id": "he.aircraft.position_enu_m",
+        "metadata": {
+          "frame": {
+            "description": "Named sensor/metric frame and transform revision must be bound; no implicit world frame.",
+            "status": "from_record"
+          },
+          "numeric_units": {
+            "*": "m"
+          },
+          "raw": {
+            "bounds": {
+              "configuredOperating": {
+                "status": "profile_required"
+              },
+              "modelCapability": {
+                "policy": "Never infer universal device limits from a example value.",
+                "status": "not_supplied"
+              }
+            },
+            "decision": "adapted",
+            "declaringClass": "oo:UAV",
+            "displayName": "\u822a\u7a7a\u5668\u4f4d\u7f6e",
+            "domain": "hardware_em",
+            "example": {
+              "kind": "known",
+              "provenance": "authored_simulation",
+              "value": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "frame": {
+              "description": "Named sensor/metric frame and transform revision must be bound; no implicit world frame.",
+              "status": "from_record"
+            },
+            "id": "he.aircraft.position_enu_m",
+            "legacyRefs": [
+              "he.aircraft.position_enu_m"
+            ],
+            "lifetime": "derived",
+            "meaning": "\u822a\u7a7a\u5668\u5728\u5f53\u5730\u4e1c\u3001\u5317\u3001\u5929\u5750\u6807\u7cfb\u4e2d\u7684\u4f4d\u7f6e\u3002",
+            "notes": [
+              "Preserves original ID/types/units/owners and every declaration in legacy-source-rows.json.",
+              "Known, NotSupported, NotApplicable, Unavailable and validation errors are distinct; absence of optional slot is not unknown truth."
+            ],
+            "ownerSubject": {
+              "bindingStatus": "owner_role_alias_only",
+              "classId": "oo:UAV",
+              "kind": "class_subject",
+              "legacyOwnerRoles": [
+                "aircraft"
+              ]
+            },
+            "propertyPath": "he_aircraft_position_enu_m",
+            "requiredWhen": {
+              "condition": "Required only when the selected legacy predicate/profile consumes he.aircraft.position_enu_m; an unselected optional channel is not CONFIG_MISSING.",
+              "kind": "profile"
+            },
+            "reviewStatus": "proposed",
+            "role": "derived",
+            "sourceDisplayName": "Measured/estimated aircraft location",
+            "sourceMeaning": "Measured/estimated aircraft location",
+            "sourceSignature": {
+              "artifactSha256": "7d817d94fb5a1a7b5d338b99ca9694b02312036032bccd8f6c89a7cf207feb44",
+              "declarationOnly": false,
+              "nodeId": "native:state:he.aircraft.position_enu_m",
+              "sourceOwnerRoles": [
+                "aircraft"
+              ],
+              "sourceTypes": [
+                "vector"
+              ],
+              "sourceUnits": [
+                "m"
+              ]
+            },
+            "sources": [
+              "hardware:legacy-signatures",
+              "hardware:legacy-graph"
+            ],
+            "time": {
+              "binding": "acquisition/phenomenon time for observations; validity interval for configurations/specs; availability time kept separately",
+              "clockRequired": true,
+              "sourceTemporalContract": "not_explicitly_complete"
+            },
+            "unit": {
+              "status": "exact",
+              "symbol": "m"
+            },
+            "valueSchema": {
+              "items": {
+                "type": "number"
+              },
+              "nullable": false,
+              "shape": [
+                3
+              ],
+              "type": "vector"
+            },
+            "writer": {
+              "description": "A concrete writer/module and subject binding must be selected in the instance profile; old owner labels do not establish this.",
+              "kind": "declared_estimator"
+            }
+          },
+          "research_admitted": true,
+          "reviewStatus": "proposed",
+          "role": "derived",
+          "temporal_declarations": [
+            {
+              "declaration": {
+                "binding": "acquisition/phenomenon time for observations; validity interval for configurations/specs; availability time kept separately",
+                "clockRequired": true,
+                "sourceTemporalContract": "not_explicitly_complete"
+              },
+              "source": "time"
+            }
+          ],
+          "time": {
+            "binding": "acquisition/phenomenon time for observations; validity interval for configurations/specs; availability time kept separately",
+            "clockRequired": true,
+            "sourceTemporalContract": "not_explicitly_complete"
+          },
+          "unit": {
+            "status": "exact",
+            "symbol": "m"
+          }
+        },
+        "schema": {
+          "items": {
+            "type": "number"
+          },
+          "length": 3,
+          "nullable": false,
+          "type": "vector"
+        }
+      },
+      {
+        "declaring_type": "oo:WindField",
+        "id": "oo:digital_twin.wind.horizontalVelocity",
+        "metadata": {
+          "frame": {
+            "name": "eastward,northward components per CF-95",
+            "status": "explicit"
+          },
+          "numeric_units": {
+            "*.*": "m/s"
+          },
+          "raw": {
+            "bounds": {},
+            "decision": "new_proposed",
+            "declaredHere": true,
+            "declaringClass": "oo:WindField",
+            "displayName": "\u6c34\u5e73\u98ce\u901f\u5206\u91cf",
+            "displayNameEn": "horizontal velocity",
+            "domain": "digital_twin",
+            "example": {
+              "kind": "known",
+              "provenance": "authored_simulation",
+              "value": [
+                [
+                  2.0,
+                  -1.0
+                ],
+                [
+                  2.5,
+                  -0.5
+                ]
+              ]
+            },
+            "frame": {
+              "name": "eastward,northward components per CF-95",
+              "status": "explicit"
+            },
+            "id": "oo:digital_twin.wind.horizontalVelocity",
+            "inheritance": {
+              "declaringClass": "oo:WindField",
+              "kind": "own"
+            },
+            "inheritedFrom": null,
+            "legacyRefs": [],
+            "lifetime": "derived",
+            "mainExplanation": "\u5404\u91c7\u6837\u4f4d\u7f6e\u7684\u6c34\u5e73\u98ce\u901f\uff0c\u4e24\u4e2a\u5206\u91cf\u4f9d\u6b21\u4e3a\u4e1c\u5411\u548c\u5317\u5411\uff0c\u5355\u4f4d\u4e3a\u7c73\u6bcf\u79d2\u3002\u5b83\u63cf\u8ff0\u7a7a\u6c14\u8fd0\u52a8\uff0c\u4e0d\u662f\u822a\u7a7a\u5668\u7684\u5730\u901f\u3002",
+            "meaning": "\u5404\u91c7\u6837\u4f4d\u7f6e\u7684\u6c34\u5e73\u98ce\u901f\uff0c\u4e24\u4e2a\u5206\u91cf\u4f9d\u6b21\u4e3a\u4e1c\u5411\u548c\u5317\u5411\uff0c\u5355\u4f4d\u4e3a\u7c73\u6bcf\u79d2\u3002\u5b83\u63cf\u8ff0\u7a7a\u6c14\u8fd0\u52a8\uff0c\u4e0d\u662f\u822a\u7a7a\u5668\u7684\u5730\u901f\u3002",
+            "notes": [],
+            "ownerSubject": {
+              "bindingStatus": "typed_reference_contract_only; example references are synthetic",
+              "classId": "oo:WindField",
+              "kind": "observation_subject"
+            },
+            "propertyPath": "wind.horizontalVelocity",
+            "reason": "object_requirement",
+            "requiredWhen": {
+              "kind": "always"
+            },
+            "reviewStatus": "proposed",
+            "role": "derived",
+            "sourceDescriptionEnglish": "Eastward and northward wind components in that order, at each sample location. This is horizontal air velocity, not aircraft ground velocity.",
+            "sourceDisplayName": "horizontal velocity",
+            "sourceMeaning": "Eastward and northward wind components in that order, at each sample location. This is horizontal air velocity, not aircraft ground velocity.",
+            "sources": [
+              "src:dt:cf-standard-names"
+            ],
+            "time": {
+              "clockBinding": "explicit typed Clock reference for temporal records",
+              "sampling": "not universally periodic",
+              "semantics": "observation-envelope"
+            },
+            "unit": {
+              "status": "exact",
+              "symbol": "m/s"
+            },
+            "valueSchema": {
+              "items": {
+                "items": {
+                  "type": "number",
+                  "unit": "m/s"
+                },
+                "shape": [
+                  2
+                ],
+                "type": "vector"
+              },
+              "minItems": 1,
+              "nullable": false,
+              "type": "array"
+            },
+            "writer": {
+              "description": "Configured producer/importer must be explicitly bound; this proposal does not create runtime ownership.",
+              "kind": "author_contract"
+            }
+          },
+          "research_admitted": true,
+          "reviewStatus": "proposed",
+          "role": "derived",
+          "temporal_declarations": [
+            {
+              "declaration": {
+                "clockBinding": "explicit typed Clock reference for temporal records",
+                "sampling": "not universally periodic",
+                "semantics": "observation-envelope"
+              },
+              "source": "time"
+            }
+          ],
+          "time": {
+            "clockBinding": "explicit typed Clock reference for temporal records",
+            "sampling": "not universally periodic",
+            "semantics": "observation-envelope"
+          },
+          "unit": {
+            "status": "exact",
+            "symbol": "m/s"
+          }
+        },
+        "schema": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "length": 2,
+            "type": "vector"
+          },
+          "min_length": 1,
+          "nullable": false,
+          "type": "array"
+        }
+      }
+    ],
+    "messages": [],
+    "revision": "aerograph-compiler/1",
+    "schemas": {},
+    "types": [
+      {
+        "abstract": true,
+        "id": "oo:Aircraft",
+        "parents": [
+          "oo:Vehicle"
+        ]
+      },
+      {
+        "abstract": true,
+        "id": "oo:ComputeEquipment",
+        "parents": [
+          "oo:Equipment"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "oo:ComputeNode",
+        "parents": [
+          "oo:ComputeEquipment"
+        ]
+      },
+      {
+        "abstract": true,
+        "id": "oo:EnvironmentalField",
+        "parents": [
+          "oo:ModelObject"
+        ]
+      },
+      {
+        "abstract": true,
+        "id": "oo:Equipment",
+        "parents": [
+          "oo:PhysicalAsset"
+        ]
+      },
+      {
+        "abstract": true,
+        "id": "oo:GroundVehicle",
+        "parents": [
+          "oo:Vehicle"
+        ]
+      },
+      {
+        "abstract": true,
+        "id": "oo:ModelObject",
+        "parents": []
+      },
+      {
+        "abstract": true,
+        "id": "oo:ObservationRecord",
+        "parents": [
+          "oo:ModelObject"
+        ]
+      },
+      {
+        "abstract": true,
+        "id": "oo:PhysicalAsset",
+        "parents": [
+          "oo:ModelObject"
+        ]
+      },
+      {
+        "abstract": true,
+        "id": "oo:SampledEnvironmentalField",
+        "parents": [
+          "oo:EnvironmentalField"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "oo:Task",
+        "parents": [
+          "oo:WorkObject"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "oo:UAV",
+        "parents": [
+          "oo:Aircraft"
+        ]
+      },
+      {
+        "abstract": true,
+        "id": "oo:Vehicle",
+        "parents": [
+          "oo:Equipment"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "oo:WindField",
+        "parents": [
+          "oo:SampledEnvironmentalField"
+        ]
+      },
+      {
+        "abstract": true,
+        "id": "oo:WorkObject",
+        "parents": [
+          "oo:ModelObject"
+        ]
+      },
+      {
+        "abstract": true,
+        "id": "oo:Facility",
+        "parents": [
+          "oo:PhysicalAsset"
+        ]
+      }
+    ]
+  }
+}

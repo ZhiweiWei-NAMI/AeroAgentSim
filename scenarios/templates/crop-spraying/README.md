@@ -1,0 +1,40 @@
+# Crop spraying
+
+A beginner template: a drone treats a rectangular field in alternating rows,
+swaps batteries at the field edge when its charge runs low, and pauses
+spraying while wind is too strong.
+
+## What happens
+
+- One spraying task crosses the field via the `coverage` work route
+  (boustrophedon rows).
+- The battery capacity is sized for a partial treatment; when the state of
+  charge falls below the low threshold the drone returns to `home-pad` and
+  the energy engine swaps in a fresh pack.
+- A wind gust is authored between 90 s and 125 s at 8 m/s, above the
+  spraying wind limit of 5 m/s, so spraying pauses until it passes.
+
+## Knobs
+
+| Knob | Meaning | Default |
+| --- | --- | --- |
+| `fleet_size` | Number of aircraft (1–12) | 1 |
+| `wind_speed` | Base wind speed in m/s (0–15) | 2.0 |
+| `row_spacing` | Distance between spraying rows in m (10–80) | 30 |
+
+## KPIs to watch
+
+`tasks_completed`, `mean_task_latency_s`, `energy_used_kj`, `weather_holds`,
+`separation_conflicts`, plus `spraying_distance_m` and `battery_swaps`.
+
+## Run it (existing CLI)
+
+```bash
+aeroagentsim run scenarios/templates/crop-spraying/scenario.yaml
+aeroagentsim metrics runs/<run-directory>
+aeroagentsim replay runs/<run-directory>
+aeroagentsim serve   # browser console for the same scenario
+```
+
+Motion, energy, weather, airspace and task state each have exactly one
+writer engine on the shared discrete-event clock, so results replay.

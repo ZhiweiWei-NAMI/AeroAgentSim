@@ -39,6 +39,15 @@ def allocation_graph(client: JournalClient, options: dict[str, Any]) -> Any:
         vehicles = json.loads(payload["vehicles_json"])
         tasks.sort(key=lambda t: (-t["priority"], t["id"]))
         available = [v for v in vehicles if v["available"]]
+        tasks = [
+            t
+            for t in tasks
+            if any(
+                (not v["task_kinds"] or t["kind"] in v["task_kinds"])
+                and t["payload_kg"] <= v["payload_capacity_kg"]
+                for v in available
+            )
+        ]
         if not tasks or not available:
             raise ValueError(
                 "allocation request has no feasible task/vehicle candidates"
@@ -57,7 +66,9 @@ def allocation_graph(client: JournalClient, options: dict[str, Any]) -> Any:
             feasible = [
                 v
                 for v in available
-                if v["soc"] > 0 and task["payload_kg"] <= v["payload_capacity_kg"]
+                if v["soc"] > 0
+                and (not v["task_kinds"] or task["kind"] in v["task_kinds"])
+                and task["payload_kg"] <= v["payload_capacity_kg"]
             ]
             if value["vehicle_rank"] >= len(feasible):
                 raise ValueError("vehicle rank is outside feasible candidates")
@@ -72,7 +83,9 @@ def allocation_graph(client: JournalClient, options: dict[str, Any]) -> Any:
         feasible = [
             v
             for v in available
-            if v["soc"] > 0 and task["payload_kg"] <= v["payload_capacity_kg"]
+            if v["soc"] > 0
+            and (not v["task_kinds"] or task["kind"] in v["task_kinds"])
+            and task["payload_kg"] <= v["payload_capacity_kg"]
         ]
         feasible.sort(
             key=lambda v: (

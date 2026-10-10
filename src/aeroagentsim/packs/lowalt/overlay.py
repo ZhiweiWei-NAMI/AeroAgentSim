@@ -128,6 +128,60 @@ EVENT_NARRATIVES: dict[str, dict[str, Any]] = {
         "severity": "notice",
     },
 }
+EVENT_NARRATIVES.update(
+    {
+        "lowalt.task.preempted": {
+            "text": "{vehicle} paused {task} for urgent {urgent_task}",
+            "category": "emergency",
+            "severity": "notice",
+        },
+        "lowalt.task.resumed": {
+            "text": "{vehicle} resumed {task}",
+            "category": "logistics",
+            "severity": "info",
+        },
+        "lowalt.task.replanned": {
+            "text": "{vehicle} changed route: {reason}",
+            "category": "airspace",
+            "severity": "notice",
+        },
+        "lowalt.inspection.observed": {
+            "text": "{vehicle} surveyed a section of {task}",
+            "category": "inspection",
+            "severity": "info",
+        },
+        "lowalt.spraying.applied": {
+            "text": "{vehicle} treated a field section for {task}",
+            "category": "agriculture",
+            "severity": "info",
+        },
+        "lowalt.patrol.visited": {
+            "text": "{vehicle} reached a patrol point for {task}",
+            "category": "security",
+            "severity": "info",
+        },
+        "lowalt.site.closed": {
+            "text": "Operator closed {site}",
+            "category": "mobility",
+            "severity": "warning",
+        },
+        "lowalt.mobility.pad_wait": {
+            "text": "{vehicle} is waiting for a pad at {site}",
+            "category": "mobility",
+            "severity": "notice",
+        },
+        "lowalt.energy.swap_started": {
+            "text": "{vehicle} began a battery swap at {pad}",
+            "category": "energy",
+            "severity": "info",
+        },
+        "lowalt.energy.swap_finished": {
+            "text": "{vehicle} received a charged battery at {pad}",
+            "category": "energy",
+            "severity": "info",
+        },
+    }
+)
 for _schema, _meta in EVENT_NARRATIVES.items():
     if _schema.startswith("lowalt.task."):
         _meta["category_by_kind"] = TASK_CATEGORIES
@@ -185,6 +239,8 @@ def overlay() -> dict[str, Any]:
     for name in ("weather_held", "charging"):
         add(name, "UAV", BOOL)
     add("site_position", "Site", VECTOR, "m")
+    add("site_open", "Site", BOOL)
+    add("site_capacity", "Site", INT)
     add("pad_power_w", "ChargingPad", NUMBER, "W")
     add("wind", "Environment", VECTOR, "m/s")
     add(
@@ -225,6 +281,47 @@ def overlay() -> dict[str, Any]:
             {"task": STRING, "vehicle": STRING, "latency_s": NUMBER},
             (),
         ),
+        "task.preempted": (
+            {"task": STRING, "vehicle": STRING, "urgent_task": STRING},
+            (),
+        ),
+        "task.resumed": ({"task": STRING, "vehicle": STRING}, ()),
+        "task.replanned": (
+            {"task": STRING, "vehicle": STRING, "reason": STRING, "zone": STRING},
+            ("zone",),
+        ),
+        "inspection.observed": (
+            {
+                "task": STRING,
+                "vehicle": STRING,
+                "position": VECTOR,
+                "distance_m": NUMBER,
+            },
+            (),
+        ),
+        "spraying.applied": (
+            {
+                "task": STRING,
+                "vehicle": STRING,
+                "position": VECTOR,
+                "distance_m": NUMBER,
+            },
+            (),
+        ),
+        "patrol.visited": ({"task": STRING, "vehicle": STRING, "position": VECTOR}, ()),
+        "site.closed": ({"site": STRING}, ()),
+        "operator.close_vertiport": ({"site": STRING}, ()),
+        "operator.add_urgent_order": (
+            {"task": STRING, "origin": STRING, "destination": STRING},
+            (),
+        ),
+        "operator.investigate": (
+            {"task": STRING, "origin": STRING, "destination": STRING},
+            (),
+        ),
+        "energy.swap_started": ({"vehicle": STRING, "pad": STRING}, ()),
+        "energy.swap_finished": ({"vehicle": STRING, "pad": STRING, "soc": NUMBER}, ()),
+        "mobility.pad_wait": ({"task": STRING, "vehicle": STRING, "site": STRING}, ()),
         "task.failed": (
             {"task": STRING, "vehicle": STRING, "reason": STRING},
             ("vehicle",),

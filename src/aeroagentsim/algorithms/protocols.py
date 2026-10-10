@@ -16,6 +16,7 @@ class Vehicle:
     payload_kg: float
     payload_capacity_kg: float
     available: bool
+    task_kinds: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class Snapshot:
     zones: tuple[Zone, ...] = ()
     pads: tuple[Pad, ...] = ()
     wind: Point = (0.0, 0.0, 0.0)
+    monitored_positions: tuple[tuple[str, Point], ...] = ()
 
 
 @dataclass(frozen=True)

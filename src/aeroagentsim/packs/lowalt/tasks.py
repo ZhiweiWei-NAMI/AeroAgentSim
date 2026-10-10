@@ -38,6 +38,8 @@ CONSTANT_FIELDS = (
     "lowalt.payload_capacity_kg",
     "lowalt.vehicle_class",
     "lowalt.site_position",
+    "lowalt.site_open",
+    "lowalt.site_capacity",
     "lowalt.pad_power_w",
     "lowalt.zone_kind",
     "lowalt.zone_lower",
@@ -70,6 +72,15 @@ class Flight:
     hold_until_ns: int = 0
     replan: bool = False
     deferred_brake: bool = False
+    waypoint: tuple[float, float, float] | None = None
+    waypoint_start: tuple[float, float, float] | None = None
+    suspended: Job | None = None
+    suspended_phase: str | None = None
+    work_active: bool = False
+    saved_route: tuple[tuple[float, float, float], ...] = ()
+    saved_goal: tuple[float, float, float] | None = None
+    paused_route: tuple[tuple[float, float, float], ...] | None = None
+    transit_resume: bool = False
 
 
 class LowaltTasks(ContextEngine):
@@ -92,6 +103,18 @@ class LowaltTasks(ContextEngine):
                 configs.get("path_planning"),
             ),
         )
+        self.travel_planner = cast(
+            PathPlanning, load_algorithm("path_planning", "corridor_astar")
+        )
+        self.work_planners = {
+            kind: cast(
+                PathPlanning,
+                load_algorithm("path_planning", spec["algorithm"], spec["config"]),
+            )
+            for kind, spec in self.cfg.get("work_routes", {}).items()
+        }
+        self.site_busy: dict[str, list[int]] = {}
+        self.pad_waits: set[tuple[str, str]] = set()
         self.flights = {r.id: Flight(r) for r in refs(build, "lowalt:UAV")}
         self.jobs: dict[str, Job] = {}
         self.by_id = {r.id: r for r in build.entities}
@@ -130,12 +153,20 @@ class LowaltTasks(ContextEngine):
                         "picked_up",
                         "completed",
                         "failed",
+                        "preempted",
+                        "resumed",
+                        "replanned",
                     )
                 )
                 + (
                     self.motion["move_to"],
                     self.motion["hold"],
                     "lowalt.allocation.request",
+                    "lowalt.inspection.observed",
+                    "lowalt.spraying.applied",
+                    "lowalt.patrol.visited",
+                    "lowalt.site.closed",
+                    "lowalt.mobility.pad_wait",
                 ),
                 subscribes=("lowalt.events", "lowalt.allocations")
                 + (
@@ -220,6 +251,8 @@ class LowaltTasks(ContextEngine):
         payload: dict[str, Any] = {"entity": flight.vehicle.id}
         if goal is not None:
             payload["target"] = list(goal)
+        flight.waypoint = goal
+        flight.waypoint_start = vec(read(ctx, flight.vehicle, "lowalt.position"))
         ctx.submit(CommandRequest(schema, self.motion["target"], ctx.now, payload))
         flight.pending, flight.status = True, None
         self.pending.append(flight)
@@ -229,7 +262,26 @@ class LowaltTasks(ContextEngine):
     ) -> None:
         start = vec(read(ctx, flight.vehicle, "lowalt.position"))
         state = snapshot(ctx, self.build)
-        points = self.planner.plan(state, start, goal)
+        exemptions = self.cfg.get("zone_exemptions", {})
+        state = replace(
+            state,
+            zones=tuple(
+                z
+                for z in state.zones
+                if flight.vehicle.id not in exemptions.get(z.id, ())
+            ),
+        )
+        planner = self.travel_planner if self.work_planners else self.planner
+        if (
+            flight.job is not None
+            and flight.job.phase == "picked_up"
+            and flight.purpose == "task"
+        ):
+            kind = read(ctx, flight.job.ref, "lowalt.task_kind")
+            if kind in self.work_planners and not flight.work_active:
+                planner = self.work_planners[kind]
+                flight.work_active = True
+        points = planner.plan(state, start, goal)
         from aeroagentsim.packs.geometry import segment_hits_box
 
         if any(
@@ -270,6 +322,7 @@ class LowaltTasks(ContextEngine):
             )
             if (
                 not state.available
+                or not self._eligible(ctx, job, flight)
                 or payload > state.payload_capacity_kg
                 or state.soc <= self.cfg["dispatch_min_soc"]
             ):
@@ -295,12 +348,28 @@ class LowaltTasks(ContextEngine):
             flight.replan = True
             return
         if action in {"return_to_pad", "altitude"}:
+            if flight.purpose == "task":
+                flight.saved_route = (
+                    flight.paused_route
+                    if flight.paused_route is not None
+                    else ((flight.waypoint,) if flight.waypoint is not None else ())
+                    + flight.route
+                )
+                flight.saved_route = (
+                    vec(read(ctx, flight.vehicle, "lowalt.position")),
+                ) + flight.saved_route
+                flight.paused_route = None
+                flight.saved_goal = flight.goal
             target = vec(payload["target"])
             flight.route = ()
             # Returning to charge pauses the real task; it is resumed afterwards.
             flight.goal = target
             flight.purpose = "charge" if action == "return_to_pad" else "avoidance"
         elif action == "hold":
+            if flight.purpose == "task" and flight.paused_route is None:
+                flight.paused_route = (
+                    (flight.waypoint,) if flight.waypoint is not None else ()
+                ) + flight.route
             flight.hold_until_ns = (
                 ns(payload["until_ns"], "hold end")
                 if "until_ns" in payload
@@ -309,6 +378,9 @@ class LowaltTasks(ContextEngine):
         else:
             raise ValueError(f"unsupported lowalt control {action}")
         flight.replan = True
+        self._brake(ctx, flight)
+
+    def _brake(self, ctx: EngineContext, flight: Flight) -> None:
         if flight.pending:
             flight.deferred_brake = True
             return
@@ -332,6 +404,9 @@ class LowaltTasks(ContextEngine):
                 if flight.command_id == cid:
                     flight.status = status
                     if status in {"succeeded", "failed", "rejected", "canceled"}:
+                        if status == "succeeded" and flight.waypoint is not None:
+                            self._observation(ctx, flight)
+                        flight.waypoint = None
                         flight.command_id = None
                         if status != "succeeded" and not flight.replan:
                             if flight.job is not None:
@@ -376,6 +451,10 @@ class LowaltTasks(ContextEngine):
                             + ": "
                             + failure["message"],
                         )
+            elif delivery.message.schema_id == "lowalt.airspace.zone_activated":
+                self._zone_changed(ctx, payload["zone"])
+            elif delivery.message.schema_id.startswith("lowalt.operator."):
+                self._operator(ctx, delivery.message.schema_id, payload)
             elif delivery.message.schema_id == "lowalt.control":
                 self._control(ctx, payload)
             elif delivery.message.schema_id == "lowalt.allocation.result":
@@ -393,6 +472,199 @@ class LowaltTasks(ContextEngine):
         if {"lowalt_tasks": "tick"} in timers:
             ctx.wake_at(ctx.now.ns + self.tick, {"lowalt_tasks": "tick"})
 
+    def _eligible(self, ctx: EngineContext, job: Job, flight: Flight) -> bool:
+        if "vehicle_kinds" not in self.cfg:
+            return True
+        kind = read(ctx, job.ref, "lowalt.task_kind")
+        vehicle_class = read(ctx, flight.vehicle, "lowalt.vehicle_class")
+        return kind in self.cfg["vehicle_kinds"][vehicle_class]
+
+    def _preempt(self, ctx: EngineContext) -> None:
+        if not self.cfg.get("medical_preemption", False):
+            return
+        for urgent in sorted(self.jobs.values(), key=lambda j: j.ref.id):
+            if (
+                urgent.phase != "queued"
+                or read(ctx, urgent.ref, "lowalt.task_state") != "queued"
+                or read(ctx, urgent.ref, "lowalt.task_kind") != "medical"
+            ):
+                continue
+            candidates = [
+                f
+                for f in self.flights.values()
+                if f.job is not None
+                and f.suspended is None
+                and f.purpose == "task"
+                and self._eligible(ctx, urgent, f)
+                and read(ctx, f.job.ref, "lowalt.task_kind") == "parcel"
+                and read(ctx, f.job.ref, "lowalt.task_priority")
+                < read(ctx, urgent.ref, "lowalt.task_priority")
+                and read(ctx, f.vehicle, "lowalt.payload_kg")
+                + read(ctx, urgent.ref, "lowalt.task_payload_kg")
+                <= read(ctx, f.vehicle, "lowalt.payload_capacity_kg")
+                and not read(ctx, f.vehicle, "lowalt.weather_held")
+            ]
+            if not candidates:
+                continue
+            origin = vec(
+                read(
+                    ctx,
+                    self.by_id[read(ctx, urgent.ref, "lowalt.task_origin")],
+                    "lowalt.site_position",
+                )
+            )
+            flight = min(
+                candidates,
+                key=lambda f: (
+                    distance(vec(read(ctx, f.vehicle, "lowalt.position")), origin),
+                    f.vehicle.id,
+                ),
+            )
+            assert flight.job is not None
+            paused = flight.job
+            flight.suspended, flight.suspended_phase = paused, paused.phase
+            self._state(ctx, paused, "paused")
+            self._event(
+                ctx,
+                "preempted",
+                task=paused.ref.id,
+                vehicle=flight.vehicle.id,
+                urgent_task=urgent.ref.id,
+            )
+            flight.job = urgent
+            urgent.vehicle = flight.vehicle.id
+            ctx.set(urgent.ref, "lowalt.task_vehicle", flight.vehicle.id)
+            self._state(ctx, urgent, "assigned")
+            self._event(
+                ctx,
+                "assigned",
+                task=urgent.ref.id,
+                vehicle=flight.vehicle.id,
+                algorithm="priority_preemption",
+            )
+            flight.route, flight.goal = (), None
+            flight.replan, flight.work_active = True, False
+            self._brake(ctx, flight)
+
+    def _zone_changed(self, ctx: EngineContext, identity: str) -> None:
+        ref = self.by_id[identity]
+        lower, upper = (
+            vec(read(ctx, ref, "lowalt.zone_lower")),
+            vec(read(ctx, ref, "lowalt.zone_upper")),
+        )
+        from aeroagentsim.packs.geometry import segment_hits_box
+
+        for flight in self.flights.values():
+            if flight.job is None or flight.vehicle.id in self.cfg.get(
+                "zone_exemptions", {}
+            ).get(identity, ()):
+                continue
+            start = vec(read(ctx, flight.vehicle, "lowalt.position"))
+            points = (
+                (flight.waypoint,) if flight.waypoint is not None else ()
+            ) + flight.route
+            if any(
+                segment_hits_box(a, b, lower, upper)
+                for a, b in zip((start,) + points, points)
+            ):
+                flight.replan = True
+                flight.paused_route = None
+                flight.route = ()
+                self._event(
+                    ctx,
+                    "replanned",
+                    task=flight.job.ref.id,
+                    vehicle=flight.vehicle.id,
+                    zone=identity,
+                    reason="active no-fly zone",
+                )
+                self._brake(ctx, flight)
+
+    def _observation(self, ctx: EngineContext, flight: Flight) -> None:
+        if (
+            flight.job is None
+            or flight.job.phase != "picked_up"
+            or not flight.work_active
+            or flight.purpose != "task"
+        ):
+            return
+        if flight.transit_resume:
+            flight.transit_resume = False
+            return
+        assert flight.waypoint_start is not None
+        point = vec(read(ctx, flight.vehicle, "lowalt.position"))
+        moved = distance(flight.waypoint_start, point)
+        if moved <= 1e-6:
+            return
+        kind = read(ctx, flight.job.ref, "lowalt.task_kind")
+        schema = {
+            "inspection": "lowalt.inspection.observed",
+            "survey": "lowalt.inspection.observed",
+            "spraying": "lowalt.spraying.applied",
+            "patrol": "lowalt.patrol.visited",
+        }.get(kind)
+        if schema is not None:
+            payload: dict[str, Any] = {
+                "task": flight.job.ref.id,
+                "vehicle": flight.vehicle.id,
+                "position": list(point),
+            }
+            if kind != "patrol":
+                payload["distance_m"] = moved
+            ctx.emit(schema, payload, topic="lowalt.events")
+
+    def _operator(
+        self, ctx: EngineContext, schema: str, payload: dict[str, Any]
+    ) -> None:
+        if schema == "lowalt.operator.close_vertiport":
+            identity = payload["site"]
+            site = self.by_id[identity]
+            if not self.build.registry.is_a(site.type_id, "lowalt:Vertiport"):
+                raise ValueError("operator must close an actual vertiport")
+            alternative = self.cfg["site_diversions"][identity]
+            if not read(ctx, self.by_id[alternative], "lowalt.site_open"):
+                raise ValueError("diversion vertiport is closed")
+            ctx.set(site, "lowalt.site_open", False)
+            ctx.emit("lowalt.site.closed", {"site": identity}, topic="lowalt.events")
+            for job in self.jobs.values():
+                if job.phase in {"completed", "failed"}:
+                    continue
+                changed = False
+                for endpoint in ("origin", "destination"):
+                    if read(ctx, job.ref, "lowalt.task_" + endpoint) == identity:
+                        ctx.set(job.ref, "lowalt.task_" + endpoint, alternative)
+                        changed = True
+                if changed and job.vehicle is not None:
+                    flight = self.flights[job.vehicle]
+                    flight.replan = True
+                    flight.route = ()
+                    self._event(
+                        ctx,
+                        "replanned",
+                        task=job.ref.id,
+                        vehicle=flight.vehicle.id,
+                        reason="vertiport closed",
+                    )
+                    self._brake(ctx, flight)
+        else:
+            job = self.jobs[payload["task"]]
+            if job.phase != "unreleased":
+                raise ValueError("injection requires an unused authored task")
+            for endpoint in ("origin", "destination"):
+                site = self.by_id[payload[endpoint]]
+                if not self.build.registry.is_a(site.type_id, "lowalt:Site"):
+                    raise ValueError("injection endpoints must be actual sites")
+                ctx.set(job.ref, "lowalt.task_" + endpoint, site.id)
+            kind = (
+                "medical"
+                if schema == "lowalt.operator.add_urgent_order"
+                else "incident_response"
+            )
+            ctx.set(job.ref, "lowalt.task_kind", kind)
+            ctx.set(job.ref, "lowalt.task_priority", 100)
+            job.release_ns = ctx.now.ns
+            # Release next tick, after endpoint/kind facts commit.
+
     def _poll(self, ctx: EngineContext) -> None:
         for job in self.jobs.values():
             if job.phase == "unreleased" and ctx.now.ns >= job.release_ns:
@@ -408,6 +680,7 @@ class LowaltTasks(ContextEngine):
                     origin=read(ctx, job.ref, "lowalt.task_origin"),
                     destination=read(ctx, job.ref, "lowalt.task_destination"),
                 )
+        self._preempt(ctx)
         for flight in self.flights.values():
             if flight.pending or flight.command_id is not None:
                 continue
@@ -440,10 +713,17 @@ class LowaltTasks(ContextEngine):
                         < self.cfg["charging_resume_soc"]
                     ):
                         continue
-                    flight.purpose, flight.goal, flight.route = "task", None, ()
-                    flight.replan = True
+                    flight.purpose = "task"
+                    flight.transit_resume = bool(flight.saved_route)
+                    flight.goal, flight.route = flight.saved_goal, flight.saved_route
+                    flight.saved_goal, flight.saved_route = None, ()
+                    flight.replan = not bool(flight.route)
             if flight.job is None and flight.purpose == "task":
                 continue
+            if flight.paused_route is not None:
+                flight.route = flight.paused_route
+                flight.paused_route = None
+                flight.replan = False
             if flight.purpose == "task":
                 assert flight.job is not None
                 job = flight.job
@@ -472,11 +752,15 @@ class LowaltTasks(ContextEngine):
                 ):
                     if job.phase == "started":
                         self._state(ctx, job, "picked_up")
-                        ctx.set(
-                            flight.vehicle,
-                            "lowalt.payload_kg",
-                            read(ctx, job.ref, "lowalt.task_payload_kg"),
-                        )
+                        payload = read(ctx, job.ref, "lowalt.task_payload_kg")
+                        if (
+                            flight.suspended is not None
+                            and flight.suspended_phase == "picked_up"
+                        ):
+                            payload += read(
+                                ctx, flight.suspended.ref, "lowalt.task_payload_kg"
+                            )
+                        ctx.set(flight.vehicle, "lowalt.payload_kg", payload)
                         self._event(
                             ctx, "picked_up", task=job.ref.id, vehicle=flight.vehicle.id
                         )
@@ -490,7 +774,13 @@ class LowaltTasks(ContextEngine):
                         )
                     else:
                         self._state(ctx, job, "completed")
-                        ctx.set(flight.vehicle, "lowalt.payload_kg", 0.0)
+                        remaining_payload = (
+                            read(ctx, flight.suspended.ref, "lowalt.task_payload_kg")
+                            if flight.suspended is not None
+                            and flight.suspended_phase == "picked_up"
+                            else 0.0
+                        )
+                        ctx.set(flight.vehicle, "lowalt.payload_kg", remaining_payload)
                         self._event(
                             ctx,
                             "completed",
@@ -498,7 +788,27 @@ class LowaltTasks(ContextEngine):
                             vehicle=flight.vehicle.id,
                             latency_s=(ctx.now.ns - job.created_ns) / 1e9,
                         )
+                        kind = read(ctx, job.ref, "lowalt.task_kind")
+                        if kind == "passenger":
+                            site = read(ctx, job.ref, "lowalt.task_destination")
+                            self.site_busy.setdefault(site, []).append(
+                                ctx.now.ns + ns(self.cfg["pad_dwell_ns"], "pad dwell")
+                            )
                         flight.job, flight.goal = None, None
+                        flight.work_active = False
+                        if flight.suspended is not None:
+                            paused = flight.suspended
+                            assert flight.suspended_phase is not None
+                            self._state(ctx, paused, flight.suspended_phase)
+                            flight.job = paused
+                            flight.suspended, flight.suspended_phase = None, None
+                            flight.replan = True
+                            self._event(
+                                ctx,
+                                "resumed",
+                                task=paused.ref.id,
+                                vehicle=flight.vehicle.id,
+                            )
                         continue
             if flight.replan and flight.goal is not None:
                 self._route(ctx, flight, flight.goal)
@@ -518,6 +828,46 @@ class LowaltTasks(ContextEngine):
                     assert flight.goal is not None
                     self._route(ctx, flight, flight.goal)
                     goal = flight.route[0]
+                if (
+                    flight.job is not None
+                    and flight.job.phase == "picked_up"
+                    and read(ctx, flight.job.ref, "lowalt.task_kind") == "passenger"
+                    and len(flight.route) == 1
+                ):
+                    site = read(ctx, flight.job.ref, "lowalt.task_destination")
+                    capacity = read(ctx, self.by_id[site], "lowalt.site_capacity")
+                    if capacity < 1:
+                        raise ValueError("vertiport pad capacity must be positive")
+                    # Landing reservations are retained through real arrival plus dwell.
+                    reservations = sum(
+                        1
+                        for other in self.flights.values()
+                        if other is not flight
+                        and other.job is not None
+                        and other.job.phase == "picked_up"
+                        and read(ctx, other.job.ref, "lowalt.task_kind") == "passenger"
+                        and read(ctx, other.job.ref, "lowalt.task_destination") == site
+                        and other.command_id is not None
+                        and not other.route
+                    )
+                    if (
+                        reservations
+                        + sum(end > ctx.now.ns for end in self.site_busy.get(site, ()))
+                        >= capacity
+                    ):
+                        key = (flight.job.ref.id, site)
+                        if key not in self.pad_waits:
+                            self.pad_waits.add(key)
+                            ctx.emit(
+                                "lowalt.mobility.pad_wait",
+                                {
+                                    "task": flight.job.ref.id,
+                                    "vehicle": flight.vehicle.id,
+                                    "site": site,
+                                },
+                                topic="lowalt.events",
+                            )
+                        continue
                 flight.route = flight.route[1:]
                 self._submit(ctx, flight, goal)
         state = snapshot(ctx, self.build)
@@ -529,6 +879,13 @@ class LowaltTasks(ContextEngine):
             vehicles=tuple(
                 replace(
                     v,
+                    task_kinds=tuple(
+                        self.cfg["vehicle_kinds"][
+                            read(ctx, self.by_id[v.id], "lowalt.vehicle_class")
+                        ]
+                    )
+                    if "vehicle_kinds" in self.cfg
+                    else (),
                     available=v.available
                     and self.flights[v.id].job is None
                     and self.flights[v.id].purpose == "task"
@@ -539,7 +896,9 @@ class LowaltTasks(ContextEngine):
                 for v in state.vehicles
             ),
         )
-        if state.tasks and any(v.available for v in state.vehicles):
+        from aeroagentsim.algorithms.builtins import eligible
+
+        if any(eligible(t, v) for t in state.tasks for v in state.vehicles):
             if self.algorithms["allocation"] == "llm":
                 if not self.llm_pending:
                     from dataclasses import asdict

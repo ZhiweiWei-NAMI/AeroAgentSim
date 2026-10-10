@@ -1,0 +1,44 @@
+format: aeroagentsim.template/v1
+id: air-taxi
+title: Air taxi service
+summary: Small passenger aircraft travel between three vertiports and share limited
+  landing pads.
+category: mobility
+difficulty: beginner
+duration_s: 300
+scenario: scenario.yaml
+observe:
+- Close aircraft move to separate altitude layers.
+- Flights wait when a landing pad is occupied.
+try:
+- Change the number of aircraft.
+- Compare altitude layers with hold-and-go.
+knobs:
+- id: fleet_size
+  label: Number of aircraft
+  type: integer
+  default: 3
+  min: 1
+  max: 12
+  pointer: /generators/fleet/count
+- id: wind_speed
+  label: Normal wind speed (m/s)
+  type: number
+  default: 2.0
+  min: 0
+  max: 15
+  pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
+- id: conflict_resolver
+  label: How aircraft separate
+  type: choice
+  default: altitude_layers
+  options:
+  - altitude_layers
+  - hold_and_go
+  pointer: /algorithms/conflict_resolution
+kpis:
+- tasks_completed
+- mean_task_latency_s
+- energy_used_kj
+- weather_holds
+- separation_conflicts

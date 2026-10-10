@@ -125,6 +125,8 @@ def parcel_document(
     entities: list[dict[str, Any]] = []
 
     def entity(identity: str, type_name: str, facts: dict[str, Any]) -> None:
+        if type_name in {"Site", "Customer", "Vertiport", "Depot", "ChargingPad"}:
+            facts = {**facts, "lowalt.site_open": True, "lowalt.site_capacity": 1}
         entities.append({"id": identity, "type": "lowalt:" + type_name, "facts": facts})
 
     for index, x in enumerate((-240.0, 240.0), 1):
@@ -202,7 +204,7 @@ def parcel_document(
         "UAV",
         ["capacity_j", "payload_kg", "payload_capacity_kg", "vehicle_class"],
     )
-    rule("tasks", "Site", ["site_position"])
+    rule("tasks", "Site", ["site_position", "site_open", "site_capacity"])
     rule("tasks", "ChargingPad", ["pad_power_w"])
     rule(
         "tasks",
