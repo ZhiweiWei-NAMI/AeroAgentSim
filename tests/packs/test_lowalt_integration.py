@@ -22,6 +22,7 @@ def test_parcel_120s_conflicts_geofence_and_replay(tmp_path: Path) -> None:
     # Generated drones start together: force a real separation violation.
     document["generators"]["fleet"]["starts"] = [[-240.0, -220.0, 50.0]]
     document["engines"]["airspace"]["config"]["separation_horizontal_m"] = 40.0
+    document["engines"]["tasks"]["config"]["batch_window_s"] = 0.0
     scenario = load_scenario(document, base=BASE)
     journal = tmp_path / "journal.jsonl"
     sim = Simulation(scenario, journal=Journal(journal))

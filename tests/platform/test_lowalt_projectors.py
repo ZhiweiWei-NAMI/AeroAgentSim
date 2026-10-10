@@ -268,11 +268,9 @@ def test_every_lowalt_schema_renders_plain_text(tmp_path: Path) -> None:
         for token in ("{", "}", "None", "nan"):
             assert token not in text, (schema, text)
     # Spot-check the rendered wording uses actual committed values.
-    assert "task-1" in texts[0]
+    assert texts[0] == "New parcel order for customer-3"
     assert "drone-1" in texts[1]
-    # Pack completed template is intentionally terse; the latency value is a
-    # KPI, not a narrative placeholder. Check it is genuinely dropped.
-    assert "41.5" not in texts[4]
+    assert texts[4].endswith("(41.5 s)")
     assert "central-no-fly" in texts[8]
     assert "drone-4" in texts[11]
     # Task kind drives category, not a flat logistics default.

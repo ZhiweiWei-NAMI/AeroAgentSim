@@ -143,9 +143,7 @@ def test_lowalt_task_category_mapping(tmp_path) -> None:
     row = event[0]
     assert row["category"] == "emergency"
     assert row["severity"] == "info"
-    assert row["text"] == LOWALT_NARRATIVES["lowalt.task.created"]["text"].format(
-        task="task-7"
-    )
+    assert row["text"] == "New urgent medical order for its destination"
     assert row["entities"] == ["task-7"]
     assert "position" not in row  # no stored position yet
 
@@ -196,9 +194,7 @@ def test_assigned_started_completed_with_position(tmp_path) -> None:
         )
     )
     assert [e["text"] for e in events] == [
-        LOWALT_NARRATIVES["lowalt.task.assigned"]["text"].format(
-            task="task-1", vehicle="veh-1"
-        )
+        "veh-1 was assigned the task for its destination"
     ]
     assert events[0]["position"] == [10.0, 20.0, 5.0]
     assert events[0]["entities"] == ["task-1", "veh-1"]
@@ -220,11 +216,7 @@ def test_completed_template(tmp_path) -> None:
             )
         )
     )
-    assert events[0]["text"] == (
-        LOWALT_NARRATIVES["lowalt.task.completed"]["text"].format(
-            task="task-2", vehicle="veh-2", latency_s=12.5
-        )
-    )
+    assert events[0]["text"] == ("veh-2 completed the task at its destination (12.5 s)")
 
 
 def test_optional_entity_links_omitted_when_absent(tmp_path) -> None:

@@ -2520,6 +2520,7 @@ generators:
     type: lowalt:UAV
     starts:
     - *id008
+    - *id009
     spacing_m: 1.0
     facts:
       lowalt.velocity:
@@ -2773,8 +2774,13 @@ engines:
           mode: poisson
           rate_per_s: 0.08
           start_ns: 0
+          burst_size: 4
       cruise_altitudes:
         parcel: 125.0
+      batch_window_s: 10.0
+      vehicle_model:
+        speed_m_s: 20.0
+        energy_per_m_j: 12.0
   environment:
     plugin: environment
     config:
