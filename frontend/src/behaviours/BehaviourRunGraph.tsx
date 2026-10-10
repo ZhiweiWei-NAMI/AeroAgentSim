@@ -12,7 +12,7 @@ import {mapping} from './model';
 import { displayTime } from '../pages/display-time';
 import { entityLabel, readableLabel } from '../pages/inspection-format';
 
-interface Props { store: TemporalFeedStore; selected?: EntityKey; onSelect: (key: EntityKey) => void; onSeek: (index: number) => void }
+interface Props { store: TemporalFeedStore; selected?: EntityKey; onSelect: (key: EntityKey) => void; onSeek: (index: number) => void; highlights?: EntityKey[] }
 /** Hide background actors together with their exclusively associated task/route context. */
 export function backgroundContext(store:TemporalFeedStore):Set<string> {
   const links=new Map<string,Set<string>>();
@@ -35,13 +35,14 @@ export function backgroundContext(store:TemporalFeedStore):Set<string> {
   const hidden=walk(background),shared=walk(foreground);for(const id of shared)hidden.delete(id);return hidden;
 }
 /** Composition of Q7's recorded topology and the journaled behaviour extension. */
-export function BehaviourRunGraph({ store, selected, onSelect, onSeek }: Props) {
+export function BehaviourRunGraph({ store, selected, onSelect, onSeek, highlights }: Props) {
   const [hideBackground,setHideBackground]=useState(true), [showRuntimeEntities,setShowRuntimeEntities]=useState(false);
   const [directory, setDirectory] = useState(''), [type, setType] = useState(''), [focus, setFocus] = useState(false);
   const types = new Map(store.header.types.map(row => [row.typeId, row]));
   const selectedId = selected && entityId(selected);
   const startNs = store.header.start.ns;
   const background=useMemo(()=>backgroundContext(store),[store,store.viewCursor?.knownAt,store.viewCursor?.validAt.ns,store.viewCursor?.validAt.microstep]);
+  const highlightKey = (highlights ?? []).map(entityId).join('|');
   const neighbors = new Set(selectedId ? [selectedId] : []);
   if (selectedId) for (const edge of store.edges.values()) if (entityId(edge.source) === selectedId || entityId(edge.target) === selectedId) {
     neighbors.add(entityId(edge.source)); neighbors.add(entityId(edge.target));
@@ -49,11 +50,11 @@ export function BehaviourRunGraph({ store, selected, onSelect, onSeek }: Props) 
   // A read-only graph snapshot for filters; the session store still owns time and selection.
   const display = useMemo(() => {
   const display = new FeedStore(store.header);
-  for (const [id, entity] of store.entities) if ((showRuntimeEntities || entity.typeId !== 'aas:BehaviourInstance' || type === entity.typeId) && (!hideBackground || !background.has(id)) && (!type || entity.typeId === type) && (!directory || types.get(entity.typeId)?.directory === directory) && (!focus || !selectedId || neighbors.has(id))) display.entities.set(id, entity);
+  for (const [id, entity] of store.entities) if ((highlights ?? []).some(key => entityId(key) === id) || (showRuntimeEntities || entity.typeId !== 'aas:BehaviourInstance' || type === entity.typeId) && (!hideBackground || !background.has(id)) && (!type || entity.typeId === type) && (!directory || types.get(entity.typeId)?.directory === directory) && (!focus || !selectedId || neighbors.has(id))) display.entities.set(id, entity);
   for (const [id, edge] of store.edges) if (display.entities.has(entityId(edge.source)) && display.entities.has(entityId(edge.target))) display.edges.set(id, edge);
   display.commits.push(...store.commits);
   return display;
-  }, [store, store.viewCursor?.knownAt, store.viewCursor?.validAt.ns, store.viewCursor?.validAt.microstep, directory, type, focus, selectedId,hideBackground,showRuntimeEntities,background]);
+  }, [store, store.viewCursor?.knownAt, store.viewCursor?.validAt.ns, store.viewCursor?.validAt.microstep, directory, type, focus, selectedId,hideBackground,showRuntimeEntities,background,highlightKey]);
   const related = (roles: Record<string, EntityKey>) => (!hideBackground || Object.values(roles).some(key => !background.has(entityId(key)))) && (!focus || !selectedId || Object.values(roles).some(key => neighbors.has(entityId(key))));
   const predicates = [...store.predicateTruth.values()].filter(row => related(row.roles));
   const chains = [...store.chainInstances.values()].filter(row => related(row.roles));
@@ -68,7 +69,7 @@ export function BehaviourRunGraph({ store, selected, onSelect, onSeek }: Props) 
       <label><input type="checkbox" checked={focus} onChange={event => setFocus(event.target.checked)} />Focus + neighbors</label>
       <label><input aria-label="Hide background actors" type="checkbox" checked={hideBackground} onChange={e=>setHideBackground(e.target.checked)}/>Hide background</label><label><input aria-label="Show runtime entities" type="checkbox" checked={showRuntimeEntities} onChange={e=>setShowRuntimeEntities(e.target.checked)}/>Runtime entities</label><span>{display.entities.size} / {store.entities.size} entities</span>
     </div>
-    <EntityGraph store={display} selected={selected} onSelect={onSelect} /><Details title="Relation validity and technical records"><pre>{exactValue([...display.edges.values()])}</pre></Details>
+    <EntityGraph store={display} selected={selected} onSelect={onSelect} highlights={highlights} /><Details title="Relation validity and technical records"><pre>{exactValue([...display.edges.values()])}</pre></Details>
     <details className="behaviour-records" aria-label="Recorded predicate and chain nodes"><summary>Recorded overlays · {predicates.length} predicates · {chains.length} chains</summary>
       {!extensionPresent && <p>No recorded predicate/chain data in this feed.</p>}
       <div className="behaviour-node-columns">

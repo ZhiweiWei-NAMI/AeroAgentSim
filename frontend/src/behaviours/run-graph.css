@@ -23,3 +23,20 @@
 .eg-controls select {flex:1;min-width:100px;max-width:200px}
 .eg-canvas,.eg-svg {min-height:340px}
 .eg-legend {font-size:10px;gap:6px}
+
+/* Grouped entity graph: one labelled box per entity type */
+.eg-hint{margin:0;font-size:11px;color:var(--csl-text-muted,#5c6b7a)}
+.eg-cluster-box{fill:#fff;stroke-width:1.2;stroke-opacity:.55}
+.eg-cluster-title{cursor:default;outline:none}
+.eg-cluster-title[role=button]{cursor:pointer}
+.eg-cluster-title[role=button]:hover rect,.eg-cluster-title[role=button]:focus-visible rect{opacity:.28}
+.eg-cluster-label{font:650 12px var(--csl-font,system-ui);fill:#17222e;pointer-events:none}
+.eg-chip{cursor:pointer}
+.eg-chip-box{fill:#f1f5f9;stroke:#cbd5e1;stroke-dasharray:4 3}
+.eg-chip:hover .eg-chip-box{fill:#e6eef6}
+.eg-chip-label{font:11px var(--csl-font,system-ui);fill:#33475b;pointer-events:none}
+.eg-edge-group{stroke-dasharray:5 3;stroke-opacity:.8}
+.eg-edge-label{font:10px var(--csl-font,system-ui);fill:#9a5a12;paint-order:stroke;stroke:#fff;stroke-width:3px;pointer-events:none}
+.eg-node-highlight .eg-node-dot{stroke:#e78123;stroke-width:2}
+.eg-canvas{flex:none}
+.eg-canvas,.eg-svg{min-height:300px}

@@ -3,7 +3,7 @@ import type { FieldInfo } from '../contracts/viewer-feed';
 
 /** Display labels only; retained identities and recorded values stay intact. */
 export function readableLabel(value: string): string {
-  const words = value.slice(value.lastIndexOf(':')+1).replace(/^traffic\.p\./, '').replace(/^traffic\./, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._/-]+/g, ' ').trim();
+  const words = value.slice(value.lastIndexOf(':')+1).replace(/^traffic\.p\./, '').replace(/^traffic\./, '').replace(/^lowalt\.(?:p\.)?/, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._/-]+/g, ' ').trim();
   return words ? words.replace(/\b\w/g, letter => letter.toUpperCase()).replace(/\bUav\b/g, 'UAV').replace(/\bLlm\b/g, 'LLM').replace(/\bPx4\b/g, 'PX4') : value;
 }
 export function displayLabel(label: string | undefined, id: string): string {

@@ -127,6 +127,7 @@ export class Viewport {
     this.container.dataset.lighting=dusk?'dusk-display':'day-display';
   }
   setSelection(key?: EntityKey) { this.selected = key; this.revision++; }
+  setHighlights(keys: EntityKey[]) { this.layer.setHighlights(new Set(keys.map(entityId))); this.revision++; }
   setCameraMode(mode: CameraMode) {
     this.revision++; this.mode = mode; this.controls.enabled = mode === 'orbit'; this.container.dataset.camera=mode;
   }
@@ -211,6 +212,7 @@ export class Viewport {
     }
     this.container.dataset.rendered='true';
     this.container.dataset.spatialCount=String(this.layer.positions.size);
+    this.container.dataset.highlightCount=String(this.layer.highlightedShown);
     this.container.dataset.drawCalls=String(this.renderer.info.render.calls);
     this.container.dataset.triangles=String(this.renderer.info.render.triangles);
     this.container.dataset.geometries=String(this.renderer.info.memory.geometries);
