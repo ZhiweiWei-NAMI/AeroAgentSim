@@ -70,6 +70,9 @@ class EngineBuild:
 
 Factory = Callable[[EngineBuild], Engine]
 BUILTINS = {
+    "lowalt_tasks": "aeroagentsim.packs.lowalt.tasks",
+    "lowalt_airspace": "aeroagentsim.packs.lowalt.airspace",
+    "lowalt_energy": "aeroagentsim.packs.lowalt.energy",
     "traffic_decision_failures": "aeroagentsim.packs.traffic_accident.decision_failures",
     "traffic_decisions": "aeroagentsim.packs.traffic_accident.decisions",
     "traffic_capture_bridge": "aeroagentsim.packs.traffic_accident.capture",

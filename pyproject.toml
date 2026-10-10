@@ -55,6 +55,9 @@ aeroagentsim = "aeroagentsim.services.cli:main"
 # Install the included kernel and platform together:
 # python -m pip install -e ./aerokernel -e '.[server]'.
 [project.entry-points."aeroagentsim.engines"]
+lowalt_tasks = "aeroagentsim.packs.lowalt.tasks:build"
+lowalt_airspace = "aeroagentsim.packs.lowalt.airspace:build"
+lowalt_energy = "aeroagentsim.packs.lowalt.energy:build"
 behaviour = "aeroagentsim.engines.behaviour:build"
 px4_gazebo = "aeroagentsim.adapters.px4_gazebo:build"
 sumo = "aeroagentsim.adapters.sumo:build"
@@ -71,6 +74,18 @@ traffic_decision_failures = "aeroagentsim.packs.traffic_accident.decision_failur
 traffic_capture_bridge = "aeroagentsim.packs.traffic_accident.capture:build"
 traffic_camera_capture = "aeroagentsim.packs.traffic_accident.camera:build"
 
+
+[project.entry-points."aeroagentsim.algorithms"]
+"allocation.nearest" = "aeroagentsim.algorithms.builtins:Nearest"
+"allocation.auction" = "aeroagentsim.algorithms.builtins:Auction"
+"allocation.hungarian" = "aeroagentsim.algorithms.builtins:Hungarian"
+"path_planning.straight" = "aeroagentsim.algorithms.builtins:Straight"
+"path_planning.corridor_astar" = "aeroagentsim.algorithms.builtins:CorridorAstar"
+"conflict_resolution.altitude_layers" = "aeroagentsim.algorithms.builtins:AltitudeLayers"
+"conflict_resolution.hold_and_go" = "aeroagentsim.algorithms.builtins:HoldAndGo"
+"charging.threshold_return" = "aeroagentsim.algorithms.builtins:ThresholdReturn"
+"allocation.llm" = "aeroagentsim.algorithms.llm:LLMAllocation"
+
 [project.entry-points."aeroagentsim.models"]
 linear = "aeroagentsim.models:LinearConsumption"
 wind = "aeroagentsim.models:WindConsumption"
@@ -81,6 +96,7 @@ aerokernel = {path = "./aerokernel", editable = true}
 [tool.setuptools.package-data]
 "aeroagentsim.observations" = ["viewer_bridge.mjs"]
 "aeroagentsim.packs.traffic_accident" = ["camera.html"]
+"aeroagentsim.packs.lowalt" = ["registry.overlay.yaml", "registry.snapshot.json"]
 "aeroagentsim.authoring" = ["assets/*.xml", "assets/*.json", "assets/*.txt"]
 
 [tool.ruff]

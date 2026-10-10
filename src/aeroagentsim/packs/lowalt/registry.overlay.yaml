@@ -1,0 +1,613 @@
+types:
+- id: lowalt:UAV
+  parents:
+  - oo:UAV
+  abstract: false
+- id: lowalt:Site
+  parents:
+  - oo:ModelObject
+  abstract: false
+- id: lowalt:Customer
+  parents:
+  - lowalt:Site
+  abstract: false
+- id: lowalt:Vertiport
+  parents:
+  - lowalt:Site
+  - oo:Facility
+  abstract: false
+- id: lowalt:Depot
+  parents:
+  - lowalt:Vertiport
+  abstract: false
+- id: lowalt:ChargingPad
+  parents:
+  - lowalt:Site
+  abstract: false
+- id: lowalt:AirspaceZone
+  parents:
+  - oo:ModelObject
+  abstract: false
+- id: lowalt:Task
+  parents:
+  - oo:Task
+  abstract: false
+- id: lowalt:Environment
+  parents:
+  - oo:ModelObject
+  abstract: false
+fields:
+- id: lowalt.position
+  type: lowalt:UAV
+  schema: &id001
+    type: vector
+    length: 3
+    items: &id002
+      type: number
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.velocity
+  type: lowalt:UAV
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m/s
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.soc
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.capacity_j
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: J
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.motion_energy_j
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: J
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.payload_kg
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: kg
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.payload_capacity_kg
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: kg
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.energy_used_j
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: J
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.distance_m
+  type: lowalt:UAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.vehicle_class
+  type: lowalt:UAV
+  schema: &id003
+    type: string
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.membership
+  type: lowalt:UAV
+  schema: &id004
+    type: array
+    items: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.conflicts
+  type: lowalt:UAV
+  schema: *id004
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.weather_held
+  type: lowalt:UAV
+  schema: &id005
+    type: boolean
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.charging
+  type: lowalt:UAV
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.site_position
+  type: lowalt:Site
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.pad_power_w
+  type: lowalt:ChargingPad
+  schema: *id002
+  metadata:
+    role: observation
+    unit: W
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.wind
+  type: lowalt:Environment
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m/s
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.zone_kind
+  type: lowalt:AirspaceZone
+  schema:
+    type: string
+    enum:
+    - no_fly
+    - restricted
+    - altitude_band
+    - corridor
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.zone_lower
+  type: lowalt:AirspaceZone
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.zone_upper
+  type: lowalt:AirspaceZone
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+    frame: enu
+    transform_revision: lowalt.district/v1
+- id: lowalt.zone_start_ns
+  type: lowalt:AirspaceZone
+  schema: &id006
+    type: integer
+    minimum: 0
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.zone_end_ns
+  type: lowalt:AirspaceZone
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.zone_active
+  type: lowalt:AirspaceZone
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.zone_dynamic
+  type: lowalt:AirspaceZone
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_kind
+  type: lowalt:Task
+  schema:
+    type: string
+    enum:
+    - parcel
+    - medical
+    - inspection
+    - survey
+    - spraying
+    - passenger
+    - patrol
+    - incident_response
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_state
+  type: lowalt:Task
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_origin
+  type: lowalt:Task
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_destination
+  type: lowalt:Task
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_vehicle
+  type: lowalt:Task
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_payload_kg
+  type: lowalt:Task
+  schema: *id002
+  metadata:
+    role: observation
+    unit: kg
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_priority
+  type: lowalt:Task
+  schema: *id006
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.task_created_ns
+  type: lowalt:Task
+  schema: *id006
+  metadata:
+    role: observation
+    unit: ns
+    time_semantics: canonical computation; half-open validity
+messages:
+- id: lowalt.task.created
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      kind: *id003
+      priority: *id006
+      origin: *id003
+      destination: *id003
+    required:
+    - task
+    - kind
+    - priority
+    extra: false
+- id: lowalt.task.assigned
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      algorithm: *id003
+    required:
+    - task
+    - vehicle
+    - algorithm
+    extra: false
+- id: lowalt.task.started
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+    required:
+    - task
+    - vehicle
+    extra: false
+- id: lowalt.task.picked_up
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+    required:
+    - task
+    - vehicle
+    extra: false
+- id: lowalt.task.completed
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      latency_s: *id002
+    required:
+    - task
+    - vehicle
+    - latency_s
+    extra: false
+- id: lowalt.task.failed
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      reason: *id003
+    required:
+    - task
+    - reason
+    extra: false
+- id: lowalt.airspace.conflict
+  kind: event
+  schema:
+    type: record
+    members:
+      a: *id003
+      b: *id003
+      horizontal_m: *id002
+      vertical_m: *id002
+    required:
+    - a
+    - b
+    - horizontal_m
+    - vertical_m
+    extra: false
+- id: lowalt.airspace.conflict_resolved
+  kind: event
+  schema:
+    type: record
+    members:
+      a: *id003
+      b: *id003
+      action: *id003
+    required:
+    - a
+    - b
+    - action
+    extra: false
+- id: lowalt.airspace.geofence_entered
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      zone: *id003
+    required:
+    - vehicle
+    - zone
+    extra: false
+- id: lowalt.airspace.zone_activated
+  kind: event
+  schema:
+    type: record
+    members:
+      zone: *id003
+      reason: *id003
+    required:
+    - zone
+    - reason
+    extra: false
+- id: lowalt.airspace.zone_deactivated
+  kind: event
+  schema:
+    type: record
+    members:
+      zone: *id003
+      reason: *id003
+    required:
+    - zone
+    - reason
+    extra: false
+- id: lowalt.energy.low
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      soc: *id002
+    required:
+    - vehicle
+    - soc
+    extra: false
+- id: lowalt.energy.charging_started
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+      soc: *id002
+    required:
+    - vehicle
+    - pad
+    - soc
+    extra: false
+- id: lowalt.energy.charging_finished
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+      soc: *id002
+    required:
+    - vehicle
+    - pad
+    - soc
+    extra: false
+- id: lowalt.weather.hold
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      zone: *id003
+      reason: *id003
+      wind_mps: *id002
+    required:
+    - reason
+    extra: false
+- id: lowalt.weather.release
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      zone: *id003
+      reason: *id003
+      wind_mps: *id002
+    required:
+    - reason
+    extra: false
+- id: lowalt.control
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      action: *id003
+      target: *id001
+      until_ns: *id006
+      reason: *id003
+    required:
+    - vehicle
+    - action
+    - reason
+    extra: false
+- id: lowalt.allocation.request
+  kind: event
+  schema:
+    type: record
+    members:
+      tasks_json: *id003
+      vehicles_json: *id003
+    required:
+    - tasks_json
+    - vehicles_json
+    extra: false
+- id: lowalt.allocation.result
+  kind: event
+  schema:
+    type: record
+    members:
+      assignments_json: *id003
+    required:
+    - assignments_json
+    extra: false
+- id: lowalt.motion.arrived
+  kind: event
+  schema:
+    type: record
+    members:
+      entity: *id003
+      position: *id001
+    required:
+    - entity
+    - position
+    extra: false
+- id: lowalt.motion.move_to
+  kind: command
+  schema:
+    type: record
+    members:
+      entity: *id003
+      target: *id001
+    required:
+    - entity
+    - target
+    extra: false
+  result_schema: &id007
+    type: record
+    members:
+      entity: *id003
+      position: *id001
+      reason: *id003
+    required: []
+    extra: false
+  feedback_schema: *id007
+  cancel_support: false
+- id: lowalt.motion.hold
+  kind: command
+  schema:
+    type: record
+    members:
+      entity: *id003
+    required:
+    - entity
+    extra: false
+  result_schema: *id007
+  feedback_schema: *id007
+  cancel_support: false
+- id: lowalt.motion.stop
+  kind: command
+  schema:
+    type: record
+    members:
+      entity: *id003
+    required:
+    - entity
+    extra: false
+  result_schema: *id007
+  feedback_schema: *id007
+  cancel_support: false
+- id: lowalt.airspace.activate
+  kind: command
+  schema:
+    type: record
+    members:
+      zone: *id003
+      active: *id005
+      reason: *id003
+    required:
+    - zone
+    - active
+    - reason
+    extra: false
+  result_schema:
+    type: record
+    members:
+      zone: *id003
+      active: *id005
+    required:
+    - zone
+    - active
+    extra: false
+  cancel_support: false
