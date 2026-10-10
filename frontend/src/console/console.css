@@ -383,7 +383,7 @@
 .console-shell .dual-run-views {height:calc(100% - 43px);grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .console-shell .behaviour-node-columns {grid-template-columns:1fr}
 .console-shell .behaviour-run-graph .ns-relations small {display:none}
-.console-toasts {position:fixed;right:24px;top:68px;z-index:1500;list-style:none;margin:0;padding:0;display:grid;gap:10px;width:min(380px,calc(100vw - 48px));pointer-events:none;font:14px var(--csl-font)}
+.console-toasts {position:fixed;right:24px;bottom:24px;z-index:1500;list-style:none;margin:0;padding:0;display:grid;gap:10px;width:min(380px,calc(100vw - 48px));pointer-events:none;font:14px var(--csl-font)}
 .console-toast {padding:14px 18px;border-radius:8px;border:1px solid var(--csl-border);background:var(--csl-surface);color:var(--csl-text);box-shadow:var(--csl-shadow);border-left:4px solid var(--csl-teal-500);overflow-wrap:anywhere}
 .console-toast-error {border-left-color:var(--csl-danger);background:var(--csl-danger-bg)}
 .console-shortcuts>div {display:flex;gap:20px;padding:12px 0;border-bottom:1px solid var(--csl-border)}

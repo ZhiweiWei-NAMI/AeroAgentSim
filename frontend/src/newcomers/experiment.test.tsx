@@ -45,11 +45,11 @@ const report: ExperimentReport = {
 };
 
 describe('ExperimentPanel', () => {
-  it('runs the guided workflow: typed varied settings posted, polling of the completed report, best highlighted and open-run link', async () => {
-    fetchMock.mockImplementation(async (_url: string, init?: RequestInit) => {
-      if (init?.method === 'POST') return jsonResponse(201, {...report, status: 'running', completed: 0, failed: 0, runs: [], table: report.table.map(row => ({...row, metrics: {}}))});
-      return jsonResponse(200, report);
-    });
+  it('posts typed form values and renders measured and unmeasured results', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(201, {...report,
+      runs: report.runs.map(run=>({...run,kpis:{...run.kpis,mean_task_latency_s:null}})),
+      table: report.table.map(row=>({...row,metrics:{...row.metrics,mean_task_latency_s:{mean:null,std:null,n:0,unit:'s',label:'Average delivery time',best:false}}})),
+    }));
     render(<ExperimentPanel base="http://api.test" templates={[template]} />);
 
     // Choose the numeric knob to vary and add two typed values.
@@ -69,10 +69,10 @@ describe('ExperimentPanel', () => {
     const body = JSON.parse(postedInit!.body as string) as {vary: Record<string, KnobValue[]>; seeds: number; jobs: number};
     expect(body).toEqual({vary: {fleet_size: [3, 6]}, seeds: 3, jobs: 1});
 
-    // Polling fetches the report without overlapping.
-    // First poll (2 s interval) fetches the completed report and stops polling.
-    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => url === 'http://api.test/v1/experiments/exp-abc123')).toBe(true), {timeout: 4000});
-    await waitFor(() => expect(screen.getByTestId('experiment-report')).toHaveTextContent(/Completed — 4 of 4 runs succeeded/), {timeout: 4000});
+    // Real polling/progress is exercised by experiment-console.spec.ts.
+    await waitFor(() => expect(screen.getByTestId('experiment-report')).toHaveTextContent(/Completed — 4 of 4 runs succeeded/));
+    fireEvent.click(screen.getByText(/More metrics/));
+    expect(screen.getAllByText('—')).toHaveLength(2);
     // Best cell (backend-marked only) is highlighted; the other is not.
     const best = screen.getByTestId('exp-cell-config-1-tasks_completed');
     expect(best).toHaveClass('is-best');
@@ -81,8 +81,7 @@ describe('ExperimentPanel', () => {
     // Open the actual child run on the Simple replay route.
     const link = screen.getByTestId('exp-open-run-config-1-seed-1');
     expect(link).toHaveAttribute('href', '/runs/run-d?mode=replay&view=simple&template=parcel-delivery&api=http%3A%2F%2Fapi.test');
-    // Terminal status stops further polling (exactly one GET happened after start).
-    expect(fetchMock.mock.calls.filter(([, init]) => init?.method !== 'POST')).toHaveLength(1);
+
   });
 
   it('surfaces an unavailable experiment service truthfully', async () => {

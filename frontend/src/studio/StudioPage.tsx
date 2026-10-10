@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Dropdown, Input, InputNumber, Modal, Select, Space, Tag, Tooltip } from 'antd';
+import { Alert, Button, Card, Checkbox, Dropdown, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useConsoleNotice } from '../console/Notifications';
 import { PageHeader, PageState } from '../console/PageState';
@@ -20,6 +20,15 @@ import { issueStep, readableName, studioSteps, validationIssues, type StudioStep
 import { AlgorithmsPanel } from '../newcomers/AlgorithmsPanel';
 import type { AlgorithmSlot } from '../newcomers/api';
 import './studio.css';
+
+/**
+ * True when the scenario's authored engines include the low-altitude task pack
+ * (`lowalt_tasks`), which is the only engine that consumes the four algorithm
+ * slots. Inspected from the real scenario document — never assumed.
+ */
+export function scenarioUsesLowaltPack(scenario:Record<string,any>|undefined):boolean {
+ return Boolean(scenario&&scenario.engines&&typeof scenario.engines==='object'&&!Array.isArray(scenario.engines)&&Object.values(scenario.engines).some((engine:any)=>engine?.plugin==='lowalt_tasks'));
+}
 import './guided.css';
 
 const stepHelp: Record<StudioStep,{description:string;guide:string}> = {
@@ -85,7 +94,7 @@ export default function StudioPage() {
     {!workspace&&<Button disabled={busy} onClick={()=>void action(openDemo)}>Open traffic demo</Button>}
     <Button disabled={!workspace||busy||!buffersValid} onClick={()=>void action(async()=>{await save();notify({kind:'success',message:'Workspace saved.'});})}>Save workspace</Button>
     <Button disabled={!workspace||busy||!buffersValid} onClick={()=>void action(validate)}>Validate</Button>
-    <Tooltip title={!bindingsValid ? 'Validate first' : undefined}><span><Button type="primary" disabled={busy||!bindingsValid} onClick={()=>void action(run)}>Run now</Button></span></Tooltip>
+    <span className="guided-run-now-wrap"><Button type="primary" disabled={busy||!bindingsValid} onClick={()=>void action(run)}>Run now</Button>{!bindingsValid&&!busy&&<small className="guided-run-hint" data-testid="run-now-hint">Validate first</small>}</span>
    </Space>
   </div>
   {!workspace&&catalog&&<PageState kind="empty" title="Start with a scenario" description="Open the traffic accident demo, choose a saved workspace or create an empty draft." action={<Button onClick={()=>void action(async()=>{apply(await api.request<Workspace>('/v1/studio/workspaces',{name:'New research scenario'}));chooseStep('scene');})}>Create workspace</Button>}/>}
@@ -104,7 +113,7 @@ export default function StudioPage() {
      {visited.has('entities')&&<section hidden={step!=='entities'} data-testid="studio-panel-entities"><EntitiesStep key={`${workspace.id}/${new URLSearchParams(location.search).get('entity')??''}`} initialEntityId={new URLSearchParams(location.search).get('entity')??undefined} scenario={scenario} onChange={onChange} api={api} types={allTypes} fields={allFields} schemas={workspace.registry_catalog?.schemas}/></section>}
      {visited.has('plugins')&&<section hidden={step!=='plugins'} data-testid="studio-panel-plugins">
       <Card title="Algorithms" data-testid="studio-algorithms-card"><p className="guided-muted">Choose how drones share tasks, find routes, avoid conflicts and decide when to recharge.</p>
-       <AlgorithmsPanel base={base} algorithms={(scenario.algorithms ?? {}) as Partial<Record<AlgorithmSlot,string>>} onChange={next=>onChange({...scenario,algorithms:{...next}})}/>
+       <AlgorithmsPanel base={base} applicable={scenarioUsesLowaltPack(scenario)} algorithms={(scenario.algorithms ?? {}) as Partial<Record<AlgorithmSlot,string>>} onChange={next=>onChange({...scenario,algorithms:{...next}})}/>
       </Card>
       <DomainPluginsStep key={workspace.id} scenario={scenario} onChange={onChange} engines={catalog.engines} onValidityChange={pluginValidity}/>
      </section>}

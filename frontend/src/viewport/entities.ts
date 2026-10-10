@@ -36,6 +36,7 @@ export class EntityLayer {
   private hoverId?: string;
   private semanticTasks = new Map<string, EntityState>();
   private semanticInvolved = new Set<string>();
+  private semanticAlerts = new Set<string>();
   private semanticStamp = '';
   private batches = new Map<PresentationBinding, Batch>();
   private semanticBindings=new Map<PresentationBinding,Map<string,PresentationBinding>>();
@@ -135,9 +136,9 @@ export class EntityLayer {
     this.transformsChanged=false;
     if(this.semantic){
       const stamp=`${store.revision}/${ns}`;
-      if(stamp!==this.semanticStamp){this.semanticStamp=stamp;this.semanticTasks=taskByVehicle(store);this.semanticInvolved=recentlyInvolved(store.messages,10_000_000_000,ns);
+      if(stamp!==this.semanticStamp){this.semanticStamp=stamp;this.semanticTasks=taskByVehicle(store);this.semanticInvolved=recentlyInvolved(store.messages,10_000_000_000,ns);this.semanticAlerts.clear();
         const known=(store as FeedStore & {viewCursor?:{knownAt:number}}).viewCursor?.knownAt;
-        for(const commit of store.commits){if(known!==undefined&&commit.commitIndex>known)break;for(const event of commit.events??[]){const age=BigInt(ns)-BigInt(event.at_ns);if(age<0n||age>10_000_000_000n)continue;for(const entityId of event.entities)for(const [key,entity] of store.entities)if(entity.key.id===entityId)this.semanticInvolved.add(key);}}}
+        for(const commit of store.commits){if(known!==undefined&&commit.commitIndex>known)break;for(const event of commit.events??[]){const age=BigInt(ns)-BigInt(event.at_ns);if(age<0n||age>10_000_000_000n)continue;for(const entityId of event.entities)for(const [key,entity] of store.entities)if(entity.key.id===entityId){this.semanticInvolved.add(key);if(event.category==='emergency'||event.severity==='warning'||event.severity==='critical')this.semanticAlerts.add(key);}}}}
     }
     for(const batch of this.batches.values())for(const mesh of [...batch.meshes,...(batch.far?[batch.far.mesh]:[])]){mesh.userData.viewportCount=mesh.count;mesh.userData.viewportChanged=false;}
     this.positions.clear(); this.orientations.clear();this.selection.length=0;for(const batch of this.batches.values())for(const mesh of batch.outline ?? [])mesh.visible=false;
@@ -195,7 +196,7 @@ export class EntityLayer {
       if(this.semantic&&!item.selected){
         const entity=store.entities.get(item.id)!;
         const task=this.semanticTasks.get(item.id);
-        const interested=labelInterest(entity,selected,this.semanticInvolved,!!task&&!isFinishedTask(task));
+        const interested=labelInterest(entity,selected,this.semanticInvolved,!!task&&!isFinishedTask(task),this.semanticAlerts);
         if(!interested&&item.id!==entityHover&&!this.showAllLabels)continue;
       }
       if(this.semantic)item.interest=true;

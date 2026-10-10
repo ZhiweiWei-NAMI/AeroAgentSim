@@ -223,7 +223,9 @@ def create_router(
         """Read pinned authoring inputs and actual WAL identity, never build an engine."""
 
         def read() -> dict[str, Any]:
-            if run_root is None or not re.fullmatch(r"run-[a-f0-9]{32}", run_id):
+            # Experiment children use descriptive directory names, not UUIDs.
+            # Containment and the committed WAL header determine accessibility.
+            if run_root is None or Path(run_id).name != run_id or run_id.startswith("."):
                 raise FileNotFoundError("studio run: not found")
             path = (run_root / run_id).resolve()
             if not path.is_relative_to(run_root.resolve()):

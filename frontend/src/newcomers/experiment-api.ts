@@ -19,7 +19,7 @@ export interface ExperimentRequest {
 }
 
 export interface ExperimentMetric {
-  mean: number;
+  mean: number | null;
   /** Sample std; null when fewer than two observed samples (never zero). */
   std: number | null;
   n: number;
@@ -42,7 +42,7 @@ export interface ExperimentRunRecord {
   run_id: string | null;
   status: string | null;
   error: string | null;
-  kpis: Record<string, number>;
+  kpis: Record<string, number | null>;
   kpi_meta: Record<string, {unit?: string | null; label?: string | null}>;
 }
 
@@ -82,13 +82,13 @@ const typedKnobs = (value: unknown): Record<string, KnobValue> => {
 
 const metric = (value: unknown, name: string): ExperimentMetric => {
   const data = object(value);
-  if (typeof data.mean !== 'number' || !Number.isFinite(data.mean) || typeof data.n !== 'number' || !Number.isSafeInteger(data.n) || data.n < 1) {
+  if (data.mean !== null && (typeof data.mean !== 'number' || !Number.isFinite(data.mean)) || typeof data.n !== 'number' || !Number.isSafeInteger(data.n) || data.n < 0 || (data.mean === null) !== (data.n === 0)) {
     throw Error(`Experiment metric ${name} has no valid mean or sample count.`);
   }
   if (data.std !== null && (typeof data.std !== 'number' || !Number.isFinite(data.std))) throw Error(`Experiment metric ${name} has an invalid spread.`);
   if (typeof data.label !== 'string') throw Error(`Experiment metric ${name} has no label.`);
   return {
-    mean: data.mean,
+    mean: data.mean as number | null,
     std: data.std as number | null,
     n: data.n,
     unit: typeof data.unit === 'string' ? data.unit : null,
@@ -102,11 +102,11 @@ const runRecord = (value: unknown): ExperimentRunRecord => {
   if (typeof data.config_id !== 'string' || typeof data.seed !== 'number' || !Number.isSafeInteger(data.seed)) {
     throw Error('Experiment has an invalid run record.');
   }
-  const kpis: Record<string, number> = {};
+  const kpis: Record<string, number | null> = {};
   if (data.kpis !== undefined && data.kpis !== null) {
     for (const [key, item] of Object.entries(object(data.kpis))) {
-      if (typeof item !== 'number' || !Number.isFinite(item)) throw Error(`Experiment result ${key} is not a finite number.`);
-      kpis[key] = item;
+      if (item !== null && (typeof item !== 'number' || !Number.isFinite(item))) throw Error(`Experiment result ${key} is not a finite number or an unmeasured value.`);
+      kpis[key] = item as number | null;
     }
   }
   const meta: ExperimentRunRecord['kpi_meta'] = {};

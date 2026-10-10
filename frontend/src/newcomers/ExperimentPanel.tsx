@@ -5,6 +5,7 @@ import {PageState} from '../console/PageState';
 import {categoryMetadata, CategoryIcon} from './categories';
 import {experimentRunUrl, ExperimentApi, experimentIsTerminal, type ExperimentReport, type ExperimentRequest, type ExperimentVary} from './experiment-api';
 import type {KnobValue, ScenarioTemplate, TemplateKnob} from './api';
+import {metricHelp} from './metric-help';
 import './experiment.css';
 
 /* ExperimentPanel — guided full-factorial experiments over published templates.
@@ -36,11 +37,12 @@ interface PlanState {
 const horizonText = (report: ExperimentReport): string =>
   report.horizon_s === null ? 'template default' : `${report.horizon_s} s`;
 
-const formatMetric = (mean: number, std: number | null, unit: string | null): string => {
+const formatMetric = (mean: number | null, std: number | null, unit: string | null): string => {
+  if(mean===null)return '—';
   const digits = Number.isInteger(mean) ? 0 : Math.abs(mean) >= 100 ? 1 : 2;
   const value = mean.toFixed(digits);
   const spread = std === null ? '' : ` ± ${std.toFixed(2)}`;
-  return `${value}${spread}${unit ? ` ${unit}` : ''}`;
+  return `${value}${spread}${unit && unit!=='count' ? ` ${unit}` : ''}`;
 };
 
 function AxisValuesEditor({axis, knob, onChange}: {
@@ -112,19 +114,19 @@ function ExperimentNumberAdder({knob, onAdd}: {knob: TemplateKnob; onAdd: (value
   );
 }
 
-function ResultTable({report, apiBase}: {report: ExperimentReport; apiBase: string}) {
+function ResultTable({report, apiBase, template}: {report: ExperimentReport; apiBase: string; template?:ScenarioTemplate}) {
   const metricNames = useMemo(() => {
     const names = new Set<string>();
     for (const row of report.table) for (const name of Object.keys(row.metrics)) names.add(name);
     return [...names].sort();
   }, [report.table]);
-  return (
-    <div className="exp-results" data-testid="experiment-results">
-      <table className="exp-table">
+  const primary=template?template.kpis.filter(name=>metricNames.includes(name)):metricNames.filter(name=>report.table.some(row=>typeof row.metrics[name]?.mean==='number'&&row.metrics[name].mean!==0));
+  const more=metricNames.filter(name=>!primary.includes(name));
+  const table=(names:string[])=><div className="exp-table-scroll"><table className="exp-table">
         <thead>
           <tr>
             <th scope="col">Configuration</th>
-            {metricNames.map(name => <th key={name} scope="col">{report.table.find(row=>row.metrics[name])?.metrics[name].label ?? name}</th>)}
+            {names.map(name => <th key={name} scope="col" title={metricHelp(name)}>{report.table.find(row=>row.metrics[name])?.metrics[name].label ?? name}{metricHelp(name)&&<span className="exp-metric-help" aria-label={metricHelp(name)}> ?</span>}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -132,9 +134,9 @@ function ResultTable({report, apiBase}: {report: ExperimentReport; apiBase: stri
             <tr key={row.config_id} data-testid={`exp-row-${row.config_id}`}>
               <th scope="row">
                 <span className="exp-config-id">{`Option ${report.table.findIndex(item=>item.config_id===row.config_id)+1}`}</span>
-                <span className="exp-config-knobs">{Object.entries(row.knobs).map(([key, value]) => `${key}=${typeof value === 'boolean' ? (value ? 'yes' : 'no') : String(value)}`).join(', ') || 'defaults'}</span>
+                <span className="exp-config-knobs">{Object.entries(row.knobs).filter(([key])=>key in report.vary).map(([key, value]) => `${template?.knobs.find(knob=>knob.id===key)?.label??key}: ${typeof value === 'boolean' ? (value ? 'yes' : 'no') : String(value)}`).join(', ') || 'defaults'}</span>
               </th>
-              {metricNames.map(name => {
+              {names.map(name => {
                 const cell = row.metrics[name];
                 if (!cell) return <td key={name} className="exp-cell" data-testid={`exp-cell-${row.config_id}-${name}`}>—</td>;
                 return (
@@ -147,15 +149,18 @@ function ResultTable({report, apiBase}: {report: ExperimentReport; apiBase: stri
             </tr>
           ))}
         </tbody>
-      </table>
-      <p className="exp-results-note">Best per metric is the service's descriptive min/max highlight — not an overall ranking. “—” means that value was not measured.</p>
+      </table></div>;
+  return <div className="exp-results" data-testid="experiment-results">
+      {table(primary)}
+      {more.length>0&&<details className="exp-more"><summary>More metrics ({more.length})</summary>{table(more)}</details>}
+      <p className="exp-results-note">Highlighted values are best for that measure; ties are highlighted too. Values show the average ± variation across repeats. “—” means it was not measured.</p>
       {report.runs.length > 0 && (
         <section aria-label="Individual runs" className="exp-runs">
           <h3>Runs behind these numbers</h3>
           <ul className="exp-run-list">
             {report.runs.map(run => (
               <li key={`${run.config_id}-seed-${run.seed}`} data-testid={`exp-run-${run.config_id}-seed-${run.seed}`}>
-                <span className="exp-run-label">{run.config_id} · seed {run.seed}</span>
+                <span className="exp-run-label">Option {report.table.findIndex(row=>row.config_id===run.config_id)+1} · repeat {run.seed+1}</span>
                 {run.status && <span className={`exp-run-status is-${run.status}`}>{run.status}</span>}
                 {run.run_id
                   ? <a href={experimentRunUrl(run.run_id, apiBase, report.template_id)} data-testid={`exp-open-run-${run.config_id}-seed-${run.seed}`}>Open replay</a>
@@ -165,8 +170,7 @@ function ResultTable({report, apiBase}: {report: ExperimentReport; apiBase: stri
           </ul>
         </section>
       )}
-    </div>
-  );
+    </div>;
 }
 
 /** Guided experiment builder and live monitor for one deployment. */
@@ -264,7 +268,7 @@ export default function ExperimentPanel({base, templates, onClose}: {base: strin
     <section className="exp-panel" data-testid="experiment-panel" aria-label="Run an experiment">
       <header className="exp-panel-header">
         <div>
-          <h2>Run an experiment</h2>
+          <h2>{report?report.template_title:"Run an experiment"}</h2>
           <p className="exp-panel-sub">Vary one or two settings across a few values and compare the averaged results, repetitions included.</p>
         </div>
         {onClose && <button type="button" className="console-btn" data-testid="experiment-close" onClick={onClose}>Close</button>}
@@ -273,7 +277,7 @@ export default function ExperimentPanel({base, templates, onClose}: {base: strin
       {templates.length === 0 ? (
         <PageState kind="empty" title="No templates to experiment with" description="Experiments need a published scenario template. Publish one first, then come back." />
       ) : (
-        <>
+        <details className="exp-plan" open={!report}><summary>Experiment settings{report?` · ${report.total} runs`:""}</summary>
           <div className="exp-step">
             <h3>1 · Scenario</h3>
             <Select
@@ -352,13 +356,13 @@ export default function ExperimentPanel({base, templates, onClose}: {base: strin
               {busy ? 'Starting…' : running ? 'Experiment in progress…' : 'Start experiment'}
             </button>
           </div>
-        </>
+        </details>
       )}
 
       {error && (
         <div className="template-error-card" role="alert" data-testid="experiment-error">
           <strong>The experiment could not be {report ? 'followed' : 'started'}.</strong>
-          <p>{report ? 'Progress updates stopped arriving. The service may be restarting — check again shortly.' : 'The experiment service may not be available on this deployment yet.'}</p>
+          <p>{report ? 'Progress updates stopped arriving. See the request details or reopen the experiment to check its status.' : 'The service could not start this experiment. Check its settings and the request details below.'}</p>
           <Details title="Experiment request"><p>{error}</p></Details>
         </div>
       )}
@@ -377,7 +381,7 @@ export default function ExperimentPanel({base, templates, onClose}: {base: strin
           </div>
           {report.status !== 'faulted' || report.table.some(row => Object.keys(row.metrics).length > 0) ? (
             report.table.some(row => Object.keys(row.metrics).length > 0)
-              ? <ResultTable report={report} apiBase={base} />
+              ? <ResultTable report={report} apiBase={base} template={templates.find(item=>item.id===report.template_id)} />
               : <PageState kind="loading" title="Waiting for the first finished runs" description="Averages appear here as soon as the first runs complete." />
           ) : (
             <PageState kind="error" title="No results were produced" description={report.error ?? 'The experiment stopped before any run finished.'} />
