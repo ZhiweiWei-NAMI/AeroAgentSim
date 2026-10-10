@@ -400,6 +400,22 @@ def header(directory: Path) -> dict[str, Any]:
         "runtimeRegistry": lossless(registry.to_data()),
         "messages": lossless(registry.to_data()["messages"]),
     }
+    # Optional authored entity metadata only; nothing is invented for entities
+    # (or generated fleet members) that declare no label/business/vehicle_class.
+    entities = [
+        {
+            "id": item["id"],
+            "type": item["type"],
+            **{
+                name: item[name]
+                for name in ("label", "business", "vehicle_class")
+                if name in item
+            },
+        }
+        for item in scenario.get("entities", [])
+    ]
+    if entities:
+        result["entities"] = entities
     if "epoch" in metadata:
         result["epoch"] = metadata["epoch"]
     ir_path = directory / "behaviour.ir.json"

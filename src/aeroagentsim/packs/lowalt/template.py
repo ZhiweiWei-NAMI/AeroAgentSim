@@ -64,10 +64,40 @@ def expand(document: dict[str, Any]) -> None:
     if not isinstance(generators, dict) or set(generators) != {"fleet"}:
         raise ValueError("generators: supported lowalt fleet declaration required")
     cfg = generators["fleet"]
-    if set(cfg) != {"count", "prefix", "type", "facts", "starts", "spacing_m"}:
+    optional = {"label", "business", "vehicle_class"}
+    if not isinstance(cfg, dict) or set(cfg) - optional != {
+        "count",
+        "prefix",
+        "type",
+        "facts",
+        "starts",
+        "spacing_m",
+    }:
         raise ValueError(
-            "generators.fleet: declare count/prefix/type/facts/starts/spacing_m"
+            "generators.fleet: declare count/prefix/type/facts/starts/spacing_m "
+            "with optional label/business/vehicle_class"
         )
+    for name in optional & set(cfg):
+        if type(cfg[name]) is not str or not cfg[name]:
+            raise ValueError(f"generators.fleet.{name} must be a nonempty string")
+    # The motion/energy class stays the authored lowalt.vehicle_class fact; an
+    # optional metadata class must agree with it instead of overriding it.
+    if (
+        "vehicle_class" in cfg
+        and cfg["facts"].get("lowalt.vehicle_class") != cfg["vehicle_class"]
+    ):
+        raise ValueError(
+            "generators.fleet.vehicle_class: must agree with the authored "
+            "lowalt.vehicle_class fact"
+        )
+    label: str | None = cfg.get("label")
+    if label is not None:
+        try:
+            label.format(index=1)
+        except (IndexError, KeyError, ValueError) as exc:
+            raise ValueError(
+                f"generators.fleet.label: {{index}} format string required ({exc})"
+            ) from exc
     count = ns(cfg["count"], "fleet count", 1)
     if count > 1000:
         raise ValueError("fleet count exceeds 1000")
@@ -91,9 +121,19 @@ def expand(document: dict[str, Any]) -> None:
             start[1] + index // len(starts) * spacing,
             start[2],
         ]
-        document["entities"].append(
-            {"id": prefix + str(index + 1), "type": cfg["type"], "facts": facts}
-        )
+        generated = {
+            "id": prefix + str(index + 1),
+            "type": cfg["type"],
+            "facts": facts,
+        }
+        for name in optional & set(cfg):
+            # {index} is 1-based; no other field is substituted or defaulted.
+            value = cfg[name]
+            if name == "label":
+                assert label is not None  # noqa: S101 - guarded above
+                value = label.format(index=index + 1)
+            generated[name] = value
+        document["entities"].append(generated)
 
 
 def parcel_document(

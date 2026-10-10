@@ -281,7 +281,19 @@ class LowaltTasks(ContextEngine):
             if kind in self.work_planners and not flight.work_active:
                 planner = self.work_planners[kind]
                 flight.work_active = True
-        points = planner.plan(state, start, goal)
+        cruise = self.cfg.get("cruise_altitudes", {}).get(
+            read(ctx, flight.vehicle, "lowalt.vehicle_class")
+        )
+        if (
+            planner in self.work_planners.values()
+            or cruise is None
+            or distance(start, goal) <= self.radius
+        ):
+            points = planner.plan(state, start, goal)
+        else:
+            from aeroagentsim.algorithms.routes import cruise_plan
+
+            points = cruise_plan(planner, state, start, goal, cruise)
         from aeroagentsim.packs.geometry import segment_hits_box
 
         if any(
@@ -349,15 +361,20 @@ class LowaltTasks(ContextEngine):
             return
         if action in {"return_to_pad", "altitude"}:
             if flight.purpose == "task":
-                flight.saved_route = (
-                    flight.paused_route
-                    if flight.paused_route is not None
-                    else ((flight.waypoint,) if flight.waypoint is not None else ())
-                    + flight.route
-                )
-                flight.saved_route = (
-                    vec(read(ctx, flight.vehicle, "lowalt.position")),
-                ) + flight.saved_route
+                if flight.work_active:
+                    flight.saved_route = (
+                        flight.paused_route
+                        if flight.paused_route is not None
+                        else ((flight.waypoint,) if flight.waypoint is not None else ())
+                        + flight.route
+                    )
+                    flight.saved_route = (
+                        vec(read(ctx, flight.vehicle, "lowalt.position")),
+                    ) + flight.saved_route
+                else:
+                    # A transit resumes from the new safe position. Returning
+                    # to the pre-avoidance roof defeats altitude separation.
+                    flight.saved_route = ()
                 flight.paused_route = None
                 flight.saved_goal = flight.goal
             target = vec(payload["target"])
@@ -764,6 +781,11 @@ class LowaltTasks(ContextEngine):
                         self._event(
                             ctx, "picked_up", task=job.ref.id, vehicle=flight.vehicle.id
                         )
+                        if read(ctx, job.ref, "lowalt.task_kind") == "passenger":
+                            site = read(ctx, job.ref, "lowalt.task_origin")
+                            self.site_busy.setdefault(site, []).append(
+                                ctx.now.ns + ns(self.cfg["pad_dwell_ns"], "pad dwell")
+                            )
                         destination = self.by_id[
                             read(ctx, job.ref, "lowalt.task_destination")
                         ]
@@ -830,11 +852,14 @@ class LowaltTasks(ContextEngine):
                     goal = flight.route[0]
                 if (
                     flight.job is not None
-                    and flight.job.phase == "picked_up"
+                    and flight.job.phase in {"started", "picked_up"}
                     and read(ctx, flight.job.ref, "lowalt.task_kind") == "passenger"
                     and len(flight.route) == 1
                 ):
-                    site = read(ctx, flight.job.ref, "lowalt.task_destination")
+                    endpoint = (
+                        "origin" if flight.job.phase == "started" else "destination"
+                    )
+                    site = read(ctx, flight.job.ref, "lowalt.task_" + endpoint)
                     capacity = read(ctx, self.by_id[site], "lowalt.site_capacity")
                     if capacity < 1:
                         raise ValueError("vertiport pad capacity must be positive")
@@ -844,9 +869,19 @@ class LowaltTasks(ContextEngine):
                         for other in self.flights.values()
                         if other is not flight
                         and other.job is not None
-                        and other.job.phase == "picked_up"
+                        and other.job.phase in {"started", "picked_up"}
                         and read(ctx, other.job.ref, "lowalt.task_kind") == "passenger"
-                        and read(ctx, other.job.ref, "lowalt.task_destination") == site
+                        and read(
+                            ctx,
+                            other.job.ref,
+                            "lowalt.task_"
+                            + (
+                                "origin"
+                                if other.job.phase == "started"
+                                else "destination"
+                            ),
+                        )
+                        == site
                         and other.command_id is not None
                         and not other.route
                     )

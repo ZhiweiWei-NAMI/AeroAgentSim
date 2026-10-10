@@ -53,7 +53,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.velocity
     type: lowalt:UAV
     schema: *id001
@@ -62,7 +62,7 @@ registry:
       unit: m/s
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.soc
     type: lowalt:UAV
     schema: *id002
@@ -159,7 +159,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.site_open
     type: lowalt:Site
     schema: *id005
@@ -191,7 +191,7 @@ registry:
       unit: m/s
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_kind
     type: lowalt:AirspaceZone
     schema:
@@ -213,7 +213,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_upper
     type: lowalt:AirspaceZone
     schema: *id001
@@ -222,7 +222,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_start_ns
     type: lowalt:AirspaceZone
     schema: *id006
@@ -795,266 +795,318 @@ entities:
 - id: vertiport-1
   type: lowalt:Vertiport
   facts:
-    lowalt.site_position:
-    - -240.0
-    - -220.0
-    - 50.0
+    lowalt.site_position: &id008
+    - -13.05
+    - -100.037
+    - 0.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Vertiport West Plaza
+  business: logistics
 - id: pad-1
   type: lowalt:ChargingPad
   facts:
-    lowalt.site_position:
-    - -240.0
-    - -220.0
-    - 50.0
+    lowalt.site_position: *id008
     lowalt.pad_power_w: 5000.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: West Plaza charging pad
+  business: logistics
 - id: vertiport-2
   type: lowalt:Vertiport
   facts:
-    lowalt.site_position:
-    - 240.0
-    - -220.0
-    - 50.0
+    lowalt.site_position: &id009
+    - 328.337
+    - -136.882
+    - 12.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Vertiport East Roof
+  business: logistics
 - id: pad-2
   type: lowalt:ChargingPad
   facts:
-    lowalt.site_position:
-    - 240.0
-    - -220.0
-    - 50.0
+    lowalt.site_position: *id009
     lowalt.pad_power_w: 5000.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: East rooftop charging pad
+  business: logistics
 - id: customer-1
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - -240.0
-    - -120.0
-    - 50.0
+    - -86.612
+    - 76.526
+    - 12.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 1
+  business: logistics
 - id: customer-2
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - -240.0
-    - -40.0
-    - 50.0
+    - 38.77
+    - 21.041
+    - 105.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 2
+  business: logistics
 - id: customer-3
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - -240.0
-    - 40.0
-    - 50.0
+    - 247.588
+    - 73.959
+    - 75.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 3
+  business: logistics
 - id: customer-4
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - -240.0
-    - 120.0
-    - 50.0
+    - 93.756
+    - 104.218
+    - 12.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 4
+  business: logistics
 - id: customer-5
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - -240.0
-    - 200.0
-    - 50.0
+    - 10.252
+    - 89.188
+    - 105.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 5
+  business: logistics
 - id: customer-6
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - -120.0
-    - -120.0
-    - 50.0
+    - -49.932
+    - 37.962
+    - 36.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 6
+  business: logistics
 - id: customer-7
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - -120.0
-    - -40.0
-    - 50.0
+    - -115.205
+    - -173.226
+    - 90.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 7
+  business: logistics
 - id: customer-8
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - -120.0
-    - 40.0
-    - 50.0
+    - -123.506
+    - -133.093
+    - 90.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 8
+  business: logistics
 - id: customer-9
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - -120.0
-    - 120.0
-    - 50.0
+    - -131.573
+    - -88.118
+    - 90.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 9
+  business: logistics
 - id: customer-10
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - -120.0
-    - 200.0
-    - 50.0
+    - -100.101
+    - -208.526
+    - 90.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 10
+  business: logistics
 - id: customer-11
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 0.0
-    - -120.0
-    - 50.0
+    - 311.029
+    - -146.342
+    - 12.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 11
+  business: logistics
 - id: customer-12
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 0.0
-    - 60.0
-    - 50.0
+    - 328.337
+    - -136.882
+    - 12.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 12
+  business: logistics
 - id: customer-13
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 0.0
-    - 140.0
-    - 50.0
+    - 202.257
+    - -172.434
+    - 75.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 13
+  business: logistics
 - id: customer-14
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 0.0
-    - 120.0
-    - 50.0
+    - 230.725
+    - -219.342
+    - 75.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 14
+  business: logistics
 - id: customer-15
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 0.0
-    - 200.0
-    - 50.0
+    - 182.908
+    - -257.53
+    - 75.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 15
+  business: logistics
 - id: customer-16
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 120.0
-    - -120.0
-    - 50.0
+    - -87.221
+    - -55.878
+    - 90.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 16
+  business: logistics
 - id: customer-17
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 120.0
-    - -40.0
-    - 50.0
+    - -69.805
+    - -106.482
+    - 54.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 17
+  business: logistics
 - id: customer-18
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 120.0
-    - 40.0
-    - 50.0
+    - -52.139
+    - -144.922
+    - 54.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 18
+  business: logistics
 - id: customer-19
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 120.0
-    - 120.0
-    - 50.0
+    - -31.484
+    - -180.525
+    - 54.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 19
+  business: logistics
 - id: customer-20
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 120.0
-    - 200.0
-    - 50.0
+    - -114.861
+    - -3.98
+    - 54.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 20
+  business: logistics
 - id: customer-21
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 240.0
-    - -120.0
-    - 50.0
+    - 85.984
+    - -279.089
+    - 6.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 21
+  business: logistics
 - id: customer-22
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 240.0
-    - -40.0
-    - 50.0
+    - -52.182
+    - -214.946
+    - 12.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 22
+  business: logistics
 - id: customer-23
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 240.0
-    - 40.0
-    - 50.0
+    - -24.81
+    - -204.642
+    - 15.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 23
+  business: logistics
 - id: customer-24
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 240.0
-    - 120.0
-    - 50.0
+    - -17.324
+    - -228.93
+    - 12.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 24
+  business: logistics
 - id: customer-25
   type: lowalt:Customer
   facts:
     lowalt.site_position:
-    - 240.0
-    - 200.0
-    - 50.0
+    - -0.308
+    - -251.319
+    - 12.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Customer rooftop 25
+  business: logistics
 - id: task-1
   type: lowalt:Task
   facts:
@@ -1066,6 +1118,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 1
+  business: logistics
 - id: task-2
   type: lowalt:Task
   facts:
@@ -1077,6 +1131,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 2
+  business: logistics
 - id: task-3
   type: lowalt:Task
   facts:
@@ -1088,6 +1144,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 3
+  business: logistics
 - id: task-4
   type: lowalt:Task
   facts:
@@ -1099,6 +1157,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 4
+  business: logistics
 - id: task-5
   type: lowalt:Task
   facts:
@@ -1110,6 +1170,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 5
+  business: logistics
 - id: task-6
   type: lowalt:Task
   facts:
@@ -1121,6 +1183,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 6
+  business: logistics
 - id: task-7
   type: lowalt:Task
   facts:
@@ -1132,6 +1196,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 7
+  business: logistics
 - id: task-8
   type: lowalt:Task
   facts:
@@ -1143,6 +1209,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 8
+  business: logistics
 - id: task-9
   type: lowalt:Task
   facts:
@@ -1154,6 +1222,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 9
+  business: logistics
 - id: task-10
   type: lowalt:Task
   facts:
@@ -1165,6 +1235,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 10
+  business: logistics
 - id: task-11
   type: lowalt:Task
   facts:
@@ -1176,6 +1248,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 11
+  business: logistics
 - id: task-12
   type: lowalt:Task
   facts:
@@ -1187,6 +1261,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 12
+  business: logistics
 - id: task-13
   type: lowalt:Task
   facts:
@@ -1198,6 +1274,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 13
+  business: logistics
 - id: task-14
   type: lowalt:Task
   facts:
@@ -1209,6 +1287,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 14
+  business: logistics
 - id: task-15
   type: lowalt:Task
   facts:
@@ -1220,6 +1300,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 15
+  business: logistics
 - id: task-16
   type: lowalt:Task
   facts:
@@ -1231,6 +1313,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 16
+  business: logistics
 - id: task-17
   type: lowalt:Task
   facts:
@@ -1242,6 +1326,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 17
+  business: logistics
 - id: task-18
   type: lowalt:Task
   facts:
@@ -1253,6 +1339,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 18
+  business: logistics
 - id: task-19
   type: lowalt:Task
   facts:
@@ -1264,6 +1352,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 19
+  business: logistics
 - id: task-20
   type: lowalt:Task
   facts:
@@ -1275,6 +1365,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 20
+  business: logistics
 - id: task-21
   type: lowalt:Task
   facts:
@@ -1286,6 +1378,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 21
+  business: logistics
 - id: task-22
   type: lowalt:Task
   facts:
@@ -1297,6 +1391,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 22
+  business: logistics
 - id: task-23
   type: lowalt:Task
   facts:
@@ -1308,6 +1404,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 23
+  business: logistics
 - id: task-24
   type: lowalt:Task
   facts:
@@ -1319,6 +1417,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 24
+  business: logistics
 - id: task-25
   type: lowalt:Task
   facts:
@@ -1330,6 +1430,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 25
+  business: logistics
 - id: task-26
   type: lowalt:Task
   facts:
@@ -1341,6 +1443,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 26
+  business: logistics
 - id: task-27
   type: lowalt:Task
   facts:
@@ -1352,6 +1456,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 27
+  business: logistics
 - id: task-28
   type: lowalt:Task
   facts:
@@ -1363,6 +1469,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 28
+  business: logistics
 - id: task-29
   type: lowalt:Task
   facts:
@@ -1374,6 +1482,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 29
+  business: logistics
 - id: task-30
   type: lowalt:Task
   facts:
@@ -1385,6 +1495,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 30
+  business: logistics
 - id: task-31
   type: lowalt:Task
   facts:
@@ -1396,6 +1508,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 31
+  business: logistics
 - id: task-32
   type: lowalt:Task
   facts:
@@ -1407,6 +1521,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 32
+  business: logistics
 - id: task-33
   type: lowalt:Task
   facts:
@@ -1418,6 +1534,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 33
+  business: logistics
 - id: task-34
   type: lowalt:Task
   facts:
@@ -1429,6 +1547,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 34
+  business: logistics
 - id: task-35
   type: lowalt:Task
   facts:
@@ -1440,6 +1560,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 35
+  business: logistics
 - id: task-36
   type: lowalt:Task
   facts:
@@ -1451,6 +1573,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 36
+  business: logistics
 - id: task-37
   type: lowalt:Task
   facts:
@@ -1462,6 +1586,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 37
+  business: logistics
 - id: task-38
   type: lowalt:Task
   facts:
@@ -1473,6 +1599,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 38
+  business: logistics
 - id: task-39
   type: lowalt:Task
   facts:
@@ -1484,6 +1612,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 39
+  business: logistics
 - id: task-40
   type: lowalt:Task
   facts:
@@ -1495,6 +1625,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 40
+  business: logistics
 - id: task-41
   type: lowalt:Task
   facts:
@@ -1506,6 +1638,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 41
+  business: logistics
 - id: task-42
   type: lowalt:Task
   facts:
@@ -1517,6 +1651,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 42
+  business: logistics
 - id: task-43
   type: lowalt:Task
   facts:
@@ -1528,6 +1664,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 43
+  business: logistics
 - id: task-44
   type: lowalt:Task
   facts:
@@ -1539,6 +1677,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 44
+  business: logistics
 - id: task-45
   type: lowalt:Task
   facts:
@@ -1550,6 +1690,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 45
+  business: logistics
 - id: task-46
   type: lowalt:Task
   facts:
@@ -1561,6 +1703,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 46
+  business: logistics
 - id: task-47
   type: lowalt:Task
   facts:
@@ -1572,6 +1716,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 47
+  business: logistics
 - id: task-48
   type: lowalt:Task
   facts:
@@ -1583,6 +1729,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 48
+  business: logistics
 - id: task-49
   type: lowalt:Task
   facts:
@@ -1594,6 +1742,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 49
+  business: logistics
 - id: task-50
   type: lowalt:Task
   facts:
@@ -1605,6 +1755,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 50
+  business: logistics
 - id: task-51
   type: lowalt:Task
   facts:
@@ -1616,6 +1768,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 51
+  business: logistics
 - id: task-52
   type: lowalt:Task
   facts:
@@ -1627,6 +1781,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 52
+  business: logistics
 - id: task-53
   type: lowalt:Task
   facts:
@@ -1638,6 +1794,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 53
+  business: logistics
 - id: task-54
   type: lowalt:Task
   facts:
@@ -1649,6 +1807,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 54
+  business: logistics
 - id: task-55
   type: lowalt:Task
   facts:
@@ -1660,6 +1820,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 55
+  business: logistics
 - id: task-56
   type: lowalt:Task
   facts:
@@ -1671,6 +1833,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 56
+  business: logistics
 - id: task-57
   type: lowalt:Task
   facts:
@@ -1682,6 +1846,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 57
+  business: logistics
 - id: task-58
   type: lowalt:Task
   facts:
@@ -1693,6 +1859,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 58
+  business: logistics
 - id: task-59
   type: lowalt:Task
   facts:
@@ -1704,6 +1872,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 59
+  business: logistics
 - id: task-60
   type: lowalt:Task
   facts:
@@ -1715,6 +1885,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 60
+  business: logistics
 - id: task-61
   type: lowalt:Task
   facts:
@@ -1726,6 +1898,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 61
+  business: logistics
 - id: task-62
   type: lowalt:Task
   facts:
@@ -1737,6 +1911,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 62
+  business: logistics
 - id: task-63
   type: lowalt:Task
   facts:
@@ -1748,6 +1924,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 63
+  business: logistics
 - id: task-64
   type: lowalt:Task
   facts:
@@ -1759,6 +1937,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 64
+  business: logistics
 - id: task-65
   type: lowalt:Task
   facts:
@@ -1770,6 +1950,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 65
+  business: logistics
 - id: task-66
   type: lowalt:Task
   facts:
@@ -1781,6 +1963,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 66
+  business: logistics
 - id: task-67
   type: lowalt:Task
   facts:
@@ -1792,6 +1976,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 67
+  business: logistics
 - id: task-68
   type: lowalt:Task
   facts:
@@ -1803,6 +1989,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 68
+  business: logistics
 - id: task-69
   type: lowalt:Task
   facts:
@@ -1814,6 +2002,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 69
+  business: logistics
 - id: task-70
   type: lowalt:Task
   facts:
@@ -1825,6 +2015,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 70
+  business: logistics
 - id: task-71
   type: lowalt:Task
   facts:
@@ -1836,6 +2028,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 71
+  business: logistics
 - id: task-72
   type: lowalt:Task
   facts:
@@ -1847,6 +2041,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 72
+  business: logistics
 - id: task-73
   type: lowalt:Task
   facts:
@@ -1858,6 +2054,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 73
+  business: logistics
 - id: task-74
   type: lowalt:Task
   facts:
@@ -1869,6 +2067,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 74
+  business: logistics
 - id: task-75
   type: lowalt:Task
   facts:
@@ -1880,6 +2080,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 75
+  business: logistics
 - id: task-76
   type: lowalt:Task
   facts:
@@ -1891,6 +2093,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 76
+  business: logistics
 - id: task-77
   type: lowalt:Task
   facts:
@@ -1902,6 +2106,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 77
+  business: logistics
 - id: task-78
   type: lowalt:Task
   facts:
@@ -1913,6 +2119,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 78
+  business: logistics
 - id: task-79
   type: lowalt:Task
   facts:
@@ -1924,6 +2132,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 79
+  business: logistics
 - id: task-80
   type: lowalt:Task
   facts:
@@ -1935,6 +2145,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 80
+  business: logistics
 - id: task-81
   type: lowalt:Task
   facts:
@@ -1946,6 +2158,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 81
+  business: logistics
 - id: task-82
   type: lowalt:Task
   facts:
@@ -1957,6 +2171,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 82
+  business: logistics
 - id: task-83
   type: lowalt:Task
   facts:
@@ -1968,6 +2184,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 83
+  business: logistics
 - id: task-84
   type: lowalt:Task
   facts:
@@ -1979,6 +2197,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 84
+  business: logistics
 - id: task-85
   type: lowalt:Task
   facts:
@@ -1990,6 +2210,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 85
+  business: logistics
 - id: task-86
   type: lowalt:Task
   facts:
@@ -2001,6 +2223,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 86
+  business: logistics
 - id: task-87
   type: lowalt:Task
   facts:
@@ -2012,6 +2236,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 87
+  business: logistics
 - id: task-88
   type: lowalt:Task
   facts:
@@ -2023,6 +2249,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 88
+  business: logistics
 - id: task-89
   type: lowalt:Task
   facts:
@@ -2034,6 +2262,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 89
+  business: logistics
 - id: task-90
   type: lowalt:Task
   facts:
@@ -2045,6 +2275,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 90
+  business: logistics
 - id: task-91
   type: lowalt:Task
   facts:
@@ -2056,6 +2288,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 91
+  business: logistics
 - id: task-92
   type: lowalt:Task
   facts:
@@ -2067,6 +2301,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 92
+  business: logistics
 - id: task-93
   type: lowalt:Task
   facts:
@@ -2078,6 +2314,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 93
+  business: logistics
 - id: task-94
   type: lowalt:Task
   facts:
@@ -2089,6 +2327,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 94
+  business: logistics
 - id: task-95
   type: lowalt:Task
   facts:
@@ -2100,6 +2340,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 95
+  business: logistics
 - id: task-96
   type: lowalt:Task
   facts:
@@ -2111,6 +2353,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 96
+  business: logistics
 - id: task-97
   type: lowalt:Task
   facts:
@@ -2122,6 +2366,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 97
+  business: logistics
 - id: task-98
   type: lowalt:Task
   facts:
@@ -2133,6 +2379,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 98
+  business: logistics
 - id: task-99
   type: lowalt:Task
   facts:
@@ -2144,6 +2392,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 99
+  business: logistics
 - id: task-100
   type: lowalt:Task
   facts:
@@ -2155,25 +2405,31 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
+  label: Parcel mission 100
+  business: logistics
 - id: central-no-fly
   type: lowalt:AirspaceZone
   facts:
     lowalt.zone_kind: no_fly
     lowalt.zone_lower:
-    - -55.0
-    - -55.0
+    - 131.941
+    - -204.446
     - 0.0
     lowalt.zone_upper:
-    - 55.0
-    - 55.0
-    - 120.0
+    - 174.835
+    - -165.005
+    - 155.0
     lowalt.zone_start_ns: 0
     lowalt.zone_end_ns: 300000000000
     lowalt.zone_dynamic: false
     lowalt.zone_active: true
+  label: Landmark rooftop exclusion
+  business: airspace
 - id: weather
   type: lowalt:Environment
   facts: {}
+  label: Shared city weather
+  business: weather
 bindings:
   rules:
   - writer: motion
@@ -2263,13 +2519,8 @@ generators:
     prefix: drone-
     type: lowalt:UAV
     starts:
-    - - -240.0
-      - -220.0
-      - 50.0
-    - - 240.0
-      - -220.0
-      - 50.0
-    spacing_m: 35.0
+    - *id008
+    spacing_m: 1.0
     facts:
       lowalt.velocity:
       - 0.0
@@ -2287,6 +2538,9 @@ generators:
       lowalt.charging: false
       lowalt.energy_used_j: 0.0
       lowalt.distance_m: 0.0
+    label: Drone P{index}
+    business: logistics
+    vehicle_class: parcel
 engines:
   motion:
     plugin: kinematic
@@ -2335,6 +2589,8 @@ engines:
           grid_m: 20.0
         charging:
           threshold: 0.2
+        conflict_resolution:
+          minimum_altitude_m: 125.0
       separation_horizontal_m: 20.0
       separation_vertical_m: 8.0
       wind_limits:
@@ -2517,6 +2773,8 @@ engines:
           mode: poisson
           rate_per_s: 0.08
           start_ns: 0
+      cruise_altitudes:
+        parcel: 125.0
   environment:
     plugin: environment
     config:

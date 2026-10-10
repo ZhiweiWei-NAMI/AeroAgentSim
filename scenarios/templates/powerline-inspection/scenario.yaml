@@ -53,7 +53,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.velocity
     type: lowalt:UAV
     schema: *id001
@@ -62,7 +62,7 @@ registry:
       unit: m/s
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.soc
     type: lowalt:UAV
     schema: *id002
@@ -159,7 +159,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.site_open
     type: lowalt:Site
     schema: *id005
@@ -191,7 +191,7 @@ registry:
       unit: m/s
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_kind
     type: lowalt:AirspaceZone
     schema:
@@ -213,7 +213,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_upper
     type: lowalt:AirspaceZone
     schema: *id001
@@ -222,7 +222,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_start_ns
     type: lowalt:AirspaceZone
     schema: *id006
@@ -795,43 +795,47 @@ entities:
 - id: weather
   type: lowalt:Environment
   facts: {}
+  label: Shared city weather
+  business: weather
 - id: home
   type: lowalt:Vertiport
   facts:
-    lowalt.site_position:
-    - -240.0
-    - -100.0
-    - 60.0
+    lowalt.site_position: &id008
+    - -13.05
+    - -100.037
+    - 0.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Vertiport West Plaza
+  business: inspection
 - id: home-pad
   type: lowalt:ChargingPad
   facts:
-    lowalt.site_position:
-    - -240.0
-    - -100.0
-    - 60.0
+    lowalt.site_position: *id008
     lowalt.site_open: true
     lowalt.site_capacity: 1
     lowalt.pad_power_w: 5000.0
+  label: West Plaza charging pad
+  business: inspection
 - id: line-start
   type: lowalt:Site
   facts:
-    lowalt.site_position:
-    - -240.0
-    - 0.0
-    - 60.0
+    lowalt.site_position: &id009
+    - 54.39
+    - 163.49
+    - 125.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: North road power-line start
+  business: inspection
 - id: line-end
   type: lowalt:Site
   facts:
-    lowalt.site_position:
-    - 240.0
-    - 0.0
-    - 60.0
+    lowalt.site_position: *id009
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: North road survey return point
+  business: inspection
 - id: line-survey-1
   type: lowalt:Task
   facts:
@@ -843,6 +847,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 0.0
+  label: Inspection mission 1
+  business: inspection
 - id: line-survey-2
   type: lowalt:Task
   facts:
@@ -854,6 +860,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 0.0
+  label: Inspection mission 2
+  business: inspection
 - id: line-survey-3
   type: lowalt:Task
   facts:
@@ -865,22 +873,26 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 0.0
+  label: Inspection mission 3
+  business: inspection
 - id: powerline-corridor
   type: lowalt:AirspaceZone
   facts:
     lowalt.zone_kind: corridor
     lowalt.zone_lower:
-    - -260.0
-    - -20.0
-    - 40.0
+    - 42.39
+    - -158.423
+    - 120.0
     lowalt.zone_upper:
-    - 260.0
-    - 20.0
-    - 80.0
+    - 115.312
+    - 175.49
+    - 175.0
     lowalt.zone_start_ns: 0
     lowalt.zone_end_ns: 300000000000
     lowalt.zone_dynamic: false
     lowalt.zone_active: true
+  label: Powerline corridor
+  business: airspace
 bindings:
   rules:
   - writer: motion
@@ -970,10 +982,8 @@ generators:
     prefix: drone-
     type: lowalt:UAV
     starts:
-    - - -240.0
-      - -100.0
-      - 60.0
-    spacing_m: 35.0
+    - *id008
+    spacing_m: 1.0
     facts:
       lowalt.velocity:
       - 0.0
@@ -991,6 +1001,9 @@ generators:
       lowalt.charging: false
       lowalt.energy_used_j: 0.0
       lowalt.distance_m: 0.0
+    label: Survey drone {index}
+    business: inspection
+    vehicle_class: inspection
 engines:
   motion:
     plugin: kinematic
@@ -1039,6 +1052,8 @@ engines:
           grid_m: 20.0
         charging:
           threshold: 0.2
+        conflict_resolution:
+          minimum_altitude_m: 125.0
       separation_horizontal_m: 20.0
       separation_vertical_m: 8.0
       wind_limits:
@@ -1106,18 +1121,18 @@ engines:
           algorithm: survey
           config:
             waypoints:
-            - - -120.0
-              - 0.0
-              - 60.0
-            - - 0.0
-              - 0.0
-              - 60.0
-            - - 120.0
-              - 0.0
-              - 60.0
-            - - 240.0
-              - 0.0
-              - 60.0
+            - &id010
+              - 54.895
+              - 88.494
+              - 125.0
+            - *id009
+            - *id009
+            - *id010
+            - *id010
+            - *id009
+            - *id009
+            - *id010
+            cruise_altitude_m: 125.0
       vehicle_kinds:
         inspection:
         - parcel
@@ -1128,6 +1143,8 @@ engines:
         - patrol
         - incident_response
       pad_dwell_ns: 10000000000
+      cruise_altitudes:
+        inspection: 125.0
   environment:
     plugin: environment
     config:

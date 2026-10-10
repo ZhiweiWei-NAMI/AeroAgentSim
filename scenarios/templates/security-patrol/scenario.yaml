@@ -53,7 +53,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.velocity
     type: lowalt:UAV
     schema: *id001
@@ -62,7 +62,7 @@ registry:
       unit: m/s
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.soc
     type: lowalt:UAV
     schema: *id002
@@ -159,7 +159,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.site_open
     type: lowalt:Site
     schema: *id005
@@ -191,7 +191,7 @@ registry:
       unit: m/s
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_kind
     type: lowalt:AirspaceZone
     schema:
@@ -213,7 +213,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_upper
     type: lowalt:AirspaceZone
     schema: *id001
@@ -222,7 +222,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_start_ns
     type: lowalt:AirspaceZone
     schema: *id006
@@ -795,43 +795,47 @@ entities:
 - id: weather
   type: lowalt:Environment
   facts: {}
+  label: Shared city weather
+  business: weather
 - id: home
   type: lowalt:Vertiport
   facts:
-    lowalt.site_position:
-    - -240.0
-    - -100.0
-    - 60.0
+    lowalt.site_position: &id008
+    - -13.05
+    - -100.037
+    - 0.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Vertiport West Plaza
+  business: security
 - id: home-pad
   type: lowalt:ChargingPad
   facts:
-    lowalt.site_position:
-    - -240.0
-    - -100.0
-    - 60.0
+    lowalt.site_position: *id008
     lowalt.site_open: true
     lowalt.site_capacity: 1
     lowalt.pad_power_w: 5000.0
+  label: West Plaza charging pad
+  business: security
 - id: guard-return
   type: lowalt:Site
   facts:
-    lowalt.site_position:
-    - -240.0
-    - -100.0
-    - 60.0
+    lowalt.site_position: *id008
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Guard return
+  business: security
 - id: incident-site
   type: lowalt:Site
   facts:
     lowalt.site_position:
-    - 80.0
-    - 80.0
-    - 60.0
+    - 103.312
+    - -146.423
+    - 125.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Incident site
+  business: security
 - id: patrol-1
   type: lowalt:Task
   facts:
@@ -843,6 +847,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 0.0
+  label: Patrol mission 1
+  business: security
 - id: patrol-2
   type: lowalt:Task
   facts:
@@ -854,6 +860,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 0.0
+  label: Patrol mission 2
+  business: security
 - id: patrol-3
   type: lowalt:Task
   facts:
@@ -865,6 +873,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 0.0
+  label: Patrol mission 3
+  business: security
 - id: investigation-1
   type: lowalt:Task
   facts:
@@ -876,6 +886,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 0.0
+  label: Incident Response mission 1
+  business: emergency
 bindings:
   rules:
   - writer: motion
@@ -974,10 +986,8 @@ generators:
     prefix: drone-
     type: lowalt:UAV
     starts:
-    - - -240.0
-      - -100.0
-      - 60.0
-    spacing_m: 35.0
+    - *id008
+    spacing_m: 1.0
     facts:
       lowalt.velocity:
       - 0.0
@@ -995,6 +1005,9 @@ generators:
       lowalt.charging: false
       lowalt.energy_used_j: 0.0
       lowalt.distance_m: 0.0
+    label: Patrol drone {index}
+    business: security
+    vehicle_class: patrol
 engines:
   motion:
     plugin: kinematic
@@ -1043,6 +1056,8 @@ engines:
           grid_m: 20.0
         charging:
           threshold: 0.2
+        conflict_resolution:
+          minimum_altitude_m: 125.0
       separation_horizontal_m: 20.0
       separation_vertical_m: 8.0
       wind_limits:
@@ -1123,18 +1138,19 @@ engines:
           algorithm: patrol
           config:
             waypoints:
-            - - -240.0
-              - 100.0
-              - 60.0
-            - - -40.0
-              - 100.0
-              - 60.0
-            - - -40.0
-              - -100.0
-              - 60.0
-            - - -240.0
-              - -100.0
-              - 60.0
+            - - -44.494
+              - -7.319
+              - 125.0
+            - - -44.494
+              - 46.971000000000004
+              - 125.0
+            - - 65.81700000000001
+              - 46.971000000000004
+              - 125.0
+            - - 65.81700000000001
+              - -7.319
+              - 125.0
+            cruise_altitude_m: 125.0
       vehicle_kinds:
         patrol:
         - parcel
@@ -1145,6 +1161,8 @@ engines:
         - patrol
         - incident_response
       pad_dwell_ns: 10000000000
+      cruise_altitudes:
+        patrol: 125.0
   environment:
     plugin: environment
     config:

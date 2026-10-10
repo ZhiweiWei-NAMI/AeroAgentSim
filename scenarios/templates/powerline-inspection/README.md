@@ -1,7 +1,7 @@
 # Power line inspection
 
 A beginner template: one drone flies along an authored power-line corridor,
-records survey observations at measured positions, and waits on the ground
+records survey observations at measured positions, and pauses its flight
 when wind is stronger than its limit.
 
 ## What happens
@@ -12,8 +12,8 @@ when wind is stronger than its limit.
   the line; each observation event carries a committed position.
 - A wind gust is authored between 35 s and 75 s at 9 m/s, above the
   inspection wind limit of 6 m/s, so the drone holds and then continues.
-- The airspace engine owns geofence zones; the flight stays inside the
-  `powerline-corridor` zone.
+- The airspace engine owns geofence zones; the survey follows the northern
+  road corridor above the city roofs.
 
 ## Knobs
 
@@ -38,3 +38,11 @@ aeroagentsim serve   # browser console for the same scenario
 
 One shared kernel: task state, motion, weather, airspace and energy are
 separate engines with one writer per field on the same clock.
+
+## Huangpu city placement
+
+Coordinates are derived from the committed lite-city building outlines, roof
+heights and roads by `tools/templates/place.py`. Roof pads use their actual roof
+height; inter-site flights depart/arrive vertically and cruise above the 105 m
+roof ceiling. Names and business metadata are pinned with each run. See
+[the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).

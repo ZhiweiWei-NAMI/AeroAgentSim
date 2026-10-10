@@ -40,6 +40,10 @@ registry:
     parents:
     - oo:ModelObject
     abstract: false
+  - id: lowalt:Field
+    parents:
+    - lowalt:Site
+    abstract: false
   fields:
   - id: lowalt.position
     type: lowalt:UAV
@@ -53,7 +57,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.velocity
     type: lowalt:UAV
     schema: *id001
@@ -62,7 +66,7 @@ registry:
       unit: m/s
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.soc
     type: lowalt:UAV
     schema: *id002
@@ -159,7 +163,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.site_open
     type: lowalt:Site
     schema: *id005
@@ -191,7 +195,7 @@ registry:
       unit: m/s
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_kind
     type: lowalt:AirspaceZone
     schema:
@@ -213,7 +217,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_upper
     type: lowalt:AirspaceZone
     schema: *id001
@@ -222,7 +226,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_start_ns
     type: lowalt:AirspaceZone
     schema: *id006
@@ -795,43 +799,50 @@ entities:
 - id: weather
   type: lowalt:Environment
   facts: {}
+  label: Shared city weather
+  business: weather
 - id: home
   type: lowalt:Vertiport
   facts:
-    lowalt.site_position:
-    - -100.0
-    - -60.0
-    - 20.0
+    lowalt.site_position: &id008
+    - -148.366
+    - 125.467
+    - 0.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Field-edge battery station
+  business: agriculture
 - id: home-pad
   type: lowalt:ChargingPad
   facts:
-    lowalt.site_position:
-    - -100.0
-    - -60.0
-    - 20.0
+    lowalt.site_position: *id008
     lowalt.site_open: true
     lowalt.site_capacity: 1
     lowalt.pad_power_w: 5000.0
+  label: Field-edge battery swap pad
+  business: agriculture
 - id: field-entry
   type: lowalt:Site
   facts:
     lowalt.site_position:
-    - -80.0
-    - -60.0
-    - 20.0
+    - -140.366
+    - 125.467
+    - 5.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Field entry
+  business: agriculture
 - id: field-exit
   type: lowalt:Site
   facts:
     lowalt.site_position:
-    - 80.0
-    - 60.0
-    - 20.0
+    - 19.634
+    - 245.467
+    - 5.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Field exit
+  business: agriculture
 - id: field-1
   type: lowalt:Task
   facts:
@@ -843,6 +854,19 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 2.0
+  label: Spraying mission 1
+  business: agriculture
+- id: demo-field
+  type: lowalt:Field
+  facts:
+    lowalt.site_position:
+    - -60.36600000000001
+    - 185.467
+    - 0.0
+    lowalt.site_open: true
+    lowalt.site_capacity: 1
+  label: Huangpu edge demonstration field
+  business: agriculture
 bindings:
   rules:
   - writer: motion
@@ -932,10 +956,8 @@ generators:
     prefix: drone-
     type: lowalt:UAV
     starts:
-    - - -100.0
-      - -60.0
-      - 20.0
-    spacing_m: 35.0
+    - *id008
+    spacing_m: 1.0
     facts:
       lowalt.velocity:
       - 0.0
@@ -953,6 +975,9 @@ generators:
       lowalt.charging: false
       lowalt.energy_used_j: 0.0
       lowalt.distance_m: 0.0
+    label: Sprayer {index}
+    business: agriculture
+    vehicle_class: spraying
 engines:
   motion:
     plugin: kinematic
@@ -1001,6 +1026,8 @@ engines:
           grid_m: 20.0
         charging:
           threshold: 0.2
+        conflict_resolution:
+          minimum_altitude_m: 125.0
       separation_horizontal_m: 20.0
       separation_vertical_m: 8.0
       wind_limits:
@@ -1067,11 +1094,11 @@ engines:
           algorithm: coverage
           config:
             lower:
-            - -80.0
-            - -60.0
+            - -140.366
+            - 125.467
             upper:
-            - 80.0
-            - 60.0
+            - 19.634
+            - 245.467
             spacing_m: 30.0
       vehicle_kinds:
         spraying:
@@ -1083,6 +1110,8 @@ engines:
         - patrol
         - incident_response
       pad_dwell_ns: 10000000000
+      cruise_altitudes:
+        spraying: 5.0
   environment:
     plugin: environment
     config:
@@ -1126,3 +1155,11 @@ presentation:
     kind: marker
     color: '#ffc658'
     scale: 3.0
+- typeId: lowalt:Field
+  positionField: lowalt.site_position
+  frame: enu
+  visual:
+    kind: model
+    asset: data:model/gltf+json;base64,eyJhc3NldCI6IHsidmVyc2lvbiI6ICIyLjAiLCAiZ2VuZXJhdG9yIjogIkh1YW5ncHUgZGVtb25zdHJhdGlvbiBmaWVsZCJ9LCAic2NlbmUiOiAwLCAic2NlbmVzIjogW3sibm9kZXMiOiBbMF19XSwgIm5vZGVzIjogW3sibWVzaCI6IDB9XSwgImJ1ZmZlcnMiOiBbeyJieXRlTGVuZ3RoIjogNjAsICJ1cmkiOiAiZGF0YTphcHBsaWNhdGlvbi9vY3RldC1zdHJlYW07YmFzZTY0LEFBQ2d3Z3JYb3p3QUFIRENBQUNnUWdyWG96d0FBSERDQUFDZ1FnclhvendBQUhCQ0FBQ2d3Z3JYb3p3QUFIQkNBQUFDQUFFQUFBQURBQUlBIn1dLCAiYnVmZmVyVmlld3MiOiBbeyJidWZmZXIiOiAwLCAiYnl0ZU9mZnNldCI6IDAsICJieXRlTGVuZ3RoIjogNDgsICJ0YXJnZXQiOiAzNDk2Mn0sIHsiYnVmZmVyIjogMCwgImJ5dGVPZmZzZXQiOiA0OCwgImJ5dGVMZW5ndGgiOiAxMiwgInRhcmdldCI6IDM0OTYzfV0sICJhY2Nlc3NvcnMiOiBbeyJidWZmZXJWaWV3IjogMCwgImNvbXBvbmVudFR5cGUiOiA1MTI2LCAiY291bnQiOiA0LCAidHlwZSI6ICJWRUMzIiwgIm1pbiI6IFstODAuMCwgMC4wMiwgLTYwLjBdLCAibWF4IjogWzgwLjAsIDAuMDIsIDYwLjBdfSwgeyJidWZmZXJWaWV3IjogMSwgImNvbXBvbmVudFR5cGUiOiA1MTIzLCAiY291bnQiOiA2LCAidHlwZSI6ICJTQ0FMQVIifV0sICJtYXRlcmlhbHMiOiBbeyJuYW1lIjogIkRlbW8gZmllbGQsIG5vdCBPU00gY3JvcGxhbmQiLCAiZG91YmxlU2lkZWQiOiB0cnVlLCAicGJyTWV0YWxsaWNSb3VnaG5lc3MiOiB7ImJhc2VDb2xvckZhY3RvciI6IFswLjE4LCAwLjQ4LCAwLjE4LCAxLjBdLCAibWV0YWxsaWNGYWN0b3IiOiAwLCAicm91Z2huZXNzRmFjdG9yIjogMX19XSwgIm1lc2hlcyI6IFt7InByaW1pdGl2ZXMiOiBbeyJhdHRyaWJ1dGVzIjogeyJQT1NJVElPTiI6IDB9LCAiaW5kaWNlcyI6IDEsICJtYXRlcmlhbCI6IDB9XX1dfQ==
+    scale: 1.0
+    color: '#2e7b2e'

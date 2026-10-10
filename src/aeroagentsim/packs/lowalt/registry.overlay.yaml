@@ -11,6 +11,10 @@ types:
   parents:
   - lowalt:Site
   abstract: false
+- id: lowalt:Field
+  parents:
+  - lowalt:Site
+  abstract: false
 - id: lowalt:Vertiport
   parents:
   - lowalt:Site

@@ -63,3 +63,15 @@ Field ownership follows the shared kernel contract:
 Offline defaults schedule the two operator decisions. For live SDK control, use an operator stream starting at watermark 0 and advance progress after admitting the next command; see the fabric test and the city-day guide. The traffic camera uses the existing headless Chromium/Playwright renderer.
 
 The city camera reuses the traffic capture owner and binds storage to the actual RunSession directory. It honors an explicit Chromium override, discovers an installed Playwright headless shell, or uses Playwright's standard browser installation. No image fixture substitutes for a failed render.
+
+## Huangpu city placement
+
+Coordinates are derived from the committed lite-city building outlines, roof
+heights and roads by `tools/templates/place.py`. Roof pads use their actual roof
+height; inter-site flights depart/arrive vertically and cruise above the 105 m
+roof ceiling. Names and business metadata are pinned with each run. See
+[the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).
+
+The green field is an explicitly authored demonstration polygon beyond the
+northern dense core, not source OSM cropland. Spraying rows are 5 m above its
+ground plane; the standalone swap pad is at the field edge.

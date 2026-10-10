@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 from pathlib import Path
 
 import yaml
@@ -45,7 +46,9 @@ def test_city_day_shared_fabric_and_replay(tmp_path: Path) -> None:
         view = session.simulation.kernel.view()
         for receipt in receipts:
             assert view.action(receipt.command_id).status == "succeeded"
-        records = session.simulation.kernel.records
+        # records builds a tuple of every expanded diagnostic tree. Stream the
+        # identical trees instead, retaining only small business-event payloads.
+        records = session.simulation.kernel.iter_records()
         from aerokernel.codec import decode_record
         from aerokernel.values import thaw
 
@@ -117,6 +120,18 @@ def test_city_day_shared_fabric_and_replay(tmp_path: Path) -> None:
             and e["payload"]["b"] in classes
             for e in by_schema["lowalt.airspace.conflict"]
         )
+        cross_business = {
+            tuple(sorted((e["payload"]["a"], e["payload"]["b"])))
+            for e in by_schema["lowalt.airspace.conflict"]
+            if e["payload"]["a"] in classes
+            and e["payload"]["b"] in classes
+            and classes[e["payload"]["a"]] != classes[e["payload"]["b"]]
+        }
+        resolved = {
+            tuple(sorted((e["payload"]["a"], e["payload"]["b"])))
+            for e in by_schema["lowalt.airspace.conflict_resolved"]
+        }
+        assert cross_business & resolved
         holds = by_schema["lowalt.weather.hold"]
         assert {"inspection", "spraying"} <= {
             classes[e["payload"]["vehicle"]] for e in holds
@@ -156,6 +171,11 @@ def test_city_day_shared_fabric_and_replay(tmp_path: Path) -> None:
         instant = view.instant
     finally:
         session.close()
+    # Equality still covers every committed field, including dynamic entities.
+    # The live runtime is no longer needed while constructing the replay runtime.
+    del view, session, records, record, item, message, events, by_schema
+    gc.collect()
     recorded = replay(directory / "journal.jsonl").view()
     assert recorded.instant == instant
-    assert {key: thaw(recorded.field(key, instant).value) for key in expected} == expected
+    for key, value in expected.items():
+        assert thaw(recorded.field(key, instant).value) == value, key

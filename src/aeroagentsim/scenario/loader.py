@@ -462,9 +462,17 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
     refs: list[EntityRef] = []
     initial: dict[str, dict[str, Any]] = {}
     for index, item in enumerate(seq(document["entities"], "entities")):
-        item = contract(item, f"entities[{index}]", {"id", "type", "facts"})
+        item = contract(
+            item,
+            f"entities[{index}]",
+            {"id", "type", "facts"},
+            {"label", "business", "vehicle_class"},
+        )
         entity_id = text(item["id"], f"entities[{index}].id")
         type_id = text(item["type"], f"entities[{index}].type")
+        for name in ("label", "business", "vehicle_class"):
+            if name in item:
+                text(item[name], f"entities[{index}].{name}")
         if entity_id in initial:
             raise ScenarioError(f"entities[{index}].id: duplicate {entity_id!r}")
         try:
@@ -475,6 +483,14 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             ) from exc
         refs.append(EntityRef(run_id, "0", entity_id, 0, type_id))
         initial[entity_id] = obj(item["facts"], f"entities[{index}].facts")
+        if (
+            "vehicle_class" in item
+            and "lowalt.vehicle_class" in initial[entity_id]
+            and item["vehicle_class"] != initial[entity_id]["lowalt.vehicle_class"]
+        ):
+            raise ScenarioError(
+                f"entities[{index}].vehicle_class: must agree with lowalt.vehicle_class"
+            )
         for field, value in initial[entity_id].items():
             path = f"entities.{entity_id}.facts.{field}"
             try:
