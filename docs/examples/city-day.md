@@ -56,6 +56,10 @@ Business tasks run throughout: parcels (from 0 s), inspections along the
 north line, passenger taxis from the hospital vertiport to `east-port`, and urgent medical
 flights at 8 s and 145 s.
 
+The Huangpu layout starts one parcel drone at the hospital roof and two at the
+west plaza. The nearest hospital parcel is preempted by the first medical order;
+the plaza parcels and taxi are already routed when the incident is detected.
+
 ## Wind, zones and battery at a glance
 
 | Class | Wind limit (m/s) | Battery |
@@ -91,10 +95,52 @@ The city camera reuses the traffic capture owner and binds storage to the actual
 
 ## Measured default run
 
-With AeroGraph unset, the 300 s headless city run took 129.08 s: RTF 2.32,
-peak RSS 236.0 MiB, journal 27.35 MiB, and one real accepted PNG capture.
+With AeroGraph unset, the Huangpu 300 s headless city run took 131.53 s:
+RTF 2.28, peak RSS 239.6 MiB, journal 27.59 MiB, and one real accepted PNG capture.
 These are CLI wall-time/RSS measurements, excluding replay. All five individual
-templates also exceed real time (RTF 40–77). The city includes 63 road vehicles,
+templates also exceed real time (RTF 36–73); parcel delivery reaches RTF 16.95.
+The city includes 63 road vehicles,
 eight traffic UAVs and six lowalt aircraft. Its larger shared traffic/behaviour
 workload and journal are the likely source of the difference; no CPU profile
 was collected.
+
+## Huangpu placements (LA3)
+
+All seven lowalt templates now use the committed Huangpu lite city's ENU frame
+(E=X, N=-Z, U=Y). Regenerate coordinates from the actual building outlines,
+heights and road polylines with:
+
+```bash
+PYTHONPATH=aerokernel:src python tools/templates/place.py
+python tools/templates/place.py --check
+```
+
+`scenarios/templates/huangpu-placements.json` records the source SHA-256 and
+placements. Roof pads sit at the source roof height; the west plaza is outside
+all building outlines. Customer locations are reproducible interior roof points.
+The flight owner uses vertical departures/arrivals and 125 m cruise (105 m
+highest roof plus 20 m); altitude layers retain this floor. Inspection follows
+the northern road's first traversal, while taxis use the main road corridor.
+Patrol follows the landmark block near the north end of the incident lane.
+The temporary incident restriction extends to 180 m, so it still changes routes
+at the new cruise height. Transit avoidance replans from the new safe position;
+coverage resumes its interrupted work segment. Passenger pad capacity is checked
+before both pickup and destination descent, with boarding/arrival dwell.
+
+There is no source cropland in the lite scene. The green field is an explicit
+160 × 120 m demonstration polygon just beyond the northernmost buildings,
+not an OSM land-use claim. Its inline glTF plane is anchored in ENU and uses the
+existing model renderer; field work stays at 5 m, with the swap pad at ground
+level. City spraying transits above roofs before descending into the field.
+The optional detailed city binding is owned by job ASSETS; LA3 adds no `city:`
+reference to scenario documents.
+
+The fabric proof streams diagnostic records and compares every committed field
+(including dynamically created entities) one at a time after releasing the live
+runtime. It retains all business interaction assertions and checks that a
+cross-business conflict is resolved; no fields or events are sampled away.
+
+The standalone 300 s fabric pytest, including the real live-ingress capture and
+full official replay, peaked at 418.4 MiB RSS (previously about 3.3 GiB). The
+large diagnostic tuple was the avoidable allocation; this is separate from the
+240 MiB headless run measurement above.

@@ -244,8 +244,15 @@ class CorridorAstar:
 class AltitudeLayers:
     description = "Move conflicting drones to deterministic separate altitude layers."
 
-    def __init__(self, layer_spacing_m: float = 12.0) -> None:
+    def __init__(
+        self, layer_spacing_m: float = 12.0, minimum_altitude_m: float | None = None
+    ) -> None:
         self.spacing = finite(layer_spacing_m, "altitude layer spacing", 1e-6)
+        self.minimum = (
+            None
+            if minimum_altitude_m is None
+            else finite(minimum_altitude_m, "minimum altitude layer", 0)
+        )
 
     def resolve(
         self, snapshot: Snapshot, conflicts: tuple[Conflict, ...]
@@ -260,6 +267,8 @@ class AltitudeLayers:
             affected = [i for i in affected if i not in external]
         else:
             base = min(vehicles[i].position[2] for i in affected)
+        if self.minimum is not None:
+            base = max(base, self.minimum)
         return tuple(
             Resolution(identity, "altitude", base + index * self.spacing)
             for index, identity in enumerate(affected)

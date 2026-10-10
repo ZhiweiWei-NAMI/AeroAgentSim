@@ -41,3 +41,11 @@ aeroagentsim serve   # browser console for the same scenario
 
 All engines write through one shared runtime with a single writer per field,
 so a completed run replays deterministically.
+
+## Huangpu city placement
+
+Coordinates are derived from the committed lite-city building outlines, roof
+heights and roads by `tools/templates/place.py`. Roof pads use their actual roof
+height; inter-site flights depart/arrive vertically and cruise above the 105 m
+roof ceiling. Names and business metadata are pinned with each run. See
+[the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).

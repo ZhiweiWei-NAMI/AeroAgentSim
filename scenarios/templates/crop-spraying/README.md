@@ -38,3 +38,15 @@ aeroagentsim serve   # browser console for the same scenario
 
 Motion, energy, weather, airspace and task state each have exactly one
 writer engine on the shared discrete-event clock, so results replay.
+
+## Huangpu city placement
+
+Coordinates are derived from the committed lite-city building outlines, roof
+heights and roads by `tools/templates/place.py`. Roof pads use their actual roof
+height; inter-site flights depart/arrive vertically and cruise above the 105 m
+roof ceiling. Names and business metadata are pinned with each run. See
+[the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).
+
+The green field is an explicitly authored demonstration polygon beyond the
+northern dense core, not source OSM cropland. Spraying rows are 5 m above its
+ground plane; the standalone swap pad is at the field edge.

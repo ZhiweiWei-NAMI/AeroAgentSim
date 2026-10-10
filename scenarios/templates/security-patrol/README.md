@@ -38,3 +38,11 @@ aeroagentsim serve   # browser console for the same scenario
 Operator events enter through a declared ingress stream onto the same
 shared runtime; behaviour owns task state, motion owns pose, one writer
 per field.
+
+## Huangpu city placement
+
+Coordinates are derived from the committed lite-city building outlines, roof
+heights and roads by `tools/templates/place.py`. Roof pads use their actual roof
+height; inter-site flights depart/arrive vertically and cruise above the 105 m
+roof ceiling. Names and business metadata are pinned with each run. See
+[the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).

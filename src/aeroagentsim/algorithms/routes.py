@@ -14,9 +14,31 @@ import math
 from typing import Any, Sequence
 
 from aeroagentsim.algorithms.builtins import CorridorAstar
-from aeroagentsim.algorithms.protocols import Point, Snapshot
+from aeroagentsim.algorithms.protocols import PathPlanning, Point, Snapshot
 from aeroagentsim.packs.common import finite
 from aeroagentsim.packs.geometry import segment_hits_box
+
+
+def cruise_plan(
+    planner: PathPlanning,
+    snapshot: Snapshot,
+    start: Point,
+    goal: Point,
+    altitude: float,
+) -> tuple[Point, ...]:
+    """Leave/approach a site vertically and traverse above the authored roof ceiling."""
+    if start == goal:
+        return (goal,)
+    height = max(finite(altitude, "cruise altitude", 0), start[2], goal[2])
+    departure = (start[0], start[1], height)
+    arrival = (goal[0], goal[1], height)
+    points: list[Point] = []
+    prior = start
+    for target in (departure, arrival, goal):
+        if prior != target:
+            points.extend(planner.plan(snapshot, prior, target))
+        prior = target
+    return tuple(points)
 
 
 def _box(value: Sequence[float], name: str) -> tuple[float, float]:
@@ -48,8 +70,15 @@ def _crosses(snapshot: Snapshot, a: Point, b: Point) -> bool:
 class _Routing:
     """Shared validation and corridor connector for survey planners."""
 
-    def __init__(self, clearance_m: float) -> None:
+    def __init__(
+        self, clearance_m: float, cruise_altitude_m: float | None = None
+    ) -> None:
         self.connector = CorridorAstar(clearance_m=clearance_m)
+        self.cruise = (
+            None
+            if cruise_altitude_m is None
+            else finite(cruise_altitude_m, "route cruise altitude", 0)
+        )
 
     def connect(
         self, snapshot: Snapshot, a: Point, b: Point, label: str
@@ -57,6 +86,8 @@ class _Routing:
         """Waypoints from ``a`` to ``b``: direct when clear, else corridor A*."""
         if a == b:
             return ()
+        if self.cruise is not None:
+            return cruise_plan(self.connector, snapshot, a, b, self.cruise)
         if not _crosses(snapshot, a, b):
             return (b,)
         return self.connector.plan(snapshot, a, b)
@@ -147,14 +178,17 @@ class SurveyRoute:
         self,
         waypoints: Sequence[Sequence[float]],
         clearance_m: float = 1.0,
+        cruise_altitude_m: float | None = None,
         **config: Any,
     ) -> None:
         if config:
-            raise ValueError("survey accepts only waypoints/clearance")
+            raise ValueError("survey accepts only waypoints/clearance/cruise altitude")
         if not waypoints:
             raise ValueError("survey needs at least one waypoint")
         self.waypoints = waypoints
-        self.routing = _Routing(finite(clearance_m, "survey clearance", 0.0))
+        self.routing = _Routing(
+            finite(clearance_m, "survey clearance", 0.0), cruise_altitude_m
+        )
 
     def plan(self, snapshot: Snapshot, start: Point, goal: Point) -> tuple[Point, ...]:
         route = tuple(
@@ -187,15 +221,20 @@ class PatrolRoute:
         waypoints: Sequence[Sequence[float]],
         close: bool = True,
         clearance_m: float = 1.0,
+        cruise_altitude_m: float | None = None,
         **config: Any,
     ) -> None:
         if config:
-            raise ValueError("patrol accepts only waypoints/close/clearance")
+            raise ValueError(
+                "patrol accepts only waypoints/close/clearance/cruise altitude"
+            )
         if len(waypoints) < 2:
             raise ValueError("patrol needs at least two loop waypoints")
         self.waypoints = waypoints
         self.close = bool(close)
-        self.routing = _Routing(finite(clearance_m, "patrol clearance", 0.0))
+        self.routing = _Routing(
+            finite(clearance_m, "patrol clearance", 0.0), cruise_altitude_m
+        )
 
     def plan(self, snapshot: Snapshot, start: Point, goal: Point) -> tuple[Point, ...]:
         route = tuple(

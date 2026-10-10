@@ -194,6 +194,7 @@ def overlay() -> dict[str, Any]:
             ("UAV", ["oo:UAV"]),
             ("Site", ["oo:ModelObject"]),
             ("Customer", ["lowalt:Site"]),
+            ("Field", ["lowalt:Site"]),
             ("Vertiport", ["lowalt:Site", "oo:Facility"]),
             ("Depot", ["lowalt:Vertiport"]),
             ("ChargingPad", ["lowalt:Site"]),

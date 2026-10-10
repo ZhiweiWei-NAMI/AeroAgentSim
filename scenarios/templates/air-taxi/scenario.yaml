@@ -53,7 +53,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.velocity
     type: lowalt:UAV
     schema: *id001
@@ -62,7 +62,7 @@ registry:
       unit: m/s
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.soc
     type: lowalt:UAV
     schema: *id002
@@ -159,7 +159,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.site_open
     type: lowalt:Site
     schema: *id005
@@ -191,7 +191,7 @@ registry:
       unit: m/s
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_kind
     type: lowalt:AirspaceZone
     schema:
@@ -213,7 +213,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_upper
     type: lowalt:AirspaceZone
     schema: *id001
@@ -222,7 +222,7 @@ registry:
       unit: m
       time_semantics: canonical computation; half-open validity
       frame: enu
-      transform_revision: lowalt.district/v1
+      transform_revision: huangpu-lite-city/v1
   - id: lowalt.zone_start_ns
     type: lowalt:AirspaceZone
     schema: *id006
@@ -795,63 +795,68 @@ entities:
 - id: weather
   type: lowalt:Environment
   facts: {}
+  label: Shared city weather
+  business: weather
 - id: home
   type: lowalt:Vertiport
   facts:
-    lowalt.site_position:
-    - -240.0
-    - -100.0
-    - 60.0
+    lowalt.site_position: &id008
+    - -24.81
+    - -204.642
+    - 15.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Vertiport Bund Roof
+  business: mobility
 - id: home-pad
   type: lowalt:ChargingPad
   facts:
-    lowalt.site_position:
-    - -240.0
-    - -100.0
-    - 60.0
+    lowalt.site_position: *id008
     lowalt.site_open: true
     lowalt.site_capacity: 1
     lowalt.pad_power_w: 5000.0
+  label: Bund rooftop charging pad
+  business: mobility
 - id: east-port
   type: lowalt:Vertiport
   facts:
-    lowalt.site_position:
-    - 240.0
-    - -100.0
-    - 60.0
+    lowalt.site_position: &id009
+    - 328.337
+    - -136.882
+    - 12.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Vertiport East Roof
+  business: mobility
 - id: north-port
   type: lowalt:Vertiport
   facts:
-    lowalt.site_position:
-    - 0.0
-    - 200.0
-    - 60.0
+    lowalt.site_position: &id010
+    - 93.756
+    - 104.218
+    - 12.0
     lowalt.site_open: true
     lowalt.site_capacity: 1
+  label: Vertiport North Roof
+  business: mobility
 - id: east-pad
   type: lowalt:ChargingPad
   facts:
-    lowalt.site_position:
-    - 240.0
-    - -100.0
-    - 60.0
+    lowalt.site_position: *id009
     lowalt.site_open: true
     lowalt.site_capacity: 1
     lowalt.pad_power_w: 5000.0
+  label: East pad
+  business: mobility
 - id: north-pad
   type: lowalt:ChargingPad
   facts:
-    lowalt.site_position:
-    - 0.0
-    - 200.0
-    - 60.0
+    lowalt.site_position: *id010
     lowalt.site_open: true
     lowalt.site_capacity: 1
     lowalt.pad_power_w: 5000.0
+  label: North pad
+  business: mobility
 - id: flight-1
   type: lowalt:Task
   facts:
@@ -863,6 +868,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 80.0
+  label: Passenger mission 1
+  business: mobility
 - id: flight-2
   type: lowalt:Task
   facts:
@@ -874,6 +881,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 80.0
+  label: Passenger mission 2
+  business: mobility
 - id: flight-3
   type: lowalt:Task
   facts:
@@ -885,6 +894,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 80.0
+  label: Passenger mission 3
+  business: mobility
 - id: flight-4
   type: lowalt:Task
   facts:
@@ -896,6 +907,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 80.0
+  label: Passenger mission 4
+  business: mobility
 - id: flight-5
   type: lowalt:Task
   facts:
@@ -907,6 +920,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 80.0
+  label: Passenger mission 5
+  business: mobility
 - id: flight-6
   type: lowalt:Task
   facts:
@@ -918,6 +933,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 80.0
+  label: Passenger mission 6
+  business: mobility
 - id: flight-7
   type: lowalt:Task
   facts:
@@ -929,6 +946,8 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 80.0
+  label: Passenger mission 7
+  business: mobility
 - id: flight-8
   type: lowalt:Task
   facts:
@@ -940,38 +959,44 @@ entities:
     lowalt.task_created_ns: 0
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 80.0
+  label: Passenger mission 8
+  business: mobility
 - id: east-west-corridor
   type: lowalt:AirspaceZone
   facts:
     lowalt.zone_kind: corridor
     lowalt.zone_lower:
-    - -260.0
-    - -125.0
-    - 40.0
-    lowalt.zone_upper:
-    - 260.0
-    - -75.0
+    - 42.39
+    - -158.423
     - 120.0
+    lowalt.zone_upper:
+    - 115.312
+    - 175.49
+    - 175.0
     lowalt.zone_start_ns: 0
     lowalt.zone_end_ns: 300000000000
     lowalt.zone_dynamic: false
     lowalt.zone_active: true
+  label: East west corridor
+  business: airspace
 - id: north-corridor
   type: lowalt:AirspaceZone
   facts:
     lowalt.zone_kind: corridor
     lowalt.zone_lower:
-    - -30.0
-    - -125.0
-    - 40.0
-    lowalt.zone_upper:
-    - 30.0
-    - 220.0
+    - 42.39
+    - 76.494
     - 120.0
+    lowalt.zone_upper:
+    - 66.89500000000001
+    - 175.49
+    - 175.0
     lowalt.zone_start_ns: 0
     lowalt.zone_end_ns: 300000000000
     lowalt.zone_dynamic: false
     lowalt.zone_active: true
+  label: North corridor
+  business: airspace
 bindings:
   rules:
   - writer: motion
@@ -1061,10 +1086,8 @@ generators:
     prefix: drone-
     type: lowalt:UAV
     starts:
-    - - -240.0
-      - -100.0
-      - 60.0
-    spacing_m: 5.0
+    - *id008
+    spacing_m: 1.0
     facts:
       lowalt.velocity:
       - 0.0
@@ -1082,6 +1105,9 @@ generators:
       lowalt.charging: false
       lowalt.energy_used_j: 0.0
       lowalt.distance_m: 0.0
+    label: Air taxi {index}
+    business: mobility
+    vehicle_class: passenger
 engines:
   motion:
     plugin: kinematic
@@ -1130,6 +1156,8 @@ engines:
           grid_m: 20.0
         charging:
           threshold: 0.2
+        conflict_resolution:
+          minimum_altitude_m: 125.0
       separation_horizontal_m: 20.0
       separation_vertical_m: 8.0
       wind_limits:
@@ -1211,15 +1239,19 @@ engines:
           algorithm: survey
           config:
             waypoints:
-            - - 0.0
-              - -100.0
-              - 60.0
-            - - 0.0
-              - 200.0
-              - 60.0
-            - - 0.0
-              - -100.0
-              - 60.0
+            - - 103.312
+              - -146.423
+              - 125.0
+            - - 72.424
+              - 7.033
+              - 125.0
+            - - 54.895
+              - 88.494
+              - 125.0
+            - - 54.39
+              - 163.49
+              - 125.0
+            cruise_altitude_m: 125.0
       vehicle_kinds:
         passenger:
         - parcel
@@ -1230,6 +1262,8 @@ engines:
         - patrol
         - incident_response
       pad_dwell_ns: 10000000000
+      cruise_altitudes:
+        passenger: 125.0
   environment:
     plugin: environment
     config:

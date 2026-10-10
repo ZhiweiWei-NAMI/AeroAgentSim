@@ -15,7 +15,7 @@ Format identifier: `format: aeroagentsim.scenario/v1` (exact string required).
 | `format` | yes | Must equal `aeroagentsim.scenario/v1`. |
 | `id` | yes | Nonempty string; scenario identity. |
 | `registry` | yes | Mapping; exactly one of `snapshot` or `compile` (below). |
-| `entities` | yes | List of `{id, type, facts}`; unique ids; `type` must be a registered type; each fact validated against its field schema and must apply to the type. |
+| `entities` | yes | List of `{id, type, facts}` + optional `label`, `business`, `vehicle_class`; unique ids; `type` must be a registered type; each fact validated against its field schema and must apply to the type. Optional metadata fields, when present, must be nonempty strings and are exposed verbatim in the pinned scenario and the viewer header; nothing is invented for entities that omit them. |
 | `bindings` | yes | `{lifecycle}` required; optional `rules`, `exact`, `commands`, `cohorts`, `relations`, `obligations`, `samples`, `cancel_sources`, `lifecycle_participants` (table below). |
 | `engines` | yes | Mapping of engine id → `{plugin, config}`, optional `ingress`. Configs are plugin-specific. |
 | `run` | yes | `{pacing, seed, until_ns, advance_ns}`; `pacing` is `fast` or `realtime`; seed/`until_ns` are integers, `advance_ns >= 1`. |
@@ -98,6 +98,25 @@ outcomes; `full` opts into richer per-item provenance. The scenario value is
 the pinned default; a caller (CLI `--provenance`, API) may override it with an
 explicit valid value.
 
+## Fleet generators
+
+When `generators` is present (currently only the low-altitude fleet declaration
+`generators.fleet`), the loader expands it into concrete entities before normal
+validation. Required keys are `count`, `prefix`, `type`, `facts`, `starts`,
+`spacing_m`. Optional metadata keys are:
+
+| Key | Notes |
+| --- | --- |
+| `label` | Nonempty format string; `{index}` (the only substituted field) is the 1-based position, e.g. `"Drone P{index}"` → `Drone P1`, `Drone P2`, … |
+| `business` | Nonempty string copied verbatim to every generated entity. |
+| `vehicle_class` | Nonempty string copied verbatim to every generated entity; it must agree with the authored `lowalt.vehicle_class` fact, which remains the authoritative motion/energy class. |
+
+Generated entities carry `id` (`prefix` + 1-based index), `type`, the expanded
+`facts`, and any provided metadata field. No metadata value is defaulted or
+invented; an entity without the key stays without it in the pinned scenario and
+the viewer header (`entities` array: `id`, `type`, and `label`/`business`/
+`vehicle_class` only when authored).
+
 ## Presentation
 
 Each entry is `{typeId, positionField, frame, visual}` + optional
@@ -142,3 +161,6 @@ engines:
       produces: [example.task.phase]
       capabilities: {}
 ```
+
+For lowalt entities, authored `vehicle_class` must agree with the authoritative
+`facts.lowalt.vehicle_class`; metadata cannot change the vehicle physics class.
