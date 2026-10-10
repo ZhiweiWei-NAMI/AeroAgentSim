@@ -66,7 +66,8 @@ def snapshot_scene(
 
 def scene_header(run: Path, base_url: str) -> dict[str, Any]:
     if (run / "console-scene.json").is_file():
-        scenario = json.loads((run / "scenario.json").read_bytes())
+        pinned = run / "scenario.json"
+        scenario = json.loads(pinned.read_bytes()) if pinned.is_file() else {}
         if scenario.get("city") == "huangpu":
             from .demo import city_presentation
 
