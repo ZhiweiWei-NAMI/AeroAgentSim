@@ -4,7 +4,7 @@
 # AeroAgentSim
 
 <div align="center">
-<img src="src/aeroagentsim/docs/img/logo.png" alt="AeroAgentSim Logo" width="300">
+<img src="src/aeroagentsim/docs/img/agent_logo.png" alt="AeroAgentSim Logo" width="300">
 </div>
 
 AeroAgentSim 是一个面向低空自主系统的离散事件仿真平台与开发者工作台，适用于工作流建模、算法验证、运行调试、轨迹回放和执行链路分析。

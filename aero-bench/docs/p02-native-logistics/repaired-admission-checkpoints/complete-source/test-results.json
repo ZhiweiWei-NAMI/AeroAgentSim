@@ -1,0 +1,28 @@
+{
+  "scope": "actual Python package; synthetic physical observations; only two affected test files",
+  "tests": 61,
+  "passed": 61,
+  "failures": 0,
+  "errors": 0,
+  "counts_by_module": {
+    "tests.tasks.test_native_parcel_review_regressions": 16,
+    "tests.tasks.test_native_parcel_runtime": 45
+  },
+  "pytest_reported_seconds": 0.75,
+  "python": "3.10.14 (main, May  6 2024, 19:42:50) [GCC 11.2.0]",
+  "pydantic": "2.11.3",
+  "command": [
+    "/home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python",
+    "-m",
+    "pytest",
+    "tests/tasks/test_native_parcel_review_regressions.py",
+    "tests/tasks/test_native_parcel_runtime.py",
+    "-q",
+    "--tb=short"
+  ],
+  "ordinary_author_session_id": "c17d3614-e676-4394-acc4-32391809e123",
+  "route": "workbuddy/glm-5.3-flash",
+  "native_flight": false,
+  "native_independent_review": "pending",
+  "reason_assertion_alignment_cases": 5
+}

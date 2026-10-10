@@ -1,0 +1,849 @@
+{
+  "format": "aeroagentsim.visual-acceptance/v1",
+  "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+  "capture_source": "Actual Chromium screenshots of independently authored synthetic fixtures",
+  "browser": "Chromium",
+  "driver": "Playwright 1.62.1",
+  "capture_count": 24,
+  "visual_approval": "pending",
+  "test_counts": {
+    "console": 86,
+    "python": 120,
+    "react": 17,
+    "react_suites": 7
+  },
+  "python_reader": [
+    {
+      "file": "1440-zh-CN-observations.json",
+      "accepted_frames": 61,
+      "motion_at_25s": null,
+      "body_extent": null,
+      "verified_sha256": true
+    },
+    {
+      "file": "1440-en-US-observations.json",
+      "accepted_frames": 61,
+      "motion_at_25s": null,
+      "body_extent": null,
+      "verified_sha256": true
+    },
+    {
+      "file": "390-zh-CN-observations.json",
+      "accepted_frames": 61,
+      "motion_at_25s": null,
+      "body_extent": null,
+      "verified_sha256": true
+    },
+    {
+      "file": "390-en-US-observations.json",
+      "accepted_frames": 61,
+      "motion_at_25s": null,
+      "body_extent": null,
+      "verified_sha256": true
+    }
+  ],
+  "cases": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "zh-CN",
+      "route": "/configuration/index.html",
+      "interactions": [
+        "Save immutable baseline; invalid step disables prepare; recovery reenables it",
+        "Reject invalid ID; preserve unsaved modal fields across both language switches; save entity; Escape and Close dismiss",
+        "R1 Cancel leaves draft untouched; R4 5755-40 and R3 mcs7 Apply preserve exact units; nullable offered load remains null",
+        "Version comparison displays field diff; Cancel preserves draft; confirmed Load restores baseline without deleting versions",
+        "Actual download export/import roundtrip; import modal survives language switches; invalid import rejected; draft and language survive reload",
+        "Repeated Prepare creates one run; 25 s seek preserves null UAV evidence; entity lock rejects other marker clicks and survives reload; language switch keeps run/cursor/selection/key; actual neutral observations download; navigation stops playback"
+      ],
+      "document_overflow": [
+        {
+          "scenario": "scenario",
+          "body": 1440,
+          "viewport": 1440
+        },
+        {
+          "scenario": "entity-editor",
+          "body": 1440,
+          "viewport": 1440
+        },
+        {
+          "scenario": "network-profiles",
+          "body": 1440,
+          "viewport": 1440
+        },
+        {
+          "scenario": "network-diff",
+          "body": 1440,
+          "viewport": 1440
+        },
+        {
+          "scenario": "versions",
+          "body": 1440,
+          "viewport": 1440
+        },
+        {
+          "scenario": "replay-gap-evidence",
+          "body": 1440,
+          "viewport": 1440
+        }
+      ],
+      "contrast_samples": [
+        {
+          "selector": ".panel-description",
+          "foreground": "rgb(82, 107, 125)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 5.588109446646187
+        },
+        {
+          "selector": ".field-hint",
+          "foreground": "rgb(82, 107, 125)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 5.588109446646187
+        },
+        {
+          "selector": ".field label",
+          "foreground": "rgb(65, 86, 101)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 7.653630371085811
+        },
+        {
+          "selector": ".button.primary",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(8, 126, 128)",
+          "ratio": 4.876497899427957
+        },
+        {
+          "selector": ".nav-button.active",
+          "foreground": "rgb(214, 245, 240)",
+          "background": "rgb(32, 73, 78)",
+          "ratio": 8.55680009820045
+        }
+      ],
+      "browser_error_count": 0,
+      "lifecycle_request_count": 0,
+      "request_count": 38,
+      "images": [
+        {
+          "path": "docs/visual-acceptance/1440x900-zh-CN-scenario.png",
+          "filename": "1440x900-zh-CN-scenario.png",
+          "scenario": "scenario",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 1261
+          },
+          "locale": "zh-CN",
+          "full_page": true,
+          "bytes": 184631,
+          "sha256": "45e748e7680adbe45224aa302d30f44478f332594a67cc4502e0a92e02dfe225",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/1440x900-zh-CN-entity-editor.png",
+          "filename": "1440x900-zh-CN-entity-editor.png",
+          "scenario": "entity-editor",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 900
+          },
+          "locale": "zh-CN",
+          "full_page": false,
+          "bytes": 213095,
+          "sha256": "bf5d0ff2ad5f7db83948a8addc583135320ab196cca4e869a3cac6e2d4d971b8",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/1440x900-zh-CN-network-profiles.png",
+          "filename": "1440x900-zh-CN-network-profiles.png",
+          "scenario": "network-profiles",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 1867
+          },
+          "locale": "zh-CN",
+          "full_page": true,
+          "bytes": 284570,
+          "sha256": "08bc3276895e0d9e23f524dff6788b504dde611b6b8d07608c28398b4e754066",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/1440x900-zh-CN-network-diff.png",
+          "filename": "1440x900-zh-CN-network-diff.png",
+          "scenario": "network-diff",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 900
+          },
+          "locale": "zh-CN",
+          "full_page": false,
+          "bytes": 215982,
+          "sha256": "dffbbc60fcc43c704e8468b98461161cb0910961a507631a6d835edc61ab5a07",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/1440x900-zh-CN-versions.png",
+          "filename": "1440x900-zh-CN-versions.png",
+          "scenario": "versions",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 1292
+          },
+          "locale": "zh-CN",
+          "full_page": true,
+          "bytes": 141897,
+          "sha256": "690f1b5d79de100f2fe59106e435673fe753b9e22ed2963abf253ecb2741822d",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/1440x900-zh-CN-replay-gap-evidence.png",
+          "filename": "1440x900-zh-CN-replay-gap-evidence.png",
+          "scenario": "replay-gap-evidence",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 1737
+          },
+          "locale": "zh-CN",
+          "full_page": true,
+          "bytes": 235716,
+          "sha256": "89f9953a7391f60ea04d52768795fad7693fd01a35e42735bd2804540ac65f32",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-US",
+      "route": "/configuration/index.html",
+      "interactions": [
+        "Save immutable baseline; invalid step disables prepare; recovery reenables it",
+        "Reject invalid ID; preserve unsaved modal fields across both language switches; save entity; Escape and Close dismiss",
+        "R1 Cancel leaves draft untouched; R4 5755-40 and R3 mcs7 Apply preserve exact units; nullable offered load remains null",
+        "Version comparison displays field diff; Cancel preserves draft; confirmed Load restores baseline without deleting versions",
+        "Actual download export/import roundtrip; import modal survives language switches; invalid import rejected; draft and language survive reload",
+        "Repeated Prepare creates one run; 25 s seek preserves null UAV evidence; entity lock rejects other marker clicks and survives reload; language switch keeps run/cursor/selection/key; actual neutral observations download; navigation stops playback"
+      ],
+      "document_overflow": [
+        {
+          "scenario": "scenario",
+          "body": 1440,
+          "viewport": 1440
+        },
+        {
+          "scenario": "entity-editor",
+          "body": 1440,
+          "viewport": 1440
+        },
+        {
+          "scenario": "network-profiles",
+          "body": 1440,
+          "viewport": 1440
+        },
+        {
+          "scenario": "network-diff",
+          "body": 1440,
+          "viewport": 1440
+        },
+        {
+          "scenario": "versions",
+          "body": 1440,
+          "viewport": 1440
+        },
+        {
+          "scenario": "replay-gap-evidence",
+          "body": 1440,
+          "viewport": 1440
+        }
+      ],
+      "contrast_samples": [
+        {
+          "selector": ".panel-description",
+          "foreground": "rgb(82, 107, 125)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 5.588109446646187
+        },
+        {
+          "selector": ".field-hint",
+          "foreground": "rgb(82, 107, 125)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 5.588109446646187
+        },
+        {
+          "selector": ".field label",
+          "foreground": "rgb(65, 86, 101)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 7.653630371085811
+        },
+        {
+          "selector": ".button.primary",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(8, 126, 128)",
+          "ratio": 4.876497899427957
+        },
+        {
+          "selector": ".nav-button.active",
+          "foreground": "rgb(214, 245, 240)",
+          "background": "rgb(32, 73, 78)",
+          "ratio": 8.55680009820045
+        }
+      ],
+      "browser_error_count": 0,
+      "lifecycle_request_count": 0,
+      "request_count": 38,
+      "images": [
+        {
+          "path": "docs/visual-acceptance/1440x900-en-US-scenario.png",
+          "filename": "1440x900-en-US-scenario.png",
+          "scenario": "scenario",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 1261
+          },
+          "locale": "en-US",
+          "full_page": true,
+          "bytes": 200114,
+          "sha256": "1679662fe79da6353845c5b4a55988941053f52b46d9bcb530e40fd46088289e",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/1440x900-en-US-entity-editor.png",
+          "filename": "1440x900-en-US-entity-editor.png",
+          "scenario": "entity-editor",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 900
+          },
+          "locale": "en-US",
+          "full_page": false,
+          "bytes": 244799,
+          "sha256": "bd4501455709b3cba608ac0d2e6e2444945cef27e973c4830edcf0bf23e84558",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/1440x900-en-US-network-profiles.png",
+          "filename": "1440x900-en-US-network-profiles.png",
+          "scenario": "network-profiles",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 1900
+          },
+          "locale": "en-US",
+          "full_page": true,
+          "bytes": 289887,
+          "sha256": "427ececdcd23208dd73c706fe85a78e39b927ddbc1950cf728232ad12df32ac2",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/1440x900-en-US-network-diff.png",
+          "filename": "1440x900-en-US-network-diff.png",
+          "scenario": "network-diff",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 900
+          },
+          "locale": "en-US",
+          "full_page": false,
+          "bytes": 249442,
+          "sha256": "a86e05e8b5e2ce7850a6e3608a38c9434b5346a54b6556ddf598caddc08c5f09",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/1440x900-en-US-versions.png",
+          "filename": "1440x900-en-US-versions.png",
+          "scenario": "versions",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 1308
+          },
+          "locale": "en-US",
+          "full_page": true,
+          "bytes": 154365,
+          "sha256": "3f9dddc93cac010d8c1d8b7719e70c802ccca1f785446e2337bd37a71f49e4e3",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/1440x900-en-US-replay-gap-evidence.png",
+          "filename": "1440x900-en-US-replay-gap-evidence.png",
+          "scenario": "replay-gap-evidence",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "image_dimensions": {
+            "width": 1440,
+            "height": 1820
+          },
+          "locale": "en-US",
+          "full_page": true,
+          "bytes": 259684,
+          "sha256": "492f60ec6b433983cb0ce13c308efba7bb382eca3bb80d42bd26782991b23b90",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "locale": "zh-CN",
+      "route": "/configuration/index.html",
+      "interactions": [
+        "Save immutable baseline; invalid step disables prepare; recovery reenables it",
+        "Reject invalid ID; preserve unsaved modal fields across both language switches; save entity; Escape and Close dismiss",
+        "R1 Cancel leaves draft untouched; R4 5755-40 and R3 mcs7 Apply preserve exact units; nullable offered load remains null",
+        "Version comparison displays field diff; Cancel preserves draft; confirmed Load restores baseline without deleting versions",
+        "Actual download export/import roundtrip; import modal survives language switches; invalid import rejected; draft and language survive reload",
+        "Repeated Prepare creates one run; 25 s seek preserves null UAV evidence; entity lock rejects other marker clicks and survives reload; language switch keeps run/cursor/selection/key; actual neutral observations download; navigation stops playback"
+      ],
+      "document_overflow": [
+        {
+          "scenario": "scenario",
+          "body": 390,
+          "viewport": 390
+        },
+        {
+          "scenario": "entity-editor",
+          "body": 390,
+          "viewport": 390
+        },
+        {
+          "scenario": "network-profiles",
+          "body": 390,
+          "viewport": 390
+        },
+        {
+          "scenario": "network-diff",
+          "body": 390,
+          "viewport": 390
+        },
+        {
+          "scenario": "versions",
+          "body": 390,
+          "viewport": 390
+        },
+        {
+          "scenario": "replay-gap-evidence",
+          "body": 390,
+          "viewport": 390
+        }
+      ],
+      "contrast_samples": [
+        {
+          "selector": ".panel-description",
+          "foreground": "rgb(82, 107, 125)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 5.588109446646187
+        },
+        {
+          "selector": ".field-hint",
+          "foreground": "rgb(82, 107, 125)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 5.588109446646187
+        },
+        {
+          "selector": ".field label",
+          "foreground": "rgb(65, 86, 101)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 7.653630371085811
+        },
+        {
+          "selector": ".button.primary",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(8, 126, 128)",
+          "ratio": 4.876497899427957
+        },
+        {
+          "selector": ".nav-button.active",
+          "foreground": "rgb(214, 245, 240)",
+          "background": "rgb(32, 73, 78)",
+          "ratio": 8.55680009820045
+        }
+      ],
+      "browser_error_count": 0,
+      "lifecycle_request_count": 0,
+      "request_count": 38,
+      "images": [
+        {
+          "path": "docs/visual-acceptance/390x844-zh-CN-scenario.png",
+          "filename": "390x844-zh-CN-scenario.png",
+          "scenario": "scenario",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 2604
+          },
+          "locale": "zh-CN",
+          "full_page": true,
+          "bytes": 158387,
+          "sha256": "a06bd63d6c8884f1aa9442306eb89d08c8dcea3932621e210ca07777c62890ed",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/390x844-zh-CN-entity-editor.png",
+          "filename": "390x844-zh-CN-entity-editor.png",
+          "scenario": "entity-editor",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 844
+          },
+          "locale": "zh-CN",
+          "full_page": false,
+          "bytes": 36285,
+          "sha256": "4dc392967da2975840246ac33fe49490acd07d93fed7653b1bf1790d06330070",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/390x844-zh-CN-network-profiles.png",
+          "filename": "390x844-zh-CN-network-profiles.png",
+          "scenario": "network-profiles",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 4001
+          },
+          "locale": "zh-CN",
+          "full_page": true,
+          "bytes": 265837,
+          "sha256": "56ea8ec1314dd482cda4896d3e991665a726d9aef93263770bb297cb5af7e9da",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/390x844-zh-CN-network-diff.png",
+          "filename": "390x844-zh-CN-network-diff.png",
+          "scenario": "network-diff",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 844
+          },
+          "locale": "zh-CN",
+          "full_page": false,
+          "bytes": 58163,
+          "sha256": "51a8c93bc371a078ca726965ee0b2674b902adccc5c700b83a75dc182028696a",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/390x844-zh-CN-versions.png",
+          "filename": "390x844-zh-CN-versions.png",
+          "scenario": "versions",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 1857
+          },
+          "locale": "zh-CN",
+          "full_page": true,
+          "bytes": 108556,
+          "sha256": "6f7b75dc0a42a41815e1a0bbea0ffffeb423b9dcdf60ceb6b40dd293d6220ad5",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/390x844-zh-CN-replay-gap-evidence.png",
+          "filename": "390x844-zh-CN-replay-gap-evidence.png",
+          "scenario": "replay-gap-evidence",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 3094
+          },
+          "locale": "zh-CN",
+          "full_page": true,
+          "bytes": 188991,
+          "sha256": "57263385c91b56b9105feceeb6cf248f8a95c8e9694df56b659521190d3f1e02",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "locale": "en-US",
+      "route": "/configuration/index.html",
+      "interactions": [
+        "Save immutable baseline; invalid step disables prepare; recovery reenables it",
+        "Reject invalid ID; preserve unsaved modal fields across both language switches; save entity; Escape and Close dismiss",
+        "R1 Cancel leaves draft untouched; R4 5755-40 and R3 mcs7 Apply preserve exact units; nullable offered load remains null",
+        "Version comparison displays field diff; Cancel preserves draft; confirmed Load restores baseline without deleting versions",
+        "Actual download export/import roundtrip; import modal survives language switches; invalid import rejected; draft and language survive reload",
+        "Repeated Prepare creates one run; 25 s seek preserves null UAV evidence; entity lock rejects other marker clicks and survives reload; language switch keeps run/cursor/selection/key; actual neutral observations download; navigation stops playback"
+      ],
+      "document_overflow": [
+        {
+          "scenario": "scenario",
+          "body": 390,
+          "viewport": 390
+        },
+        {
+          "scenario": "entity-editor",
+          "body": 390,
+          "viewport": 390
+        },
+        {
+          "scenario": "network-profiles",
+          "body": 390,
+          "viewport": 390
+        },
+        {
+          "scenario": "network-diff",
+          "body": 390,
+          "viewport": 390
+        },
+        {
+          "scenario": "versions",
+          "body": 390,
+          "viewport": 390
+        },
+        {
+          "scenario": "replay-gap-evidence",
+          "body": 390,
+          "viewport": 390
+        }
+      ],
+      "contrast_samples": [
+        {
+          "selector": ".panel-description",
+          "foreground": "rgb(82, 107, 125)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 5.588109446646187
+        },
+        {
+          "selector": ".field-hint",
+          "foreground": "rgb(82, 107, 125)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 5.588109446646187
+        },
+        {
+          "selector": ".field label",
+          "foreground": "rgb(65, 86, 101)",
+          "background": "rgb(255, 255, 255)",
+          "ratio": 7.653630371085811
+        },
+        {
+          "selector": ".button.primary",
+          "foreground": "rgb(255, 255, 255)",
+          "background": "rgb(8, 126, 128)",
+          "ratio": 4.876497899427957
+        },
+        {
+          "selector": ".nav-button.active",
+          "foreground": "rgb(214, 245, 240)",
+          "background": "rgb(32, 73, 78)",
+          "ratio": 8.55680009820045
+        }
+      ],
+      "browser_error_count": 0,
+      "lifecycle_request_count": 0,
+      "request_count": 38,
+      "images": [
+        {
+          "path": "docs/visual-acceptance/390x844-en-US-scenario.png",
+          "filename": "390x844-en-US-scenario.png",
+          "scenario": "scenario",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 2746
+          },
+          "locale": "en-US",
+          "full_page": true,
+          "bytes": 165925,
+          "sha256": "7d70b3cfc2f60938fff50f476d67b627a26e982fb38c0d97f66cb9d2f3357671",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/390x844-en-US-entity-editor.png",
+          "filename": "390x844-en-US-entity-editor.png",
+          "scenario": "entity-editor",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 844
+          },
+          "locale": "en-US",
+          "full_page": false,
+          "bytes": 37860,
+          "sha256": "153b761e53cbb3e833b8f35c3dda4ca7ae1a2fedbc3a9e9ac9b3e656e718bd0c",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/390x844-en-US-network-profiles.png",
+          "filename": "390x844-en-US-network-profiles.png",
+          "scenario": "network-profiles",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 4358
+          },
+          "locale": "en-US",
+          "full_page": true,
+          "bytes": 263761,
+          "sha256": "a25650a64fc48caab423254c03c5905f3ebed91c763c35ff816bae2e70c13498",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/390x844-en-US-network-diff.png",
+          "filename": "390x844-en-US-network-diff.png",
+          "scenario": "network-diff",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 844
+          },
+          "locale": "en-US",
+          "full_page": false,
+          "bytes": 54465,
+          "sha256": "d2eacfa300f699a24885e570a3724a7818fcd50213cb4b45e11dd533a54c3841",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/390x844-en-US-versions.png",
+          "filename": "390x844-en-US-versions.png",
+          "scenario": "versions",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 1964
+          },
+          "locale": "en-US",
+          "full_page": true,
+          "bytes": 113669,
+          "sha256": "283b3f003c593d52d8e4d47f846b846f7b01eab9ff046536eaf04d7223c15d2a",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        },
+        {
+          "path": "docs/visual-acceptance/390x844-en-US-replay-gap-evidence.png",
+          "filename": "390x844-en-US-replay-gap-evidence.png",
+          "scenario": "replay-gap-evidence",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "image_dimensions": {
+            "width": 390,
+            "height": 3382
+          },
+          "locale": "en-US",
+          "full_page": true,
+          "bytes": 201455,
+          "sha256": "605a029a3f15ac2af4c00b20e846671bc28a17dfb0544586a42470c5fb2baecc",
+          "tested_implementation_commit": "b6e3797e903ad3daff070a55130ce2e56c9dc4ab",
+          "unchanged_capture": true
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "No BENCH renderer or authenticated live transport",
+    "No native sealed replay or SUMO/ns-3 execution",
+    "No native Atlas evaluation or predicate/event parity",
+    "Body extent and clearance remain unknown"
+  ]
+}

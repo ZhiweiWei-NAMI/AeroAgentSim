@@ -1,3 +1,5 @@
+import { subscribeLanguage, t } from "./i18n";
+
 /** DOM-only disclosures. Original application nodes, listeners and authority stay intact. */
 export interface ViewerChromeHandle { dispose(): void }
 
@@ -134,12 +136,12 @@ export function mountViewerChrome(root: HTMLElement, search: string): ViewerChro
       provenance = document.createElement("div");
       provenance.className = "viewer-chrome-provenance";
       header.append(provenance);
-      disclose(provenance, "来源说明", note);
+      disclose(provenance, t("chrome.source"), note);
     }
     if (note !== null && provenance !== null) {
       const text = note.textContent?.trim() ?? "";
       const preview = /ENGINEERING PREVIEW/i.test(text);
-      const label = preview ? "ENGINEERING PREVIEW" : "来源说明";
+      const label = preview ? "ENGINEERING PREVIEW" : t("chrome.source");
       const button = disclosures.get(provenance)!.button;
       if (button.textContent !== label) {
         button.textContent = label;
@@ -164,9 +166,11 @@ export function mountViewerChrome(root: HTMLElement, search: string): ViewerChro
   observer.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden"] });
   document.addEventListener("keydown", keyboard);
   reconcile();
+  const unsubscribeLanguage = subscribeLanguage(reconcile);
   return { dispose() {
     disposed = true;
     observer.disconnect();
+    unsubscribeLanguage();
     document.removeEventListener("keydown", keyboard);
     body.classList.remove("viewer-chrome-hidden");
     const hud = root.querySelector(".map-hud");

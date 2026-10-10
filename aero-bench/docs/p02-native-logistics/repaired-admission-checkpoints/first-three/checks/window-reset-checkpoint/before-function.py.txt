@@ -1,0 +1,38 @@
+    def observe(self, observation: FacilityPadPhysicalObservation) -> bool:
+        """Absorb one closed-stage observation; return True if it extends.
+
+        The observation must bind the declared run, the one declared carrier
+        identity and this window's pad exactly (foreign identity raises).  A
+        stale or non-contiguous tick resets the window to just this sample.
+        """
+        _strict_model(
+            FacilityPadPhysicalObservation,
+            observation,
+            "FacilityPadPhysicalObservation",
+        )
+        if observation.run_id != self._run_id:
+            raise NativeParcelRuntimeError(
+                f"observation belongs to run {observation.run_id!r}, not the "
+                "declared parcel run; foreign evidence is rejected"
+            )
+        canonical_carrier_profile(self._contract, observation=observation)
+        if (
+            observation.facility_id != self._facility_id
+            or observation.pad_index != self._pad_index
+        ):
+            raise NativeParcelRuntimeError(
+                f"observation names facility {observation.facility_id!r} pad "
+                f"{observation.pad_index}; this window accumulates only "
+                f"{self._facility_id!r} pad {self._pad_index}"
+            )
+        at = observation.at
+        extends = (
+            self._last_at is not None
+            and at.tick == self._last_at.tick + 1
+            and at.sim_time_ns > self._last_at.sim_time_ns
+        )
+        self._last_at = at
+        self._samples = (
+            (*self._samples, observation) if extends else (observation,)
+        )[-self._max_ticks :]
+        return extends

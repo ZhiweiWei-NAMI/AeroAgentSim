@@ -1,0 +1,22 @@
+{
+  "excerpt": "Original assigned-session request/header fields only; credentials/hidden reasoning excluded",
+  "records": [
+    {
+      "type": "request/header",
+      "seq": 1979,
+      "time_ms": 1791294462410,
+      "session_id": "a400e686-3a13-4b1e-950c-f443091ea395",
+      "config": {
+        "provider": "workbuddy",
+        "model": "glm-5.3-flash",
+        "maxTokens": 131072
+      }
+    }
+  ],
+  "reasoningEffort": "omitted_provider_default",
+  "author_ownership": [
+    "aero_bench/providers/logistics_business/native_parcel.py",
+    "tests/providers/test_native_parcel_provider_retry.py"
+  ],
+  "coordinator_ownership": "review/publication reports only; no production implementation by coordinator"
+}

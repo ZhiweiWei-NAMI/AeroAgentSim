@@ -1,4 +1,7 @@
 import "./styles.css";
+import { initLanguage, subscribeLanguage, t } from "./i18n";
+
+initLanguage();
 
 const root = document.querySelector<HTMLElement>("#app");
 if (root === null) {
@@ -27,15 +30,24 @@ document.body.append(sceneToggle);
 const libraryLink = document.createElement("a");
 libraryLink.className = "scene-library-link";
 libraryLink.href = "./asset-library.html";
-libraryLink.textContent = "返回素材库";
-document.body.append(libraryLink);
+libraryLink.textContent = t("chrome.library");
 
 const studioLink = document.createElement("a");
 studioLink.className = "scene-library-link scene-studio-link";
 studioLink.href = "./city-studio.html?tab=runtime";
-studioLink.textContent = "城市运行工作区";
-studioLink.style.right = "164px";
-document.body.append(studioLink);
+studioLink.textContent = t("chrome.workspace");
+// Group localized links so longer labels keep their gap from the language switch.
+const sceneNavigation = document.createElement("nav");
+sceneNavigation.className = "scene-navigation";
+Object.assign(sceneNavigation.style, { position: "fixed", top: "12px", right: "120px", display: "flex", gap: "12px", zIndex: "20" });
+libraryLink.style.position = studioLink.style.position = "static";
+sceneNavigation.append(studioLink, libraryLink);
+document.body.append(sceneNavigation);
+const unsubscribeLanguage = subscribeLanguage(() => {
+  libraryLink.textContent = t("chrome.library");
+  studioLink.textContent = t("chrome.workspace");
+});
+window.addEventListener("beforeunload", unsubscribeLanguage, { once: true });
 
 const loading = root.querySelector<HTMLElement>(".viewer-startup");
 if (loading === null) throw new Error("City viewer startup indicator is missing");

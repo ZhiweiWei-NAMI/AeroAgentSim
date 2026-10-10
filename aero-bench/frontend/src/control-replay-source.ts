@@ -10,56 +10,28 @@
  * closures; they are never placed in a URL or persisted.
  */
 
+import { MAX_ASSET_RATE_LIMIT_RETRIES, retryDelayMs, waitForRetry } from "./control-asset-queue";
+
 export interface ControlReplaySource {
   readonly runId: string;
   manifest(signal?: AbortSignal): Promise<Response>;
   trace(signal?: AbortSignal): Promise<Response>;
   asset(digest: string, signal?: AbortSignal): Promise<Response>;
+  /** A run-scoped queue already performs its own bounded rate-limit retries. */
+  readonly assetQueueManaged?: boolean;
 }
 
 const CONTROL_REPLAY_PREFIX = "/__control-replay/";
 const RUN_ID = /^[0-9a-f]{64}$/;
 const SEALED_FILE = /^replay\/(?:artifacts|assets)\/([0-9a-f]{64})$/;
-const DEFAULT_ASSET_RETRY_DELAY_MS = 60_000;
-const MAX_ASSET_RETRY_DELAY_MS = 5 * 60_000;
-const MAX_ASSET_RATE_LIMIT_RETRIES = 4;
 
 function abortError(): DOMException {
   return new DOMException("Control replay asset request was aborted", "AbortError");
 }
 
-function retryDelayMs(response: Response): number | null {
-  const value = response.headers.get("Retry-After")?.trim();
-  let delay = DEFAULT_ASSET_RETRY_DELAY_MS;
-  if (value !== undefined && value !== "") {
-    if (/^[0-9]+$/.test(value)) {
-      delay = Number(value) * 1000;
-    } else {
-      const at = Date.parse(value);
-      delay = Number.isFinite(at) ? Math.max(0, at - Date.now()) : DEFAULT_ASSET_RETRY_DELAY_MS;
-    }
-  }
-  return Number.isSafeInteger(delay) && delay >= 0 && delay <= MAX_ASSET_RETRY_DELAY_MS ? delay : null;
-}
-
-function waitForRetry(delayMs: number, signal?: AbortSignal): Promise<void> {
-  if (signal?.aborted) return Promise.reject(abortError());
-  return new Promise((resolve, reject) => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const cleanup = (): void => signal?.removeEventListener("abort", abort);
-    const abort = (): void => {
-      if (timer !== undefined) clearTimeout(timer);
-      cleanup();
-      reject(abortError());
-    };
-    signal?.addEventListener("abort", abort, { once: true });
-    if (signal?.aborted) { abort(); return; }
-    timer = setTimeout(() => { cleanup(); resolve(); }, delayMs);
-  });
-}
-
 async function fetchSealedAsset(source: ControlReplaySource, digest: string,
     signal?: AbortSignal): Promise<Response> {
+  if (source.assetQueueManaged) return source.asset(digest, signal);
   for (let retry = 0; ; retry += 1) {
     if (signal?.aborted) throw abortError();
     const response = await source.asset(digest, signal);

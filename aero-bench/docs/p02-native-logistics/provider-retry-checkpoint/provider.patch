@@ -1,0 +1,18 @@
+--- a/aero_bench/providers/logistics_business/native_parcel.py
++++ b/aero_bench/providers/logistics_business/native_parcel.py
+@@ -89,8 +89,13 @@
+         if request.tool_id not in {PARCEL_PICKUP_TOOL, PARCEL_DROPOFF_TOOL}:
+             return await super().handle_command(request)
+         self._require_prepared()
+-        if request.run_id != self._run_id or request.issued_at != self._last_time:
+-            raise LogisticsBusinessProviderError("parcel request is not at the authoritative run time")
++        if request.run_id != self._run_id:
++            raise LogisticsBusinessProviderError("parcel request belongs to another run")
++        # No provider-side temporal policy: first-seen clock validation and
++        # dedup are owned by the parcel component's transition, which checks
++        # the exact authoritative SimulationTime, replays an identical
++        # processed request and refuses a first-seen stale or payload-altered
++        # request.
+         response = await self._request("command", {"provider_id":self._config.provider_id,
+             "run_id":self._run_id, "request":request.model_dump(mode="json")})
+         if set(response) != {"receipts", "parcel_action_record"}:

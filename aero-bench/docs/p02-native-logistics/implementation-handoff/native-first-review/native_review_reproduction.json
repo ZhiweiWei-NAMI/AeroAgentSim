@@ -1,0 +1,73 @@
+{
+  "scope": "actual package, synthetic helper observations, real presence kernel; no native flight",
+  "reviewed_snapshot": "22b7dfd",
+  "source_sha256": {
+    "aero_bench/tasks/logistics/native_parcel_contract.py": "035bd8e29698738d4591bcbb3752c4d7b26f7bd49f33ce74cf15cc9ac73789bc",
+    "aero_bench/tasks/logistics/native_parcel_runtime.py": "f0364e5c854f2d22b5c8f509a1fd3491a090a3ff1eab82ad393bfab4e47e6889",
+    "tests/tasks/test_native_parcel_runtime.py": "3b8e7fb9e64b0b91a306a08ae9494d6799e2e11fb4c03d8580e1a6667f074559"
+  },
+  "probes": [
+    {
+      "probe": "default_now",
+      "actual": {
+        "status": "admitted",
+        "transfer_tick": 0
+      }
+    },
+    {
+      "probe": "stale_dwell_now100",
+      "actual": {
+        "status": "admitted"
+      }
+    },
+    {
+      "probe": "future_received_at500",
+      "actual": {
+        "status": "admitted"
+      }
+    },
+    {
+      "probe": "bad_then_valid_suffix",
+      "actual": {
+        "status": "unconfirmed",
+        "reason": "tick 1 presence assessment is not eligible: excessive_speed; required closed-stage source facts are missing or not assessable for this tick; the outcome is explicitly unconfirmed and no presence, custody, dwell or delivery is inferred the pickup action is admitted only after the contiguous grounded closed dwell passes"
+      }
+    },
+    {
+      "probe": "two_facilities_same_tick",
+      "actual": {
+        "first_observed": true,
+        "second_same_tick_observed": false
+      }
+    },
+    {
+      "probe": "same_action_id_different_kind",
+      "actual": {
+        "first_status": "admitted",
+        "second_status": "admitted",
+        "transfers": 2
+      }
+    },
+    {
+      "probe": "foreign_actor_id",
+      "actual": {
+        "status": "admitted"
+      }
+    },
+    {
+      "probe": "pre_pickup_restore",
+      "actual": {
+        "original": "admitted",
+        "restored": "unconfirmed"
+      }
+    },
+    {
+      "probe": "admitted_restore",
+      "actual": {
+        "original": "admitted",
+        "restored_retry": "rejected",
+        "same_outcome": false
+      }
+    }
+  ]
+}

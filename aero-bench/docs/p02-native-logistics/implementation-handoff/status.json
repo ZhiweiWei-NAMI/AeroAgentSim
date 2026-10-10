@@ -1,0 +1,147 @@
+{
+  "schema_version": "p02.original-worker-handoff/v1",
+  "captured_at": "2026-10-06T02:24:36.885716-07:00",
+  "worktree": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench",
+  "branch": "feature/p02-bench-native-integration-20261005",
+  "base_commit": "65280711ed486b0a8ac12c3f0ffc122141b4c5c0",
+  "snapshot_only": true,
+  "new_flight_started": false,
+  "inspection_evidence_preserved": true,
+  "workers": [
+    {
+      "name": "catalog/reconnect",
+      "session_id": "a400e686-3a13-4b1e-950c-f443091ea395",
+      "route": "workbuddy/glm-5.3-flash",
+      "public_result": "validation/p02_forward_reconnect_glm/resumed-results/p02_catalog_start_discovery_result.json",
+      "terminal": "completed",
+      "coordinator_verified_backend_tests": 61,
+      "previous_coordinator_verified_frontend_tests": 49
+    },
+    {
+      "name": "native parcel module",
+      "session_id": "c17d3614-e676-4394-acc4-32391809e123",
+      "route": "workbuddy/glm-5.3-flash",
+      "last_observed_pid": 1334642,
+      "last_observed_process_state": "Sl; final public result absent",
+      "author_document_status": "module-complete, integration-deferred",
+      "final_result_delivered": false,
+      "ownership_released": false,
+      "coordinator_verified_module_tests": 37,
+      "finish_request": "Same-session control requests final result and explicit four-file release; no extra implementation assigned."
+    }
+  ],
+  "components": [
+    {
+      "component": "transition RPC / admitted command receipt",
+      "status": "NOT_WIRED",
+      "saved_interface": "AdmittedParcelAction; NativeParcelStateMachine.admit_action",
+      "gap": "Connect the real provider command/RX surface and authoritative transition journal. Existing physical pickup/handoff/deliver remain refused."
+    },
+    {
+      "component": "current-tick contiguous dwell",
+      "status": "PURE_MODULE_TESTED",
+      "saved_interface": "NativeParcelStateMachine.observe/admit_action; presence kernel",
+      "gap": "Per-run construction and closed-stage hook feed are not wired; 37 synthetic module tests are not native dwell evidence."
+    },
+    {
+      "component": "backend parcel projection",
+      "status": "MATH_IMPLEMENTED_NOT_PUBLISHED",
+      "saved_interface": "parcel_carriage_pose; NativeParcelSnapshot",
+      "gap": "Compose measured full attitude with body-local attachment, then publish the resulting parcel entity/state into the actual SceneState/public projection."
+    },
+    {
+      "component": "dedicated sealed logistics verifier / entrypoint",
+      "status": "NOT_IMPLEMENTED",
+      "saved_interface": "Contract SEALED_VERIFIER_REPLAY_REQUIREMENT only",
+      "gap": "Implement independent replay of command, observation, dwell, attachment and custody records; register entrypoint and immutable compilation/image pins. Inspection verdict is separate."
+    },
+    {
+      "component": "catalog / UI reconnect",
+      "status": "CATALOG_AND_RUNSESSION_WIRED_UI_ACCEPTANCE_PENDING",
+      "saved_interface": "ControlRunManager.catalog start_id; RunSession.loadCatalog/start; RunStartIdentityStore",
+      "gap": "User-facing discovered identity/reconnect affordance and authenticated live reload/reconnect have not been demonstrated."
+    }
+  ],
+  "files": [
+    {
+      "source_worktree_path": "aero_bench/tasks/logistics/native_parcel_contract.py",
+      "snapshot_path": "saved-files/aero_bench/tasks/logistics/native_parcel_contract.py",
+      "bytes": 29478,
+      "sha256": "035bd8e29698738d4591bcbb3752c4d7b26f7bd49f33ce74cf15cc9ac73789bc",
+      "source_mtime": "2026-10-06T02:11:33.519926-07:00"
+    },
+    {
+      "source_worktree_path": "aero_bench/tasks/logistics/native_parcel_runtime.py",
+      "snapshot_path": "saved-files/aero_bench/tasks/logistics/native_parcel_runtime.py",
+      "bytes": 52509,
+      "sha256": "f0364e5c854f2d22b5c8f509a1fd3491a090a3ff1eab82ad393bfab4e47e6889",
+      "source_mtime": "2026-10-06T02:08:58.414887-07:00"
+    },
+    {
+      "source_worktree_path": "tests/tasks/test_native_parcel_runtime.py",
+      "snapshot_path": "saved-files/tests/tasks/test_native_parcel_runtime.py",
+      "bytes": 37831,
+      "sha256": "3b8e7fb9e64b0b91a306a08ae9494d6799e2e11fb4c03d8580e1a6667f074559",
+      "source_mtime": "2026-10-06T02:11:49.928029-07:00"
+    },
+    {
+      "source_worktree_path": "validation/p02_native_parcel_glm/implementation.md",
+      "snapshot_path": "saved-files/validation/p02_native_parcel_glm/implementation.md",
+      "bytes": 8590,
+      "sha256": "fd0e8ae1fd60d5ebf53a973797406c22fdb9668a555478e0bd0701135ac891e0",
+      "source_mtime": "2026-10-06T02:12:47.132379-07:00"
+    },
+    {
+      "source_worktree_path": "validation/p02_native_parcel_glm/calibration-review.md",
+      "snapshot_path": "saved-files/validation/p02_native_parcel_glm/calibration-review.md",
+      "bytes": 4215,
+      "sha256": "25acf5650dc3133781a24af1e75e820ffa907328571d7ea1075c204754b49911",
+      "source_mtime": "2026-10-06T02:10:28.631506-07:00"
+    },
+    {
+      "source_worktree_path": "validation/p02_native_parcel_glm/coordinator-module-tests.xml",
+      "snapshot_path": "saved-files/validation/p02_native_parcel_glm/coordinator-module-tests.xml",
+      "bytes": 5810,
+      "sha256": "4b8665e4e1aa449a4987d51ce79e64f88ab7501ee1349c67c9ceb51c5ce74fb7",
+      "source_mtime": "2026-10-06T02:21:16.303072-07:00"
+    },
+    {
+      "source_worktree_path": "validation/p02_native_parcel_glm/signed-pose-tests.xml",
+      "snapshot_path": "saved-files/validation/p02_native_parcel_glm/signed-pose-tests.xml",
+      "bytes": 14006,
+      "sha256": "f5fa5c0a6172455f20d97e65a8fdb337dd7dcaf56c9f0ab2c23adf1e683efb74",
+      "source_mtime": "2026-10-06T02:01:24.783915-07:00"
+    },
+    {
+      "source_worktree_path": "validation/p02_forward_reconnect_glm/implementation.md",
+      "snapshot_path": "saved-files/validation/p02_forward_reconnect_glm/implementation.md",
+      "bytes": 10707,
+      "sha256": "45200a31624593e9172123228055d0ce2b28ec68ec49658a1f755af03a691e5d",
+      "source_mtime": "2026-10-06T01:57:08.331101-07:00"
+    },
+    {
+      "source_worktree_path": "validation/p02_forward_reconnect_glm/coordinator-tests.xml",
+      "snapshot_path": "saved-files/validation/p02_forward_reconnect_glm/coordinator-tests.xml",
+      "bytes": 8811,
+      "sha256": "7834a8f96e39590ff71bd01210c6c402e08bd56bd50a856da8af857598734a7b",
+      "source_mtime": "2026-10-06T02:00:37.931767-07:00"
+    },
+    {
+      "source_worktree_path": "tests/test_control_start_discovery.py",
+      "snapshot_path": "saved-files/tests/test_control_start_discovery.py",
+      "bytes": 7658,
+      "sha256": "61a76f06978c113c96c131295574c49d56668097b010c82dc5611a54a13adc43"
+    },
+    {
+      "source_worktree_path": "selected tracked catalog/reconnect changes",
+      "snapshot_path": "catalog-reconnect.patch",
+      "bytes": 1185644,
+      "sha256": "f68414ea5beeb0d0fe94f51f3d240ac7a8248f9555212823d2a678b5736f9e7a"
+    }
+  ],
+  "sealed_new_run_verifier_requirement": "e8c2d1dc09369aa4d800e0f2ee975e97641922f01ac94d950964f884a7e74eec (corrected inspection datum verifier; dedicated parcel verifier still absent)",
+  "native_review_status": "REJECTED_FIRST_REVIEW_REPAIR_ASSIGNED_SAME_SESSION",
+  "launch_hold": true,
+  "native_reproduction": "native-first-review/native_review_reproduction.json",
+  "coordinator_verified_module_tests": "37 original tests passed but did not cover these invariants"
+}

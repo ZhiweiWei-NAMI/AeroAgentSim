@@ -1,0 +1,46 @@
+{
+  "scope": "Provider temporal pre-gate only; native tests use in-memory transport, no service or flight",
+  "base_commit": "ad5f7c40c0f85bc14e6a9db1d3eb53de1ef2ef5e",
+  "base_snapshot": "aero-bench/docs/p02-native-logistics/stage-projection-wiring/source",
+  "files": [
+    {
+      "path": "source/aero_bench/providers/logistics_business/native_parcel.py",
+      "bytes": 7738,
+      "sha256": "254552ab2e879ff56052aef7d9eaa2b5277de5c47c7f95fb3973fd358c4bc87f"
+    },
+    {
+      "path": "source/tests/providers/test_native_parcel_provider_retry.py",
+      "bytes": 5445,
+      "sha256": "74d6ed0aad401dfda56e898bb5c27ba94efee2e7c960c576de15ef0b84a62759"
+    }
+  ],
+  "unchanged_dependencies": [
+    {
+      "path": "aero_bench/tasks/logistics/native_parcel_rpc.py",
+      "sha256": "c8e23c37bbefc5b214d3cbb154f3fe0df5d7229563ebb29c233e1f7311667553",
+      "matches_base_ad5f7c40": true
+    },
+    {
+      "path": "aero_bench/tasks/logistics/native_parcel_runtime.py",
+      "sha256": "406a3d4120532538de388033eecf894a8171be10f7e230574e8d583d7d61deab",
+      "matches_base_ad5f7c40": true
+    },
+    {
+      "path": "tests/tasks/test_native_parcel_rpc.py",
+      "sha256": "e11246535cefb8cb2a23a9455eede40d1902eb9a8c291959558bc56d4755ec46",
+      "matches_base_ad5f7c40": true
+    },
+    {
+      "path": "tests/tasks/test_native_parcel_runtime.py",
+      "sha256": "6c26a701ef7eaa5d5f3128bd9e7d99e336a1607fa905602001a3ccceb8ea3946",
+      "matches_base_ad5f7c40": true
+    }
+  ],
+  "coordinator_result": {
+    "exit_code": 0,
+    "pytest": "3 passed in 0.66s",
+    "parent_exact_unmodified_source_test": "PASS"
+  },
+  "preserved": "Existing passed core clocks/principal/payload/dedup and run binding; no additional provider cache/state machine",
+  "time_utc": "2026-10-06T14:06:38.809602+00:00"
+}

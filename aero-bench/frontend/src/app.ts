@@ -1,3 +1,4 @@
+import { renderUnboundMissionRecords } from "./p02-mission-records";
 import { LoadingProgressView, type ProgressListener } from "./loading-progress";
 import { ReplayEvents } from "./replay-events";
 import { showAvailableContent } from "./available-content";
@@ -18,6 +19,7 @@ import { AssetResolutionError, AssetResolver } from "./asset-resolver";
 import { jsonValuesEqual, SealedReplayError, SealedReplayLoader,
   MAX_MANIFEST_BYTES as CONTROL_REPLAY_MANIFEST_MAX_BYTES } from "./replay-loader";
 import { controlReplayBaseHref, controlReplayFetch, type ControlReplaySource } from "./control-replay-source";
+import { RunStartIdentityStore } from "./run-start-identity";
 import { assertNotAborted, readBoundedResponse } from "./verified-bytes";
 import { parseStrictJson } from "./strict-json";
 import { assertPublicReplayManifest, assertReplayAccessRequest,
@@ -1008,8 +1010,11 @@ export class PublicTraceApp {
       return;
     }
     let client: ControlClient;
+    let startIdentities: RunStartIdentityStore;
     try {
       client = new ControlClient({ baseUrl: endpoint });
+      const compilationId = new URLSearchParams(window.location.search).get("compilation");
+      startIdentities = new RunStartIdentityStore(window.localStorage, client.serviceOrigin, compilationId);
     } catch (error) {
       this.renderSessionError(error instanceof Error ? error.message : String(error));
       return;
@@ -1021,7 +1026,7 @@ export class PublicTraceApp {
     this.session?.dispose();
     this.liveAssetScenario = "";
     this.osmScene = null;
-    this.session = new RunSession(client);
+    this.session = new RunSession(client, { startIdentities });
     this.sessionUnsubscribe = this.session.subscribe((state) => this.renderSession(state));
     await this.session.loadCatalog(operatorToken);
     const requestedRun = new URLSearchParams(window.location.search).get("run");
@@ -1697,22 +1702,11 @@ export class PublicTraceApp {
         (sourceRef === null ? ` · ${t("p02.identityUnknown", lang)}` : ` · ${sourceRef}`));
       ordersBody.append(head);
       if (records.length === 0) {
-        const unbound = index.unboundEventsUpTo(tick);
-        ordersBody.append(element("p", "p02-orders-empty", unbound.length === 0
-          ? t("p02.noOrders", lang)
-          : tf("p02.unboundOrders", { count: unbound.length }, lang)));
-        for (const event of unbound.slice(-4)) {
-          const row = element("div", "p02-order-row p02-order-row-unbound");
-          row.setAttribute("role", "listitem");
-          row.append(
-            element("strong", "p02-order-id", unknown),
-            element("span", "p02-order-stage", event.state),
-            element("span", "p02-order-meta",
-              `tick ${event.tick} · ${formatRunClock(event.flipTimeSeconds)} · ${event.providerId}`),
-          );
-          ordersBody.append(row);
-        }
+        ordersBody.append(element("p", "p02-orders-empty", t("p02.noOrders", lang)));
       }
+      dock.querySelector(".p02-mission-records")?.remove();
+      const missionRecords = renderUnboundMissionRecords(document, index.unboundEventsUpTo(tick), lang, formatRunClock);
+      if (missionRecords !== null) ordersBody.after(missionRecords);
       for (const record of records) {
         const row = element("button", "p02-order-row");
         row.type = "button";
@@ -2973,7 +2967,14 @@ export class PublicTraceApp {
     const baseHref = window.location.origin + "/";
     const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
         const digest = new URL(String(input)).pathname.split("/").at(-1)!;
-        return session.publicAsset(digest, init?.signal ?? undefined);
+        try { return await session.publicAsset(digest, init?.signal ?? undefined); }
+        finally {
+          if (this.session === session) {
+            this.shell.map.dataset.controlAssetDiagnostics = JSON.stringify(session.assetDiagnostics);
+            this.shell.map.dataset.controlRunId = session.currentState.snapshot?.run_id ?? "";
+            this.shell.map.dataset.controlLatestTick = String(session.currentState.latestTick ?? "");
+          }
+        }
       }) as typeof fetch;
     const resolver = new AssetResolver({ baseHref, fetch: fetchImpl });
     this.renderMap();
@@ -3965,6 +3966,20 @@ function buildShell(root: HTMLElement, mode: AppMode): AppShell {
   p02ConfigButton.setAttribute("aria-pressed", "false");
   p02ViewSwitch.append(p02RunButton, p02ConfigButton);
   append(meta, modePill, connPill, phasePill, integrityPill, publicOnlyPill, p02ViewSwitch, liveLink, replayLink, libraryLink);
+  if (mode === "live") {
+    const controlsToggle = document.createElement("button");
+    controlsToggle.type = "button";
+    controlsToggle.className = "action-button p02-controls-toggle";
+    controlsToggle.dataset.i18n = "control.title";
+    controlsToggle.textContent = t("control.title", lang);
+    controlsToggle.setAttribute("aria-controls", "p02-live-controls");
+    controlsToggle.setAttribute("aria-expanded", "false");
+    controlsToggle.addEventListener("click", () => {
+      const opened = document.body.classList.toggle("p02-controls-open");
+      controlsToggle.setAttribute("aria-expanded", String(opened));
+    });
+    meta.append(controlsToggle);
+  }
   const langGroup = element("div", "lang-switch");
   langGroup.setAttribute("role", "group");
   langGroup.setAttribute("aria-label", t("lang.switch", lang));
@@ -4004,6 +4019,7 @@ function buildShell(root: HTMLElement, mode: AppMode): AppShell {
   const left = element("aside", "sidebar");
   left.setAttribute("aria-label", t("section.entities", lang));
   const controlPanel = element("section", "control-panel");
+  controlPanel.id = "p02-live-controls";
   if (mode !== "live") {
     controlPanel.hidden = true;
   }

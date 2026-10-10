@@ -1,0 +1,227 @@
+# Short live-SUMO example; derived from config.yaml. Full runtime not yet verified.
+simulation:
+  vehicle_count: 100
+  start_simulation_time: 0
+  max_simulation_time: 10
+  simulation_interval: 0.1
+  traffic_interval: 0.1
+sumo:
+  sumo_config: ../sumo_wujiaochang/osm.sumocfg
+  sumo_osm: ../sumo_wujiaochang/osm_bbox.osm.xml
+  sumo_net: ../sumo_wujiaochang/osm.net.xml
+  sumo_port: 8813
+  export_tripinfo: false
+  tripinfo_output: ../sumo_wujiaochang/tripinfo.xml
+visualization:
+  icon_path: ../icon
+traffic:
+  traffic_mode: SUMO
+  tripinfo: null
+  start_traffic_time: 0
+  traffic_interval: 0.1
+  UAV_z_range:
+  - 100
+  - 200
+  UAV_speed_range:
+  - 10
+  - 30
+  uav_traffic_file: path/to/uav_traffic_file.csv
+  max_n_vehicles: 100
+  max_n_UAVs: 15
+  max_n_RSUs: 5
+  RSU_positions:
+  - - 100
+    - 100
+    - 0
+  - - 100
+    - 2000
+    - 0
+  - - 2500
+    - 100
+    - 0
+  - - 2500
+    - 2000
+    - 0
+  - - 1250
+    - 1000
+    - 0
+  max_n_cloudServers: 1
+  arrival_lambda: 1
+  distance_threshold: 50
+  nonfly_zone_coordinates:
+  - - - 1000
+      - 1200
+    - - 1200
+      - 1200
+    - - 1200
+      - 1000
+    - - 1000
+      - 1000
+  - - - 1500
+      - 1700
+    - - 1700
+      - 1700
+    - - 1700
+      - 1500
+    - - 1500
+      - 1500
+task:
+  tti_threshold: 0.5
+  hard_ddl: 2
+  task_generation_model: None
+  task_generation_kwargs:
+    lambda: 0.5
+  task_min_cpu: 0.2
+  task_max_cpu: 0.7
+  task_min_size: 0.2
+  task_max_size: 0.7
+  task_min_required_returned_size: 0
+  task_max_required_returned_size: 0
+  task_min_deadline: 1
+  task_max_deadline: 2
+  task_min_priority: 0.5
+  task_max_priority: 1
+  cpu_model: Uniform
+  cpu_kwargs:
+    low: 0.2
+    high: 0.7
+  size_model: Uniform
+  size_kwargs:
+    low: 0.2
+    high: 0.7
+  deadline_model: Uniform
+  deadline_kwargs:
+    low: 0.5
+    high: 1
+  priority_model: Uniform
+  priority_kwargs:
+    low: 0.5
+    high: 1
+  required_returned_size_model: Uniform
+  required_returned_size_kwargs:
+    low: 0
+    high: 0
+task_profile:
+  task_node_gen_poss: 0.5
+  task_node_profiles:
+  - type: UAV
+    max_node_num: 30
+  - type: vehicle
+    max_node_num: 20
+  vehicle:
+    lambda: 0.5
+  uav:
+    lambda: 0.5
+fog_profile:
+  vehicle:
+    cpu: 2
+    memory: 1
+    storage: 1
+  uav:
+    cpu: 3
+    memory: 1
+    storage: 1
+  rsu:
+    cpu: 10
+    memory: 1
+    storage: 1
+  cloud:
+    cpu: 100
+    memory: 1
+    storage: 1
+state_attribute:
+  log_state: false
+  time_window: 3
+  fog_node_state_attributes:
+  - position_x
+  - position_y
+  - position_z
+  - speed
+  - fog_profile
+  - node_type
+  task_node_state_attributes:
+  - position_x
+  - position_y
+  - position_z
+  - speed
+  - task_profile
+  - node_type
+  task_state_attributes:
+  - task_node_id
+  - task_size
+  - task_cpu
+  - required_returned_size
+  - task_deadline
+  - task_priority
+  - task_arrival_time
+  - task_lifecycle_state
+channel:
+  outage_model: Rayleigh
+  outage_snr_threshold: 10
+  V2V:
+    pathloss_model: V2V_urban_tr37885
+    shadowing_model: 3GPP_LogNormal
+    fastfading_model: Rayleigh
+  V2I:
+    pathloss_model: UMa_LOS_tr38901
+    shadowing_model: 3GPP_LogNormal
+    fastfading_model: Rayleigh
+  V2U:
+    pathloss_model: free_space
+    shadowing_model: 3GPP_LogNormal
+    fastfading_model: Rayleigh
+  U2I:
+    pathloss_model: free_space
+    shadowing_model: 3GPP_LogNormal
+    fastfading_model: Rayleigh
+  U2U:
+    pathloss_model: free_space
+    shadowing_model: 3GPP_LogNormal
+    fastfading_model: Rayleigh
+  I2I:
+    pathloss_model: free_space
+    shadowing_model: 3GPP_LogNormal
+    fastfading_model: Rayleigh
+sensing:
+  sensors_per_node: 4
+  node_type:
+  - UAV
+  - vehicle
+  sensor_type_num: 4
+mission:
+  UAV_height: 100
+  TTL_range:
+  - 80
+  - 100
+  duration_range:
+  - 5
+  - 10
+  mission_size_range:
+  - 5
+  - 10
+  sensor_accuracy_range:
+  - 0.1
+  - 0.9
+  distance_threshold: 150
+  predictable_seconds: 2
+  mission_generation_model: Poisson
+  generation_model_args:
+    Poisson:
+      lambda: 0.1
+    Uniform:
+      low: 0
+      high: 1
+    Normal:
+      mean: 0
+      std: 1
+    Exponential:
+      beta: 1
+energy:
+  initial_energy_range:
+  - 48000
+  - 52000
+  fly_unit_cost: 2.5
+  hover_unit_cost: 1.2
+  sensing_unit_cost: 0.5
+  receive_unit_cost: 0.1
+  send_unit_cost: 0.1

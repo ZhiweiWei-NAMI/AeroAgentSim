@@ -1,0 +1,17 @@
+# Logs
+*.log
+*.run
+**/__pycache__/
+**/evaluation
+**/models
+**/logs
+**.pth
+**/runs/**
+tripinfo.xml
+tripinfo.csv
+tripinfo_0.1_500s.xml
+tripinfo_0.1_500s.csv
+tripinfo_0.1_200s.xml
+tripinfo_0.1_200s.csv
+*.xml
+*.csv

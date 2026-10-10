@@ -141,7 +141,11 @@ describe("native city App asset ownership", () => {
   });
 
   it("uses only the live session's authenticated asset closure for native layers and GLBs", async () => {
-    const session = { publicAsset: vi.fn(async () => new Response("verified by loader")), dispose: vi.fn() };
+    const session = {
+      publicAsset: vi.fn(async () => new Response("verified by loader")), dispose: vi.fn(),
+      assetDiagnostics: { requests: 1, cachedAssets: 0 },
+      currentState: { snapshot: { run_id: trace.run_id }, latestTick: trace.time.tick },
+    };
     state.session = session; state.liveAssetScenario = trace.scenario.scenario_digest;
     const native = presentation();
     let options!: NativeCityPresentationLoadOptions;

@@ -1,0 +1,40 @@
+{
+  "schema_version": "p02.native-parcel-contract-review/v1",
+  "source_head": "e8390a31e61b01ca4f0a0ed818ca283cc9093cc9",
+  "status": "contract_review_required_before_one_native_run",
+  "files": {
+    "docs/p02-native-logistics/CONTRACT.md": {
+      "bytes": 5658,
+      "sha256": "9f1204022fecc967344d8cae4fe47b3e6df832db5589adc1f3dc4f67a6b63ae9"
+    },
+    "docs/p02-native-logistics/contract-proposal.json": {
+      "bytes": 4577,
+      "sha256": "72e12917395ccedf1501b8d3af8d41cac11aa124de8b8d2dbd693d77de0d8d95"
+    },
+    "aero_bench/tasks/logistics/runtime_hook.py": {
+      "bytes": 23346,
+      "sha256": "884198d6d4fe746696873bcb81230960500b712844bac28573ed72eec792b4a3"
+    },
+    "aero_bench/tasks/logistics/facility_presence.py": {
+      "bytes": 29895,
+      "sha256": "5afcfaa0f59f3ab8f3be1defb7cfa117b4de9f1e4032372197e5ed757ea20ba6"
+    },
+    "aero_bench/tasks/logistics/dwell_eligibility.py": {
+      "bytes": 41524,
+      "sha256": "165ff9edf52531ae35dd5b0688011ec005f9eda03109afea911c63a555253102"
+    },
+    "containers/inspection-verifier/entrypoint.py": {
+      "bytes": 12912,
+      "sha256": "402d67987a1470c366b02dddcfda2b73548a131484ea6a1dcad4965796ae131e"
+    }
+  },
+  "new_compilation_id": null,
+  "new_run_id": null,
+  "native_execution_claimed": false,
+  "inspection_preserved": true,
+  "review_questions": [
+    "Exact facility geometry, frame/calibration and body-local attachment binding",
+    "Live physical dwell/action admission versus independent sealed proof",
+    "Separate logistics verifier dispatch while preserving the required corrected datum image pin"
+  ]
+}

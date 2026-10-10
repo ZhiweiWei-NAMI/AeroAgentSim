@@ -1,0 +1,30 @@
+--- before/ClosedParcelPresenceWindow.observe
++++ after/ClosedParcelPresenceWindow.observe
+@@ -31,7 +31,27 @@
+             and at.tick == self._last_at.tick + 1
+             and at.sim_time_ns > self._last_at.sim_time_ns
+         )
++        # Every incoming stage is assessed by the accepted pure presence
++        # kernel with the declared canonical profile and policy tolerances:
++        # an invalid, moving, airborne/contact-lost or UNKNOWN stage can
++        # never join the qualifying contiguous run.  It clears the qualifying
++        # suffix outright (it is not retained as a run member), tick
++        # contiguity continues from its position, and the grounded run
++        # restarts at the next eligible stage — a bad stage therefore never
++        # poisons a later valid suffix, and a valid suffix is never padded
++        # across an invalid stage.
++        profile = canonical_carrier_profile(self._contract, observation=observation)
++        assessment = assess_facility_presence(
++            pad=observation.pad,
++            sample=observation.sample,
++            profile=profile,
++            event=observation.event_binding,
++            tolerances=self._contract.policy.presence_tolerances(),
++        )
+         self._last_at = at
++        if not assessment.eligible:
++            self._samples = ()
++            return False
+         self._samples = (
+             (*self._samples, observation) if extends else (observation,)
+         )[-self._max_ticks :]

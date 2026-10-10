@@ -1,0 +1,26 @@
+[
+  {
+    "author_scope": "stage/core",
+    "session_id": "c17d3614-e676-4394-acc4-32391809e123",
+    "source_record_type": "request/header",
+    "raw_config_fragment": {
+      "provider": "workbuddy",
+      "model": "glm-5.3-flash",
+      "maxTokens": 131072
+    },
+    "reasoningEffort": "omitted/provider default",
+    "omissions": "Only provider/model/output/effort fields retained; unrelated header fields excluded. No credentials, reasoning or tool payloads exported."
+  },
+  {
+    "author_scope": "RPC/provider/projection review",
+    "session_id": "a400e686-3a13-4b1e-950c-f443091ea395",
+    "source_record_type": "request/header",
+    "raw_config_fragment": {
+      "provider": "workbuddy",
+      "model": "glm-5.3-flash",
+      "maxTokens": 131072
+    },
+    "reasoningEffort": "omitted/provider default",
+    "omissions": "Only provider/model/output/effort fields retained; unrelated header fields excluded. No credentials, reasoning or tool payloads exported."
+  }
+]

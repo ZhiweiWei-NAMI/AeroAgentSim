@@ -1,0 +1,254 @@
+{
+  "schema_version": "p02.implementation-routing-review/v1",
+  "recorded_at": "2026-10-06T05:05:11.193618-07:00",
+  "scope": "P02 only; no new flight; all integration drafts pending review",
+  "rules": [
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench/AGENTS.md",
+      "section": "Assigned tasks and confidential information / Delegation"
+    },
+    {
+      "path": "/mnt/data2/weizhiwei/AERO_WORLD/AGENTS.md",
+      "section": "Project model routing"
+    },
+    {
+      "path": "/mnt/data2/weizhiwei/AERO_WORLD/.agents/skills/aero-world-coordination/SKILL.md",
+      "section": "Routing and independent review"
+    }
+  ],
+  "coordinator_role_rule": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "xhigh",
+    "note": "Role required by project instructions; no claim of externally measured current coordinator deployment."
+  },
+  "primary_and_initial_review_route": {
+    "profile": "glm_sdk",
+    "provider": "workbuddy",
+    "model": "glm-5.3-flash",
+    "maxTokens": 131072,
+    "reasoningEffort": "omitted (provider default)"
+  },
+  "route_receipts": [
+    {
+      "source": "validation/p02_native_parcel_glm/snapshot-frontier-checkpoint/result/p02_native_parcel_admission_result.json",
+      "session_id": "c17d3614-e676-4394-acc4-32391809e123",
+      "requested": {
+        "provider": "workbuddy",
+        "model": "glm-5.3-flash",
+        "maxTokens": 131072
+      },
+      "effective_route_headers": [
+        {
+          "provider": "workbuddy",
+          "model": "glm-5.3-flash",
+          "maxTokens": 131072
+        }
+      ]
+    },
+    {
+      "source": "validation/p02_native_parcel_glm/calibration-review-results/p02_catalog_start_discovery_result.json",
+      "session_id": "a400e686-3a13-4b1e-950c-f443091ea395",
+      "requested": {
+        "provider": "workbuddy",
+        "model": "glm-5.3-flash",
+        "maxTokens": 131072
+      },
+      "effective_route_headers": [
+        {
+          "provider": "workbuddy",
+          "model": "glm-5.3-flash",
+          "maxTokens": 131072
+        },
+        {
+          "provider": "workbuddy",
+          "model": "glm-5.3-flash",
+          "maxTokens": 131072
+        }
+      ]
+    },
+    {
+      "source": "live dispatcher output 2026-10-06T05:10 PDT, task p02_catalog_start_discovery",
+      "session_id": "a400e686-3a13-4b1e-950c-f443091ea395",
+      "event": "actual_route",
+      "route": {
+        "provider": "workbuddy",
+        "model": "glm-5.3-flash",
+        "maxTokens": 131072
+      }
+    }
+  ],
+  "file_ownership": [
+    {
+      "scope": "parcel-core-and-closed-stage",
+      "session_id": "c17d3614-e676-4394-acc4-32391809e123",
+      "files": [
+        {
+          "path": "aero_bench/tasks/logistics/native_parcel_contract.py",
+          "sha256_at_record": "3e448d7027de27e19387fffe1230f01dc31b1fa8721ecbd245b85b931e9d6467"
+        },
+        {
+          "path": "aero_bench/tasks/logistics/native_parcel_runtime.py",
+          "sha256_at_record": "2fdbfa41babd114a39eaed570c57b934d12d03e93d8bef45b7e71ea07d0ce57a"
+        },
+        {
+          "path": "aero_bench/tasks/logistics/native_parcel_stage.py",
+          "sha256_at_record": "65d3ccbdabe1fb301500ad8a792d885f4d719d32d005dfcbd01a1cd44ce38caf"
+        },
+        {
+          "path": "tests/tasks/test_native_parcel_runtime.py",
+          "sha256_at_record": "a3bee70f05555b236fe59c81ed417661422c1d087e11e41fbf8b389727552238"
+        },
+        {
+          "path": "tests/tasks/test_native_parcel_stage.py",
+          "sha256_at_record": "9481d2f39026270d52d24012f845b8635560fee1d7027db8191aea29d9f56a12"
+        }
+      ],
+      "status": "Original GLM author; repairing exact native clock and partial-stage regressions."
+    },
+    {
+      "scope": "catalog-reconnect-ui",
+      "session_id": "a400e686-3a13-4b1e-950c-f443091ea395",
+      "files": [
+        {
+          "path": "frontend/src/app.ts",
+          "sha256_at_record": "3a8e9dee3380256ab55ecad35249c42e4e255b700dcca2734b67545fd078b2f3"
+        },
+        {
+          "path": "frontend/src/i18n.ts",
+          "sha256_at_record": "61af02e5da47516de3aa7b2e76bb2ac9e58f8515b77b017d20817d7d69160513"
+        },
+        {
+          "path": "frontend/src/control-reconnect-ui.ts",
+          "sha256_at_record": "332fa0a4dcb8d76780f6ecd15deefbf55beeeb3a53e0e3de2d77ce245cb4bffa"
+        },
+        {
+          "path": "frontend/src/control-reconnect-ui.test.ts",
+          "sha256_at_record": "68f895e2bdd150fc5990566714b461857ef43e5cb190a585c16a9dde9cf92248"
+        }
+      ],
+      "status": "Original GLM author; focused 31 tests passed after started-state correction. Backend discovery remains in existing authenticated catalog."
+    },
+    {
+      "scope": "rpc-draft-review-takeover",
+      "session_id": "a400e686-3a13-4b1e-950c-f443091ea395",
+      "files": [
+        {
+          "path": "aero_bench/tasks/logistics/native_parcel_rpc.py",
+          "sha256_at_record": "fd6f10cdc27c520e1a25f54c48eff606c0dd5a3fe632a4781c766edab2d7cbe6"
+        },
+        {
+          "path": "tests/tasks/test_native_parcel_rpc.py",
+          "sha256_at_record": "a79821440bef6f3c512328e180427d01638187d071d5d95d31b993b8fca2d7db"
+        }
+      ],
+      "status": "Coordinator draft. RPC transport/projection are integration glue; request identity, clock and admission validation are substantive domain logic. Assigned separate GLM initial review and takeover; not accepted yet."
+    },
+    {
+      "scope": "sealed-parcel-verifier-draft-takeover",
+      "session_id": "c17d3614-e676-4394-acc4-32391809e123",
+      "files": [
+        {
+          "path": "aero_bench/tasks/logistics/native_parcel_verifier.py",
+          "sha256_at_record": "cce2fbbe67adb0df97f45f3eb863a3f7a0cd1cb6ec710c0fd535710499901145"
+        },
+        {
+          "path": "tests/tasks/test_native_parcel_verifier.py",
+          "sha256_at_record": "bb6b2d3215c86c49fac3359b620fff18a5ed2f9a8a1cc9eda006149058bf9d5c"
+        },
+        {
+          "path": "containers/native-parcel-verifier/Dockerfile",
+          "sha256_at_record": "574c9cc932b284c294541a32c8f9dde427c4a930f99590a16db8095d2e687d15"
+        },
+        {
+          "path": "containers/native-parcel-verifier/entrypoint.py",
+          "sha256_at_record": "44355e62f4ad75d714b196a14459c38192cc9bbab637450f27807a82228ffe53"
+        }
+      ],
+      "status": "Coordinator draft includes substantive business replay and verdict criteria, not merely glue. Assigned original GLM review and takeover after core repairs; no image build or runtime verdict."
+    },
+    {
+      "scope": "provider-hook-trace-integration-drafts",
+      "session_id": null,
+      "files": [
+        {
+          "path": "aero_bench/providers/logistics_business/native_parcel.py",
+          "sha256_at_record": "91ad83b3e5dea6545f52f616c8c27058279e79a6281c55b50e8307ffb005a10e"
+        },
+        {
+          "path": "aero_bench/providers/registry.py",
+          "sha256_at_record": "dd7e241527ca75cec0e9c8dcc3f57a2c217885334a99f09548d9853c4c9f8c75"
+        },
+        {
+          "path": "containers/logistics-business/service.py",
+          "sha256_at_record": "f3f415eae1945d89818cae23faf8302d7a1b7c936770036e261a10277dc0e27b"
+        },
+        {
+          "path": "aero_bench/tasks/logistics/native_parcel_hook.py",
+          "sha256_at_record": "478b7414d0f4dc9d76312521ced3f0f2e355e35184aac366f934f94041f149b7"
+        },
+        {
+          "path": "aero_bench/tasks/logistics/runtime_hook.py",
+          "sha256_at_record": "b43324498c901b7bc9267c4350595b42257570d2e2f98f45c0c45c1129091f15"
+        },
+        {
+          "path": "aero_bench/tasks/logistics/sealed_observations.py",
+          "sha256_at_record": "e2c3da83200f43d266e80790e289c44688ff4493fa01cad73d1397365c54ca98"
+        },
+        {
+          "path": "aero_bench/runtime/events.py",
+          "sha256_at_record": "e06be5183af5c0db91862ed4fb7d617372d2579b89e4f067c900be2bc1cd799b"
+        },
+        {
+          "path": "aero_bench/trace/projector.py",
+          "sha256_at_record": "2e35228335185bd4ff8e1ab9f27aac41a704db98c3b3100495e7d5222e9a8248"
+        },
+        {
+          "path": "aero_bench/trace/vocabulary.py",
+          "sha256_at_record": "0bc2bc81e611202161360fce07cebb46b9718815586196306f2e214e0f7b6901"
+        }
+      ],
+      "status": "Coordinator authored pending integration drafts. Provider registration, existing-hook composition and RPC routing are glue. Config/receipt binding and public projection validation contain business/schema logic and require GLM initial review before acceptance."
+    },
+    {
+      "scope": "independent-counterexample-tests",
+      "session_id": null,
+      "files": [
+        {
+          "path": "tests/tasks/test_native_parcel_clock_integration.py",
+          "sha256_at_record": "3f1e0cd2749ab7d8f1243775456b6a38645597552535422186618f140de20cbb"
+        }
+      ],
+      "status": "Coordinator independent tests derived from native findings. Implementer must not weaken these assertions."
+    }
+  ],
+  "review_rounds": [
+    {
+      "round": 1,
+      "kind": "requirements and evidence questions",
+      "status": "Native contract and time/principal/pad/restore requirements captured. Integration pins/calibration still need final packet."
+    },
+    {
+      "round": 2,
+      "kind": "independent native counterexamples",
+      "status": "Native boundary failures reproduced in actual package; baseline 61 does not clear these."
+    },
+    {
+      "round": 3,
+      "kind": "corrected retest and optimization",
+      "status": "Core82/82 corrected-source retest passed. Integration GLM initial review and external native re-review pending."
+    }
+  ],
+  "latest_checks": {
+    "frontend": "31/31 passed in 3 focused files; current typecheck passed",
+    "backend_in_progress": "98 passed /1 failed; exact two-pad/shared carrier source validation remains under original GLM repair.",
+    "core": "82/82 passed: 61 baseline/native +8 independent +13 author clock regressions; stable exported source"
+  },
+  "launch_state": "NOT_LAUNCHED",
+  "publication_state": "local report; no new source packet published yet",
+  "author_core_release": {
+    "session_id": "c17d3614-e676-4394-acc4-32391809e123",
+    "public_message_time_ms": 1791288806168,
+    "released_core": true,
+    "stage_reassigned": "one validation function; original author"
+  }
+}

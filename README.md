@@ -4,7 +4,7 @@
 # AeroAgentSim
 
 <div align="center">
-  <img src="src/aeroagentsim/docs/img/logo.png" alt="AeroAgentSim Logo" width="300">
+  <img src="src/aeroagentsim/docs/img/agent_logo.png" alt="AeroAgentSim Logo" width="300">
 </div>
 
 AeroAgentSim is a discrete-event simulation toolkit and developer workbench for low-altitude autonomous systems. It is designed for developers who need to configure workflows, run algorithmic experiments, inspect execution chains, and verify runtime behavior through trajectories, logs, and spatial snapshots.
@@ -182,6 +182,7 @@ The current workbench API exposes these main groups:
 - [Documentation Guide](DOCUMENTATION_GUIDE.md)
 - [Documentation Hub](docs/README.md)
 - [System Architecture](src/aeroagentsim/docs/en/architecture.md)
+- [JOSS publication sources](paper.md) and [review-response archive](response_to_JOSS/README.md)
 
 ## Citation
 

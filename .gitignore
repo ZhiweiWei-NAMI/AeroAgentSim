@@ -85,8 +85,8 @@ frontend/yarn-error.log*
 # dev_plan/
 
 # --- Paper related ---
-paper.md
-paper.bib
+# Publication sources are versioned; generated output remains local.
+paper.pdf
 paper_refs.txt
 bib_refs.txt
 airfogsim_paper.pdf

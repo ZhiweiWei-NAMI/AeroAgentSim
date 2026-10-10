@@ -122,6 +122,21 @@ body.p02-active.p02-view-config .sidebar {
   pointer-events: auto;
 }
 
+/* The existing authenticated live form remains reachable in map-first mode. */
+body.p02-active.p02-controls-open .sidebar {
+  display: block !important;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  background: var(--p02-surface);
+}
+
+body.p02-active .control-panel .credential-input {
+  background: var(--p02-surface-soft);
+  color: var(--p02-ink);
+  border-color: var(--p02-border);
+}
+
 /* The dock floats over the map's left edge and scrolls locally. */
 .p02-run-dock {
   position: absolute;
@@ -626,7 +641,7 @@ body.p02-active.scene-view .topbar {
   color: var(--p02-ink);
 }
 body.p02-active.scene-view .topbar .run-meta { min-width: 0; flex: 1 1 auto; }
-body.p02-active.scene-view .topbar .run-meta > :not(.p02-view-switch),
+body.p02-active.scene-view .topbar .run-meta > :not(.p02-view-switch):not(.p02-controls-toggle),
 body.p02-active.scene-view .topbar :is(.trace-source-control, .clock, .brand-sub) { display: none; }
 body.p02-active.scene-view .topbar .lang-switch {
   display: flex;

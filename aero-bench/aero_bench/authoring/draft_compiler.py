@@ -395,7 +395,11 @@ class CityDraftCompiler:
 def load_published_compilation(
     output_root: Path, compilation_id: str,
 ) -> tuple[CityCompilationResult, Path, tuple[ResolvedRunSpec, ...]]:
-    """Read and re-resolve immutable publication before handing it to Control."""
+    """Verify publication and return its suite-relative runtime input root.
+
+    The published suite reference is relative to the outer publication bundle;
+    resolved task, provider, and asset references are relative to suite.parent.
+    """
     if re.fullmatch(r"[0-9a-f]{64}", compilation_id) is None:
         raise ValueError("compilation ID must be a SHA-256 identity")
     output_root = output_root.resolve(strict=True)
@@ -442,4 +446,4 @@ def load_published_compilation(
     )["runs"]
     if recorded != [run.model_dump(mode="json") for run in runs]:
         raise ValueError("recorded ResolvedRun differs from the independently resolved bundle")
-    return result, bundle, runs
+    return result, suite_path.parent, runs

@@ -1,0 +1,110 @@
+{
+  "schema_version": "p02.parcel-clock-integration-source/v1",
+  "recorded_at": "2026-10-06T05:14:21.790898-07:00",
+  "baseline_commit": "4c783b7bad0c6dd32c8c7e85e502d554502eebcf",
+  "author_session_id": "c17d3614-e676-4394-acc4-32391809e123",
+  "scope": "Native review packet; actual-package synthetic tests only",
+  "tests": {
+    "passed": 82,
+    "failed": 0,
+    "source_stable": true,
+    "by_module": {
+      "tests.tasks.test_native_parcel_clock_integration": 8,
+      "tests.tasks.test_native_parcel_runtime.TestContractConstruction": 6,
+      "tests.tasks.test_native_parcel_runtime.TestWrongOwnerRunTime": 4,
+      "tests.tasks.test_native_parcel_runtime.TestDwellAdmission": 13,
+      "tests.tasks.test_native_parcel_runtime.TestCustodyAndTransfers": 10,
+      "tests.tasks.test_native_parcel_runtime.TestInTransitDetection": 2,
+      "tests.tasks.test_native_parcel_runtime.TestCarriageTransform": 4,
+      "tests.tasks.test_native_parcel_runtime.TestSnapshotSeekConsistency": 6,
+      "tests.tasks.test_native_parcel_runtime.TestExactClockRelation": 7,
+      "tests.tasks.test_native_parcel_runtime.TestSeekForwardExactShapes": 6,
+      "tests.tasks.test_native_parcel_review_regressions": 16
+    }
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1919,
+      "sha256": "d35d563544d18c6b11f532defc7ad5fbf1939d283851859a00d76d55ece529b6"
+    },
+    {
+      "path": "native_parcel_runtime.patch",
+      "bytes": 17552,
+      "sha256": "c37c64f8313a0af99792003355c8771faf0f7ee1d9b315d67fe510de856cbb2b"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/facility_presence.py",
+      "bytes": 30040,
+      "sha256": "88da26f0c7bdf2778eff76b68da5f8da4e3cb1b981422cbd63568d7669ba2ae2"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/native_parcel_contract.py",
+      "bytes": 32154,
+      "sha256": "3e448d7027de27e19387fffe1230f01dc31b1fa8721ecbd245b85b931e9d6467"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/native_parcel_runtime.py",
+      "bytes": 79089,
+      "sha256": "2fdbfa41babd114a39eaed570c57b934d12d03e93d8bef45b7e71ea07d0ce57a"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/physical_observations.py",
+      "bytes": 66056,
+      "sha256": "130f13c9b76ff53ab4a3f348269f02f9d1b5d08eab48646e57efeec51b975c64"
+    },
+    {
+      "path": "source/tests/tasks/test_native_parcel_clock_integration.py",
+      "bytes": 3120,
+      "sha256": "3f1e0cd2749ab7d8f1243775456b6a38645597552535422186618f140de20cbb"
+    },
+    {
+      "path": "source/tests/tasks/test_native_parcel_review_regressions.py",
+      "bytes": 6273,
+      "sha256": "d1392d161cc4f61cb0e662d63caa8c90e654e0f4bbb50bbfbd5ee1a95a6149b8"
+    },
+    {
+      "path": "source/tests/tasks/test_native_parcel_runtime.py",
+      "bytes": 58120,
+      "sha256": "a3bee70f05555b236fe59c81ed417661422c1d087e11e41fbf8b389727552238"
+    },
+    {
+      "path": "tests/before-clock.txt",
+      "bytes": 10528,
+      "sha256": "bb39cc8e54943d052744273939ca2380528e3ececcddea925dc3a07d257282fc"
+    },
+    {
+      "path": "tests/before-clock.xml",
+      "bytes": 11357,
+      "sha256": "645b99d1b5381d1f7346fa6276278b963d625fd1889f15eb2a6f1c2b9a86a888"
+    },
+    {
+      "path": "tests/core-final-result.json",
+      "bytes": 1566,
+      "sha256": "fe45828310562c8f9a3fedac4b8893012be647ab5c5b83c2c7f1226c1a42a587"
+    },
+    {
+      "path": "tests/core-final.txt",
+      "bytes": 402,
+      "sha256": "489d30b9bd18755e211ce1e2822f8a07fcf7e996d3ca4c22de87aff1881609e4"
+    },
+    {
+      "path": "tests/core-final.xml",
+      "bytes": 12742,
+      "sha256": "697c37bcd881fb4c77f7ed5c1aa81e2746798dbf32d1b104937c8ec4a0a26e6a"
+    }
+  ],
+  "bytes": 330918,
+  "not_claimed": [
+    "native logistics execution",
+    "sealed logistics verdict",
+    "full UI workflow",
+    "closed-stage completeness acceptance"
+  ],
+  "known_pending_documentation": "check_seek_forward docstring includes obsolete same-tick later-ns bullet; implementation rejects it, author correction queued.",
+  "author_core_release": {
+    "session_id": "c17d3614-e676-4394-acc4-32391809e123",
+    "public_message_time_ms": 1791288806168,
+    "current_next_scope": "closed-stage completeness/common carrier source"
+  }
+}

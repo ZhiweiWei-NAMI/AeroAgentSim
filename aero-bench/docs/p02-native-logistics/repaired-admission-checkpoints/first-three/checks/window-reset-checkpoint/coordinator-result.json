@@ -1,0 +1,15 @@
+{
+  "checkpoint": "qualifying-window-reset",
+  "source_file": "aero_bench/tasks/logistics/native_parcel_runtime.py",
+  "source_sha256": "a15c473fa7365a6aa2ccffa92a61c6e777db3eadfba30d144f7772aae493c92a",
+  "function_sha256": "e03d2f4bd50db1323400724328e216742caa92c191698174fd76dc8eba80cacd",
+  "before": "3 failed in 0.67s",
+  "after": "3 passed in 0.56s",
+  "test_evidence": "coordinator-regression.xml",
+  "remaining": [
+    "same-tick two-pad frontier",
+    "principal binding",
+    "snapshot windows and keyed outcomes"
+  ],
+  "claim_scope": "Actual package, synthetic module inputs only; not native flight or complete logistics acceptance."
+}

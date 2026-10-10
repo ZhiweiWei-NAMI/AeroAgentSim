@@ -1,0 +1,11 @@
+{
+  "checkpoint": "principal binding",
+  "actual_result": "3 passed in 0.49s",
+  "test_evidence": "coordinator-regression.xml",
+  "required_field": "NativeParcelIdentities.authorized_principal_id",
+  "source_sha256": "6859e641c64bfb5ffa95929452cc4ee89dbdeda9cc1f943657ab2aee79480e3d",
+  "remaining": [
+    "snapshot windows and keyed outcomes"
+  ],
+  "scope": "Actual package synthetic inputs; no provider authentication or flight acceptance claim."
+}

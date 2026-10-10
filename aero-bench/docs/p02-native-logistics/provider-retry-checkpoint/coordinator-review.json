@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "scope": "Actual package provider -> in-memory transport -> actual authoritative RPC; no service/native flight",
+  "command": [
+    "/home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python",
+    "-m",
+    "pytest",
+    "tests/providers/test_native_parcel_provider_retry.py",
+    "-q"
+  ],
+  "exit_code": 0,
+  "started_at_utc": "2026-10-06T14:04:38.771563+00:00",
+  "finished_at_utc": "2026-10-06T14:04:41.778774+00:00",
+  "result": "...                                                                      [100%]\n3 passed in 0.66s",
+  "parent_exact_unmodified_source_test": "PASS",
+  "source_unchanged_during_check": true,
+  "source_sha256": {
+    "aero_bench/providers/logistics_business/native_parcel.py": "254552ab2e879ff56052aef7d9eaa2b5277de5c47c7f95fb3973fd358c4bc87f",
+    "tests/providers/test_native_parcel_provider_retry.py": "74d6ed0aad401dfda56e898bb5c27ba94efee2e7c960c576de15ef0b84a62759"
+  },
+  "review": "Provider retains prepared/run guard; temporal validation and idempotent replay remain at RPC. Negative tests require NativeParcelRuntimeError and specific error messages; no machine mutation."
+}

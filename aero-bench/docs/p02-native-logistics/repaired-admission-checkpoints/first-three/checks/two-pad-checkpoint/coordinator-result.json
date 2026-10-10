@@ -1,0 +1,12 @@
+{
+  "checkpoint": "same-tick two-pad frontier",
+  "source_sha256": "1a6b689624d4e2a8d0ff15e4fb7454ec1f717382bfe343c15bd02270972822c4",
+  "intermediate": "duplicate same pad still accepted; 1 failed in 0.52s",
+  "final": "1 passed in 0.49s",
+  "test_evidence": "coordinator-final-regression.xml",
+  "remaining": [
+    "principal binding",
+    "snapshot windows and keyed outcomes"
+  ],
+  "scope": "Actual package synthetic observations; no flight acceptance."
+}

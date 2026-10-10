@@ -1,0 +1,46 @@
+{
+  "source_browser_receipt": "visual-receipt.json",
+  "request_failures": {
+    "total": 201,
+    "error_types": {
+      "net::ERR_ABORTED": 201
+    },
+    "classification": "Browser-aborted requests. This receipt does not establish missing content or failed HTTP status from these aborts."
+  },
+  "separate_source_inventory": {
+    "manifest_path": "/mnt/data2/weizhiwei/AERO_BENCH/frontend/public/building-renders/shanghai-huangpu-east-v1/manifest.json",
+    "manifest_sha256": "4aba7dc0339d122eaaf92fb220508eac40215019426aaed45028e6db0d6a2f92",
+    "pack_missing_objects": 4,
+    "pack_missing_object_ids": [
+      "building.way.378107085.component.0",
+      "building.way.447021393.component.0",
+      "building.way.447021395.component.0",
+      "building.way.447021396.component.0"
+    ],
+    "buildings": 414,
+    "pack_linked_objects": 410,
+    "blocks": 78,
+    "browser_dataset_key": "buildingRenderPackMissing",
+    "producer_site": "frontend/src/map.ts2776\u20132777 copies source manifest count"
+  },
+  "actual_ready_capture": {
+    "sceneReady": "true",
+    "texturesReady": "true",
+    "buildingVisualParts": "414",
+    "native_uav_binding": "native-entity-glb-binding-unavailable"
+  },
+  "isolated_initial_loader_failure": {
+    "port": 5416,
+    "city_manifest_status": 404,
+    "sky_texture_status": 404,
+    "diagnostic": "semantics-loader-diagnostic.json"
+  },
+  "approved_corrected_qa_assets": {
+    "port": 5417,
+    "publicDir": "/mnt/data2/weizhiwei/AERO_BENCH/frontend/public",
+    "city_manifest_status": 200,
+    "sky_texture_status": 200,
+    "no_assets_rebuilt": true,
+    "no_existing_service_restarted": true
+  }
+}

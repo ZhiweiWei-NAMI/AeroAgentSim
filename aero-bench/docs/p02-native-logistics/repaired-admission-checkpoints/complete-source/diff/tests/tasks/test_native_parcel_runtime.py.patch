@@ -1,0 +1,164 @@
+--- dea2691/tests/tasks/test_native_parcel_runtime.py
++++ current/tests/tasks/test_native_parcel_runtime.py
+@@ -60,6 +60,7 @@
+     ParcelDwellAdmission,
+ )
+ from aero_bench.tasks.logistics.native_parcel_runtime import (
++    NATIVE_PARCEL_SNAPSHOT_SCHEMA_VERSION,
+     NativeParcelRuntimeError,
+     NativeParcelSnapshot,
+     NativeParcelStateMachine,
+@@ -707,11 +708,11 @@
+             now=_dwell_tick(5),
+         )
+         assert outcome.status == "unconfirmed"
+-        # The window ends exactly at the admission tick, but the in-air stage
+-        # at tick 4 is not an eligible grounded closed stage, so the run is
+-        # invalidated.
+-        assert "tick 4 presence assessment is not eligible" in outcome.reason
+-        assert "aircraft_not_landed" in outcome.reason
++        # The in-air sample cleared the prefix; the one subsequent grounded
++        # sample cannot establish a contiguous dwell or a custody transfer.
++        assert "a contiguous dwell requires at least two distinct closed stages" in outcome.reason
++        assert machine.parcel_state.state == "awaiting_pickup"
++        assert not machine.parcel_state.transfers
+ 
+     def test_motion_at_admission_tick_invalidates_window(self, package):
+         # A qualifying grounded prefix (ticks 1-2) followed by a moving stage
+@@ -734,7 +735,9 @@
+             now=_dwell_tick(3),
+         )
+         assert outcome.status == "unconfirmed"
+-        assert "not eligible" in outcome.reason
++        assert "the closed presence window is empty" in outcome.reason
++        assert machine.parcel_state.state == "awaiting_pickup"
++        assert not machine.parcel_state.transfers
+ 
+     def test_contact_loss_at_admission_tick_invalidates_window(self, package):
+         # Contact loss: the final stage at the admission tick no longer sits
+@@ -757,7 +760,9 @@
+             now=_dwell_tick(3),
+         )
+         assert outcome.status == "unconfirmed"
+-        assert "not eligible" in outcome.reason
++        assert "the closed presence window is empty" in outcome.reason
++        assert machine.parcel_state.state == "awaiting_pickup"
++        assert not machine.parcel_state.transfers
+ 
+     def test_moving_carrier_breaks_presence_dwell(self, package):
+         machine = _machine(package)
+@@ -774,7 +779,9 @@
+             now=_dwell_tick(2),
+         )
+         assert outcome.status == "unconfirmed"
+-        assert "not eligible" in outcome.reason
++        assert "a contiguous dwell requires at least two distinct closed stages" in outcome.reason
++        assert machine.parcel_state.state == "awaiting_pickup"
++        assert not machine.parcel_state.transfers
+ 
+     def test_in_air_carrier_breaks_presence_dwell(self, package):
+         machine = _machine(package)
+@@ -792,7 +799,9 @@
+             now=_dwell_tick(2),
+         )
+         assert outcome.status == "unconfirmed"
+-        assert "not eligible" in outcome.reason
++        assert "a contiguous dwell requires at least two distinct closed stages" in outcome.reason
++        assert machine.parcel_state.state == "awaiting_pickup"
++        assert not machine.parcel_state.transfers
+ 
+     def test_dwell_window_reset_by_gap_between_pads(self, package):
+         # A pickup-pad stage, an off-pad stage (dropoff pad, resets nothing on
+@@ -1174,7 +1183,7 @@
+         # A snapshot from a different machine of the same contract/run is the
+         # same declared state; a different run is foreign and must raise.
+         foreign = NativeParcelSnapshot(
+-            schema_version="aero-bench.logistics-native-parcel-snapshot/v1",
++            schema_version=NATIVE_PARCEL_SNAPSHOT_SCHEMA_VERSION,
+             contract_id=snap.contract_id,
+             contract_digest=snap.contract_digest,
+             run_id=_OTHER_RUN_ID,
+@@ -1182,6 +1191,83 @@
+             parcel_state=snap.parcel_state,
+             past_keys=snap.past_keys,
+             stream_digest=snap.stream_digest,
++            current_time=snap.current_time,
++            last_observation_at=snap.last_observation_at,
++            facility_frontiers=snap.facility_frontiers,
++            pickup_window_samples=snap.pickup_window_samples,
++            pickup_window_last_at=snap.pickup_window_last_at,
++            dropoff_window_samples=snap.dropoff_window_samples,
++            dropoff_window_last_at=snap.dropoff_window_last_at,
++            decisions=snap.decisions,
++            decision_outcomes=snap.decision_outcomes,
++            last_decision_at=snap.last_decision_at,
+         )
+         with pytest.raises(NativeParcelRuntimeError):
+             other.restore(foreign)
++
++    def test_restore_preserves_unconfirmed_tombstone_original_retry(
++        self, package
++    ):
++        # A keyed unconfirmed decision survives the JSON roundtrip with its
++        # original outcome: the exact same content replays the recorded
++        # unconfirmed outcome (never re-decided, never physically
++        # re-evaluated), and a different payload under the same key still
++        # raises the explicit conflict.
++        machine = _machine(package)
++        machine.observe(
++            _observation(package, at=_dwell_tick(1), facility_id=_PICKUP)
++        )
++        action = _action(
++            received_at=_dwell_tick(1), rx_stage_barrier_digest=f"{1:04d}" * 16
++        )
++        original = machine.admit_action(action, now=_dwell_tick(1))
++        assert original.status == "unconfirmed"
++        restored = _machine(package)
++        restored.restore(
++            NativeParcelSnapshot.model_validate_json(
++                machine.snapshot().model_dump_json()
++            )
++        )
++        replayed = restored.admit_action(action, now=_dwell_tick(1))
++        assert replayed == original
++        assert replayed.status == "unconfirmed"
++        with pytest.raises(NativeParcelRuntimeError):
++            restored.admit_action(
++                _action(
++                    kind="dropoff",
++                    received_at=_dwell_tick(1),
++                    rx_stage_barrier_digest=f"{1:04d}" * 16,
++                ),
++                now=_dwell_tick(1),
++            )
++
++    def test_restore_preserves_two_pad_frontiers(self, package):
++        # The per-facility frontiers survive the roundtrip: after restore,
++        # the first sample from the second declared pad at a brand-new tick
++        # is absorbed, and a duplicate from that same pad at the *same* tick
++        # is still refused — the two-pad same-tick semantics are exact.
++        machine = _machine(package)
++        machine.observe(
++            _observation(package, at=_dwell_tick(1), facility_id=_PICKUP)
++        )
++        machine.observe(
++            _observation(package, at=_dwell_tick(1), facility_id=_DROPOFF)
++        )
++        restored = _machine(package)
++        restored.restore(
++            NativeParcelSnapshot.model_validate_json(
++                machine.snapshot().model_dump_json()
++            )
++        )
++        assert (
++            restored.observe(
++                _observation(package, at=_dwell_tick(2), facility_id=_DROPOFF)
++            )
++            is True
++        )
++        assert (
++            restored.observe(
++                _observation(package, at=_dwell_tick(2), facility_id=_DROPOFF)
++            )
++            is False
++        )
