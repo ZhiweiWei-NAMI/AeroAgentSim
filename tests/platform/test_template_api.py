@@ -45,17 +45,24 @@ def template_root(tmp_path: Path) -> Path:
         "format": "aeroagentsim.template/v1",
         "id": "experiment",
         "title": "Experiment",
+        "title_zh": "实验",
         "summary": "Compare pinned allocation settings.",
+        "summary_zh": "对比固定的任务分配参数。",
         "category": "logistics",
         "difficulty": "beginner",
         "duration_s": 1,
         "scenario": "scenario.yaml",
         "observe": ["Inspect committed task counts.", "Compare run settings."],
+        "observe_zh": ["查看已提交的任务计数。", "对比运行参数。"],
         "try": ["Change the random seed.", "Switch the allocation algorithm."],
+        "try_zh": ["调整随机种子。", "切换分配算法。"],
         "knobs": [
             {
                 "id": "seed",
                 "label": "Seed",
+                "label_zh": "随机种子",
+                "description": "Controls reproducible task arrivals.",
+                "description_zh": "控制可复现的任务到达过程。",
                 "type": "integer",
                 "default": 1,
                 "min": 0,
@@ -65,9 +72,11 @@ def template_root(tmp_path: Path) -> Path:
             {
                 "id": "allocator",
                 "label": "Allocation",
+                "label_zh": "任务分配",
                 "type": "choice",
                 "default": "nearest",
                 "options": ["nearest", "auction"],
+                "options_zh": ["就近分配", "竞价分配"],
                 "pointer": "/algorithms/allocation",
             },
         ],
@@ -99,7 +108,16 @@ def test_template_endpoints_workspace_kpis_comparison(
         assert [row["id"] for row in client.get("/v1/templates").json()] == [
             "experiment"
         ]
-        assert client.get("/v1/templates/experiment").json()["knobs"][0]["id"] == "seed"
+        detail = client.get("/v1/templates/experiment").json()
+        assert detail["knobs"][0]["id"] == "seed"
+        assert detail["title_zh"] == "实验"
+        assert detail["summary_zh"] == "对比固定的任务分配参数。"
+        assert detail["observe_zh"] == ["查看已提交的任务计数。", "对比运行参数。"]
+        assert detail["try_zh"] == ["调整随机种子。", "切换分配算法。"]
+        assert detail["knobs"][0]["label_zh"] == "随机种子"
+        assert detail["knobs"][0]["description_zh"] == "控制可复现的任务到达过程。"
+        assert detail["knobs"][1]["options_zh"] == ["就近分配", "竞价分配"]
+        assert client.get("/v1/templates").json() == [detail]
         assert client.get("/v1/templates/missing").status_code == 404
         response = client.post(
             "/v1/templates/experiment/workspace", json={"knobs": {"seed": 2}}
@@ -122,6 +140,9 @@ def test_template_endpoints_workspace_kpis_comparison(
         b = second.json()["run_id"]
         row = completed(client, a)
         completed(client, b)
+        assert row["template"]["title_zh"] == "实验"
+        assert row["title_zh"] == row["template_title_zh"] == "实验"
+        assert row["title"] == row["template_title"] == "Experiment"
         measured = client.get(f"/v1/runs/{a}/kpis").json()
         assert measured["contract"] == "aeroagentsim.kpi/v1"
         assert measured["final"] == row["kpis"]
@@ -132,6 +153,8 @@ def test_template_endpoints_workspace_kpis_comparison(
         compared = client.get("/v1/runs/compare", params={"ids": f"{a},{b}"})
         assert compared.status_code == 200, compared.text
         result = compared.json()
+        assert all(run["title_zh"] == "实验" for run in result["runs"])
+        assert all(run["template_title_zh"] == "实验" for run in result["runs"])
         assert result["differences"]["algorithms"][0]["values"] == {
             a: "nearest",
             b: "auction",
@@ -243,7 +266,7 @@ def test_traffic_template_api_completes_without_aerograph(
         assert final["tasks_created"]["value"] == 1
         assert final["tasks_completed"]["value"] == 1
         assert final["mean_task_latency_s"]["value"] > 0
-        events = []
+        events: list[dict[str, Any]] = []
         cursor = 1
         while True:
             page = client.get(
@@ -271,3 +294,44 @@ def test_traffic_template_snapshots_its_rendered_city(tmp_path: Path) -> None:
     scene = scene_header(tmp_path, "http://localhost:9000")["scene"]
     assert scene["city"]["url"] == "/v1/studio/demo-assets/scene.json"
     assert scene["camera"]["target"] == [91.95, 0, 93.04]
+
+
+def test_all_shipped_template_translations_pass_through_http(tmp_path: Path) -> None:
+    from aeroagentsim.authoring.templates import TemplateRegistry
+
+    source = Path(__file__).resolve().parents[2] / "scenarios/templates"
+    registry = TemplateRegistry(source)
+    with TestClient(
+        create_app(tmp_path / "runs", templates_root=source), base_url="http://localhost"
+    ) as client:
+        response = client.get("/v1/templates")
+        assert response.status_code == 200, response.text
+        assert len(response.json()) == 8
+        for metadata in registry.list():
+            detail = client.get(f"/v1/templates/{metadata['id']}")
+            assert detail.status_code == 200, detail.text
+            expected = {
+                **metadata,
+                "thumbnail_url": f"/v1/templates/{metadata['id']}/thumbnail",
+            }
+            assert detail.json() == expected
+            assert expected in response.json()
+
+
+def test_legacy_template_run_omits_chinese_title(
+    template_root: Path, tmp_path: Path
+) -> None:
+    file = template_root / "experiment/template.yaml"
+    metadata = yaml.safe_load(file.read_text())
+    del metadata["title_zh"]
+    file.write_text(yaml.safe_dump(metadata))
+    with TestClient(
+        create_app(tmp_path / "runs", templates_root=template_root),
+        base_url="http://localhost",
+    ) as client:
+        assert "title_zh" not in client.get("/v1/templates/experiment").json()
+        response = client.post("/v1/templates/experiment/runs", json={})
+        assert response.status_code == 201, response.text
+        row = completed(client, response.json()["run_id"])
+        assert "title_zh" not in row["template"]
+        assert "title_zh" not in row and "template_title_zh" not in row

@@ -1108,6 +1108,7 @@ generators:
       lowalt.wind_limit_mps: 5.0
       lowalt.returning_to_charge: false
     label: Sprayer {index}
+    label_zh: 植保无人机 {index}
     business: agriculture
     vehicle_class: spraying
 engines:

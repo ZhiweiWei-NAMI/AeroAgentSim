@@ -1,14 +1,14 @@
-import { cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 
-const mocks = vi.hoisted(() => ({ renderers: 0, city: vi.fn(), osm: vi.fn() }));
+const mocks = vi.hoisted(() => ({ renderers: 0, scene: undefined as THREE.Scene | undefined, city: vi.fn(), osm: vi.fn() }));
 vi.mock('three', async importOriginal => {
   const actual = await importOriginal<typeof import('three')>();
   class FakeRenderer {
     domElement = document.createElement('canvas');
     constructor() { mocks.renderers++; }
-    setPixelRatio() {} setSize() {} render() {} dispose() {}
+    setPixelRatio() {} setSize() {} render(scene: THREE.Scene) { mocks.scene = scene; } dispose() {}
   }
   return { ...actual, WebGLRenderer: FakeRenderer };
 });
@@ -27,7 +27,7 @@ const workspace: any = {
 const ALL = ['ground', 'buildings', 'roads', 'entities', 'airspace'];
 
 beforeEach(() => {
-  mocks.renderers = 0;
+  mocks.renderers = 0; mocks.scene = undefined;
   mocks.city.mockReset().mockImplementation(async () => new THREE.Group());
   mocks.osm.mockReset().mockImplementation(async () => new THREE.Group());
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
@@ -56,6 +56,27 @@ describe('ScenePreview layer toggles', () => {
     view.rerender(<ScenePreview workspace={workspace} api="/api" layers={['ground', 'buildings']} />);
     await vi.waitFor(() => expect(mocks.city).toHaveBeenCalledTimes(1));
     expect(mocks.renderers).toBe(1);
+  });
+
+  it('renders airspace polygons without a position binding and skips malformed spatial values', () => {
+    render(<ScenePreview workspace={{ ...workspace, scenario: { presentation: [], entities: [
+      { type: 'airspace', facts: { 'aas.studio.airspace': { floor_m: 10, ceiling_m: 60, polygon: [[0, 0], [10, 0], [10, 10]] } } },
+      { type: 'bad', facts: { 'aas.studio.airspace': { floor_m: 10, ceiling_m: 60, polygon: null } } },
+    ] } }} api="/api" layers={['airspace']} />);
+    expect(mocks.scene?.getObjectByName('layer-airspace')?.children).toHaveLength(2);
+    expect(mocks.scene?.getObjectByName('layer-entities')?.children).toHaveLength(0);
+  });
+
+  it('keeps loading status until all requested building sources settle', async () => {
+    let resolveCity!: (group: THREE.Group) => void, resolveOsm!: (group: THREE.Group) => void;
+    mocks.city.mockImplementation(() => new Promise<THREE.Group>(resolve => { resolveCity = resolve; }));
+    mocks.osm.mockImplementation(() => new Promise<THREE.Group>(resolve => { resolveOsm = resolve; }));
+    render(<ScenePreview workspace={workspace} api="/api" layers={ALL} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading city geometry…');
+    await act(async () => { resolveCity(new THREE.Group()); });
+    expect(screen.getByRole('status')).toHaveTextContent('Loading city geometry…');
+    await act(async () => { resolveOsm(new THREE.Group()); });
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('rebuilds only for a genuinely different scene', async () => {

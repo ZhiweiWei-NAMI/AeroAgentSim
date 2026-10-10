@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
+from string import Formatter
 from typing import Any
 
 import pytest
@@ -14,9 +16,13 @@ from aerokernel.operations import Create, FactWrite, Remove
 from aerokernel.registry import FieldDescriptor, MemoryRegistry, TypeDescriptor
 from aerokernel.time import Instant, Interval, Stamp
 
+from aeroagentsim.authoring.templates import demo_source
 from aeroagentsim.packs.lowalt.overlay import EVENT_NARRATIVES as LOWALT_NARRATIVES
+from aeroagentsim.packs.lowalt.overlay import TASK_KINDS
 from aeroagentsim.packs.traffic_accident.narratives import EVENT_NARRATIVES
+from aeroagentsim.scenario import load_scenario
 from aeroagentsim.services.narratives import (
+    LOWALT_DEFAULTS,
     NarrativeProjector,
     validate_declarations,
 )
@@ -56,7 +62,7 @@ def message(
 
 
 def record_with(*items: dict[str, Any], index: int = 1) -> dict[str, Any]:
-    return encode(
+    encoded = encode(
         {
             "index": index,
             "instant": Instant(index),
@@ -64,6 +70,8 @@ def record_with(*items: dict[str, Any], index: int = 1) -> dict[str, Any]:
             "batches": [],
         }
     )
+    assert isinstance(encoded, dict)
+    return encoded
 
 
 def emit_item(msg: Message) -> dict[str, Any]:
@@ -81,7 +89,7 @@ def emit_item(msg: Message) -> dict[str, Any]:
     }
 
 
-def item_entity(item: dict[str, Any]) -> dict[str, Any]:
+def item_entity(item: object) -> dict[str, Any]:
     return {"kind": "operation", "partition": "p1", "proposal": item, "causes": ()}
 
 
@@ -123,7 +131,7 @@ def tmp_scenario(tmp_path: Path, **scenario: Any) -> Path:
     return tmp_path
 
 
-def test_lowalt_task_category_mapping(tmp_path) -> None:
+def test_lowalt_task_category_mapping(tmp_path: Path) -> None:
     projector = NarrativeProjector.from_directory(tmp_scenario(tmp_path))
     event = projector.consume(
         record_with(
@@ -148,7 +156,7 @@ def test_lowalt_task_category_mapping(tmp_path) -> None:
     assert "position" not in row  # no stored position yet
 
 
-def test_missing_required_placeholder_raises(tmp_path) -> None:
+def test_missing_required_placeholder_raises(tmp_path: Path) -> None:
     scenario = tmp_scenario(
         tmp_path,
         event_narratives={
@@ -173,7 +181,7 @@ def test_missing_required_placeholder_raises(tmp_path) -> None:
         )
 
 
-def test_assigned_started_completed_with_position(tmp_path) -> None:
+def test_assigned_started_completed_with_position(tmp_path: Path) -> None:
     projector = NarrativeProjector.from_directory(tmp_scenario(tmp_path))
     events = projector.consume(
         record_with(
@@ -200,7 +208,7 @@ def test_assigned_started_completed_with_position(tmp_path) -> None:
     assert events[0]["entities"] == ["task-1", "veh-1"]
 
 
-def test_completed_template(tmp_path) -> None:
+def test_completed_template(tmp_path: Path) -> None:
     projector = NarrativeProjector.from_directory(tmp_scenario(tmp_path))
     events = projector.consume(
         record_with(
@@ -219,7 +227,7 @@ def test_completed_template(tmp_path) -> None:
     assert events[0]["text"] == ("veh-2 completed the task at its destination (12.5 s)")
 
 
-def test_optional_entity_links_omitted_when_absent(tmp_path) -> None:
+def test_optional_entity_links_omitted_when_absent(tmp_path: Path) -> None:
     projector = NarrativeProjector.from_directory(tmp_scenario(tmp_path))
     events = projector.consume(
         record_with(
@@ -235,7 +243,7 @@ def test_optional_entity_links_omitted_when_absent(tmp_path) -> None:
     assert events[0]["category"] == "weather"
 
 
-def test_duplicate_delivery_ignored(tmp_path) -> None:
+def test_duplicate_delivery_ignored(tmp_path: Path) -> None:
     projector = NarrativeProjector.from_directory(tmp_scenario(tmp_path))
     msg = message("lowalt.energy.low", {"vehicle": "veh-9", "soc": 0.18})
     record = record_with(emit_item(msg))
@@ -245,7 +253,7 @@ def test_duplicate_delivery_ignored(tmp_path) -> None:
     assert projector.consume(record_with(emit_item(msg), index=2)) == []
 
 
-def test_remove_clears_position(tmp_path) -> None:
+def test_remove_clears_position(tmp_path: Path) -> None:
     projector = NarrativeProjector.from_directory(tmp_scenario(tmp_path))
     projector.consume(
         record_with(
@@ -468,3 +476,176 @@ def test_task_category_and_earlier_position_persist_without_using_velocity(
     )
     assert rows[0]["category"] == "emergency"
     assert rows[0]["position"] == [10, 20, 30]
+    assert rows[0]["text_zh"] == "veh-1在目的地送达紧急医疗物资（耗时 1 秒）"
+
+
+def placeholder_names(template: str) -> set[str]:
+    return {field for _, field, _, _ in Formatter().parse(template) if field is not None}
+
+
+def test_all_narrative_translations_preserve_placeholders() -> None:
+    for declarations, english, chinese in (
+        (LOWALT_NARRATIVES, "text", "text_zh"),
+        (EVENT_NARRATIVES, "template", "template_zh"),
+        (LOWALT_DEFAULTS, "template", "template_zh"),
+    ):
+        for schema, declaration in declarations.items():
+            text, text_zh = declaration[english], declaration[chinese]
+            assert text_zh.strip() == text_zh and text_zh != text, schema
+            assert any("\u4e00" <= char <= "\u9fff" for char in text_zh), schema
+            assert placeholder_names(text_zh) == placeholder_names(text), schema
+    validate_declarations(EVENT_NARRATIVES)
+    validate_declarations(LOWALT_DEFAULTS)
+
+
+@pytest.mark.parametrize(
+    "translated",
+    [None, "", "  ", 42, "{actor!r}完成任务", "{actor.name}完成任务", "{actor:>3}完成任务", "{other}完成任务", "任务完成"],
+)
+def test_invalid_chinese_narrative_templates_fail_validation(translated: Any) -> None:
+    with pytest.raises(ValueError, match="template_zh"):
+        validate_declarations({
+            "custom.done": {
+                "template": "{actor} finished",
+                "template_zh": translated,
+                "category": "mixed",
+                "severity": "info",
+            }
+        })
+
+
+@pytest.mark.parametrize(
+    "kind,noun,done",
+    [
+        ("parcel", "包裹配送任务", "完成包裹投递"),
+        ("medical", "紧急医疗配送任务", "送达紧急医疗物资"),
+        ("inspection", "巡检任务", "完成巡检"),
+        ("survey", "测绘任务", "完成测绘"),
+        ("spraying", "喷洒任务", "完成喷洒"),
+        ("passenger", "载客任务", "送达乘客"),
+        ("patrol", "巡逻任务", "完成巡逻"),
+        ("incident_response", "事故响应任务", "完成事故响应"),
+    ],
+)
+def test_task_chinese_context_and_cursor_interpolation(
+    tmp_path: Path, kind: str, noun: str, done: str
+) -> None:
+    assert kind in TASK_KINDS
+    base = tmp_scenario(tmp_path, entities=[
+        {"id": "drone-1", "label": "Drone One"},
+        {"id": "origin-1", "label": "East Depot"},
+        {"id": "destination-1", "label": "West Site"},
+    ])
+    projector = NarrativeProjector.from_directory(base)
+    created = projector.consume(record_with(emit_item(message(
+        "lowalt.task.created", {
+            "task": "task-1", "kind": kind, "priority": 1,
+            "origin": "origin-1", "destination": "destination-1",
+        }, ns=1,
+    ))))[0]
+    assert created["text_zh"] == f"新增前往West Site的{noun}"
+    # A fresh projector must obtain Chinese phrasing from the committed cursor,
+    # not a new or guessed task kind. Authored labels remain intact.
+    restored = NarrativeProjector.projection_context(base, json.loads(json.dumps(projector.cursor())))
+    started = restored.consume(record_with(emit_item(message(
+        "lowalt.task.started", {"task": "task-1", "vehicle": "drone-1"}, ns=2
+    )), index=2))[0]
+    assert started["text_zh"] == f"Drone One前往East Depot执行{noun}"
+    finished = restored.consume(record_with(emit_item(message(
+        "lowalt.task.completed", {
+            "task": "task-1", "vehicle": {"$ref": ref("drone-1").to_data()},
+            "latency_s": 12.5,
+        }, ns=3,
+    )), index=3))[0]
+    assert finished["text_zh"] == f"Drone One在West Site{done}（耗时 12.5 秒）"
+    assert finished["entities"] == ["task-1", "drone-1"]
+    assert finished["category"] == created["category"]
+
+
+def sample_schema(schema: Mapping[str, Any], name: str = "sample") -> Any:
+    """Typed minimal payloads from actual traffic message schemas, not placeholders."""
+    if "enum" in schema:
+        return schema["enum"][0]
+    kind = schema["type"]
+    if kind == "ref":
+        return {
+            "$ref": ref(name + "-1", type_id=schema.get("target_type", "oo:Vehicle")).to_data()
+        }
+    if kind == "record":
+        return {
+            field: sample_schema(schema["members"][field], field)
+            for field in schema["required"]
+        }
+    if kind in {"array", "vector"}:
+        return [sample_schema(schema["items"], name) for _ in range(schema.get("length", 1))]
+    if kind == "string":
+        return name + "-value"
+    if kind == "integer":
+        return max(1, schema.get("minimum", 0))
+    if kind == "number":
+        return max(12.5, schema.get("minimum", 0.0))
+    if kind == "boolean":
+        return True
+    raise AssertionError(f"Untested schema shape: {schema}")
+
+
+def test_every_traffic_translation_interpolates_actual_message_schema(tmp_path: Path) -> None:
+    scenario = load_scenario(demo_source("traffic-accident") / "scenario.yaml")
+    messages = {item.id: item for item in scenario.registry.messages if item.kind == "event"}
+    assert len(EVENT_NARRATIVES) == 24
+    projector = NarrativeProjector.from_directory(tmp_scenario(tmp_path))
+    for index, (schema_id, declaration) in enumerate(EVENT_NARRATIVES.items(), 1):
+        descriptor = messages[schema_id]
+        fields = placeholder_names(declaration["template_zh"])
+        assert fields <= set(descriptor.schema["required"]), schema_id
+        payload = sample_schema(descriptor.schema)
+        scenario.registry.validate(descriptor.schema, payload)
+        record = record_with(emit_item(message(schema_id, payload, ns=index)), index=index)
+        rows = projector.consume(record)
+        if declaration.get("hidden"):
+            assert rows == []
+            visible = NarrativeProjector({schema_id: {**declaration, "hidden": False}})
+            rows = visible.consume(record)  # Interpolate even the hidden telemetry copy.
+        assert len(rows) == 1, schema_id
+        row = rows[0]
+        assert row["text_zh"] != row["text"], schema_id
+        assert any("\u4e00" <= char <= "\u9fff" for char in row["text_zh"]), schema_id
+        for token in ("{", "}", "$ref", "None", "nan"):
+            assert token not in row["text_zh"], (schema_id, row["text_zh"])
+        for field in fields:
+            value = payload[field]
+            if isinstance(value, dict) and "$ref" in value:
+                rendered = value["$ref"]["id"]
+            elif isinstance(value, list):
+                rendered = value[0]["$ref"]["id"]
+            else:
+                rendered = str(value)
+            assert rendered in row["text_zh"], (schema_id, field)
+        assert row["category"] == declaration["category"]
+        assert row["severity"] == declaration["severity"]
+
+
+def test_custom_bilingual_rendering_and_retry_does_not_hide_errors(tmp_path: Path) -> None:
+    base = tmp_scenario(tmp_path, event_narratives={
+        "custom.event": {
+            "template": "{actor} saw {places}: {detail} ({missing})",
+            "template_zh": "{actor}看到{places}：{detail}（{missing}）",
+            "category": "inspection", "severity": "info", "entities": ["actor"],
+        }
+    })
+    projector = NarrativeProjector.from_directory(base)
+    payload: dict[str, Any] = {
+        "actor": {"$ref": ref("drone-1").to_data()},
+        "places": ["A", "B", "C", "D"], "detail": {"value": 1},
+    }
+    broken = record_with(emit_item(message("custom.event", payload)))
+    for _ in range(2):
+        with pytest.raises(ValueError, match="missing placeholder missing"):
+            projector.consume(broken)
+        assert projector.cursor()["seen"] == []
+    payload["missing"] = None
+    row = projector.consume(record_with(emit_item(message("custom.event", payload))))[0]
+    assert row["text"] == "drone-1 saw A, B, C and 1 more: details (unknown)"
+    assert row["text_zh"] == "drone-1看到A、B、C，另有 1 项：详情（未知）"
+    assert row["entities"] == ["drone-1"]
+    assert projector.consume(record_with(emit_item(message("custom.event", payload)))) == []

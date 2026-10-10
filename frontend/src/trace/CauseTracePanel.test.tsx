@@ -5,6 +5,7 @@ import { CauseTracePanel } from './CauseTracePanel';
 import { subscribeCauseTrace, openCauseTrace } from './bus';
 import { explain } from './cause-trace';
 import { incident, traceStore } from './trace-fixture';
+import { I18nProvider } from '../i18n/I18nProvider';
 
 it('tells the story in plain words and lets each follow-up continue the walk', () => {
   const store = traceStore(), open = vi.fn();
@@ -31,4 +32,19 @@ it('lets other pages open a trace through the bus and the entity panel opens mom
   expect(open.mock.calls[0][0]).toMatchObject({ kind: 'event', text: 'Car stopped' });
   fireEvent.click(screen.getByText(/by Demo Alert/));
   expect(open.mock.calls[1][0]).toMatchObject({ kind: 'change', fieldId: 'demo.incident.active', cut: 4 });
+});
+
+it('localizes the complete cause walk while Back, close, entity focus and seek retain exact references', () => {
+  localStorage.setItem('aeroagentsim.locale','zh-CN');
+  const store=traceStore(), open=vi.fn(), back=vi.fn(), close=vi.fn(), seek=vi.fn(), select=vi.fn();
+  const model=explain(store,{kind:'event',text:'Car stopped'},'zh-CN')!;
+  const view=render(<I18nProvider><CauseTracePanel store={store} model={model} canGoBack onOpen={open} onBack={back} onClose={close} onSelectEntity={select} onSeek={seek}/></I18nProvider>);
+  for(const heading of ['是什么触发了它','执行了什么','共享状态发生了哪些变化','接下来发生了什么']) expect(screen.getByText(heading)).toBeTruthy();
+  expect(screen.getByText('车辆 1的速度 = 0')).toBeTruthy();
+  expect(screen.getByText(/此字段仅允许事件链写入/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'← 返回'})); expect(back).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole('button',{name:'查看此步骤之后的场景'})); expect(seek).toHaveBeenCalledWith(4);
+  fireEvent.click(screen.getByRole('button',{name:/Demo Watch: 等待 → 已观察/})); expect(open).toHaveBeenCalledWith({kind:'step',instanceId:'chain:b',revision:'1'});
+  fireEvent.click(screen.getByRole('button',{name:'关闭原因说明'})); expect(close).toHaveBeenCalledOnce();
+  view.unmount(); localStorage.clear();
 });

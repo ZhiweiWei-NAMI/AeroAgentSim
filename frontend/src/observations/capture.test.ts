@@ -1,5 +1,5 @@
 import {it,expect,vi,beforeEach,afterEach} from 'vitest';
-import {recordedCameraPose,renderCapture} from './capture';
+import {captureError,recordedCameraPose,renderCapture} from './capture';
 import { loadAssets } from './capture';
 import type { RunHeader } from '../contracts/viewer-feed';
 
@@ -55,6 +55,15 @@ it('loads public OSM footprints and keeps the console procedural actors for city
  expect(result.scene?.city?.url).toMatch(/^blob:/);
  expect(result.presentation[0].visual.asset).toBe('procedural:uav');
  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it('localizes capture diagnostics for the UI without translating opaque IDs or changing protocol errors',()=>{
+ const original=new Error('Capture required pose missing: uav.bravo.position_enu_m');
+ expect(captureError(original,'zh-CN')).toBe('缺少拍摄所需的位置：uav.bravo.position_enu_m');
+ expect(original.message).toBe('Capture required pose missing: uav.bravo.position_enu_m');
+ expect(captureError(new Error('Capture asset manifest HTTP 404'),'zh-CN')).toBe('无法获取拍摄资源清单（HTTP 404）');
+ expect(captureError(new Error('Capture timed out'),'zh-CN')).toBe('拍摄超时');
+ expect(captureError(original,'en-US')).toBe(original.message);
 });
 
 it('keeps detailed actor model URLs so GLTF relative textures resolve at the service', async () => {

@@ -21,3 +21,23 @@ it('authors a delay rule for every matching type from the form',()=>{
  expect(authored.chains['wait-for-weather'].transitions[1].on).toEqual({timer:'wait'});
  expect(authored.chains['wait-for-weather'].transitions[0].actions).toEqual([{id:'wait',kind:'delay',duration_ns:1000000000}]);
 });
+
+it('clears a state-action value when the selected field changes and blocks invalid numeric drafts',()=>{
+ const scenario={entities:[],behaviours:[{id:'package',predicates:{ready:{roles:{actor:'oo:UAV'},profile:'committed_reactive/v1',expression:{literal:true}}},chains:{},bindings:[]}]};
+ const changed=vi.fn(),workspace={id:'workspace',name:'Rules',scenario};
+ render(<RulesStep workspace={workspace} api={new StudioApi('/')} scenario={scenario} types={[{id:'oo:UAV',parents:[],abstract:false}]} fields={[{id:'energy',type:'oo:UAV',schema:{type:'number'}},{id:'altitude',type:'oo:UAV',schema:{type:'number'}}]} relations={[]} save={async()=>workspace} onApply={()=>{}} onChange={changed}/>);
+ const choose=(label:string,option:string)=>{fireEvent.mouseDown(screen.getByRole('combobox',{name:label}));fireEvent.click(screen.getByTitle(option));};
+ fireEvent.change(screen.getByLabelText('Rule name'),{target:{value:'change-energy'}});
+ choose('Rule predicate','Ready');choose('Rule entity actor','Every UAV');choose('Rule action role','Actor');choose('Rule action field','Energy');
+ const add=screen.getByRole('button',{name:'Add rule to draft'});
+ fireEvent.change(screen.getByLabelText('Rule state value'),{target:{value:'10'}});
+ expect(add).toBeEnabled();
+ fireEvent.change(screen.getByLabelText('Rule state value'),{target:{value:'not-a-number'}});
+ expect(add).toBeDisabled();expect(changed).not.toHaveBeenCalled();
+ choose('Rule action field','Altitude');
+ expect(screen.getByLabelText('Rule state value')).toHaveValue('');
+ expect(add).toBeDisabled();
+ fireEvent.change(screen.getByLabelText('Rule state value'),{target:{value:'50'}});
+ fireEvent.click(add);
+ expect(changed.mock.lastCall?.[0].behaviours[0].chains['change-energy'].transitions[0].actions[0]).toMatchObject({field:'altitude',value:{$number:'50'}});
+});

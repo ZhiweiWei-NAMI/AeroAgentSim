@@ -313,10 +313,7 @@ class ExperimentManager:
                         )
                     controls[knob["id"]] = "until_ns"
             if template is None:
-                template = {
-                    "id": template_id,
-                    "title": prepared.metadata["title"],
-                }
+                template = prepared.run_metadata()
             document = copy.deepcopy(prepared.document)
             # Registry snapshots are stored relative to the template base so
             # the pinned document stays relocatable; child processes resolve
@@ -342,6 +339,7 @@ class ExperimentManager:
             "contract": CONTRACT,
             "template_id": template_id,
             "template_title": template["title"],
+            **({"template_title_zh": template["title_zh"]} if "title_zh" in template else {}),
             "status": "created",
             "seeds": seeds,
             "jobs": jobs,
@@ -388,7 +386,7 @@ class ExperimentManager:
 
     @staticmethod
     def public_report(report: dict[str, Any]) -> dict[str, Any]:
-        keys = (
+        keys: tuple[str, ...] = (
             "id",
             "contract",
             "template_id",
@@ -406,6 +404,8 @@ class ExperimentManager:
             "runs",
             "table",
         )
+        if "template_title_zh" in report:
+            keys += ("template_title_zh",)
         return copy.deepcopy({key: report[key] for key in keys})
 
     def get(self, experiment_id: str) -> dict[str, Any]:
@@ -519,6 +519,11 @@ class ExperimentManager:
         template = {
             "id": entry["template_id"],
             "title": entry["report"]["template_title"],
+            **(
+                {"title_zh": entry["report"]["template_title_zh"]}
+                if "template_title_zh" in entry["report"]
+                else {}
+            ),
             "knobs": copy.deepcopy(entry["configs"][config_index]),
         }
         for name, control in entry["controls"].items():

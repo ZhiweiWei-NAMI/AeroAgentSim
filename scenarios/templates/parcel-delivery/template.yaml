@@ -2,7 +2,9 @@ format: aeroagentsim.template/v1
 city: huangpu
 id: parcel-delivery
 title: Urban parcel delivery
+title_zh: 城市包裹配送
 summary: Drones carry parcels from two vertiports to customers across a small district.
+summary_zh: 无人机从两座垂直起降场出发，为街区内的客户配送包裹。
 category: logistics
 difficulty: beginner
 duration_s: 300
@@ -11,18 +13,26 @@ observe:
   - Orders appear over time and are assigned to available drones.
   - Drones route around the protected central square.
   - Watch separation alerts and battery use as the fleet works.
+observe_zh:
+  - 订单陆续生成，并分配给空闲无人机。
+  - 无人机绕开受保护的中央广场。
+  - 观察机队运行中的间隔告警和电量消耗。
 try:
   - Switch the allocator and compare delivery times.
   - Add drones or increase orders to make the district busier.
   - Increase wind speed to see flights pause.
+try_zh:
+  - 切换任务分配算法，对比配送时间。
+  - 增加无人机或订单，让街区更繁忙。
+  - 提高风速，观察航班何时暂停。
 knobs:
-  - {id: fleet_size, label: Number of drones, type: integer, default: 8, min: 1, max: 40, pointer: /generators/fleet/count}
-  - {id: order_rate, label: Orders per second, type: number, default: 0.08, min: 0.005, max: 1, pointer: /engines/tasks/config/generators/0/arrivals/rate_per_s}
-  - {id: allocator, label: Task allocation algorithm, type: choice, default: nearest, options: [nearest, auction, hungarian, llm], pointer: /algorithms/allocation}
-  - {id: path_planner, label: Route planning algorithm, type: choice, default: corridor_astar, options: [straight, corridor_astar], pointer: /algorithms/path_planning}
-  - {id: wind_speed, label: Wind speed in metres per second, type: number, default: 2, min: 0, max: 20, pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0}
-  - {id: battery_reserve, label: Battery reserve (%), type: number, default: 20, min: 10, max: 85, pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent}
-  - {id: safety_distance, label: Safety distance (m), type: number, default: 20, min: 5, max: 60, pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m}
-  - {id: wind_limit, label: Wind limit (m/s), type: number, default: 12, min: 2, max: 20, pointer: /behaviours/0/predicates/wind_above_limit/parameters/parcel_limit_mps}
+  - {id: fleet_size, label: Number of drones, label_zh: 无人机数量, type: integer, default: 8, min: 1, max: 40, pointer: /generators/fleet/count}
+  - {id: order_rate, label: Orders per second, label_zh: 每秒订单数, type: number, default: 0.08, min: 0.005, max: 1, pointer: /engines/tasks/config/generators/0/arrivals/rate_per_s}
+  - {id: allocator, label: Task allocation algorithm, label_zh: 任务分配算法, type: choice, default: nearest, options: [nearest, auction, hungarian, llm], pointer: /algorithms/allocation}
+  - {id: path_planner, label: Route planning algorithm, label_zh: 航线规划算法, type: choice, default: corridor_astar, options: [straight, corridor_astar], pointer: /algorithms/path_planning}
+  - {id: wind_speed, label: Wind speed in metres per second, label_zh: 风速（米/秒）, type: number, default: 2, min: 0, max: 20, pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0}
+  - {id: battery_reserve, label: Battery reserve (%), label_zh: 预留电量（%）, type: number, default: 20, min: 10, max: 85, pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent}
+  - {id: safety_distance, label: Safety distance (m), label_zh: 安全间隔（米）, type: number, default: 20, min: 5, max: 60, pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m}
+  - {id: wind_limit, label: Wind limit (m/s), label_zh: 风速上限（米/秒）, type: number, default: 12, min: 2, max: 20, pointer: /behaviours/0/predicates/wind_above_limit/parameters/parcel_limit_mps}
 kpis: [tasks_completed, mean_task_latency_s, energy_used_kj, separation_conflicts, geofence_violations]
 thumbnail: thumbnail.png

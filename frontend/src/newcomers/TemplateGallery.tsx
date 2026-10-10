@@ -6,7 +6,8 @@ import { TemplateApi, templateRunUrl, type KnobValue, type ScenarioTemplate, typ
 import { categoryMetadata, TEMPLATE_CATEGORIES, CategoryIcon } from './categories';
 import CustomizeTemplate from './CustomizeTemplate';
 import ExperimentPanel from './ExperimentPanel';
-import { parseAuthoringJson } from '../feeds/lossless-json';
+import { useI18n } from '../i18n/I18nProvider';
+import { localized, translate } from '../i18n/translate';
 import './gallery.css';
 
 /* TemplateGallery — the "Pick a scenario" gallery on the newcomer home.
@@ -21,6 +22,7 @@ function hashOf(id: string): number {
 
 /** Deterministic inline-SVG placeholder used when a template has no thumbnail.png. */
 export function TemplateThumb({ template, apiBase, height = 96 }: { template: ScenarioTemplate; apiBase?:string; height?: number }) {
+  const { t, locale } = useI18n();
   if (template.thumbnail || template.thumbnail_url) {
     return <img className="template-card-thumb" src={new URL(template.thumbnail_url??`/v1/templates/${encodeURIComponent(template.id)}/thumbnail`,apiBase??window.location.origin).href} alt="" loading="lazy" />;
   }
@@ -33,7 +35,7 @@ export function TemplateThumb({ template, apiBase, height = 96 }: { template: Sc
     return { x: 14 + i * 42, y: height - bh, w: 24 + (i % 3) * 8, bh };
   });
   return (
-    <svg className="template-card-thumb" viewBox={`0 0 ${w} ${height}`} width="100%" height={height} role="img" aria-label={`${template.title} — schematic preview`}>
+    <svg className="template-card-thumb" viewBox={`0 0 ${w} ${height}`} width="100%" height={height} role="img" aria-label={t('{title} — schematic preview', { title: localized(template, 'title', locale) })}>
       <defs>
         <linearGradient id={`sky-${h}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={`hsl(${seed}, 32%, 92%)`} />
@@ -49,16 +51,17 @@ export function TemplateThumb({ template, apiBase, height = 96 }: { template: Sc
   );
 }
 
-export function difficultyLabel(difficulty: ScenarioTemplate['difficulty']): string {
-  return difficulty === 'beginner' ? 'Beginner friendly' : difficulty === 'intermediate' ? 'Some experience helps' : 'Advanced';
+export function difficultyLabel(difficulty: ScenarioTemplate['difficulty'], locale = 'en-US'): string {
+  const t = (key: string) => translate(locale, key);
+  return difficulty === 'beginner' ? t('Beginner friendly') : difficulty === 'intermediate' ? t('Some experience helps') : t('Advanced');
 }
 
-export function durationLabel(durationS: number): string {
+export function durationLabel(durationS: number, locale = 'en-US'): string {
+  const t = (key: string, vars: Record<string, number>) => translate(locale, key, vars);
   if (durationS >= 60) {
-    const minutes = Math.round(durationS / 60);
-    return `about ${minutes} min simulated`;
+    return t('about {minutes} min simulated', { minutes: Math.round(durationS / 60) });
   }
-  return `about ${durationS} s simulated`;
+  return t('about {seconds} s simulated', { seconds: durationS });
 }
 
 interface GalleryState { status: 'loading' | 'ready' | 'error'; templates: ScenarioTemplate[]; error?: string }
@@ -66,12 +69,15 @@ interface GalleryState { status: 'loading' | 'ready' | 'error'; templates: Scena
 export function TemplateCard({ template, api, apiBase, onCustomize }: {
   template: ScenarioTemplate; api: TemplateApi; apiBase: string; onCustomize: (t: ScenarioTemplate) => void;
 }) {
+  const { t, locale } = useI18n();
   const [running, setRunning] = useState(false);
+  const [action, setAction] = useState<'run' | 'studio'>('run');
   const [error, setError] = useState<string>();
   const navigate=useNavigate();
-  const meta = categoryMetadata(template.category);
+  const meta = categoryMetadata(template.category, locale);
 
   const run = async () => {
+    setAction('run');
     setRunning(true);
     setError(undefined);
     try {
@@ -85,31 +91,31 @@ export function TemplateCard({ template, api, apiBase, onCustomize }: {
     }
   };
 
-  const studio=async()=>{setRunning(true);setError(undefined);try{const receipt=await api.workspace(template.id);navigate(`/studio?workspace=${encodeURIComponent(receipt.workspace_id)}&api=${encodeURIComponent(apiBase)}`);}catch(problem){setError(String(problem));}finally{setRunning(false);}};
+  const studio=async()=>{setAction('studio');setRunning(true);setError(undefined);try{const receipt=await api.workspace(template.id);navigate(`/studio?workspace=${encodeURIComponent(receipt.workspace_id)}&api=${encodeURIComponent(apiBase)}`);}catch(problem){setError(String(problem));}finally{setRunning(false);}};
   return (
     <li className="template-card" data-testid={`template-${template.id}`} style={{ '--category-color': meta.color } as React.CSSProperties}>
       <TemplateThumb template={template} apiBase={apiBase} />
-      <h3>{template.title}</h3>
-      <p className="template-card-summary">{template.summary}</p>
+      <h3>{localized(template, 'title', locale)}</h3>
+      <p className="template-card-summary">{localized(template, 'summary', locale)}</p>
       <div className="template-card-meta">
         <span className="template-category-chip"><CategoryIcon category={template.category} size={13} /> {meta.label}</span>
-        <span>{difficultyLabel(template.difficulty)}</span>
-        <span>{durationLabel(template.duration_s)}</span>
+        <span>{difficultyLabel(template.difficulty, locale)}</span>
+        <span>{durationLabel(template.duration_s, locale)}</span>
       </div>
       <div className="template-card-actions">
         <button type="button" className="console-btn console-btn-primary" disabled={running} onClick={() => void run()} data-testid={`run-template-${template.id}`}>
-          {running ? 'Starting…' : 'Run now'}
+          {running && action === 'run' ? t('Starting…') : t('Run now')}
         </button>
         <button type="button" className="console-btn" onClick={() => onCustomize(template)} data-testid={`customize-template-${template.id}`}>
-          Customize
+          {t('Customize')}
         </button>
-        <button className="console-btn" onClick={()=>void studio()} disabled={running} data-testid={`studio-template-${template.id}`}>Open in Studio</button>
+        <button className="console-btn" onClick={()=>void studio()} disabled={running} data-testid={`studio-template-${template.id}`}>{running && action === 'studio' ? t('Opening…') : t('Open in Studio')}</button>
       </div>
       {error && (
         <div className="template-error-card" role="alert">
-          <strong>Could not start the run.</strong>
-          <Details title="Start request"><p>{error}</p></Details>
-          <a className="console-btn" href={`/studio?template=${encodeURIComponent(template.id)}&api=${encodeURIComponent(apiBase)}`}>Try in Studio instead</a>
+          <strong>{action === 'studio' ? t('Could not open the scenario in Studio.') : t('Could not start the run.')}</strong>
+          <Details title={action === 'studio' ? t('Workspace request') : t('Start request')}><p>{error}</p></Details>
+          <button type="button" className="console-btn" disabled={running} onClick={() => void studio()}>{action === 'studio' ? t('Try again') : t('Try in Studio instead')}</button>
         </div>
       )}
 
@@ -118,6 +124,7 @@ export function TemplateCard({ template, api, apiBase, onCustomize }: {
 }
 
 export default function TemplateGallery({ apiBase }: { apiBase: string }) {
+  const { t, locale } = useI18n();
   const api = useMemo(() => new TemplateApi(apiBase), [apiBase]);
   const [state, setState] = useState<GalleryState>({ status: 'loading', templates: [] });
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -140,7 +147,10 @@ export default function TemplateGallery({ apiBase }: { apiBase: string }) {
         setState({ status: 'error', templates: [], error: String(error instanceof Error ? error.message : error) });
       });
   };
-  useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setCustomizing(undefined); setExperiment(false); load();
+    return () => { ++attempt.current; };
+  }, [api]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visible = state.status === 'ready'
     ? (selectedCategory === 'all' ? state.templates : state.templates.filter(t => t.category === selectedCategory))
@@ -149,35 +159,35 @@ export default function TemplateGallery({ apiBase }: { apiBase: string }) {
 
   return (
     <div data-testid="template-gallery">
-      {state.status === 'loading' && <div className="console-loading">Loading scenario templates…</div>}
+      {state.status === 'loading' && <div className="console-loading">{t('Loading scenario templates…')}</div>}
       {state.status === 'error' && (
         <div className="template-error-card" role="alert">
-          <strong>Could not load scenario templates.</strong>
-          <p className="template-card-summary">The templates service is not reachable right now. You can still open the Studio and build or run scenarios there.</p>
-          <Details title="Template request"><p>{state.error}</p></Details>
-          <button type="button" className="console-btn" onClick={load}>Retry</button>
-          <a className="console-btn console-btn-primary" href={`/studio?api=${encodeURIComponent(apiBase)}`}>Go to Studio</a>
+          <strong>{t('Could not load scenario templates.')}</strong>
+          <p className="template-card-summary">{t('The templates service is not reachable right now. You can still open the Studio and build or run scenarios there.')}</p>
+          <Details title={t('Template request')}><p>{state.error}</p></Details>
+          <button type="button" className="console-btn" onClick={load}>{t('Retry')}</button>
+          <a className="console-btn console-btn-primary" href={`/studio?api=${encodeURIComponent(apiBase)}`}>{t('Go to Studio')}</a>
         </div>
       )}
       {state.status === 'ready' && state.templates.length === 0 && (
         <div className="console-empty">
-          No scenario templates are published on this service yet. Open the Studio to create your first scenario.
+          {t('No scenario templates are published on this service yet. Open the Studio to create your first scenario.')}
         </div>
       )}
       {state.status === 'ready' && state.templates.length > 0 && (
         <>
-          <div className="template-filter-row" role="group" aria-label="Filter scenarios by category">
-            <button className="console-btn" data-testid="gallery-experiment" onClick={()=>setExperiment(true)}>Compare changes · Experiment</button>
+          <div className="template-filter-row" role="group" aria-label={t('Filter scenarios by category')}>
+            <button className="console-btn" data-testid="gallery-experiment" onClick={()=>setExperiment(true)}>{t('Compare changes · Experiment')}</button>
             <button type="button" className="template-filter" aria-pressed={selectedCategory === 'all'} onClick={() => setSelectedCategory('all')} data-testid="filter-all">
-              All ({state.templates.length})
+              {t('All ({count})', { count: state.templates.length })}
             </button>
             {TEMPLATE_CATEGORIES.filter(c => presentCategories.has(c)).map(c => {
-              const meta = categoryMetadata(c);
+              const meta = categoryMetadata(c, locale);
               const count = state.templates.filter(t => t.category === c).length;
               return (
                 <button key={c} type="button" className="template-filter" aria-pressed={selectedCategory === c}
                   onClick={() => setSelectedCategory(c)} data-testid={`filter-${c}`}>
-                  <CategoryIcon category={c} size={14} /> {meta.label} ({count})
+                  <CategoryIcon category={c} size={14} /> {t('{category} ({count})', { category: meta.label, count })}
                 </button>
               );
             })}
@@ -187,11 +197,11 @@ export default function TemplateGallery({ apiBase }: { apiBase: string }) {
               <TemplateCard key={template.id} template={template} api={api} apiBase={apiBase} onCustomize={setCustomizing} />
             ))}
           </ul>
-          {visible.length === 0 && <div className="console-empty">No templates in this category yet.</div>}
+          {visible.length === 0 && <div className="console-empty">{t('No templates in this category yet.')}</div>}
         </>
       )}
-      <Drawer open={experiment} onClose={()=>setExperiment(false)} title="Compare changes" width={920} destroyOnClose>{experiment&&<ExperimentPanel base={apiBase} templates={state.templates}/>}</Drawer>
-      <Drawer open={!!customizing} onClose={()=>setCustomizing(undefined)} title={customizing?`Customize · ${customizing.title}`:'Customize'} width={520} destroyOnClose>
+      <Drawer open={experiment} onClose={()=>setExperiment(false)} title={t('Compare changes')} width={920} destroyOnClose closable={false} extra={<button type="button" className="console-btn" aria-label={t('Close')} onClick={()=>setExperiment(false)}>×</button>}>{experiment&&<ExperimentPanel base={apiBase} templates={state.templates}/>}</Drawer>
+      <Drawer open={!!customizing} onClose={()=>setCustomizing(undefined)} title={customizing?t('Customize · {title}', { title: localized(customizing, 'title', locale) }):t('Customize')} width={520} destroyOnClose closable={false} extra={<button type="button" className="console-btn" aria-label={t('Close')} onClick={()=>setCustomizing(undefined)}>×</button>}>
         {customizing&&<CustomizeTemplate key={customizing.id} template={customizing} api={api} apiBase={apiBase}/>}
       </Drawer>
     </div>

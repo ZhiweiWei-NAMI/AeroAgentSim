@@ -35,13 +35,15 @@
 .inspection-badge.state-failed {background:var(--csl-danger-bg);color:var(--csl-danger)}
 .console-shell .inspection-timeline {flex-wrap:wrap;gap:12px;padding:14px 16px 22px;align-items:center}
 .inspection-timeline>.ant-select {width:76px}
-.inspection-timeline-track {flex:1;min-width:200px;position:relative;padding:0 8px}
+.inspection-timeline-track {flex:1;min-width:200px;position:relative;padding:0 8px 18px}
 .inspection-timeline-track .ant-slider {margin:8px 0}
-.inspection-event-markers {position:absolute;left:8px;right:8px;bottom:-3px;height:8px}
-.inspection-marker {position:absolute;width:8px;height:8px;transform:translateX(-50%);border:0;border-radius:50%;padding:0;cursor:pointer;background:var(--csl-teal-500);z-index:1}
+.inspection-event-markers {position:absolute;left:8px;right:8px;bottom:0;height:24px}
+.inspection-marker {position:absolute;width:24px;height:24px;transform:translateX(-50%);border:0;border-radius:4px;padding:0;cursor:pointer;background:transparent;z-index:1}
+.inspection-marker:before {content:'';display:block;position:absolute;left:8px;top:8px;width:8px;height:8px;border-radius:50%;background:var(--csl-teal-500)}
+.inspection-marker:focus-visible {outline:2px solid var(--csl-teal-600);outline-offset:1px}
 .inspection-marker span {display:none}
-.inspection-marker:hover span,.inspection-marker:focus-visible span {display:block;position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:var(--csl-navy-900);color:white;padding:4px 7px;border-radius:4px;font-size:11px}
-.inspection-marker.marker-accident {background:#d7833b}.inspection-marker.marker-award {background:#7b68b6}.inspection-marker.marker-capture {background:#12968a}
+.inspection-marker:hover span,.inspection-marker:focus-visible span {display:block;position:absolute;bottom:26px;left:50%;transform:translateX(-50%);background:var(--csl-navy-900);color:white;padding:4px 7px;border-radius:4px;font-size:11px;white-space:nowrap}
+.inspection-marker.marker-accident:before {background:#d7833b}.inspection-marker.marker-award:before {background:#7b68b6}.inspection-marker.marker-capture:before {background:#12968a}
 .inspection-timeline time {font-variant-numeric:tabular-nums;font-size:12px;white-space:nowrap}
 .inspection-timeline time small {color:var(--csl-text-muted);font-size:11px}
 .inspection-marker-legend {display:flex;gap:12px;font-size:10px;color:var(--csl-text-muted)}
@@ -58,3 +60,13 @@
 .console-shell .inspection-page .viewer-stage>nav {flex-wrap:wrap}
 .console-shell .inspection-page .scene-status {top:94px;left:8px;max-width:calc(100% - 16px);font-size:10px}
 .console-shell .inspection-page .inspection-fields h3 .console-concept-help {margin-left:auto}
+.console-shell .inspection-page .viewer-header {flex-wrap:wrap;gap:12px}
+.console-shell .inspection-page .viewer-header>div {min-width:0}
+.inspection-page .viewer-header .ant-space {max-width:100%}
+.inspection-page .viewer-header h1 {overflow-wrap:anywhere}
+@media (max-width:720px) {
+  .console-shell .inspection-page>.viewer-main {height:auto;min-height:0;flex-direction:column}
+  .console-shell .inspection-page .inspection-sidebar {width:auto;flex-basis:auto;border-left:0;border-top:1px solid var(--csl-border)}
+  .console-shell .inspection-page .dual-run-views {min-height:850px}
+  .inspection-timeline-track {flex-basis:100%;min-width:0}
+}

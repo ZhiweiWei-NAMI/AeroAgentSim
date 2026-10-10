@@ -15,6 +15,7 @@ from itertools import product
 from typing import Any, Sequence
 
 from aeroagentsim.algorithms.builtins import CorridorAstar
+from aeroagentsim.algorithms.metadata import BUILTIN_COPY_ZH
 from aeroagentsim.algorithms.protocols import PathPlanning, Point, Snapshot
 from aeroagentsim.packs.common import distance, finite
 from aeroagentsim.packs.geometry import segment_hits_box
@@ -228,6 +229,7 @@ class Coverage:
     goal's z, so a task drives both the survey height and the return point.
     """
 
+    label_zh, description_zh = BUILTIN_COPY_ZH["coverage"]
     description = "Fly spaced boustrophedon rows over the configured survey box."
 
     def __init__(
@@ -289,6 +291,7 @@ class SurveyRoute:
     waypoint in order and ends exactly at the goal.
     """
 
+    label_zh, description_zh = BUILTIN_COPY_ZH["survey"]
     description = "Visit each configured asset waypoint in order, then reach the goal."
 
     def __init__(
@@ -331,6 +334,7 @@ class PatrolRoute:
     is complete) and ``clearance_m``.
     """
 
+    label_zh, description_zh = BUILTIN_COPY_ZH["patrol"]
     description = "Fly one complete circuit of the configured patrol loop."
 
     def __init__(

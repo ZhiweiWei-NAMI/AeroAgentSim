@@ -21,7 +21,7 @@ test('real parcel experiment: matched seeds, progress, measured results and a ch
   }
   await panel.getByRole('spinbutton', { name: 'Repeats per configuration', exact: true }).fill('2');
   await panel.getByRole('spinbutton', { name: 'Parallel runs', exact: true }).fill('2');
-  await panel.getByRole('spinbutton', { name: 'Horizon in seconds', exact: true }).fill('120');
+  await panel.getByRole('spinbutton', { name: 'Simulation duration in seconds', exact: true }).fill('120');
   await expect(panel.getByTestId('experiment-preview')).toHaveText(/2 configurations × 2 repeats = 4 runs/);
   const created = page.waitForResponse(response => response.url().endsWith('/v1/templates/parcel-delivery/experiments') && response.request().method() === 'POST');
   await panel.getByTestId('experiment-start').click();

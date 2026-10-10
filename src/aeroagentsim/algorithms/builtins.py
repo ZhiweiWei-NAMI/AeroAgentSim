@@ -9,6 +9,7 @@ from typing import Any
 from aeroagentsim.packs.common import distance, finite
 from aeroagentsim.packs.geometry import segment_hits_box
 
+from .metadata import BUILTIN_COPY_ZH
 from .protocols import (
     Assignment,
     Charge,
@@ -77,6 +78,7 @@ def _reserve(config: dict[str, Any], name: str) -> float:
 
 
 class Nearest:
+    label_zh, description_zh = BUILTIN_COPY_ZH["nearest"]
     description = (
         "Greedy baseline: highest priority first, each task takes the closest "
         "free drone that can finish the trip with its battery reserve intact."
@@ -104,6 +106,7 @@ class Nearest:
 
 
 class Auction:
+    label_zh, description_zh = BUILTIN_COPY_ZH["auction"]
     description = (
         "Drones bid their estimated completion time, inflated when the trip "
         "would drain the battery; each round awards the lowest bid."
@@ -194,6 +197,7 @@ def hungarian(cost: list[list[float]]) -> tuple[int, ...]:
 
 
 class Hungarian:
+    label_zh, description_zh = BUILTIN_COPY_ZH["hungarian"]
     description = (
         "Minimise the total estimated completion time of the whole batch "
         "(globally optimal pairing of free drones and pending orders)."
@@ -245,6 +249,7 @@ class Hungarian:
 
 
 class Straight:
+    label_zh, description_zh = BUILTIN_COPY_ZH["straight"]
     description = "Propose one direct segment between the requested endpoints."
 
     def __init__(self, **config: Any) -> None:
@@ -256,6 +261,7 @@ class Straight:
 
 
 class CorridorAstar:
+    label_zh, description_zh = BUILTIN_COPY_ZH["corridor_astar"]
     description = (
         "A* over obstacle corners and corridor points, avoiding active no-fly boxes."
     )
@@ -319,6 +325,7 @@ class CorridorAstar:
 
 
 class AltitudeLayers:
+    label_zh, description_zh = BUILTIN_COPY_ZH["altitude_layers"]
     description = "Move conflicting drones to deterministic separate altitude layers."
 
     def __init__(
@@ -355,6 +362,7 @@ class AltitudeLayers:
 
 
 class HoldAndGo:
+    label_zh, description_zh = BUILTIN_COPY_ZH["hold_and_go"]
     description = "Hold the later drone in each pair while the earlier one moves."
 
     def __init__(self, hold_s: float = 3.0) -> None:
@@ -382,6 +390,7 @@ class HoldAndGo:
 
 
 class ThresholdReturn:
+    label_zh, description_zh = BUILTIN_COPY_ZH["threshold_return"]
     description = "Return low-battery drones to the nearest charging pad."
 
     def __init__(self, threshold: float = 0.2) -> None:

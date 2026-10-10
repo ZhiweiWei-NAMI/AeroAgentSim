@@ -1,10 +1,15 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { I18nProvider, useI18n } from '../i18n/I18nProvider';
+import { translate } from '../i18n/translate';
 import type { FeedCommit, RunHeader } from '../contracts/viewer-feed';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { NonspatialViews } from './NonspatialViews';
 import { ancestryLabel, layoutGraph, pickNode, recordedFields } from './nonspatial';
 import cases from './nonspatial-cases.json';
+
+beforeEach(() => { window.localStorage.clear(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); window.localStorage.clear(); });
 
 const at = (ns: string) => ({ ns, microstep: 0 });
 const a = { id: 'a', generation: 0 }, b = { id: 'b', generation: 0 };
@@ -39,7 +44,7 @@ describe('exact nonspatial replay', () => {
     fireEvent.click(screen.getByRole('button', { name: 'a · g0' })); expect(select).toHaveBeenCalledWith(a);
     const row = screen.getByRole('button', { name: 'a · g0' }).closest('tr')!;
     expect(within(row).getByText('0', { selector: 'code' })).toBeInTheDocument();
-    for (const [ns, text] of [['1', 'false'], ['2', 'null'], ['3', 'absent']]) {
+    for (const [ns, text] of [['1', 'false'], ['2', 'null'], ['3', 'Absent']]) {
       store.seek(ns); view.rerender(<NonspatialViews store={store} onSelect={select} selected={a} view="state" />);
       expect(within(row).getByText(text, { selector: 'code' })).toBeInTheDocument();
       expect(row).toHaveAttribute('aria-selected', 'true');
@@ -66,5 +71,80 @@ describe('exact nonspatial replay', () => {
     const select = vi.fn(), view = render(<NonspatialViews store={store} onSelect={select} view="state" />);
     expect(view.container.querySelectorAll('tbody tr')).toHaveLength(50);
     fireEvent.click(screen.getByLabelText('Next state page')); expect(screen.getByRole('button', { name: 'entity-0050 · g0' })).toBeInTheDocument();
+  });
+});
+
+function LocaleButton() { const { locale, setLocale } = useI18n(); return <button onClick={() => setLocale(locale === 'en-US' ? 'zh-CN' : 'en-US')}>locale</button>; }
+function canvasContext() {
+  return { setTransform: vi.fn(), fillRect: vi.fn(), translate: vi.fn(), scale: vi.fn(), save: vi.fn(), restore: vi.fn(),
+    beginPath: vi.fn(), rect: vi.fn(), clip: vi.fn(), fillText: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(),
+    stroke: vi.fn(), fill: vi.fn(), arc: vi.fn(), drawImage: vi.fn() };
+}
+
+describe('bilingual exact graph and state controls', () => {
+  it('redraws cached canvas prose when locale changes and retains the selected entity while filtering', () => {
+    const context = canvasContext(), raster = canvasContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
+      // Offscreen raster caches have a distinct context in a real browser.
+      return (this.dataset.testid === 'topology-canvas' ? context : raster) as unknown as ReturnType<HTMLCanvasElement['getContext']>;
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 600, height: 300, left: 0, top: 0 } as DOMRect);
+    const store = fixture(); store.seek('0', 1); const select = vi.fn();
+    render(<I18nProvider><LocaleButton /><NonspatialViews store={store} selected={a} onSelect={select} view="graph" /></I18nProvider>);
+    expect(raster.fillText).toHaveBeenCalledWith('Ancestors: Parent A (ParentA), Parent B (ParentB)', expect.any(Number), expect.any(Number));
+    fireEvent.change(screen.getByLabelText('Search graph entities'), { target: { value: 'b' } });
+    expect(screen.getByLabelText('Graph entity')).toHaveValue('a:0');
+    expect(within(screen.getByLabelText('Graph entity')).getByRole('option', { name: 'a' })).toBeInTheDocument();
+    raster.fillText.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'locale' }));
+    expect(raster.fillText).toHaveBeenCalledWith('祖先类型：Parent A (ParentA), Parent B (ParentB)', expect.any(Number), expect.any(Number));
+    expect(screen.getByRole('button', { name: translate('zh-CN', 'Fit graph') })).toBeInTheDocument();
+    const graphEntity = screen.getByLabelText(translate('zh-CN', 'Graph entity'));
+    expect(graphEntity).toHaveValue('a:0');
+    fireEvent.change(graphEntity, { target: { value: 'b:0' } });
+    expect(select).toHaveBeenCalledWith(b);
+    const [x, y] = context.translate.mock.calls.slice(-1)[0]!;
+    const [scale] = context.scale.mock.calls.slice(-1)[0]!;
+    fireEvent.click(screen.getByLabelText('放大关系图'));
+    const [nextX, nextY] = context.translate.mock.calls.slice(-1)[0]!;
+    const [nextScale] = context.scale.mock.calls.slice(-1)[0]!;
+    expect((300 - nextX) / nextScale).toBeCloseTo((300 - x) / scale);
+    expect((150 - nextY) / nextScale).toBeCloseTo((150 - y) / scale);
+  });
+
+  it('keeps graph selection and recorded details accessible when canvas is unavailable', () => {
+    window.localStorage.setItem('aeroagentsim.locale', 'zh-CN');
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => { throw Error('unavailable'); });
+    vi.stubGlobal('ResizeObserver', undefined);
+    const store = fixture(); store.seek('0', 1); const select = vi.fn();
+    render(<I18nProvider><NonspatialViews store={store} selected={a} onSelect={select} view="graph" /></I18nProvider>);
+    expect(screen.getByRole('alert')).toHaveTextContent('无法使用二维画布');
+    expect(screen.getByText('e · linked')).toBeInTheDocument();
+    expect(screen.getByText(/生效时间/)).toHaveTextContent('"ns":"0"');
+    fireEvent.click(screen.getByRole('button', { name: 'b' }));
+    expect(select).toHaveBeenCalledWith(b);
+    expect(screen.getByRole('img')).toHaveAccessibleName(/拖动平移/);
+  });
+
+  it('preserves pagination across locale switches, resets it for search and keeps raw fact values intact', () => {
+    const store = new TemporalFeedStore(header), keys = Array.from({ length: 60 }, (_, index) => ({ id: `entity-${String(index).padStart(2, '0')}`, generation: 0 }));
+    store.ingest(commit(1, '0', { created: keys.map(key => ({ ...key, typeId: 'Job' })), facts: [{ entity: keys[50], fieldId: 'state', value: 'Running', producer: 'recorded', validFrom: at('0') }] }));
+    store.seek('0'); const select = vi.fn();
+    render(<I18nProvider><LocaleButton /><NonspatialViews store={store} onSelect={select} view="state" /></I18nProvider>);
+    fireEvent.click(screen.getByLabelText('Next state page'));
+    expect(screen.getByText('60 entities · page 2 / 2')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'locale' }));
+    expect(screen.getByText('60 个实体 · 第 2 / 2 页')).toBeInTheDocument();
+    expect(screen.getByLabelText('状态表下一页')).toBeDisabled();
+    const row = screen.getByRole('button', { name: 'entity-50 · g0' }).closest('tr')!;
+    expect(within(row).getByText('"Running"', { selector: 'code' })).toBeInTheDocument();
+    expect(screen.getAllByText('缺失', { selector: 'code' }).length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText('搜索状态表实体'), { target: { value: 'entity-50' } });
+    expect(screen.getByText('1 个实体 · 第 1 / 1 页')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'entity-50 · g0' }));
+    expect(select).toHaveBeenCalledWith(keys[50]);
+    fireEvent.change(screen.getByLabelText('搜索状态表实体'), { target: { value: 'missing' } });
+    expect(screen.getByText('没有匹配的实体。')).toBeInTheDocument();
+    expect(screen.getByLabelText('状态表上一页')).toBeDisabled();
   });
 });

@@ -1,5 +1,6 @@
 import type { Workspace } from './api';
 import type { AlgorithmSlot } from '../newcomers/api';
+import { translate } from '../i18n/translate';
 
 /** Shared algorithm plug-in contract (`aeroagentsim.algorithms`): one slot each, additive. */
 export const algorithmSlots:AlgorithmSlot[]=['allocation','path_planning','conflict_resolution','charging'];
@@ -34,8 +35,27 @@ export function issueStep(issue:StudioIssue):StudioStep {
 export function validationIssues(validation:Workspace['validation']):StudioIssue[] {
  if(!validation || validation.valid) return [];
  if(validation.issues?.length) return validation.issues;
- return validation.errors.map(message=>({path:'$',message}));
+ return (validation.errors ?? []).map(message=>({path:'$',message}));
 }
 export function readableName(value:string):string {
  return value.replace(/^.*:/,'').replace(/^traffic[._-]/,'').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[._-]+/g,' ').replace(/\b\w/g,letter=>letter.toUpperCase()).replace(/\bUav\b/g,'UAV').replace(/\bLlm\b/g,'LLM').replace(/\bPx4\b/g,'PX4');
+}
+
+/** Translate known registry vocabulary, never user-authored IDs or arbitrary names. */
+export function registryLabel(value: string, locale = 'en-US'): string {
+ const name = readableName(value);
+ const labels: Record<string,string> = {
+  UAV: translate(locale, 'UAV'), Aircraft: translate(locale, 'Aircraft'), Vehicle: translate(locale, 'Vehicle'),
+  'Ground Vehicle': translate(locale, 'Ground vehicle'), Object: translate(locale, 'Object'), Entity: translate(locale, 'Entity'),
+  Site: translate(locale, 'Site'), Customer: translate(locale, 'Customer'), Vertiport: translate(locale, 'Vertiport'),
+  Depot: translate(locale, 'Depot'), 'Charging Pad': translate(locale, 'Charging pad'), Facility: translate(locale, 'Facility'),
+  'Airspace Zone': translate(locale, 'Airspace zone'), 'No Fly Zone': translate(locale, 'No-fly zone'), Task: translate(locale, 'Task'),
+  Person: translate(locale, 'Person'), Pedestrian: translate(locale, 'Pedestrian'), Road: translate(locale, 'Road'),
+  Position: translate(locale, 'Position'), Velocity: translate(locale, 'Velocity'), Energy: translate(locale, 'Energy'),
+  Status: translate(locale, 'Status'), Capacity: translate(locale, 'Capacity'), Role: translate(locale, 'Role'),
+  Membership: translate(locale, 'Membership'), Conflicts: translate(locale, 'Conflicts'),
+  Ground: translate(locale, 'Ground'), Buildings: translate(locale, 'Buildings'), Roads: translate(locale, 'Roads'),
+  Entities: translate(locale, 'Entities'), Airspace: translate(locale, 'Airspace'),
+ };
+ return labels[name] ?? name;
 }

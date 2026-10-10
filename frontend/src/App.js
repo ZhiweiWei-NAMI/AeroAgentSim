@@ -1,7 +1,9 @@
 import React, { lazy, Suspense, useRef } from 'react';
 import { ConfigProvider } from 'antd';
+import enUS from 'antd/locale/en_US';
+import zhCN from 'antd/locale/zh_CN';
 import { Navigate, useLocation } from 'react-router-dom';
-import { I18nProvider } from './i18n/I18nProvider';
+import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import ConsoleShell from './console/ConsoleShell';
 import HomePage from './console/HomePage';
 import { ConsoleNotifications } from './console/Notifications';
@@ -16,13 +18,14 @@ const CityStudioPage = lazy(() => import('./studio/StudioPage'));
 const ConsoleGuide = lazy(() => import('./console/ConsoleGuide'));
 
 function RoutedContent() {
+  const { t } = useI18n();
   const location = useLocation();
   const { pathname, search } = location;
   const selectedRun = /^\/(runs|inspect)\/[^/]+$/.test(pathname);
   const lastRun = useRef();
   if (selectedRun) lastRun.current = { pathname, search };
   const activeRun = lastRun.current;
-  const loading = <PageState kind="loading" title="Loading console" />;
+  const loading = <PageState kind="loading" title={t('Loading console')} />;
   if (new URLSearchParams(search).has('capture')) return <Suspense fallback={loading}><RunsPage /></Suspense>;
   return <ConsoleShell activeRun={activeRun}>
     <ShortcutsHelp />
@@ -42,8 +45,13 @@ function RoutedContent() {
   </ConsoleShell>;
 }
 
-export default function App() {
-  return <ConfigProvider theme={{ token: { colorPrimary: '#0d7f74', colorText: '#17222e', colorBorder: '#cdd7e0', borderRadius: 6, fontFamily: "'Segoe UI', system-ui, sans-serif" } }}>
-    <I18nProvider><ConsoleNotifications><RoutedContent /></ConsoleNotifications></I18nProvider>
+function LocalizedConsole() {
+  const { locale } = useI18n();
+  return <ConfigProvider locale={locale === 'zh-CN' ? zhCN : enUS} button={{ autoInsertSpace: false }} theme={{ token: { colorPrimary: '#0d7f74', colorText: '#17222e', colorBorder: '#cdd7e0', borderRadius: 6, fontFamily: "'Segoe UI', system-ui, 'Microsoft YaHei', sans-serif" } }}>
+    <ConsoleNotifications><RoutedContent /></ConsoleNotifications>
   </ConfigProvider>;
+}
+
+export default function App() {
+  return <I18nProvider><LocalizedConsole /></I18nProvider>;
 }

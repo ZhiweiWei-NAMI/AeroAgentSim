@@ -2,7 +2,9 @@ format: aeroagentsim.template/v1
 city: huangpu
 id: security-patrol
 title: Security patrol
+title_zh: 安防巡逻
 summary: A drone patrols a district and responds when an operator reports an incident.
+summary_zh: 无人机巡逻街区，并响应操作员上报的事件。
 category: security
 difficulty: beginner
 duration_s: 300
@@ -10,12 +12,19 @@ scenario: scenario.yaml
 observe:
 - The drone visits each patrol point.
 - An operator incident creates a higher-priority investigation.
+observe_zh:
+- 无人机依次到访各个巡逻点。
+- 操作员上报事件后，生成优先级更高的调查任务。
 try:
 - Add patrol drones to reduce the investigation wait.
 - Change the wind speed.
+try_zh:
+- 增加巡逻无人机，缩短调查任务的等待时间。
+- 调整风速。
 knobs:
 - id: fleet_size
   label: Number of aircraft
+  label_zh: 飞行器数量
   type: integer
   default: 1
   min: 1
@@ -23,6 +32,7 @@ knobs:
   pointer: /generators/fleet/count
 - id: wind_speed
   label: Normal wind speed (m/s)
+  label_zh: 常态风速（米/秒）
   type: number
   default: 2.0
   min: 0
@@ -30,6 +40,7 @@ knobs:
   pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
 - id: battery_reserve
   label: Battery reserve (%)
+  label_zh: 预留电量（%）
   type: number
   default: 20
   min: 10
@@ -37,6 +48,7 @@ knobs:
   pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent
 - id: safety_distance
   label: Safety distance (m)
+  label_zh: 安全间隔（米）
   type: number
   default: 20
   min: 5
@@ -44,6 +56,7 @@ knobs:
   pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m
 - id: wind_limit
   label: Wind limit (m/s)
+  label_zh: 风速上限（米/秒）
   type: number
   default: 12
   min: 2

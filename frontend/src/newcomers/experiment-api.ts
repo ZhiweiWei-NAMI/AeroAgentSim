@@ -25,6 +25,7 @@ export interface ExperimentMetric {
   n: number;
   unit: string | null;
   label: string;
+  label_zh?: string;
   /** Descriptive per-metric min/max highlight set by the backend only. */
   best: boolean;
 }
@@ -51,6 +52,7 @@ export interface ExperimentReport {
   contract: string;
   template_id: string;
   template_title: string;
+  template_title_zh?: string;
   status: 'created' | 'running' | 'completed' | 'faulted' | 'interrupted' | string;
   seeds: number;
   jobs: number;
@@ -87,12 +89,14 @@ const metric = (value: unknown, name: string): ExperimentMetric => {
   }
   if (data.std !== null && (typeof data.std !== 'number' || !Number.isFinite(data.std))) throw Error(`Experiment metric ${name} has an invalid spread.`);
   if (typeof data.label !== 'string') throw Error(`Experiment metric ${name} has no label.`);
+  if (data.label_zh !== undefined && typeof data.label_zh !== 'string') throw Error(`Experiment metric ${name} has an invalid translated label.`);
   return {
     mean: data.mean as number | null,
     std: data.std as number | null,
     n: data.n,
     unit: typeof data.unit === 'string' ? data.unit : null,
     label: data.label,
+    ...(typeof data.label_zh === 'string' ? {label_zh: data.label_zh} : {}),
     best: (()=>{if(typeof data.best!=='boolean')throw Error(`Experiment metric ${name} has no comparison flag.`);return data.best;})(),
   };
 };
@@ -147,11 +151,13 @@ export function decodeExperimentReport(value: unknown): ExperimentReport {
     throw Error('The experiment report has an invalid horizon.');
   }
   if (!Array.isArray(data.runs) || !Array.isArray(data.table)) throw Error('The experiment report is missing its runs or table.');
+  if (data.template_title_zh !== undefined && typeof data.template_title_zh !== 'string') throw Error('The experiment report has an invalid translated title.');
   return {
     id: data.id,
     contract: data.contract,
     template_id: data.template_id,
     template_title: typeof data.template_title === 'string' ? data.template_title : data.template_id,
+    ...(typeof data.template_title_zh === 'string' ? {template_title_zh: data.template_title_zh} : {}),
     status: data.status,
     seeds: data.seeds as number,
     jobs: data.jobs as number,

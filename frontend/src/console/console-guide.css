@@ -1,0 +1,30 @@
+.console-guide-page .console-guide-summary,
+.console-guide-page .console-guide-source {
+  min-width: 0;
+  padding: var(--csl-sp-4);
+  border: 1px solid var(--csl-border);
+  border-radius: var(--csl-radius);
+  background: var(--csl-surface);
+  line-height: 1.7;
+}
+.console-guide-page .console-guide-summary { border-left: 4px solid var(--csl-teal-500); }
+.console-guide-page .console-guide-summary h2 { margin: 0 0 var(--csl-sp-2); font-size: var(--csl-fs-lg); }
+.console-guide-page .console-guide-summary p,
+.console-guide-page .console-guide-source > p { margin: 0 0 var(--csl-sp-3); }
+.console-guide-page .console-guide-summary p:last-child { margin-bottom: 0; }
+.console-guide-page .console-guide-tip { color: var(--csl-text-muted); font-size: var(--csl-fs-sm); }
+.console-guide-page .console-guide-source { margin-top: var(--csl-sp-4); }
+.console-guide-page .console-guide-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 14px/1.7 var(--csl-font);
+  margin: var(--csl-sp-3) 0 0;
+  padding: var(--csl-sp-3);
+  background: var(--csl-bg);
+  border: 1px solid var(--csl-border);
+  border-radius: var(--csl-radius);
+}
+@media (max-width: 600px) {
+  .console-guide-page .console-guide-summary,
+  .console-guide-page .console-guide-source { padding: var(--csl-sp-3); }
+}

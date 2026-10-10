@@ -1238,6 +1238,7 @@ generators:
       lowalt.wind_limit_mps: 12.0
       lowalt.returning_to_charge: false
     label: Air taxi {index}
+    label_zh: 空中出租车 {index}
     business: mobility
     vehicle_class: passenger
 engines:

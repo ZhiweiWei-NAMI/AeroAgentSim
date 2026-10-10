@@ -4,12 +4,14 @@ import { ViewportView } from './ViewportView';
 import { NonspatialViews } from './NonspatialViews';
 import { MissionTimeline } from './MissionTimeline';
 import { resolveBinding } from './bindings';
+import { useI18n } from '../i18n/I18nProvider';
 import './nonspatial.css';
 
 type Props = ComponentProps<typeof ViewportView>;
 
 /** A display choice only: both panels read the same exact replay cut as the inspector. */
 export function ViewerPresentation(props: Props) {
+  const { t } = useI18n();
   const spatial = props.store.entities.size
     ? [...props.store.entities.values()].some(entity => resolveBinding(props.store.header, entity.typeId))
     : props.store.header.presentation.length > 0;
@@ -34,11 +36,11 @@ export function ViewerPresentation(props: Props) {
   }, [spatial, props.store, props.clock]);
   const view = panel ?? 'graph';
   return <div className={`viewer-presentation ${spatial ? 'has-spatial' : 'inspector-first'}`} data-testid="viewer-presentation">
-    <nav className="presentation-tabs" aria-label="Presentation views">
-      {spatial && <button aria-pressed={panel === undefined} onClick={() => setPanel(undefined)}>3D only</button>}
-      <button aria-pressed={!spatial && view === 'graph' || panel === 'graph'} onClick={() => setPanel('graph')}>Relations / topology</button>
-      <button aria-pressed={view === 'state'} onClick={() => setPanel('state')}>Queue / state</button>
-      {!spatial && <span>Inspector first · recorded facts</span>}
+    <nav className="presentation-tabs" aria-label={t('Presentation views')}>
+      {spatial && <button aria-pressed={panel === undefined} onClick={() => setPanel(undefined)}>{t('3D only')}</button>}
+      <button aria-pressed={!spatial && view === 'graph' || panel === 'graph'} onClick={() => setPanel('graph')}>{t('Relations / topology')}</button>
+      <button aria-pressed={view === 'state'} onClick={() => setPanel('state')}>{t('Queue / state')}</button>
+      {!spatial && <span>{t('Inspector first · recorded facts')}</span>}
     </nav>
     <div className="presentation-content">
       {spatial && <div className="spatial-pane"><ViewportView {...props} /></div>}

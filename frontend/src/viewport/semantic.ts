@@ -1,5 +1,7 @@
 import type { FeedCommit, EntityKey, RunHeader } from '../contracts/viewer-feed';
 import type { EntityState } from './feed-store';
+import { localized, translate } from '../i18n/translate';
+import { displayLabel, localizedLabel } from '../pages/inspection-format';
 
 /**
  * Newcomer semantic overlay extraction.
@@ -145,21 +147,46 @@ export function semanticSites(header: RunHeader, store: { entities: Map<string, 
 }
 
 /** Human-readable display name. Authored names win; otherwise a sensible identity. */
-export function displayName(entity: EntityState, header: RunHeader): string {
+export function displayName(entity: EntityState, header: RunHeader, locale = 'en-US'): string {
   for (const fieldId of ['traffic.actor.label','oo:name', 'lowalt.label', 'name', 'label']) {
-    const value = scalar(entity.fields.get(fieldId)?.value);
-    if (typeof value === 'string' && value.trim()) return value.trim();
+    const chinese = locale === 'zh-CN' ? scalar(entity.fields.get(`${fieldId}_zh`)?.value) : undefined;
+    const value = typeof chinese === 'string' && chinese.trim() ? chinese : scalar(entity.fields.get(fieldId)?.value);
+    if (typeof value === 'string' && value.trim()) return localizedLabel(value.trim(), locale);
   }
+  const authored = header.entities?.find(item => item.id === entity.key.id);
+  const authoredName = localized(authored, 'label', locale);
+  if (typeof authoredName === 'string' && authoredName.trim()) return localizedLabel(authoredName.trim(), locale);
   const type = header.types.find(type => type.typeId === entity.typeId);
-  const fallbackName = humanizeId(entity.key.id, type?.displayName ?? entity.typeId);
-  return entity.typeId==='lowalt:UAV'?fallbackName.replace(/^Uav\b/i,'Drone'):fallbackName;
+  const fallbackName = humanizeId(entity.key.id, displayLabel(type?.displayName, entity.typeId, locale), locale);
+  return entity.typeId === 'lowalt:UAV' ? fallbackName.replace(/^Uav\b/i, translate(locale, 'Drone')) : fallbackName;
 }
 
 /** `vertiport-1` → `Vertiport 1`; `vertiport-north` → `Vertiport North`. */
-export function humanizeId(id: string, typeName: string): string {
+export function humanizeId(id: string, typeName: string, locale = 'en-US'): string {
   const words = id.split(/[^a-zA-Z0-9]+/).filter(Boolean);
   const readable = words.length > 1 && words.every(word => /^[a-zA-Z0-9]+$/.test(word));
-  if (readable) return words.map(word => (/^\d+$/.test(word) ? word : /^uav$/i.test(word)?'UAV':word[0].toUpperCase() + word.slice(1))).join(' ');
+  const wordLabel = (word: string) => {
+    switch (word.toLowerCase()) {
+      case 'uav': return translate(locale, 'UAV');
+      case 'drone': return translate(locale, 'Drone');
+      case 'vertiport': return translate(locale, 'Vertiport');
+      case 'charging': return translate(locale, 'Charging');
+      case 'pad': return translate(locale, 'Pad');
+      case 'depot': return translate(locale, 'Depot');
+      case 'customer': return translate(locale, 'Customer');
+      case 'vehicle': return translate(locale, 'Vehicle');
+      case 'car': return translate(locale, 'Car');
+      case 'truck': return translate(locale, 'Truck');
+      case 'bus': return translate(locale, 'Bus');
+      case 'north': return translate(locale, 'North');
+      case 'south': return translate(locale, 'South');
+      case 'east': return translate(locale, 'East');
+      case 'west': return translate(locale, 'West');
+      case 'central': return translate(locale, 'Central');
+      default: return /^\d+$/.test(word) ? word : word[0].toUpperCase() + word.slice(1);
+    }
+  };
+  if (readable) return words.map(wordLabel).join(' ');
   const short = id.length > 14 ? `${id.slice(0, 12)}…` : id;
   return `${typeName.split(':').pop() ?? typeName} ${short}`;
 }
@@ -211,32 +238,32 @@ export interface BusinessStyle { glyph: 'package' | 'cross' | 'eye' | 'person' |
  * Glyph + colorblind-safe palette per actual business kind. Anything not
  * declared in the data is `unknown`, never a fabricated classification.
  */
-export function businessStyle(vehicle: SemanticVehicle): BusinessStyle {
+export function businessStyle(vehicle: SemanticVehicle, locale = 'en-US'): BusinessStyle {
   const kind = vehicle.taskKind ?? vehicle.vehicleClass;
   switch (kind) {
-    case 'parcel': return { glyph: 'package', color: '#e69f00', label: 'Parcel' };
-    case 'medical': return { glyph: 'cross', color: '#cc79a7', label: 'Medical' };
+    case 'parcel': return { glyph: 'package', color: '#e69f00', label: translate(locale, 'Parcel') };
+    case 'medical': return { glyph: 'cross', color: '#cc79a7', label: translate(locale, 'Medical') };
     case 'inspection':
-    case 'survey': return { glyph: 'eye', color: '#56b4e9', label: 'Inspection' };
-    case 'passenger': return { glyph: 'person', color: '#009e73', label: 'Passenger' };
-    case 'patrol': return {glyph:'shield',color:'#0072b2',label:'Security'};
-    case 'spraying': return {glyph:'spray',color:'#009e73',label:'Agriculture'};
-    case 'incident_response': return {glyph:'cross',color:'#d55e00',label:'Emergency'};
-    case 'road': return { glyph: 'road', color: '#f0e442', label: 'Ground ops' };
+    case 'survey': return { glyph: 'eye', color: '#56b4e9', label: translate(locale, 'Inspection') };
+    case 'passenger': return { glyph: 'person', color: '#009e73', label: translate(locale, 'Passenger') };
+    case 'patrol': return {glyph:'shield',color:'#0072b2',label:translate(locale, 'Security')};
+    case 'spraying': return {glyph:'spray',color:'#009e73',label:translate(locale, 'Agriculture')};
+    case 'incident_response': return {glyph:'cross',color:'#d55e00',label:translate(locale, 'Emergency')};
+    case 'road': return { glyph: 'road', color: '#f0e442', label: translate(locale, 'Ground ops') };
     default: return { glyph: 'unknown', color: '#8fa3b8', label: '' };
   }
 }
 
 /** One-line friendly label from actual fields only. */
-export function semanticLabel(entity: EntityState, task?: EntityState, header?: RunHeader): string {
-  const name = displayName(entity, header ?? { types: [], presentation: [], fields: [] } as unknown as RunHeader);
+export function semanticLabel(entity: EntityState, task?: EntityState, header?: RunHeader, locale = 'en-US'): string {
+  const name = displayName(entity, header ?? { types: [], presentation: [], fields: [] } as unknown as RunHeader, locale);
   const vehicle = semanticVehicle(entity, task);
   const parts: string[] = [name];
-  const style = businessStyle(vehicle);
+  const style = businessStyle(vehicle, locale);
   if (style.label) parts.push(style.label);
-  if (vehicle.charging) parts.push('Charging');
-  else if (vehicle.weatherHeld) parts.push('Weather hold');
-  if (vehicle.soc !== undefined) parts.push(`SoC ${Math.round(vehicle.soc * 100)}%`);
+  if (vehicle.charging) parts.push(translate(locale, 'Charging'));
+  else if (vehicle.weatherHeld) parts.push(translate(locale, 'Weather hold'));
+  if (vehicle.soc !== undefined) parts.push(translate(locale, 'SoC {percent}%', { percent: Math.round(vehicle.soc * 100) }));
   return parts.join(' · ');
 }
 

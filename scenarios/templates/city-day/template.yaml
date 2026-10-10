@@ -2,8 +2,10 @@ format: aeroagentsim.template/v1
 city: huangpu
 id: city-day
 title: One day in a shared city
+title_zh: 共享城市的一天
 summary: Deliveries, inspections, passenger flights and road incident responders share
   the same city and react to each other.
+summary_zh: 配送、巡检、载客航班与道路事故响应共用一座城市，彼此影响并协同应对。
 category: mixed
 difficulty: intermediate
 duration_s: 300
@@ -13,13 +15,23 @@ observe:
 - Medical requests interrupt parcels, while a wind front pauses surveys.
 - Aircraft from different businesses separate before continuing.
 - Operator decisions divert flights and add urgent orders.
+observe_zh:
+- 道路事故关闭附近空域，配送航线随之改变。
+- 医疗请求打断包裹配送，大风过境使巡检暂停。
+- 不同业务的飞行器保持安全间隔后继续执行任务。
+- 操作员的决策使航班改道，并增加紧急订单。
 try:
 - Add parcel drones to compare urgent delivery time.
 - Compare nearest and auction allocation.
 - Change the wind front speed to pause different vehicle classes.
+try_zh:
+- 增加配送无人机，对比紧急配送时间。
+- 对比就近分配与竞价分配。
+- 调整过境风速，观察哪些类型的飞行器会暂停。
 knobs:
 - id: fleet_size
   label: Number of parcel drones
+  label_zh: 配送无人机数量
   type: integer
   default: 3
   min: 1
@@ -27,6 +39,7 @@ knobs:
   pointer: /generators/fleet/count
 - id: allocator
   label: Task allocation algorithm
+  label_zh: 任务分配算法
   type: choice
   default: nearest
   options:
@@ -37,6 +50,7 @@ knobs:
   pointer: /algorithms/allocation
 - id: wind_speed
   label: Wind front speed (m/s)
+  label_zh: 过境风速（米/秒）
   type: number
   default: 9
   min: 0
@@ -44,6 +58,7 @@ knobs:
   pointer: /engines/environment/config/profiles/weather/lowalt.wind/gusts/0/value/0
 - id: battery_reserve
   label: Battery reserve (%)
+  label_zh: 预留电量（%）
   type: number
   default: 20
   min: 10
@@ -51,6 +66,7 @@ knobs:
   pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent
 - id: safety_distance
   label: Safety distance (m)
+  label_zh: 安全间隔（米）
   type: number
   default: 20
   min: 5
@@ -58,6 +74,7 @@ knobs:
   pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m
 - id: wind_limit
   label: Wind limit (m/s)
+  label_zh: 风速上限（米/秒）
   type: number
   default: 6
   min: 2

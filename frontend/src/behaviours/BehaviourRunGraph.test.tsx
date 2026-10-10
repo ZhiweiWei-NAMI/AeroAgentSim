@@ -7,8 +7,8 @@ vi.mock('./EntityGraph',()=>({EntityGraph:({store}:{store:TemporalFeedStore})=><
 it('links recorded truth and chain transitions to exact entity generation and journal cut',()=>{
  const store=new TemporalFeedStore(fixtureHeader); fixtureCommits.forEach(commit=>store.ingest(commit));store.seek('10',2);
  const select=vi.fn(),seek=vi.fn(); const view=render(<BehaviourRunGraph store={store} selected={task} onSelect={select} onSeek={seek}/>);
- fireEvent.click(screen.getByText(/Recorded overlays/));
- expect(screen.getByText('unknown · required_input')).toBeTruthy();
+ fireEvent.click(screen.getByText(/Conditions and event chains/));
+ expect(screen.getByText('unknown · required input')).toBeTruthy();
  expect(screen.getAllByText(/required source history missing/)[0]).toBeTruthy();
  fireEvent.click(screen.getAllByText('Task · Task 1')[0]);expect(select).toHaveBeenCalledWith(task);
  store.seek('10',3);view.rerender(<BehaviourRunGraph store={store} selected={task} onSelect={select} onSeek={seek}/>);

@@ -2,7 +2,9 @@ format: aeroagentsim.template/v1
 city: huangpu
 id: traffic-accident
 title: Traffic accident response
+title_zh: 交通事故响应
 summary: Nearby drones assess an accident, choose a responder and upload a city-camera image.
+summary_zh: 附近的无人机评估事故、选出响应机，并上传城市相机拍摄的现场图像。
 category: emergency
 difficulty: beginner
 duration_s: 90
@@ -11,13 +13,22 @@ observe:
   - Watch the accident report trigger bids from nearby drones.
   - See the selected drone reach the incident and upload its camera image.
   - Compare response time and energy after changing the settings.
+observe_zh:
+  - 观察事故报告如何触发附近无人机竞标。
+  - 查看获选无人机到达现场并上传相机图像的过程。
+  - 调整参数后，对比响应时间和能耗。
 try:
   - Move the accident earlier or later in the run.
   - Increase the physics update rate.
   - Use a configured live model for the response decisions.
+try_zh:
+  - 提前或推迟事故发生时间。
+  - 提高物理状态的更新频率。
+  - 配置实时模型，让模型参与响应决策。
 knobs:
   - id: accident_time_s
     label: Accident time (seconds)
+    label_zh: 事故发生时间（秒）
     type: number
     default: 8
     min: 0.1
@@ -25,12 +36,15 @@ knobs:
     apply: traffic.accident_time
   - id: decision_mode
     label: Response decisions
+    label_zh: 响应决策模式
     type: choice
     default: scripted
     options: [scripted, live]
+    options_zh: [预设决策, 实时模型]
     apply: traffic.decision_mode
   - id: physics_hz
     label: Physics updates per second
+    label_zh: 物理更新频率（次/秒）
     type: number
     default: 1
     min: 0.5

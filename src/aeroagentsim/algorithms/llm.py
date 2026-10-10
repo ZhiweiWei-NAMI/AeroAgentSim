@@ -7,10 +7,12 @@ from typing import Any, TypedDict
 
 from aeroagentsim.agents.langgraph_client import JournalClient
 
+from .metadata import BUILTIN_COPY_ZH
 from .protocols import Assignment, Snapshot
 
 
 class LLMAllocation:
+    label_zh, description_zh = BUILTIN_COPY_ZH["llm"]
     description = (
         "Ask the journaled LangGraph decision plugin; default replies are scripted."
     )

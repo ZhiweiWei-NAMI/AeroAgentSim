@@ -174,8 +174,9 @@
 .console-crumbs .console-crumb-current { color: var(--csl-text); font-weight: 550; }
 .console-crumb-sep { color: var(--csl-border-strong); }
 
+.console-language { margin-left: auto; width: 112px; flex: 0 0 112px; }
 .console-help-btn {
-  margin-left: auto;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;

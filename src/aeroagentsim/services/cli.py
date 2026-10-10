@@ -90,11 +90,7 @@ def run_template_command(
                 "manifest.json",
                 {
                     **session.storage.metadata(),
-                    "template": {
-                        "id": template_id,
-                        "title": prepared.metadata["title"],
-                        "knobs": prepared.knobs,
-                    },
+                    "template": prepared.run_metadata(),
                 },
             )
             session.run()

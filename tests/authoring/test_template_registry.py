@@ -123,9 +123,116 @@ def test_number_knob_accepts_whole_json_number_as_kernel_number() -> None:
     prepared = TemplateRegistry().apply("parcel-delivery", {"wind_speed": 4})
     assert prepared.knobs["wind_speed"] == 4.0
     assert isinstance(prepared.knobs["wind_speed"], float)
+    pinned = prepared.run_metadata()
+    assert pinned["title_zh"] == "城市包裹配送"
+    assert pinned["title"] == prepared.metadata["title"]
+    pinned["knobs"]["wind_speed"] = 9
+    assert prepared.knobs["wind_speed"] == 4.0
     assert (
         prepared.document["engines"]["environment"]["config"]["profiles"]["weather"][
             "lowalt.wind"
         ]["value"][0]
         == 4.0
     )
+
+
+@pytest.mark.parametrize("identifier", [
+    "air-taxi", "city-day", "crop-spraying", "medical-delivery",
+    "parcel-delivery", "powerline-inspection", "security-patrol",
+])
+def test_fleet_expands_both_authored_labels_without_changing_template(
+    identifier: str,
+) -> None:
+    from aeroagentsim.packs.lowalt.template import expand
+
+    prepared = TemplateRegistry().apply(identifier, {"fleet_size": 2})
+    cfg = prepared.document["generators"]["fleet"]
+    cfg.update(label="Drone {index}", label_zh="无人机 {index}")
+    expand(prepared.document)
+    fleet = [
+        entity for entity in prepared.document["entities"]
+        if entity["id"].startswith(cfg["prefix"])
+    ]
+    assert [entity["label"] for entity in fleet] == ["Drone 1", "Drone 2"]
+    assert [entity["label_zh"] for entity in fleet] == ["无人机 1", "无人机 2"]
+    assert cfg["label_zh"] == "无人机 {index}"
+    assert prepared.document["generators"]["fleet"]["label"] == "Drone {index}"
+
+
+def test_all_shipped_template_metadata_is_bilingual_and_copied() -> None:
+    registry = TemplateRegistry(Path(__file__).resolve().parents[2] / "scenarios/templates")
+    templates = registry.list()
+    assert {item["id"] for item in templates} == {
+        "traffic-accident", "parcel-delivery", "medical-delivery",
+        "powerline-inspection", "crop-spraying", "air-taxi", "security-patrol", "city-day",
+    }
+    translated_bullets = translated_labels = 0
+    for item in templates:
+        TemplateRegistry._validate(item, item["id"])
+        for key in ("title", "summary"):
+            assert item[key + "_zh"] != item[key]
+            assert any("\u4e00" <= char <= "\u9fff" for char in item[key + "_zh"])
+        for key in ("observe", "try"):
+            assert len(item[key + "_zh"]) == len(item[key])
+            for original, translated in zip(item[key], item[key + "_zh"]):
+                assert translated.strip() and translated != original
+                assert any("\u4e00" <= char <= "\u9fff" for char in translated)
+                translated_bullets += 1
+        for knob in item["knobs"]:
+            assert any("\u4e00" <= char <= "\u9fff" for char in knob["label_zh"])
+            assert knob["label_zh"] != knob["label"]
+            translated_labels += 1
+    assert (translated_bullets, translated_labels) == (40, 46)
+    traffic = registry.get("traffic-accident")
+    choice = next(knob for knob in traffic["knobs"] if knob["id"] == "decision_mode")
+    assert choice["options"] == ["scripted", "live"]
+    assert choice["options_zh"] == ["预设决策", "实时模型"]
+    traffic["observe_zh"][0] = "changed"
+    choice["options_zh"][0] = "changed"
+    assert registry.get("traffic-accident")["observe_zh"][0] != "changed"
+    assert registry.get("traffic-accident")["knobs"][1]["options_zh"][0] == "预设决策"
+
+
+@pytest.mark.parametrize(
+    "path,value",
+    [
+        (("title_zh",), ""),
+        (("summary_zh",), None),
+        (("title_zh",), "  "),
+        (("observe_zh",), ["观察"]),
+        (("try_zh",), "试试"),
+        (("try_zh",), ["试试", "", "试试"]),
+        (("knobs", 0, "label_zh"), 123),
+        (("knobs", 0, "options_zh"), ["一"]),
+        (("knobs", 1, "options_zh"), ["预设"]),
+        (("knobs", 1, "options_zh"), ["预设", "  "]),
+        (("knobs", 1, "description_zh"), "响应模式"),
+    ],
+)
+def test_template_registry_rejects_invalid_translation_shapes(
+    path: tuple[Any, ...], value: Any
+) -> None:
+    metadata = TemplateRegistry().get("traffic-accident")
+    target = metadata
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    with pytest.raises(ValueError, match=str(path[-1])):
+        TemplateRegistry._validate(metadata, "traffic-accident")
+
+
+def test_template_translations_are_optional_and_descriptions_are_supported() -> None:
+    metadata = TemplateRegistry().get("traffic-accident")
+    for key in list(metadata):
+        if key.endswith("_zh"):
+            del metadata[key]
+    for knob in metadata["knobs"]:
+        for key in list(knob):
+            if key.endswith("_zh"):
+                del knob[key]
+    TemplateRegistry._validate(metadata, "traffic-accident")
+    metadata["knobs"][0].update(
+        description="Seconds after the run starts.",
+        description_zh="从仿真开始到事故发生的秒数。",
+    )
+    TemplateRegistry._validate(metadata, "traffic-accident")

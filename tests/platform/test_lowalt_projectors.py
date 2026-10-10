@@ -103,19 +103,16 @@ def fact_item(
 def lowalt_registry() -> MemoryRegistry:
     data = overlay()
     types = tuple(TypeDescriptor(t["id"], tuple(t["parents"])) for t in data["types"])
-    types = types + tuple(
-        TypeDescriptor(t["id"], tuple(t["parents"]))
-        for t in (
-            {"id": "oo:ModelObject", "parents": ()},
-            {"id": "oo:WorkObject", "parents": ("oo:ModelObject",)},
-            {"id": "oo:PhysicalAsset", "parents": ("oo:ModelObject",)},
-            {"id": "oo:Equipment", "parents": ("oo:PhysicalAsset",)},
-            {"id": "oo:Vehicle", "parents": ("oo:Equipment",)},
-            {"id": "oo:Aircraft", "parents": ("oo:Vehicle",)},
-            {"id": "oo:UAV", "parents": ("oo:Aircraft",)},
-            {"id": "oo:Facility", "parents": ("oo:PhysicalAsset",)},
-            {"id": "oo:Task", "parents": ("oo:WorkObject",)},
-        )
+    types = types + (
+        TypeDescriptor("oo:ModelObject"),
+        TypeDescriptor("oo:WorkObject", ("oo:ModelObject",)),
+        TypeDescriptor("oo:PhysicalAsset", ("oo:ModelObject",)),
+        TypeDescriptor("oo:Equipment", ("oo:PhysicalAsset",)),
+        TypeDescriptor("oo:Vehicle", ("oo:Equipment",)),
+        TypeDescriptor("oo:Aircraft", ("oo:Vehicle",)),
+        TypeDescriptor("oo:UAV", ("oo:Aircraft",)),
+        TypeDescriptor("oo:Facility", ("oo:PhysicalAsset",)),
+        TypeDescriptor("oo:Task", ("oo:WorkObject",)),
     )
     fields = tuple(
         FieldDescriptor(f["id"], f["type"], f["schema"], f["metadata"])
@@ -267,6 +264,22 @@ def test_every_lowalt_schema_renders_plain_text(tmp_path: Path) -> None:
         assert text and text.strip() == text, (schema, text)
         for token in ("{", "}", "None", "nan"):
             assert token not in text, (schema, text)
+    translated = [str(event["text_zh"]) for event in events]
+    for schema, text, text_zh in zip(payloads, texts, translated):
+        assert text_zh.strip() == text_zh and text_zh != text, schema
+        assert any("\u4e00" <= char <= "\u9fff" for char in text_zh), schema
+        for token in ("{", "}", "None", "nan", "$ref"):
+            assert token not in text_zh, (schema, text_zh)
+    assert translated[0] == "新增前往customer-3的包裹配送任务"
+    assert translated[4] == "drone-1在customer-3完成包裹投递（耗时 41.5 秒）"
+    assert "drone-1" in translated[1] and "customer-3" in translated[1]
+    assert "central-no-fly" in translated[8]
+    by_schema = dict(zip(payloads, events))
+    for schema in ("lowalt.inspection.observed", "lowalt.spraying.applied", "lowalt.patrol.visited"):
+        assert by_schema[schema]["entities"] == [payloads[schema]["task"], payloads[schema]["vehicle"]]
+        assert by_schema[schema]["position"] == payloads[schema]["position"]
+    assert by_schema["lowalt.site.closed"]["entities"] == ["vertiport-1"]
+    assert by_schema["lowalt.task.preempted"]["entities"] == ["task-1", "drone-1", "task-9"]
     # Spot-check the rendered wording uses actual committed values.
     assert texts[0] == "New parcel order for customer-3"
     assert "drone-1" in texts[1]
@@ -328,6 +341,7 @@ def test_scenario_override_pins_template_over_pack(tmp_path: Path) -> None:
         )
     )
     assert events[0]["text"] == "Delivery done: t by v"
+    assert "text_zh" not in events[0]
     assert events[0]["severity"] == "notice"
 
 
@@ -504,6 +518,7 @@ def test_narrative_cursor_roundtrip_restores_dedup_positions_kinds(
         )
     )[0]
     assert assigned["category"] == "logistics"
+    assert assigned["text_zh"] == "uav获派前往目的地的包裹配送任务"
     # Restored stored position is attached to the vehicle entity event.
     assert assigned["position"] == [3.0, 4.0, 20.0]
     # Wrapper classmethod stays equivalent.
@@ -600,7 +615,7 @@ def test_parcel_delivery_run_journal_matches_kpi_and_narratives(tmp_path: Path) 
         "lowalt.airspace.geofence_entered": "geofence_violations",
         "lowalt.weather.hold": "weather_holds",
     }
-    energy_last = {}
+    energy_last: dict[tuple[str, int | str], float] = {}
     energy_used = 0.0
     latencies = []
     halfway = len(records) // 2

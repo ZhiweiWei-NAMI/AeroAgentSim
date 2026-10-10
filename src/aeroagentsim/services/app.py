@@ -235,6 +235,14 @@ def create_app(
         return {
             **metadata,
             "title": template["title"] if template else document["id"],
+            **(
+                {
+                    "title_zh": template["title_zh"],
+                    "template_title_zh": template["title_zh"],
+                }
+                if template and "title_zh" in template
+                else {}
+            ),
             "knobs": template["knobs"] if template else {},
             "algorithms": document.get("algorithms", {}),
             "kpis": project_run(path, include_series=False)["final"],
@@ -371,11 +379,7 @@ def create_app(
         metadata = await launch(
             scenario,
             workspace_id=workspace_id,
-            template={
-                "id": template_id,
-                "title": templates.get(template_id)["title"],
-                "knobs": prepared.knobs,
-            },
+            template=prepared.run_metadata(),
         )
         return {
             "run_id": metadata["id"],

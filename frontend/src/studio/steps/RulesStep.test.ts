@@ -47,3 +47,10 @@ test('issued commands keep the chain alive until the actual terminal receipt',()
  expect(plan.transitions![1].on).toEqual({receipt:'action',status:'succeeded'});
  expect(plan.transitions![2].on).toEqual({receipt:'action',status:['failed','rejected','canceled']});
 });
+
+test('rule names are trimmed consistently for chain IDs, binding IDs and duplicate checks',()=>{
+ const next=appendPredicateRule(scenario,0,' respond ','ready',{actor:{entity:'alpha'}},{kind:'set',entity:{$role:'actor'},field:'status',value:'ready'});
+ expect(Object.keys(next.behaviours[0].chains)).toEqual(['respond']);
+ expect(next.behaviours[0].bindings[0]).toMatchObject({id:'respond-binding',chain:'respond'});
+ expect(()=>appendPredicateRule(next,0,' respond ','ready',{},{})).toThrow('Choose a unique rule name');
+});

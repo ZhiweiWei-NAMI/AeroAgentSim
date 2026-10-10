@@ -39,11 +39,14 @@
 .viewer-sidebar { width: 290px; padding: 16px; background: #f8fbfd; }
 .viewer-main[data-inspector-collapsed="true"] > .viewer-sidebar { display: none; }
 .viewer-timeline { padding: 9px 22px; gap: 12px; background: #f8fbfd; }
-.director-toolbar { position: absolute; top: 18px; left: 20px; display: flex; gap: 8px; align-items: center; padding: 7px; background: #122536ed; border: 1px solid #406076; border-radius: 8px; color: #bdd4e2; box-shadow: 0 8px 28px #10203028; font: 11px system-ui; }
+.director-toolbar { position: absolute; top: 18px; left: 20px; right: 20px; width: fit-content; max-width: calc(100% - 40px); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 7px; background: #122536ed; border: 1px solid #406076; border-radius: 8px; color: #bdd4e2; box-shadow: 0 8px 28px #10203028; font: 11px system-ui; }
 .director-toolbar select, .director-toolbar button { background: #233d50; color: #e8f4fa; border: 1px solid #496477; border-radius: 5px; padding: 6px 9px; cursor: pointer; font: 11px system-ui; }
 .director-toolbar button:hover { background: #33566b; }
 .viewer-stage:has(> .viewport-toolbar) .director-toolbar { top: 76px; }
-.scene-status { position: absolute; top: 65px; left: 22px; max-width: 65%; padding: 4px 8px; background: #122536c9; border-radius: 4px; color: #d4e7f0; font: 10px system-ui; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
+.scene-status { position: absolute; top: 65px; left: 22px; max-width: 65%; padding: 4px 8px; background: #122536c9; border-radius: 4px; color: #d4e7f0; font: 10px system-ui; overflow-wrap: anywhere; }
+.scene-status summary { cursor: pointer; margin-top: 3px; color: #a8d5ed; }
+.scene-status details[open] > div { max-height: 120px; overflow: auto; margin-top: 4px; }
+.director-toolbar :focus-visible, .event-strip button:focus-visible { outline: 2px solid #a4edff; outline-offset: 2px; }
 .viewer-stage:has(> .viewport-toolbar) .scene-status { top: 120px; }
 .scene-attribution { position: absolute; bottom: 6px; right: 10px; padding: 2px 4px; background: #ffffffa8; color: #344b5a; font: 9px system-ui; pointer-events: none; }
 .entity-label { background: #10283ddd; color: #e4f4fd; border-color: #7799aa; border-radius: 4px; padding: 4px 8px; font: 11px system-ui; box-shadow: 0 2px 5px #14263533; }
@@ -62,7 +65,8 @@
 .mission-timeline b { font-weight: 500; color: #9fdac4; }
 .mission-timeline p { padding: 0 12px 8px; color: #91afc1; }
 .event-strip { height: 7px; position: relative; margin: 4px 5px 0; background: #223c4d88; border-radius: 2px; }
-.event-strip button { position: absolute; width: 4px; height: 7px; padding: 0; border: 0; background: #67d9ea; cursor: pointer; }
+.event-strip button { position: absolute; top: -5px; transform: translateX(-50%); width: 14px; height: 18px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.event-strip button::before { content: ''; position: absolute; left: 5px; top: 5px; width: 4px; height: 7px; background: #67d9ea; }
 .viewer-presentation { position: absolute; inset: 0 0 48px; display: flex; flex-direction: column; min-height: 0; }
 .presentation-tabs { display: flex; flex: 0 0 auto; gap: 6px; padding: 6px 12px; align-items: center; background: #e7eef3; font-size: 11px; flex-wrap: wrap; }
 .presentation-tabs button { background: #fff; color: #243e50; border: 1px solid #b1c5d0; border-radius: 4px; padding: 6px 10px; cursor: pointer; }

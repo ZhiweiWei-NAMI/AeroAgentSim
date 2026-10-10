@@ -12,6 +12,20 @@ import { pipeline } from '../viewport/pipeline';
 import { loadSceneLayer } from '../scene/city-layer';
 import { isLiteCityScene } from '../viewport/procedural-traffic';
 import '../scene/presentation';
+import { translate } from '../i18n/translate';
+
+/** Localize capture diagnostics for UI only; the automation protocol keeps its original errors. */
+export function captureError(problem: unknown, locale = 'en-US'): string {
+  const message = problem instanceof Error ? problem.message : String(problem);
+  let match: RegExpMatchArray | null;
+  if ((match = message.match(/^Capture asset manifest HTTP (\d+)$/))) return translate(locale,'Capture asset manifest HTTP {status}',{status:match[1]});
+  if ((match = message.match(/^Capture asset HTTP (\d+): (.+)$/))) return translate(locale,'Capture asset HTTP {status}: {asset}',{status:match[1],asset:match[2]});
+  if ((match = message.match(/^Capture asset is absent from the manifest: (.*)$/))) return translate(locale,'Capture asset is absent from the manifest: {asset}',{asset:match[1]});
+  if ((match = message.match(/^Unloaded traffic building (.+)$/))) return translate(locale,'Unloaded traffic building {asset}',{asset:match[1]});
+  if ((match = message.match(/^Capture required pose missing: (.+)$/))) return translate(locale,'Capture required pose missing: {field}',{field:match[1]});
+  if ((match = message.match(/^Capture required orientation missing: (.+)$/))) return translate(locale,'Capture required orientation missing: {field}',{field:match[1]});
+  return translate(locale,message);
+}
 
 type ObjectData = Record<string, unknown>;
 function object(value: unknown): ObjectData { if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Capture requires a record'); return value as ObjectData; }

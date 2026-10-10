@@ -66,7 +66,7 @@ def expand(document: dict[str, Any]) -> None:
     if not isinstance(generators, dict) or set(generators) != {"fleet"}:
         raise ValueError("generators: supported lowalt fleet declaration required")
     cfg = generators["fleet"]
-    optional = {"label", "business", "vehicle_class"}
+    optional = {"label", "label_zh", "business", "vehicle_class"}
     if not isinstance(cfg, dict) or set(cfg) - optional != {
         "count",
         "prefix",
@@ -77,7 +77,7 @@ def expand(document: dict[str, Any]) -> None:
     }:
         raise ValueError(
             "generators.fleet: declare count/prefix/type/facts/starts/spacing_m "
-            "with optional label/business/vehicle_class"
+            "with optional label/label_zh/business/vehicle_class"
         )
     for name in optional & set(cfg):
         if type(cfg[name]) is not str or not cfg[name]:
@@ -92,14 +92,14 @@ def expand(document: dict[str, Any]) -> None:
             "generators.fleet.vehicle_class: must agree with the authored "
             "lowalt.vehicle_class fact"
         )
-    label: str | None = cfg.get("label")
-    if label is not None:
-        try:
-            label.format(index=1)
-        except (IndexError, KeyError, ValueError) as exc:
-            raise ValueError(
-                f"generators.fleet.label: {{index}} format string required ({exc})"
-            ) from exc
+    for name in ("label", "label_zh"):
+        if name in cfg:
+            try:
+                cfg[name].format(index=1)
+            except (IndexError, KeyError, ValueError) as exc:
+                raise ValueError(
+                    f"generators.fleet.{name}: {{index}} format string required ({exc})"
+                ) from exc
     count = ns(cfg["count"], "fleet count", 1)
     if count > 1000:
         raise ValueError("fleet count exceeds 1000")
@@ -131,9 +131,8 @@ def expand(document: dict[str, Any]) -> None:
         for name in optional & set(cfg):
             # {index} is 1-based; no other field is substituted or defaulted.
             value = cfg[name]
-            if name == "label":
-                assert label is not None  # noqa: S101 - guarded above
-                value = label.format(index=index + 1)
+            if name in {"label", "label_zh"}:
+                value = value.format(index=index + 1)
             generated[name] = value
         document["entities"].append(generated)
 

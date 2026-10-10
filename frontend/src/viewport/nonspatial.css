@@ -3,6 +3,7 @@
 .ns-controls input, .ns-controls select { min-width: 0; max-width: 100%; padding: 5px; border: 1px solid #b0c6d5; background: #fff; color: #25445a; border-radius: 4px; }
 .ns-controls button, .ns-root td button, .ns-root th button, .ns-relation button { border: 1px solid #b0c6d5; border-radius: 4px; background: #fff; color: #205878; cursor: pointer; padding: 4px 6px; }
 .ns-controls button:disabled { opacity: .4; cursor: default; }
+.ns-root button:focus-visible, .ns-root input:focus-visible, .ns-root select:focus-visible { outline: 2px solid #205878; outline-offset: 2px; }
 .ns-controls span, .ns-note { color: #58768b; font-size: 11px; }
 .ns-canvas-wrap { position: relative; flex: 1; min-height: 140px; overflow: hidden; border: 1px solid #c5d5df; border-radius: 6px; background: #fff; }
 .ns-canvas-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }

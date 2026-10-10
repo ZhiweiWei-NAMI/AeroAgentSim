@@ -1138,6 +1138,7 @@ generators:
       lowalt.wind_limit_mps: 12.0
       lowalt.returning_to_charge: false
     label: Patrol drone {index}
+    label_zh: 巡逻无人机 {index}
     business: security
     vehicle_class: patrol
 engines:

@@ -408,7 +408,7 @@ def header(directory: Path) -> dict[str, Any]:
             "type": item["type"],
             **{
                 name: item[name]
-                for name in ("label", "business", "vehicle_class")
+                for name in ("label", "label_zh", "business", "vehicle_class")
                 if name in item
             },
         }

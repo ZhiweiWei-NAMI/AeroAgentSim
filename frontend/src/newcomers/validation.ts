@@ -5,7 +5,7 @@ function text(value:unknown):asserts value is string{if(typeof value!=='string')
 export function validateKpiValues(value:unknown):KpiValues{
  const values=record(value);
  for(const metric of Object.values(values)){
-  const row=record(metric);text(row.unit);text(row.label);
+  const row=record(metric);text(row.unit);text(row.label);if(row.label_zh!==undefined)text(row.label_zh);
   if(row.value!==null&&(typeof row.value!=='number'||!Number.isFinite(row.value)))throw Error(`Invalid result for ${row.label}.`);
   if(row.direction!==undefined&&!['min','max','neutral'].includes(String(row.direction)))throw Error('Invalid result direction.');
  }
@@ -14,7 +14,7 @@ export function validateKpiValues(value:unknown):KpiValues{
 export function validateBusinessEvents(value:unknown):BusinessEvent[]{
  if(!Array.isArray(value))throw Error('Expected a business event list.');
  return value.map(raw=>{
-  const event=record(raw);text(event.text);text(event.at_ns);
+  const event=record(raw);text(event.text);text(event.at_ns);if(event.text_zh!==undefined)text(event.text_zh);
   if(!/^\d+$/.test(event.at_ns))throw Error('Invalid business event time.');
   if(!categories.includes(String(event.category)))throw Error('Unknown business event category.');
   if(!['info','notice','warning','critical'].includes(String(event.severity)))throw Error('Unknown business event severity.');

@@ -12,13 +12,18 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from aeroagentsim.algorithms import BUILTINS
-from aeroagentsim.services.algorithm_catalog import mount_algorithm_catalog
+from aeroagentsim.services.algorithm_catalog import (
+    discover_algorithm_catalog,
+    mount_algorithm_catalog,
+)
 
 
 class GreedyAllocation:
     """Mock installed plugin exercising the real allocation protocol."""
 
     description = "Give every open task to the first available vehicle."
+    label_zh = "贪心分配"
+    description_zh = "将每个待处理任务交给第一架空闲飞行器。"
 
     def allocate(self, snapshot: Any) -> tuple[Any, ...]:  # pragma: no cover
         return ()
@@ -83,5 +88,78 @@ def test_catalog_lists_builtin_and_installed_entries(
     # Every algorithm entry carries exactly the documented shape.
     for slot in payload.values():
         for algorithm in slot:
-            assert set(algorithm) == {"id", "label", "description"}
+            assert set(algorithm) == {
+                "id", "label", "description", "label_zh", "description_zh"
+            }
             assert algorithm["label"] and algorithm["description"]
+            for field in ("label_zh", "description_zh"):
+                assert any("\u4e00" <= char <= "\u9fff" for char in algorithm[field])
+                assert algorithm[field] != algorithm[field.removesuffix("_zh")]
+    assert greedy["label_zh"] == "贪心分配"
+    assert greedy["description_zh"] == GreedyAllocation.description_zh
+
+
+@pytest.mark.parametrize("installed", [False, True])
+def test_all_builtin_algorithms_translate_with_or_without_entry_points(
+    installed: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entries = []
+    for slot, algorithms in BUILTINS.items():
+        for identity, class_name in algorithms.items():
+            module = (
+                "routes" if identity in {"coverage", "survey", "patrol"}
+                else "llm" if identity == "llm" else "builtins"
+            )
+            entries.append(
+                EntryPoint(
+                    name=f"{slot}.{identity}",
+                    value=f"aeroagentsim.algorithms.{module}:{class_name}",
+                    group="aeroagentsim.algorithms",
+                )
+            )
+    monkeypatch.setattr(
+        importlib.metadata, "entry_points", lambda **_: entries if installed else []
+    )
+    catalog = discover_algorithm_catalog()
+    assert sum(len(rows) for rows in catalog.values()) == 12
+    for slot, rows in catalog.items():
+        assert {row["id"] for row in rows} == set(BUILTINS[slot])
+        for row in rows:
+            for field in ("label_zh", "description_zh"):
+                assert row[field].strip()
+                assert any("\u4e00" <= char <= "\u9fff" for char in row[field])
+            if installed:
+                entry = next(e for e in entries if e.name == f"{slot}.{row['id']}")
+                factory = entry.load()
+                assert row["label_zh"] == factory.label_zh
+                assert row["description_zh"] == factory.description_zh
+    hungarian = next(row for row in catalog["allocation"] if row["id"] == "hungarian")
+    assert "完成时间" in hungarian["description_zh"]
+    if not installed:
+        assert "estimated completion time" in hungarian["description"]
+
+
+def test_override_plugin_does_not_inherit_a_builtin_translation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class UntitledPlugin:
+        description = "This plugin is not the nearest algorithm."
+        label_zh = None
+        description_zh = "  "
+
+        def __init__(self) -> None:
+            raise AssertionError("Catalog discovery must not instantiate plugins")
+
+    class Entry:
+        name = "allocation.nearest"
+
+        def load(self) -> type[UntitledPlugin]:
+            return UntitledPlugin
+
+    monkeypatch.setattr(importlib.metadata, "entry_points", lambda **_: [Entry()])
+    nearest = next(
+        row for row in discover_algorithm_catalog()["allocation"]
+        if row["id"] == "nearest"
+    )
+    assert nearest["description"] == UntitledPlugin.description
+    assert "label_zh" not in nearest and "description_zh" not in nearest

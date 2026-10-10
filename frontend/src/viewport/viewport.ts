@@ -16,9 +16,11 @@ import { setupScene } from './scene';
 import { scenePresentation, type ScenePresentation } from '../scene/presentation';
 import { loadSceneLayer } from '../scene/city-layer';
 import { CameraDirector, type CameraMode } from '../scene/camera-director';
+import { translate } from '../i18n/translate';
 export type { CameraMode } from '../scene/camera-director';
 export interface ViewportOptions extends AssetOptions {
   quality?: Quality;
+  locale?: string;
   city?: { url: string; kind: 'glb' | 'osm2world'; assetsBase?: string; offset?: [number, number, number] };
   hdri?: string;
   onSelect?: (entity: EntityKey) => void;
@@ -69,10 +71,13 @@ export class Viewport {
   private semanticLayer?: SemanticLayer;
   private district?:ProceduralDistrict;
   private assetIssues = new Set<string>();
-  constructor(private container: HTMLElement, header: RunHeader, private options: ViewportOptions = {}) {
+  private lastStatus = '';
+  private attribution = '';
+  private hoverMarkerId?: string;
+  constructor(private container: HTMLElement, private header: RunHeader, private options: ViewportOptions = {}) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'high-performance' });
-    if (!context) throw Error('WebGL2 is unavailable in this browser');
+    if (!context) throw Error(translate(options.locale, 'WebGL2 is unavailable in this browser'));
     this.renderer = new T.WebGLRenderer({ canvas, context });
     this.renderer.outputColorSpace = T.SRGBColorSpace; this.renderer.toneMapping = T.NoToneMapping;
     this.renderer.info.autoReset=false; this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.autoUpdate = false; this.renderer.shadowMap.type = T.PCFSoftShadowMap;
@@ -89,21 +94,22 @@ export class Viewport {
     this.controls.maxPolarAngle = Math.PI * 0.485; this.controls.minDistance = 3; this.controls.maxDistance = 9000;
     this.lighting = setupScene(this.renderer, this.scene); this.assets = new Assets(this.renderer, options);
     this.layer = new EntityLayer(header, this.assets, this.overlay, key => options.onSelect?.(key), error => options.onError?.(error), this.status);
+    this.layer.locale = options.locale ?? 'en-US';
     try{this.layer.setCatalog(parseModelCatalog(header.modelCatalog));}catch(error){this.status(`Model catalog unavailable: ${String(error)} · stand-ins active`);}
     if(options.semantic!==undefined)this.layer.semantic=options.semantic;
     if(options.showAllLabels!==undefined)this.layer.showAllLabels=options.showAllLabels;
     this.scene.add(this.layer.root, this.staticRoot);
-    if(options.semantic){this.semanticLayer=new SemanticLayer(header,{onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
+    if(options.semantic){this.semanticLayer=new SemanticLayer(header,{locale:options.locale,onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
     this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.applyPreset();
     this.observer = new ResizeObserver(this.resize); this.observer.observe(container);
     canvas.addEventListener('pointerdown', this.pointerDown); canvas.addEventListener('pointerup', this.pointerUp);
-    if(options.semantic)canvas.addEventListener('pointermove', this.pointerMove); this.resize();
+    canvas.addEventListener('pointermove', this.pointerMove); this.resize();
     const presentation: ScenePresentation | undefined = options.city || options.hdri ? { city: options.city, hdri: options.hdri } : scenePresentation(header);
-    if(options.semantic&&!presentation?.city){this.district=new ProceduralDistrict();this.scene.add(this.district.root);this.container.dataset.context='illustrative';this.container.dataset.attribution='Illustrative city · recorded actors and airspace';}
+    if(options.semantic&&!presentation?.city){this.district=new ProceduralDistrict();this.scene.add(this.district.root);this.container.dataset.context='illustrative';this.setAttribution('Illustrative city · recorded actors and airspace');}
     if(presentation?.camera){this.camera.position.fromArray(presentation.camera.position);this.controls.target.fromArray(presentation.camera.target);this.authoredCamera=true;}
     if(presentation){
-      if(presentation.attribution)container.dataset.attribution=presentation.attribution;
-      if(presentation.city?.kind==='osm2world')container.dataset.attribution='© OpenStreetMap contributors · ODbL · Procedural display materials';
+      if(presentation.attribution)this.setAttribution(presentation.attribution);
+      if(presentation.city?.kind==='osm2world')this.setAttribution('© OpenStreetMap contributors · ODbL · Procedural display materials');
       void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);this.occlusion.setObjects(this.staticRoot.children);this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city='loaded';container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});}},this.status)
         .catch(error=>{if(!this.disposed){this.status(String(error));options.onError?.(error);}});
       if(presentation.hdri)void this.assets.hdri(presentation.hdri,this.renderer).then(environment=>{
@@ -111,15 +117,59 @@ export class Viewport {
       }).catch(error=>{if(!this.disposed){container.dataset.ibl='analytic-sky';this.status(`HDRI unavailable: ${String(error)} · analytic sky IBL active`);}});
     }else this.status('Base scene · no city selected');
   }
+  private displayStatus(message: string): string {
+    const locale = this.options.locale;
+    if (message === 'Base scene · no city selected') return translate(locale, 'Base scene · no city selected');
+    if (message === 'Loading city geometry…') return translate(locale, 'Loading city geometry…');
+    let match = /^Loading model: (.*) · markers active$/.exec(message);
+    if (match) return translate(locale, 'Loading model: {asset} · markers active', { asset: match[1] });
+    match = /^Loading model: (.*) · stand-ins active$/.exec(message);
+    if (match) return translate(locale, 'Loading model: {asset} · stand-ins active', { asset: match[1] });
+    match = /^Models loaded · (.*)$/.exec(message);
+    if (match) return translate(locale, 'Models loaded · {asset}', { asset: match[1] });
+    match = /^Model unavailable: (.*) · markers active$/.exec(message);
+    if (match) return translate(locale, 'Model unavailable: {error} · markers active', { error: match[1] });
+    match = /^Model unavailable: (.*) · stand-ins active$/.exec(message);
+    if (match) return translate(locale, 'Model unavailable: {error} · stand-ins active', { error: match[1] });
+    match = /^Model catalog unavailable: (.*) · stand-ins active$/.exec(message);
+    if (match) return translate(locale, 'Model catalog unavailable: {error} · stand-ins active', { error: match[1] });
+    match = /^HDRI unavailable: (.*) · analytic sky IBL active$/.exec(message);
+    if (match) return translate(locale, 'HDRI unavailable: {error} · analytic sky IBL active', { error: match[1] });
+    match = /^City unavailable: (.*) · base scene active$/.exec(message);
+    if (match) return translate(locale, 'City unavailable: {error} · base scene active', { error: match[1] });
+    match = /^SUMO roads unavailable: (.*)$/.exec(message);
+    if (match) return translate(locale, 'SUMO roads unavailable: {error}', { error: match[1] });
+    match = /^(.*) · geometry loaded(.*)$/.exec(message);
+    if (match) return translate(locale, '{scene} · geometry loaded{hint}', { scene: match[1] === 'City' ? translate(locale, 'City') : match[1], hint: match[2] });
+    // Unknown service/loader diagnostics are exact technical data, not guessed prose.
+    return message;
+  }
   private status = (message: string) => {
     if(this.disposed)return;
     this.revision++;
     if(message.includes('unavailable'))this.assetIssues.add(message);
-    const combined=[...new Set([...this.assetIssues,message])].join(' | ');
-    this.container.dataset.assetStatus=combined;
+    const parts=[...new Set([...this.assetIssues,message])];
+    this.lastStatus=message;
+    this.container.dataset.assetStatus=parts.join(' | ');
     if(message.startsWith('Models loaded'))this.container.dataset.models='loaded';
-    this.options.onStatus?.(combined);
+    this.options.onStatus?.(parts.map(item=>this.displayStatus(item)).join(' | '));
   };
+  private setAttribution(message: string) {
+    this.attribution=message;
+    const locale=this.options.locale;
+    switch(message){
+      case 'Illustrative city · recorded actors and airspace': this.container.dataset.attribution=translate(locale, 'Illustrative city · recorded actors and airspace');break;
+      case '© OpenStreetMap contributors · ODbL · Procedural display materials': this.container.dataset.attribution=translate(locale, '© OpenStreetMap contributors · ODbL · Procedural display materials');break;
+      case '© OpenStreetMap contributors · ODbL 1.0': this.container.dataset.attribution=translate(locale, '© OpenStreetMap contributors · ODbL 1.0');break;
+      default:this.container.dataset.attribution=message;
+    }
+  }
+  setLocale(locale: string) {
+    if(this.options.locale===locale)return;
+    this.options.locale=locale;this.layer.locale=locale;this.semanticLayer?.setLocale(locale);this.revision++;
+    this.setAttribution(this.attribution);
+    this.options.onStatus?.([...new Set([...this.assetIssues,this.lastStatus])].filter(Boolean).map(item=>this.displayStatus(item)).join(' | '));
+  }
   private applyCityDisplay(object: T.Object3D) {
     object.traverse(node=>{if(node instanceof T.Mesh)for(const material of Array.isArray(node.material)?node.material:[node.material]){
       const uniform=material.userData.displayDusk as {value:number}|undefined;if(uniform)uniform.value=this.dusk?1:0;
@@ -162,11 +212,12 @@ export class Viewport {
     this.district?.update(store,this.origin);
     const chosen = this.mode === 'cinematic' ? this.director.choose(store,ns,deltaSeconds,this.selected) : this.selected;
     this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion);
-    if(this.semanticLayer){
+    if(this.semanticLayer&&this.layer.semantic){
       this.semanticLayer.update(store,ns,this.origin);
       this.semanticLayer.root.visible=true;
+      if(this.hoverMarkerId)this.container.dataset.semanticHover=this.semanticLayer.labelFor(this.hoverMarkerId)??'';
       if(this.options.onLegend)this.emitLegend(store);
-    }
+    }else if(this.semanticLayer)this.semanticLayer.root.visible=false;
     const entitiesFinished = performance.now();
     if(!this.framed && this.layer.positions.size){
       const bounds=this.district?.bounds?.clone().translate(this.origin.clone().negate())??new T.Box3().setFromPoints([...this.layer.positions.values()]),center=bounds.getCenter(new T.Vector3());
@@ -238,13 +289,18 @@ export class Viewport {
     const entries = new Map<string, string>();
     for (const [label, color] of this.layer.businessLegend(store)) entries.set(label, color);
     const activeKinds=new Set(activeZones(store.header,store).map(zone=>zone.kind));
-    const labels={no_fly:'No-fly zone',restricted:'Restricted zone',altitude_band:'Altitude band',corridor:'Corridor'};
-    for (const [label,color] of SemanticLayer.zoneLegend()) if([...activeKinds].some(kind=>labels[kind]===label))entries.set(label,color);
-    const sites=semanticSites(store.header,store);if(sites.some(site=>site.isVertiport))entries.set('Vertiport','#009e73');if(sites.some(site=>site.isPad))entries.set('Charging pad','#e69f00');
+    const locale=this.options.locale??'en-US';
+    const labels={no_fly:translate(locale, 'No-fly zone'),restricted:translate(locale, 'Restricted zone'),altitude_band:translate(locale, 'Altitude band'),corridor:translate(locale, 'Corridor')};
+    for (const [label,color] of SemanticLayer.zoneLegend(locale)) if([...activeKinds].some(kind=>labels[kind]===label))entries.set(label,color);
+    const sites=semanticSites(store.header,store);if(sites.some(site=>site.isVertiport))entries.set(translate(locale, 'Vertiport'),'#009e73');if(sites.some(site=>site.isPad))entries.set(translate(locale, 'Charging pad'),'#e69f00');
     this.options.onLegend?.([...entries].map(([label, color]) => ({ label, color })), this.layer.activeZoneCount(store));
   }
   setSemantic(next: { semantic?: boolean; showAllLabels?: boolean }) {
-    if (next.semantic !== undefined) this.layer.semantic = next.semantic;
+    if (next.semantic !== undefined) {
+      this.layer.semantic = next.semantic;
+      if(next.semantic&&!this.semanticLayer){this.semanticLayer=new SemanticLayer(this.header,{locale:this.options.locale,onSelect:key=>this.options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
+      if(!next.semantic){this.hoverMarkerId=undefined;this.layer.setHover();delete this.container.dataset.semanticHover;}
+    }
     if (next.showAllLabels !== undefined) this.layer.showAllLabels = next.showAllLabels;
     this.revision++;
   }
@@ -255,11 +311,11 @@ export class Viewport {
   };
   private press?: {x:number;y:number};
   private pointerMove=(event:PointerEvent)=>{
-    if(!this.semanticLayer)return;
+    if(!this.semanticLayer||!this.layer.semantic)return;
     const rect=this.renderer.domElement.getBoundingClientRect(),raycaster=new T.Raycaster();
     raycaster.setFromCamera(new T.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1),this.camera);
     const marker=this.semanticLayer.pick(raycaster);
-    const id=marker?`${marker.key.id}:${marker.key.generation}`:undefined;
+    const id=marker?`${marker.key.id}:${marker.key.generation}`:undefined;this.hoverMarkerId=id;
     const entityKey=this.layer.pick(raycaster);
     this.layer.setHover(entityKey?`${entityKey.id}:${entityKey.generation}`:id);this.revision++;
     this.container.dataset.semanticHover=marker?.label??'';
@@ -270,13 +326,13 @@ export class Viewport {
     const rect=this.renderer.domElement.getBoundingClientRect(),raycaster=new T.Raycaster();
     raycaster.setFromCamera(new T.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1),this.camera);
     const key=this.layer.pick(raycaster);
-    if(!key&&this.semanticLayer){const marker=this.semanticLayer.pick(raycaster);if(marker)this.options.onSelect?.(marker.key);}
+    if(!key&&this.semanticLayer&&this.layer.semantic){const marker=this.semanticLayer.pick(raycaster);if(marker)this.options.onSelect?.(marker.key);}
     if(key)this.options.onSelect?.(key);
   };
   dispose(){
     this.disposed=true;this.abort.abort();this.observer.disconnect();
     this.renderer.domElement.removeEventListener('pointerdown',this.pointerDown);this.renderer.domElement.removeEventListener('pointerup',this.pointerUp);
-    if(this.options.semantic)this.renderer.domElement.removeEventListener('pointermove',this.pointerMove);
+    this.renderer.domElement.removeEventListener('pointermove',this.pointerMove);
     this.controls.dispose();this.occlusion.dispose();this.layer.dispose();this.assets.dispose();disposeObject(this.scene);this.lighting.dispose();this.environment?.dispose();
     this.district?.dispose();
     if(this.semanticLayer){this.semanticLayer.dispose();}

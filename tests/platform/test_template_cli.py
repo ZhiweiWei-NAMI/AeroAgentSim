@@ -47,6 +47,7 @@ def generic_template(tmp_path: Path) -> Path:
         "format": "aeroagentsim.template/v1",
         "id": "experiment",
         "title": "Experiment",
+        "title_zh": "实验",
         "summary": "Compare pinned allocation settings.",
         "category": "logistics",
         "difficulty": "beginner",
@@ -97,6 +98,7 @@ def test_templates_list_and_run_headless_measured(tmp_path: Path) -> None:
     assert listed.returncode == 0, listed.stderr
     entries = json.loads(listed.stdout)
     assert [row["id"] for row in entries] == ["experiment"]
+    assert entries[0]["title_zh"] == "实验"
 
     done = run_cli(
         "run-template",
@@ -116,6 +118,8 @@ def test_templates_list_and_run_headless_measured(tmp_path: Path) -> None:
     assert result["kpis"]["tasks_created"] == 0
     metadata = json.loads((Path(result["run"]) / "manifest.json").read_text())
     assert metadata["template"]["knobs"] == {"seed": 2}
+    assert metadata["template"]["title"] == "Experiment"
+    assert metadata["template"]["title_zh"] == "实验"
     scenario = yaml.safe_load((Path(result["run"]) / "scenario.json").read_text())
     assert scenario["run"]["seed"] == 2
 

@@ -31,6 +31,8 @@
   "include": [
     "src",
     "vite.config.ts",
+    "e2e/bilingual-console.spec.ts",
+    "e2e/student-controls.spec.ts",
     "e2e/traffic-console.spec.ts",
     "e2e/experiment-console.spec.ts",
     "e2e/ux-fixtures.ts",

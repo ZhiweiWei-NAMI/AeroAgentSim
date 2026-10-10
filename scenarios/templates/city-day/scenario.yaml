@@ -31079,6 +31079,7 @@ generators:
       lowalt.wind_limit_mps: 12.0
       lowalt.returning_to_charge: false
     label: Drone P{index}
+    label_zh: 无人机 P{index}
     business: logistics
     vehicle_class: parcel
 engines:

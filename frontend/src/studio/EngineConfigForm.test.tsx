@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { EngineConfigForm } from './EngineConfigForm';
+import { EngineConfigForm, engineDescriptorText } from './EngineConfigForm';
+import { I18nProvider } from '../i18n/I18nProvider';
 
 function Editor({ schema, initial = {}, changed = () => {}, validity = () => {} }: { schema?: unknown; initial?: Record<string, unknown>; changed?: (value: Record<string, unknown>) => void; validity?: (value: boolean) => void }) {
   const [value, setValue] = useState(initial);
-  return <EngineConfigForm schema={schema} value={value} onChange={next => { setValue(next); changed(next); }} onValidityChange={validity} />;
+  return <I18nProvider><EngineConfigForm schema={schema} value={value} onChange={next => { setValue(next); changed(next); }} onValidityChange={validity} /></I18nProvider>;
 }
 
+beforeEach(() => { window.localStorage.setItem('aeroagentsim.locale', 'en-US'); });
 beforeAll(()=>{Object.defineProperty(window,'matchMedia',{writable:true,value:vi.fn(()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}}))});});
 function choose(label:string, option:string) {
  fireEvent.mouseDown(screen.getByRole('combobox',{name:label}));
@@ -104,6 +106,36 @@ describe('engine configuration descriptors', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('expected number');
     fireEvent.change(screen.getByLabelText('Config.label'), { target: { value: 'source' } });
     expect(changed).toHaveBeenLastCalledWith({ rate: '2.5', opaque: ['retained'], label: 'source' });
+  });
+
+  it('uses explicit translation keys for known dynamic descriptor titles and hints', () => {
+    const t = vi.fn((key: string) => key === 'Maximum speed' ? '最大速度' : key === 'Energy capacity in joules.' ? '能量容量，单位为焦耳。' : key);
+    expect(engineDescriptorText('Maximum speed', t)).toBe('最大速度');
+    expect(t).toHaveBeenLastCalledWith('Maximum speed');
+    expect(engineDescriptorText('Energy capacity in joules.', t)).toBe('能量容量，单位为焦耳。');
+    expect(t).toHaveBeenLastCalledWith('Energy capacity in joules.');
+    expect(engineDescriptorText('vendor-specific title', t)).toBe('vendor-specific title');
+  });
+
+  it('shows nested descriptor hints and does not repeat an existing unit', () => {
+    render(<Editor schema={{ type: 'object', properties: {
+      energy: { type: 'object', title: 'Energy', description: 'Energy capacity in joules.', properties: { capacity_j: { type: 'number' } } },
+      speed: { type: 'number', title: 'Speed (m/s)', unit: 'm/s' },
+    } }} />);
+    expect(screen.getByText('Energy capacity in joules.')).toBeInTheDocument();
+    expect(screen.getByText('Speed (m/s)')).toBeInTheDocument();
+    expect(screen.queryByText('Speed (m/s) (m/s)')).toBeNull();
+  });
+
+  it('falls back safely when plugin descriptor labels are not strings', () => {
+    render(<Editor schema={{ type: 'object', properties: { rate: { type: 'number', title: { unsafe: true } } } }} />);
+    expect(screen.getByText('This descriptor needs features outside the form editor. Edit its configuration as JSON.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit configuration JSON' })).toBeInTheDocument();
+  });
+
+  it('rejects prototype-named extra properties when they are not declared', () => {
+    render(<Editor initial={JSON.parse('{"__proto__":"authored"}')} schema={{ type: 'object', additionalProperties: false, properties: {} }} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Config.__proto__: unknown property');
   });
 
   it('handles member names that match prototype names as ordinary authored keys', () => {

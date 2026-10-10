@@ -3,7 +3,7 @@ import { validateBusinessEvents, validateKpiValues } from '../newcomers/validati
 import type { FeedCommit, RunHeader, ViewerFeed } from '../contracts/viewer-feed';
 
 export interface WaitingContext { stream_ids: string[]; at_ns: string }
-export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string; waiting?: WaitingContext; template_id?:string; template_title?:string; knobs?:Record<string,string|number|boolean>; algorithms?:Record<string,string>; kpis?:import('../newcomers/api').KpiValues }
+export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string; waiting?: WaitingContext; template_id?:string; template_title?:string; template_title_zh?:string; knobs?:Record<string,string|number|boolean>; algorithms?:Record<string,string>; kpis?:import('../newcomers/api').KpiValues }
 export interface CommitPage { commits: FeedCommit[]; next: number; status: string; waiting?: WaitingContext }
 type ObjectValue = Record<string, unknown>;
 // Waiting on live operator watermark progress is a normal live-run state, not a failure.

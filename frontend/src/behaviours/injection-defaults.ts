@@ -36,7 +36,7 @@ export function newIdempotencyKey():string {
 export function actualTargetSummary(point:Draft, store:TemporalFeedStore):string {
   if(point.id==='accident') {
     const incidents=[...store.entities.values()].filter(row=>row.typeId==='aas:TrafficIncident');
-    return incidents.length?`Trigger the accident response for ${incidents.map(entityLabel).join(', ')}. Choose an actor or add a reason if needed.`:'Waiting for the run’s incident entity to load.';
+    return incidents.length?`Trigger the accident response for ${incidents.map(entity => entityLabel(entity)).join(', ')}. Choose an actor or add a reason if needed.`:'Waiting for the run’s incident entity to load.';
   }
   return `Send ${String(point.name??point.id)} to its configured plugin.`;
 }

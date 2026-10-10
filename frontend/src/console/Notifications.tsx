@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useI18n } from '../i18n/I18nProvider';
 
 export type ConsoleNoticeKind = 'success' | 'error' | 'info';
 
@@ -31,6 +32,7 @@ const NOTICE_TTL_MS = 6000;
  * shown again. Toasts expire after a bounded delay and the stack is capped.
  */
 export function ConsoleNotifications({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [entries, setEntries] = useState<ConsoleNoticeEntry[]>([]);
   const nextKey = useRef(0);
 
@@ -56,7 +58,7 @@ export function ConsoleNotifications({ children }: { children: ReactNode }) {
       <ol className="console-toasts" data-testid="console-notices" aria-live="polite" aria-relevant="additions">
         {entries.map(entry => (
           <li key={entry.key} className={`console-toast console-toast-${entry.kind}`} role={entry.kind === 'error' ? 'alert' : 'status'}>
-            {entry.message}
+            {t(entry.message)}
           </li>
         ))}
       </ol>

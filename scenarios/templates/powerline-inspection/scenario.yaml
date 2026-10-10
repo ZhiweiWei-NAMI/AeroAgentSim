@@ -1134,6 +1134,7 @@ generators:
       lowalt.wind_limit_mps: 6.0
       lowalt.returning_to_charge: false
     label: Survey drone {index}
+    label_zh: 巡检无人机 {index}
     business: inspection
     vehicle_class: inspection
 engines:

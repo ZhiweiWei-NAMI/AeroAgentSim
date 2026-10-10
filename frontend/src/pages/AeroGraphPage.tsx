@@ -5,6 +5,7 @@ import { StudioApi } from '../studio/api';
 import { Details } from '../console/Details';
 import { PageHeader, PageState } from '../console/PageState';
 import { useI18n } from '../i18n/I18nProvider';
+import { translate } from '../i18n/translate';
 import './aerograph.css';
 import { readableLabel, displayLabel } from './inspection-format';
 import { ConceptHelp } from '../console/ConceptHelp';
@@ -35,8 +36,10 @@ interface ExplorerPayload {
 
 type Row = Record<string, unknown>;
 
-const DEFAULT_BASE = ['3000', '4179'].includes(window.location.port)
-  ? 'http://127.0.0.1:8002' : window.location.origin;
+/** Built consoles use their serving backend; Vite forwards /v1 in development. */
+export function explorerApiBase(search: string, origin = window.location.origin): string {
+  return new URLSearchParams(search).get('api') || origin;
+}
 
 function displayName(name: unknown, locale: string): string {
   if (typeof name === 'string') return name;
@@ -63,44 +66,44 @@ const SCHEMA_TYPE_NAMES: Record<string, string> = {
   array: 'List', object: 'Record',
 };
 
-function unitLabel(unit: unknown): string {
+function unitLabel(unit: unknown, locale: string): string {
   const symbol = typeof unit === 'string' ? unit : unit && typeof unit === 'object' ? (unit as Row).symbol : undefined;
   if (typeof symbol !== 'string') return '—';
-  return symbol === 'member_units' || symbol === 'member_specific' ? 'Per field' : symbol === 'enum' ? 'Category' : symbol;
+  return symbol === 'member_units' || symbol === 'member_specific' ? translate(locale, 'Per field') : symbol === 'enum' ? translate(locale, 'Category') : symbol;
 }
 
-/** Friendly one-line summary of a value schema; the raw shape stays in Details. */
-function schemaSummary(schema: Row | undefined): string {
+/** Friendly one-line summary of a value schema; raw keys and unit symbols stay intact. */
+function schemaSummary(schema: Row | undefined, locale: string): string {
   if (!schema || typeof schema !== 'object') return '—';
   const type = typeof schema['type'] === 'string' ? schema['type'] as string : undefined;
-  const unit = (schema['unit'] as Row | undefined)?.['symbol'];
+  const unit = schema['unit'];
   const members = (schema['members'] ?? schema['properties']) as Row | undefined;
   const parts: string[] = [];
   if (members && Object.keys(members).length > 0) {
     const size = Object.keys(members).length;
-    parts.push(`Record · ${size} field${size === 1 ? '' : 's'}`);
-  } else if (type === 'object') parts.push('Record');
-  else if (type === 'array') parts.push('List');
-  else parts.push(type ? SCHEMA_TYPE_NAMES[type] ?? readableLabel(type) : 'Complex');
-  if (typeof unit === 'string' && unit) parts.push(`${unit}`);
-  if (schema['nullable'] === true) parts.push('nullable');
+    parts.push(translate(locale, size === 1 ? 'Record · {count} field' : 'Record · {count} fields', { count: size }));
+  } else if (type === 'object') parts.push(translate(locale, 'Record'));
+  else if (type === 'array') parts.push(translate(locale, 'List'));
+  else parts.push(type ? translate(locale, SCHEMA_TYPE_NAMES[type] ?? readableLabel(type, locale)) : translate(locale, 'Complex'));
+  const unitText = unitLabel(unit, locale);
+  if (unitText !== '—' && unitText) parts.push(unitText);
+  if (schema['nullable'] === true) parts.push(translate(locale, 'nullable'));
   return parts.join(' · ');
 }
 
-/** Ancestors of `id` within the type map, nearest first; unknown parents are skipped. */
+/** All declared ancestors, nearest first; tolerate missing parents and cycles. */
 function ancestry(id: string, byId: Map<string, ExplorerPayload['types'][number]>): string[] {
-  const chain: string[] = [];
+  const ancestors: string[] = [];
   const seen = new Set<string>([id]);
-  let cursor = id;
-  while (true) {
-    const row = byId.get(cursor);
-    const next = row?.parents.find(parent => !seen.has(parent));
-    if (!next) break;
-    chain.push(next);
-    seen.add(next);
-    cursor = next;
+  const pending = [...(byId.get(id)?.parents ?? [])];
+  while (pending.length) {
+    const parent = pending.shift()!;
+    if (seen.has(parent) || !byId.has(parent)) continue;
+    seen.add(parent);
+    ancestors.push(parent);
+    pending.push(...byId.get(parent)!.parents);
   }
-  return chain;
+  return ancestors;
 }
 
 /** Tokens referenced by a definition AST: rule/field/relation/parameter names. */
@@ -127,49 +130,101 @@ function englishLabel(row: {name:unknown} | undefined, id: string): string {
   return readableLabel(id);
 }
 function localizedLabel(value: unknown, id: string, locale: string): string {
-  return locale.startsWith('zh') ? displayName(value,locale)||readableLabel(id) : englishLabel({name:value},id);
+  if (typeof value === 'string') return displayLabel(value, id, locale);
+  return locale.startsWith('zh')
+    ? translate(locale, displayName(value, locale)) || readableLabel(id, locale)
+    : englishLabel({ name: value }, id);
 }
 function relationEnds(row: Row): [string | undefined,string | undefined] {
   const source=row.sourceClass ?? row.source_type ?? row.source;
   const target=row.targetClass ?? row.target_type ?? row.target;
   return [typeof source==='string'?source:undefined,typeof target==='string'?target:undefined];
 }
-function TypeGraph({selected,types,relations,onSelect}: {selected:string;types:Map<string,ExplorerPayload['types'][number]>;relations:Row[];locale:string;onSelect:(id:string)=>void}) {
-  const [camera,setCamera]=useState({x:0,y:0,scale:1});
-  const [includeInherited,setIncludeInherited]=useState(false);
-  const visibleRelations=useMemo(()=>includeInherited?relations:relations.filter(row=>relationEnds(row).includes(selected)),[relations,selected,includeInherited]);
-  const drag=useRef<{x:number;y:number;tx:number;ty:number}>();
-  useEffect(()=>setCamera({x:0,y:0,scale:1}),[selected]);
-  const nodes=useMemo(()=>{
-    const ids=new Set([selected,...ancestry(selected,types)]);
-    for(const row of types.values()) if(row.parents.includes(selected)) ids.add(row.id);
-    for(const row of visibleRelations) for(const id of relationEnds(row)) if(id) ids.add(id);
-    return [...ids].map((id,index)=>({id,label:englishLabel(types.get(id),id),x:index===0?320:110+(index-1)%3*210,y:index===0?44:126+Math.floor((index-1)/3)*72}));
-  },[selected,types,visibleRelations]);
-  const positions=new Map(nodes.map(row=>[row.id,row]));
-  const edges:Array<{source:string;target:string;label:string;ancestry:boolean}>=[];
-  for(const node of nodes) for(const parent of types.get(node.id)?.parents??[]) if(positions.has(parent)) edges.push({source:node.id,target:parent,label:'is a',ancestry:true});
-  for(const row of visibleRelations) {const [source,target]=relationEnds(row);if(source&&target&&positions.has(source)&&positions.has(target))edges.push({source,target,label:displayName(row.displayName,'en')||readableLabel(String(row.id)),ancestry:false});}
-  return <div className="aerograph-graph" data-testid="aerograph-graph"><div className="aerograph-graph-controls"><span>{nodes.length} types · {edges.length} connections</span><Checkbox checked={includeInherited} onChange={event=>setIncludeInherited(event.target.checked)}>Inherited relations</Checkbox><button className="console-btn" onClick={()=>setCamera({x:0,y:0,scale:1})}>Reset view</button><button className="console-btn" aria-label="Zoom type graph in" onClick={()=>setCamera(c=>({...c,scale:Math.min(3,c.scale*1.2)}))}>+</button><button className="console-btn" aria-label="Zoom type graph out" onClick={()=>setCamera(c=>({...c,scale:Math.max(.3,c.scale/1.2)}))}>−</button></div>
-    <svg viewBox="0 0 640 360" role="img" aria-label="Selected type and neighbours"
-      onPointerDown={event=>{if((event.target as Element).closest('.aerograph-type-node'))return;drag.current={x:event.clientX,y:event.clientY,tx:camera.x,ty:camera.y};event.currentTarget.setPointerCapture(event.pointerId);}}
-      onPointerMove={event=>{if(drag.current){const box=event.currentTarget.getBoundingClientRect();setCamera(c=>({...c,x:drag.current!.tx+(event.clientX-drag.current!.x)*640/box.width,y:drag.current!.ty+(event.clientY-drag.current!.y)*640/box.width}));}}}
-      onPointerUp={()=>{drag.current=undefined;}} onPointerCancel={()=>{drag.current=undefined;}}
-      onWheel={event=>setCamera(c=>({...c,scale:Math.max(.3,Math.min(3,c.scale*(event.deltaY<0?1.1:1/1.1)))}))}>
-      <defs><marker id="type-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#8fa4b3"/></marker></defs>
-      <g transform={`translate(${camera.x} ${camera.y}) scale(${camera.scale})`}>
-        {edges.map((edge,index)=>{const a=positions.get(edge.source)!,b=positions.get(edge.target)!;return <line key={index} x1={a.x} y1={a.y+18} x2={b.x} y2={b.y-18} stroke={edge.ancestry?'#8fa4b3':'#5aaca2'} strokeDasharray={edge.ancestry?'4 4':undefined} markerEnd="url(#type-arrow)"><title>{edge.label}</title></line>;})}
-        {nodes.map(node=><g key={node.id} className="aerograph-type-node" role="button" tabIndex={0} aria-label={`Explore ${node.label}`} aria-pressed={node.id===selected} onClick={()=>{if(types.has(node.id))onSelect(node.id);}} onKeyDown={event=>{if((event.key==='Enter'||event.key===' ')&&types.has(node.id)){event.preventDefault();onSelect(node.id);}}} transform={`translate(${node.x} ${node.y})`}><rect x="-88" y="-20" width="176" height="40" rx="8" fill={node.id===selected?'#0d7f74':'white'} stroke={node.id===selected?'#0d7f74':'#cdd7e0'}/><text textAnchor="middle" dy="5" fontSize="13" fill={node.id===selected?'white':'#17222e'}>{node.label.length>24?node.label.slice(0,23)+'…':node.label}</text><title>{node.label}</title></g>)}
+function TypeGraph({ selected, types, relations, locale, onSelect }: {
+  selected: string;
+  types: Map<string, ExplorerPayload['types'][number]>;
+  relations: Row[];
+  locale: string;
+  onSelect: (id: string) => void;
+}) {
+  const { t } = useI18n();
+  const [camera, setCamera] = useState({ x: 0, y: 0, scale: 1 });
+  const [includeInherited, setIncludeInherited] = useState(false);
+  const visibleRelations = useMemo(() => includeInherited ? relations : relations.filter(row => relationEnds(row).includes(selected)), [relations, selected, includeInherited]);
+  const drag = useRef<{ x: number; y: number; tx: number; ty: number }>();
+  useEffect(() => { setCamera({ x: 0, y: 0, scale: 1 }); drag.current = undefined; }, [selected]);
+  const nodes = useMemo(() => {
+    const ids = new Set([selected, ...ancestry(selected, types)]);
+    for (const row of types.values()) if (row.parents.includes(selected)) ids.add(row.id);
+    for (const row of visibleRelations) for (const id of relationEnds(row)) if (id) ids.add(id);
+    return [...ids].map((id, index) => ({
+      id, label: localizedLabel(types.get(id)?.name, id, locale),
+      x: index === 0 ? 320 : 110 + (index - 1) % 3 * 210,
+      y: index === 0 ? 44 : 126 + Math.floor((index - 1) / 3) * 72,
+    }));
+  }, [selected, types, visibleRelations, locale]);
+  const positions = new Map(nodes.map(row => [row.id, row]));
+  const edges: Array<{ source: string; target: string; label: string; ancestry: boolean }> = [];
+  for (const node of nodes) for (const parent of types.get(node.id)?.parents ?? []) {
+    if (positions.has(parent)) edges.push({ source: node.id, target: parent, label: t('is a'), ancestry: true });
+  }
+  for (const row of visibleRelations) {
+    const [source, target] = relationEnds(row);
+    if (source && target && positions.has(source) && positions.has(target)) {
+      edges.push({ source, target, label: localizedLabel(row.displayName ?? row.name, String(row.id), locale), ancestry: false });
+    }
+  }
+  return <div className="aerograph-graph" data-testid="aerograph-graph">
+    <div className="aerograph-graph-controls">
+      <span>{t('{count} types', { count: nodes.length })} · {t('{count} connections', { count: edges.length })}</span>
+      <Checkbox checked={includeInherited} onChange={event => setIncludeInherited(event.target.checked)}>{t('Inherited relations')}</Checkbox>
+      <button type="button" className="console-btn" onClick={() => { setCamera({ x: 0, y: 0, scale: 1 }); drag.current = undefined; }}>{t('Reset view')}</button>
+      <button type="button" className="console-btn" aria-label={t('Zoom type graph in')} onClick={() => setCamera(c => ({ ...c, scale: Math.min(3, c.scale * 1.2) }))}>+</button>
+      <button type="button" className="console-btn" aria-label={t('Zoom type graph out')} onClick={() => setCamera(c => ({ ...c, scale: Math.max(.3, c.scale / 1.2) }))}>−</button>
+    </div>
+    <svg viewBox="0 0 640 360" role="img" aria-label={t('Selected type and neighbours')} aria-describedby="aerograph-interaction-hint"
+      onPointerDown={event => {
+        if ((event.target as Element).closest('.aerograph-type-node')) return;
+        drag.current = { x: event.clientX, y: event.clientY, tx: camera.x, ty: camera.y };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={event => {
+        if (drag.current) {
+          const box = event.currentTarget.getBoundingClientRect();
+          if (box.width > 0) setCamera(c => ({ ...c, x: drag.current!.tx + (event.clientX - drag.current!.x) * 640 / box.width, y: drag.current!.ty + (event.clientY - drag.current!.y) * 640 / box.width }));
+        }
+      }}
+      onPointerUp={() => { drag.current = undefined; }} onPointerCancel={() => { drag.current = undefined; }}
+      onWheel={event => setCamera(c => ({ ...c, scale: Math.max(.3, Math.min(3, c.scale * (event.deltaY < 0 ? 1.1 : 1 / 1.1))) }))}>
+      <defs><marker id="type-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#8fa4b3" /></marker></defs>
+      <g data-testid="aerograph-camera" transform={`translate(${camera.x} ${camera.y}) scale(${camera.scale})`}>
+        {edges.map((edge, index) => {
+          const a = positions.get(edge.source)!, b = positions.get(edge.target)!;
+          return <line key={index} x1={a.x} y1={a.y + 18} x2={b.x} y2={b.y - 18} stroke={edge.ancestry ? '#8fa4b3' : '#5aaca2'} strokeDasharray={edge.ancestry ? '4 4' : undefined} markerEnd="url(#type-arrow)"><title>{edge.label}</title></line>;
+        })}
+        {nodes.map(node => <g key={node.id} className="aerograph-type-node" role="button" tabIndex={0}
+          aria-label={t('Explore {name}', { name: node.label })} aria-pressed={node.id === selected}
+          onClick={() => { if (types.has(node.id)) onSelect(node.id); }}
+          onKeyDown={event => { if ((event.key === 'Enter' || event.key === ' ') && types.has(node.id)) { event.preventDefault(); onSelect(node.id); } }}
+          transform={`translate(${node.x} ${node.y})`}>
+          <rect x="-88" y="-20" width="176" height="40" rx="8" fill={node.id === selected ? '#0d7f74' : 'white'} stroke={node.id === selected ? '#0d7f74' : '#cdd7e0'} />
+          <text textAnchor="middle" dy="5" fontSize="13" fill={node.id === selected ? 'white' : '#17222e'}>{node.label.length > 24 ? node.label.slice(0, 23) + '…' : node.label}</text>
+          <title>{node.label}</title>
+        </g>)}
       </g>
-    </svg><span className="aerograph-graph-hint">Dashed: is a · solid: relation · drag to pan</span>
+    </svg>
+    <div className="aerograph-graph-hint" id="aerograph-interaction-hint">
+      <p>{t('Dashed arrows mean “is a kind of”; solid arrows connect related types.')}</p>
+      <p>{t('Click a type to explore it. Drag empty space to pan, and use +/− or the scroll wheel to zoom. Reset view restores the starting position.')}</p>
+    </div>
   </div>;
 }
 
 export default function AeroGraphPage() {
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const location = useLocation();
   const query = new URLSearchParams(location.search);
-  const base = query.get('api') ?? DEFAULT_BASE;
+  const base = explorerApiBase(location.search);
   const api = useMemo(() => new StudioApi(base), [base]);
 
   const requestedType=query.get('type');
@@ -273,14 +328,14 @@ export default function AeroGraphPage() {
         const entityTypes = (item.definition['entityTypeIds'] as unknown) ?? item.definition['entityTypeIds'];
         const typeMatch = Array.isArray(entityTypes) && entityTypes.some(entry => active.has(String(entry)));
         if (typeMatch || [...tokens].some(token => [...active].some(id => token === id))) {
-          result.push({ kind, id: item.id, name: localizedLabel(item.name, item.id, 'en-US'), description: item.description ?? '', definition: item.definition });
+          result.push({ kind, id: item.id, name: localizedLabel(item.name, item.id, locale), description: item.description ?? '', definition: item.definition });
         }
       }
     }
     return result;
-  }, [payload, selected, ancestors, typeFields, typeRelations,includeCatalogPredicates,types,byId]);
+  }, [payload, selected, ancestors, typeFields, typeRelations,includeCatalogPredicates,types,byId,locale]);
 
-  const entities = useMemo(() => (payload?.entities ?? []).filter(entity => entity.type === selected || ancestry(entity.type,byId).includes(selected ?? '')), [payload, selected]);
+  const entities = useMemo(() => (payload?.entities ?? []).filter(entity => entity.type === selected || ancestry(entity.type,byId).includes(selected ?? '')), [payload, selected, byId]);
   const workspaceOptions = payload?.workspaces ?? [];
 
   const filteredTree = useMemo(() => {
@@ -300,26 +355,25 @@ export default function AeroGraphPage() {
     type Node={key:string;title:React.ReactNode;children?:Node[]};
     const children=new Map<string,ExplorerPayload['types']>();
     for(const row of displayTypes) if(visible.has(row.id)){const parent=row.parents.find(id=>byId.has(id)&&visible.has(id))??'';children.set(parent,[...(children.get(parent)??[]),row]);}
-    const build=(parent:string,seen:Set<string>):Node[]=>(children.get(parent)??[]).filter(row=>!seen.has(row.id)).sort((a,b)=>englishLabel(a,a.id).localeCompare(englishLabel(b,b.id))).map(row=>({key:row.id,title:<span className="aerograph-tree-label"><span>{englishLabel(row,row.id)}</span><span className="aerograph-count">{row.count===null?'—':row.count}</span></span>,children:build(row.id,new Set([...seen,row.id]))}));
+    const build=(parent:string,seen:Set<string>):Node[]=>(children.get(parent)??[]).filter(row=>!seen.has(row.id)).sort((a,b)=>localizedLabel(a.name,a.id,locale).localeCompare(localizedLabel(b.name,b.id,locale),locale)).map(row=>({key:row.id,title:<span className="aerograph-tree-label"><span>{localizedLabel(row.name,row.id,locale)}</span><span className="aerograph-count">{row.count===null?'—':row.count}</span></span>,children:build(row.id,new Set([...seen,row.id]))}));
     return build('',new Set());
-  },[displayTypes,filteredTree,byId,search]);
+  },[displayTypes,filteredTree,byId,search,locale]);
 
   const selectedRow = selected ? byId.get(selected) : undefined;
-  const selectedName = selectedRow ? englishLabel(selectedRow,selectedRow.id) : '';
-  const selectedNameOther = selectedRow && selectedRow.name && typeof selectedRow.name==='string' && /[\u3400-\u9fff]/.test(selectedRow.name) && !selectedRow.name.split('/').some(part => /[a-z]/i.test(part) && !/[\u3400-\u9fff]/.test(part)) ? selectedRow.name : '';
+  const selectedName = selectedRow ? localizedLabel(selectedRow.name,selectedRow.id,locale) : '';
 
   const columns = [
     {
-      title: 'Field', dataIndex: 'name', key: 'name',
-      render: (_: unknown, row: ExplorerPayload['fields'][number]) => englishLabel(row,fieldToken(row.id)),
+      title: t('Field'), dataIndex: 'name', key: 'name',
+      render: (_: unknown, row: ExplorerPayload['fields'][number]) => localizedLabel(row.name,fieldToken(row.id),locale),
     },
     {
-      title: 'Value type', key: 'schema',
+      title: t('Value type'), key: 'schema',
       render: (_: unknown, row: ExplorerPayload['fields'][number]) => (
         <span className="aerograph-schema-cell">
-          <span>{schemaSummary(row.schema)}</span>
+          <span>{schemaSummary(row.schema,locale)}</span>
           {row.schema && typeof row.schema === 'object' && (
-            <Details title={englishLabel(row,fieldToken(row.id))} buttonLabel="Schema">
+            <Details title={localizedLabel(row.name,fieldToken(row.id),locale)} buttonLabel={t('Schema')}>
               <pre className="aerograph-details-pre">{JSON.stringify(row.schema, null, 2)}</pre>
             </Details>
           )}
@@ -327,51 +381,52 @@ export default function AeroGraphPage() {
       ),
     },
     {
-      title: 'Domain', key: 'domain',
+      title: t('Domain'), key: 'domain',
       render: (_: unknown, row: ExplorerPayload['fields'][number]) => {
         const value = (row.metadata as Row | undefined)?.['domain'] ?? row.metadata?.['domain'];
-        return typeof value === 'string' && value ? readableLabel(value) : '—';
+        return typeof value === 'string' && value ? readableLabel(value,locale) : '—';
       },
     },
-    { title:'Unit',key:'unit',render:(_:unknown,row:ExplorerPayload['fields'][number])=>unitLabel(row.metadata?.unit??row.schema?.unit) },
+    { title:t('Unit'),key:'unit',render:(_:unknown,row:ExplorerPayload['fields'][number])=>unitLabel(row.metadata?.unit??row.schema?.unit,locale) },
     {
-      title: 'Plugin writer', key: 'writers',
+      title: t('Plugin writer'), key: 'writers',
       render: (_: unknown, row: ExplorerPayload['fields'][number]) => row.writers.length
         ? row.writers.map((writer, index) => (
-          <Tag key={index}>{writer.plugin ? readableLabel(writer.plugin) : 'Missing plugin binding'}{writer.entities.length ? ` · ${writer.entities.length}` : ''}</Tag>
+          <Tag key={index}>{writer.plugin ? readableLabel(writer.plugin,locale) : t('Missing plugin binding')}{writer.entities.length ? ` · ${writer.entities.length}` : ''}</Tag>
         ))
-        : <span style={{ color: 'var(--csl-text-muted)' }}>No declared writer</span>,
+        : <span style={{ color: 'var(--csl-text-muted)' }}>{t('No declared writer')}</span>,
     },
   ] as const;
 
   return <div className="console-page aerograph" data-testid="aerograph-page" data-ready={ready ? 'true' : 'false'}>
     <span data-testid="aerograph-ready" hidden={!ready} />
     <PageHeader
-      eyebrow="Explore"
-      title="AeroGraph"
-      description="Browse the shared entity types, fields, relations, predicates and behaviour chains behind your workspaces."
+      eyebrow={t('Explore')}
+      title={t('AeroGraph')}
+      description={t('Browse the shared entity types, fields, relations, predicates and behaviour chains behind your workspaces.')}
     />
-    {error && <PageState kind="error" title="The explorer catalog is unavailable" description={error} action={<button className="console-btn" onClick={() => load(workspaceId ?? requestedWorkspace ?? undefined)}>Retry</button>} />}
-    {loading && !error && ready && <p className="aerograph-hint" role="status">Refreshing the AeroGraph catalog…</p>}
-    {!error && !ready && loading && <PageState kind="loading" title="Loading the AeroGraph catalog" />}
+    {error && <PageState kind="error" title={t('The explorer catalog is unavailable')} description={t(error)} action={<button type="button" className="console-btn" onClick={() => load(workspaceId ?? requestedWorkspace ?? undefined)}>{t('Retry')}</button>} />}
+    {error && ready && <p className="aerograph-hint">{t('Showing the last loaded catalog. Retry to check for updates.')}</p>}
+    {loading && !error && ready && <p className="aerograph-hint" role="status">{t('Refreshing the AeroGraph catalog…')}</p>}
+    {!error && !ready && loading && <PageState kind="loading" title={t('Loading the AeroGraph catalog')} />}
     {!error && !loading && ready && types.length === 0 && (
-      <PageState kind="empty" title="No ontology types found" description="The configured AeroGraph source checkout exposes no type rows." />
+      <PageState kind="empty" title={t('No ontology types found')} description={t('The configured AeroGraph source checkout exposes no type rows.')} />
     )}
-    {payload?.catalog_notice && <p className="aerograph-hint">{payload.catalog_notice}</p>}
-    {payload?.package_errors?.map((message,index)=><PageState key={index} kind="error" title="A behaviour package could not be read" description={message}/>)}
-    {!error && ready && types.length > 0 && <div className="aerograph">
+    {payload?.catalog_notice && <p className="aerograph-hint">{t(payload.catalog_notice)}</p>}
+    {payload?.package_errors?.map((message,index)=><PageState key={index} kind="error" title={t('A behaviour package could not be read')} description={t(message)}/>)}
+    {ready && types.length > 0 && <div className="aerograph">
       <div className="aerograph-toolbar">
         <Select
           className="aerograph-workspace"
-          aria-label="Workspace"
-          placeholder="All workspaces (native catalog)"
+          aria-label={t('Workspace')}
+          placeholder={t('All workspaces (native catalog)')}
           value={workspaceId}
-          options={workspaceOptions.map(workspace => ({ value: workspace.id, label: workspace.name }))}
+          options={workspaceOptions.map(workspace => ({ value: workspace.id, label: t(workspace.name) }))}
           onChange={(value?: string) => load(value)}
           loading={loading}
         />
         <span className="aerograph-meta">
-          {payload?.workspace ? payload.workspace.name : 'No workspace selected (native catalog only)'} · {displayTypes.length} {hasWorkspaceTypes&&!showAllTypes?'workspace':'catalog'} types · {typeFields.length} declared fields on selection
+          {payload?.workspace ? t(payload.workspace.name) : t('No workspace selected (native catalog only)')} · {hasWorkspaceTypes&&!showAllTypes?t('{count} workspace types', {count:displayTypes.length}):t('{count} catalog types', {count:displayTypes.length})} · {t('{count} declared fields on selection', {count:typeFields.length})}
         </span>
         {hasWorkspaceTypes && (
           <button
@@ -380,7 +435,7 @@ export default function AeroGraphPage() {
             onClick={() => setShowAllTypes(value => !value)}
             aria-pressed={showAllTypes}
           >
-            {showAllTypes ? 'Show workspace types' : 'Show all catalog types'}
+            {showAllTypes ? t('Show workspace types') : t('Show all catalog types')}
           </button>
         )}
       </div>
@@ -388,35 +443,34 @@ export default function AeroGraphPage() {
         <div className="aerograph-tree">
           <Input.Search
             className="aerograph-tree-search"
-            aria-label="Search types"
-            placeholder="Search types"
+            aria-label={t('Search types')}
+            placeholder={t('Search types')}
             allowClear
             value={search}
             onChange={event => setSearch(event.target.value)}
           />
           <div className="aerograph-tree-body">
-            {!treeNodes.length&&<p className="aerograph-hint">{search?'No types match this search.':'This workspace has no entities yet. Show all catalog types to browse.'}</p>}<div data-testid="aerograph-tree"><Tree showLine blockNode selectedKeys={selected?[selected]:[]} defaultExpandedKeys={ancestors} autoExpandParent treeData={treeNodes} onSelect={keys=>{if(keys[0])setSelected(String(keys[0]));}} /></div>
+            {!treeNodes.length&&<p className="aerograph-hint">{search?t('No types match this search.'):t('This workspace has no entities yet. Show all catalog types to browse.')}</p>}<div data-testid="aerograph-tree"><Tree showLine blockNode selectedKeys={selected?[selected]:[]} defaultExpandedKeys={ancestors} autoExpandParent treeData={treeNodes} onSelect={keys=>{if(keys[0])setSelected(String(keys[0]));}} /></div>
           </div>
         </div>
         <div className="aerograph-main">
           {selectedRow && <div className="aerograph-panel">
-            {ancestors.length > 0 && <nav className="aerograph-crumbs" aria-label="Type ancestry">
+            {ancestors.length > 0 && <nav className="aerograph-crumbs" aria-label={t('Type ancestry')}>
+              <span>{t('Parent types')}:</span>
               {[...ancestors].reverse().map(id => (
                 <span key={id}>
-                  <button onClick={() => setSelected(id)}>{englishLabel(byId.get(id),id)}</button>
-                  <span className="aerograph-crumb-sep"> › </span>
+                  <button type="button" onClick={() => setSelected(id)}>{localizedLabel(byId.get(id)?.name,id,locale)}</button>
                 </span>
               ))}
             </nav>}
             <div className="aerograph-title">
-              <h2>{selectedName || readableLabel(selected ?? '')}</h2>
-              {selectedNameOther && selectedNameOther!==selectedName && <span className="aerograph-cn">{selectedNameOther}</span>}
+              <h2>{selectedName || readableLabel(selected ?? '',locale)}</h2>
               <span className="aerograph-badges">
-                {selectedRow.abstract && <Tag>Abstract</Tag>}
-                <Tag>{selectedRow.count ?? '—'} in workspace</Tag>
+                {selectedRow.abstract && <Tag title={t('An abstract type groups shared properties; create entities from a concrete child type.')}>{t('Abstract')}</Tag>}
+                <Tag>{t('{count} in workspace', {count:selectedRow.count ?? '—'})}</Tag>
               </span>
             </div>
-            {selectedRow.description && <p className="aerograph-desc">{selectedRow.description}</p>}
+            {selectedRow.description && <p className="aerograph-desc">{t(selectedRow.description)}</p>}
           </div>}
           <TypeGraph
             selected={selected!}
@@ -426,35 +480,37 @@ export default function AeroGraphPage() {
             onSelect={setSelected}
           />
           <div className="aerograph-panel">
-            <h3>Fields</h3>
-            <p className="aerograph-hint">Includes fields inherited through the is_a ancestry. Writers come from the current workspace bindings.</p>
+            <h3>{t('Fields')}</h3>
+            <p className="aerograph-hint">{t('A field stores one value, such as speed or mass. Child types inherit their parents’ fields. A writer is the plugin assigned by this workspace to update that value.')}</p>
             {typeFields.length === 0
-              ? <p className="aerograph-hint">No declared field on this type or its ancestors.</p>
+              ? <p className="aerograph-hint">{t('No declared field on this type or its ancestors.')}</p>
               : <Table
                 rowKey="id"
                 size="small"
                 columns={[...columns]}
                 dataSource={typeFields}
                 pagination={{ pageSize: 8, hideOnSinglePage: true }}
-                locale={{ emptyText: 'No declared fields' }}
+                scroll={{ x: 'max-content' }}
+                locale={{ emptyText: t('No declared fields') }}
               />}
           </div>
           <div className="aerograph-panel">
-            <h3>Relations</h3>
+            <h3>{t('Relations')}</h3>
+            <p className="aerograph-hint">{t('A relation links two entities, for example a vehicle and its sensor. The arrow points from the source type to the target type.')}</p>
             {typeRelations.length === 0
-              ? <p className="aerograph-hint">No declared relation touches this type.</p>
+              ? <p className="aerograph-hint">{t('No declared relation touches this type.')}</p>
               : <ul className="aerograph-references">
                 {typeRelations.map((row, index) => {
                   const source = row['sourceClass'] ?? row['source_type'] ?? row['source'];
                   const target = row['targetClass'] ?? row['target_type'] ?? row['target'];
-                  const name = typeof row['displayName'] === 'string' ? row['displayName'] : typeof row['id'] === 'string' ? row['id'] : `relation ${index + 1}`;
+                  const relationId = typeof row['id'] === 'string' ? row['id'] : t('Relation {count}', {count:index + 1});
                   const kind = typeof row['kind'] === 'string' ? row['kind'] : '';
                   return (
                     <li key={index}>
-                      <span className="aerograph-ref-kind">{kind && <Tag>{readableLabel(kind)}</Tag>}</span>
-                      <span className="aerograph-ref-name">{englishLabel({name:row['displayName']},String(row.id))}</span>
+                      <span className="aerograph-ref-kind">{kind && <Tag>{readableLabel(kind,locale)}</Tag>}</span>
+                      <span className="aerograph-ref-name">{localizedLabel(row['displayName'] ?? row['name'],relationId,locale)}</span>
                       <span className="aerograph-ref-desc">
-                        {typeof source==='string'?englishLabel(byId.get(source),source):'Undeclared subject'} → {typeof target==='string'?englishLabel(byId.get(target),target):'Undeclared object'}
+                        {typeof source==='string'?localizedLabel(byId.get(source)?.name,source,locale):t('Undeclared subject')} → {typeof target==='string'?localizedLabel(byId.get(target)?.name,target,locale):t('Undeclared object')}
                       </span>
                     </li>
                   );
@@ -462,16 +518,18 @@ export default function AeroGraphPage() {
               </ul>}
           </div>
           <div className="aerograph-panel">
-            <h3>Predicates, events and chains<ConceptHelp topic="Workspace rules" description="Workspace predicates and chains show the rules authored for this scenario; the catalog also contains reusable modeling definitions." guide="behaviours.md"/></h3>{payload?.workspace&&<Checkbox checked={includeCatalogPredicates} onChange={event=>setIncludeCatalogPredicates(event.target.checked)}>Include catalog predicates</Checkbox>}
+            <h3>{t('Predicates, events and chains')}<ConceptHelp topic={t('Workspace rules')} description={t('Workspace predicates and chains show the rules authored for this scenario; the catalog also contains reusable modeling definitions.')} guide="behaviours.md"/></h3>
+            <p className="aerograph-hint">{t('A predicate asks a yes/no question about recorded values; missing inputs are unknown, not “no”. An event reports what happened. A chain links triggers and actions into steps.')}</p>
+            {payload?.workspace&&<Checkbox checked={includeCatalogPredicates} onChange={event=>setIncludeCatalogPredicates(event.target.checked)}>{t('Include catalog predicates')}</Checkbox>}
             {references.length === 0
-              ? <p className="aerograph-hint">No predicate, event or chain definition references this type.</p>
+              ? <p className="aerograph-hint">{t('No predicate, event or chain definition references this type.')}</p>
               : <ul className="aerograph-references">
                 {references.map(reference => (
                   <li key={`${reference.kind}/${reference.id}`}>
-                    <span className="aerograph-ref-kind"><Tag>{reference.kind}</Tag></span>
-                    <span className="aerograph-ref-name">{reference.name || readableLabel(reference.id)}</span>
-                    <span className="aerograph-ref-desc">{reference.description}</span>
-                    <Details title={reference.name || readableLabel(reference.id)} buttonLabel="Definition">
+                    <span className="aerograph-ref-kind"><Tag>{t(reference.kind)}</Tag></span>
+                    <span className="aerograph-ref-name">{reference.name || readableLabel(reference.id,locale)}</span>
+                    <span className="aerograph-ref-desc">{t(reference.description)}</span>
+                    <Details title={reference.name || readableLabel(reference.id,locale)} buttonLabel={t('Definition')}>
                       <pre className="aerograph-details-pre">{JSON.stringify(reference.definition, null, 2)}</pre>
                     </Details>
                   </li>
@@ -479,13 +537,13 @@ export default function AeroGraphPage() {
               </ul>}
           </div>
           <div className="aerograph-panel">
-            <h3>Workspace entities of this type</h3>
+            <h3>{t('Workspace entities of this type')}</h3>
             {entities.length === 0
-              ? <p className="aerograph-hint">The selected workspace declares no entity of this type.</p>
+              ? <p className="aerograph-hint">{t('The selected workspace declares no entity of this type.')}</p>
               : <ul className="aerograph-entities">
                 {entities.map(entity => (
                   <li key={entity.id}>
-                    <Link className="console-btn" to={`/studio?api=${encodeURIComponent(base)}&workspace=${encodeURIComponent(workspaceId ?? '')}&entity=${encodeURIComponent(entity.id)}`}>{entity.label===entity.id?readableLabel(entity.id):entity.label}</Link>
+                    <Link className="console-btn" to={`/studio?api=${encodeURIComponent(base)}&workspace=${encodeURIComponent(workspaceId ?? '')}&entity=${encodeURIComponent(entity.id)}`}>{localizedLabel(entity.label,entity.id,locale)}</Link>
 
                   </li>
                 ))}

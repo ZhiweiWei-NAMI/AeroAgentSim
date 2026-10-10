@@ -99,7 +99,7 @@ export interface RunHeader {
   fields: FieldInfo[];
   presentation: PresentationBinding[];
   /** Authored entity metadata (only what the scenario declared). */
-  entities?: Array<{ id: string; type: string; label?: string; business?: string; vehicle_class?: string }>;
+  entities?: Array<{ id: string; type: string; label?: string; label_zh?: string; business?: string; vehicle_class?: string }>;
   /** Display models of the installed asset pack (v1.1+); absent without a pack. Parsed by viewport/model-catalog. */
   modelCatalog?: unknown;
   start: Instant;

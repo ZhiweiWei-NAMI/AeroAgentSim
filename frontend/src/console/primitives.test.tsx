@@ -22,7 +22,7 @@ it('guards shortcuts during typing, replay and dialogs, then invokes live contro
  rerender(<><input aria-label="Input"/><RunShortcuts enabled onToggle={toggle} onInject={inject}/><ShortcutsHelp/></>);
  fireEvent.keyDown(screen.getByLabelText('Input'),{key:' '});expect(toggle).not.toHaveBeenCalled();
  fireEvent.keyDown(document.body,{key:'?'});await screen.findByRole('dialog');fireEvent.keyDown(document.body,{key:' '});expect(toggle).not.toHaveBeenCalled();
- fireEvent.click(screen.getByLabelText('Close'));await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+ fireEvent.click(screen.getByRole('button', { name: 'Close' }));await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
  fireEvent.keyDown(document.body,{key:' '});fireEvent.keyDown(document.body,{key:'i'});expect(toggle).toHaveBeenCalledTimes(1);expect(inject).toHaveBeenCalledTimes(1);
 });
 it('shows actual notices without extending their expiry as newer notices arrive',async()=>{
@@ -35,5 +35,5 @@ it('shows actual notices without extending their expiry as newer notices arrive'
 });
 it('preserves API and selected run when navigating to Inspect, hiding its technical id',()=>{
  render(<MemoryRouter initialEntries={['/runs/run-secret?api=http%3A%2F%2Fapi&mode=live']}><ConsoleShell activeRun={{pathname:'/runs/run-secret',search:'?api=http%3A%2F%2Fapi&mode=live'}}><p>Contents</p></ConsoleShell></MemoryRouter>);
- expect(screen.getByTestId('nav-inspect')).toHaveAttribute('href','/inspect/run-secret?api=http%3A%2F%2Fapi&mode=live');expect(screen.getByTestId('nav-studio')).toHaveAttribute('href','/studio?api=http%3A%2F%2Fapi');expect(screen.queryByText('run-secret')).toBeNull();
+ expect(screen.getByTestId('nav-inspect')).toHaveAttribute('href','/inspect/run-secret?api=http%3A%2F%2Fapi&mode=live&view=expert');expect(screen.getByTestId('nav-studio')).toHaveAttribute('href','/studio?api=http%3A%2F%2Fapi');expect(screen.queryByText('run-secret')).toBeNull();
 });

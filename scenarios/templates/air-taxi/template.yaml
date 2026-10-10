@@ -2,8 +2,10 @@ format: aeroagentsim.template/v1
 city: huangpu
 id: air-taxi
 title: Air taxi service
+title_zh: 空中出租车服务
 summary: Small passenger aircraft travel between three vertiports and share limited
   landing pads.
+summary_zh: 小型载客飞行器往返于三座垂直起降场，共享数量有限的起降位。
 category: mobility
 difficulty: beginner
 duration_s: 300
@@ -11,12 +13,19 @@ scenario: scenario.yaml
 observe:
 - Close aircraft move to separate altitude layers.
 - Flights wait when a landing pad is occupied.
+observe_zh:
+- 相距过近的飞行器调整到不同高度层。
+- 起降位被占用时，航班等待空位。
 try:
 - Change the number of aircraft.
 - Compare altitude layers with hold-and-go.
+try_zh:
+- 调整飞行器数量。
+- 对比高度分层与等待放行策略。
 knobs:
 - id: fleet_size
   label: Number of aircraft
+  label_zh: 飞行器数量
   type: integer
   default: 3
   min: 1
@@ -24,6 +33,7 @@ knobs:
   pointer: /generators/fleet/count
 - id: wind_speed
   label: Normal wind speed (m/s)
+  label_zh: 常态风速（米/秒）
   type: number
   default: 2.0
   min: 0
@@ -31,6 +41,7 @@ knobs:
   pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
 - id: conflict_resolver
   label: How aircraft separate
+  label_zh: 飞行器间隔策略
   type: choice
   default: altitude_layers
   options:
@@ -39,6 +50,7 @@ knobs:
   pointer: /algorithms/conflict_resolution
 - id: battery_reserve
   label: Battery reserve (%)
+  label_zh: 预留电量（%）
   type: number
   default: 20
   min: 10
@@ -46,6 +58,7 @@ knobs:
   pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent
 - id: safety_distance
   label: Safety distance (m)
+  label_zh: 安全间隔（米）
   type: number
   default: 20
   min: 5
@@ -53,6 +66,7 @@ knobs:
   pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m
 - id: wind_limit
   label: Wind limit (m/s)
+  label_zh: 风速上限（米/秒）
   type: number
   default: 15
   min: 2

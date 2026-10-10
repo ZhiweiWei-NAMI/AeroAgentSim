@@ -1,6 +1,8 @@
 import {displayTime} from '../pages/display-time';
 import { useMemo, useState } from 'react';
-import { CATEGORY_STYLE, CategoryIcon } from './categories';
+import { categoryMetadata, CategoryIcon, severityLabel } from './categories';
+import { useI18n } from '../i18n/I18nProvider';
+import { eventNarrative } from './presentation';
 import type { BusinessEvent, Category, Severity } from './api';
 import { openCauseTrace } from '../trace/bus';
 import './results.css';
@@ -28,6 +30,7 @@ function severityClass(severity: Severity): string {
  * (the Runs page owns what that does, e.g. flying the camera).
  */
 export function EventFeed({ events, onSelect, selectedEntities,available=true,onExplore,entityNames }: EventFeedProps) {
+  const { t, locale } = useI18n();
   const [category, setCategory] = useState<Category | 'all'>('all');
   const [severity, setSeverity] = useState<Severity | 'all'>('all');
 
@@ -43,34 +46,34 @@ export function EventFeed({ events, onSelect, selectedEntities,available=true,on
 
   return (
     <div className="newc-feed">
-      {events.length>0&&<div className="newc-feed-filters" role="group" aria-label="Filter events">
+      {events.length>0&&<div className="newc-feed-filters" role="group" aria-label={t('Filter events')}>
         {(['all', ...categories] as const).map(name => (
           <button key={name} type="button" className="newc-chip" aria-pressed={category === name}
             onClick={() => setCategory(name)}>
-            {name === 'all' ? 'All events' : CATEGORY_STYLE[name].label}
+            {name === 'all' ? t('All events') : categoryMetadata(name, locale).label}
           </button>
         ))}
         <span role="separator" aria-orientation="vertical" />
         {(['all', ...SEVERITIES] as const).map(name => (
           <button key={name} type="button" className="newc-chip" aria-pressed={severity === name}
             onClick={() => setSeverity(name)}>
-            {name === 'all' ? 'Any importance' : name}
+            {name === 'all' ? t('Any importance') : severityLabel(name, locale)}
           </button>
         ))}
       </div>}
       {visible.length === 0 ? (
         <p className="newc-feed-empty" role="status">
           {events.length === 0
-            ? (available?'No events yet at this moment. Follow the run to watch what happens next.':'This run does not include readable event updates. Open Expert view to explore its recorded activity.')
-            : 'No events match the filters you picked. Clear a filter above to see the rest.'}
-          {!available&&onExplore&&<button className="console-btn" onClick={onExplore}>Explore recorded activity</button>}
+            ? (available?t('No events yet at this moment. Follow the run to watch what happens next.'):t('This run does not include readable event updates. Open Expert view to explore its recorded activity.'))
+            : t('No events match the filters you picked. Clear a filter above to see the rest.')}
+          {!available&&onExplore&&<button className="console-btn" onClick={onExplore}>{t('Explore recorded activity')}</button>}
         </p>
       ) : (
         <ul className="newc-feed-list">
           {visible.map((event, index) => {
-            const style = CATEGORY_STYLE[event.category];
+            const style = categoryMetadata(event.category, locale);
             const highlighted = event.entities.some(entity => selected.has(entity));
-            const text = event.entities.reduce((text,id)=>text.replace(new RegExp(`(?<![\\w-])${id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?![\\w-])`,'g'),entityNames?.get(id)??id),event.text);
+            const text = eventNarrative(event, locale, entityNames);
             return (
               <li key={`${event.at_ns}-${index}`} className="newc-event-item">
                 <button type="button"
@@ -85,16 +88,16 @@ export function EventFeed({ events, onSelect, selectedEntities,available=true,on
                     <span className="newc-event-meta">
                       <span className="newc-event-time">{displayTime(event.at_ns)}</span>
                       <span>{style.label}</span>
-                      <span className={severityClass(event.severity)}>{event.severity}</span>
+                      <span className={severityClass(event.severity)}>{severityLabel(event.severity, locale)}</span>
                     </span>
                     <span className="newc-event-text">{text}</span>
                   </span>
                 </button>
-                {/* Opens the cause → effect story (Expert view) for this moment. */}
-                <button type="button" className="newc-event-why" title="Why did this happen?"
-                  aria-label="Why did this happen?"
+                {/* Cause lookup requires the original narrative, not translated/name-substituted presentation text. */}
+                <button type="button" className="newc-event-why" title={t('Why did this happen?')}
+                  aria-label={t('Why did this happen?')}
                   onClick={() => openCauseTrace({ kind: 'event', atNs: event.at_ns, text: event.text, entities: event.entities })}>
-                  Why?
+                  {t('Why?')}
                 </button>
               </li>
             );

@@ -466,11 +466,11 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             item,
             f"entities[{index}]",
             {"id", "type", "facts"},
-            {"label", "business", "vehicle_class"},
+            {"label", "label_zh", "business", "vehicle_class"},
         )
         entity_id = text(item["id"], f"entities[{index}].id")
         type_id = text(item["type"], f"entities[{index}].type")
-        for name in ("label", "business", "vehicle_class"):
+        for name in ("label", "label_zh", "business", "vehicle_class"):
             if name in item:
                 text(item[name], f"entities[{index}].{name}")
         if entity_id in initial:

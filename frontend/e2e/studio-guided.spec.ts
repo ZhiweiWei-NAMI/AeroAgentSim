@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {mkdirSync} from 'node:fs';
-const screenshots=process.env.AEROAGENTSIM_SCREENSHOT_DIR ?? 'test-results/studio/screenshots';
+const screenshots=process.env.AEROAGENTSIM_SCREENSHOT_DIR ?? '/tmp/aas-q/s2/e2e/studio';
 test('real demo draft renders all guided steps, compiles and starts a run',async({page})=>{
  mkdirSync(screenshots,{recursive:true});
  const pageErrors:string[]=[];page.on('pageerror',error=>pageErrors.push(String(error)));
@@ -45,7 +45,7 @@ test('real demo draft renders all guided steps, compiles and starts a run',async
   const runs=await page.request.get('/v1/runs');expect(runs.ok()).toBe(true);
   expect((await runs.json()).some((run:{id:string})=>run.id===id)).toBe(true);
   expect(pageErrors).toEqual([]);
- }finally{const stopped=await page.request.post(`/v1/runs/${id}/stop`);expect(stopped.ok()).toBe(true);}
+ }finally{const stopped=await page.request.post(`/v1/runs/${id}/stop`,{data:{}});expect(stopped.ok()).toBe(true);}
  await page.goto(`/inspect/${id}?mode=replay`);
  await expect(page.getByTestId('viewport')).toHaveAttribute('data-city','loaded',{timeout:60_000});
  await expect(page.getByTestId('inspect-views')).toHaveAttribute('data-city-binding','traffic-city');
@@ -57,7 +57,7 @@ test('real demo draft renders all guided steps, compiles and starts a run',async
  await page.screenshot({path:`${screenshots}/aerograph.png`,fullPage:true});
  await page.goto('/runs');await expect(page.getByRole('heading',{name:'Runs',exact:true})).toBeVisible();
  await page.screenshot({path:`${screenshots}/runs.png`});
- await page.goto('/inspect');await expect(page.getByRole('heading',{name:'Inspect',exact:true})).toBeVisible();
+ await page.goto('/inspect');await expect(page.getByRole('heading',{name:'Inspect a run',exact:true})).toBeVisible();
  await page.screenshot({path:`${screenshots}/inspect-list.png`});
  await page.goto('/');await expect(page.getByTestId('workspace-card').first()).toBeVisible();
  expect(await page.getByTestId('workspace-card').count()).toBeLessThanOrEqual(6);

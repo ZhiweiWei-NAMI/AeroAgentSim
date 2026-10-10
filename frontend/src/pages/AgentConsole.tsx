@@ -7,6 +7,7 @@ import { PageHeader, PageState } from '../console/PageState';
 import { Details } from '../console/Details';
 import { readableLabel } from './inspection-format';
 import { displayTime } from './display-time';
+import { useI18n } from '../i18n/I18nProvider';
 import './agent-console.css';
 
 const RECORD_SCHEMAS = new Set(['aas.agent.record', 'aas.langgraph.record']);
@@ -14,7 +15,7 @@ const PHASES = ['observation', 'prompt', 'response', 'model_call', 'output', 'va
 type PhaseName = typeof PHASES[number];
 
 interface ObservedField { name: string; value: string; entity?: string }
-interface ProposedCall { callId: string; schema: string; target: string; payload: unknown; summary: string; journalReceipts: Array<{ status: string; result: unknown }> }
+interface ProposedCall { callId: string; schema: string; target: string; payload: unknown; summary: string; summaryZh?: string; journalReceipts: Array<{ status: string; result: unknown }> }
 interface ActualReceipt { commandId: string; callId: string; status: string; result: unknown }
 export interface AgentDecision {
   decisionId: string; simNs: string;
@@ -52,6 +53,7 @@ function proposedCalls(data: unknown): ProposedCall[] {
       target: row.target,
       payload: row.payload,
       summary: row.decision_summary,
+      summaryZh: typeof row.decision_summary_zh === 'string' ? row.decision_summary_zh : undefined,
       journalReceipts: [],
     };
   });
@@ -99,6 +101,7 @@ function Blob({ value }: { value: unknown }) {
 }
 
 export default function AgentConsole() {
+  const { t, locale } = useI18n();
   const location = useLocation();
   const query = new URLSearchParams(location.search);
   const apiBase = query.get('api') ?? (['3000', '4179'].includes(window.location.port) ? 'http://127.0.0.1:8002' : window.location.origin);
@@ -127,7 +130,7 @@ export default function AgentConsole() {
       startNs.current = header.start.ns;
       return feed.subscribe(0, commit => {
         if (abort.signal.aborted) return;
-        if (requestedCut) { const cut = Number(requestedCut); if (!Number.isSafeInteger(cut) || cut < 1) throw Error('Invalid decision inspection cut'); if (commit.commitIndex > cut) return; }
+        if (requestedCut) { const cut = Number(requestedCut); if (!Number.isSafeInteger(cut) || cut < 1) throw Error(t('Invalid decision inspection cut')); if (commit.commitIndex > cut) return; }
         for (const receipt of commit.receipts) {
           const rows = journalReceipts.get(receipt.commandId) ?? [];
           rows.push({status: receipt.status, result: receipt.result});
@@ -151,37 +154,38 @@ export default function AgentConsole() {
     }).catch(problem => { if (!abort.signal.aborted) setError(String(problem)); });
     return () => abort.abort();
   }, [api, runId, mode, decisions, entities, problems, journalReceipts]);
-  if (!runId) return <div className="console-page"><PageHeader eyebrow="Inspect" title="Agent decisions" /><PageState kind="empty" title="Choose a run" description="Open a recorded run in Inspect to browse its agent decisions." action={<Link className="console-btn" to={`/inspect?api=${encodeURIComponent(apiBase)}`}>Browse runs</Link>} /></div>;
+  if (!runId) return <div className="console-page"><PageHeader eyebrow={t('Inspect')} title={t('Agent decisions')} /><PageState kind="empty" title={t('Choose a run')} description={t('Open a recorded run in Inspect to browse its agent decisions.')} action={<Link className="console-btn" to={`/inspect?api=${encodeURIComponent(apiBase)}`}>{t('Browse runs')}</Link>} /></div>;
   const list = [...decisions.values()];
-  const entityLink = (entity: string) => <Link to={`/runs/${encodeURIComponent(runId)}${suffix}&entity=${encodeURIComponent(entity)}`}>{readableLabel(entity)}</Link>;
+  const entityLink = (entity: string) => <Link to={`/runs/${encodeURIComponent(runId)}${suffix}&entity=${encodeURIComponent(entity)}`}>{readableLabel(entity,locale)}</Link>;
+  const proposalLabel = (kind: unknown) => kind === 'event' ? t('Proposed event') : kind === 'command' ? t('Proposed command') : t('Proposed fact');
   return <div className="console-page agent-console-page">
-    <PageHeader eyebrow="Inspect" title="Agent decisions" description="Recorded observations, proposed actions and actual execution receipts." />
-    <p><Tag>{mode}</Tag>{requestedCut && <Tag>Selected timeline moment</Tag>} <Details title="Decision stream details"><pre>{JSON.stringify({runId,requestedCut},null,2)}</pre></Details> <Tag color={error ? 'red' : 'blue'}>{status}</Tag> <Link to={`/runs/${encodeURIComponent(runId)}${suffix}`}>Run viewer</Link> · <Link to={`/agents/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&mode=${mode === 'live' ? 'replay' : 'live'}`}>Switch feed mode</Link></p>
+    <PageHeader eyebrow={t('Inspect')} title={t('Agent decisions')} description={t('Recorded observations, proposed actions and actual execution receipts.')} />
+    <p><Tag>{mode==='live'?t('Live'):t('Replay')}</Tag>{requestedCut && <Tag>{t('Selected timeline moment')}</Tag>} <Details title={t('Decision stream details')} buttonLabel={t('Details')}><pre>{JSON.stringify({runId,requestedCut},null,2)}</pre></Details> <Tag color={error ? 'red' : 'blue'}>{readableLabel(status,locale)}</Tag> <Link to={`/runs/${encodeURIComponent(runId)}${suffix}`}>{t('Run viewer')}</Link> · <Link to={`/agents/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&mode=${mode === 'live' ? 'replay' : 'live'}`}>{t('Switch feed mode')}</Link></p>
     {error && <Alert type="error" showIcon message={error} className="agent-console-alert" />}
-    {problems.slice(0, 10).map((problem, index) => <Alert key={index} type="error" showIcon message={problem} className="agent-console-alert" />)}
-    {problems.length > 10 && <p>{problems.length - 10} more record problems hidden.</p>}
-    {list.length === 0 && !error && <PageState kind={status === 'loading' ? 'loading' : 'empty'} title={status === 'loading' ? 'Loading decisions' : 'No decisions recorded'} description="Agent observations and calls appear here when recorded in this journal." />}
+    {problems.slice(0, 10).map((problem, index) => <Alert key={index} type="error" showIcon message={t('A decision record could not be read.')} description={<Details title={t('Record problem')} buttonLabel={t('Technical details')}><pre>{problem}</pre></Details>} className="agent-console-alert" />)}
+    {problems.length > 10 && <p>{t('{count} more record problems hidden.', {count:problems.length-10})}</p>}
+    {list.length === 0 && !error && <PageState kind={status === 'loading' ? 'loading' : 'empty'} title={status === 'loading' ? t('Loading decisions') : t('No decisions recorded')} description={t('Agent observations and calls appear here when recorded in this journal.')} />}
     {list.map((decision, decisionIndex) => <section key={decision.decisionId} className="agent-decision-card">
-      <h3>Decision {decisionIndex + 1} <Details title="Decision identity" buttonLabel="Identity"><pre>{decision.decisionId}</pre></Details> <Tag>{displayTime(decision.simNs, startNs.current)}</Tag>
-        {decision.phases.map((item, index) => <Tag key={index} color={item.phase === 'failure' ? 'red' : item.phase === 'finished' ? 'green' : 'blue'}>{readableLabel(item.phase)} · {displayTime(item.simNs, startNs.current)}</Tag>)}</h3>
-      {decision.failed && <Alert type="error" showIcon message="Agent reported failure for this decision" className="agent-console-alert" />}
-      <p className="agent-record-caption"><b>Observation</b> — {decision.fields.length} field(s)</p>
+      <h3>{t('Decision {number}', {number:decisionIndex+1})} <Details title={t('Decision identity')} buttonLabel={t('Identity')}><pre>{decision.decisionId}</pre></Details> <Tag>{displayTime(decision.simNs, startNs.current)}</Tag>
+        {decision.phases.map((item, index) => <Tag key={index} color={item.phase === 'failure' ? 'red' : item.phase === 'finished' ? 'green' : 'blue'}>{readableLabel(item.phase,locale)} · {displayTime(item.simNs, startNs.current)}</Tag>)}</h3>
+      {decision.failed && <Alert type="error" showIcon message={t('Agent reported failure for this decision')} className="agent-console-alert" />}
+      <p className="agent-record-caption"><b>{t('Observation')}</b> — {t('{count} field(s)', {count:decision.fields.length})}</p>
       <ul className="agent-field-list">
-        {decision.fields.map((field, index) => <li key={index}><span>{readableLabel(field.name)}</span> · <Details title={field.name} buttonLabel="Observed value"><pre>{field.value}</pre></Details>{field.entity && <> · entity {entityLink(field.entity)}</>}</li>)}
+        {decision.fields.map((field, index) => <li key={index}><span>{field.name}</span> · <Details title={field.name} buttonLabel={t('Observed value')}><pre>{field.value==='absent at recorded cut'?t('absent at recorded cut'):field.value}</pre></Details>{field.entity && <> · {t('entity')} {entityLink(field.entity)}</>}</li>)}
       </ul>
       {decision.calls.map(call => <div key={call.callId} className="agent-proposed-call">
-        <b>Proposed call</b> {call.schema && <Tag>{readableLabel(call.schema)}</Tag>}{call.target && <Tag>Target: {readableLabel(call.target)}</Tag>}
-        {call.summary && <div>{call.summary}</div>}
-        <Details title={`Proposed call ${call.callId}`} buttonLabel="Args payload"><Blob value={call.payload} /></Details>
-        {call.journalReceipts.map((receipt, index) => <div key={index} className="agent-record-caption">Committed receipt: <Tag>{receipt.status}</Tag><Details title={`Committed receipt ${receipt.status}`} buttonLabel="result"><Blob value={receipt.result} /></Details></div>)}
+        <b>{t('Proposed call')}</b> {call.schema && <Tag>{call.schema}</Tag>}{call.target && <Tag>{t('Target: {target}', {target:call.target})}</Tag>}
+        {call.summary && <div>{locale.startsWith('zh')?call.summaryZh??call.summary:call.summary}</div>}
+        <Details title={t('Proposed call {id}', {id:call.callId})} buttonLabel={t('Args payload')}><Blob value={call.payload} /></Details>
+        {call.journalReceipts.map((receipt, index) => <div key={index} className="agent-record-caption">{t('Committed receipt:')} <Tag>{readableLabel(receipt.status,locale)}</Tag><Details title={t('Committed receipt {status}', {status:readableLabel(receipt.status,locale)})} buttonLabel={t('Result')}><Blob value={receipt.result} /></Details></div>)}
       </div>)}
-      {decision.outputs.map((output,index)=><div key={index} className="agent-proposed-call"><b>Proposed {String(output.kind)}</b> <Tag>{readableLabel(String(output.schema ?? output.field))}</Tag><Details title="Recorded proposal" buttonLabel="Proposal details"><Blob value={output}/></Details></div>)}
-      {decision.receipts.length > 0 && <div><b>Actual receipts</b>
-        <ul className="agent-field-list">{decision.receipts.map((receipt, index) => <li key={index}><span>{readableLabel(receipt.status)}</span><Details title="Receipt identity" buttonLabel="Identity"><pre>{JSON.stringify({commandId:receipt.commandId,callId:receipt.callId},null,2)}</pre></Details>
-          <Details title={`Receipt ${receipt.commandId}`} buttonLabel="result"><Blob value={receipt.result} /></Details></li>)}</ul></div>}
+      {decision.outputs.map((output,index)=><div key={index} className="agent-proposed-call"><b>{proposalLabel(output.kind)}</b> <Tag>{String(output.schema ?? output.field)}</Tag><Details title={t('Recorded proposal')} buttonLabel={t('Proposal details')}><Blob value={output}/></Details></div>)}
+      {decision.receipts.length > 0 && <div><b>{t('Actual receipts')}</b>
+        <ul className="agent-field-list">{decision.receipts.map((receipt, index) => <li key={index}><span>{readableLabel(receipt.status,locale)}</span><Details title={t('Receipt identity')} buttonLabel={t('Identity')}><pre>{JSON.stringify({commandId:receipt.commandId,callId:receipt.callId},null,2)}</pre></Details>
+          <Details title={t('Receipt {id}', {id:receipt.commandId})} buttonLabel={t('Result')}><Blob value={receipt.result} /></Details></li>)}</ul></div>}
       {(['observation', 'prompt', 'response', 'model_call', 'validation', 'finished', 'failure'] as const).map(phase => {
         const items = decision.phases.filter(item => item.phase === phase);
-        return items.length === 0 ? null : <Details key={phase} title={readableLabel(phase)} buttonLabel={`${readableLabel(phase)} (${items.length})`}>
+        return items.length === 0 ? null : <Details key={phase} title={readableLabel(phase,locale)} buttonLabel={`${readableLabel(phase,locale)} (${items.length})`}>
           {items.map((item, index) => <div key={index}><small>{displayTime(item.simNs, startNs.current)}</small><Blob value={item.data} /></div>)}
         </Details>;
       })}

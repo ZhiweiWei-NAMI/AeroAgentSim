@@ -10,9 +10,10 @@ import { activateInjectionShortcut } from './injection-defaults';
 it('pauses a waiting run by keyboard and recognizes resume back into the wait', async () => {
   const api = new RunsApi('http://api');
   let status = 'waiting_for_input';
-  const runs = vi.spyOn(api, 'runs').mockImplementation(async () => [{ id: 'waiting', scenario: 'external', status, until_ns: '100' }]);
+  const runs = vi.spyOn(api, 'runs').mockRejectedValue(Error('The expensive run listing must not be used for controls'));
   const request = vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
     if (path.endsWith('/configuration')) return { scenario: { id: 'external', behaviours: [] } };
+    if (path.includes('/commits?')) return { status, commits: [], next: 2 };
     expect(options).toMatchObject({method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
     const action = path.split('/').at(-1);
     if (action === 'pause') status = 'paused';
@@ -24,11 +25,14 @@ it('pauses a waiting run by keyboard and recognizes resume back into the wait', 
     const store = new TemporalFeedStore(fixtureHeader);
     store.ingest(emptyCommit(1)); store.seek('0', 1);
     await act(async () => { render(<ConsoleNotifications><RunOperations api={api} runId="waiting" store={store} onSelect={() => {}} onSeek={() => {}} mode="live" /></ConsoleNotifications>); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pause simulation' })).toBeEnabled());
     fireEvent.keyDown(document, { key: ' ' });
     await waitFor(() => expect(screen.getByText(/Requested: pause/)).toHaveTextContent('effective status: paused'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Resume simulation' })).toBeEnabled());
     fireEvent.keyDown(document, { key: ' ' });
-    await waitFor(() => expect(screen.getByText(/Requested: resume/)).toHaveTextContent('effective status: waiting_for_input'));
+    await waitFor(() => expect(screen.getByText(/Requested: resume/)).toHaveTextContent('effective status: waiting for input'));
     expect(screen.getByText(/Requested: resume/)).not.toHaveTextContent('pending at safe boundary');
+    expect(runs).not.toHaveBeenCalled();
   } finally { cleanup(); request.mockRestore(); runs.mockRestore(); }
 });
 
@@ -40,6 +44,7 @@ it('advances an idle operator source from acknowledged watermarks, capped at the
       id: 'traffic-accident', run: { advance_ns: 1_000_000_000, until_ns: 2_500_000_000 },
       ingress_streams: [{ id: 'operator', initial_watermark_ns: 0 }], behaviours: [],
     } };
+    if (path.includes('/commits?')) return { status: 'running', commits: [], next: 2 };
     if (!path.endsWith('/watermark')) throw Error(`Unexpected API request: ${path}`);
     const body = JSON.parse(String(options?.body)) as {stream_id: string; watermark_ns: number};
     expect(body.stream_id).toBe('operator');
@@ -68,7 +73,8 @@ it('injects the authored accident in one click with real identity and automatic 
  const store=new TemporalFeedStore(header),commit=emptyCommit(7);commit.created=[{id:'incident.real',generation:0,typeId:'aas:TrafficIncident'}];store.ingest(commit);store.seek('0');
  const request=vi.spyOn(api,'request').mockImplementation(async(path,options)=>{
   if(path.endsWith('/configuration'))return {scenario:{id:'traffic-accident',run:{advance_ns:1_000_000_000,until_ns:90_000_000_000},ingress_streams:[{id:'operator',initial_watermark_ns:0}],behaviours:[{document:{injection_points:[point]}}]}};
-  if(path.endsWith('/ingress')){bodies.push(JSON.parse(String(options?.body)));return {disposition:'accepted'};}
+  if(path.includes('/commits?'))return {status:'running',commits:[],next:8};
+   if(path.endsWith('/ingress')){bodies.push(JSON.parse(String(options?.body)));return {disposition:'accepted'};}
   throw Error(`Unexpected request: ${path}`);
  });
  try{

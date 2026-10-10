@@ -46,6 +46,7 @@ export class EntityLayer {
   /** Semantic overlay policy (newcomer mode); inert defaults keep Expert behavior. */
   semantic = false;
   showAllLabels = false;
+  locale = 'en-US';
   private hoverId?: string;
   private semanticTasks = new Map<string, EntityState>();
   private semanticInvolved = new Set<string>();
@@ -353,8 +354,9 @@ export class EntityLayer {
       }
       let label=this.labels.get(item.id);
       if(!label){label=document.createElement('button');label.className='entity-label';label.onclick=()=>this.onSelect(item.key);this.overlay.append(label);this.labels.set(item.id,label);}
-      const semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header):item.key.id;
+      const semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header,this.locale):item.key.id;
       if(this.semantic){const style=businessStyle(semanticVehicle(store.entities.get(item.id)!,this.semanticTasks.get(item.id)));label.dataset.glyph=style.glyph;label.style.borderColor=style.color;}
+      else {delete label.dataset.glyph;label.style.borderColor='';}
       if(label.textContent!==semanticText)label.textContent=semanticText;
       visibleLabels.add(item.id);
       if(label.hidden)label.hidden=false;
@@ -397,7 +399,7 @@ export class EntityLayer {
     const entries = new Map<string, string>();
     for (const entity of store.entities.values()) {
       if (entity.typeId !== 'lowalt:UAV') continue;
-      const style = businessStyle(semanticVehicle(entity, this.semanticTasks.get(`${entity.key.id}:${entity.key.generation}`)));
+      const style = businessStyle(semanticVehicle(entity, this.semanticTasks.get(`${entity.key.id}:${entity.key.generation}`)), this.locale);
       if (style.label && !entries.has(style.label)) entries.set(style.label, style.color);
     }
     return [...entries];

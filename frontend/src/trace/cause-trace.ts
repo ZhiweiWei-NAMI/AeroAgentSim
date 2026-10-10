@@ -4,6 +4,9 @@ import { exactValue } from '../feeds/format';
 import { entityId } from '../viewport/bindings';
 import { displayTime } from '../pages/display-time';
 import { entityLabel, readableLabel, stateValue } from '../pages/inspection-format';
+import { translate } from '../i18n/translate';
+
+const translator = (locale: string) => (key: string, vars: Record<string, unknown> = {}) => translate(locale, key, vars);
 
 /**
  * Cause-to-effect explanations derived only from committed viewer-feed data
@@ -62,6 +65,7 @@ interface EvalRec { cut: number; rec: PredicateTruth }
 interface ActionDef { id: string; kind: string; entity?: { $role?: string }; field?: string; schema?: string; capability?: string; payload?: unknown; duration_ns?: number | string; relation?: string; source?: { $role?: string }; target?: { $role?: string } }
 interface TransitionDef { id: string; from?: string; to?: string; actions?: ActionDef[] }
 interface Index {
+  locale: string;
   count: number;
   steps: StepRec[]; stepsByCut: Map<number, StepRec[]>; stepByKey: Map<string, StepRec>;
   byEventSchema: Map<string, StepRec[]>; byCommand: Map<string, StepRec[]>;
@@ -82,10 +86,11 @@ export const TERMINAL = new Set(['completed', 'failed', 'canceled']);
 const isStep = (rec: ChainInstance) => rec.op !== 'close' && (!!rec.transitionId || TERMINAL.has(rec.lifecycle));
 
 const cache = new WeakMap<TemporalFeedStore, Index>();
-function build(store: TemporalFeedStore): Index {
+function build(store: TemporalFeedStore, locale = 'en-US'): Index {
   const old = cache.get(store);
-  if (old && old.count === store.commits.length) return old;
+  if (old && old.count === store.commits.length) return { ...old, locale };
   const index: Index = {
+    locale,
     count: store.commits.length, steps: [], stepsByCut: new Map(), stepByKey: new Map(), byEventSchema: new Map(), byCommand: new Map(),
     messages: new Map(), receipts: new Map(), evals: [], chains: new Map(), predicates: new Map(),
   };
@@ -112,28 +117,28 @@ function build(store: TemporalFeedStore): Index {
   return index;
 }
 
-export const idLabel = (store: TemporalFeedStore, id: string) => {
+export const idLabel = (store: TemporalFeedStore, id: string, locale = 'en-US') => {
   const entity = store.entities.get(id);
-  return entity ? entityLabel(entity) : readableLabel(id.replace(/:\d+$/, ''));
+  return entity ? entityLabel(entity, locale) : readableLabel(id.replace(/:\d+$/, ''), locale);
 };
-const keyLabel = (store: TemporalFeedStore, key: EntityKey) => idLabel(store, entityId(key));
+const keyLabel = (store: TemporalFeedStore, key: EntityKey, locale = 'en-US') => idLabel(store, entityId(key), locale);
 /** Short plain name for a field: last path segment without its unit suffix. */
-export function fieldWords(fieldId: string): string {
+export function fieldWords(fieldId: string, locale = 'en-US'): string {
   const last = fieldId.slice(fieldId.lastIndexOf('.') + 1).replace(/_(?:enu_m|mps2|mps|deg|rad|ns|m|s|j|w)$/, '');
-  return last.replace(/_/g, ' ');
+  return translate(locale, last.replace(/_/g, ' '));
 }
-export function fieldTitle(store: TemporalFeedStore, fieldId: string): string {
+export function fieldTitle(store: TemporalFeedStore, fieldId: string, locale = 'en-US'): string {
   const parts = fieldId.split('.'); const owner = parts.length > 2 ? parts[parts.length - 2] : '';
-  void store; return owner ? `${readableLabel(owner)} ${fieldWords(fieldId)}` : fieldWords(fieldId);
+  void store; return owner ? `${readableLabel(owner, locale)} ${fieldWords(fieldId, locale)}` : fieldWords(fieldId, locale);
 }
 const isInstant = (value: unknown): value is { ns: unknown; microstep: unknown } => isObject(value) && 'ns' in value && 'microstep' in value && Object.keys(value).length === 2;
-export function showValue(store: TemporalFeedStore, value: unknown, max = 60): string {
+export function showValue(store: TemporalFeedStore, value: unknown, max = 60, locale = 'en-US'): string {
   const raw = isObject(value) && typeof value.$number === 'string' ? Number(value.$number) : value;
-  if (isInstant(raw)) { const ns = isObject(raw.ns) ? raw.ns.$integer : raw.ns; return `at ${displayTime(String(ns), store.header.start.ns)}`; }
+  if (isInstant(raw)) { const ns = isObject(raw.ns) ? raw.ns.$integer : raw.ns; return translate(locale, 'at {at}', {at:displayTime(String(ns), store.header.start.ns)}); }
   // Keep enough precision to explain strict thresholds (e.g. 0.8496596 <
   // 0.85); the compact state panel's two decimals can hide the difference.
-  if (typeof raw === 'number' && Number.isFinite(raw)) return new Intl.NumberFormat('en-US', { maximumSignificantDigits: 7 }).format(raw);
-  const plain = stateValue(raw);
+  if (typeof raw === 'number' && Number.isFinite(raw)) return new Intl.NumberFormat(locale, { maximumSignificantDigits: 7 }).format(raw);
+  const plain = stateValue(raw, locale);
   const result = plain ?? exactValue(value);
   return result.length > max ? `${result.slice(0, max - 1)}…` : result;
 }
@@ -150,32 +155,35 @@ function factBefore(store: TemporalFeedStore, key: EntityKey, fieldId: string, c
 }
 const fieldInfo = (store: TemporalFeedStore, fieldId: string) => store.header.fields.find(row => row.fieldId === fieldId);
 const declaredWriter = (store: TemporalFeedStore, fieldId: string) => text((fieldInfo(store, fieldId)?.metadata as { writer_contract?: unknown } | undefined)?.writer_contract);
-export function writerName(producer: string): string {
-  if (producer === 'behaviour') return 'event chains';
-  return `${readableLabel(producer.replace(/^sampled:.*/, 'sampled input'))} engine`;
+export function writerName(producer: string, locale = 'en-US'): string {
+  if (producer === 'behaviour') return translate(locale, 'event chains');
+  if (producer === 'unknown') return translate(locale, 'unknown writer');
+  if (producer === 'engine') return translate(locale, 'an engine');
+  return translate(locale, '{name} engine', {name:readableLabel(producer.replace(/^sampled:.*/, 'sampled input'),locale)});
 }
 
 /** Plain-words rendering of a recorded predicate expression. */
-export function describeExpression(node: unknown, roles: (role: string) => string, parameters: Record<string, unknown> = {}, nested = false): string {
+export function describeExpression(node: unknown, roles: (role: string) => string, parameters: Record<string, unknown> = {}, nested = false, locale = 'en-US'): string {
+  const t = translator(locale);
   if (!isObject(node)) return String(node);
   if ('field' in node) {
-    const owner = typeof node.role === 'string' ? `${roles(node.role)}'s ` : '';
     const path = Array.isArray(node.path) && node.path.length ? ` [${node.path.join(',')}]` : '';
-    return `${owner}${fieldWords(String(node.field))}${path}`;
+    const field = `${fieldWords(String(node.field),locale)}${path}`;
+    return typeof node.role === 'string' ? t("{entity}'s {field}", {entity:roles(node.role),field}) : field;
   }
-  if ('literal' in node) return exactValue(node.literal);
-  if ('parameter' in node) { const name = String(node.parameter); return name in parameters ? `${name.replace(/_/g, ' ')} (${exactValue(parameters[name])})` : name; }
+  if ('literal' in node) return typeof node.literal === 'boolean' ? t(String(node.literal)) : exactValue(node.literal);
+  if ('parameter' in node) { const name = String(node.parameter); return name in parameters ? `${t(name.replace(/_/g, ' '))} (${exactValue(parameters[name])})` : name; }
   if ('var' in node) return String(node.var);
   const args = Array.isArray(node.args) ? node.args : [];
-  const part = (child: unknown) => describeExpression(child, roles, parameters, true);
+  const part = (child: unknown) => describeExpression(child, roles, parameters, true, locale);
   const infix: Record<string, string> = { eq: '=', ne: '≠', lt: '<', lte: '≤', gt: '>', gte: '≥', add: '+', sub: '−', mul: '×', div: '÷' };
   const op = String(node.op);
-  if (op === 'and' || op === 'or') { const body = args.map(part).join(op === 'and' ? ' AND ' : ' OR '); return nested ? `(${body})` : body; }
-  if (op === 'not') return `NOT ${part(args[0])}`;
+  if (op === 'and' || op === 'or') { const body = args.map(part).join(op === 'and' ? t(' AND ') : t(' OR ')); return nested ? `(${body})` : body; }
+  if (op === 'not') return t('NOT {value}', {value:part(args[0])});
   if (op in infix && args.length === 2) { const body = `${part(args[0])} ${infix[op]} ${part(args[1])}`; return nested && !['eq', 'ne', 'lt', 'lte', 'gt', 'gte'].includes(op) ? `(${body})` : body; }
-  if (op === 'distance') return `distance between ${part(args[0])} and ${part(args[1])}`;
-  if (op === 'len') return `number of ${part(args[0])}`;
-  return `${op.replace(/_/g, ' ')}(${args.map(part).join(', ')})`;
+  if (op === 'distance') return t('distance between {a} and {b}', {a:part(args[0]),b:part(args[1])});
+  if (op === 'len') return t('number of {value}', {value:part(args[0])});
+  return `${t(op.replace(/_/g, ' '))}(${args.map(part).join(', ')})`;
 }
 
 function chainDef(index: Index, templateId: string, transitionId: string | null | undefined): TransitionDef | undefined {
@@ -206,22 +214,22 @@ function producedMessages(step: StepRec, definition: TransitionDef | undefined, 
   return result;
 }
 
-function describeAction(store: TemporalFeedStore, step: StepRec, action: ActionDef): string {
-  const roles = rolesOf(step.rec);
-  const who = (ref?: { $role?: string; $id?: string }) => { const role = ref?.$role ?? ref?.$id; return role && roles[role] ? keyLabel(store, roles[role]) : 'an entity'; };
+function describeAction(store: TemporalFeedStore, step: StepRec, action: ActionDef, locale: string): string {
+  const roles = rolesOf(step.rec), t = translator(locale);
+  const who = (ref?: { $role?: string; $id?: string }) => { const role = ref?.$role ?? ref?.$id; return role && roles[role] ? keyLabel(store, roles[role],locale) : t('an entity'); };
   switch (action.kind) {
-    case 'set': return `Update state: ${who(action.entity)} · ${fieldWords(action.field ?? '')}`;
-    case 'emit': return `Announce "${readableLabel(action.schema ?? action.id)}"`;
+    case 'set': return t('Update state: {entity} · {field}', {entity:who(action.entity),field:fieldWords(action.field ?? '',locale)});
+    case 'emit': return t('Announce "{event}"', {event:readableLabel(action.schema ?? action.id,locale)});
     case 'command': {
       const payload = isObject(action.payload) ? action.payload : {};
       const actor = (isObject(payload.actor) ? payload.actor : isObject(payload.entity) ? payload.entity : isObject(payload.vehicle) ? payload.vehicle : undefined) as { $role?: string; $id?: string } | undefined;
-      return `Ask ${who(actor)} to "${readableLabel(action.capability ?? action.schema ?? action.id)}"`;
+      return t('Ask {entity} to "{command}"', {entity:who(actor),command:readableLabel(action.capability ?? action.schema ?? action.id,locale)});
     }
-    case 'delay': return `Start a timer "${action.id}" (${Number(action.duration_ns ?? 0) / 1e9} s)`;
-    case 'assert_relation': return `Link ${who(action.source)} → ${who(action.target)} (${readableLabel(action.relation ?? 'relation')})`;
-    case 'close_relation': return 'Remove a link between entities';
-    case 'complete': return 'Finish this chain';
-    default: return readableLabel(action.kind);
+    case 'delay': return t('Start a timer "{timer}" ({seconds} s)', {timer:action.id,seconds:Number(action.duration_ns ?? 0) / 1e9});
+    case 'assert_relation': return t('Link {source} → {target} ({relation})', {source:who(action.source),target:who(action.target),relation:readableLabel(action.relation ?? 'relation',locale)});
+    case 'close_relation': return t('Remove a link between entities');
+    case 'complete': return t('Finish this chain');
+    default: return readableLabel(action.kind,locale);
   }
 }
 
@@ -233,9 +241,9 @@ function stepView(store: TemporalFeedStore, index: Index, step: StepRec): StepVi
     for (let i = here - 1; i >= 0; i--) if (rows[i].value.op !== 'close') { fromState = rows[i].value.state; break; }
   }
   return {
-    instanceId: step.rec.instanceId, revision: revision(step.rec.revision), chainLabel: readableLabel(step.rec.templateId), chainId: step.rec.templateId,
+    instanceId: step.rec.instanceId, revision: revision(step.rec.revision), chainLabel: readableLabel(step.rec.templateId,index.locale), chainId: step.rec.templateId,
     stepId: step.rec.transitionId ?? step.rec.lifecycle, fromState, toState: step.rec.state, lifecycle: step.rec.lifecycle,
-    actions: (definition?.actions ?? []).map(action => ({ id: action.id, kind: action.kind, text: describeAction(store, step, action) })),
+    actions: (definition?.actions ?? []).map(action => ({ id: action.id, kind: action.kind, text: describeAction(store, step, action,index.locale) })),
     at: step.commit.at, cut: step.cut, technical: { instanceId: step.rec.instanceId, revision: step.rec.revision, transition: step.rec.transitionId, trigger: step.rec.trigger, causes: step.rec.causes },
   };
 }
@@ -247,15 +255,15 @@ function effectsOf(store: TemporalFeedStore, index: Index, step: StepRec): Effec
   const own = new Set(Object.values(roles).map(entityId));
   const facts = step.commit.facts.filter(fact => fact.producer === 'behaviour' && (definition ? wanted.some(row => row.id === entityId(fact.entity) && row.field === fact.fieldId) : own.has(entityId(fact.entity)) && !fact.fieldId.startsWith('aas.behaviour.')));
   const latest = new Map<string, Fact>(); for (const fact of facts) latest.set(`${entityId(fact.entity)}|${fact.fieldId}`, fact);
-  return [...latest.values()].map(fact => effectView(store, fact, step.cut));
+  return [...latest.values()].map(fact => effectView(store, fact, step.cut,undefined,index.locale));
 }
-function effectView(store: TemporalFeedStore, fact: Fact, cut: number, at?: Instant): EffectView {
+function effectView(store: TemporalFeedStore, fact: Fact, cut: number, at?: Instant, locale = 'en-US'): EffectView {
   const previous = factBefore(store, fact.entity, fact.fieldId, cut), declared = declaredWriter(store, fact.fieldId);
   const field = fieldInfo(store, fact.fieldId);
   const unit = field?.unit && field.unit !== '1' ? field.unit : undefined;
   return {
-    entity: fact.entity, entityLabel: keyLabel(store, fact.entity), fieldId: fact.fieldId, fieldLabel: fieldWords(fact.fieldId),
-    before: previous ? showValue(store, previous.value) : undefined, hadBefore: !!previous, after: showValue(store, fact.value),
+    entity: fact.entity, entityLabel: keyLabel(store, fact.entity,locale), fieldId: fact.fieldId, fieldLabel: fieldWords(fact.fieldId,locale),
+    before: previous ? showValue(store, previous.value,60,locale) : undefined, hadBefore: !!previous, after: showValue(store, fact.value,60,locale),
     writer: fact.producer, declaredWriter: declared, writerOk: !declared || declared === fact.producer, at: at ?? fact.validFrom ?? store.commits.find(row => row.commitIndex === cut)!.at, cut, unit,
   };
 }
@@ -274,7 +282,7 @@ function predicateReads(store: TemporalFeedStore, index: Index, evaluation: { ac
       const writing = cut === undefined ? undefined : (index.stepsByCut.get(cut) ?? []).find(step => effectsOf(store, index, step).some(effect => effect.fieldId === fieldId && entityId(effect.entity) === entityId(key)));
       ref = writing ? { kind: 'step', instanceId: writing.rec.instanceId, revision: revision(writing.rec.revision) } : cut === undefined ? undefined : { kind: 'change', entity: key, fieldId, cut };
     }
-    rows.push({ entity: key, entityLabel: keyLabel(store, key), fieldId, fieldLabel: fieldWords(fieldId), value: fact ? showValue(store, fact.value) : 'not recorded', writer: producer, writtenAt: fact?.validFrom, ref });
+    rows.push({ entity: key, entityLabel: keyLabel(store, key,index.locale), fieldId, fieldLabel: fieldWords(fieldId,index.locale), value: fact ? showValue(store, fact.value,60,index.locale) : translate(index.locale,'not recorded'), writer: producer, writtenAt: fact?.validFrom, ref });
   }
   return rows;
 }
@@ -286,10 +294,10 @@ function lastWriteCut(store: TemporalFeedStore, key: EntityKey, fieldId: string,
 
 function predicateView(store: TemporalFeedStore, index: Index, base: { predicateId: string; edge?: string; value: boolean | null; at: Instant; readCut: number; evaluation: { acquired?: unknown; roles?: unknown; readCut?: { index: number } }; ref?: CauseRef }): PredicateView {
   const definition = index.predicates.get(base.predicateId), roles = isObject(base.evaluation.roles) ? base.evaluation.roles : {};
-  const roleName = (role: string) => { const key = refKey(roles[role]); return key ? keyLabel(store, key) : role; };
+  const roleName = (role: string) => { const key = refKey(roles[role]); return key ? keyLabel(store, key,index.locale) : readableLabel(role,index.locale); };
   return {
-    predicateId: base.predicateId, label: readableLabel(base.predicateId), edge: base.edge, value: base.value, at: base.at, readCut: base.readCut,
-    expression: definition?.expression ? describeExpression(definition.expression, roleName, definition.parameters ?? {}) : '',
+    predicateId: base.predicateId, label: readableLabel(base.predicateId,index.locale), edge: base.edge, value: base.value, at: base.at, readCut: base.readCut,
+    expression: definition?.expression ? describeExpression(definition.expression, roleName, definition.parameters ?? {},false,index.locale) : '',
     reads: predicateReads(store, index, base.evaluation), ref: base.ref, technical: base.evaluation,
   };
 }
@@ -297,29 +305,30 @@ const evalPredicateView = (store: TemporalFeedStore, index: Index, rec: Predicat
   predicateView(store, index, { predicateId: rec.predicateId, value: rec.value, at: rec.evaluatedAt, readCut: rec.readCut.index, evaluation: rec, ref: { kind: 'predicate', contextId: rec.contextId, cut } });
 
 function triggerOf(store: TemporalFeedStore, index: Index, step: StepRec): TriggerView {
-  const trigger = isObject(step.rec.trigger) ? step.rec.trigger : {};
+  const trigger = isObject(step.rec.trigger) ? step.rec.trigger : {}, locale = index.locale, t = translator(locale);
   if (typeof trigger.predicate === 'string' && isObject(trigger.evaluation)) {
     const evaluation = trigger.evaluation as { evaluatedAt?: Instant; readCut?: { index: number; at: Instant }; roles?: unknown; acquired?: unknown; contextId?: string };
     const when = evaluation.evaluatedAt ?? step.commit.at, edge = text(trigger.edge);
     const view = predicateView(store, index, { predicateId: trigger.predicate, edge, value: true, at: when, readCut: evaluation.readCut?.index ?? step.cut, evaluation, ref: evaluation.contextId ? { kind: 'predicate', contextId: evaluation.contextId, cut: step.cut } : undefined });
-    return { kind: 'predicate', summary: `${edge === 'entered' ? 'The condition' : 'The condition'} "${view.label}" became true`, at: when, predicate: view, ref: view.ref };
+    return { kind: 'predicate', summary: t('The condition "{condition}" became true', {condition:view.label}), at: when, predicate: view, ref: view.ref };
   }
   if (typeof trigger.event === 'string') {
     const found = findSender(store, index, trigger.event, trigger.payload, step.cut);
-    return { kind: 'event', summary: `The event "${readableLabel(trigger.event)}" arrived`, at: found?.message ? found.message.message.at : step.commit.at, source: found?.text, ref: found?.ref };
+    return { kind: 'event', summary: t('The event "{event}" arrived', {event:readableLabel(trigger.event,locale)}), at: found?.message ? found.message.message.at : step.commit.at, source: found?.text, ref: found?.ref };
   }
   if (typeof trigger.timer === 'string') {
     const ref: CauseRef | undefined = typeof trigger.instance === 'string' && trigger.revision !== undefined && index.stepByKey.has(stepKey(trigger.instance, trigger.revision)) ? { kind: 'step', instanceId: trigger.instance, revision: revision(trigger.revision) } : undefined;
-    return { kind: 'timer', summary: `The timer "${trigger.timer}" ran out`, at: step.commit.at, source: ref ? 'The timer was started by an earlier step of this chain' : undefined, ref };
+    return { kind: 'timer', summary: t('The timer "{timer}" ran out', {timer:trigger.timer}), at: step.commit.at, source: ref ? t('The timer was started by an earlier step of this chain') : undefined, ref };
   }
   if (typeof trigger.command_id === 'string') {
     const sent = index.messages.get(trigger.command_id), status = text(trigger.status);
     const sender = sent ? (index.stepsByCut.get(sent.cut) ?? []).find(row => row.rec.instanceId === step.rec.instanceId) : undefined;
-    return { kind: 'command', summary: `The command "${readableLabel(text(trigger.receipt) ?? 'command')}" ${status ? `finished: ${status}` : 'reported back'}`, at: step.commit.at, source: sent ? `Sent to ${writerName(String(sent.message.target ?? 'an engine'))}` : undefined, ref: sender ? { kind: 'step', instanceId: sender.rec.instanceId, revision: revision(sender.rec.revision) } : undefined };
+    const command = readableLabel(text(trigger.receipt) ?? 'command',locale);
+    return { kind: 'command', summary: status ? t('The command "{command}" finished: {status}', {command,status:readableLabel(status,locale)}) : t('The command "{command}" reported back', {command}), at: step.commit.at, source: sent ? t('Sent to {writer}', {writer:sent.message.target ? writerName(String(sent.message.target),locale) : t('an engine')}) : undefined, ref: sender ? { kind: 'step', instanceId: sender.rec.instanceId, revision: revision(sender.rec.revision) } : undefined };
   }
-  if (trigger.deadline !== undefined) return { kind: 'deadline', summary: 'A time limit ran out', at: step.commit.at };
-  if (trigger.instance === 'activated') return { kind: 'start', summary: 'The chain was just activated', at: step.commit.at };
-  return { kind: 'other', summary: 'Triggered by a recorded condition', at: step.commit.at };
+  if (trigger.deadline !== undefined) return { kind: 'deadline', summary: t('A time limit ran out'), at: step.commit.at };
+  if (trigger.instance === 'activated') return { kind: 'start', summary: t('The chain was just activated'), at: step.commit.at };
+  return { kind: 'other', summary: t('Triggered by a recorded condition'), at: step.commit.at };
 }
 function findSender(store: TemporalFeedStore, index: Index, schema: string, payload: unknown, before: number): { text: string; ref?: CauseRef; message?: { cut: number; message: Message } } | undefined {
   const wanted = exactValue(payload);
@@ -329,10 +338,10 @@ function findSender(store: TemporalFeedStore, index: Index, schema: string, payl
   const sources = best.message.source;
   if (sources === 'behaviour') {
     const origin = (index.stepsByCut.get(best.cut) ?? []).find(candidate => producedMessages(candidate, chainDef(index, candidate.rec.templateId, candidate.rec.transitionId), 'event').some(item => item.message.id === best!.message.id));
-    if (origin) return { text: `Announced by the chain "${readableLabel(origin.rec.templateId)}"`, ref: { kind: 'step', instanceId: origin.rec.instanceId, revision: revision(origin.rec.revision) }, message: best };
+    if (origin) return { text: translate(index.locale,'Announced by the chain "{chain}"', {chain:readableLabel(origin.rec.templateId,index.locale)}), ref: { kind: 'step', instanceId: origin.rec.instanceId, revision: revision(origin.rec.revision) }, message: best };
   }
   void store;
-  return { text: `Sent by the ${writerName(sources)}`, ref: { kind: 'message', messageId: best.message.id, cut: best.cut }, message: best };
+  return { text: translate(index.locale,'Sent by the {writer}', {writer:writerName(sources,index.locale)}), ref: { kind: 'message', messageId: best.message.id, cut: best.cut }, message: best };
 }
 
 function evalsByEntity(index: Index): Map<string, EvalRec[]> {
@@ -343,16 +352,16 @@ function evalsByEntity(index: Index): Map<string, EvalRec[]> {
 }
 
 function followUpsOfStep(store: TemporalFeedStore, index: Index, step: StepRec, effects: EffectView[]): FollowUpView[] {
-  const definition = chainDef(index, step.rec.templateId, step.rec.transitionId), result: FollowUpView[] = [];
+  const definition = chainDef(index, step.rec.templateId, step.rec.transitionId), result: FollowUpView[] = [], locale = index.locale, t = translator(locale);
   for (const item of producedMessages(step, definition, 'event')) {
     const message = item.message;
     const receivers = (index.byEventSchema.get(message.schemaId) ?? []).filter(row => row.cut >= step.cut && exactValue((row.rec.trigger as { payload?: unknown }).payload) === exactValue(message.payload));
-    result.push({ kind: 'event', label: `Announced "${readableLabel(message.schemaId)}"`, detail: receivers.length ? `${receivers.length} chain step${receivers.length > 1 ? 's' : ''} reacted` : 'No event-chain step reacted to it', at: message.at });
+    result.push({ kind: 'event', label: t('Announced "{event}"', {event:readableLabel(message.schemaId,locale)}), detail: receivers.length ? receivers.length === 1 ? t('1 chain step reacted') : t('{count} chain steps reacted', {count:receivers.length}) : t('No event-chain step reacted to it'), at: message.at });
     for (const receiver of receivers.slice(0, 4)) result.push(stepFollowUp(store, index, receiver, 'reacted to the announcement'));
   }
   for (const item of producedMessages(step, definition, 'command')) {
     const message = item.message, receipt = index.receipts.get(message.id);
-    result.push({ kind: 'command', label: `Asked ${message.target ? writerName(String(message.target)) : 'an engine'} to "${readableLabel(message.schemaId)}"`, detail: receipt ? `Result: ${receipt.status}` : 'No result recorded yet', at: message.at });
+    result.push({ kind: 'command', label: t('Asked {writer} to "{command}"', {writer:message.target ? writerName(String(message.target),locale) : t('an engine'),command:readableLabel(message.schemaId,locale)}), detail: receipt ? t('Result: {result}', {result:readableLabel(receipt.status,locale)}) : t('No result recorded yet'), at: message.at });
     for (const receiver of index.byCommand.get(message.id) ?? []) if (receiver.cut >= step.cut && receiver.key !== step.key) result.push(stepFollowUp(store, index, receiver, 'handled the result'));
   }
   const seen = new Set<string>();
@@ -366,8 +375,8 @@ function followUpsOfStep(store: TemporalFeedStore, index: Index, step: StepRec, 
       });
       if (!matched) continue;
       seen.add(row.rec.contextId);
-      const others = Object.values(row.rec.roles).filter(key => entityId(key) !== entityId(effect.entity)).slice(0, 2).map(key => keyLabel(store, key)).join(', ');
-      result.push({ kind: 'predicate', label: `The condition "${readableLabel(row.rec.predicateId)}"${others ? ` (${others})` : ''} was re-checked using the new ${effect.fieldLabel}`, detail: row.rec.value === null ? 'Result unknown' : `Result: ${row.rec.value ? 'true' : 'false'}`, at: row.rec.evaluatedAt, ref: { kind: 'predicate', contextId: row.rec.contextId, cut: row.cut } });
+      const others = Object.values(row.rec.roles).filter(key => entityId(key) !== entityId(effect.entity)).slice(0, 2).map(key => keyLabel(store, key,locale)).join(', ');
+      result.push({ kind: 'predicate', label: t('The condition "{condition}"{others} was re-checked using the new {field}', {condition:readableLabel(row.rec.predicateId,locale),others:others ? ` (${others})` : '',field:effect.fieldLabel}), detail: row.rec.value === null ? t('Result unknown') : t('Result: {result}', {result:row.rec.value ? t('true') : t('false')}), at: row.rec.evaluatedAt, ref: { kind: 'predicate', contextId: row.rec.contextId, cut: row.cut } });
       if (seen.size >= 4) break;
     }
   }
@@ -375,9 +384,9 @@ function followUpsOfStep(store: TemporalFeedStore, index: Index, step: StepRec, 
 }
 function stepFollowUp(store: TemporalFeedStore, index: Index, step: StepRec, verb: string): FollowUpView {
   const view = stepView(store, index, step);
-  return { kind: 'step', label: `${view.chainLabel}: ${stepSentence(view)}`, detail: `${verb} · ${at(store, step.commit.at)}`, at: step.commit.at, ref: { kind: 'step', instanceId: step.rec.instanceId, revision: revision(step.rec.revision) } };
+  return { kind: 'step', label: `${view.chainLabel}: ${stepSentence(view,index.locale)}`, detail: `${translate(index.locale,verb)} · ${at(store, step.commit.at)}`, at: step.commit.at, ref: { kind: 'step', instanceId: step.rec.instanceId, revision: revision(step.rec.revision) } };
 }
-export const stepSentence = (view: Pick<StepView, 'fromState' | 'toState' | 'stepId'>) => view.fromState && view.fromState !== view.toState ? `${readableLabel(view.fromState)} → ${readableLabel(view.toState)}` : `step "${view.stepId}" → ${readableLabel(view.toState)}`;
+export const stepSentence = (view: Pick<StepView, 'fromState' | 'toState' | 'stepId'>, locale = 'en-US') => view.fromState && view.fromState !== view.toState ? `${readableLabel(view.fromState,locale)} → ${readableLabel(view.toState,locale)}` : translate(locale,'step "{step}" → {state}', {step:view.stepId,state:readableLabel(view.toState,locale)});
 
 function involvedOf(store: TemporalFeedStore, model: Pick<TraceModel, 'step' | 'effects' | 'trigger' | 'predicate'>, step?: StepRec, extra: EntityKey[] = []): EntityKey[] {
   const map = new Map<string, EntityKey>();
@@ -393,12 +402,13 @@ function involvedOf(store: TemporalFeedStore, model: Pick<TraceModel, 'step' | '
 const LEAN_NOTE = 'This run keeps what ran, what it changed and what it set off. A run recorded with full provenance would also list every individual input record that each written value was computed from.';
 
 function explainStep(store: TemporalFeedStore, index: Index, step: StepRec): TraceModel {
-  const view = stepView(store, index, step), trigger = triggerOf(store, index, step), effects = effectsOf(store, index, step);
+  const view = stepView(store, index, step), trigger = triggerOf(store, index, step), effects = effectsOf(store, index, step), t = translator(index.locale);
   const model: TraceModel = {
-    focus: 'step', heading: `${view.chainLabel}: ${stepSentence(view)}`, subtitle: `at ${at(store, step.commit.at)}`, at: step.commit.at, cut: step.cut,
-    trigger, step: view, effects, followUps: followUpsOfStep(store, index, step, effects), involved: [], choices: [], notes: [LEAN_NOTE],
+    focus: 'step', heading: `${view.chainLabel}: ${stepSentence(view,index.locale)}`, subtitle: t('at {at}', {at:at(store, step.commit.at)}), at: step.commit.at, cut: step.cut,
+    trigger, step: view, effects, followUps: followUpsOfStep(store, index, step, effects), involved: [], choices: [], notes: [t(LEAN_NOTE)],
   };
-  if (!view.actions.length) model.notes.unshift('This run did not include the chain definition, so individual actions are not listed.');
+  if (!chainDef(index,step.rec.templateId,step.rec.transitionId)) model.notes.unshift(t('This run did not include the chain definition, so individual actions are not listed.'));
+  else if (!view.actions.length) model.notes.unshift(t('This step has no declared actions.'));
   model.involved = involvedOf(store, model, step);
   return model;
 }
@@ -414,10 +424,11 @@ function explainPredicate(store: TemporalFeedStore, index: Index, contextId: str
     if (isObject(trigger.evaluation) && trigger.evaluation.contextId === contextId) followUps.push(stepFollowUp(store, index, step, 'ran because of it'));
     if (followUps.length >= 6) break;
   }
-  if (!followUps.length) followUps.push({ kind: 'none', label: 'No chain step is waiting on this condition', detail: 'It was recorded but nothing reacted to it.' });
+  const t = translator(index.locale);
+  if (!followUps.length) followUps.push({ kind: 'none', label: t('No chain step is waiting on this condition'), detail: t('It was recorded but nothing reacted to it.') });
   const model: TraceModel = {
-    focus: 'predicate', heading: `"${view.label}" is ${view.value === null ? 'unknown' : view.value ? 'true' : 'false'}`, subtitle: `checked at ${at(store, view.at)}`, at: view.at, cut: row.commit.commitIndex,
-    predicate: view, effects: [], followUps, involved: [], choices: [], notes: [LEAN_NOTE],
+    focus: 'predicate', heading: t('"{condition}" is {value}', {condition:view.label,value:view.value === null ? t('unknown') : view.value ? t('true') : t('false')}), subtitle: t('checked at {at}', {at:at(store, view.at)}), at: view.at, cut: row.commit.commitIndex,
+    predicate: view, effects: [], followUps, involved: [], choices: [], notes: [t(LEAN_NOTE)],
   };
   model.involved = involvedOf(store, model);
   return model;
@@ -429,11 +440,12 @@ function explainMessage(store: TemporalFeedStore, index: Index, messageId: strin
   const origin = message.source === 'behaviour' ? (index.stepsByCut.get(cut) ?? []).find(step => producedMessages(step, chainDef(index, step.rec.templateId, step.rec.transitionId), message.kind).some(item => item.message.id === message.id)) : undefined;
   const receivers = message.kind === 'event' ? (index.byEventSchema.get(message.schemaId) ?? []).filter(row => row.cut >= cut && exactValue((row.rec.trigger as { payload?: unknown }).payload) === exactValue(message.payload)) : index.byCommand.get(message.id) ?? [];
   for (const receiver of receivers.slice(0, 6)) followUps.push(stepFollowUp(store, index, receiver, 'reacted'));
-  if (!followUps.length) followUps.push({ kind: 'none', label: 'Nothing reacted to this', detail: 'No chain step was waiting for it.' });
+  const locale = index.locale, t = translator(locale);
+  if (!followUps.length) followUps.push({ kind: 'none', label: t('Nothing reacted to this'), detail: t('No chain step was waiting for it.') });
   const model: TraceModel = {
-    focus: 'message', heading: `${readableLabel(message.schemaId)}`, subtitle: `${message.kind === 'event' ? 'announced' : 'requested'} at ${at(store, message.at)}`, at: message.at, cut,
-    sender: origin ? { text: `Sent by the chain "${readableLabel(origin.rec.templateId)}"`, ref: { kind: 'step', instanceId: origin.rec.instanceId, revision: revision(origin.rec.revision) } } : { text: `Sent by the ${writerName(message.source)}` },
-    effects: [], followUps, involved: [], choices: [], notes: [LEAN_NOTE],
+    focus: 'message', heading: readableLabel(message.schemaId,locale), subtitle: message.kind === 'event' ? t('announced at {at}', {at:at(store, message.at)}) : t('requested at {at}', {at:at(store, message.at)}), at: message.at, cut,
+    sender: origin ? { text: t('Sent by the chain "{chain}"', {chain:readableLabel(origin.rec.templateId,locale)}), ref: { kind: 'step', instanceId: origin.rec.instanceId, revision: revision(origin.rec.revision) } } : { text: t('Sent by the {writer}', {writer:writerName(message.source,locale)}) },
+    effects: [], followUps, involved: [], choices: [], notes: [t(LEAN_NOTE)],
   };
   model.involved = involvedOf(store, model, undefined, message.subjects ?? []);
   return model;
@@ -445,16 +457,16 @@ function explainChange(store: TemporalFeedStore, index: Index, entity: EntityKey
   if (writing) return explainStep(store, index, writing);
   const fact = [...commit.facts].reverse().find(row => row.fieldId === fieldId && entityId(row.entity) === entityId(entity));
   if (!fact) return undefined;
-  const effect = effectView(store, fact, cut, commit.at), followUps: FollowUpView[] = [];
+  const locale = index.locale, t = translator(locale), effect = effectView(store, fact, cut, commit.at,locale), followUps: FollowUpView[] = [];
   for (const row of evalsByEntity(index).get(entityId(entity)) ?? []) {
     if (row.cut <= cut) continue;
     const used = Object.entries(row.rec.acquired ?? {}).some(([slot, stamp]) => slot.slice(slot.indexOf('.') + 1) === fieldId && String(stamp.numerator) === effect.at.ns);
-    if (used) followUps.push({ kind: 'predicate', label: `The condition "${readableLabel(row.rec.predicateId)}" was checked using it`, detail: `Result: ${row.rec.value ? 'true' : 'false'}`, at: row.rec.evaluatedAt, ref: { kind: 'predicate', contextId: row.rec.contextId, cut: row.cut } });
+    if (used) followUps.push({ kind: 'predicate', label: t('The condition "{condition}" was checked using it', {condition:readableLabel(row.rec.predicateId,locale)}), detail: row.rec.value === null ? t('Result unknown') : t('Result: {result}', {result:row.rec.value ? t('true') : t('false')}), at: row.rec.evaluatedAt, ref: { kind: 'predicate', contextId: row.rec.contextId, cut: row.cut } });
     if (followUps.length >= 4) break;
   }
   const model: TraceModel = {
-    focus: 'change', heading: `${keyLabel(store, entity)}: ${effect.fieldLabel} changed`, subtitle: `at ${at(store, commit.at)}`, at: commit.at, cut,
-    sender: { text: `Written by the ${writerName(fact.producer)}, not by an event chain` }, effects: [effect], followUps, involved: [], choices: [], notes: [LEAN_NOTE],
+    focus: 'change', heading: t('{entity}: {field} changed', {entity:keyLabel(store, entity,locale),field:effect.fieldLabel}), subtitle: t('at {at}', {at:at(store, commit.at)}), at: commit.at, cut,
+    sender: { text: t('Written by the {writer}, not by an event chain', {writer:writerName(fact.producer,locale)}) }, effects: [effect], followUps, involved: [], choices: [], notes: [t(LEAN_NOTE)],
   };
   model.involved = involvedOf(store, model, undefined, [entity]);
   return model;
@@ -474,8 +486,8 @@ function momentSteps(store: TemporalFeedStore, index: Index, cut: number, entiti
 }
 
 /** Build the cause-to-effect story for a reference; undefined if the referenced record is not loaded. */
-export function explain(store: TemporalFeedStore, ref: CauseRef): TraceModel | undefined {
-  const index = build(store);
+export function explain(store: TemporalFeedStore, ref: CauseRef, locale = 'en-US'): TraceModel | undefined {
+  const index = build(store,locale), t = translator(locale);
   switch (ref.kind) {
     case 'step': { const step = index.stepByKey.get(stepKey(ref.instanceId, ref.revision)); return step ? explainStep(store, index, step) : undefined; }
     case 'predicate': return explainPredicate(store, index, ref.contextId, ref.cut);
@@ -495,19 +507,19 @@ export function explain(store: TemporalFeedStore, ref: CauseRef): TraceModel | u
       const named = (model: TraceModel) => { if (entities?.length) model.eventEntities = entities; return model; };
       if (steps.length) {
         const model = named(explainStep(store, index, steps[0]));
-        model.choices = steps.slice(1, 8).map(step => { const view = stepView(store, index, step); return { label: `${view.chainLabel}: ${stepSentence(view)}`, ref: { kind: 'step', instanceId: step.rec.instanceId, revision: revision(step.rec.revision) } as CauseRef, at: step.commit.at }; });
+        model.choices = steps.slice(1, 8).map(step => { const view = stepView(store, index, step); return { label: `${view.chainLabel}: ${stepSentence(view,locale)}`, ref: { kind: 'step', instanceId: step.rec.instanceId, revision: revision(step.rec.revision) } as CauseRef, at: step.commit.at }; });
         return model;
       }
       const ids = entities?.length ? new Set(entities) : undefined;
       const messages = commit.messages.filter(message => message.kind === 'event' && !message.schemaId.startsWith('aas.behaviour.') && (!ids || (message.subjects ?? []).some(key => ids.has(key.id))));
       if (messages.length) {
         const model = named(explainMessage(store, index, messages[0].id)!);
-        model.choices = messages.slice(1, 8).map(message => ({ label: readableLabel(message.schemaId), ref: { kind: 'message', messageId: message.id, cut } as CauseRef, at: message.at }));
+        model.choices = messages.slice(1, 8).map(message => ({ label: readableLabel(message.schemaId,locale), ref: { kind: 'message', messageId: message.id, cut } as CauseRef, at: message.at }));
         return model;
       }
       return {
-        focus: 'moment', heading: 'Nothing recorded as a cause here', subtitle: `at ${at(store, commit.at)}`, at: commit.at, cut, effects: [], followUps: [], involved: [], choices: [],
-        notes: ['No event-chain step or announcement was recorded at this moment. Only engines wrote state here; select a field in "What changed" to see its writer.'],
+        focus: 'moment', heading: t('Nothing recorded as a cause here'), subtitle: t('at {at}', {at:at(store, commit.at)}), at: commit.at, cut, effects: [], followUps: [], involved: [], choices: [],
+        notes: [t('No event-chain step or announcement was recorded at this moment. Only engines wrote state here; select a field in "What changed" to see its writer.')],
       };
     }
   }
@@ -515,22 +527,25 @@ export function explain(store: TemporalFeedStore, ref: CauseRef): TraceModel | u
 
 export interface Moment { key: string; label: string; detail: string; at: Instant; cut: number; ref: CauseRef; kind: 'event' | 'step' | 'condition' }
 /** Notable moments involving one entity: business events, chain steps and conditions that became true. */
-export function momentsFor(store: TemporalFeedStore, key: EntityKey): Moment[] {
-  const index = build(store), id = key.id, result: Moment[] = [];
+export function momentsFor(store: TemporalFeedStore, key: EntityKey, locale = 'en-US'): Moment[] {
+  const index = build(store,locale), id = key.id, result: Moment[] = [], t = translator(locale);
   for (const commit of store.commits) {
-    for (const [ordinal, event] of (commit.events ?? []).entries()) if (event.entities.includes(id)) result.push({ key: `e${commit.commitIndex}/${ordinal}`, label: event.text.length > 70 ? `${event.text.slice(0, 69)}…` : event.text, detail: 'Event', at: commit.at, cut: commit.commitIndex, kind: 'event', ref: { kind: 'event', cut: commit.commitIndex, text: event.text, atNs: event.at_ns, entities: event.entities } });
+    for (const [ordinal, event] of (commit.events ?? []).entries()) if (event.entities.includes(id)) {
+      const label = locale.startsWith('zh') ? (event as typeof event & {text_zh?:string}).text_zh ?? event.text : event.text;
+      result.push({ key: `e${commit.commitIndex}/${ordinal}`, label: label.length > 70 ? `${label.slice(0, 69)}…` : label, detail: t('Event'), at: commit.at, cut: commit.commitIndex, kind: 'event', ref: { kind: 'event', cut: commit.commitIndex, text: event.text, atNs: event.at_ns, entities: event.entities } });
+    }
   }
   for (const step of index.steps) {
     if (!Object.values(rolesOf(step.rec)).some(role => role.id === id)) continue;
     const view = stepView(store, index, step);
     if (!view.actions.length && step.rec.templateId === 'traffic.road_follow') continue;
-    result.push({ key: `s${step.key}`, label: `${view.chainLabel}: ${stepSentence(view)}`, detail: 'Chain step', at: step.commit.at, cut: step.cut, kind: 'step', ref: { kind: 'step', instanceId: step.rec.instanceId, revision: revision(step.rec.revision) } });
+    result.push({ key: `s${step.key}`, label: `${view.chainLabel}: ${stepSentence(view,locale)}`, detail: t('Chain step'), at: step.commit.at, cut: step.cut, kind: 'step', ref: { kind: 'step', instanceId: step.rec.instanceId, revision: revision(step.rec.revision) } });
   }
   const previous = new Map<string, boolean | null>();
   for (const row of index.evals) {
     const before = previous.get(row.rec.contextId); previous.set(row.rec.contextId, row.rec.value);
     if (row.rec.value !== true || before === true || !Object.values(row.rec.roles).some(role => role.id === id)) continue;
-    result.push({ key: `p${row.rec.contextId}/${row.cut}`, label: `"${readableLabel(row.rec.predicateId)}" became true`, detail: 'Condition', at: row.rec.evaluatedAt, cut: row.cut, kind: 'condition', ref: { kind: 'predicate', contextId: row.rec.contextId, cut: row.cut } });
+    result.push({ key: `p${row.rec.contextId}/${row.cut}`, label: t('"{condition}" became true', {condition:readableLabel(row.rec.predicateId,locale)}), detail: t('Condition'), at: row.rec.evaluatedAt, cut: row.cut, kind: 'condition', ref: { kind: 'predicate', contextId: row.rec.contextId, cut: row.cut } });
   }
   return result.sort((a, b) => a.cut - b.cut || a.key.localeCompare(b.key));
 }
@@ -538,19 +553,20 @@ export function momentsFor(store: TemporalFeedStore, key: EntityKey): Moment[] {
 export interface ChangeRow { key: string; fieldId: string; fieldLabel: string; before?: string; after: string; retracted: boolean; at: Instant; cut: number; writer: string; cause: string; ref: CauseRef }
 export interface ChangeSummary { fieldId: string; fieldLabel: string; updates: number; writer: string }
 /** Field changes of one entity over time; fields that update continuously are summarised instead of listed. */
-export function changesFor(store: TemporalFeedStore, key: EntityKey, limitPerField = 24): { rows: ChangeRow[]; continuous: ChangeSummary[] } {
-  const index = build(store), id = entityId(key), rows: ChangeRow[] = [], continuous: ChangeSummary[] = [];
+export function changesFor(store: TemporalFeedStore, key: EntityKey, limitPerField = 24, locale = 'en-US'): { rows: ChangeRow[]; continuous: ChangeSummary[] } {
+  const index = build(store,locale), id = entityId(key), rows: ChangeRow[] = [], continuous: ChangeSummary[] = [], t = translator(locale);
+  const known = store.viewCursor?.knownAt ?? Number.MAX_SAFE_INTEGER;
   for (const fieldId of store.fieldIdsOf(id)) {
     if (fieldId.startsWith('aas.behaviour.') || /(?:digest|hash)/i.test(fieldId)) continue;
-    const versions = store.fieldVersionsOf(id, fieldId);
-    if (versions.length > limitPerField) { continuous.push({ fieldId, fieldLabel: fieldWords(fieldId), updates: versions.length, writer: (versions[versions.length - 1].value as Fact).producer ?? 'engine' }); continue; }
+    const versions = store.fieldVersionsOf(id, fieldId).filter(version => version.commit.commitIndex <= known);
+    if (versions.length > limitPerField) { continuous.push({ fieldId, fieldLabel: fieldWords(fieldId,locale), updates: versions.length, writer: (versions[versions.length - 1].value as Fact).producer ?? 'engine' }); continue; }
     let previous: Fact | undefined;
     for (const version of versions) {
-      if (version.retract) { rows.push({ key: `${fieldId}/${version.commit.commitIndex}/r`, fieldId, fieldLabel: fieldWords(fieldId), before: previous ? showValue(store, previous.value) : undefined, after: 'removed', retracted: true, at: version.commit.at, cut: version.commit.commitIndex, writer: 'engine', cause: 'Value withdrawn', ref: { kind: 'change', entity: key, fieldId, cut: version.commit.commitIndex } }); previous = undefined; continue; }
+      if (version.retract) { rows.push({ key: `${fieldId}/${version.commit.commitIndex}/r`, fieldId, fieldLabel: fieldWords(fieldId,locale), before: previous ? showValue(store, previous.value,60,locale) : undefined, after: t('removed'), retracted: true, at: version.commit.at, cut: version.commit.commitIndex, writer: 'engine', cause: t('Value withdrawn'), ref: { kind: 'change', entity: key, fieldId, cut: version.commit.commitIndex } }); previous = undefined; continue; }
       const fact = version.value as Fact, cut = version.commit.commitIndex;
       const writing = fact.producer === 'behaviour' ? (index.stepsByCut.get(cut) ?? []).find(step => effectsOf(store, index, step).some(effect => effect.fieldId === fieldId && entityId(effect.entity) === id)) : undefined;
-      const cause = writing ? `${readableLabel(writing.rec.templateId)} (step "${writing.rec.transitionId ?? writing.rec.lifecycle}")` : `${writerName(fact.producer)}`;
-      rows.push({ key: `${fieldId}/${cut}/${rows.length}`, fieldId, fieldLabel: fieldWords(fieldId), before: previous ? showValue(store, previous.value) : undefined, after: showValue(store, fact.value), retracted: false, at: version.commit.at, cut, writer: fact.producer, cause, ref: { kind: 'change', entity: key, fieldId, cut } });
+      const cause = writing ? t('{chain} (step "{step}")', {chain:readableLabel(writing.rec.templateId,locale),step:writing.rec.transitionId ?? writing.rec.lifecycle}) : writerName(fact.producer,locale);
+      rows.push({ key: `${fieldId}/${cut}/${rows.length}`, fieldId, fieldLabel: fieldWords(fieldId,locale), before: previous ? showValue(store, previous.value,60,locale) : undefined, after: showValue(store, fact.value,60,locale), retracted: false, at: version.commit.at, cut, writer: fact.producer, cause, ref: { kind: 'change', entity: key, fieldId, cut } });
       previous = fact;
     }
   }

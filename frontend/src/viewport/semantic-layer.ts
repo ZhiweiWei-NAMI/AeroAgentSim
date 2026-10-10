@@ -2,7 +2,8 @@ import * as T from 'three';
 import type { EntityKey, RunHeader } from '../contracts/viewer-feed';
 import type { FeedStore } from './feed-store';
 import { worldPosition } from './coordinates';
-import { activeZones, semanticSites, type SemanticZone } from './semantic';
+import { activeZones, humanizeId, semanticSites, type SemanticZone } from './semantic';
+import { translate } from '../i18n/translate';
 
 /**
  * Newcomer semantic overlay: active airspace zones and site markers rendered
@@ -12,6 +13,7 @@ import { activeZones, semanticSites, type SemanticZone } from './semantic';
  */
 
 export interface SemanticLayerOptions {
+  locale?: string;
   onSelect?: (key: EntityKey) => void;
 }
 
@@ -39,6 +41,12 @@ export class SemanticLayer {
 
   constructor(private header: RunHeader, private options: SemanticLayerOptions = {}) {
     this.root.add(this.zones, this.markers);
+  }
+
+  setLocale(locale: string) {
+    if (this.options.locale === locale) return;
+    this.options.locale = locale;
+    this.lastStamp = '';
   }
 
   /** Rebuild zone/site visuals when the committed cut actually changed. */
@@ -96,7 +104,7 @@ export class SemanticLayer {
       const mesh = new T.Mesh(geometry, new T.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 }));
       mesh.position.copy(world).add(new T.Vector3(0, 0.6, 0));
       mesh.userData.semanticEntityId = `${site.key.id}:${site.key.generation}`;
-      mesh.userData.semanticLabel = site.isVertiport ? humanSiteName(site.id, 'Vertiport') : humanSiteName(site.id, 'Charging pad');
+      mesh.userData.semanticLabel = site.isVertiport ? humanSiteName(site.id, 'Vertiport', this.options.locale) : humanSiteName(site.id, 'Charging pad', this.options.locale);
       this.markers.add(mesh);
       this.markerGlyphs.set(mesh.userData.semanticEntityId, mesh);
       this.pickables.push(mesh);
@@ -106,8 +114,12 @@ export class SemanticLayer {
   }
 
   /** Legend colors for zone kinds, from the registered schema mapping. */
-  static zoneLegend(): Array<[string, string]> {
-    return (Object.keys(ZONE_STYLE) as SemanticZone['kind'][]).map(kind => [ZONE_STYLE[kind].label, `#${ZONE_STYLE[kind].color.toString(16).padStart(6, '0')}`] as [string, string]);
+  static zoneLegend(locale = 'en-US'): Array<[string, string]> {
+    const labels = {
+      no_fly: translate(locale, 'No-fly zone'), restricted: translate(locale, 'Restricted zone'),
+      altitude_band: translate(locale, 'Altitude band'), corridor: translate(locale, 'Corridor'),
+    };
+    return (Object.keys(ZONE_STYLE) as SemanticZone['kind'][]).map(kind => [labels[kind], `#${ZONE_STYLE[kind].color.toString(16).padStart(6, '0')}`] as [string, string]);
   }
 
   /** Best semantic marker under the ray, or undefined. */
@@ -146,14 +158,12 @@ function centerlineGeometry(min: T.Vector3, max: T.Vector3): T.BufferGeometry {
 }
 
 /** `vertiport-1` → `Vertiport 1`; a north/cardinal word becomes `Vertiport North`. */
-function humanSiteName(id: string, kind: string): string {
-  const words = id.split(/[^a-z0-9]+/i).filter(Boolean).filter(word => word.toLowerCase() !== kind.split(' ')[0].toLowerCase());
-  if (!words.length) return kind;
-  const named = words.filter(word => /^[a-z]+$/i.test(word) && !/^\d+$/.test(word));
-  if (named.length) {
-    const rest = words.filter(word => !named.includes(word));
-    const tail = rest.length ? ` ${rest.join(' ')}` : '';
-    return `${kind} ${named.map(word => word[0].toUpperCase() + word.slice(1)).join(' ')}${tail}`.trim();
-  }
-  return `${kind} ${words.join(' ')}`;
+function humanSiteName(id: string, kind: 'Vertiport' | 'Charging pad', locale = 'en-US'): string {
+  const kindWords = kind.toLowerCase().split(' ');
+  const words = id.split(/[^a-z0-9]+/i).filter(Boolean).filter(word => !kindWords.includes(word.toLowerCase()));
+  const label = kind === 'Vertiport' ? translate(locale, 'Vertiport') : translate(locale, 'Charging pad');
+  if (!words.length) return label;
+  // Keep authored identity words; localize only standard site/direction words.
+  const name = humanizeId(`${words.join('-')}-0`, 'Site', locale).replace(/ 0$/, '');
+  return `${label} ${name}`;
 }

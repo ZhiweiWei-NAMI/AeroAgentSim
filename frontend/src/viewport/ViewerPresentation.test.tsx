@@ -1,5 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { I18nProvider, useI18n } from '../i18n/I18nProvider';
 import { ViewerPresentation } from './ViewerPresentation';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { PlaybackClock } from './clock';
@@ -8,7 +9,9 @@ import type { RunHeader } from '../contracts/viewer-feed';
 vi.mock('./ViewportView', () => ({ ViewportView: () => <div data-testid="spatial-renderer" /> }));
 vi.mock('./NonspatialViews', () => ({ NonspatialViews: ({ view }: { view: string }) => <div data-testid="exact-panel">{view}</div> }));
 vi.mock('./MissionTimeline', () => ({ MissionTimeline: () => <div>Recorded timeline</div> }));
-afterEach(() => { vi.unstubAllGlobals(); });
+beforeEach(() => { window.localStorage.clear(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.localStorage.clear(); });
+function LocaleButton() { const { locale, setLocale } = useI18n(); return <button onClick={() => setLocale(locale === 'en-US' ? 'zh-CN' : 'en-US')}>locale</button>; }
 
 function session(spatial: boolean) {
   const header: RunHeader = { contract: 'aeroagentsim.viewer-feed/v1', runId: 'presentation-test', registryDigest: 'test',
@@ -57,5 +60,18 @@ describe('viewer presentation routing', () => {
     expect(screen.getByTestId('exact-panel')).toHaveTextContent('state');
     fireEvent.click(screen.getByRole('button', { name: '3D only' }));
     expect(screen.queryByTestId('exact-panel')).not.toBeInTheDocument();
+  });
+
+  it('switches bilingual presentation labels without losing the active exact panel', () => {
+    const { store, clock, key } = session(true);
+    render(<I18nProvider><LocaleButton /><ViewerPresentation store={store} clock={clock} selected={key} mode="orbit" quality="med" trails={true} {...handlers()} /></I18nProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Queue / state' }));
+    fireEvent.click(screen.getByRole('button', { name: 'locale' }));
+    expect(screen.getByLabelText('展示视图')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '队列 / 状态' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('exact-panel')).toHaveTextContent('state');
+    fireEvent.click(screen.getByRole('button', { name: '仅三维' }));
+    expect(screen.queryByTestId('exact-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('spatial-renderer')).toBeInTheDocument();
   });
 });

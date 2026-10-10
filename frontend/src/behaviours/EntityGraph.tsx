@@ -3,7 +3,9 @@ import type { EntityKey } from '../contracts/viewer-feed';
 import type { EntityState, FeedStore } from '../viewport/feed-store';
 import { entityId } from '../viewport/bindings';
 import './run-graph.css';
-import { readableLabel, displayLabel } from '../pages/inspection-format';
+import { readableLabel, displayLabel, localizedLabel } from '../pages/inspection-format';
+import { useI18n } from '../i18n/I18nProvider';
+import { translate } from '../i18n/translate';
 
 interface EntityGraphProps {
   store: FeedStore; selected?: EntityKey; onSelect: (key: EntityKey) => void;
@@ -34,12 +36,16 @@ function typeColor(store: FeedStore, typeId: string): string {
 
 const NAME_FIELDS = ['name', 'label', 'title', 'displayName', 'display_name'];
 /** Human label from an actual recorded entity field, else a humanized entity id. Never a fabricated value. */
-function humanLabel(entity: EntityState): string {
+function humanLabel(entity: EntityState, locale = 'en-US'): string {
   for (const [fieldId, fact] of entity.fields) {
     if (typeof fact.value !== 'string' || !fact.value.trim()) continue;
-    if (NAME_FIELDS.includes(fieldId) || /name|label|title/i.test(fieldId)) return fact.value.trim();
+    if (fieldId.endsWith('_zh') && !locale.startsWith('zh')) continue;
+    if (NAME_FIELDS.includes(fieldId) || /name|label|title/i.test(fieldId)) {
+      const chinese = locale.startsWith('zh') ? entity.fields.get(`${fieldId}_zh`)?.value : undefined;
+      return localizedLabel(typeof chinese === 'string' && chinese.trim() ? chinese.trim() : fact.value.trim(), locale);
+    }
   }
-  return readableLabel(entity.key.id);
+  return readableLabel(entity.key.id, locale);
 }
 const plural = (word: string, count: number) => count === 1 || /s$/i.test(word) ? word : /[^aeiou]y$/i.test(word) ? `${word.slice(0, -1)}ies` : `${word}s`;
 const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
@@ -49,8 +55,8 @@ const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeri
  * most-connected types adjacent. Large groups collapse into one chip unless a
  * member is pinned visible (selected, highlighted or searched).
  */
-export function computeLayout(store: FeedStore, expanded: ReadonlySet<string>, pinned: ReadonlySet<string>, maxRowWidth = MAX_ROW_W): GraphLayout {
-  const nodes: GraphNode[] = [...store.entities.values()].map(entity => ({ id: entityId(entity.key), entity, label: humanLabel(entity), color: typeColor(store, entity.typeId), x: 0, y: 0 }));
+export function computeLayout(store: FeedStore, expanded: ReadonlySet<string>, pinned: ReadonlySet<string>, maxRowWidth = MAX_ROW_W, locale = 'en-US', t = (key: string, vars: Record<string, string | number> = {}) => translate(locale, key, vars)): GraphLayout {
+  const nodes: GraphNode[] = [...store.entities.values()].map(entity => ({ id: entityId(entity.key), entity, label: humanLabel(entity, locale), color: typeColor(store, entity.typeId), x: 0, y: 0 }));
   const byId = new Map(nodes.map(node => [node.id, node]));
   const byType = new Map<string, GraphNode[]>();
   for (const node of nodes) { const rows = byType.get(node.entity.typeId); if (rows) rows.push(node); else byType.set(node.entity.typeId, [node]); }
@@ -75,12 +81,12 @@ export function computeLayout(store: FeedStore, expanded: ReadonlySet<string>, p
   const clusters: GraphCluster[] = ordered.map(typeId => {
     const members = byType.get(typeId)!.sort((a, b) => natural(a.label, b.label) || natural(a.id, b.id));
     const info = store.header.types.find(row => row.typeId === typeId);
-    const name = displayLabel(info?.displayName, typeId), collapsible = members.length > COLLAPSE_ABOVE, open = !collapsible || expanded.has(typeId);
+    const name = displayLabel(info?.displayName, typeId, locale), collapsible = members.length > COLLAPSE_ABOVE, open = !collapsible || expanded.has(typeId);
     const visible = open ? members : members.filter(node => pinned.has(node.id));
     const cols = visible.length > 24 ? 3 : visible.length > 8 ? 2 : 1, rows = Math.ceil(visible.length / cols);
     const chipH = collapsible && !open ? CHIP_H : 0;
     const w = PAD * 2 + Math.max(cols * COL_W, 190), h = HEADER_H + chipH + rows * ROW_H + PAD;
-    return { typeId, title: `${plural(name, members.length)} (${members.length})`, color: members[0].color, members, visible, collapsible, expanded: open, x: 0, y: 0, w, h, chip: chipH ? { x: PAD, y: HEADER_H, w: w - PAD * 2, h: CHIP_H - 4 } : undefined, anchor: { x: 0, y: 0 } };
+    return { typeId, title: t('{group} ({count})', { group: locale.startsWith('zh') ? name : plural(name, members.length), count: members.length }), color: members[0].color, members, visible, collapsible, expanded: open, x: 0, y: 0, w, h, chip: chipH ? { x: PAD, y: HEADER_H, w: w - PAD * 2, h: CHIP_H - 4 } : undefined, anchor: { x: 0, y: 0 } };
   });
   let x = 0, y = 0, rowH = 0, width = 0;
   for (const cluster of clusters) {
@@ -111,10 +117,20 @@ export function computeLayout(store: FeedStore, expanded: ReadonlySet<string>, p
 }
 
 interface Transform { scale: number; x: number; y: number }
-const truncate = (label: string, max = 22) => label.length > max ? `${label.slice(0, max - 1)}…` : label;
+/** Wide characters need twice the room; keep full labels in accessible names and tooltips. */
+const truncate = (label: string, max = 24) => {
+  let width = 0, result = '';
+  for (const character of label) {
+    width += /[^\u0000-\u00ff]/.test(character) ? 2 : 1;
+    if (width > max) return `${result}…`;
+    result += character;
+  }
+  return result;
+};
 
 /** Readable SVG cluster view of the active entities and relations at the current cut. */
 export function EntityGraph({ store, selected, onSelect, highlights = [] }: EntityGraphProps) {
+  const { t, locale } = useI18n();
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [query, setQuery] = useState('');
   const [boxWidth, setBoxWidth] = useState(0);
@@ -122,15 +138,15 @@ export function EntityGraph({ store, selected, onSelect, highlights = [] }: Enti
   const selectedId = selected && entityId(selected);
   const highlightIds = useMemo(() => new Set(highlights.map(entityId)), [highlights.map(entityId).join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
   const needle = query.trim().toLowerCase();
-  const topology = [...store.entities].map(([id, entity]) => `${id}/${entity.typeId}/${humanLabel(entity)}`).join('|') + [...store.edges.values()].map(edge => `${edge.edgeId}/${entityId(edge.source)}/${entityId(edge.target)}`).join('|');
+  const topology = [...store.entities].map(([id, entity]) => `${id}/${entity.typeId}/${humanLabel(entity, locale)}`).join('|') + [...store.edges.values()].map(edge => `${edge.edgeId}/${entityId(edge.source)}/${entityId(edge.target)}`).join('|');
   const pinnedKey = [selectedId ?? '', ...highlightIds, needle].join('\u0000');
   const layout = useMemo(() => {
     const pinned = new Set<string>(highlightIds);
     if (selectedId) pinned.add(selectedId);
-    if (needle) for (const [id, entity] of store.entities) if (humanLabel(entity).toLowerCase().includes(needle) || id.toLowerCase().includes(needle)) pinned.add(id);
+    if (needle) for (const [id, entity] of store.entities) if (humanLabel(entity, locale).toLowerCase().includes(needle) || id.toLowerCase().includes(needle)) pinned.add(id);
     // Pack groups to the pane width so labels stay at a readable size instead of shrinking to fit one wide sheet.
-    return computeLayout(store, expanded, pinned, boxWidth ? Math.max(400, Math.min(900, boxWidth / .9)) : MAX_ROW_W);
-  }, [topology, expanded, pinnedKey, Math.round(boxWidth / 40)]); // eslint-disable-line react-hooks/exhaustive-deps
+    return computeLayout(store, expanded, pinned, boxWidth ? Math.max(400, Math.min(900, boxWidth / .9)) : MAX_ROW_W, locale, t);
+  }, [topology, expanded, pinnedKey, Math.round(boxWidth / 40), locale]); // eslint-disable-line react-hooks/exhaustive-deps
   const svg = useRef<SVGSVGElement>(null);
   const [transform, setTransform] = useState<Transform>({ scale: 1, x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; tx: number; ty: number; moved: boolean }>();
@@ -146,7 +162,7 @@ export function EntityGraph({ store, selected, onSelect, highlights = [] }: Enti
     const rect = svg.current?.getBoundingClientRect();
     if (!rect?.width) return;
     setBoxWidth(rect.width);
-    const scale = Math.min((rect.width - 24) / layout.width, 1);
+    const scale = Math.max(.1, Math.min((rect.width - 24) / layout.width, 1));
     setCanvasHeight(Math.max(300, Math.ceil(layout.height * scale + 28)));
     setTransform({ scale, x: (rect.width - layout.width * scale) / 2, y: 12 });
   };
@@ -171,27 +187,32 @@ export function EntityGraph({ store, selected, onSelect, highlights = [] }: Enti
   }, []);
   const toggle = (typeId: string) => setExpanded(previous => { const next = new Set(previous); if (next.has(typeId)) next.delete(typeId); else next.add(typeId); return next; });
   const collapsible = layout.clusters.filter(cluster => cluster.collapsible);
-  const matches = layout.nodes.filter(node => node.label.toLowerCase().includes(needle) || node.id.toLowerCase().includes(needle)).slice(0, 100);
+  const matchingNodes = layout.nodes.filter(node => node.label.toLowerCase().includes(needle) || node.id.toLowerCase().includes(needle));
+  const matches = matchingNodes.slice(0, 100);
+  const zoomAtCenter = (factor: number) => { const rect = svg.current?.getBoundingClientRect(); if (rect) zoom(factor, rect.width / 2, rect.height / 2); };
   const selectedNode = selectedId && layout.byId.get(selectedId);
   const relationCount = new Set(layout.edges.map(edge => edge.relationId)).size;
   return <div className="eg-root" data-testid="entity-graph" data-node-count={layout.nodes.length} data-edge-count={layout.edges.length}>
     <div className="eg-controls">
-      <b>{layout.nodes.length} entities in {layout.clusters.length} groups · {layout.edges.length} links{relationCount ? ` (${relationCount} kinds)` : ''}</b>
-      <button type="button" onClick={fit}>Fit graph</button>
-      {collapsible.length > 0 && <button type="button" onClick={() => setExpanded(collapsible.every(cluster => cluster.expanded) ? new Set() : new Set(collapsible.map(cluster => cluster.typeId)))}>{collapsible.every(cluster => cluster.expanded) ? 'Collapse big groups' : 'Expand all groups'}</button>}
-      <button type="button" aria-label="Zoom in graph" onClick={() => zoom(1.4, 200, 150)}>+</button>
-      <button type="button" aria-label="Zoom out graph" onClick={() => zoom(1 / 1.4, 200, 150)}>−</button>
-      <input aria-label="Search graph entities" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search entities" />
-      <select aria-label="Graph entity" value={selectedId ?? ''} onChange={event => { const node = layout.byId.get(event.target.value); if (node) onSelect(node.entity.key); }}>
-        <option value="">Select entity</option>
+      <b>{relationCount ? t('{entities} entities in {groups} groups · {links} links ({kinds} kinds)', { entities: layout.nodes.length, groups: layout.clusters.length, links: layout.edges.length, kinds: relationCount }) : t('{entities} entities in {groups} groups · {links} links', { entities: layout.nodes.length, groups: layout.clusters.length, links: layout.edges.length })}</b>
+      <button type="button" onClick={fit}>{t('Fit graph')}</button>
+      {collapsible.length > 0 && <button type="button" onClick={() => setExpanded(collapsible.every(cluster => cluster.expanded) ? new Set() : new Set(collapsible.map(cluster => cluster.typeId)))}>{collapsible.every(cluster => cluster.expanded) ? t('Collapse big groups') : t('Expand all groups')}</button>}
+      <button type="button" aria-label={t('Zoom in graph')} onClick={() => zoomAtCenter(1.4)}>+</button>
+      <button type="button" aria-label={t('Zoom out graph')} onClick={() => zoomAtCenter(1 / 1.4)}>−</button>
+      <input aria-label={t('Search graph entities')} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search entities')} />
+      <select aria-label={t('Graph entity')} value={selectedNode ? selectedNode.id : ''} onChange={event => { const node = layout.byId.get(event.target.value); if (node) onSelect(node.entity.key); }}>
+        <option value="">{t('Select entity')}</option>
         {selectedNode && !matches.some(node => node.id === selectedId) && <option value={selectedNode.id}>{selectedNode.label}</option>}
         {matches.map(node => <option key={node.id} value={node.id}>{node.label}</option>)}
       </select>
-      {!layout.nodes.length && <span>No active entities at this cut.</span>}
+      {!layout.nodes.length && <span>{t('No active entities at this cut.')}</span>}
+      {!!needle && <span role="status">{matchingNodes.length ? t('{count} matching entities', { count: matchingNodes.length }) : t('No entities match your search.')}</span>}
+      {matchingNodes.length > matches.length && <span>{t('Showing the first {count} matches. Refine your search to see more.', { count: matches.length })}</span>}
     </div>
-    <p className="eg-hint">Entities are grouped by type. Click a group title to open or close it; selected and highlighted entities always stay visible.</p>
+    <p className="eg-hint">{t('Entities are grouped by type. Click a group title to open or close it; selected and highlighted entities always stay visible.')}</p>
+    <p className="eg-legend">{t('Colors identify entity types; arrows show relation direction. Dashed links summarize collapsed groups; orange marks selection and highlights.')}</p>
     <div className="eg-canvas">
-      <svg ref={svg} role="img" aria-label="Entity relation graph; drag to pan, scroll to zoom" className="eg-svg" style={{ height: canvasHeight }}
+      <svg ref={svg} role="group" aria-label={t('Entity relation graph; drag to pan, scroll to zoom')} className="eg-svg" style={{ height: canvasHeight }}
         onPointerDown={event => { if ((event.target as Element).closest('.eg-node,.eg-cluster-title')) return; drag.current = { x: event.clientX, y: event.clientY, tx: transform.x, ty: transform.y, moved: false }; event.currentTarget.setPointerCapture?.(event.pointerId); }}
         onPointerMove={event => { const start = drag.current; if (!start) return; const dx = event.clientX - start.x, dy = event.clientY - start.y; if (Math.hypot(dx, dy) > 3) start.moved = true; if (start.moved) setTransform({ ...transform, x: start.tx + dx, y: start.ty + dy }); }}
         onPointerUp={() => { drag.current = undefined; }}
@@ -204,14 +225,16 @@ export function EntityGraph({ store, selected, onSelect, highlights = [] }: Enti
           {layout.clusters.map(cluster => <g key={cluster.typeId} className="eg-cluster">
             <rect x={cluster.x} y={cluster.y} width={cluster.w} height={cluster.h} rx={8} className="eg-cluster-box" style={{ stroke: cluster.color }} />
             <g className="eg-cluster-title" role={cluster.collapsible ? 'button' : undefined} tabIndex={cluster.collapsible ? 0 : undefined} aria-expanded={cluster.collapsible ? cluster.expanded : undefined}
-              aria-label={cluster.collapsible ? `${cluster.expanded ? 'Collapse' : 'Expand'} ${cluster.title}` : undefined}
+              aria-label={cluster.collapsible ? (cluster.expanded ? t('Collapse {group}', { group: cluster.title }) : t('Expand {group}', { group: cluster.title })) : undefined}
               onClick={() => cluster.collapsible && toggle(cluster.typeId)} onKeyDown={event => { if (cluster.collapsible && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggle(cluster.typeId); } }}>
               <rect x={cluster.x} y={cluster.y} width={cluster.w} height={HEADER_H} rx={8} fill={cluster.color} opacity={.14} />
-              <text x={cluster.x + PAD} y={cluster.y + 19} className="eg-cluster-label">{cluster.collapsible ? (cluster.expanded ? '▾ ' : '▸ ') : ''}{cluster.title}</text>
+              <title>{cluster.title}</title>
+              <text x={cluster.x + PAD} y={cluster.y + 19} className="eg-cluster-label">{cluster.collapsible ? (cluster.expanded ? '▾ ' : '▸ ') : ''}{truncate(cluster.title, Math.floor((cluster.w - PAD * 2 - 16) / 7))}</text>
             </g>
-            {cluster.chip && <g className="eg-cluster-title eg-chip" onClick={() => toggle(cluster.typeId)}>
+            {cluster.chip && <g className="eg-cluster-title eg-chip" role="button" tabIndex={0} aria-expanded={false} aria-label={t('Show all {count} entities in {group}', { count: cluster.members.length, group: cluster.title })}
+              onClick={() => toggle(cluster.typeId)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(cluster.typeId); } }}>
               <rect x={cluster.x + cluster.chip.x} y={cluster.y + cluster.chip.y} width={cluster.chip.w} height={cluster.chip.h} rx={5} className="eg-chip-box" />
-              <text x={cluster.x + cluster.chip.x + 10} y={cluster.y + cluster.chip.y + 16} className="eg-chip-label">Show all {cluster.members.length}{cluster.visible.length ? ` (${cluster.visible.length} pinned below)` : ''}</text>
+              <text x={cluster.x + cluster.chip.x + 10} y={cluster.y + cluster.chip.y + 16} className="eg-chip-label">{cluster.visible.length ? t('Show all {count} ({pinned} pinned below)', { count: cluster.members.length, pinned: cluster.visible.length }) : t('Show all {count}', { count: cluster.members.length })}</text>
             </g>}
           </g>)}
           {layout.edges.map(edge => {
@@ -221,20 +244,21 @@ export function EntityGraph({ store, selected, onSelect, highlights = [] }: Enti
             return <g key={edge.key}>
               <line className={`eg-edge${active ? ' eg-edge-active' : ''}${edge.a.node && edge.b.node ? '' : ' eg-edge-group'}`} markerEnd={active ? 'url(#eg-arrow-active)' : 'url(#eg-arrow)'}
                 x1={edge.a.x + ux * 7} y1={edge.a.y + uy * 7} x2={edge.b.x - ux * 10} y2={edge.b.y - uy * 10}>
-                <title>{readableLabel(edge.relationId)}{edge.count > 1 ? ` × ${edge.count}` : ''}</title>
+                <title>{readableLabel(edge.relationId, locale)}{edge.count > 1 ? ` × ${edge.count}` : ''}</title>
               </line>
-              {((active && !!selectedId && (edge.a.node?.id === selectedId || edge.b.node?.id === selectedId)) || edge.count > 1 && !edge.a.node && !edge.b.node) && <text x={midX} y={midY - 3} textAnchor="middle" className="eg-edge-label">{readableLabel(edge.relationId)}{edge.count > 1 ? ` × ${edge.count}` : ''}</text>}
+              {((active && !!selectedId && (edge.a.node?.id === selectedId || edge.b.node?.id === selectedId)) || edge.count > 1 && !edge.a.node && !edge.b.node) && <text x={midX} y={midY - 3} textAnchor="middle" className="eg-edge-label">{readableLabel(edge.relationId, locale)}{edge.count > 1 ? ` × ${edge.count}` : ''}</text>}
             </g>;
           })}
           {layout.clusters.flatMap(cluster => cluster.visible).map(node => {
             const isSelected = node.id === selectedId, isHighlighted = highlightIds.has(node.id);
             return <g key={node.id} className={`eg-node${isHighlighted ? ' eg-node-highlight' : ''}`} role="button" tabIndex={0}
-              aria-pressed={isSelected} aria-label={`${node.label}, ${node.entity.typeId}, generation ${node.entity.key.generation}`}
+              aria-pressed={isSelected} aria-label={t('{entity}, {type}, generation {generation}', { entity: node.label, type: node.entity.typeId, generation: node.entity.key.generation })}
               onClick={event => { event.stopPropagation(); if (!drag.current?.moved) onSelect(node.entity.key); }}
               onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(node.entity.key); } }}>
               <rect x={node.x - 10} y={node.y - ROW_H / 2} width={COL_W - 8} height={ROW_H} fill={isHighlighted ? 'rgba(231,129,35,.14)' : 'transparent'} rx={4} pointerEvents="all" />
               {(isSelected || isHighlighted) && <circle cx={node.x} cy={node.y} r={9} className="eg-node-ring" />}
-              <circle cx={node.x} cy={node.y} r={5.5} fill={node.color} className="eg-node-dot"><title>{node.label} · {node.entity.typeId} · generation {node.entity.key.generation}</title></circle>
+              <title>{t('{entity} · {type} · generation {generation}', { entity: node.label, type: node.entity.typeId, generation: node.entity.key.generation })}</title>
+              <circle cx={node.x} cy={node.y} r={5.5} fill={node.color} className="eg-node-dot" />
               <text x={node.x + 11} y={node.y + 4} className={`eg-label${isSelected ? ' eg-label-selected' : ''}`}>{truncate(node.label)}</text>
             </g>;
           })}

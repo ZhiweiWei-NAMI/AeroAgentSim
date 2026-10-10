@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageState } from '../console/PageState';
-import { TemplateApi, type ComparisonRun, type KnobValue, type ScenarioTemplate } from './api';
-import { metricHelp } from './metric-help';
+import { TemplateApi, type AlgorithmDescriptor, type AlgorithmSlot, type ComparisonRun, type KnobValue, type ScenarioTemplate, type TemplateKnob } from './api';
+import { metricHelp, metricLabel } from './metric-help';
+import { useI18n } from '../i18n/I18nProvider';
+import { localized, translate } from '../i18n/translate';
+import { knobOptionLabel } from './presentation';
 import './results.css';
 
 export interface CompareRunsProps {
@@ -39,6 +42,7 @@ function formatKpi(value: number | null, unit: string): string {
 interface KpiRow {
   id: string;
   label: string;
+  label_zh?: string;
   unit: string;
   direction: 'min' | 'max' | 'neutral';
   values: (number | null)[];
@@ -58,6 +62,7 @@ function kpiRows(runs: ComparisonRun[], order: string[] = []): KpiRow[] {
       ? (direction === 'min' ? Math.min(...known) : Math.max(...known))
       : undefined;
     return { id, label: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.label ?? humanize(id),
+      label_zh: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.label_zh,
       unit: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.unit ?? '', direction, values, best };
   });
   const rank = (id: string) => {
@@ -68,49 +73,59 @@ function kpiRows(runs: ComparisonRun[], order: string[] = []): KpiRow[] {
 }
 
 /** Knob / algorithm columns where the compared runs actually differ. */
-function differences(runs: ComparisonRun[], templates: Map<string, ScenarioTemplate>): { label: string; values: string[] }[] {
+function differences(runs: ComparisonRun[], templates: Map<string, ScenarioTemplate>, locale: string, algorithms: AlgorithmDescriptor[]): { label: string; values: string[] }[] {
+  const t = (key: string) => translate(locale, key);
   const keys: string[] = [];
   runs.forEach(run => Object.keys(run.knobs ?? {}).forEach(key => { if (!keys.includes(key)) keys.push(key); }));
-  const knobLabel = (key: string): string => {
-    for (const template of [...templates.values()].filter(template=>runs.some(run=>run.template_id===template.id))) {
-      const knob = template.knobs.find(candidate => candidate.id === key);
-      if (knob) return knob.label;
-    }
-    return humanize(key);
-  };
-  // Knobs that point at an algorithm slot (pointer: /algorithms/<slot>) and that
-  // slot's direct algorithm choice describe the same thing — keep one row.
+  const relevant = [...templates.values()].filter(template => runs.some(run => run.template_id === template.id));
+  const knobs = new Map<string, TemplateKnob>();
   const pointerSlot = new Map<string, string>();
-  for (const template of [...templates.values()].filter(template=>runs.some(run=>run.template_id===template.id))) {
-    for (const knob of template.knobs) {
-      const slot = knob.pointer?.match(/^\/algorithms\/([^/]+)$/)?.[1];
-      if (slot) pointerSlot.set(knob.id, slot);
-    }
+  for (const template of relevant) for (const knob of template.knobs) {
+    if (!knobs.has(knob.id)) knobs.set(knob.id, knob);
+    const slot = knob.pointer?.match(/^\/algorithms\/([^/]+)$/)?.[1];
+    if (slot) pointerSlot.set(knob.id, slot);
   }
   const algorithmSlots = ['allocation', 'path_planning', 'conflict_resolution', 'charging'] as const;
+  const slotLabels: Record<AlgorithmSlot, string> = {
+    allocation: t('Allocation'), path_planning: t('Path Planning'),
+    conflict_resolution: t('Conflict Resolution'), charging: t('Charging'),
+  };
   const usedSlots = new Set<string>();
-  const knobColumns = keys.map(key => {
-    const slot = pointerSlot.get(key);
-    if (slot && algorithmSlots.some(candidate=>candidate===slot)) {
-      const typedSlot=slot as typeof algorithmSlots[number];
-      const agrees=runs.every(run=>run.knobs[key]===undefined||run.algorithms[typedSlot]===undefined||run.knobs[key]===run.algorithms[typedSlot]);
-      if(agrees){usedSlots.add(slot);return {label:knobLabel(key),values:runs.map(run=>display(run.knobs[key]??run.algorithms[typedSlot]))};}
+  interface Difference { label: string; raw: (KnobValue | undefined)[]; knob?: TemplateKnob; slot?: AlgorithmSlot }
+  const knobColumns: Difference[] = keys.map(key => {
+    const knob = knobs.get(key), slot = pointerSlot.get(key);
+    const label = knob ? localized(knob, 'label', locale) : humanize(key);
+    if (slot && algorithmSlots.some(candidate => candidate === slot)) {
+      const typedSlot = slot as AlgorithmSlot;
+      const agrees = runs.every(run => run.knobs[key] === undefined || run.algorithms[typedSlot] === undefined || run.knobs[key] === run.algorithms[typedSlot]);
+      if (agrees) { usedSlots.add(slot); return {label, knob, slot: typedSlot, raw: runs.map(run => run.knobs[key] ?? run.algorithms[typedSlot])}; }
     }
-    return { label: knobLabel(key), values: runs.map(run => display(run.knobs?.[key])) };
+    return {label, knob, raw: runs.map(run => run.knobs?.[key])};
   });
-  const algorithmColumns = algorithmSlots
-    .filter(slot => runs.some(run => run.algorithms?.[slot]) && !usedSlots.has(slot))
-    .map(slot => ({ label: humanize(slot), values: runs.map(run => display(run.algorithms?.[slot])) }));
-  return [...knobColumns, ...algorithmColumns].filter(column => new Set(column.values).size > 1);
+  const algorithmColumns: Difference[] = algorithmSlots.filter(slot => runs.some(run => run.algorithms?.[slot]) && !usedSlots.has(slot))
+    .map(slot => ({label: slotLabels[slot], slot, raw: runs.map(run => run.algorithms?.[slot])}));
+  // Compare retained typed values, not translations (different ids may share a label).
+  return [...knobColumns, ...algorithmColumns].filter(column => new Set(column.raw).size > 1).map(column => ({
+    label: column.label,
+    values: column.raw.map(value => {
+      if (value === undefined) return '—';
+      if (locale !== 'zh-CN') return display(value);
+      if (column.knob) return knobOptionLabel(column.knob, value, locale, algorithms.filter(row => row.slot === column.slot));
+      const algorithm = algorithms.find(row => row.slot === column.slot && row.id === value);
+      return algorithm ? localized(algorithm, 'label', locale) : typeof value === 'boolean' ? value ? t('yes') : t('no') : display(value);
+    }),
+  }));
 }
 
-function Column({ run, rows, index, more }: { run: ComparisonRun; rows: KpiRow[]; index: number; more: KpiRow[] }) {
+function Column({ run, rows, index, more, template }: { run: ComparisonRun; rows: KpiRow[]; index: number; more: KpiRow[]; template?: ScenarioTemplate }) {
+  const { t, locale } = useI18n();
+  const label = (row: KpiRow) => metricLabel(row.id, row.label, locale, row.label_zh);
   return (
     <section className="newc-compare-col">
-      <h3>Run {index+1} · {run.title || humanize(run.id)}</h3>
-      {run.template_id && <p className="newc-compare-template">{humanize(run.template_id)}</p>}
+      <h3>{t('Run {number} · {title}', { number: index + 1, title: localized(run, 'title', locale) || humanize(run.id) })}</h3>
+      {run.template_id && <p className="newc-compare-template">{locale === 'zh-CN' && template ? localized(template, 'title', locale) : humanize(run.template_id)}</p>}
       <table className="newc-compare-table">
-        <caption>Results · preferred value highlighted</caption>
+        <caption>{t('Results · preferred value highlighted')}</caption>
         <tbody>
           {rows.map(row => {
             const value = row.values.length ? row.values[index] : null;
@@ -118,9 +133,9 @@ function Column({ run, rows, index, more }: { run: ComparisonRun; rows: KpiRow[]
             return (
               <tr key={row.id} className={isBest ? 'is-best' : undefined}>
                 <th scope="row">
-                  {row.label}
-                  {metricHelp(row.id) !== undefined && (
-                    <span className="newc-compare-help" title={metricHelp(row.id)} aria-label={`About ${row.label}`}>?</span>
+                  {label(row)}
+                  {metricHelp(row.id, locale) !== undefined && (
+                    <span className="newc-compare-help" title={metricHelp(row.id, locale)} aria-label={t('About {label}', { label: label(row) })} tabIndex={0}>?</span>
                   )}
                 </th>
                 <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>
@@ -134,7 +149,7 @@ function Column({ run, rows, index, more }: { run: ComparisonRun; rows: KpiRow[]
       </table>
       {more.length > 0 && (
         <details className="newc-kpi-more">
-          <summary>More metrics ({more.length})</summary>
+          <summary>{t('More metrics ({count})', { count: more.length })}</summary>
           <table className="newc-compare-table">
             <tbody>
               {more.map(row => {
@@ -142,7 +157,7 @@ function Column({ run, rows, index, more }: { run: ComparisonRun; rows: KpiRow[]
                 const isBest = row.best !== undefined && value !== null && value === row.best;
                 return (
                   <tr key={row.id} className={isBest ? 'is-best' : undefined}>
-                    <th scope="row">{row.label}{metricHelp(row.id)&&<span className="newc-compare-help" title={metricHelp(row.id)} aria-label={`About ${row.label}`} tabIndex={0}>?</span>}</th>
+                    <th scope="row">{label(row)}{metricHelp(row.id, locale)&&<span className="newc-compare-help" title={metricHelp(row.id, locale)} aria-label={t('About {label}', { label: label(row) })} tabIndex={0}>?</span>}</th>
                     <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>{formatKpi(value, row.unit)}</td>
                   </tr>
                 );
@@ -177,6 +192,8 @@ function Bar({ value, row }: { value: number | null; row: KpiRow }) {
  * comparison still renders with machine ids and generic ordering.
  */
 export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
+  const { t, locale } = useI18n();
+  const [algorithms, setAlgorithms] = useState<AlgorithmDescriptor[]>([]);
   const [runs, setRuns] = useState<ComparisonRun[]>();
   const [templates, setTemplates] = useState<Map<string, ScenarioTemplate>>(() => new Map());
   const [catalogNote, setCatalogNote] = useState<string>();
@@ -213,10 +230,18 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
       .catch(problem => {
         if (control.signal.aborted) return;
         setTemplates(new Map());
-        setCatalogNote(`Metric names and settings come from machine ids — template details are unavailable (${String(problem)}).`);
+        setCatalogNote(String(problem));
       });
     return () => control.abort();
   }, [api, ids.join(','), attempt]);
+
+  useEffect(() => {
+    setAlgorithms([]);
+    if (locale !== 'zh-CN' || ids.length < 2 || ids.length > 4) return;
+    const control = new AbortController();
+    void api.algorithms(control.signal).then(rows => { if (!control.signal.aborted) setAlgorithms(rows); }).catch(() => { /* Catalog ids are still preserved when metadata is unavailable. */ });
+    return () => control.abort();
+  }, [api, locale, ids.join(','), attempt]);
 
   const retry = useCallback(() => setAttempt(attempt => attempt + 1), []);
   const declaredOrder = useMemo(() => {
@@ -230,18 +255,18 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
   const rows = useMemo(() => (runs ? kpiRows(runs, declaredOrder) : []), [runs, declaredOrder]);
   const primary = useMemo(() => rows.filter(row => declaredOrder.length?declaredOrder.includes(row.id):row.values.some(value=>value!==null&&value!==0)), [rows, declaredOrder]);
   const more = useMemo(() => rows.filter(row=>!primary.includes(row)), [rows, primary]);
-  const columns = useMemo(() => (runs ? differences(runs, templates) : []), [runs, templates]);
+  const columns = useMemo(() => (runs ? differences(runs, templates, locale, algorithms) : []), [runs, templates, locale, algorithms]);
 
   if (loading && !runs) {
-    return <PageState kind="loading" title="Loading the comparison" description="Fetching the results of the runs you selected." />;
+    return <PageState kind="loading" title={t('Loading the comparison')} description={t('Fetching the results of the runs you selected.')} />;
   }
   if (error) {
     return (
-      <PageState kind="error" title="Could not compare the runs" description={error}
+      <PageState kind="error" title={t('Could not compare the runs')} description={ids.length < 2 || ids.length > 4 ? t('Pick two to four runs to compare.') : error}
         action={(
           <span className="newc-compare-actions">
-            {onBack && <button type="button" className="newc-button" onClick={onBack}>Go back</button>}
-            {ids.length >= 2 && ids.length <= 4 && <button type="button" className="newc-button" onClick={retry}>Try again</button>}
+            {onBack && <button type="button" className="newc-button" onClick={onBack}>{t('Go back')}</button>}
+            {ids.length >= 2 && ids.length <= 4 && <button type="button" className="newc-button" onClick={retry}>{t('Try again')}</button>}
           </span>
         )} />
     );
@@ -250,13 +275,13 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
   return (
     <div className="newc-compare">
       <header className="newc-compare-header">
-        <h2 className="newc-compare-title">Comparing {runs.length} runs</h2>
-        {onBack && <button type="button" className="newc-button" onClick={onBack}>Go back</button>}
+        <h2 className="newc-compare-title">{t('Comparing {count} runs', { count: runs.length })}</h2>
+        {onBack && <button type="button" className="newc-button" onClick={onBack}>{t('Go back')}</button>}
       </header>
-      {catalogNote && <p className="newc-catalog-note" role="note">{catalogNote}</p>}
+      {catalogNote && <p className="newc-catalog-note" role="note">{t('Metric names and settings come from machine ids — template details are unavailable ({error}).', { error: catalogNote })}</p>}
       {columns.length > 0 && (
         <section className="newc-compare-section">
-          <h4>Settings that differ</h4>
+          <h4>{t('Settings that differ')}</h4>
           <ul className="newc-diff-list">
             {columns.map(column => (
               <li key={column.label}>
@@ -269,7 +294,7 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
       )}
       <div className={`newc-compare-grid n-${runs.length}`}>
         {runs.map((run, index) => (
-          <Column key={run.id} run={run} rows={primary} more={more} index={index} />
+          <Column key={run.id} run={run} rows={primary} more={more} index={index} template={run.template_id ? templates.get(run.template_id) : undefined} />
         ))}
       </div>
     </div>

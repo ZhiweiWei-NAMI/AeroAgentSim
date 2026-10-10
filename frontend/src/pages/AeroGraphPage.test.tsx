@@ -1,16 +1,22 @@
-import { beforeAll, afterEach, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, afterAll, afterEach, expect, it, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { I18nProvider } from '../i18n/I18nProvider';
-import AeroGraphPage from './AeroGraphPage';
+import { I18nProvider, useI18n } from '../i18n/I18nProvider';
+import AeroGraphPage, { explorerApiBase } from './AeroGraphPage';
 import { clearAeroGraphCacheForTests } from './aerograph-cache';
+
+beforeEach(() => { window.localStorage.setItem('aeroagentsim.locale', 'en-US'); });
 
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', { writable: true, value: vi.fn().mockImplementation(query => ({ matches: false, media: query, onchange: null, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn() })) });
+  // Antd measures scrollbars with pseudo-elements, which jsdom cannot render.
+  const computedStyle = window.getComputedStyle.bind(window);
+  vi.spyOn(window, 'getComputedStyle').mockImplementation(element => computedStyle(element));
 });
+afterAll(() => { vi.restoreAllMocks(); });
 
-afterEach(() => { cleanup(); clearAeroGraphCacheForTests(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); clearAeroGraphCacheForTests(); window.localStorage.clear(); vi.unstubAllGlobals(); });
 
 const payload = {
   workspace: { id: 'studio-1', name: 'Traffic accident (demo)' },
@@ -50,8 +56,13 @@ function mockFetch(body: unknown, ok = true) {
   return vi.fn(async () => new Response(JSON.stringify(body), { status: ok ? 200 : 503, headers: { 'Content-Type': 'application/json' } }));
 }
 
-function renderPage() {
-  return render(<MemoryRouter initialEntries={['/aerograph?type=oo%3AVehicle']}><I18nProvider><AeroGraphPage /></I18nProvider></MemoryRouter>);
+function LocaleSwitch() {
+  const { setLocale } = useI18n();
+  return <><button onClick={() => setLocale('zh-CN')}>switch-zh</button><button onClick={() => setLocale('en-US')}>switch-en</button></>;
+}
+
+function renderPage(route = '/aerograph?type=oo%3AVehicle') {
+  return render(<MemoryRouter initialEntries={[route]}><I18nProvider><LocaleSwitch /><AeroGraphPage /></I18nProvider></MemoryRouter>);
 }
 
 it('renders the tree, ancestry breadcrumb and inherited fields without raw ids as headings', async () => {
@@ -167,4 +178,136 @@ it('marks readiness only after a real payload and reuses the cache across remoun
   expect(second.getByTestId('aerograph-page').getAttribute('data-ready')).toBe('true');
   expect(fetchMock.mock.calls.length - callsAfterFirstLoad).toBeLessThanOrEqual(1);
   second.unmount();
+});
+
+it.each(['http://127.0.0.1:4179', 'http://localhost:3000', 'https://console.example.test'])('keeps the explorer on its serving origin %s instead of guessing a backend port', origin => {
+  expect(explorerApiBase('?type=oo%3AVehicle', origin)).toBe(origin);
+  expect(explorerApiBase('?api=', origin)).toBe(origin);
+});
+
+it('honours an explicit API override and otherwise fetches from the current origin', async () => {
+  expect(explorerApiBase('?api=https%3A%2F%2Fapi.example.test%3A8443', 'http://localhost:4179')).toBe('https://api.example.test:8443');
+  const fetchMock = mockFetch(payload);
+  vi.stubGlobal('fetch', fetchMock);
+  const sameOrigin = renderPage();
+  await screen.findByRole('heading', { name: 'Vehicle' });
+  expect(fetchMock).toHaveBeenCalledWith(`${window.location.origin}/v1/studio/explorer`, undefined);
+  sameOrigin.unmount();
+  renderPage('/aerograph?api=https%3A%2F%2Fapi.example.test%3A8443&workspace=studio-1');
+  await screen.findByRole('heading', { name: 'Vehicle' });
+  expect(fetchMock).toHaveBeenCalledWith('https://api.example.test:8443/v1/studio/explorer?workspace_id=studio-1', undefined);
+});
+
+it('changes actual graph nodes, relation labels, tree, field table and rule names with the locale without refetching', async () => {
+  const fetchMock = mockFetch({ ...payload,
+    types: payload.types.map(row => row.id === 'oo:Vehicle' ? { ...row, name: '载具 / Vehicle' } : row),
+    relations: [{ ...payload.relations[0], displayName: { 'en-US': 'Sensor output channel', 'zh-CN': '传感器输出通道' } }],
+    events: [{ id: 'vehicle.stopped', name: { 'en-US': 'Vehicle stopped', 'zh-CN': '载具已停止' }, definition: { entityTypeIds: ['oo:Vehicle'] } }],
+    chains: [{ id: 'vehicle.response', name: { 'en-US': 'Vehicle response', 'zh-CN': '载具响应' }, definition: { roles: { actor: { type: 'oo:Vehicle' } } } }],
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  renderPage();
+  await screen.findByRole('heading', { name: 'Vehicle' });
+  const graph = screen.getByTestId('aerograph-graph');
+  expect(within(graph).getByRole('button', { name: 'Explore Vehicle' }).querySelector('text')?.textContent).toBe('Vehicle');
+  expect(within(graph).getByText('Sensor output channel', { selector: 'line > title' })).toBeTruthy();
+  const calls = fetchMock.mock.calls.length;
+  fireEvent.click(screen.getByRole('button', { name: 'switch-zh' }));
+  expect(screen.getByRole('heading', { name: '载具' })).toBeTruthy();
+  expect(within(graph).getByRole('button', { name: '查看载具' }).querySelector('text')?.textContent).toBe('载具');
+  expect(within(graph).getByRole('button', { name: '查看物理资产' })).toBeTruthy();
+  expect(within(graph).getByRole('img', { name: '所选类型及相邻类型' })).toBeTruthy();
+  expect(within(graph).getByText('传感器输出通道', { selector: 'line > title' })).toBeTruthy();
+  expect(within(graph).queryByText('Sensor output channel', { selector: 'line > title' })).toBeNull();
+  expect(within(screen.getByTestId('aerograph-tree')).getByText('载具')).toBeTruthy();
+  expect(screen.getByLabelText('类型继承关系')).toBeTruthy();
+  expect(screen.getByRole('columnheader', { name: '字段' })).toBeTruthy();
+  expect(screen.getByRole('columnheader', { name: '值类型' })).toBeTruthy();
+  expect(screen.getByRole('columnheader', { name: '写入插件' })).toBeTruthy();
+  expect(screen.getByText('当前运行构型总质量')).toBeTruthy();
+  expect(screen.getByText('数值 · kg')).toBeTruthy();
+  expect(screen.getByText('记录 · 2 个字段')).toBeTruthy();
+  expect(screen.getByText('构成')).toBeTruthy();
+  expect(screen.getByText('载具 → 物理资产')).toBeTruthy();
+  expect(screen.getByText('质量落入选定区间')).toBeTruthy();
+  expect(screen.getByText('载具已停止')).toBeTruthy();
+  expect(screen.getByText('载具响应')).toBeTruthy();
+  expect(screen.getByText('谓词')).toBeTruthy();
+  expect(screen.getByText('事件')).toBeTruthy();
+  expect(screen.getByText('行为链')).toBeTruthy();
+  expect(screen.getByText('工作区中有 12 个')).toBeTruthy();
+  expect(screen.getByText(/字段用于存储一个值/)).toBeTruthy();
+  expect(screen.getByText(/缺少输入时结果是未知/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'switch-en' }));
+  expect(within(graph).getByRole('button', { name: 'Explore Vehicle' }).querySelector('text')?.textContent).toBe('Vehicle');
+  expect(within(graph).getByText('Sensor output channel', { selector: 'line > title' })).toBeTruthy();
+  expect(screen.getByText('Mass within window')).toBeTruthy();
+  expect(fetchMock.mock.calls.length).toBe(calls);
+});
+
+it('keeps zoom, wheel, reset, keyboard selection and inherited relation controls working after a locale change', async () => {
+  vi.stubGlobal('fetch', mockFetch({ ...payload, relations: [...payload.relations,
+    { id: 'parent.link', displayName: { 'en-US': 'Parent link', 'zh-CN': '父类型连接' }, sourceClass: 'oo:ModelObject', targetClass: 'oo:UnusedCatalogType' },
+  ] }));
+  renderPage();
+  await screen.findByRole('heading', { name: 'Vehicle' });
+  fireEvent.click(screen.getByRole('button', { name: 'switch-zh' }));
+  const graph = screen.getByTestId('aerograph-graph');
+  const camera = within(graph).getByTestId('aerograph-camera');
+  fireEvent.click(within(graph).getByRole('button', { name: '放大类型图' }));
+  expect(camera.getAttribute('transform')).toBe('translate(0 0) scale(1.2)');
+  fireEvent.click(within(graph).getByRole('button', { name: '缩小类型图' }));
+  expect(camera.getAttribute('transform')).toBe('translate(0 0) scale(1)');
+  fireEvent.wheel(within(graph).getByRole('img'), { deltaY: -120 });
+  expect(camera.getAttribute('transform')).toBe('translate(0 0) scale(1.1)');
+  fireEvent.click(within(graph).getByRole('button', { name: '重置视图' }));
+  expect(camera.getAttribute('transform')).toBe('translate(0 0) scale(1)');
+  expect(within(graph).queryByText('父类型连接', { selector: 'line > title' })).toBeNull();
+  fireEvent.click(within(graph).getByRole('checkbox', { name: '继承的关系' }));
+  expect(within(graph).getByText('父类型连接', { selector: 'line > title' })).toBeTruthy();
+  fireEvent.click(within(graph).getByRole('button', { name: '放大类型图' }));
+  fireEvent.keyDown(within(graph).getByRole('button', { name: '查看物理资产' }), { key: 'Enter' });
+  expect(screen.getByRole('heading', { name: '物理资产' })).toBeTruthy();
+  expect(camera.getAttribute('transform')).toBe('translate(0 0) scale(1)');
+  fireEvent.keyDown(within(graph).getByRole('button', { name: '查看模型对象' }), { key: ' ' });
+  expect(screen.getByRole('heading', { name: '模型对象' })).toBeTruthy();
+  expect(screen.getByText('抽象类型')).toBeTruthy();
+});
+
+it('inherits fields from every declared parent even when the first parent is missing, and preserves schema unit symbols', async () => {
+  vi.stubGlobal('fetch', mockFetch({ ...payload,
+    types: [...payload.types.map(row => row.id === 'oo:Vehicle' ? { ...row, parents: ['missing:Parent', 'parent:A', 'parent:B'] } : row),
+      { id: 'parent:A', name: 'First parent', parents: ['oo:ModelObject'], count: 0 },
+      { id: 'parent:B', name: 'Second parent', parents: [], count: 0 },
+    ],
+    fields: [...payload.fields,
+      { id: 'parent:B.distance', name: { 'en-US': 'Secondary parent value', 'zh-CN': '第二父类型的值' }, declaring_type: 'parent:B', schema: { type: 'number', unit: 'm', nullable: true }, metadata: {}, writers: [] },
+    ],
+  }));
+  renderPage();
+  await screen.findByRole('heading', { name: 'Vehicle' });
+  expect(screen.getByText('Secondary parent value')).toBeTruthy();
+  expect(screen.getByText('Composition')).toBeTruthy();
+  expect(screen.getByText('Number · m · nullable')).toBeTruthy();
+  const tree = screen.getByTestId('aerograph-tree');
+  expect(within(tree).getByText('First parent')).toBeTruthy();
+  expect(within(tree).getByText('Second parent')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'switch-zh' }));
+  expect(screen.getByText('第二父类型的值')).toBeTruthy();
+  expect(screen.getByText('数值 · m · 允许空值')).toBeTruthy();
+});
+
+it('retains a successfully cached catalog while reporting a failed background revalidation', async () => {
+  const fetchMock = mockFetch(payload);
+  vi.stubGlobal('fetch', fetchMock);
+  const first = renderPage();
+  await screen.findByRole('heading', { name: 'Vehicle' });
+  first.unmount();
+  fetchMock.mockImplementationOnce(async () => new Response(JSON.stringify({ detail: 'catalog temporarily offline' }), { status: 503 }));
+  renderPage();
+  expect(screen.getByRole('heading', { name: 'Vehicle' })).toBeTruthy();
+  await screen.findByText('The explorer catalog is unavailable');
+  expect(screen.getByRole('heading', { name: 'Vehicle' })).toBeTruthy();
+  expect(screen.getByText('Showing the last loaded catalog. Retry to check for updates.')).toBeTruthy();
+  expect(screen.getByTestId('aerograph-page').getAttribute('data-ready')).toBe('true');
 });

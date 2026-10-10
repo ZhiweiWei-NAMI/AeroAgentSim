@@ -2,8 +2,10 @@ format: aeroagentsim.template/v1
 city: huangpu
 id: medical-delivery
 title: Urgent medical delivery
+title_zh: 紧急医疗配送
 summary: Drones pause routine deliveries to carry urgent supplies from a hospital
   to a clinic.
+summary_zh: 无人机暂停常规配送，优先将紧急医疗物资从医院送往诊所。
 category: emergency
 difficulty: beginner
 duration_s: 300
@@ -11,12 +13,19 @@ scenario: scenario.yaml
 observe:
 - An urgent request pauses a parcel delivery, then the parcel resumes.
 - Watch how quickly supplies reach the clinic.
+observe_zh:
+- 紧急请求打断包裹配送，处理完毕后再恢复原任务。
+- 观察医疗物资多久能送达诊所。
 try:
 - Add drones to reduce the wait for urgent supplies.
 - Compare nearest and auction allocation.
+try_zh:
+- 增加无人机，缩短紧急物资的等待时间。
+- 对比就近分配与竞价分配。
 knobs:
 - id: fleet_size
   label: Number of aircraft
+  label_zh: 飞行器数量
   type: integer
   default: 6
   min: 1
@@ -24,6 +33,7 @@ knobs:
   pointer: /generators/fleet/count
 - id: order_rate
   label: Routine parcel orders per second
+  label_zh: 每秒常规包裹订单数
   type: number
   default: 0.06
   min: 0.005
@@ -31,6 +41,7 @@ knobs:
   pointer: /engines/tasks/config/generators/0/arrivals/rate_per_s
 - id: wind_speed
   label: Normal wind speed (m/s)
+  label_zh: 常态风速（米/秒）
   type: number
   default: 2.0
   min: 0
@@ -38,6 +49,7 @@ knobs:
   pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
 - id: allocator
   label: Task allocation algorithm
+  label_zh: 任务分配算法
   type: choice
   default: nearest
   options:
@@ -48,6 +60,7 @@ knobs:
   pointer: /algorithms/allocation
 - id: battery_reserve
   label: Battery reserve (%)
+  label_zh: 预留电量（%）
   type: number
   default: 20
   min: 10
@@ -55,6 +68,7 @@ knobs:
   pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent
 - id: safety_distance
   label: Safety distance (m)
+  label_zh: 安全间隔（米）
   type: number
   default: 20
   min: 5
@@ -62,6 +76,7 @@ knobs:
   pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m
 - id: wind_limit
   label: Wind limit (m/s)
+  label_zh: 风速上限（米/秒）
   type: number
   default: 12
   min: 2

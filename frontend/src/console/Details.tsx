@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button, Drawer } from 'antd';
+import { useI18n } from '../i18n/I18nProvider';
 
 export interface DetailsProps {
   /** Panel title; defaults to 'Details'. */
@@ -18,6 +19,8 @@ export interface DetailsProps {
  * close (button or Escape). Styling hook: `.console-details`.
  */
 export function Details({ title = 'Details', buttonLabel = 'Details', children }: DetailsProps) {
+  const { t } = useI18n();
+  const heading = t('{title} · details', { title: t(title) });
   const [open, setOpen] = useState(false);
   const [visited, setVisited] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -43,16 +46,19 @@ export function Details({ title = 'Details', buttonLabel = 'Details', children }
       <Button
         ref={triggerRef}
         htmlType="button"
+        autoInsertSpace={false}
+        aria-label={t(buttonLabel)}
         data-testid="details-trigger"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => { setVisited(true); open ? close() : setOpen(true); }}
       >
-        {buttonLabel}
+        {t(buttonLabel)}
       </Button>
       <Drawer
-        title={`${title} · details`}
-        aria-label={`${title} · details`}
+        title={heading}
+        closable={{ 'aria-label': t('Close') }}
+        aria-label={heading}
         open={open}
         onClose={close}
         width={560}

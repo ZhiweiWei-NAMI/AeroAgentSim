@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+const screenshots = process.env.AEROAGENTSIM_SCREENSHOT_DIR ?? '/tmp/aas-q/s2/e2e/screenshots';
 import { fixtureCommits, fixtureHeader } from '../src/behaviours/extension-fixture';
 
 test('fixture run synchronizes graph, 3D, identity and microstep while live tail grows', async ({ page }) => {
@@ -20,10 +21,11 @@ test('fixture run synchronizes graph, 3D, identity and microstep while live tail
   });
   await page.route('**/v1/studio/runs/fixture-kernel-run/configuration', route => route.fulfill({json:{service_run_id:'fixture-kernel-run',kernel_run_id:'fixture-kernel-run',epoch:'fixture-epoch',scenario:{engines:{}}}}));
   await page.route('**/v1/runs/fixture-kernel-run/artifacts', route => route.fulfill({json:[]}));
-  await page.goto('/runs/fixture-kernel-run?mode=live&api=http%3A%2F%2F127.0.0.1%3A4179', {waitUntil:'domcontentloaded'});
+  await page.goto('/runs/fixture-kernel-run?mode=live&view=expert&api=http%3A%2F%2F127.0.0.1%3A4179', {waitUntil:'domcontentloaded'});
   await expect(page.getByTestId('dual-run-views')).toHaveAttribute('data-cut','3');
   await expect(page.getByTestId('viewport')).toHaveAttribute('data-rendered','true',{timeout:60_000});
-  await page.getByRole('button', {name:/task → task-1/}).first().click();
+  await page.getByLabel('Graph entity', {exact:true}).selectOption('task-1:1');
+  await page.getByText(/^Conditions and event chains ·/).click();
   await expect(page.getByTestId('inspector')).toContainText('task-1');
   await expect(page.getByTestId('inspector')).toContainText('queued');
   await expect(page.locator('.run-selection-identity')).toContainText('fixture-epoch / task-1 / g1');
@@ -35,12 +37,12 @@ test('fixture run synchronizes graph, 3D, identity and microstep while live tail
   await page.getByRole('button',{name:'Follow live',exact:true}).click();
   await expect(page.getByTestId('dual-run-views')).toHaveAttribute('data-cut','4');
   await expect(page.locator('.chain-node')).toContainText('done');
-  await page.getByRole('button',{name:/vehicle → vehicle-1/}).click();
+  await page.getByLabel('Graph entity', {exact:true}).selectOption('vehicle-1:2');
   await expect(page.getByTestId('inspector')).toContainText('[25,35,10]');
-  mkdirSync('test-results/console/screenshots',{recursive:true});
+  mkdirSync(screenshots,{recursive:true});
   await page.evaluate(()=>{window.scrollTo(0,0);document.querySelector('.dual-graph-pane')?.scrollTo(0,0);});
-  await page.screenshot({path:'test-results/console/screenshots/console-dual.png',fullPage:true});
-  await page.screenshot({path:'test-results/console/screenshots/console-dual.jpg',fullPage:true,type:'jpeg',quality:70});
+  await page.screenshot({path:`${screenshots}/console-dual.png`,fullPage:true});
+  await page.screenshot({path:`${screenshots}/console-dual.jpg`,fullPage:true,type:'jpeg',quality:70});
   expect(errors).toEqual([]);
 });
 
@@ -81,7 +83,7 @@ test('Studio edits one chain model and retains unsupported content through serve
   await page.getByTestId('workspace-picker').click();
   await page.getByText('Authoring fixture',{exact:true}).last().click();
   await page.getByTestId('studio-step-rules').click();
-  await page.getByRole('button',{name:'chains',exact:true}).click();
+  await page.locator('.behaviour-editor nav').getByRole('button',{name:'Event chains',exact:true}).click();
   await page.getByLabel('Transition 0 id').fill('finish');
   await expect(page.getByLabel('Graph transition finish')).toBeVisible();
   await page.getByRole('button',{name:'Validate package on server'}).click();
@@ -90,8 +92,10 @@ test('Studio edits one chain model and retains unsupported content through serve
   expect(saved.scenario.behaviours[0].future_extension).toEqual({keep:false,value:null});
   expect(saved.scenario.behaviours[0].chains.response.transitions[0].future_transition).toEqual({keep:true});
   await expect(page.getByRole('button',{name:'Run now'})).toBeDisabled();
-  await page.locator('.behaviour-editor').screenshot({path:'test-results/console/screenshots/console-authoring.jpg',type:'jpeg',quality:65});
-  await page.getByRole('button',{name:'raw',exact:true}).click();
+  mkdirSync(screenshots,{recursive:true});
+  await page.locator('.behaviour-editor').screenshot({path:`${screenshots}/console-authoring.jpg`,type:'jpeg',quality:65});
+  await page.getByRole('button',{name:'Source JSON & YAML',exact:true}).click();
+  await page.locator('.behaviour-editor').getByTestId('details-trigger').click();
   await page.getByLabel('Behaviour package JSON').fill('{"id":');
   await expect(page.getByRole('button',{name:'Validate package on server'})).toBeDisabled();
 });
@@ -103,10 +107,10 @@ test('demo-sized graph filters 100 real identities and keeps selected relation c
  await page.route('**/v1/runs/fixture-kernel-run/commits?*',route=>route.fulfill({json:{commits:[commit],next:2,status:'completed'}}));
  await page.route('**/v1/runs/fixture-kernel-run/artifacts',route=>route.fulfill({json:[]}));
  await page.route('**/v1/studio/runs/fixture-kernel-run/configuration',route=>route.fulfill({json:{scenario:{engines:{}}}}));
- await page.goto('/runs/fixture-kernel-run?mode=replay&api=http%3A%2F%2F127.0.0.1%3A4179');
+ await page.goto('/runs/fixture-kernel-run?mode=replay&view=expert&api=http%3A%2F%2F127.0.0.1%3A4179');
  await expect(page.getByTestId('viewport')).toHaveAttribute('data-rendered','true');
  await expect(page.getByText('100 / 100 entities',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:/task → task-1/}).first().click();
+ await page.getByLabel('Graph entity', {exact:true}).selectOption('task-1:1');
  await page.getByLabel('Focus + neighbors').check();
  await expect(page.getByText('2 / 100 entities',{exact:true})).toBeVisible();
  await page.getByLabel('Graph directory').selectOption('tasks');

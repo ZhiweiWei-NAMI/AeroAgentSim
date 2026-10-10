@@ -2,8 +2,10 @@ format: aeroagentsim.template/v1
 city: huangpu
 id: crop-spraying
 title: Crop spraying
+title_zh: 农田喷洒作业
 summary: A drone treats a field in rows, swaps batteries at the edge and pauses when
   wind is too strong.
+summary_zh: 无人机逐行喷洒农田，在田边换电，风速过大时暂停作业。
 category: agriculture
 difficulty: beginner
 duration_s: 400
@@ -12,12 +14,20 @@ observe:
 - The drone follows alternating rows across the field.
 - Battery swaps happen at the field edge.
 - Spraying pauses during the wind front.
+observe_zh:
+- 无人机沿相邻作业行来回飞行，覆盖农田。
+- 换电在农田边缘进行。
+- 大风过境时喷洒暂停。
 try:
 - Change row spacing to compare flight distance.
 - Change the wind speed to test the spraying limit.
+try_zh:
+- 调整作业行间距，对比飞行距离。
+- 调整风速，测试喷洒作业的风速限制。
 knobs:
 - id: fleet_size
   label: Number of aircraft
+  label_zh: 飞行器数量
   type: integer
   default: 1
   min: 1
@@ -25,6 +35,7 @@ knobs:
   pointer: /generators/fleet/count
 - id: wind_speed
   label: Normal wind speed (m/s)
+  label_zh: 常态风速（米/秒）
   type: number
   default: 2.0
   min: 0
@@ -32,6 +43,7 @@ knobs:
   pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
 - id: row_spacing
   label: Spacing between spraying rows (m)
+  label_zh: 喷洒作业行间距（米）
   type: number
   default: 30
   min: 10
@@ -39,6 +51,7 @@ knobs:
   pointer: /engines/tasks/config/work_routes/spraying/config/spacing_m
 - id: battery_reserve
   label: Battery reserve (%)
+  label_zh: 预留电量（%）
   type: number
   default: 45
   min: 10
@@ -46,6 +59,7 @@ knobs:
   pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent
 - id: safety_distance
   label: Safety distance (m)
+  label_zh: 安全间隔（米）
   type: number
   default: 20
   min: 5
@@ -53,6 +67,7 @@ knobs:
   pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m
 - id: wind_limit
   label: Wind limit (m/s)
+  label_zh: 风速上限（米/秒）
   type: number
   default: 5
   min: 2

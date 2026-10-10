@@ -1,3 +1,9 @@
+import shellMessages from './shell-messages';
+import inspectMessages from './inspect-messages';
+import studioMessages from './studio-messages';
+import newcomerMessages from './newcomer-messages';
+import explorerMessages from './explorer-messages';
+
 const messages = {
   'en-US': {
     viewerTitle: 'Journal viewer',
@@ -28,5 +34,10 @@ const messages = {
     viewerPlay: '播放', viewerPause: '暂停', viewerCommit: '提交',
   },
 };
+
+for (const [english, chinese] of Object.entries({ ...shellMessages, ...inspectMessages, ...studioMessages, ...newcomerMessages, ...explorerMessages })) {
+  messages['en-US'][english] = english;
+  messages['zh-CN'][english] = chinese;
+}
 
 export default messages;

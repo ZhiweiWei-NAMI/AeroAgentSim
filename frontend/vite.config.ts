@@ -25,7 +25,7 @@ function jsWithJsx() {
 // https://vitejs.dev/config/
 export default defineConfig(() => {
 return {
-  cacheDir: '.tmp/vite',
+  cacheDir: process.env.AEROAGENTSIM_VITE_CACHE ?? '/tmp/aas-q/s2/vite',
   optimizeDeps: { entries: ['index.html'], esbuildOptions: { loader: { '.js': 'jsx' as const } } },
   plugins: [
     jsWithJsx(),
@@ -51,6 +51,12 @@ return {
     globals: true,
     setupFiles: './src/test-setup.ts',
     css: false,
+    // Shared hosts can expose many CPUs while already under heavy load. Avoid
+    // starving jsdom workers and timing out otherwise healthy UI interactions.
+    maxWorkers: 4,
+    minWorkers: 1,
+    testTimeout: 20_000,
+    hookTimeout: 10_000,
     // Playwright e2e specs live outside src and must not run under vitest.
     include: ['src/**/*.{test,spec}.{js,jsx,ts,tsx}'],
   },

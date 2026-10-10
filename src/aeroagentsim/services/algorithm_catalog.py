@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 
 from aeroagentsim.algorithms import BUILTINS, METHODS
+from aeroagentsim.algorithms.metadata import BUILTIN_COPY_ZH
 
 ENTRY_POINT_GROUP = "aeroagentsim.algorithms"
 
@@ -23,7 +24,7 @@ BUILTIN_COPY: dict[str, tuple[str, str]] = {
     ),
     "hungarian": (
         "Match tasks and drones",
-        "Match several tasks and drones to reduce total pickup distance.",
+        "Match several tasks and drones to reduce total estimated completion time.",
     ),
     "llm": (
         "Language-model agent",
@@ -56,7 +57,12 @@ def _plugin_entry(name: str, factory: Any) -> dict[str, str]:
     description = getattr(factory, "description", None)
     if not isinstance(description, str) or not description.strip():
         description = (getattr(factory, "__doc__", "") or "").strip().split("\n")[0]
-    return {"id": name, "label": label, "description": description}
+    row = {"id": name, "label": label, "description": description}
+    for field in ("label_zh", "description_zh"):
+        translated = getattr(factory, field, None)
+        if isinstance(translated, str) and translated.strip():
+            row[field] = translated
+    return row
 
 
 def discover_algorithm_catalog() -> dict[str, list[dict[str, str]]]:
@@ -107,8 +113,15 @@ def discover_algorithm_catalog() -> dict[str, list[dict[str, str]]]:
                 rows.append(_plugin_entry(identity, installed_entry[1]))
             else:
                 label, description = BUILTIN_COPY[identity]
+                label_zh, description_zh = BUILTIN_COPY_ZH[identity]
                 rows.append(
-                    {"id": identity, "label": label, "description": description}
+                    {
+                        "id": identity,
+                        "label": label,
+                        "description": description,
+                        "label_zh": label_zh,
+                        "description_zh": description_zh,
+                    }
                 )
         catalog[slot] = rows
     return catalog

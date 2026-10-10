@@ -59,6 +59,7 @@ def test_experiment_launch_progress_and_security(
         )
         assert launched.status_code == 201, launched.text
         identifier = launched.json()["id"]
+        assert launched.json()["template_title_zh"] == "城市包裹配送"
         deadline = time.monotonic() + 45
         while time.monotonic() < deadline:
             response = client.get(f"/v1/experiments/{identifier}")
@@ -74,6 +75,8 @@ def test_experiment_launch_progress_and_security(
         assert len(rows) == 2
         assert {row["knobs"]["allocator"] for row in rows} == {"nearest", "auction"}
         assert all(row["experiment"]["id"] == identifier for row in rows)
+        assert all(row["template"]["title_zh"] == "城市包裹配送" for row in rows)
+        assert all(row["title_zh"] == row["template_title_zh"] == "城市包裹配送" for row in rows)
         compared = client.get(
             "/v1/runs/compare", params={"ids": ",".join(row["id"] for row in rows)}
         )
@@ -90,3 +93,4 @@ def test_experiment_launch_progress_and_security(
         restored = client.get(f"/v1/experiments/{identifier}").json()
         assert restored["status"] == "completed"
         assert restored["table"] == state["table"]
+        assert restored["template_title_zh"] == "城市包裹配送"

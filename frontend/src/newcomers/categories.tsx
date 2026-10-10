@@ -1,4 +1,5 @@
-import type { Category } from './api';
+import type { Category, Severity } from './api';
+import { translate } from '../i18n/translate';
 
 /**
  * Shared category metadata for the template gallery and the event feed.
@@ -7,21 +8,36 @@ import type { Category } from './api';
  */
 export interface CategoryMetadata { label: string; color: string }
 
+const t = (key: string) => translate('en-US', key);
 export const CATEGORY_STYLE: Record<Category, { label: string; color: string }> = {
-  logistics: { label: 'Logistics', color: '#0072b2' },
-  emergency: { label: 'Emergency', color: '#d55e00' },
-  inspection: { label: 'Inspection', color: '#e69f00' },
-  agriculture: { label: 'Agriculture', color: '#009e73' },
-  mobility: { label: 'Mobility', color: '#56b4e9' },
-  security: { label: 'Security', color: '#cc79a7' },
-  airspace: { label: 'Airspace', color: '#5e4fa2' },
-  weather: { label: 'Weather', color: '#332288' },
-  energy: { label: 'Energy', color: '#b28d00' },
-  mixed: { label: 'Mixed', color: '#666666' },
+  logistics: { label: t('Logistics'), color: '#0072b2' },
+  emergency: { label: t('Emergency'), color: '#d55e00' },
+  inspection: { label: t('Inspection'), color: '#e69f00' },
+  agriculture: { label: t('Agriculture'), color: '#009e73' },
+  mobility: { label: t('Mobility'), color: '#56b4e9' },
+  security: { label: t('Security'), color: '#cc79a7' },
+  airspace: { label: t('Airspace'), color: '#5e4fa2' },
+  weather: { label: t('Weather'), color: '#332288' },
+  energy: { label: t('Energy'), color: '#b28d00' },
+  mixed: { label: t('Mixed'), color: '#666666' },
 };
 
-export function categoryMetadata(category: Category): CategoryMetadata {
-  return CATEGORY_STYLE[category];
+export function categoryMetadata(category: Category, locale = 'en-US'): CategoryMetadata {
+  const t = (key: string) => translate(locale, key);
+  const labels: Record<Category, string> = {
+    logistics: t('Logistics'), emergency: t('Emergency'), inspection: t('Inspection'),
+    agriculture: t('Agriculture'), mobility: t('Mobility'), security: t('Security'),
+    airspace: t('Airspace'), weather: t('Weather'), energy: t('Energy'), mixed: t('Mixed'),
+  };
+  return { ...CATEGORY_STYLE[category], label: labels[category] };
+}
+
+export function severityLabel(severity: Severity, locale = 'en-US'): string {
+  const t = (key: string) => translate(locale, key);
+  const labels: Record<Severity, string> = {
+    info: t('info'), notice: t('notice'), warning: t('warning'), critical: t('critical'),
+  };
+  return labels[severity];
 }
 
 /** Small inline SVG glyphs, one per scenario category. */

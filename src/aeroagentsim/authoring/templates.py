@@ -240,6 +240,15 @@ class PreparedTemplate:
     knobs: dict[str, Any]
     metadata: dict[str, Any]
 
+    def run_metadata(self) -> dict[str, Any]:
+        """Pin authored display titles beside the actual applied knob values."""
+        return {
+            "id": self.metadata["id"],
+            "title": self.metadata["title"],
+            **({"title_zh": self.metadata["title_zh"]} if "title_zh" in self.metadata else {}),
+            "knobs": copy.deepcopy(self.knobs),
+        }
+
 
 def _knob_value(knob: dict[str, Any], value: Any) -> None:
     import math
@@ -380,10 +389,13 @@ class TemplateRegistry:
             "knobs",
             "kpis",
         }
+        optional = {
+            "thumbnail", "city", "title_zh", "summary_zh", "observe_zh", "try_zh"
+        }
         if (
             not isinstance(data, dict)
             or required - data.keys()
-            or data.keys() - required - {"thumbnail", "city"}
+            or data.keys() - required - optional
         ):
             raise ValueError(
                 f"template {identifier}: required manifest fields or unsupported keys"
@@ -396,7 +408,9 @@ class TemplateRegistry:
             raise ValueError(f"template {identifier}: invalid format/id")
         if "city" in data and data["city"] != "huangpu":
             raise ValueError(f"template {identifier}.city: expected huangpu")
-        for key in ("title", "summary", "scenario", "thumbnail"):
+        for key in (
+            "title", "summary", "scenario", "thumbnail", "title_zh", "summary_zh"
+        ):
             if key in data and (
                 not isinstance(data[key], str) or not data[key].strip()
             ):
@@ -431,6 +445,20 @@ class TemplateRegistry:
                 )
             if key != "kpis" and not 2 <= len(data[key]) <= 4:
                 raise ValueError(f"template {identifier}.{key}: provide 2–4 bullets")
+        for key in ("observe", "try"):
+            translated = key + "_zh"
+            if translated in data and (
+                not isinstance(data[translated], list)
+                or len(data[translated]) != len(data[key])
+                or any(
+                    not isinstance(item, str) or not item.strip()
+                    for item in data[translated]
+                )
+            ):
+                raise ValueError(
+                    f"template {identifier}.{translated}: nonempty strings aligned "
+                    f"with {key} required"
+                )
         if not isinstance(data["knobs"], list):
             raise ValueError(f"template {identifier}.knobs: list required")
         known: set[str] = set()
@@ -450,6 +478,9 @@ class TemplateRegistry:
                     "pointer",
                     "apply",
                     "description",
+                    "label_zh",
+                    "description_zh",
+                    "options_zh",
                 }
             ):
                 raise ValueError(f"template {identifier}: malformed knob declaration")
@@ -477,6 +508,26 @@ class TemplateRegistry:
                 not isinstance(knob.get("options"), list) or not knob["options"]
             ):
                 raise ValueError(f"knob {knob['id']}: choices require options")
+            for key in ("label_zh", "description", "description_zh"):
+                if key in knob and (
+                    not isinstance(knob[key], str) or not knob[key].strip()
+                ):
+                    raise ValueError(f"knob {knob['id']}.{key}: nonempty string required")
+            if "description_zh" in knob and "description" not in knob:
+                raise ValueError(f"knob {knob['id']}.description_zh: description required")
+            if "options_zh" in knob and (
+                knob["type"] != "choice"
+                or not isinstance(knob["options_zh"], list)
+                or len(knob["options_zh"]) != len(knob["options"])
+                or any(
+                    not isinstance(item, str) or not item.strip()
+                    for item in knob["options_zh"]
+                )
+            ):
+                raise ValueError(
+                    f"knob {knob['id']}.options_zh: nonempty labels aligned "
+                    "with choice options required"
+                )
             for bound in ("min", "max"):
                 if bound in knob and (
                     type(knob[bound]) not in (int, float)

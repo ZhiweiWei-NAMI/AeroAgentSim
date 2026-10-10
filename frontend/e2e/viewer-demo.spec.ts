@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+const screenshots=process.env.AEROAGENTSIM_SCREENSHOT_DIR ?? '/tmp/aas-q/s2/e2e/screenshots';
 
 test('authored descriptor feed renders orbit/follow and keeps inspector exact', async ({ page }) => {
   const errors: string[] = [];
@@ -11,10 +12,10 @@ test('authored descriptor feed renders orbit/follow and keeps inspector exact', 
   await expect(viewport).toHaveAttribute('data-backend', 'webgl2');
   await expect(page.getByTestId('inspector')).toContainText('object-01');
   await expect(page.getByTestId('inspector')).toContainText('[22,0,2.5]');
-  mkdirSync('test-results', { recursive: true });
+  mkdirSync(screenshots, { recursive: true });
   await page.waitForTimeout(1500);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: 'test-results/viewer-demo-orbit.png' });
+  await page.screenshot({ path: `${screenshots}/viewer-demo-orbit.png` });
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.waitForTimeout(750);
@@ -25,16 +26,16 @@ test('authored descriptor feed renders orbit/follow and keeps inspector exact', 
   await expect(viewport).toHaveAttribute('data-camera', 'follow');
   await page.waitForTimeout(2000);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: 'test-results/viewer-demo-follow.png' });
+  await page.screenshot({ path: `${screenshots}/viewer-demo-follow.png` });
   await page.getByRole('combobox', { name: 'Entity', exact: true }).press('Enter');
   await page.getByRole('combobox', { name: 'Entity', exact: true }).fill('record-1');
   await page.getByRole('combobox', { name: 'Entity', exact: true }).press('ArrowDown');
   await page.getByRole('combobox', { name: 'Entity', exact: true }).press('Enter');
   await expect(page.getByTestId('inspector')).toContainText('scheduled');
   await expect(page.getByTestId('inspector')).not.toContainText('Position');
-  await page.getByRole('combobox', { name: 'Language' }).press('Enter');
-  await page.getByRole('combobox', { name: 'Language' }).press('ArrowDown');
-  await page.getByRole('combobox', { name: 'Language' }).press('Enter');
+  await page.getByTestId('language-switch').getByRole('combobox').press('Enter');
+  await page.getByTestId('language-switch').getByRole('combobox').press('ArrowDown');
+  await page.getByTestId('language-switch').getByRole('combobox').press('Enter');
   await expect(page.getByText('实体检查器', { exact: true })).toBeVisible();
   await expect(page.getByText('精确的已提交值。显示插值不会更改这些事实。')).toBeVisible();
   expect(errors).toEqual([]);

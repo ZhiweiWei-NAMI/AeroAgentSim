@@ -14,6 +14,10 @@ import pytest
 from tools.templates import thumbnails
 
 
+# Allow the local server thread to be scheduled on heavily loaded test hosts.
+SERVER_READ_TIMEOUT = 15
+
+
 def test_thumbnail_camera_addons_and_path_boundary(
     tmp_path: Path, monkeypatch: Any
 ) -> None:
@@ -54,7 +58,7 @@ def test_thumbnail_camera_addons_and_path_boundary(
             pass
 
         def render(self, request: Any) -> Any:
-            with urlopen(self.url, timeout=2) as response:
+            with urlopen(self.url, timeout=SERVER_READ_TIMEOUT) as response:
                 assert response.headers["Content-Type"] == "text/html"
                 assert b"/addons/loaders/GLTFLoader.js" in response.read()
             loader_url = self.url + "addons/loaders/GLTFLoader.js?module=1"
@@ -63,7 +67,7 @@ def test_thumbnail_camera_addons_and_path_boundary(
                 (loader_url, addon),
                 (urljoin(loader_url, dependency), utility),
             ):
-                with urlopen(url, timeout=2) as response:
+                with urlopen(url, timeout=SERVER_READ_TIMEOUT) as response:
                     data = response.read()
                     assert response.headers["Content-Type"] == "text/javascript"
                     assert int(response.headers["Content-Length"]) == len(data)
@@ -80,7 +84,7 @@ def test_thumbnail_camera_addons_and_path_boundary(
                 "private.txt",
             ):
                 with pytest.raises(HTTPError) as denied:
-                    urlopen(self.url + path, timeout=2)
+                    urlopen(self.url + path, timeout=SERVER_READ_TIMEOUT)
                 with denied.value:
                     assert denied.value.code == 404, path
             return SimpleNamespace(png=b"rendered")

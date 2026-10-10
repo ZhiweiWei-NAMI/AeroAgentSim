@@ -1,40 +1,48 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-
-import messages from './messages';
+import { translate } from './translate';
 
 const I18nContext = createContext({
   locale: 'en-US',
   setLocale: () => {},
-  t: (key, vars = {}) => key,
+  t: (key, vars = {}) => translate('en-US', key, vars),
 });
 
-const STORAGE_KEY = 'aeroagentsim.locale';
+export const STORAGE_KEY = 'aeroagentsim.locale';
 
-function interpolate(message, vars = {}) {
-  return Object.entries(vars).reduce(
-    (result, [key, value]) => result.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value)),
-    message
-  );
+export function initialLocale() {
+  const requested = new URLSearchParams(window.location.search).get('lang');
+  if (requested === 'zh' || requested === 'zh-CN') return 'zh-CN';
+  if (requested === 'en' || requested === 'en-US') return 'en-US';
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === 'zh-CN' ? 'zh-CN' : 'en-US';
+  } catch {
+    return 'en-US';
+  }
 }
 
 export function I18nProvider({ children }) {
-  const [locale, setLocale] = useState(() => window.localStorage.getItem(STORAGE_KEY) || 'en-US');
+  const [locale, updateLocale] = useState(initialLocale);
+  const setLocale = (value) => {
+    const next = value === 'zh-CN' ? 'zh-CN' : 'en-US';
+    updateLocale(next);
+    // An explicit switch must win over the URL on the next reload too.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('lang')) {
+      url.searchParams.set('lang', next === 'zh-CN' ? 'zh' : 'en');
+      window.history.replaceState(window.history.state, '', url);
+    }
+  };
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, locale);
+    document.documentElement.lang = locale === 'zh-CN' ? 'zh-CN' : 'en';
+    try { window.localStorage.setItem(STORAGE_KEY, locale); } catch { /* Private browsing can disable storage. */ }
   }, [locale]);
 
   const value = useMemo(
     () => ({
       locale,
       setLocale,
-      t: (key, vars = {}) => {
-        const template =
-          messages[locale]?.[key] ??
-          messages['en-US']?.[key] ??
-          key;
-        return interpolate(template, vars);
-      },
+      t: (key, vars = {}) => translate(locale, key, vars),
     }),
     [locale]
   );

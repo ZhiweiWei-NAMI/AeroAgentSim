@@ -2,7 +2,8 @@ import { useState } from 'react';
 import {Details} from '../console/Details';
 import { PageState } from '../console/PageState';
 import type { KpiSample, KpiValues } from './api';
-import { metricHelp } from './metric-help';
+import { metricHelp, metricLabel } from './metric-help';
+import { useI18n } from '../i18n/I18nProvider';
 import './results.css';
 
 export interface KpiPanelProps {
@@ -53,25 +54,27 @@ function Sparkline({ series, kpiId }: { series: KpiSample[]; kpiId: string }) {
 }
 
 function KpiCard({ id, kpi, series }: { id: string; kpi: KpiValues[string]; series: KpiSample[] }) {
+  const { t, locale } = useI18n();
   const [showHelp, setShowHelp] = useState(false);
-  const help = metricHelp(id);
+  const help = metricHelp(id, locale);
+  const label = metricLabel(id, kpi.label, locale, kpi.label_zh);
   return (
     <div className="newc-kpi-card">
       <span className="newc-kpi-label">
-        <span>{kpi.label}</span>
+        <span>{label}</span>
         {help !== undefined && (
           <button
             type="button"
             className="newc-kpi-help"
-            aria-label={`About ${kpi.label}`}
+            aria-label={t('About {label}', { label })}
             aria-expanded={showHelp}
-            title="What does this mean?"
+            title={t('What does this mean?')}
             onClick={() => setShowHelp(open => !open)}
           >?</button>
         )}
       </span>
       {showHelp && help !== undefined && <p className="newc-kpi-help-text">{help}</p>}
-      <span className={`newc-kpi-value${kpi.value === null ? ' is-null' : ''}`}>
+      <span className={`newc-kpi-value${kpi.value === null ? ' is-null' : ''}`} title={kpi.value === null ? t('Not measured') : undefined}>
         {formatKpi(kpi.value, kpi.unit)}
       </span>
       <Sparkline series={series} kpiId={id} />
@@ -87,22 +90,23 @@ function KpiCard({ id, kpi, series }: { id: string; kpi: KpiValues[string]; seri
  * under "More metrics" instead of silently disappearing.
  */
 export function KpiPanel({ids, values, series, loading, error, onRetry }: KpiPanelProps) {
+  const { t } = useI18n();
   if (error) {
     return (
-      <PageState kind="error" title="Could not load the results"
-        description="Results could not be read from the simulation service."
-        action={<>{onRetry&&<button type="button" className="newc-button" onClick={onRetry}>Try again</button>} <Details title="Results request"><p>{error}</p></Details></>} />
+      <PageState kind="error" title={t('Could not load the results')}
+        description={t('Results could not be read from the simulation service.')}
+        action={<>{onRetry&&<button type="button" className="newc-button" onClick={onRetry}>{t('Try again')}</button>} <Details title={t('Results request')}><p>{error}</p></Details></>} />
     );
   }
   if (loading && Object.keys(values).length === 0) {
-    return <PageState kind="loading" title="Waiting for the first results" description="Metrics appear here as soon as the simulation produces them." />;
+    return <PageState kind="loading" title={t('Waiting for the first results')} description={t('Metrics appear here as soon as the simulation produces them.')} />;
   }
   const declared = ids ? ids.filter(id => values[id]) : Object.keys(values).filter(id=>values[id].value!==0);
   const rest = Object.keys(values).filter(id => !declared.includes(id));
   if (declared.length === 0 && rest.length === 0) {
     return (
-      <PageState kind="empty" title="No results yet"
-        description="This run has not published results for this moment. Follow live or move along the timeline." />
+      <PageState kind="empty" title={t('No results yet')}
+        description={t('This run has not published results for this moment. Follow live or move along the timeline.')} />
     );
   }
   return (
@@ -114,7 +118,7 @@ export function KpiPanel({ids, values, series, loading, error, onRetry }: KpiPan
       )}
       {rest.length > 0 && (
         <details className="newc-kpi-more">
-          <summary>More metrics ({rest.length})</summary>
+          <summary>{t('More metrics ({count})', { count: rest.length })}</summary>
           <div className="newc-kpi-grid">
             {rest.map(id => <KpiCard key={id} id={id} kpi={values[id]} series={series} />)}
           </div>

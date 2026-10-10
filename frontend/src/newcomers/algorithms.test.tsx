@@ -30,11 +30,12 @@ describe('AlgorithmsPanel', () => {
   it('lists only server-advertised algorithms per slot and reports one-line descriptions', async () => {
     vi.stubGlobal('fetch', fetchMock.mockResolvedValue(jsonResponse(200, Object.fromEntries(['allocation','path_planning','conflict_resolution','charging'].map(slot=>[slot,catalog.filter(row=>row.slot===slot)])))));
     render(<Harness changed={() => {}} />);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    // Fetch starting does not mean the decoded catalog has reached the UI.
     // Four slots, all enabled once the real catalog arrives.
     for (const slot of ['Allocation', 'Path Planning', 'Conflict Resolution', 'Charging']) {
-      expect(screen.getByRole('combobox', { name: slot })).toBeEnabled();
+      await waitFor(() => expect(screen.getByRole('combobox', { name: slot })).toBeEnabled());
     }
+    expect(fetchMock).toHaveBeenCalled();
     expect(fetchMock.mock.calls[0][0]).toBe('http://studio.test/v1/algorithms');
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Allocation' }));
     expect(screen.getByTitle('Vehicles bid on tasks; lowest cost wins.')).toBeInTheDocument();
@@ -63,7 +64,7 @@ describe('AlgorithmsPanel', () => {
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Allocation' })).toBeEnabled());
     expect(screen.getAllByText(/not in the current catalog/).length).toBeGreaterThan(0);
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Allocation' }));
-    fireEvent.click(screen.getByTitle('Assigns each task to the closest idle drone.'));
+    fireEvent.click(await screen.findByTitle('Assigns each task to the closest idle drone.'));
     expect(changed).toHaveBeenLastCalledWith({ allocation: 'nearest', path_planning: 'corridor_astar' });
   });
 
@@ -91,7 +92,7 @@ describe('AlgorithmsPanel', () => {
     expect(screen.getAllByText('(default)').length).toBeGreaterThanOrEqual(4);
     // Choosing an option stores it; the other untouched slot still shows its default.
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Allocation' }));
-    fireEvent.click(screen.getByTitle('Vehicles bid on tasks; lowest cost wins.'));
+    fireEvent.click(await screen.findByTitle('Vehicles bid on tasks; lowest cost wins.'));
     expect(changed).toHaveBeenLastCalledWith({ allocation: 'auction' });
   });
 });

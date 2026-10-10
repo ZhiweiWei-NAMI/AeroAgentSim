@@ -45,12 +45,12 @@ test('real traffic template: draft, compiler, run now, scheduled accident, award
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  await page.getByRole('button',{name:'Refresh stored artifacts'}).click();
  await page.getByRole('button',{name:'Open photo'}).first().click();
- await expect(page.getByAltText(/^Stored capture /)).toBeVisible({timeout:60_000});
+ await expect(page.getByAltText('Stored capture photo', {exact:true})).toBeVisible({timeout:60_000});
 
  await page.getByRole('dialog',{name:'Photos · details'}).getByRole('button',{name:'Close',exact:true}).click();
  await page.getByRole('button',{name:'Alpha',exact:true}).click();
  await page.screenshot({path:screenshot('run')});
- await page.getByText(/Recorded overlays/).click();
+ await page.getByText(/^Conditions and event chains ·/).click();
  const transition=page.getByTestId('chain-transition').first();const targetCut=await transition.getAttribute('data-transition-cut');await transition.click();
  await page.getByTestId('nav-inspect').click();await page.waitForURL(/\/inspect\/run-/);
  await page.screenshot({path:screenshot('inspect')});
@@ -62,5 +62,5 @@ test('real traffic template: draft, compiler, run now, scheduled accident, award
  await expect(graph).toHaveAttribute('data-cut',await dual.getAttribute('data-cut') as string);
  await expect(page.getByTestId('synchronized-city')).toHaveAttribute('data-cut',await dual.getAttribute('data-cut') as string);
  await page.getByRole('button',{name:'Run controls',exact:true}).click();
- await page.getByRole('button',{name:'Simulation stop',exact:true}).click();
+ await page.getByRole('button',{name:'Stop simulation',exact:true}).click();
 });

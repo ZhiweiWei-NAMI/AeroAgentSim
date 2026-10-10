@@ -1,287 +1,174 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Checkbox, Collapse, Drawer, Input, Select, Space, Spin, Table, Tag } from 'antd';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Button, Checkbox, Collapse, Drawer, Input, Popconfirm, Select, Space, Spin, Table, Tag } from 'antd';
+import { useI18n } from '../../i18n/I18nProvider';
 import { TypedPayloadForm } from '../../behaviours/TypedPayloadForm';
 import { Details } from '../../console/Details';
 import { applicableFields, isA } from '../../behaviours/model';
-import { readableName } from '../guided-model';
+import { readableName, registryLabel } from '../guided-model';
 import type { StudioApi, TypeDetail, TypeRow } from '../api';
-
-/**
- * EntitiesStep — Studio step that presents scenario entities grouped by readable AeroGraph type.
- *
- * Honesty rules:
- * - Only real scenario registry types/fields/relations are offered (scenario.registry plus the
- *   workspace registry catalog when provided through `types`/`fields` props by the host page).
- * - Type detail (initial fields, relations, ancestry) comes from the live Studio API.
- * - Unknown scenario content (unknown types, unknown fact keys, unknown scenario sections) is shown
- *   as-is and survives edits; nothing is fabricated, defaulted to zero, or silently dropped.
- */
 
 type Row = Record<string, any>;
 type Json = any;
-
-const INT = '$integer'; // lossless tag convention from frontend/src/feeds/lossless-json.ts
+const INT = '$integer';
 const BG = 'background';
-
-interface FieldDefLike extends Record<string,unknown> { id: string; type?: string; schema?: Json; metadata?: Json }
+interface FieldDefLike extends Record<string, unknown> { id: string; type?: string; schema?: Json; metadata?: Json }
 export interface EntitiesStepProps {
   initialEntityId?: string;
   scenario: Row;
   onChange: (scenario: Row) => void;
   api: StudioApi;
-  /** Optional registry catalog rows the host page already fetched (still real server data). */
   types?: TypeRow[];
   fields?: FieldDefLike[];
-  schemas?: Record<string,any>;
+  schemas?: Record<string, any>;
+  onValidityChange?: (valid: boolean) => void;
 }
-
 const ancestors = (type: string, types: Array<{ id: string; parents: string[] }>): string[] => {
-  const byId = new Map(types.map(t => [t.id, t]));
-  const out: string[] = [];
-  const walk = (id: string): void => {
-    if (out.indexOf(id) < 0) { out.push(id); (byId.get(id)?.parents ?? []).forEach(walk); }
-  };
-  walk(type);
-  return out;
+  const byId = new Map(types.map(row => [row.id, row])), out: string[] = [];
+  const walk = (id: string): void => { if (!out.includes(id)) { out.push(id); (byId.get(id)?.parents ?? []).forEach(walk); } };
+  walk(type); return out;
+};
+const typeLabel = (id: string, types: Array<{ id: string; name?: string }>, locale: string): string => {
+  const names = types.find(row => row.id === id)?.name?.split('/').map(name => name.trim());
+  const preferred = names?.find(name => locale === 'zh-CN' ? /[\u3400-\u9fff]/.test(name) : !/[\u3400-\u9fff]/.test(name));
+  return registryLabel(preferred || (locale === 'zh-CN' ? names?.[0] : undefined) || id, locale);
+};
+const fieldLabel = (id: string, fields: FieldDefLike[], locale: string): string => {
+  const field = fields.find(item => item.id === id);
+  const display = field?.metadata?.raw?.displayName ?? field?.metadata?.displayName ?? field?.metadata?.sourceDisplayName;
+  if (typeof display !== 'string') return registryLabel(id, locale);
+  const names = /[\u3400-\u9fff]/.test(display) ? display.split('/').map(name => name.trim()) : [display];
+  const preferred = names.find(name => locale === 'zh-CN' ? /[\u3400-\u9fff]/.test(name) : !/[\u3400-\u9fff]/.test(name));
+  return registryLabel(preferred || (locale === 'zh-CN' ? names[0] : id), locale);
 };
 
-/** Readable name: type display name when the registry supplies one, else the raw type ID. */
-const typeLabel = (id: string, types: Array<{ id: string; name?: string }>): string => {
-  const row = types.find(t => t.id === id);
-  const name = row?.name?.split('/')[0]?.trim();
-  return name || readableName(id);
-};
-
-const fieldLabel = (id: string, fields: FieldDefLike[]): string => {
-  const f = fields.find(item => item.id === id);
-  const display = f?.metadata?.raw?.displayName ?? f?.metadata?.displayName ?? f?.metadata?.sourceDisplayName;
-  return typeof display === 'string' && /[a-z]/i.test(display) && !/[\u3400-\u9fff]/.test(display) ? display : readableName(id);
-};
-
-const writeInt = (raw: string): Json | undefined => {
-  if (!/^-?\d+$/.test(raw)) return undefined;
-  const b = BigInt(raw);
-  return b >= BigInt(Number.MIN_SAFE_INTEGER) && b <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(raw) : { [INT]: raw };
-};
-
-/** Field editor for a single initial field value. Unknown schema → read-only raw value, never guessed. */
-function FactEditor({ value, schema, schemas, onWrite }: { value: Json; schema?: Json; schemas: Record<string, any>; onWrite: (v: Json) => void }) {
+/** Known scalar schemas get typed editing; unsupported structures stay intact and visible. */
+function FactEditor({ value, schema, schemas, label, onWrite, onValidityChange }: {
+  value: Json; schema?: Json; schemas: Record<string, any>; label: string; onWrite: (value: Json) => void; onValidityChange: (valid: boolean) => void;
+}) {
+  const { t } = useI18n();
+  const validity = useRef(onValidityChange); validity.current = onValidityChange;
+  useEffect(() => () => validity.current(true), []);
   const resolved = typeof schema === 'string' ? schemas[schema] : schema?.schema_ref ? schemas[schema.schema_ref] : schema;
-  if (value === null || value === undefined) return <code>{value === null ? 'Explicit null' : 'Unset'}</code>;
-  const num = (step: string, write: (s: string) => void) =>
-    <Input type="number" step={step} className="guided-fact-number" value={typeof value === 'number' ? value : ''} onChange={e => write(e.target.value)} />;
-  if (value && typeof value === 'object' && !Array.isArray(value) && value[INT] !== undefined)
-    return <Input value={String(value[INT])} onChange={e => { const v = writeInt(e.target.value); if (v !== undefined) onWrite(typeof v === 'number' ? { [INT]: e.target.value } : v); }} />;
-  const st = resolved?.type;
-  if (st === 'string' || (st === undefined && typeof value === 'string')) {
-    const en: string[] | undefined = resolved?.enum;
-    if (en) return <Input value={String(value ?? '')} readOnly />;
-    return <Input value={String(value ?? '')} onChange={e => onWrite(e.target.value)} />;
+  const inferred = value && typeof value === 'object' && !Array.isArray(value) && value[INT] !== undefined ? 'integer'
+    : value && typeof value === 'object' && !Array.isArray(value) && value.$number !== undefined ? 'number' : typeof value;
+  const descriptor = resolved ?? (['string', 'boolean', 'number'].includes(inferred) ? { type: inferred } : undefined);
+  if (['string', 'boolean', 'number', 'integer'].includes(descriptor?.type)) {
+    return <TypedPayloadForm schema={descriptor} definitions={schemas} value={value} path={label} onChange={onWrite} onValidityChange={onValidityChange} />;
   }
-  if(st==='boolean' && typeof value!=='boolean') return <Details title="Invalid Boolean value"><pre>{JSON.stringify(value)}</pre></Details>;
-  if (st === 'boolean' || (st === undefined && typeof value === 'boolean'))
-    return <Checkbox checked={value} onChange={e => onWrite(e.target.checked)}>{String(value)}</Checkbox>;
-  if (st === 'integer' || (st === undefined && typeof value === 'number' && Number.isInteger(value)))
-    return num('1', s => { const v = writeInt(s); if (v !== undefined) onWrite(v); });
-  if (st === 'number' || (st === undefined && typeof value === 'number'))
-    return num('any', s => { const v = Number(s); if (s !== '' && Number.isFinite(v)) onWrite(v); });
-  if (st === 'vector') {
-    if (!Array.isArray(value)) return <span className="guided-fact-raw">Not set — no synthetic origin/zeros</span>;
-    const len = resolved?.length ?? value.length;
-    return <span className="guided-fact-vector">{Array.from({ length: len }, (_, i) =>
-      <Input key={i} type="number" step="any" className="guided-fact-number" value={value[i] ?? ''} onChange={e => {
-        const v = Number(e.target.value);
-        if (e.target.value !== '' && Number.isFinite(v)) { const next = value.slice(); next[i] = v; onWrite(next); }
-      }} />)}</span>;
+  if (value === null || value === undefined) return <code>{value === null ? t('Explicit null') : t('Unset')}</code>;
+  if (descriptor?.type === 'vector') {
+    if (!Array.isArray(value)) return <span className="guided-fact-raw">{t('Not set — no synthetic origin/zeros')}</span>;
+    return <span className="guided-fact-vector">{value.map((coordinate, index) => <Input key={index} aria-label={t('{field} coordinate {number}', { field: label, number: index + 1 })} type="number" step="any" className="guided-fact-number" value={coordinate ?? ''} onChange={event => {
+      const next = Number(event.target.value); if (event.target.value !== '' && Number.isFinite(next)) { const coordinates = value.slice(); coordinates[index] = next; onWrite(coordinates); }
+    }} />)}</span>;
   }
-  if (st === 'ref' || (value && typeof value === 'object' && !Array.isArray(value) && value.$ref))
-    return <span>Reference · {value?.$ref?.id ? readableName(value.$ref.id) : 'Not resolved'} <Details title="Entity reference"><pre>{JSON.stringify(value?.$ref ?? value, null, 2)}</pre></Details></span>;
-  // Unknown schema / arrays / nested objects: complete value shown read-only in Details.
-  return <Details title="Field value" buttonLabel="View raw value"><pre>{JSON.stringify(value, null, 2)}</pre></Details>;
+  if (descriptor?.type === 'ref' || value?.$ref) return <span>{t('Reference')} · {value?.$ref?.id ? readableName(value.$ref.id) : t('Not resolved')} <Details title={t('Entity reference')} buttonLabel={t('Reference details')}><pre>{JSON.stringify(value?.$ref ?? value, null, 2)}</pre></Details></span>;
+  return <Details title={t('Field value')} buttonLabel={t('View raw value')}><pre>{JSON.stringify(value, null, 2)}</pre></Details>;
 }
 
-/** Readable root label per AeroGraph type family; unknown types keep their own ID as the group name. */
-const groupTitle = (typeId: string, types: Array<{ id: string; name?: string }>): string => typeLabel(typeId, types);
-
-export function EntitiesStep({ scenario, onChange, api, initialEntityId, types: catalogTypes, fields: catalogFields, schemas: catalogSchemas }: EntitiesStepProps) {
-  const [query, setQuery] = useState('');
-  const [hideBackground, setHideBackground] = useState(false);
-  const [selected, setSelected] = useState<{ id: string; type: string } | null>(()=>initialEntityId?(scenario.entities as Array<{id:string;type:string}>).find(entity=>entity.id===initialEntityId)??null:null);
-  const [detail, setDetail] = useState<TypeDetail>();
-  const [detailBusy, setDetailBusy] = useState(false);
-  const [detailError, setDetailError] = useState('');
-  const [newType, setNewType] = useState('');
-  const [newId, setNewId] = useState('');
-  const [addError, setAddError] = useState('');
-  const [newField,setNewField]=useState<string>(),[fieldValue,setFieldValue]=useState<unknown>(),[fieldValid,setFieldValid]=useState(true);
-
+/** Registry-backed editing preserves unknown scenario sections and authored facts. */
+export function EntitiesStep({ scenario, onChange, api, initialEntityId, types: catalogTypes, fields: catalogFields, schemas: catalogSchemas, onValidityChange }: EntitiesStepProps) {
+  const { t, locale } = useI18n();
+  const [query, setQuery] = useState(''), [hideBackground, setHideBackground] = useState(false);
+  const [selected, setSelected] = useState<{ id: string; type: string } | null>(() => initialEntityId ? (scenario.entities as Array<{ id: string; type: string }> | undefined)?.find(entity => entity.id === initialEntityId) ?? null : null);
+  const [detail, setDetail] = useState<TypeDetail>(), [detailBusy, setDetailBusy] = useState(false), [detailError, setDetailError] = useState('');
+  const [newType, setNewType] = useState(''), [newId, setNewId] = useState(''), [addError, setAddError] = useState('');
+  const [newField, setNewField] = useState<string>(), [fieldValue, setFieldValue] = useState<unknown>(), [fieldValid, setFieldValid] = useState(true);
+  const [factValidity, setFactValidity] = useState<Record<string, boolean>>({});
   const scenarioTypes: TypeRow[] = scenario?.registry?.types ?? [];
-  const types = useMemo(() => {
-    const merged = [...(catalogTypes ?? []), ...scenarioTypes];
-    return [...new Map(merged.map(t => [t.id, t])).values()];
-  }, [catalogTypes, scenarioTypes]);
-  const fields = useMemo(() => {
-    const merged = [...(catalogFields ?? []), ...(scenario?.registry?.fields ?? [])];
-    return [...new Map(merged.map((f: any) => [f.id, f])).values()] as FieldDefLike[];
-  }, [catalogFields, scenario?.registry?.fields]);
-  const schemas: Record<string, any> = {...catalogSchemas,...scenario?.registry?.schemas};
+  const types = useMemo(() => [...new Map([...(catalogTypes ?? []), ...scenarioTypes].map(row => [row.id, row])).values()], [catalogTypes, scenarioTypes]);
+  const fields = useMemo(() => [...new Map([...(catalogFields ?? []), ...(scenario?.registry?.fields ?? [])].map((row: any) => [row.id, row])).values()] as FieldDefLike[], [catalogFields, scenario?.registry?.fields]);
+  const schemas: Record<string, any> = { ...catalogSchemas, ...scenario?.registry?.schemas };
   const relations: any[] = scenario?.registry?.relations ?? [];
-
-  const fieldById = useMemo(() => new Map(fields.map(f => [f.id, f])), [fields]);
-  const typeById = useMemo(() => new Map(types.map(t => [t.id, t])), [types]);
-
-  // Background = ONLY an explicitly present role fact holding the background value; missing role → not background.
-  const roleFieldIds = useMemo(() => fields
-    .filter(f => f.id === 'traffic.actor.role' || (Array.isArray(f?.schema?.enum) && f.schema.enum.includes(BG)))
-    .map(f => f.id), [fields]);
-  const isBackground = (e: Row) => roleFieldIds.some(id => e?.facts?.[id] === BG);
-
-  const entities: Row[] = scenario?.entities ?? [];
-  const knownTypeIds = useMemo(() => new Set(types.map(t => t.id)), [types]);
-
+  const fieldById = useMemo(() => new Map(fields.map(field => [field.id, field])), [fields]);
+  const typeById = useMemo(() => new Map(types.map(type => [type.id, type])), [types]);
+  const roleFieldIds = useMemo(() => fields.filter(field => field.id === 'traffic.actor.role' || Array.isArray(field?.schema?.enum) && field.schema.enum.includes(BG)).map(field => field.id), [fields]);
+  const isBackground = (entity: Row) => roleFieldIds.some(id => entity?.facts?.[id] === BG);
+  const entities: Row[] = Array.isArray(scenario?.entities) ? scenario.entities : [];
+  const knownTypeIds = useMemo(() => new Set(types.map(type => type.id)), [types]);
+  const existingFactKeys = new Set(entities.flatMap(entity => Object.keys(entity.facts ?? {}).map(field => `${entity.id}/${field}`)));
+  const valid = Object.entries(factValidity).every(([key, valid]) => !existingFactKeys.has(key) || valid);
+  useEffect(() => { onValidityChange?.(valid); }, [valid, onValidityChange]);
   const groups = useMemo(() => {
-    const m = new Map<string, Row[]>();
-    entities.forEach(e => {
-      if (hideBackground && isBackground(e)) return;
-      if (query && !String(e.id).toLowerCase().includes(query.toLowerCase()) && !String(e.type ?? '').toLowerCase().includes(query.toLowerCase())) return;
-      const key = String(e.type ?? 'unknown type');
-      const arr = m.get(key) ?? []; arr.push(e); m.set(key, arr);
+    const result = new Map<string, Row[]>(), search = query.toLowerCase();
+    entities.forEach(entity => {
+      if (hideBackground && isBackground(entity)) return;
+      if (search && !`${entity.id} ${readableName(String(entity.id))} ${entity.type ?? ''} ${typeLabel(String(entity.type ?? ''), types, locale)}`.toLowerCase().includes(search)) return;
+      const key = String(entity.type ?? ''), rows = result.get(key) ?? []; rows.push(entity); result.set(key, rows);
     });
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [entities, query, hideBackground, roleFieldIds]);
-
+    return [...result.entries()].sort((left, right) => left[0].localeCompare(right[0]));
+  }, [entities, query, hideBackground, roleFieldIds, types, locale]);
   useEffect(() => {
     if (!selected) { setDetail(undefined); setDetailError(''); return; }
-    let active = true;
-    setDetailBusy(true); setDetailError('');
-    const local = types.find(row=>row.id===selected.type);
-    if(local) {
-      const inherited=applicableFields(selected.type,types,fields as Record<string,unknown>[]);
-      setDetail({id:local.id,parents:ancestors(local.id,types).slice(1),abstract:local.abstract,fields:inherited.map(row=>({id:String(row.id),declaring_type:String(row.declaring_type ?? row.type),schema:row.schema,metadata:row.metadata}))});
-      setDetailBusy(false);return;
+    let active = true; setDetailBusy(true); setDetailError(''); setDetail(undefined);
+    const local = types.find(row => row.id === selected.type);
+    if (local) {
+      const inherited = applicableFields(selected.type, types, fields as Record<string, unknown>[]);
+      setDetail({ id: local.id, parents: ancestors(local.id, types).slice(1), abstract: local.abstract, fields: inherited.map(row => ({ id: String(row.id), declaring_type: String(row.declaring_type ?? row.type), schema: row.schema, metadata: row.metadata })) });
+      setDetailBusy(false); return;
     }
-    api.request<TypeDetail>(`/v1/studio/types/${encodeURIComponent(selected.type)}`)
-      .then(d => { if (active) setDetail(d); })
-      .catch(e => { if (active) setDetailError(String(e)); })
-      .finally(() => { if (active) setDetailBusy(false); });
+    api.request<TypeDetail>(`/v1/studio/types/${encodeURIComponent(selected.type)}`).then(value => { if (active) setDetail(value); }).catch(problem => { if (active) setDetailError(String(problem)); }).finally(() => { if (active) setDetailBusy(false); });
     return () => { active = false; };
   }, [selected, api, types, fields]);
-
-  const setFact = (eid: string, key: string, v: Json) =>
-    onChange({ ...scenario, entities: entities.map(e => e.id === eid ? { ...e, facts: { ...e.facts, [key]: v } } : e) });
-
-  const removeEntity = (eid: string) => onChange({ ...scenario, entities: entities.filter(e => e.id !== eid) });
-
+  const setFact = (id: string, key: string, value: Json) => onChange({ ...scenario, entities: entities.map(entity => {
+    if (entity.id !== id) return entity;
+    const facts = { ...entity.facts, [key]: value }; if (value === undefined) delete facts[key];
+    return { ...entity, facts };
+  }) });
+  const removeFact = (id: string, key: string) => onChange({ ...scenario, entities: entities.map(entity => { if (entity.id !== id) return entity; const facts = { ...entity.facts }; delete facts[key]; return { ...entity, facts }; }) });
+  const removeEntity = (id: string) => { onChange({ ...scenario, entities: entities.filter(entity => entity.id !== id) }); if (selected?.id === id) setSelected(null); };
   const addEntity = () => {
-    setAddError('');
-    const id = newId.trim();
-    if (!newType || !id) { setAddError('Choose a real registry type and provide an entity ID'); return; }
-    if (entities.some(e => e.id === id)) { setAddError(`Entity ID "${id}" already exists in this scenario`); return; }
-    if (!knownTypeIds.has(newType)) { setAddError('Type must come from the scenario registry'); return; }
-    const abstract = typeById.get(newType)?.abstract;
-    if (abstract) { setAddError('Abstract types cannot be instantiated'); return; }
-    // No fabricated initial fields: a new entity starts with empty facts.
-    onChange({ ...scenario, entities: [...entities, { id, type: newType, facts: {} }] });
-    setNewId(''); setNewType('');
+    setAddError(''); const id = newId.trim();
+    if (!newType || !id) { setAddError(t('Choose a real registry type and provide an entity ID')); return; }
+    if (entities.some(entity => entity.id === id)) { setAddError(t('Entity ID "{id}" already exists in this scenario', { id })); return; }
+    if (!knownTypeIds.has(newType)) { setAddError(t('Type must come from the scenario registry')); return; }
+    if (typeById.get(newType)?.abstract) { setAddError(t('Abstract types cannot be instantiated')); return; }
+    onChange({ ...scenario, entities: [...entities, { id, type: newType, facts: {} }] }); setNewId(''); setNewType('');
   };
-
-  const relationsFor = (typeId: string) => relations.filter(r => (typeof r.source_type==='string' && isA(typeId,r.source_type,types)) || (typeof r.target_type==='string' && isA(typeId,r.target_type,types)));
-
-  const detailFields = useMemo(() => {
-    if (!selected || !detail) return [];
-    return detail.fields.map(f => ({ ...f, isInitial: Object.prototype.hasOwnProperty.call(entities.find(e => e.id === selected.id)?.facts ?? {}, f.id) }));
-  }, [detail, selected, entities]);
-
+  const relationsFor = (type: string) => relations.filter(relation => typeof relation.source_type === 'string' && isA(type, relation.source_type, types) || typeof relation.target_type === 'string' && isA(type, relation.target_type, types));
+  const detailFields = useMemo(() => !selected || !detail ? [] : detail.fields.map(field => ({ ...field, isInitial: Object.prototype.hasOwnProperty.call(entities.find(entity => entity.id === selected.id)?.facts ?? {}, field.id) })), [detail, selected, entities]);
+  const editor = (field: { id: string; schema?: unknown }) => {
+    const id = selected!.id, key = `${id}/${field.id}`;
+    return <FactEditor value={entities.find(entity => entity.id === id)?.facts?.[field.id]} schema={field.schema} schemas={schemas} label={fieldLabel(field.id, fields, locale)} onWrite={value => setFact(id, field.id, value)} onValidityChange={valid => setFactValidity(current => current[key] === valid ? current : { ...current, [key]: valid })} />;
+  };
+  const removeFieldButton = (field: string) => <Button size="small" danger aria-label={t('Remove initial field {field}', { field: fieldLabel(field, fields, locale) })} onClick={() => removeFact(selected!.id, field)}>{t('Remove')}</Button>;
   return <div className="guided-entities-step">
-    <Space wrap className="guided-entities-controls">
-      <Input.Search aria-label="Filter entities by id or type" allowClear placeholder="Search entities or types…" value={query} onChange={e => setQuery(e.target.value)} className="guided-entities-search" />
-      <Checkbox aria-label="Hide background actors" checked={hideBackground} onChange={e => setHideBackground(e.target.checked)}>
-        Hide background actors
-      </Checkbox>
-      <span className="guided-entities-total">{entities.length} entities · {groups.length} visible type groups</span>
-    </Space>
-
-    {groups.length === 0 && <p className="guided-entities-empty">No entities match the current filter.</p>}
-
-    <Collapse className="guided-entities-groups" items={groups.map(([typeId, ents]) => ({
-      key: typeId,
-      label: <span className="guided-entities-group-label">{groupTitle(typeId, types)} <Tag>{ents.length}</Tag></span>,
-      children: <Table
-        size="small"
-        rowKey="id"
-        pagination={ents.length > 10 ? { pageSize: 10 } : false}
-        dataSource={ents}
-        columns={[
-          { title: 'Entity', dataIndex: 'id', render:readableName },
-          
-          
-          { title: 'Initial fields', key: 'fields', render: (_, e) => Object.keys(e?.facts ?? {}).length },
-          {
-            title: 'Actions', key: 'actions', render: (_, e) => <Space size="small">
-              <Button size="small" onClick={() => {setSelected({ id: e.id, type: e.type });setNewField(undefined);setFieldValue(undefined);}}>Inspect</Button>
-              <Button size="small" danger onClick={() => removeEntity(e.id)}>Remove</Button>
-            </Space>,
-          },
-        ]}
-      />,
+    <Space wrap className="guided-entities-controls"><Input.Search aria-label={t('Filter entities by id or type')} allowClear placeholder={t('Search entities or types…')} value={query} onChange={event => setQuery(event.target.value)} className="guided-entities-search" /><Checkbox aria-label={t('Hide background actors')} checked={hideBackground} onChange={event => setHideBackground(event.target.checked)}>{t('Hide background actors')}</Checkbox><span className="guided-entities-total">{t('{entities} entities · {groups} visible type groups', { entities: entities.length, groups: groups.length })}</span></Space>
+    <p className="guided-muted">{t('Background actors are explicitly marked in the draft. Drones or traffic generated by an engine appear after a run starts.')}</p>
+    {groups.length === 0 && <p className="guided-entities-empty">{entities.length ? t('No entities match the current filter.') : t('No entities yet. Add one from a registry type below, or place it in Scene.')}</p>}
+    <Collapse className="guided-entities-groups" items={groups.map(([typeId, rows]) => ({
+      key: typeId, label: <span className="guided-entities-group-label">{typeId ? typeLabel(typeId, types, locale) : t('Unknown type')} <Tag>{rows.length}</Tag></span>,
+      children: <Table size="small" rowKey="id" pagination={rows.length > 10 ? { pageSize: 10 } : false} dataSource={rows} columns={[
+        { title: t('Entity'), dataIndex: 'id', render: readableName },
+        { title: t('Initial fields'), key: 'fields', render: (_, entity) => Object.keys(entity?.facts ?? {}).length },
+        { title: t('Actions'), key: 'actions', render: (_, entity) => <Space size="small"><Button size="small" onClick={() => { setSelected({ id: entity.id, type: entity.type }); setNewField(undefined); setFieldValue(undefined); }}>{t('Inspect')}</Button><Popconfirm title={t('Remove this entity?')} description={t('Rules and relationships may still refer to it. Validate the draft after removing it.')} okText={t('Remove')} cancelText={t('Cancel')} onConfirm={() => removeEntity(entity.id)}><Button size="small" danger>{t('Remove')}</Button></Popconfirm></Space> },
+      ]} />,
     }))} />
-
-    <section className="guided-entities-add" aria-label="Add entity">
-      <h4>Add entity from registry type</h4>
-      <Space wrap>
-        <Select aria-label="Registry type picker" showSearch optionFilterProp="label" placeholder="Choose an AeroGraph type" value={newType || undefined} options={types.map(row=>({value:row.id,label:typeLabel(row.id,types),disabled:row.abstract}))} onChange={setNewType} className="guided-entities-type-picker"/>
-        <Input aria-label="New entity ID" placeholder="Entity ID" value={newId} onChange={e => setNewId(e.target.value)} className="guided-entities-id-input" />
-        <Button onClick={addEntity}>Add</Button>
-      </Space>
-      {addError && <Alert type="error" showIcon message={addError} />}
-    </section>
-
-    {selected && <Drawer width={650} open title={readableName(selected.id)} onClose={()=>setSelected(null)} rootClassName="guided-entity-drawer"><section className="guided-entities-detail" aria-label="Selected entity detail"><Tag>{typeLabel(selected.type,types)}</Tag>
-      {detailBusy && <Spin size="small" />}
-      {detailError && <Alert type="warning" showIcon message={`Registry detail unavailable: ${detailError}`} />}
-      {detail && <>
-        <p className="guided-entities-ancestry">
-          Type ancestry: {detail.parents.length ? detail.parents.map(id => <Tag key={id}>{typeLabel(id, types)}</Tag>) : <em>no parents declared</em>}
-          {detail.abstract ? <Tag>abstract</Tag> : null}
-        </p>
-        <h5>Initial fields (declared by registry)</h5>
-        <Table
-          size="small"
-          rowKey="id"
-          pagination={{pageSize:8}}
-          dataSource={detailFields.filter(row=>row.isInitial)}
-          locale={{ emptyText: 'This type declares no fields in the registry; the entity carries only its raw facts below.' }}
-          columns={[
-            { title: 'Field', dataIndex: 'id', render: (id: string) => fieldLabel(id, fields) },
-            { title: 'Type', dataIndex: 'declaring_type',render:(id:string)=>typeLabel(id,types) },
-            { title: 'In this entity', dataIndex: 'isInitial', render: (v: boolean) => (v ? <Tag color="blue">present</Tag> : <Tag>not set</Tag>) },
-            {
-              title: 'Value', key: 'value', render: (_, f) => {
-                const eid = selected!.id;
-                const entity = entities.find(e => e.id === eid);
-                const current = entity?.facts?.[f.id];
-                return <FactEditor value={current} schema={f.schema ?? f} schemas={schemas} onWrite={v => setFact(eid, f.id, v)} />;
-              },
-            },
-          ]}
-        />
-        <section className="guided-field-add"><h5>Add an initial field</h5><Select aria-label="New initial field" showSearch optionFilterProp="label" placeholder="Choose an inherited field" value={newField} options={detail.fields.filter(row=>!Object.prototype.hasOwnProperty.call(entities.find(entity=>entity.id===selected.id)?.facts ?? {},row.id)).map(row=>({value:row.id,label:fieldLabel(row.id,fields)}))} onChange={id=>{setNewField(id);setFieldValue(undefined);}}/>{newField&&<TypedPayloadForm schema={detail.fields.find(row=>row.id===newField)?.schema} definitions={schemas} value={fieldValue} path="Initial field value" onChange={setFieldValue} onValidityChange={setFieldValid}/>}<Button disabled={!newField||fieldValue===undefined||!fieldValid} onClick={()=>{setFact(selected.id,newField!,fieldValue);setNewField(undefined);setFieldValue(undefined);}}>Add initial field</Button></section>
-        <h5>Relations touching this type</h5>
-        {relationsFor(selected.type).length
-          ? <Table size="small" rowKey={(r, i) => `${r.relationId ?? r.id ?? i}`} pagination={false}
-              dataSource={relationsFor(selected.type)}
-              columns={[
-                { title: 'Relation', key: 'relation', render: (_, r) => readableName(String(r.name ?? r.relationId ?? r.id)) },
-                { title: 'Source type', key: 'source', render: (_, r) => typeLabel(r.source_type,types) },
-                { title: 'Target type', key: 'target', render: (_, r) => typeLabel(r.target_type,types) },
-              ]} />
-          : <p className="guided-entities-empty">No relations declared for this type in the scenario registry.</p>}
-        <Details title="Additional authored fields"><Table size="small" rowKey="key" pagination={{pageSize:8}} dataSource={Object.entries(entities.find(e=>e.id===selected.id)?.facts ?? {}).filter(([key])=>!detail.fields.some(row=>row.id===key)).map(([key,value])=>({key,value}))} columns={[{title:'Field',dataIndex:'key',render:(id:string)=>fieldLabel(id,fields)},{title:'Value',dataIndex:'value',render:(value:Json,row:any)=><FactEditor value={value} schema={fieldById.get(row.key)?.schema} schemas={schemas} onWrite={next=>setFact(selected.id,row.key,next)}/>}]} /></Details>
-        <Details title="Entity raw JSON"><pre>{JSON.stringify(entities.find(e => e.id === selected.id), null, 2)}</pre></Details>
-        <div className="guided-entities-detail-actions"><Button onClick={() => setSelected(null)}>Close entity detail</Button></div>
+    <section className="guided-entities-add" aria-label={t('Add entity')}><h4>{t('Add entity from registry type')}</h4><p className="guided-muted">{t('New entities start without initial values. Inspect them to add fields; use Scene to place an actor with movement settings filled in.')}</p><Space wrap><Select aria-label={t('Registry type picker')} showSearch optionFilterProp="label" placeholder={t('Choose an AeroGraph type')} value={newType || undefined} options={types.map(row => ({ value: row.id, label: typeLabel(row.id, types, locale), disabled: row.abstract }))} onChange={setNewType} className="guided-entities-type-picker" /><Input aria-label={t('New entity ID')} placeholder={t('Entity ID')} value={newId} onChange={event => setNewId(event.target.value)} className="guided-entities-id-input" /><Button disabled={!newType || !newId.trim() || entities.some(entity => entity.id === newId.trim())} onClick={addEntity}>{t('Add entity')}</Button></Space>{entities.some(entity => entity.id === newId.trim()) && <Alert type="warning" message={t('Entity ID "{id}" already exists in this scenario', { id: newId.trim() })} />}{addError && <Alert type="error" showIcon message={addError} />}</section>
+    {selected && <Drawer closable={{ 'aria-label': t('Close') }} width={650} open title={readableName(selected.id)} onClose={() => setSelected(null)} rootClassName="guided-entity-drawer"><section className="guided-entities-detail" aria-label={t('Selected entity detail')}><Tag>{typeLabel(selected.type, types, locale)}</Tag>
+      {detailBusy && <Spin size="small" tip={t('Loading entity fields')} />}{detailError && <Alert type="warning" showIcon message={t('Registry detail unavailable: {error}', { error: detailError })} />}
+      {detail && <><p className="guided-entities-ancestry">{t('Type ancestry:')} {detail.parents.length ? detail.parents.map(id => <Tag key={id}>{typeLabel(id, types, locale)}</Tag>) : <em>{t('no parents declared')}</em>}{detail.abstract ? <Tag>{t('abstract')}</Tag> : null}</p>
+        <h5>{t('Initial fields (declared by registry)')}</h5><Table size="small" rowKey="id" pagination={{ pageSize: 8 }} dataSource={detailFields.filter(row => row.isInitial)} locale={{ emptyText: t('No initial fields set. Add an inherited field below.') }} columns={[
+          { title: t('Field'), dataIndex: 'id', render: (id: string) => fieldLabel(id, fields, locale) },
+          { title: t('Type'), dataIndex: 'declaring_type', render: (id: string) => typeLabel(id, types, locale) },
+          { title: t('In this entity'), dataIndex: 'isInitial', render: (present: boolean) => present ? <Tag color="blue">{t('present')}</Tag> : <Tag>{t('not set')}</Tag> },
+          { title: t('Value'), key: 'value', render: (_, field) => editor(field) },
+          { title: t('Actions'), key: 'actions', render: (_, field) => removeFieldButton(field.id) },
+        ]} />
+        <section className="guided-field-add"><h5>{t('Add an initial field')}</h5><Select aria-label={t('New initial field')} showSearch optionFilterProp="label" placeholder={t('Choose an inherited field')} value={newField} options={detail.fields.filter(row => !Object.prototype.hasOwnProperty.call(entities.find(entity => entity.id === selected.id)?.facts ?? {}, row.id)).map(row => ({ value: row.id, label: fieldLabel(row.id, fields, locale) }))} onChange={id => { setNewField(id); setFieldValue(undefined); setFieldValid(true); }} />{newField && <TypedPayloadForm key={newField} schema={detail.fields.find(row => row.id === newField)?.schema} definitions={schemas} value={fieldValue} path={t('Initial field value')} onChange={setFieldValue} onValidityChange={setFieldValid} />}<Button disabled={!newField || fieldValue === undefined || !fieldValid} onClick={() => { setFact(selected.id, newField!, fieldValue); setNewField(undefined); setFieldValue(undefined); }}>{t('Add initial field')}</Button></section>
+        <h5>{t('Relations touching this type')}</h5>{relationsFor(selected.type).length ? <Table size="small" rowKey={(row, index) => `${row.relationId ?? row.id ?? index}`} pagination={false} dataSource={relationsFor(selected.type)} columns={[
+          { title: t('Relation'), key: 'relation', render: (_, row) => registryLabel(String(row.name ?? row.relationId ?? row.id), locale) },
+          { title: t('Source type'), key: 'source', render: (_, row) => typeLabel(row.source_type, types, locale) },
+          { title: t('Target type'), key: 'target', render: (_, row) => typeLabel(row.target_type, types, locale) },
+        ]} /> : <p className="guided-entities-empty">{t('No relations declared for this type in the scenario registry.')}</p>}
+        <Details title={t('Additional authored fields')} buttonLabel={t('Additional fields')}><Table size="small" rowKey="key" pagination={{ pageSize: 8 }} dataSource={Object.entries(entities.find(entity => entity.id === selected.id)?.facts ?? {}).filter(([key]) => !detail.fields.some(row => row.id === key)).map(([key, value]) => ({ key, value }))} columns={[
+          { title: t('Field'), dataIndex: 'key', render: (id: string) => fieldLabel(id, fields, locale) },
+          { title: t('Value'), dataIndex: 'value', render: (_, row) => editor({ id: row.key, schema: fieldById.get(row.key)?.schema }) },
+          { title: t('Actions'), key: 'actions', render: (_, row) => removeFieldButton(row.key) },
+        ]} /></Details>
+        <Details title={t('Entity raw JSON')} buttonLabel={t('Entity JSON')}><pre>{JSON.stringify(entities.find(entity => entity.id === selected.id), null, 2)}</pre></Details><div className="guided-entities-detail-actions"><Button onClick={() => setSelected(null)}>{t('Close entity detail')}</Button></div>
       </>}
     </section></Drawer>}
   </div>;
 }
-
 export default EntitiesStep;

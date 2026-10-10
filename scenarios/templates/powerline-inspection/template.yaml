@@ -2,8 +2,10 @@ format: aeroagentsim.template/v1
 city: huangpu
 id: powerline-inspection
 title: Power line inspection
+title_zh: 输电线路巡检
 summary: A drone follows a power line and records survey observations while waiting
   out strong wind.
+summary_zh: 无人机沿输电线路巡检并记录观测，遇到强风时暂停等待。
 category: inspection
 difficulty: beginner
 duration_s: 300
@@ -11,12 +13,19 @@ scenario: scenario.yaml
 observe:
 - Survey observations appear at measured positions along the line.
 - Strong wind pauses flight, then the survey continues.
+observe_zh:
+- 巡检观测记录出现在沿线实际测量的位置。
+- 强风使飞行暂停，风减弱后巡检继续。
 try:
 - Change the wind speed to see when the drone must wait.
 - Add a second inspection drone.
+try_zh:
+- 调整风速，观察无人机何时需要等待。
+- 再增加一架巡检无人机。
 knobs:
 - id: fleet_size
   label: Number of aircraft
+  label_zh: 飞行器数量
   type: integer
   default: 1
   min: 1
@@ -24,6 +33,7 @@ knobs:
   pointer: /generators/fleet/count
 - id: wind_speed
   label: Normal wind speed (m/s)
+  label_zh: 常态风速（米/秒）
   type: number
   default: 2.0
   min: 0
@@ -31,6 +41,7 @@ knobs:
   pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
 - id: battery_reserve
   label: Battery reserve (%)
+  label_zh: 预留电量（%）
   type: number
   default: 20
   min: 10
@@ -38,6 +49,7 @@ knobs:
   pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent
 - id: safety_distance
   label: Safety distance (m)
+  label_zh: 安全间隔（米）
   type: number
   default: 20
   min: 5
@@ -45,6 +57,7 @@ knobs:
   pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m
 - id: wind_limit
   label: Wind limit (m/s)
+  label_zh: 风速上限（米/秒）
   type: number
   default: 6
   min: 2
