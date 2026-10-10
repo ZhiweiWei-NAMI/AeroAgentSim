@@ -1,0 +1,74 @@
+{
+  "schema": "fixture.parcel-adapter-handoff/v1",
+  "status": "mapping example only; existing parcel frontend is unchanged",
+  "source_frame_verified": {
+    "schemaVersion": "p02.parcel-view-frame/v1",
+    "runId": "fixture.smartpark.parcel.001",
+    "epoch": "fixture.epoch.1",
+    "manifestRevision": "parcel-script.v1",
+    "tick": 780,
+    "simTimeNs": "78000000000",
+    "authority": "authored-fixture",
+    "provenance": "hypothetical"
+  },
+  "identity_mapping": {
+    "run_id": "frame.runId",
+    "epoch": "frame.epoch",
+    "id": "exact entity.id or parcel.id string, including literal dots",
+    "generation": "exact record.generation; reject missing generation",
+    "ref_type": "object",
+    "join_policy": "Index entities and parcels by the complete Ref once. Reject duplicate Ref. Resolve custodian and carrierId through an explicit current-generation registry; reject ambiguity. Never split a dotted ID."
+  },
+  "example_parcel_ref": {
+    "run_id": "fixture.smartpark.parcel.001",
+    "epoch": "fixture.epoch.1",
+    "id": "parcel.p1042",
+    "generation": "fixture.g1",
+    "ref_type": "object"
+  },
+  "example_reported_custody_relation": {
+    "schema_id": "fixture.reported_responsible_custody",
+    "endpoints": {
+      "parcel": {
+        "run_id": "fixture.smartpark.parcel.001",
+        "epoch": "fixture.epoch.1",
+        "id": "parcel.p1042",
+        "generation": "fixture.g1",
+        "ref_type": "object"
+      },
+      "holder": {
+        "run_id": "fixture.smartpark.parcel.001",
+        "epoch": "fixture.epoch.1",
+        "id": "locker",
+        "generation": "fixture.g1",
+        "ref_type": "object"
+      }
+    },
+    "authority": "authored-fixture",
+    "provenance": "hypothetical"
+  },
+  "state_projection": {
+    "quantity": "hu.actor.speed_mps",
+    "value_rule": "Euclidean norm of this exact actor's fixture velocity array",
+    "dtype": "number",
+    "unit": "m/s",
+    "frame_ref": "fixture.ENU.v1",
+    "sample_ns": "int(frame.simTimeNs)",
+    "evidence_domain": "fixture.frame_commit",
+    "observation_commit": "frame.tick under explicit authored-fixture adapter policy",
+    "available_after_commit": "frame.tick under that same hypothetical policy",
+    "available_ns": "fixture availability timestamp; never relabel as wall-clock or measured provider receipt",
+    "native_field_map": {"hu.actor.speed_mps": "slot_0"},
+    "native_states_example": {"slot_0": 0}
+  },
+  "require_explicit_provider_contract_before_live_use": [
+    "Authoritative lifecycle and current-generation registry",
+    "Valid intervals, observation stage and available-time/commit domain",
+    "Source-approved coordinate transform and quantity meaning",
+    "Transaction ID, expected custody revision, release/acquire evidence and authority fencing epoch",
+    "Complete scoped occupancy coverage for negative queries",
+    "Physical authority evidence for attachment changes; custody alone cannot prove detachment"
+  ],
+  "frontend_contract": "Pass a prepared immutable view frame to existing setFrame. The view owns no world clock, state authority, custody commit or command dispatch. Its authored receipt and delivered enum alone are not a ledger commit.",
+  "limits": "No assertion that the sampled UI fixture has real provider evidence, a custody transaction ledger, closed-loop motion, or completed return/landing."
+}
