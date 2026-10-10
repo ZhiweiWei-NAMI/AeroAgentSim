@@ -1,0 +1,248 @@
+{
+  "schema_version": "p09.public-six-adoption-summary/v1",
+  "source_report": "design/p09/receipt_repair/six_episode_adoption_review.json",
+  "verdict": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+  "episodes": [
+    {
+      "episode_id": "L6-2_v1__seed00",
+      "verdict": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "changed_counts": {
+        "position_enu_m": 359,
+        "velocity_enu_mps": 359,
+        "activity_type": 82
+      },
+      "hold": {
+        "first_tick": 227,
+        "last_pre_release_tick": 429,
+        "queue_release_tick": 430,
+        "unchanged_samples": 203
+      },
+      "gaps": [
+        "Formal sensor instance IDs, per-channel IDs and acquisition-time lineage are UNKNOWN from scene/manifest; no image/archive evidence read.",
+        "Combined all-actor render-ready/capture-filtered materialization, authored facility/visual/runtime-state dependencies and final release freeze remain pending.",
+        "Candidate artifact is a numerical waypoint executor with native ns3 receipts, not PX4 or already replaced formal rendering."
+      ],
+      "first_changes": {
+        "position_enu_m": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v1",
+          "life_epoch": 0
+        },
+        "velocity_enu_mps": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v1",
+          "life_epoch": 0
+        },
+        "activity_type": {
+          "tick": 456,
+          "time_ns": 45600000000,
+          "entity_id": "uav_digital_l6_2_v1",
+          "life_epoch": 0
+        }
+      }
+    },
+    {
+      "episode_id": "L6-2_v1__seed01",
+      "verdict": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "changed_counts": {
+        "position_enu_m": 359,
+        "velocity_enu_mps": 359,
+        "activity_type": 82
+      },
+      "hold": {
+        "first_tick": 227,
+        "last_pre_release_tick": 429,
+        "queue_release_tick": 430,
+        "unchanged_samples": 203
+      },
+      "gaps": [
+        "Formal sensor instance IDs, per-channel IDs and acquisition-time lineage are UNKNOWN from scene/manifest; no image/archive evidence read.",
+        "Combined all-actor render-ready/capture-filtered materialization, authored facility/visual/runtime-state dependencies and final release freeze remain pending.",
+        "Candidate artifact is a numerical waypoint executor with native ns3 receipts, not PX4 or already replaced formal rendering."
+      ],
+      "first_changes": {
+        "position_enu_m": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v1",
+          "life_epoch": 0
+        },
+        "velocity_enu_mps": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v1",
+          "life_epoch": 0
+        },
+        "activity_type": {
+          "tick": 456,
+          "time_ns": 45600000000,
+          "entity_id": "uav_digital_l6_2_v1",
+          "life_epoch": 0
+        }
+      }
+    },
+    {
+      "episode_id": "L6-2_v1__seed02",
+      "verdict": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "changed_counts": {
+        "position_enu_m": 359,
+        "velocity_enu_mps": 359,
+        "activity_type": 82
+      },
+      "hold": {
+        "first_tick": 227,
+        "last_pre_release_tick": 429,
+        "queue_release_tick": 430,
+        "unchanged_samples": 203
+      },
+      "gaps": [
+        "Formal sensor instance IDs, per-channel IDs and acquisition-time lineage are UNKNOWN from scene/manifest; no image/archive evidence read.",
+        "Combined all-actor render-ready/capture-filtered materialization, authored facility/visual/runtime-state dependencies and final release freeze remain pending.",
+        "Candidate artifact is a numerical waypoint executor with native ns3 receipts, not PX4 or already replaced formal rendering."
+      ],
+      "first_changes": {
+        "position_enu_m": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v1",
+          "life_epoch": 0
+        },
+        "velocity_enu_mps": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v1",
+          "life_epoch": 0
+        },
+        "activity_type": {
+          "tick": 456,
+          "time_ns": 45600000000,
+          "entity_id": "uav_digital_l6_2_v1",
+          "life_epoch": 0
+        }
+      }
+    },
+    {
+      "episode_id": "L6-2_v2__seed00",
+      "verdict": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "changed_counts": {
+        "position_enu_m": 314,
+        "velocity_enu_mps": 314,
+        "activity_type": 81
+      },
+      "hold": {
+        "first_tick": 197,
+        "last_pre_release_tick": 429,
+        "queue_release_tick": 430,
+        "unchanged_samples": 233
+      },
+      "gaps": [
+        "Formal sensor instance IDs, per-channel IDs and acquisition-time lineage are UNKNOWN from scene/manifest; no image/archive evidence read.",
+        "Combined all-actor render-ready/capture-filtered materialization, authored facility/visual/runtime-state dependencies and final release freeze remain pending.",
+        "Candidate artifact is a numerical waypoint executor with native ns3 receipts, not PX4 or already replaced formal rendering."
+      ],
+      "first_changes": {
+        "position_enu_m": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v2",
+          "life_epoch": 0
+        },
+        "velocity_enu_mps": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v2",
+          "life_epoch": 0
+        },
+        "activity_type": {
+          "tick": 456,
+          "time_ns": 45600000000,
+          "entity_id": "uav_digital_l6_2_v2",
+          "life_epoch": 0
+        }
+      }
+    },
+    {
+      "episode_id": "L6-2_v2__seed01",
+      "verdict": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "changed_counts": {
+        "position_enu_m": 314,
+        "velocity_enu_mps": 314,
+        "activity_type": 81
+      },
+      "hold": {
+        "first_tick": 197,
+        "last_pre_release_tick": 429,
+        "queue_release_tick": 430,
+        "unchanged_samples": 233
+      },
+      "gaps": [
+        "Formal sensor instance IDs, per-channel IDs and acquisition-time lineage are UNKNOWN from scene/manifest; no image/archive evidence read.",
+        "Combined all-actor render-ready/capture-filtered materialization, authored facility/visual/runtime-state dependencies and final release freeze remain pending.",
+        "Candidate artifact is a numerical waypoint executor with native ns3 receipts, not PX4 or already replaced formal rendering."
+      ],
+      "first_changes": {
+        "position_enu_m": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v2",
+          "life_epoch": 0
+        },
+        "velocity_enu_mps": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v2",
+          "life_epoch": 0
+        },
+        "activity_type": {
+          "tick": 456,
+          "time_ns": 45600000000,
+          "entity_id": "uav_digital_l6_2_v2",
+          "life_epoch": 0
+        }
+      }
+    },
+    {
+      "episode_id": "L6-2_v2__seed02",
+      "verdict": "PASS_PLAN_ADOPTED_RECAPTURE_REQUIRED",
+      "changed_counts": {
+        "position_enu_m": 314,
+        "velocity_enu_mps": 314,
+        "activity_type": 81
+      },
+      "hold": {
+        "first_tick": 197,
+        "last_pre_release_tick": 429,
+        "queue_release_tick": 430,
+        "unchanged_samples": 233
+      },
+      "gaps": [
+        "Formal sensor instance IDs, per-channel IDs and acquisition-time lineage are UNKNOWN from scene/manifest; no image/archive evidence read.",
+        "Combined all-actor render-ready/capture-filtered materialization, authored facility/visual/runtime-state dependencies and final release freeze remain pending.",
+        "Candidate artifact is a numerical waypoint executor with native ns3 receipts, not PX4 or already replaced formal rendering."
+      ],
+      "first_changes": {
+        "position_enu_m": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v2",
+          "life_epoch": 0
+        },
+        "velocity_enu_mps": {
+          "tick": 431,
+          "time_ns": 43100000000,
+          "entity_id": "uav_digital_l6_2_v2",
+          "life_epoch": 0
+        },
+        "activity_type": {
+          "tick": 456,
+          "time_ns": 45600000000,
+          "entity_id": "uav_digital_l6_2_v2",
+          "life_epoch": 0
+        }
+      }
+    }
+  ],
+  "scope": "Derived timing/count/identity summary only. Raw poses, packet logs and sensor data omitted. Final combined release/capture freeze is pending."
+}

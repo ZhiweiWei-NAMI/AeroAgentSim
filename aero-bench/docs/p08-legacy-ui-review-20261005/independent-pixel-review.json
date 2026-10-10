@@ -1,0 +1,84 @@
+{
+  "reviewed_at": "2026-10-05T15:14:48-07:00",
+  "scope": "Independent read-only pixel review of five published-legacy screenshots plus supplied browser measurements; not overall P08 acceptance.",
+  "ui_commit": "4f9adf6e8b851d3a7b1086fba3d297f1620607a2",
+  "legacy_commit": "7ca57707930fc45fdc1d48f32c6470beabf33bb8",
+  "inputs": [
+    "viewport-390x844.png",
+    "viewport-844x390.png",
+    "viewport-1280x720.png",
+    "initial-legacy-desktop.png",
+    "selected-edge-desktop.png",
+    "browser-report.json"
+  ],
+  "unloaded_scope": [
+    "Original1686catalog",
+    "Accepted13casebrowsercoverage",
+    "Native provider integration",
+    "C01new explanationchain"
+  ],
+  "passes": [
+    {
+      "requirement": "Permanent QA label",
+      "evidence": "All five images show the top banner: published legacy dataset / UI-only visual review, with new 13 cases/original catalog/provider marked unloaded."
+    },
+    {
+      "requirement": "Fixed viewport without body overflow",
+      "evidence": "Supplied measurements report scroll dimensions equal viewport at 390x844, 844x390, 1280x720 and 1600x1000; images show the footer contained in the viewport. This checks observed behavior, not CSS syntax or browser-toolbar resize handling."
+    },
+    {
+      "requirement": "Portrait-mobile graph at least 500px",
+      "evidence": "390x844 measurement: graph x=0,y=175.875,width=390,height=610.125. Portrait screenshot has an unobstructed, centered 3-node neighborhood."
+    },
+    {
+      "requirement": "Colored legend",
+      "evidence": "Desktop visible legend entries have distinct colored shapes, including the purple hollow predicate ring. Supplied report provides ten computed category colors; not all ten rows are simultaneously visible in the desktop image because the navigator scrolls internally."
+    },
+    {
+      "requirement": "Centered graph",
+      "evidence": "Initial dense desktop cloud is near the graph-panel center; focused neighborhoods are near center in the portrait, landscape, 1280x720 and selected-edge images. No screenshot shows the active graph pinned to a corner."
+    },
+    {
+      "requirement": "Selected-edge distinction and context",
+      "evidence": "selected-edge-desktop.png has a dark emphasized directed edge and a right-hand relation inspector with the exact edge ID e:31d903f09082e2bd61743032, raw type produces_check_result, and source/target context. This passes selection identity/distinction; endpoint visibility has a remaining hover-tooltip defect."
+    },
+    {
+      "requirement": "Focused-neighborhood label readability",
+      "evidence": "The three node names and two relation labels are readable in the mobile and 1280x720 neighborhood screenshots; this does not establish readability for the dense initial overview."
+    }
+  ],
+  "remaining_defects": [
+    {
+      "id": "P08-PIXEL-01",
+      "priority": "high",
+      "requirement": "Mobile graph >=500px",
+      "image": "viewport-844x390.png",
+      "measured": "Graph height 207.734375px (width844px; y130.265625).",
+      "defect": "The supplied mobile_graph_500px=true aggregate check does not cover the landscape viewport. Literal >=500px graph height is unmet at 844x390; only portrait satisfies it. Fixed 390px viewport height, visible chrome and a fully visible 500px graph cannot all fit without a separate policy for landscape overflow/clipping/scrolling."
+    },
+    {
+      "id": "P08-PIXEL-02",
+      "priority": "medium",
+      "requirement": "Readable labels",
+      "image": "initial-legacy-desktop.png",
+      "defect": "The dense overview still crowds labels into the central/lower cloud. Repeated 夹具检查结果 · _pre_start / _execution labels and resource/entity labels overlap or compete with colored nodes and intersecting links. Several muted labels are difficult to associate with a single node. Sparse-neighborhood readability does not resolve this overview defect. No numeric text-contrast ratio was measured."
+    },
+    {
+      "id": "P08-PIXEL-03",
+      "priority": "medium",
+      "requirement": "Clear selected edge",
+      "image": "selected-edge-desktop.png",
+      "defect": "The visible hover tooltip (roughly x884–1067,y582–648) overlaps the lower-right gray endpoint and its 检查绑定 label. The emphasized edge and relation inspector remain clear, but the complete source-endpoint context is obscured in this captured hover state."
+    }
+  ],
+  "not_independently_verified": [
+    "Pointer/keyboard interactions and drawer dismissal are reported true by browser-report.json but were not rerun in this pixel-only review.",
+    "Actual 100dvh CSS declaration and dynamic mobile browser toolbar changes were not inspected.",
+    "Original catalog, 13 accepted cases, native Provider execution and scientific validity remain outside loaded/public UI review.",
+    "Dense mobile full-graph readability was not shown by the supplied neighborhood screenshots."
+  ],
+  "overall": "Partial visual pass within published legacy scope. Three listed pixel defects remain; no whole-P08 acceptance is asserted.",
+  "mutations": [
+    "Only this independent-pixel-review.json report was written; no source, service, test or Git state was changed."
+  ]
+}

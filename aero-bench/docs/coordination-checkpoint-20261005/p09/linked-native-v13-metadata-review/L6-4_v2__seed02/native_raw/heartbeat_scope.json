@@ -1,0 +1,23 @@
+{
+  "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed02/adopted/network_packets.jsonl",
+  "source_sha256": "b2fdb26eb1da2a3dcd441adcebe2850d01a4197a81aefa7ae127316797181b3b",
+  "raw_complete_heartbeat_rows": 1800,
+  "exact_flow_ids": [
+    "heartbeat:tower_l6_4_v2:to:uav_digital_l6_4_v2:heartbeat:expected",
+    "heartbeat:tower_l6_4_v2:to:uav_digital_l6_4_v2_secondary:heartbeat:expected"
+  ],
+  "expected_slot_policy": {
+    "period_ns": 100000000,
+    "payload_bytes": 256,
+    "ttl_ns": 200000000,
+    "window_ns": 1000000000,
+    "loss_limit": 0.05,
+    "consecutive_limit": 3
+  },
+  "actor_ids": [
+    "uav_digital_l6_4_v2",
+    "uav_digital_l6_4_v2_secondary"
+  ],
+  "radio_status": "Actual final run configuration; cochannel UDP competition is not wideband jamming",
+  "rendezvous_status": "Preloaded absolute schedule, not local backup observation"
+}

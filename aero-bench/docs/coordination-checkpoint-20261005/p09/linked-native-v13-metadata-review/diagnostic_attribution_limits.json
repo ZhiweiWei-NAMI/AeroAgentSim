@@ -1,0 +1,44 @@
+{
+  "schema_version": "p09.diagnostic-attribution-limits/v1",
+  "basis_status": "HISTORICAL_CAUSE_UNVERIFIED",
+  "legacy_measured_request_outcome": "Three legacy representative backup request attempts had no native RX; this is an outcome, not ARP/PHY causal diagnosis.",
+  "adopted_measured_request_outcome": "Actual joined native bidirectional request/response receipts exist on the adopted route.",
+  "preamble_counters": "packet_id=null aggregates ended around25.90047s, before26s fault and35.6/39.1s backup requests; do not use as request-level causal evidence.",
+  "ARP_evidence": "No ARP rows in the eight persisted diagnostics; v10 original request diagnostics not saved.",
+  "raw_diagnostics_rewritten": false,
+  "native_rerun": false,
+  "RF_threshold_changed": false,
+  "loss_semantics": "Missing native RX by trace horizon and RX later than strict0.2s TTL are distinct. Neither TTL miss nor horizon silence alone establishes PHY permanent loss.",
+  "native_full_900_slot_review": {
+    "source": "Parent independent review supplied in current task",
+    "L6-4_v1_seed02": {
+      "final_RX_slots_per_owner": [
+        900,
+        900
+      ],
+      "TTL_not_timely_per_owner": [
+        5,
+        7
+      ],
+      "max_consecutive_missing": [
+        1,
+        1
+      ]
+    },
+    "L6-4_v2_seed02": {
+      "final_RX_slots_per_owner": [
+        900,
+        900
+      ],
+      "TTL_not_timely_per_owner": [
+        4,
+        8
+      ],
+      "max_consecutive_missing": [
+        2,
+        3
+      ]
+    }
+  },
+  "own_L6_excerpt_scope": "L6_seed02_observed_fault_failure.json covers first-TX half-open24\u201346s only; do not compare its denominator to full900-slot totals."
+}

@@ -1,0 +1,87 @@
+{
+  "status": "EXTRACTION_CHECKPOINT_PROVISIONAL",
+  "observed_at_utc": "2026-10-06T13:50:44.024575+00:00",
+  "identity_rows": 210,
+  "dimension_rows": 1680,
+  "consumer_counts": {
+    "actual_consumer_confirmed": 0,
+    "configured_pointer": 210,
+    "actual_capture_binding": 0,
+    "documented_corpus_or_contract_level": 1050,
+    "none_confirmed": 420
+  },
+  "pending_group_counts": {
+    "missing_mapping": {
+      "row_count": 630,
+      "membership_pairs_verified": 630,
+      "reason": "no episode-level consumer mapping exists in any read source; pending_check states the open question per row"
+    },
+    "missing_coverage_statistics": {
+      "row_count": 210,
+      "membership_pairs_verified": 210,
+      "reason": "camera/LiDAR sidecar clock/extrinsic fields presence-verified only (validity unaudited); no per-frame occlusion ground truth; per-episode capture_tick lists verified 1/210"
+    },
+    "real_mechanism_gap": {
+      "row_count": 1050,
+      "membership_pairs_verified": 1050,
+      "reason": "scalar model or typed state without a physical mechanism (root causal summary): comm/compute = 1.6.0 scalar model; GNSS/weather/facility = typed states; ns3/R1/v9/business candidates exist only as versioned outputs outside the formal 210"
+    }
+  },
+  "exact_metadata_mapping_counts": {
+    "canonical_episodes": 210,
+    "v14_source_entries": 36,
+    "low_load_reference_outputs": 210,
+    "business_reference_outputs": 12
+  },
+  "scope": "Named-source metadata extraction. Zero actual-consumer evidence is limited to this evidence scope, not a claim of no historical consumption. Neither output coverage nor configured references prove adoption or successful capture. Pending categories overlap and do not constitute fresh physical validation.",
+  "open_output_items": [
+    "same_run_capture_binding boundary/profile strings are assertions, not actual capture receipts.",
+    "source catalog current_adoption labels are documentary, not runtime consumer proof.",
+    "author_result initial five_count_groups contain an earlier documentary-level presentation; coverage_summary tier_counts and explicit memberships are the current extracted counts."
+  ],
+  "effective_route": {
+    "provider": "workbuddy",
+    "model": "glm-5.3-flash",
+    "maxTokens": 131072,
+    "reasoningEffort": "provider_default_omitted",
+    "session_id": "6a42ae20-678b-4198-a7ef-977799519182"
+  },
+  "source_files": [
+    {
+      "name": "extract_lineage.py",
+      "bytes": 60934
+    },
+    {
+      "name": "episode_identity_210.csv",
+      "bytes": 56768
+    },
+    {
+      "name": "dimension_lineage_1680.csv",
+      "bytes": 2257243
+    },
+    {
+      "name": "source_version_catalog.json",
+      "bytes": 13320
+    },
+    {
+      "name": "existing_evidence_index.json",
+      "bytes": 658915
+    },
+    {
+      "name": "coverage_summary.json",
+      "bytes": 106082
+    },
+    {
+      "name": "next_checks.md",
+      "bytes": 2919
+    },
+    {
+      "name": "README.md",
+      "bytes": 2461
+    },
+    {
+      "name": "author_result.json",
+      "bytes": 12002
+    }
+  ]
+}

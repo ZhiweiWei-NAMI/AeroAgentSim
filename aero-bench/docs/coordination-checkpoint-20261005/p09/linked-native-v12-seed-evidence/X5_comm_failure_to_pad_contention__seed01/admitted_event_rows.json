@@ -1,0 +1,1342 @@
+[
+  {
+    "event_id": "lifecycle_takeoff_uav_x5_priority",
+    "decision_tick": 30,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_x5_priority",
+      "decision_ns": 3000000000
+    }
+  },
+  {
+    "event_id": "lifecycle_takeoff_uav_x5_second",
+    "decision_tick": 38,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_x5_second",
+      "decision_ns": 3800000000
+    }
+  },
+  {
+    "event_id": "lifecycle_takeoff_uav_x5_second",
+    "decision_tick": 39,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_x5_second",
+      "decision_ns": 3900000000
+    }
+  },
+  {
+    "event_id": "lifecycle_takeoff_uav_x5_second",
+    "decision_tick": 40,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_x5_second",
+      "decision_ns": 4000000000
+    }
+  },
+  {
+    "event_id": "station_failure",
+    "decision_tick": 220,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "station_failure",
+      "decision_ns": 22000000000
+    }
+  },
+  {
+    "event_id": "backup_pad_unavailable",
+    "decision_tick": 250,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "backup_pad_unavailable",
+      "decision_ns": 25000000000
+    }
+  },
+  {
+    "event_id": "dual_uav_pad_contention:local:uav_x5_priority",
+    "decision_tick": 280,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_priority",
+      "policy": "p09.pad-request-owner-admission/v2",
+      "queued_decision": {
+        "decision_tick": 280,
+        "decision_ns": 28000000000,
+        "allow": true,
+        "evidence": {
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "rows": [
+            {
+              "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+              "observation_ns": 27900000000,
+              "receiver_owner": "uav_x5_priority",
+              "receiver_epoch": 0,
+              "window_ns": 1000000000,
+              "mature_expected": 8,
+              "timely_received": 0,
+              "ttl_not_timely": 8,
+              "observed_late": 0,
+              "pending_expected": 2,
+              "loss_ratio": 1.0,
+              "availability": "KNOWN",
+              "reason": null,
+              "consecutive_missing": 57,
+              "degraded": true,
+              "rule_version": "p09.actor-heartbeat-watchdog/v1",
+              "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+            }
+          ],
+          "required": "degraded",
+          "decision_ns": 28000000000,
+          "owner": "uav_x5_priority",
+          "authority": "local onboard",
+          "physical_motion_evidence": null
+        }
+      },
+      "action_check_tick": 280
+    }
+  },
+  {
+    "event_id": "dual_uav_pad_contention:local:uav_x5_second",
+    "decision_tick": 280,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_second",
+      "policy": "p09.pad-request-owner-admission/v2",
+      "queued_decision": {
+        "decision_tick": 280,
+        "decision_ns": 28000000000,
+        "allow": true,
+        "evidence": {
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "rows": [
+            {
+              "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+              "observation_ns": 27900000000,
+              "receiver_owner": "uav_x5_second",
+              "receiver_epoch": 0,
+              "window_ns": 1000000000,
+              "mature_expected": 8,
+              "timely_received": 0,
+              "ttl_not_timely": 8,
+              "observed_late": 0,
+              "pending_expected": 2,
+              "loss_ratio": 1.0,
+              "availability": "KNOWN",
+              "reason": null,
+              "consecutive_missing": 57,
+              "degraded": true,
+              "rule_version": "p09.actor-heartbeat-watchdog/v1",
+              "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+            }
+          ],
+          "required": "degraded",
+          "decision_ns": 28000000000,
+          "owner": "uav_x5_second",
+          "authority": "local onboard",
+          "physical_motion_evidence": null
+        }
+      },
+      "action_check_tick": 280
+    }
+  },
+  {
+    "event_id": "dual_uav_pad_contention",
+    "decision_tick": 281,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "dual_uav_pad_contention:local:uav_x5_priority": 280,
+        "dual_uav_pad_contention:local:uav_x5_second": 280
+      }
+    }
+  },
+  {
+    "event_id": "dual_uav_pad_contention",
+    "decision_tick": 282,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "dual_uav_pad_contention:local:uav_x5_priority": 280,
+        "dual_uav_pad_contention:local:uav_x5_second": 280
+      }
+    }
+  },
+  {
+    "event_id": "dual_uav_pad_contention",
+    "decision_tick": 283,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "dual_uav_pad_contention:local:uav_x5_priority": 280,
+        "dual_uav_pad_contention:local:uav_x5_second": 280
+      }
+    }
+  },
+  {
+    "event_id": "dual_uav_pad_contention",
+    "decision_tick": 284,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "dual_uav_pad_contention:local:uav_x5_priority": 280,
+        "dual_uav_pad_contention:local:uav_x5_second": 280
+      }
+    }
+  },
+  {
+    "event_id": "dual_uav_pad_contention",
+    "decision_tick": 285,
+    "allow": true,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "dual_uav_pad_contention:local:uav_x5_priority": 280,
+        "dual_uav_pad_contention:local:uav_x5_second": 280
+      }
+    }
+  },
+  {
+    "event_id": "p09.pad-request-intent:local:uav_x5_second",
+    "decision_tick": 331,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_second",
+      "policy": {
+        "version": "p09.pad-request-owner-admission/v2",
+        "approach": "original per-owner route after original timer and owner-local watchdog; queue decision to original five-tick action slot",
+        "request": "owner-local endpoint pose sampled after admitted approach, available one original tick later and strictly before decision",
+        "arrival_tolerance_m": 1e-05,
+        "arbitration": "pad-local accepted requests AND original available 3D proximity guard; no physical custody claim"
+      },
+      "local_pose": {
+        "owner": "uav_x5_second",
+        "sample_ns": 32900000000,
+        "available_ns": 33000000000,
+        "position_enu_m": [
+          6624.525,
+          6527.436,
+          34.0
+        ]
+      },
+      "authored_target_enu_m": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "decision_ns": 33100000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "p09.pad-request-intent:local:uav_x5_second",
+    "decision_tick": 332,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_second",
+      "policy": {
+        "version": "p09.pad-request-owner-admission/v2",
+        "approach": "original per-owner route after original timer and owner-local watchdog; queue decision to original five-tick action slot",
+        "request": "owner-local endpoint pose sampled after admitted approach, available one original tick later and strictly before decision",
+        "arrival_tolerance_m": 1e-05,
+        "arbitration": "pad-local accepted requests AND original available 3D proximity guard; no physical custody claim"
+      },
+      "local_pose": {
+        "owner": "uav_x5_second",
+        "sample_ns": 33000000000,
+        "available_ns": 33100000000,
+        "position_enu_m": [
+          6624.525,
+          6527.436,
+          34.0
+        ]
+      },
+      "authored_target_enu_m": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "decision_ns": 33200000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "p09.pad-request-intent:local:uav_x5_second",
+    "decision_tick": 333,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_second",
+      "policy": {
+        "version": "p09.pad-request-owner-admission/v2",
+        "approach": "original per-owner route after original timer and owner-local watchdog; queue decision to original five-tick action slot",
+        "request": "owner-local endpoint pose sampled after admitted approach, available one original tick later and strictly before decision",
+        "arrival_tolerance_m": 1e-05,
+        "arbitration": "pad-local accepted requests AND original available 3D proximity guard; no physical custody claim"
+      },
+      "local_pose": {
+        "owner": "uav_x5_second",
+        "sample_ns": 33100000000,
+        "available_ns": 33200000000,
+        "position_enu_m": [
+          6624.525,
+          6527.436,
+          34.0
+        ]
+      },
+      "authored_target_enu_m": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "decision_ns": 33300000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "p09.pad-request-intent:local:uav_x5_second",
+    "decision_tick": 334,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_second",
+      "policy": {
+        "version": "p09.pad-request-owner-admission/v2",
+        "approach": "original per-owner route after original timer and owner-local watchdog; queue decision to original five-tick action slot",
+        "request": "owner-local endpoint pose sampled after admitted approach, available one original tick later and strictly before decision",
+        "arrival_tolerance_m": 1e-05,
+        "arbitration": "pad-local accepted requests AND original available 3D proximity guard; no physical custody claim"
+      },
+      "local_pose": {
+        "owner": "uav_x5_second",
+        "sample_ns": 33200000000,
+        "available_ns": 33300000000,
+        "position_enu_m": [
+          6624.525,
+          6527.436,
+          34.0
+        ]
+      },
+      "authored_target_enu_m": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "decision_ns": 33400000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "p09.pad-request-intent:local:uav_x5_second",
+    "decision_tick": 335,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_second",
+      "policy": {
+        "version": "p09.pad-request-owner-admission/v2",
+        "approach": "original per-owner route after original timer and owner-local watchdog; queue decision to original five-tick action slot",
+        "request": "owner-local endpoint pose sampled after admitted approach, available one original tick later and strictly before decision",
+        "arrival_tolerance_m": 1e-05,
+        "arbitration": "pad-local accepted requests AND original available 3D proximity guard; no physical custody claim"
+      },
+      "local_pose": {
+        "owner": "uav_x5_second",
+        "sample_ns": 33300000000,
+        "available_ns": 33400000000,
+        "position_enu_m": [
+          6624.525,
+          6527.436,
+          34.0
+        ]
+      },
+      "authored_target_enu_m": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "decision_ns": 33500000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "p09.pad-request-intent:local:uav_x5_priority",
+    "decision_tick": 572,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_priority",
+      "policy": {
+        "version": "p09.pad-request-owner-admission/v2",
+        "approach": "original per-owner route after original timer and owner-local watchdog; queue decision to original five-tick action slot",
+        "request": "owner-local endpoint pose sampled after admitted approach, available one original tick later and strictly before decision",
+        "arrival_tolerance_m": 1e-05,
+        "arbitration": "pad-local accepted requests AND original available 3D proximity guard; no physical custody claim"
+      },
+      "local_pose": {
+        "owner": "uav_x5_priority",
+        "sample_ns": 57000000000,
+        "available_ns": 57100000000,
+        "position_enu_m": [
+          6637.659,
+          6527.241,
+          6.0
+        ]
+      },
+      "authored_target_enu_m": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "decision_ns": 57200000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "p09.pad-request-intent:local:uav_x5_priority",
+    "decision_tick": 573,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_priority",
+      "policy": {
+        "version": "p09.pad-request-owner-admission/v2",
+        "approach": "original per-owner route after original timer and owner-local watchdog; queue decision to original five-tick action slot",
+        "request": "owner-local endpoint pose sampled after admitted approach, available one original tick later and strictly before decision",
+        "arrival_tolerance_m": 1e-05,
+        "arbitration": "pad-local accepted requests AND original available 3D proximity guard; no physical custody claim"
+      },
+      "local_pose": {
+        "owner": "uav_x5_priority",
+        "sample_ns": 57100000000,
+        "available_ns": 57200000000,
+        "position_enu_m": [
+          6637.659,
+          6527.241,
+          6.0
+        ]
+      },
+      "authored_target_enu_m": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "decision_ns": 57300000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "p09.pad-request-intent:local:uav_x5_priority",
+    "decision_tick": 574,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_priority",
+      "policy": {
+        "version": "p09.pad-request-owner-admission/v2",
+        "approach": "original per-owner route after original timer and owner-local watchdog; queue decision to original five-tick action slot",
+        "request": "owner-local endpoint pose sampled after admitted approach, available one original tick later and strictly before decision",
+        "arrival_tolerance_m": 1e-05,
+        "arbitration": "pad-local accepted requests AND original available 3D proximity guard; no physical custody claim"
+      },
+      "local_pose": {
+        "owner": "uav_x5_priority",
+        "sample_ns": 57200000000,
+        "available_ns": 57300000000,
+        "position_enu_m": [
+          6637.659,
+          6527.241,
+          6.0
+        ]
+      },
+      "authored_target_enu_m": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "decision_ns": 57400000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "p09.pad-request-intent:local:uav_x5_priority",
+    "decision_tick": 575,
+    "allow": true,
+    "evidence": {
+      "owner": "uav_x5_priority",
+      "policy": {
+        "version": "p09.pad-request-owner-admission/v2",
+        "approach": "original per-owner route after original timer and owner-local watchdog; queue decision to original five-tick action slot",
+        "request": "owner-local endpoint pose sampled after admitted approach, available one original tick later and strictly before decision",
+        "arrival_tolerance_m": 1e-05,
+        "arbitration": "pad-local accepted requests AND original available 3D proximity guard; no physical custody claim"
+      },
+      "local_pose": {
+        "owner": "uav_x5_priority",
+        "sample_ns": 57300000000,
+        "available_ns": 57400000000,
+        "position_enu_m": [
+          6637.659,
+          6527.241,
+          6.0
+        ]
+      },
+      "authored_target_enu_m": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "decision_ns": 57500000000,
+      "availability": "KNOWN"
+    }
+  },
+  {
+    "event_id": "pad_priority_arbitration",
+    "decision_tick": 577,
+    "allow": true,
+    "evidence": {
+      "requests": [
+        {
+          "allow": true,
+          "evidence": {
+            "message_id": "pad-request:uav_x5_priority",
+            "receipt": {
+              "schema_version": "p09.actual-downlink-command-receipt/v1",
+              "command_id": "pad-request:uav_x5_priority",
+              "packet_id": "packet-1155",
+              "source_owner": "uav_x5_priority",
+              "source_epoch": 0,
+              "receiver_owner": "pad_x5_primary",
+              "receiver_epoch": 0,
+              "evidence_available_ns": 57500000000,
+              "decision_ns": 57600000000,
+              "send_ns": 57600000000,
+              "deadline_ns": 62600000000,
+              "action": "request_pad",
+              "receive_ns": 57604322351,
+              "accepted_ns": 57604322351,
+              "status": "accepted"
+            },
+            "current_receiver_epoch": 0,
+            "use_ns": 57700000000,
+            "valid_until_ns": 65500000000,
+            "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+            "custody_claim": false
+          }
+        },
+        {
+          "allow": true,
+          "evidence": {
+            "message_id": "pad-request:uav_x5_second",
+            "receipt": {
+              "schema_version": "p09.actual-downlink-command-receipt/v1",
+              "command_id": "pad-request:uav_x5_second",
+              "packet_id": "packet-672",
+              "source_owner": "uav_x5_second",
+              "source_epoch": 0,
+              "receiver_owner": "pad_x5_primary",
+              "receiver_epoch": 0,
+              "evidence_available_ns": 33500000000,
+              "decision_ns": 33600000000,
+              "send_ns": 33600000000,
+              "deadline_ns": 38600000000,
+              "action": "request_pad",
+              "receive_ns": 33603363683,
+              "accepted_ns": 33603363683,
+              "status": "accepted"
+            },
+            "current_receiver_epoch": 0,
+            "use_ns": 57700000000,
+            "valid_until_ns": 65500000000,
+            "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+            "custody_claim": false
+          }
+        }
+      ],
+      "service_policy": [
+        "uav_x5_priority",
+        "uav_x5_second"
+      ],
+      "custody_claim": false
+    }
+  },
+  {
+    "event_id": "pad_priority_arbitration",
+    "decision_tick": 578,
+    "allow": true,
+    "evidence": {
+      "requests": [
+        {
+          "allow": true,
+          "evidence": {
+            "message_id": "pad-request:uav_x5_priority",
+            "receipt": {
+              "schema_version": "p09.actual-downlink-command-receipt/v1",
+              "command_id": "pad-request:uav_x5_priority",
+              "packet_id": "packet-1155",
+              "source_owner": "uav_x5_priority",
+              "source_epoch": 0,
+              "receiver_owner": "pad_x5_primary",
+              "receiver_epoch": 0,
+              "evidence_available_ns": 57500000000,
+              "decision_ns": 57600000000,
+              "send_ns": 57600000000,
+              "deadline_ns": 62600000000,
+              "action": "request_pad",
+              "receive_ns": 57604322351,
+              "accepted_ns": 57604322351,
+              "status": "accepted"
+            },
+            "current_receiver_epoch": 0,
+            "use_ns": 57800000000,
+            "valid_until_ns": 65500000000,
+            "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+            "custody_claim": false
+          }
+        },
+        {
+          "allow": true,
+          "evidence": {
+            "message_id": "pad-request:uav_x5_second",
+            "receipt": {
+              "schema_version": "p09.actual-downlink-command-receipt/v1",
+              "command_id": "pad-request:uav_x5_second",
+              "packet_id": "packet-672",
+              "source_owner": "uav_x5_second",
+              "source_epoch": 0,
+              "receiver_owner": "pad_x5_primary",
+              "receiver_epoch": 0,
+              "evidence_available_ns": 33500000000,
+              "decision_ns": 33600000000,
+              "send_ns": 33600000000,
+              "deadline_ns": 38600000000,
+              "action": "request_pad",
+              "receive_ns": 33603363683,
+              "accepted_ns": 33603363683,
+              "status": "accepted"
+            },
+            "current_receiver_epoch": 0,
+            "use_ns": 57800000000,
+            "valid_until_ns": 65500000000,
+            "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+            "custody_claim": false
+          }
+        }
+      ],
+      "service_policy": [
+        "uav_x5_priority",
+        "uav_x5_second"
+      ],
+      "custody_claim": false
+    }
+  },
+  {
+    "event_id": "pad_priority_arbitration",
+    "decision_tick": 579,
+    "allow": true,
+    "evidence": {
+      "requests": [
+        {
+          "allow": true,
+          "evidence": {
+            "message_id": "pad-request:uav_x5_priority",
+            "receipt": {
+              "schema_version": "p09.actual-downlink-command-receipt/v1",
+              "command_id": "pad-request:uav_x5_priority",
+              "packet_id": "packet-1155",
+              "source_owner": "uav_x5_priority",
+              "source_epoch": 0,
+              "receiver_owner": "pad_x5_primary",
+              "receiver_epoch": 0,
+              "evidence_available_ns": 57500000000,
+              "decision_ns": 57600000000,
+              "send_ns": 57600000000,
+              "deadline_ns": 62600000000,
+              "action": "request_pad",
+              "receive_ns": 57604322351,
+              "accepted_ns": 57604322351,
+              "status": "accepted"
+            },
+            "current_receiver_epoch": 0,
+            "use_ns": 57900000000,
+            "valid_until_ns": 65500000000,
+            "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+            "custody_claim": false
+          }
+        },
+        {
+          "allow": true,
+          "evidence": {
+            "message_id": "pad-request:uav_x5_second",
+            "receipt": {
+              "schema_version": "p09.actual-downlink-command-receipt/v1",
+              "command_id": "pad-request:uav_x5_second",
+              "packet_id": "packet-672",
+              "source_owner": "uav_x5_second",
+              "source_epoch": 0,
+              "receiver_owner": "pad_x5_primary",
+              "receiver_epoch": 0,
+              "evidence_available_ns": 33500000000,
+              "decision_ns": 33600000000,
+              "send_ns": 33600000000,
+              "deadline_ns": 38600000000,
+              "action": "request_pad",
+              "receive_ns": 33603363683,
+              "accepted_ns": 33603363683,
+              "status": "accepted"
+            },
+            "current_receiver_epoch": 0,
+            "use_ns": 57900000000,
+            "valid_until_ns": 65500000000,
+            "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+            "custody_claim": false
+          }
+        }
+      ],
+      "service_policy": [
+        "uav_x5_priority",
+        "uav_x5_second"
+      ],
+      "custody_claim": false
+    }
+  },
+  {
+    "event_id": "pad_priority_arbitration",
+    "decision_tick": 580,
+    "allow": true,
+    "evidence": {
+      "requests": [
+        {
+          "allow": true,
+          "evidence": {
+            "message_id": "pad-request:uav_x5_priority",
+            "receipt": {
+              "schema_version": "p09.actual-downlink-command-receipt/v1",
+              "command_id": "pad-request:uav_x5_priority",
+              "packet_id": "packet-1155",
+              "source_owner": "uav_x5_priority",
+              "source_epoch": 0,
+              "receiver_owner": "pad_x5_primary",
+              "receiver_epoch": 0,
+              "evidence_available_ns": 57500000000,
+              "decision_ns": 57600000000,
+              "send_ns": 57600000000,
+              "deadline_ns": 62600000000,
+              "action": "request_pad",
+              "receive_ns": 57604322351,
+              "accepted_ns": 57604322351,
+              "status": "accepted"
+            },
+            "current_receiver_epoch": 0,
+            "use_ns": 58000000000,
+            "valid_until_ns": 65500000000,
+            "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+            "custody_claim": false
+          }
+        },
+        {
+          "allow": true,
+          "evidence": {
+            "message_id": "pad-request:uav_x5_second",
+            "receipt": {
+              "schema_version": "p09.actual-downlink-command-receipt/v1",
+              "command_id": "pad-request:uav_x5_second",
+              "packet_id": "packet-672",
+              "source_owner": "uav_x5_second",
+              "source_epoch": 0,
+              "receiver_owner": "pad_x5_primary",
+              "receiver_epoch": 0,
+              "evidence_available_ns": 33500000000,
+              "decision_ns": 33600000000,
+              "send_ns": 33600000000,
+              "deadline_ns": 38600000000,
+              "action": "request_pad",
+              "receive_ns": 33603363683,
+              "accepted_ns": 33603363683,
+              "status": "accepted"
+            },
+            "current_receiver_epoch": 0,
+            "use_ns": 58000000000,
+            "valid_until_ns": 65500000000,
+            "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+            "custody_claim": false
+          }
+        }
+      ],
+      "service_policy": [
+        "uav_x5_priority",
+        "uav_x5_second"
+      ],
+      "custody_claim": false
+    }
+  },
+  {
+    "event_id": "second_uav_reroute",
+    "decision_tick": 610,
+    "allow": true,
+    "evidence": {
+      "message_id": "pad-result:uav_x5_second",
+      "receipt": {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "pad-result:uav_x5_second",
+        "packet_id": "packet-1177",
+        "source_owner": "pad_x5_primary",
+        "source_epoch": 0,
+        "receiver_owner": "uav_x5_second",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 58000000000,
+        "decision_ns": 58500000000,
+        "send_ns": 58500000000,
+        "deadline_ns": 60500000000,
+        "action": "reroute",
+        "receive_ns": 58504266845,
+        "accepted_ns": 58504266845,
+        "status": "accepted"
+      },
+      "current_receiver_epoch": 0,
+      "use_ns": 61000000000,
+      "valid_until_ns": 65500000000,
+      "service_policy": "accepted requests/results persist until preloaded absolute pad lease-expiry tick655; expiry is known locally before fault",
+      "custody_claim": false,
+      "received_application_payload": {
+        "schema_version": "p09.pad-allocation-result/v1",
+        "kind": "pad_allocation_result",
+        "pad_owner": "pad_x5_primary",
+        "receiver_owner": "uav_x5_second",
+        "arbitration_event_id": "pad_priority_arbitration",
+        "arbitration_ns": 58000000000,
+        "allocation_action": "reroute",
+        "valid_until_ns": 65500000000,
+        "timer_policy_version": "p09.x5.received-arbitration-time-reroute/v1"
+      },
+      "timer_due_ns": 61000000000,
+      "timer_policy": {
+        "version": "p09.x5.received-arbitration-time-reroute/v1",
+        "delay_original_ticks": 30,
+        "original_trigger": {
+          "trigger_id": "trig_after_pad_priority_arbitration_delay_30",
+          "type": "event_fired_after",
+          "event_id": "pad_priority_arbitration",
+          "delay_ticks": 30
+        },
+        "clock": "absolute simulation ns from trusted pad result submission bound to actual native RX",
+        "admission": "receiver must have exact unexpired result before action; timer due from received arbitration_ns plus original delay",
+        "migration": "retain arbitration-relative 30-tick narrative delay; remove receiver global event-table access; late/unreceived/expired result never admits reroute"
+      },
+      "reason": "received result timer due"
+    }
+  },
+  {
+    "event_id": "station_recovered",
+    "decision_tick": 655,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "station_recovered",
+      "decision_ns": 65500000000
+    }
+  },
+  {
+    "event_id": "station_recovered:local:uav_x5_priority",
+    "decision_tick": 658,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 65700000000,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 1,
+          "ttl_not_timely": 7,
+          "observed_late": 3,
+          "pending_expected": 2,
+          "loss_ratio": 0.875,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 0,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "healthy",
+      "decision_ns": 65800000000,
+      "owner": "uav_x5_priority",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "station_recovered:local:uav_x5_second",
+    "decision_tick": 658,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 65700000000,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 1,
+          "ttl_not_timely": 7,
+          "observed_late": 3,
+          "pending_expected": 2,
+          "loss_ratio": 0.875,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 0,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "healthy",
+      "decision_ns": 65800000000,
+      "owner": "uav_x5_second",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "station_recovered:local:uav_x5_priority",
+    "decision_tick": 659,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 65800000000,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 2,
+          "ttl_not_timely": 6,
+          "observed_late": 3,
+          "pending_expected": 2,
+          "loss_ratio": 0.75,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 0,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "healthy",
+      "decision_ns": 65900000000,
+      "owner": "uav_x5_priority",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "station_recovered:local:uav_x5_second",
+    "decision_tick": 659,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 65800000000,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 2,
+          "ttl_not_timely": 6,
+          "observed_late": 3,
+          "pending_expected": 2,
+          "loss_ratio": 0.75,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 0,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "healthy",
+      "decision_ns": 65900000000,
+      "owner": "uav_x5_second",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "station_recovered:local:uav_x5_priority",
+    "decision_tick": 660,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 65900000000,
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 3,
+          "ttl_not_timely": 5,
+          "observed_late": 3,
+          "pending_expected": 2,
+          "loss_ratio": 0.625,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 0,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "healthy",
+      "decision_ns": 66000000000,
+      "owner": "uav_x5_priority",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "station_recovered:local:uav_x5_second",
+    "decision_tick": 660,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 65900000000,
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 3,
+          "ttl_not_timely": 5,
+          "observed_late": 3,
+          "pending_expected": 2,
+          "loss_ratio": 0.625,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 0,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "healthy",
+      "decision_ns": 66000000000,
+      "owner": "uav_x5_second",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "lifecycle_landing_uav_x5_priority",
+    "decision_tick": 686,
+    "allow": true,
+    "evidence": {
+      "message_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+      "receipt": {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+        "packet_id": "packet-1382",
+        "source_owner": "tower_x5_comm",
+        "source_epoch": 0,
+        "receiver_owner": "uav_x5_priority",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 65500000000,
+        "decision_ns": 68500000000,
+        "send_ns": 68500000000,
+        "deadline_ns": 70500000000,
+        "action": "lifecycle_landing_uav_x5_priority",
+        "receive_ns": 68500213001,
+        "accepted_ns": 68500213001,
+        "status": "accepted"
+      },
+      "controller_decisions": [
+        {
+          "schema_version": "p09.receiver-controller-consumption/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "action": "lifecycle_landing_uav_x5_priority",
+          "receive_ns": 68500213001,
+          "accepted_ns": 68500213001,
+          "policy_delay_ns": 0,
+          "policy_ready_ns": 68500213001,
+          "queue_available_ns": 68600000000,
+          "execution_decision_ns": 68600000000,
+          "status": "ready_for_executor",
+          "physical_motion_evidence": null
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "lifecycle_landing_uav_x5_priority",
+    "decision_tick": 687,
+    "allow": true,
+    "evidence": {
+      "message_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+      "receipt": {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+        "packet_id": "packet-1382",
+        "source_owner": "tower_x5_comm",
+        "source_epoch": 0,
+        "receiver_owner": "uav_x5_priority",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 65500000000,
+        "decision_ns": 68500000000,
+        "send_ns": 68500000000,
+        "deadline_ns": 70500000000,
+        "action": "lifecycle_landing_uav_x5_priority",
+        "receive_ns": 68500213001,
+        "accepted_ns": 68500213001,
+        "status": "accepted"
+      },
+      "controller_decisions": [
+        {
+          "schema_version": "p09.receiver-controller-consumption/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "action": "lifecycle_landing_uav_x5_priority",
+          "receive_ns": 68500213001,
+          "accepted_ns": 68500213001,
+          "policy_delay_ns": 0,
+          "policy_ready_ns": 68500213001,
+          "queue_available_ns": 68700000000,
+          "execution_decision_ns": 68700000000,
+          "status": "ready_for_executor",
+          "physical_motion_evidence": null
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "lifecycle_landing_uav_x5_priority",
+    "decision_tick": 688,
+    "allow": true,
+    "evidence": {
+      "message_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+      "receipt": {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+        "packet_id": "packet-1382",
+        "source_owner": "tower_x5_comm",
+        "source_epoch": 0,
+        "receiver_owner": "uav_x5_priority",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 65500000000,
+        "decision_ns": 68500000000,
+        "send_ns": 68500000000,
+        "deadline_ns": 70500000000,
+        "action": "lifecycle_landing_uav_x5_priority",
+        "receive_ns": 68500213001,
+        "accepted_ns": 68500213001,
+        "status": "accepted"
+      },
+      "controller_decisions": [
+        {
+          "schema_version": "p09.receiver-controller-consumption/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "action": "lifecycle_landing_uav_x5_priority",
+          "receive_ns": 68500213001,
+          "accepted_ns": 68500213001,
+          "policy_delay_ns": 0,
+          "policy_ready_ns": 68500213001,
+          "queue_available_ns": 68800000000,
+          "execution_decision_ns": 68800000000,
+          "status": "ready_for_executor",
+          "physical_motion_evidence": null
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "lifecycle_landing_uav_x5_priority",
+    "decision_tick": 689,
+    "allow": true,
+    "evidence": {
+      "message_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+      "receipt": {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+        "packet_id": "packet-1382",
+        "source_owner": "tower_x5_comm",
+        "source_epoch": 0,
+        "receiver_owner": "uav_x5_priority",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 65500000000,
+        "decision_ns": 68500000000,
+        "send_ns": 68500000000,
+        "deadline_ns": 70500000000,
+        "action": "lifecycle_landing_uav_x5_priority",
+        "receive_ns": 68500213001,
+        "accepted_ns": 68500213001,
+        "status": "accepted"
+      },
+      "controller_decisions": [
+        {
+          "schema_version": "p09.receiver-controller-consumption/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "action": "lifecycle_landing_uav_x5_priority",
+          "receive_ns": 68500213001,
+          "accepted_ns": 68500213001,
+          "policy_delay_ns": 0,
+          "policy_ready_ns": 68500213001,
+          "queue_available_ns": 68900000000,
+          "execution_decision_ns": 68900000000,
+          "status": "ready_for_executor",
+          "physical_motion_evidence": null
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "lifecycle_landing_uav_x5_priority",
+    "decision_tick": 690,
+    "allow": true,
+    "evidence": {
+      "message_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+      "receipt": {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+        "packet_id": "packet-1382",
+        "source_owner": "tower_x5_comm",
+        "source_epoch": 0,
+        "receiver_owner": "uav_x5_priority",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 65500000000,
+        "decision_ns": 68500000000,
+        "send_ns": 68500000000,
+        "deadline_ns": 70500000000,
+        "action": "lifecycle_landing_uav_x5_priority",
+        "receive_ns": 68500213001,
+        "accepted_ns": 68500213001,
+        "status": "accepted"
+      },
+      "controller_decisions": [
+        {
+          "schema_version": "p09.receiver-controller-consumption/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+          "receiver_owner": "uav_x5_priority",
+          "receiver_epoch": 0,
+          "action": "lifecycle_landing_uav_x5_priority",
+          "receive_ns": 68500213001,
+          "accepted_ns": 68500213001,
+          "policy_delay_ns": 0,
+          "policy_ready_ns": 68500213001,
+          "queue_available_ns": 69000000000,
+          "execution_decision_ns": 69000000000,
+          "status": "ready_for_executor",
+          "physical_motion_evidence": null
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "lifecycle_landing_uav_x5_second",
+    "decision_tick": 744,
+    "allow": true,
+    "evidence": {
+      "message_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second",
+      "receipt": {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second",
+        "packet_id": "packet-1501",
+        "source_owner": "tower_x5_comm",
+        "source_epoch": 0,
+        "receiver_owner": "uav_x5_second",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 65500000000,
+        "decision_ns": 74300000000,
+        "send_ns": 74300000000,
+        "deadline_ns": 76300000000,
+        "action": "lifecycle_landing_uav_x5_second",
+        "receive_ns": 74300221358,
+        "accepted_ns": 74300221358,
+        "status": "accepted"
+      },
+      "controller_decisions": [
+        {
+          "schema_version": "p09.receiver-controller-consumption/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second",
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "action": "lifecycle_landing_uav_x5_second",
+          "receive_ns": 74300221358,
+          "accepted_ns": 74300221358,
+          "policy_delay_ns": 0,
+          "policy_ready_ns": 74300221358,
+          "queue_available_ns": 74400000000,
+          "execution_decision_ns": 74400000000,
+          "status": "ready_for_executor",
+          "physical_motion_evidence": null
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "lifecycle_landing_uav_x5_second",
+    "decision_tick": 745,
+    "allow": true,
+    "evidence": {
+      "message_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second",
+      "receipt": {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second",
+        "packet_id": "packet-1501",
+        "source_owner": "tower_x5_comm",
+        "source_epoch": 0,
+        "receiver_owner": "uav_x5_second",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 65500000000,
+        "decision_ns": 74300000000,
+        "send_ns": 74300000000,
+        "deadline_ns": 76300000000,
+        "action": "lifecycle_landing_uav_x5_second",
+        "receive_ns": 74300221358,
+        "accepted_ns": 74300221358,
+        "status": "accepted"
+      },
+      "controller_decisions": [
+        {
+          "schema_version": "p09.receiver-controller-consumption/v1",
+          "command_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second",
+          "receiver_owner": "uav_x5_second",
+          "receiver_epoch": 0,
+          "action": "lifecycle_landing_uav_x5_second",
+          "receive_ns": 74300221358,
+          "accepted_ns": 74300221358,
+          "policy_delay_ns": 0,
+          "policy_ready_ns": 74300221358,
+          "queue_available_ns": 74500000000,
+          "execution_decision_ns": 74500000000,
+          "status": "ready_for_executor",
+          "physical_motion_evidence": null
+        }
+      ]
+    }
+  }
+]

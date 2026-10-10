@@ -1,0 +1,132 @@
+{
+  "schema_version": "p09.linked-native-causal/v4",
+  "episode_id": "L6-4_v1__seed01",
+  "seed": 1,
+  "scenario_id": "L6-4_v1",
+  "source_refs": [
+    "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/event_script.json",
+    "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/scene_setup.json"
+  ],
+  "guard_version": null,
+  "healthy_control": false,
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_digital_l6_4_v1": 3000000000,
+    "lifecycle_takeoff_uav_digital_l6_4_v1_secondary": 4000000000,
+    "wideband_jamming": 24000000000
+  },
+  "unfired_events": [
+    "multi_uav_hold_entry",
+    "multi_uav_safe_hold",
+    "alternate_channel",
+    "lifecycle_landing_uav_digital_l6_4_v1",
+    "lifecycle_landing_uav_digital_l6_4_v1_secondary"
+  ],
+  "pose_and_visual_differences_from_same_seed_source_replay": {
+    "uav_digital_l6_4_v1": {
+      "first_changed_tick": 271,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6634.035,
+          6525.817,
+          31.8
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          -2.0
+        ],
+        "state": "descending",
+        "activity_type": "descending"
+      },
+      "after": {
+        "pos_enu": [
+          6634.035,
+          6525.817,
+          32.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "state": "jammed",
+        "activity_type": "jammed"
+      }
+    },
+    "uav_digital_l6_4_v1_secondary": {
+      "first_changed_tick": 271,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6622.035,
+          6532.817,
+          34.2
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "state": "airborne",
+        "activity_type": "airborne"
+      },
+      "after": {
+        "pos_enu": [
+          6622.035,
+          6532.817,
+          34.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "state": "jammed",
+        "activity_type": "jammed"
+      }
+    },
+    "tower_l6_4_v1": {
+      "first_changed_tick": 461,
+      "fields": [
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "state": "alternate_channel",
+        "activity_type": "alternate_channel"
+      },
+      "after": {
+        "state": "jammed",
+        "activity_type": "jammed"
+      }
+    }
+  },
+  "weather_changed": false,
+  "adoption_class": "A",
+  "published210_modified": false,
+  "collection_status": "one-shot collection pending final freeze",
+  "iteration_count": 4,
+  "backend": "p01.ns3.frozen-wifi/v8-switch-completion",
+  "duration_ticks": 900,
+  "motion_acquisition": {
+    "version": "p09.complete-admitted-landings/v1",
+    "nominal_duration_ticks": 900,
+    "landing_dwell_ticks": 5,
+    "extension_basis": "actual admitted landing motion terminal tick plus five original ticks; original speeds/routes unchanged"
+  },
+  "output_dir": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L6-4_v1__seed01/adopted",
+  "motion_scope": "authored waypoint engine; not PX4 motion feedback",
+  "missing_event_disposition": "requires resolution before adoption",
+  "rf_weather_scope": "not amplified; dimensionless rain is not an observed mm/h rate"
+}

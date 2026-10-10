@@ -1,0 +1,117 @@
+{
+  "scope": "five representative numerical candidates only",
+  "cases": [
+    {
+      "episode_id": "L6-4_v1__seed00",
+      "seed": 0,
+      "mechanism": "cochannel_backup",
+      "iterations": 9,
+      "duration_ticks": 982,
+      "unfired_events": [],
+      "candidate_acquisition_class": "A",
+      "published210_modified": false,
+      "formal_adoption": "pending independent native review",
+      "controlled_actors": [
+        "uav_digital_l6_4_v1",
+        "uav_digital_l6_4_v1_secondary"
+      ],
+      "all_terminal_entity_count": 25,
+      "controlled_actor_tail_rows": 10,
+      "evidence_directory": "cases/L6-4_v1__seed00",
+      "owner_local_participants": [
+        "tower_l6_4_v1",
+        "uav_digital_l6_4_v1",
+        "uav_digital_l6_4_v1_secondary"
+      ]
+    },
+    {
+      "episode_id": "L6-4_v2__seed01",
+      "seed": 1,
+      "mechanism": "cochannel_backup",
+      "iterations": 8,
+      "duration_ticks": 900,
+      "unfired_events": [],
+      "candidate_acquisition_class": "A",
+      "published210_modified": false,
+      "formal_adoption": "pending independent native review",
+      "controlled_actors": [
+        "uav_digital_l6_4_v2",
+        "uav_digital_l6_4_v2_secondary"
+      ],
+      "all_terminal_entity_count": 25,
+      "controlled_actor_tail_rows": 10,
+      "evidence_directory": "cases/L6-4_v2__seed01",
+      "owner_local_participants": [
+        "tower_l6_4_v2",
+        "uav_digital_l6_4_v2",
+        "uav_digital_l6_4_v2_secondary"
+      ]
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed00",
+      "seed": 0,
+      "mechanism": "pad_service",
+      "iterations": 4,
+      "duration_ticks": 900,
+      "unfired_events": [],
+      "candidate_acquisition_class": "A",
+      "published210_modified": false,
+      "formal_adoption": "pending independent native review",
+      "controlled_actors": [
+        "uav_x5_priority",
+        "uav_x5_second"
+      ],
+      "all_terminal_entity_count": 27,
+      "controlled_actor_tail_rows": 10,
+      "evidence_directory": "cases/X5_comm_failure_to_pad_contention__seed00",
+      "owner_local_participants": [
+        "pad_x5_primary",
+        "tower_x5_comm",
+        "uav_x5_priority",
+        "uav_x5_second"
+      ]
+    },
+    {
+      "episode_id": "L5-1_v1__seed00",
+      "seed": 0,
+      "mechanism": "local_weather",
+      "iterations": 0,
+      "duration_ticks": 900,
+      "unfired_events": [],
+      "candidate_acquisition_class": "A",
+      "published210_modified": false,
+      "formal_adoption": "pending independent native review",
+      "controlled_actors": [
+        "uav_weather_l5_1_v1"
+      ],
+      "all_terminal_entity_count": 21,
+      "controlled_actor_tail_rows": 5,
+      "evidence_directory": "cases/L5-1_v1__seed00",
+      "owner_local_participants": [
+        "uav_weather_l5_1_v1",
+        "weather_car_l5_1_v1"
+      ]
+    },
+    {
+      "episode_id": "L5-1_v2__seed00",
+      "seed": 0,
+      "mechanism": "local_weather",
+      "iterations": 0,
+      "duration_ticks": 900,
+      "unfired_events": [],
+      "candidate_acquisition_class": "A",
+      "published210_modified": false,
+      "formal_adoption": "pending independent native review",
+      "controlled_actors": [
+        "uav_weather_l5_1_v2"
+      ],
+      "all_terminal_entity_count": 21,
+      "controlled_actor_tail_rows": 5,
+      "evidence_directory": "cases/L5-1_v2__seed00",
+      "owner_local_participants": [
+        "uav_weather_l5_1_v2",
+        "weather_car_l5_1_v2"
+      ]
+    }
+  ]
+}

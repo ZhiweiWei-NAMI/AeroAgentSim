@@ -1,0 +1,60 @@
+{
+  "schema_version": "p09.l6-owner-local-reliability-proposal/v1",
+  "status": "PROPOSED_NOT_IMPLEMENTED_NOT_ACTIVATED",
+  "scope": "One shared finite exchange for both L6-4 variants, both owners and all three seeds. No RF/watchdog/load change, no new autonomous landing.",
+  "source_refs": [
+    "Dataset/semantic_simulation/ns3_episode/linked_contract.py",
+    "Dataset/semantic_simulation/ns3_episode/linked_replay.py",
+    "Dataset/semantic_simulation/ns3_episode/linked_transport.py",
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/compact_review",
+    "/workspace/shared/p09-l6-reliable-control-review-20261006/REVIEW.md (native reviewer supplied; not locally readable)"
+  ],
+  "retained": {
+    "heartbeat_period_ns": 100000000,
+    "heartbeat_ttl_ns": 200000000,
+    "original_command_delivery_envelope_ns": 2000000000,
+    "retry_period_ns": 100000000,
+    "bulk": "two existing 4Mb/s/1200B/2.4ms recipient flows staggered1.2ms [24,46)s",
+    "rf": "unchanged existing R1 profile",
+    "watchdog": "unchanged consecutive>=3 and loss_ratio>0.05"
+  },
+  "proposed_common_budgets": {
+    "stage_ns": 5200000000,
+    "overall_ns": 29800000000,
+    "max_attempts_per_stage": 52,
+    "basis": "Authored common cold-discovery envelope: existing declared ARP 3x1s allowance + existing2s command delivery + two100ms strict-before decision boundaries =5.2s. Four stages20.8s + maximum existing88-tick landing timer8.8s + two strict-before ticks0.2s =29.8s. This is a proposed simulation transport service requirement, not measured recovery or a seed00-success fit. ARP allowance is currently documented in linked_contract pad_request_policy; explicit backend configuration must be pinned before enabling this assumption.",
+    "delivery_expiry": "Each attempt gets min(send_ns+existing2s, immutable stage deadline, immutable overall deadline, declared endpoint lifetime/support end). A retry never extends any logical deadline. Heartbeat0.2s TTL is separate."
+  },
+  "exchanges": [
+    {
+      "data": "READY",
+      "reply": "GRANT",
+      "stop": "sender-local correlated native GRANT RX"
+    },
+    {
+      "data": "GRANT",
+      "reply": "EXECUTION_REPORT",
+      "stop": "sender-local correlated native report RX after one-shot local execution"
+    },
+    {
+      "data": "EXECUTION_REPORT",
+      "reply": "REPORT_ACK or valid correlated LAND",
+      "stop": "sender-local native REPORT_ACK RX or valid LAND RX; report ACK is informational, not a LAND prerequisite"
+    },
+    {
+      "data": "LAND",
+      "reply": "LAND_ACK(APPLIED)",
+      "stop": "sender-local native LAND_ACK RX after one-shot dispatch; APPLIED is not touchdown"
+    }
+  ],
+  "identity": "exact episode/run, principal/owner, source+destination lifetime epochs, control epoch, exchange ID, parent exchange, immutable payload and policy version; no global receiver truth stops sender retries",
+  "duplicates": "same scoped ID/content replays cached reply only; different payload conflicts; consumed IDs/tombstones remain through fixed overall/lifetime expiry; no repeated physical action",
+  "timeout_physical_policy": "Preserve owner-local existing safe hold. Unconfirmed timeout does not authorize an alternate endpoint, auto-land, repeat/cancel admitted motion, or report touchdown. A later valid LAND may still admit under its own fixed valid deadline and authority even if informational REPORT_ACK timed out. At finite support end report unresolved/failed air-held state explicitly.",
+  "station_touchdown_confirmation": "No extra exchange prerequisite. LAND_ACK proves applied dispatch only. Existing authoritative pose/landed/terminal-dwell rows certify physical end state offline; station must not claim observed touchdown unless a separately declared real native report exists.",
+  "horizon_rule": "No fabricated availability or automatic success extension. Compile the fixed exchange/timer support with exact endpoint lifetimes and pending causal successors before network planning; if source support is insufficient, surface it. Any extension must keep all existing actors/weather/sensors in the adopted suffix and remain a versioned source change.",
+  "payload_policy": "Canonical compact UTF-8 JSON serialized into actual UDP DATA/ACK payload, measured length per flow, explicit1024B cap; source/destination identities and epochs, run/exchange/control epoch, stage/overall deadlines, stage payload (executed time or landing action) must be on wire. No64B dummy size for a larger ledger-only payload.",
+  "theoretical_control_ceiling": "At most four simultaneous DATA exchanges plus four cached replies globally at10Hz and1024B:655360bit/s application upper bound. Header/MAC overhead extra; no guarantee under shared channel contention. ACK coalescing at most one reply per exchange per100ms must be explicit if used.",
+  "required_next_review": "Freeze numeric budgets, actual serialized payload sizes, endpoint support and timeout policy before one representative. Then apply identical policy to six only after review; no seed-conditioned tuning.",
+  "decision_point": "Current failed candidate is a legitimate protocol timeout and must remain a negative result. It does not fulfill current required both-owners-landed story. If the uniform bounded exchange still times out, choose explicitly between retaining an authored negative branch with revised required-event goal or separately authorizing an onboard emergency landing policy. Do not invent that policy now.",
+  "collection_decision": "User2026-10-06T08:39Z: after all relevant updates, synchronized capture inputs and independent acceptance, deliver one final210+ARM list/pull entry. No partial UE collection recommendation."
+}

@@ -1,0 +1,72 @@
+{
+  "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v10/X5_comm_failure_to_pad_contention__seed00/adopted/network_packets.jsonl",
+  "scope": "exact native packet rows selected by accepted message packet IDs",
+  "rows": [
+    {
+      "packet_id": "packet-672",
+      "link_id": "pad-request:uav_x5_second:link",
+      "flow_id": "pad-request:uav_x5_second",
+      "src_node_id": "X5_comm_failure_to_pad_contention__seed00:uav_x5_second:life0",
+      "dst_node_id": "X5_comm_failure_to_pad_contention__seed00:pad_x5_primary:life0",
+      "first_tx_ns": 33600000000,
+      "accepted": true,
+      "payload_bytes": 64,
+      "rx_ns": 33607303683
+    },
+    {
+      "packet_id": "packet-1155",
+      "link_id": "pad-request:uav_x5_priority:link",
+      "flow_id": "pad-request:uav_x5_priority",
+      "src_node_id": "X5_comm_failure_to_pad_contention__seed00:uav_x5_priority:life0",
+      "dst_node_id": "X5_comm_failure_to_pad_contention__seed00:pad_x5_primary:life0",
+      "first_tx_ns": 57600000000,
+      "accepted": true,
+      "payload_bytes": 64,
+      "rx_ns": 57607282351
+    },
+    {
+      "packet_id": "packet-1176",
+      "link_id": "pad-result:uav_x5_priority:link",
+      "flow_id": "pad-result:uav_x5_priority",
+      "src_node_id": "X5_comm_failure_to_pad_contention__seed00:pad_x5_primary:life0",
+      "dst_node_id": "X5_comm_failure_to_pad_contention__seed00:uav_x5_priority:life0",
+      "first_tx_ns": 58500000000,
+      "accepted": true,
+      "payload_bytes": 64,
+      "rx_ns": 58502690717
+    },
+    {
+      "packet_id": "packet-1177",
+      "link_id": "pad-result:uav_x5_second:link",
+      "flow_id": "pad-result:uav_x5_second",
+      "src_node_id": "X5_comm_failure_to_pad_contention__seed00:pad_x5_primary:life0",
+      "dst_node_id": "X5_comm_failure_to_pad_contention__seed00:uav_x5_second:life0",
+      "first_tx_ns": 58500000000,
+      "accepted": true,
+      "payload_bytes": 64,
+      "rx_ns": 58503246845
+    },
+    {
+      "packet_id": "packet-1382",
+      "link_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority:link",
+      "flow_id": "command:lifecycle_landing_uav_x5_priority:uav_x5_priority",
+      "src_node_id": "X5_comm_failure_to_pad_contention__seed00:tower_x5_comm:life0",
+      "dst_node_id": "X5_comm_failure_to_pad_contention__seed00:uav_x5_priority:life0",
+      "first_tx_ns": 68500000000,
+      "accepted": true,
+      "payload_bytes": 64,
+      "rx_ns": 68500224964
+    },
+    {
+      "packet_id": "packet-1501",
+      "link_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second:link",
+      "flow_id": "command:lifecycle_landing_uav_x5_second:uav_x5_second",
+      "src_node_id": "X5_comm_failure_to_pad_contention__seed00:tower_x5_comm:life0",
+      "dst_node_id": "X5_comm_failure_to_pad_contention__seed00:uav_x5_second:life0",
+      "first_tx_ns": 74300000000,
+      "accepted": true,
+      "payload_bytes": 64,
+      "rx_ns": 74300213321
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed02/adopted/network_packets.jsonl",
+  "source_sha256": "94ab6986867e44fcf6f8a076e20d1cb9fbdf27dce3fe7e6b4bf59f57d19274f9",
+  "raw_complete_heartbeat_rows": 1800,
+  "exact_flow_ids": [
+    "heartbeat:tower_x5_comm:to:uav_x5_priority:heartbeat:expected",
+    "heartbeat:tower_x5_comm:to:uav_x5_second:heartbeat:expected"
+  ],
+  "expected_slot_policy": {
+    "period_ns": 100000000,
+    "payload_bytes": 256,
+    "ttl_ns": 200000000,
+    "window_ns": 1000000000,
+    "loss_limit": 0.05,
+    "consecutive_limit": 3
+  },
+  "actor_ids": [
+    "uav_x5_priority",
+    "uav_x5_second"
+  ],
+  "radio_status": "Actual final run configuration; cochannel UDP competition is not wideband jamming",
+  "rendezvous_status": "No rendezvous declared in this scenario profile"
+}

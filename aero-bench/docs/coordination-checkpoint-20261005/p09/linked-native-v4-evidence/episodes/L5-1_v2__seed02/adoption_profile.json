@@ -1,0 +1,69 @@
+{
+  "schema_version": "p09.linked-source-adoption/v4",
+  "episode_id": "L5-1_v2__seed02",
+  "scenario_id": "L5-1_v2",
+  "seed": 2,
+  "ns3_seed": 3,
+  "ns3_run": 1,
+  "mechanism": "local_weather",
+  "actor_ids": [
+    "uav_weather_l5_1_v2"
+  ],
+  "primary_station": null,
+  "backup_station": null,
+  "heartbeat": {
+    "period_ns": 100000000,
+    "payload_bytes": 256,
+    "ttl_ns": 200000000,
+    "window_ns": 1000000000,
+    "loss_limit": 0.05,
+    "consecutive_limit": 3
+  },
+  "receiver_state_namespace": "p09.actor-heartbeat-watchdog/v1",
+  "receiver_state_definitions": {
+    "loss_ratio": "unit1; mature expected local slots not received before strict generation+TTL; includes unsent expected slots",
+    "consecutive_missing": "packet; trailing mature missing sequence slots",
+    "degraded": "bool/UNKNOWN; loss_ratio>0.05 AND consecutive_missing>=3",
+    "observation_ns": "ns; local window close/available time, consumed strictly before actor decision"
+  },
+  "legacy_state_disposition": "old global accepted-TX/reference and initial runtime flags are separate; no actor-control causality claim from those flags",
+  "command": {
+    "payload_bytes": 64,
+    "attempts": 3,
+    "period_ns": 100000000,
+    "deadline_ns": 2000000000,
+    "policy_delay_ns": 0
+  },
+  "source_script": "Dataset/scenarios/L5_environment/interaction/L5-1_v2/event_script.json",
+  "source_scene": "Dataset/scenarios/L5_environment/interaction/L5-1_v2/scene_setup.json",
+  "source_script_sha256": "694174868dcc77e4db8e631b2af47948e99d6e44f4950b8722411e24808b35b5",
+  "source_scene_sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2",
+  "corrections": [
+    {
+      "trigger_id": "trig_rain_condition_met",
+      "change": "five consecutive original ticks, not post-false sustain"
+    },
+    {
+      "event_id": "rain_condition_met",
+      "change": "explicit L5 temporal-policy migration: threshold follows available consecutive samples"
+    }
+  ],
+  "assumptions": [
+    "receiver-visible periodic heartbeat is configured application traffic",
+    "actor observes local weather/nearby geometry after one original tick",
+    "10Hz authored waypoint engine, not PX4 aerodynamic flight"
+  ],
+  "rain_rf": "not amplified; dimensionless rain is not an observed mm/h rate",
+  "rf_profile": "R1:2412MHz/20MHz/HtMcs0/16dBm/NF7/n3/L0=40.09532929124565",
+  "weather_owner_ids": [
+    "uav_weather_l5_1_v2",
+    "weather_car_l5_1_v2"
+  ],
+  "rain_guard": {
+    "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+    "sample_period_ns": 100000000,
+    "consecutive_samples": 5,
+    "threshold": 0.5,
+    "duration_semantics": "five consecutive samples, spanning four sample intervals; no post-false hold"
+  }
+}

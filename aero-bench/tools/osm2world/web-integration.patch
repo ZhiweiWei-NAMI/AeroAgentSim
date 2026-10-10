@@ -1,0 +1,140 @@
+--- a/core-web/src/main/java/org/osm2world/WebModule.java
++++ b/core-web/src/main/java/org/osm2world/WebModule.java
+@@ -67,6 +67,14 @@
+ 
+ 		private final String name;
+ 		private final String materialName;
++		private String elementId;
++		private String modelClass;
++
++		@JSExport
++		public String elementId() { return elementId; }
++
++		@JSExport
++		public String modelClass() { return modelClass; }
+ 
+ 		private final String baseColorTexture;
+ 		private final String opacityTexture;
+@@ -312,15 +320,17 @@
+ 					new MeshStore.EmulateTextureLayers(),
+ 					new MeshStore.MergeMeshes(mergeOptions)
+ 			));
+-			List<Mesh> meshes = meshStore.meshes();
+-
+ 			List<O2WMesh> webMeshes = new ArrayList<>();
+ 
+-			for (Mesh mesh : meshes) {
+-				int index = meshes.indexOf(mesh);
+-				webMeshes.add(new O2WMesh("Mesh_" + index,
++			for (MeshWithMetadata entry : meshStore.meshesWithMetadata()) {
++				Mesh mesh = entry.mesh();
++				int index = webMeshes.size();
++				O2WMesh exported = new O2WMesh("Mesh_" + index,
+ 						requireNonNullElse(getMaterialName(mesh.material, config.config), "Material_" + index),
+-						mesh.material, mesh.geometry.asTriangles()));
++						mesh.material, mesh.geometry.asTriangles());
++				exported.elementId = entry.metadata().mapElement() == null ? null : entry.metadata().mapElement().toString();
++				exported.modelClass = entry.metadata().modelClass() == null ? null : entry.metadata().modelClass().getSimpleName();
++				webMeshes.add(exported);
+ 			}
+ 
+ 			return webMeshes.toArray(O2WMesh[]::new);
+--- a/core/src/main/java/org/osm2world/world/network/JunctionNodeWorldObject.java
++++ b/core/src/main/java/org/osm2world/world/network/JunctionNodeWorldObject.java
+@@ -8,6 +8,11 @@
+ import org.osm2world.map_data.data.MapNode;
+ import org.osm2world.math.VectorXZ;
+ import org.osm2world.math.shapes.SimplePolygonXZ;
++import org.osm2world.math.algorithms.JTSConversionUtil;
++import org.locationtech.jts.geom.Coordinate;
++import org.locationtech.jts.geom.Geometry;
++import org.locationtech.jts.geom.Polygon;
++import org.locationtech.jts.operation.union.UnaryUnionOp;
+ 
+ /** junction between at least three segments in a network */
+ public abstract class JunctionNodeWorldObject<S extends NetworkWaySegmentWorldObject>
+@@ -89,9 +94,24 @@
+ 			vectors.add(vectors.get(0));
+ 		}
+ 
+-		SimplePolygonXZ simplePoly = new SimplePolygonXZ(vectors);
+-
+-		return simplePoly.makeCounterclockwise();
++		// Repeated and nearly parallel interfaces must contribute area once.
++		// Union the contact fan instead of interpreting overlapping edges as a ring.
++		Coordinate center = JTSConversionUtil.toJTS(getPrimaryMapElement().getPos());
++		List<Geometry> contactAreas = new ArrayList<>();
++		for (int i = 0; i < vectors.size() - 1; i++) {
++			Polygon triangle = JTSConversionUtil.GF.createPolygon(new Coordinate[] {
++				center, JTSConversionUtil.toJTS(vectors.get(i)),
++				JTSConversionUtil.toJTS(vectors.get(i + 1)), center
++			});
++			if (triangle.getArea() > 1e-10) contactAreas.add(triangle);
++		}
++		if (contactAreas.isEmpty()) return null;
++		// Sub-millimetre precision joins interfaces which touch at the center.
++		Geometry outline = UnaryUnionOp.union(contactAreas).buffer(0.0001);
++		if (!(outline instanceof Polygon polygon) || polygon.getNumInteriorRing() != 0) {
++			throw new IllegalArgumentException("Junction contact surfaces do not form one connected polygon");
++		}
++		return JTSConversionUtil.fromJTS(polygon).getOuter().makeCounterclockwise();
+ 
+ 	}
+ 
+--- a/core/src/main/java/org/osm2world/world/modules/building/ExteriorBuildingWall.java
++++ b/core/src/main/java/org/osm2world/world/modules/building/ExteriorBuildingWall.java
+@@ -125,7 +125,7 @@
+ 
+ 		} else {
+ 
+-			if (!tags.containsKey("building:levels") || tags.contains("building:levels", "0")
++			if ((!tags.containsKey("building:levels") && !config.getBoolean("windowsOnUnlevelledBuildings", false)) || tags.contains("building:levels", "0")
+ 					|| points.getLength() < 1.0) {
+ 				hasWindows = false;
+ 			}
+@@ -242,7 +242,7 @@
+ 
+ 					try {
+ 						mainSurface = new WallSurface(buildingPart, material, bottomPoints, topPoints);
+-					} catch (InvalidGeometryException ignored) {}
++					} catch (InvalidGeometryException ignored) { mainSurface = null; }
+ 
+ 					// usually create no roof surface, except if there is no level to attach the main surface to
+ 					createRoofSurface = levelsWithoutRoof.isEmpty();
+@@ -253,7 +253,7 @@
+ 
+ 					try {
+ 						mainSurface = new WallSurface(buildingPart, material, bottomPoints, roofBottomPoints);
+-					} catch (InvalidGeometryException ignored) {}
++					} catch (InvalidGeometryException ignored) { mainSurface = null; }
+ 
+ 					createRoofSurface = true;
+ 
+@@ -403,6 +403,9 @@
+ 				double totalLevelHeight = levels.stream().mapToDouble(l -> l.height).sum();
+ 
+ 				Double windowHeight = totalLevelHeight / levels.size();
++				if (!tags.containsKey("building:levels") && config.getBoolean("windowsOnUnlevelledBuildings", false)) {
++					windowHeight = config.getDouble("unlevelledWindowTextureHeight", 3.0);
++				}
+ 
+ 				if (!hasWindows && buildingPart instanceof RoofBuildingPart) {
+ 					// the single "level" of wall below the roof is not a suitable indicator of level height for glass walls
+--- a/core/src/main/java/org/osm2world/math/shapes/PolygonShapeXZ.java
++++ b/core/src/main/java/org/osm2world/math/shapes/PolygonShapeXZ.java
+@@ -145,12 +145,9 @@
+ 
+ 	/** returns a point contained inside the shape, i.e. a point for which {@link #contains(VectorXZ)} is true */
+ 	public default VectorXZ getPointInside() {
+-		VectorXZ center = getOuter().getCentroid();
+-		if (this.contains(center)) {
+-			return center;
+-		} else {
+-			return getTriangulation().iterator().next().getCenter();
+-		}
++		var interior = org.osm2world.math.algorithms.JTSConversionUtil.toJTS(this).getInteriorPoint();
++		if (interior.isEmpty()) throw new IllegalStateException("Empty polygon has no interior point");
++		return org.osm2world.math.algorithms.JTSConversionUtil.fromJTS(interior.getCoordinate());
+ 	}
+ 
+ 	@Override

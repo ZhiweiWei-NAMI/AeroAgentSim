@@ -1,0 +1,240 @@
+{
+  "schema_version": "aero-bench.traffic-preview-profile-registry/v1",
+  "profiles": [
+    {
+      "schema_version": "aero-bench.traffic-preview-profile/v1",
+      "profile_id": "huangpu.sumo-preview.v1",
+      "profile_sha256": "5200960197e684290adf43945105bdd797adffa93d65d10cf3749eabd7fcf407",
+      "scene_path": "/city-presentation/default-scene-v1.json",
+      "scene": {
+        "path": "frontend/public/city-presentation/default-scene-v1.json",
+        "sha256": "1df4de6d8a175bfb71c385f0f422a012135dbae890db382578c0706d44d61099",
+        "size_bytes": 2829
+      },
+      "network": {
+        "path": "validation/frontend-opus-20260930/ground/closed-loop-v6/round-3/refined/network.net.xml",
+        "sha256": "38bd3d8a2609cecef7f0c98608e0d58eb9f5123448fd675a6e1d8dff6ccfeffc",
+        "size_bytes": 1597058
+      },
+      "engineering_inputs": {
+        "path": "validation/frontend-opus-20260930/ground/closed-loop-v6/round-3/refined/engineering-inputs.json",
+        "sha256": "40a48dab4ca1a495d0337b3f9aa69cd24705c20479c4edee8233c290eb0fc21e",
+        "size_bytes": 3579
+      },
+      "mesh_pack_manifest": {
+        "path": "frontend/public/osm2world/packs/shanghai-huangpu-east-v1/manifest.json",
+        "sha256": "8f70bc96be129d5458336464026070fdab2af22ef12fa7435ead255e0300bc98",
+        "size_bytes": 494457
+      },
+      "road": {
+        "path": "frontend/public/city-presentation/huangpu-canonical-road-v3.json",
+        "sha256": "89ed7bfdb48d8a5d6628d4b5832725f28648ebbe16ce2870b53b494d17524702",
+        "size_bytes": 2728239
+      },
+      "rendered_objects": {
+        "path": "validation/scene-compiler-shanghai-huangpu-east-v1/metadata/objects.json",
+        "sha256": "c763d63177aff410a4c5e6154c98dc5c7f9873b17b024bc8c93fda9918c918dc",
+        "size_bytes": 634067
+      },
+      "render_manifest": {
+        "path": "frontend/public/building-renders/shanghai-huangpu-east-v1/manifest.json",
+        "sha256": "4aba7dc0339d122eaaf92fb220508eac40215019426aaed45028e6db0d6a2f92",
+        "size_bytes": 600013
+      },
+      "source_osm": {
+        "path": "validation/frontend-opus-20260930/ground/closed-loop-v6/round-3/refined/refined-ground.osm",
+        "sha256": "0f985e5963b04b4096b4f93d0fd5523279ba7d850b8d64348ff99aa7b946e057",
+        "size_bytes": 275854
+      },
+      "effective_fixtures": {
+        "path": "frontend/public/city-presentation/huangpu-canonical-effective-fixtures-v1.json",
+        "sha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "size_bytes": 55711972
+      },
+      "source_license": {
+        "file": {
+          "path": "validation/scene-compiler-shanghai-huangpu-east-v1/provenance/source-provenance.json",
+          "sha256": "692f6157e6cd6f74b9b90c8e8d844612df60e3d7feebf2b1f538c922c942af52",
+          "size_bytes": 11117
+        },
+        "status": "documented",
+        "source_dataset": "OpenStreetMap Shanghai extract",
+        "license": "OpenStreetMap ODbL 1.0",
+        "attribution": "© OpenStreetMap contributors",
+        "offline": true,
+        "runtime_remote_requests": false
+      },
+      "sumo_image_id": "sha256:6974eeb6110526b9f65c6766ff725cefa9bd48e856ebed6fd828b3c3ea6d80cd",
+      "implementation_inputs": [
+        {
+          "role": "builder",
+          "file": {
+            "path": "frontend/scripts/build-sumo-city-preview.py",
+            "sha256": "e58d44a939d31d8b4dca61226dd152303ea39769e892961f1ba6c4aa3e125ca6",
+            "size_bytes": 56852
+          }
+        },
+        {
+          "role": "auditor",
+          "file": {
+            "path": "frontend/scripts/audit-sumo-canonical-motion-v2.py",
+            "sha256": "b2f9a27996027b634ee58356b68ea87265df5efa490e07ebd405383c413d399b",
+            "size_bytes": 44101
+          }
+        },
+        {
+          "role": "demand_authoring",
+          "file": {
+            "path": "aero_bench/authoring/traffic_preview.py",
+            "sha256": "f1d01656d5dbbf931a3546b105d6d936b5c533008116a2e4a0724a4dd3c2aa7a",
+            "size_bytes": 2582
+          }
+        },
+        {
+          "role": "workspace_contract",
+          "file": {
+            "path": "aero_bench/authoring/workspace.py",
+            "sha256": "e0b8479676ac2a6ac16ddc7a6631c372b294cb1d7bbd68c7cb4f31f6a50446ae",
+            "size_bytes": 16473
+          }
+        },
+        {
+          "role": "strict_models",
+          "file": {
+            "path": "aero_bench/config/models.py",
+            "sha256": "1e97fb3182cd0970159de71e7ad8bcaed9a8ccb17580f0cd2bdb05a693625666",
+            "size_bytes": 30656
+          }
+        },
+        {
+          "role": "provider_json",
+          "file": {
+            "path": "aero_bench/providers/rpc.py",
+            "sha256": "c9dfd35b67110fe0a6f3eba7d74d96b4b1d30b781b12970a5d0ab0e1c17596af",
+            "size_bytes": 16325
+          }
+        },
+        {
+          "role": "traffic_preview_contracts",
+          "file": {
+            "path": "aero_bench/authoring/traffic_preview_contracts.py",
+            "sha256": "12179c45d6a9044e501e50b796203a6501eb0e9951a328f5014702737bd6b5d7",
+            "size_bytes": 4112
+          }
+        },
+        {
+          "role": "traffic_preview_jobs",
+          "file": {
+            "path": "aero_bench/authoring/traffic_preview_jobs.py",
+            "sha256": "efea17bea83056985831aa471f86a3e6c8929c0f606b805ce8d688f7e24fae23",
+            "size_bytes": 29287
+          }
+        },
+        {
+          "role": "authoring_api",
+          "file": {
+            "path": "aero_bench/authoring/api.py",
+            "sha256": "bc3a690f275d0e03ad20c0bde0480c633df09a3560661e3b99fa8458f9cb3054",
+            "size_bytes": 19668
+          }
+        },
+        {
+          "role": "ground_fleet",
+          "file": {
+            "path": "frontend/scripts/city_ground_fleet.py",
+            "sha256": "f1e0114ded3c3bf12034a65e12937eb43fbedb4786e83eee3538fea1b0453710",
+            "size_bytes": 1732
+          }
+        },
+        {
+          "role": "native_routes",
+          "file": {
+            "path": "frontend/scripts/city_native_route_capabilities.py",
+            "sha256": "87539d06e2932e2d750bd6d0ded5c5bbb838127b1bca391ace24ca8ccd16475d",
+            "size_bytes": 4174
+          }
+        },
+        {
+          "role": "native_signals",
+          "file": {
+            "path": "frontend/scripts/city_native_signals.py",
+            "sha256": "28e6324ed900e8214c7800d225e850857d4b5728f577658738b2fd402cf9f1b3",
+            "size_bytes": 3741
+          }
+        },
+        {
+          "role": "road_topology",
+          "file": {
+            "path": "frontend/scripts/city_road_topology.py",
+            "sha256": "dc7316b1752e4624f3e148ce65540785f103e467d26ff5343cf26784dea84f5b",
+            "size_bytes": 2683
+          }
+        },
+        {
+          "role": "motion_continuity",
+          "file": {
+            "path": "frontend/scripts/city_motion_continuity.py",
+            "sha256": "115b2018597e8251bb4478a2a886c1d7f0dd2e4d467a630673f37c0bbcf24f14",
+            "size_bytes": 7076
+          }
+        },
+        {
+          "role": "fixture_geometry",
+          "file": {
+            "path": "frontend/scripts/city_fixture_geometry.py",
+            "sha256": "798b2a448b43acdba173e4a3515634f53ed328e6a2aceaa3c52b3beb3f9e05c5",
+            "size_bytes": 8262
+          }
+        },
+        {
+          "role": "effective_fixture_geometry",
+          "file": {
+            "path": "frontend/scripts/city_effective_fixtures.py",
+            "sha256": "54340eb6b1389d51e21fc78562caa08a6eee86245ce090df75fd320e75970c7d",
+            "size_bytes": 7621
+          }
+        },
+        {
+          "role": "surface_identity",
+          "file": {
+            "path": "frontend/scripts/city_surface_identity.py",
+            "sha256": "0e0ef0228d0c79011ec47eb6f3e0ded78cc5d8c64641eb9368544796ddc42845",
+            "size_bytes": 3830
+          }
+        },
+        {
+          "role": "preview_coordinates",
+          "file": {
+            "path": "frontend/scripts/city_preview_coordinates.py",
+            "sha256": "d4dc8c030ee4d76c43916dae489c5b86e6ea673f68a86eac8e7be6718af637f5",
+            "size_bytes": 28611
+          }
+        },
+        {
+          "role": "motion_obstacles",
+          "file": {
+            "path": "frontend/scripts/city_motion_obstacles.py",
+            "sha256": "de920f286be39ddf7273cf5d59e38ba963dc73217d7b7d75663378fa92a681b8",
+            "size_bytes": 14225
+          }
+        },
+        {
+          "role": "road_clearance",
+          "file": {
+            "path": "frontend/scripts/city_road_physical_clearance.py",
+            "sha256": "8ddd917d843628e8159cd5aeb35af23577772f8e589fa5357127d87ae57dd04e",
+            "size_bytes": 12099
+          }
+        },
+        {
+          "role": "frame_math",
+          "file": {
+            "path": "aero_bench/world/frame_math.py",
+            "sha256": "64e79693f7c8f7d0db263c985ef3af560bba1eede27facfea45bce1a85fd9fa4",
+            "size_bytes": 28330
+          }
+        }
+      ]
+    }
+  ]
+}

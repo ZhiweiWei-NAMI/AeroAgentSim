@@ -1,0 +1,101 @@
+{
+  "project": "P01",
+  "package": "B01",
+  "observed_utc": "2026-10-06T13:13:04.896643+00:00",
+  "status": "source_frozen_v1_written_initial_review_changes_required_pending_parent",
+  "prerequisite_B00": "accepted_by_parent",
+  "specification": {
+    "path": "/mnt/data2/weizhiwei/AERO_WORLD/design/p01_generic/schema_rollout_v4/B01-specification.md",
+    "utf8_readable": true,
+    "bytes": 7227,
+    "headers": [
+      "S01.01",
+      "S01.02",
+      "S01.03",
+      "S01.04"
+    ],
+    "end_marker_received": true,
+    "received_by": "existing authorized SSH path; complete parent package, not reconstructed full plan"
+  },
+  "coordinator": {
+    "task_id": null,
+    "kind": "execute",
+    "requested_model": "gpt-6.1-sol",
+    "requested_effort": "xhigh",
+    "status": "current_running_coordinator_dispatch",
+    "thread_id": null,
+    "effective_model": null,
+    "effective_effort": null,
+    "live_catalog_supported": true,
+    "bridge_execution_policy": "sequential",
+    "running_tasks_observed": 1,
+    "queued_duplicate_status": "interrupted_before_start"
+  },
+  "implementation": {
+    "route": "glm_sdk -> workbuddy/glm-5.3-flash",
+    "reasoningEffort": "omitted/provider default",
+    "session_id": "1f23ed1c-08e5-4996-bc85-8d595cd59318",
+    "current_success_receipt": {
+      "provider": "workbuddy",
+      "model": "glm-5.3-flash",
+      "maxTokens": 131072,
+      "reasoningEffort": "omitted/provider default",
+      "source": "dispatcher actual_route event and assigned session request/header"
+    },
+    "whole_specification_acknowledged_by_first_coding_model": true,
+    "actual_code_changes": true,
+    "launcher_pid": 1449687,
+    "first_saved_file": "design/p01_generic/schema_rollout_v4/reports/B01/author_checkpoint.json",
+    "launcher_status": "completed"
+  },
+  "microsteps": [
+    {
+      "id": "S01.01",
+      "status": "author_execution_passed_written_glm_review_changes_required",
+      "original_suite_tests": 13
+    },
+    {
+      "id": "S01.02",
+      "status": "author_execution_passed_written_glm_review_changes_required",
+      "original_suite_tests": 11
+    },
+    {
+      "id": "S01.03",
+      "status": "author_execution_passed_written_glm_review_changes_required",
+      "original_suite_tests": 12
+    },
+    {
+      "id": "S01.04",
+      "status": "author_execution_passed_written_glm_review_changes_required",
+      "original_suite_tests": 14
+    }
+  ],
+  "ownership": {
+    "B01-specification.md": "desktop coordinator; authorized source text only",
+    "reports/B01/delivery.json": "P01 coordination metadata, serial update",
+    "production source/contracts/tests": "Unique ordinary GLM author session1f23ed1c; no other writer",
+    "preliminary review": "Different ordinary GLM reviewer a38f2965; report files only"
+  },
+  "budget": {
+    "gpu_training_minutes": 0,
+    "gpu_used": false
+  },
+  "blocker": null,
+  "next": "Publish fixed B01 source and written findings for parent native review. No B02 or training; later corrections get separate source version.",
+  "observed_at": "2026-10-06T06:13:04.896762-07:00",
+  "source_snapshot": "design/p01_generic/schema_rollout_v4/reports/B01/frozen_v1",
+  "final_author_tests": {
+    "tests": 82,
+    "exit": 0,
+    "wall_seconds": 76.17,
+    "qualification": "final combined source with32 provenance supplements; original four-suite50 preserved separately"
+  },
+  "preliminary_review": {
+    "session_id": "a38f2965-e4a2-435c-a7fd-153b9cb0a49d",
+    "model": "workbuddy/glm-5.3-flash",
+    "effort": "provider default omitted",
+    "result": "CHANGES_REQUIRED",
+    "written_report": "reports/B01/glm_initial_review/report.json",
+    "qualification": "reviewer finishing fixed-copy version qualification; no source changes"
+  }
+}

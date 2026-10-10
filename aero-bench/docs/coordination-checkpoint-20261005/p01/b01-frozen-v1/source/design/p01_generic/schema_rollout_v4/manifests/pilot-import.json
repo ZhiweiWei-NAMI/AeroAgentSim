@@ -1,0 +1,48 @@
+{
+ "episode_id": "L4-1_v1__seed00",
+ "sources": {
+  "truth_frames": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/render_ready_episodes/L4-1_v1__seed00/truth_frames.jsonl",
+  "roster": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/render_ready_episodes/L4-1_v1__seed00/global_entity_roster.json",
+  "world_truth_deltas": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/objective_semantic_truth/L4-1_v1__seed00/world_truth_graph_deltas.jsonl",
+  "events": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/objective_semantic_truth/L4-1_v1__seed00/event_occurrences.jsonl",
+  "capture": "/mnt/data2/weizhiwei/AERO_WORLD/design/p01_generic/structured_mm_20261006/host_data_v2/L4-1_v1/seed00"
+ },
+ "source_records": {
+  "global_entity_roster.json": 78,
+  "truth_frames.jsonl": 901,
+  "world_truth_graph_deltas.jsonl": 180,
+  "event_occurrences.jsonl": 10
+ },
+ "canonical_records": {
+  "entity": 78,
+  "frame": 41472,
+  "edge": 138831,
+  "event": 10,
+  "observation": 22
+ },
+ "ticks_covered": [
+  0,
+  900,
+  901
+ ],
+ "modalities": {
+  "rgb": 11,
+  "lidar": 11
+ },
+ "missing_modalities": [],
+ "event_traceability": {
+  "_observer_entity_id": "u_inspect_l4_1_v1",
+  "mid_event_sample": {
+   "event_id": "objective_event:bb805d5b1a6061230dc69281",
+   "source_path": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/objective_semantic_truth/L4-1_v1__seed00/event_occurrences.jsonl",
+   "source_line": 1,
+   "detection_tick": 35,
+   "end_tick": 35,
+   "canonical_id": "objective_event:bb805d5b1a6061230dc69281"
+  }
+ },
+ "errors": [],
+ "canonical_records_jsonl": "/mnt/data2/weizhiwei/AERO_WORLD/design/p01_generic/schema_rollout_v4/derived/pilot_L4-1_v1__seed00.canonical.jsonl",
+ "canonical_record_total": 180413,
+ "wall_seconds": 12.665
+}

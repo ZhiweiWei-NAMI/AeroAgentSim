@@ -1,0 +1,244 @@
+{
+ "schema_version": "p09.lineage.native-metadata-corrections/v1",
+ "status": "RECEIVER_MEMBERSHIP_QUALIFIED_24OF30_EXTRACTION_EXIT0_SOURCE_FROZEN_FOR_PARENT_NATIVE_REVIEW",
+ "session": "6a42ae20-678b-4198-a7ef-977799519182 (resumed; no redo of immutable packet f3101f948b7f73d624ff1aa017efd2deeb0156f7)",
+ "correction_1_split_policy": {
+  "edited_logic": "ONE split policy in BOTH tables: scenario_family=scenario_id stripped trailing _vN; base_episode_family=scenario_family+original seed (zfill2); split_group=scenario_family everywhere; source_family remains a separate producer label column; identity CSV gained scenario_family + base_episode_family columns",
+  "before": {
+   "identity split_group": "original episode_id (210 values)",
+   "matrix split_group": "scenario_family (39)",
+   "policy": "two implicit levels"
+  },
+  "after": {
+   "scenario_family_groups": 39,
+   "base_episode_family_groups": 117,
+   "identity split_group": "scenario_family (39, == matrix)",
+   "train_valid_claim": "NONE (inventory makes no actual TRAIN/VALID assignment)"
+  },
+  "preserved": "same scenario/seed originals/new copies/overlays/load branches/windows stay together; never derived from revision"
+ },
+ "correction_2_receiver_source": {
+  "edited_logic": "copied v14 receiver_observed_states.jsonl labeled as native v12 gateway producer output (copying without new simulation does not change original producer); comm14 inheritance note corrected in matrix; THREE distinct definition ids/denominators exported in catalog + coverage",
+  "actual_source_example": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed00/adopted/receiver_observed_states.jsonl (494378 B, first-line header read only)",
+  "header_facts": {
+   "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+   "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss",
+   "fields": [
+    "observation_ns",
+    "available_ns",
+    "mature_expected",
+    "timely_received",
+    "availability",
+    "reason"
+   ],
+   "availability_rule": "KNOWN only when mature_expected>0 (producer Dataset/semantic_simulation/ns3_episode/gateway_sequence_metric.py)"
+  },
+  "three_definitions": [
+   "p09.LP.q-derived/v1 (published old q-based scalar L/P)",
+   "p09.LP.gateway-declared-sequence/v1 (gateway declared-expected-sequence deadline stats)",
+   "p09.LP.mature-ttl-cohort/v1 (accepted-TX matured TTL cohort)"
+  ],
+  "unknown_preserved": "actor available_time stays UNKNOWN_no_actual_ingest_receipt on all 1680 rows"
+ },
+ "correction_3_time_support": {
+  "edited_logic": "time_support_recorded now declares the corpus-contract reference grid; per-episode measured counts NOT_MEASURED; 181 relabeled planned_capture_schedule (planned_only_never_successful_frames); no scans run",
+  "before": {
+   "declared-style rows": "0",
+   "inferred 901/181 rows": 1470,
+   "old label": "recorded_time_support_full_episode_0_90s(901_truth_ticks;181_capture_frames)"
+  },
+  "after": {
+   "declared_reference_grid rows": 1470,
+   "planned_capture_schedule rows": 210,
+   "measured_counts": "NOT_MEASURED (not read, no scans)"
+  }
+ },
+ "correction_4_truth_label": {
+  "edited_logic": "210 motion/geometry rows relabeled server numerical/authored truth (render input); no UE acquisition or physical-provider inference from render-ready numerical logs",
+  "before": "UE-rendered physical truth (trajectories) + 'UE-rendered truth' in producer_source_ref",
+  "after": "server numerical/authored truth; residual 'UE-rendered' cells in matrix: 0"
+ },
+ "correction_5_model_visible": {
+  "edited_logic": "model_visible defined as observer evidence actually available by cutoff in the chosen experimental view (catalog + coverage definitions replaced); readable-file existence no longer counts as visibility; manifests/occupancy/event_script/future plans/semantic names/terminal states stay archive-only unless independently known by cutoff; unknown runtime availability stays unknown; config pointers not relabeled actual observed input",
+  "after": {
+   "catalog_definition_replaced": true,
+   "coverage_definition_replaced": true,
+   "archive_only_constant_extended": "manifests/occupancy added"
+  }
+ },
+ "commands": [
+  {
+   "command": "python3 design/p09/episode_dimension_lineage/extract_lineage.py",
+   "exitcode": 0,
+   "start": "2026-10-06T07:02:46-07:00",
+   "end": "2026-10-06T07:02:46-07:00"
+  },
+  {
+   "command": "python3 design/p09/episode_dimension_lineage/extract_lineage.py (seed zfill2 fix)",
+   "exitcode": 0,
+   "start": "2026-10-06T07:03:22-07:00",
+   "end": "2026-10-06T07:03:22-07:00"
+  },
+  {
+   "command": "python3 design/p09/episode_dimension_lineage/extract_lineage.py (resume: regenerate after second-review edits)",
+   "exitcode": 0,
+   "start": "2026-10-06T07:10:09-07:00",
+   "end": "2026-10-06T07:10:10-07:00"
+  },
+  {
+   "command": "python3 design/p09/episode_dimension_lineage/extract_lineage.py (resume: motion-bucket + single-tier fix)",
+   "exitcode": 0,
+   "start": "2026-10-06T07:11:05-07:00",
+   "end": "2026-10-06T07:11:05-07:00"
+  },
+  {
+   "command": "python3 design/p09/episode_dimension_lineage/extract_lineage.py (residual label contradiction patch)",
+   "exitcode": 0,
+   "start": "2026-10-06T07:16:59-07:00",
+   "end": "2026-10-06T07:16:59-07:00"
+  }
+ ],
+ "validation": {
+  "matrix_rows": 1680,
+  "identity_rows": 210,
+  "episodes_unique": 210,
+  "exact36": 36,
+  "low_load210": 210,
+  "business12": 12,
+  "per_episode_placeholders": 0,
+  "payload_access": "none"
+ },
+ "parent_confirmed_preserved": {
+  "lowload": "552922=551948 on-time + 974 unavailable rejects",
+  "partitions": "12 branch / 18879"
+ },
+ "limitations": [
+  "gateway/ttl definition rows are definition labels only; no per-episode membership counted (no scans)",
+  "per-episode measured tick/frame counts NOT_MEASURED; declared contract grid used as reference only",
+  "receiver header verified from one example's first line + producer definition snippet; not a 36-episode field audit",
+  "split policy is grouping only; no TRAIN/VALID assignment claimed",
+  "scientific audit not performed; stopped for parent third-round review"
+ ],
+ "output_sizes": {
+  "episode_identity_210.csv": 59438,
+  "dimension_lineage_1680.csv": 2437237,
+  "source_version_catalog.json": 16038,
+  "existing_evidence_index.json": 658915,
+  "coverage_summary.json": 587479,
+  "next_checks.md": 2919,
+  "README.md": 2461,
+  "extract_lineage.py": 72016,
+  "author_checkpoint.json": 6547
+ },
+ "second_review_clarifications": {
+  "non_exhaustive_pending_sets": {
+   "union_distinct_rows": 1470,
+   "composition": "630 missing_mapping + 210 missing_coverage_statistics + 1050 real_mechanism_gap, minus 420 rows dual-bucketed in both missing_mapping and real_mechanism_gap (localization/navigation, facility/task state)",
+   "outside_pending_sets": "motion/geometry 210 rows: exact source/output references (boundary trajectories.jsonl/truth_frames.jsonl, path-existence verified; v14 source_manifest physical_motion_scope='authored waypoint engine; not PX4 motion feedback') but episode-level consumer/adoption unconfirmed; exported in outside_pending_sets bucket with explicit reason; no mechanism defect invented to force it into a category",
+   "coverage": "1680/1680 rows explicitly placed (union 1470 + outside 210); unclassified_unknown = 0"
+  },
+  "real_mechanism_gap_interpretation": "SOURCE-LEVEL pending review flag derived from read source documents (root causal summary, current_state_facts.md); NOT a claim of demonstrated physical defects per row",
+  "three_evidence_axes": {
+   "a_producer_source_lineage": "log_ref; producer/source_ref; source_version_or_hash; source_family",
+   "b_schema_availability_time_support": "time_support_recorded (declared reference grid; receiver schema observation_ns/available_ns header-verified on example L2-1_v1__seed00); time_support_planned (planned capture schedule)",
+   "c_confirmed_consumer_cutoff_use": "current_consumer [tier=...] + available_time (UNKNOWN_no_actual_ingest_receipt on all 1680 rows)",
+   "rule": "axes never collapsed: consumer tier 0 does NOT imply logs lack availability-time fields — receiver observations actually carry observation_ns/available_ns (recorded from the exact header); actual ingestion/cutoff proof independently stays UNKNOWN",
+   "exported_in": [
+    "source_version_catalog.json evidence_axes",
+    "coverage_summary.json evidence_axes"
+   ]
+  },
+  "tier_recheck_after_clarification": {
+   "actual_consumer_confirmed": 0,
+   "configured_pointer": 210,
+   "actual_capture_binding": 0,
+   "documented_corpus_or_contract_level": 1050,
+   "none_confirmed": 420,
+   "motion_note": "motion/geometry 210 rows sit in documented_corpus_or_contract_level with single [tier=] token"
+  }
+ },
+ "residual_label_contradictions_corrected": {
+  "scope": "coordinator-identified contradictory inheritance/adoption labels ONLY; all other content untouched",
+  "site_1_catalog_package_producer_inheritance": {
+   "before": "'30 episodes (v12+v13-metadata): 1.6.0 unchanged, receiver_observed_states.jsonl inherited'",
+   "after": "copied native v12 gateway expected-sequence producer output (receiver_observed_states.jsonl, schema p09.gateway-scheduled-sequence-ttl/v1, state_source native receiver RX vs declared expected sequence) - distinct from published old q formula (p09.LP.q-derived/v1) and accepted-TX matured-TTL cohort (p09.LP.mature-ttl-cohort/v1); no new comm simulation run for v14; NOT all comm changed, NOT all native",
+   "exported_in": "source_version_catalog.json v14_package_vs_producer_revisions.per_dimension_producer_revision.communication"
+  },
+  "site_2_coverage_cg4c_dimensions_unchanged": {
+   "before": "'dimensions_unchanged' included communication (1.6.0)",
+   "after": "communication removed from dimensions_unchanged (now computation/energy/thermal/localization/facility only); explicit communication_special_note: 30 v12+v13-metadata episodes carry copied native v12 gateway expected-sequence producer output, 6 L6-2 carry receipt_replay evidence, no new comm simulation executed for v14",
+   "exported_in": "coverage_summary.json count_group_4c_v14_package_vs_producer_revisions"
+  },
+  "site_3_catalog_scope_adoption_lines_618_619": {
+   "before": "scope 'all 210 (current adopted legacy supplement)' + adoption 'current_adoption' (paths-only basis) for compute_comm:1.6.0 and domain_state:2.2.0",
+   "after": "scope 'all 210 (published/reference output)'; adoption 'current_adoption_unconfirmed (published/reference output; actual per-run consumer adoption unconfirmed, matching confirmed actual_consumer_confirmed=0; scope/adoption previously based on paths only)'",
+   "exported_in": "source_version_catalog.json versions[0] and versions[1]"
+  },
+  "invariants_rechecked_after_patch": {
+   "matrix_rows": 1680,
+   "identity_rows": 210,
+   "exact36_210_12": [
+    36,
+    210,
+    12
+   ],
+   "tiers": {
+    "actual_consumer_confirmed": 0,
+    "configured_pointer": 210,
+    "actual_capture_binding": 0,
+    "documented_corpus_or_contract_level": 1050,
+    "none_confirmed": 420
+   },
+   "g5": {
+    "missing_mapping": 630,
+    "missing_coverage_statistics": 210,
+    "real_mechanism_gap_source_level": 1050,
+    "outside_pending_sets_motion": 210,
+    "unclassified_unknown": 0,
+    "non_exhaustive_union": 1470
+   },
+   "five_fixes": "all preserved (39/117 split both tables, 3 LP definitions, declared_reference_grid 1470, server numerical/authored truth, model-visible observer-evidence-by-cutoff, three evidence axes)"
+  }
+ },
+ "membership_qualification_receiver24": {
+  "scope": "membership qualification from already-accepted exact36 mappings only; not a new audit/experiment",
+  "statement": "24 of the 30 v12/v13-metadata episodes have the copied gateway expected-sequence artifact (receiver_observed_states.jsonl in exact36 package files); six L5-1_v1/v2 seed episodes have NO mapped receiver artifact - receiver coverage NOT established by this export (unmapped is not evidence of absence); six L6-2 episodes carry separate receipt_replay evidence",
+  "exact24_members": [
+   "L2-1_v1__seed00",
+   "L2-1_v1__seed01",
+   "L2-1_v1__seed02",
+   "L2-1_v2__seed00",
+   "L2-1_v2__seed01",
+   "L2-1_v2__seed02",
+   "L6-1_v1__seed00",
+   "L6-1_v1__seed01",
+   "L6-1_v1__seed02",
+   "L6-1_v2__seed00",
+   "L6-1_v2__seed01",
+   "L6-1_v2__seed02",
+   "L6-4_v1__seed00",
+   "L6-4_v1__seed01",
+   "L6-4_v1__seed02",
+   "L6-4_v2__seed00",
+   "L6-4_v2__seed01",
+   "L6-4_v2__seed02",
+   "X1_rain_to_c2loss_to_forced_landing__seed00",
+   "X1_rain_to_c2loss_to_forced_landing__seed01",
+   "X1_rain_to_c2loss_to_forced_landing__seed02",
+   "X5_comm_failure_to_pad_contention__seed00",
+   "X5_comm_failure_to_pad_contention__seed01",
+   "X5_comm_failure_to_pad_contention__seed02"
+  ],
+  "sites_corrected": [
+   "extract_lineage.py catalog v14 per_dimension_producer_revision.communication (~589)",
+   "coverage_summary count_group_4c communication_special_note (~873)"
+  ],
+  "preserved": "three LP definition IDs (p09.LP.q-derived/v1, p09.LP.gateway-declared-sequence/v1, p09.LP.mature-ttl-cohort/v1), all 1680 rows/maps/counts, exact36/210/12 mappings, union1470/motion210 non-exhaustive qualification",
+  "command": {
+   "command": "python3 design/p09/episode_dimension_lineage/extract_lineage.py",
+   "exitcode": 0,
+   "start": "2026-10-06T07:30:56-07:00",
+   "end": "2026-10-06T07:30:56-07:00"
+  }
+ }
+}

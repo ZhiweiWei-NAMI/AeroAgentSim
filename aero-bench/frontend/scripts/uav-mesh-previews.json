@@ -1,0 +1,53 @@
+[
+  {
+    "id": "mesh:quadcopter-drone",
+    "archive": "quadcopter-drone SW STL.zip",
+    "title": "Quadcopter Drone 四旋翼（STL 预览）",
+    "subgroup": "多旋翼",
+    "output": "quadcopter-drone-preview.glb",
+    "source_member": "3D View 中 23 个共坐标 STL",
+    "triangles": 113632,
+    "note": "源包 23 个 STL 共用装配坐标，包含机体、云台、电机、支架和四副桨叶。源 STL 没有原厂贴图；使用统一航空 PBR 展示涂装。尺寸按包络归一。"
+  },
+  {
+    "id": "mesh:raspi-drone",
+    "archive": "raspi-drone MAX STL.zip",
+    "title": "Raspi Drone 四旋翼（STL 预览）",
+    "subgroup": "多旋翼",
+    "output": "raspi-drone-preview.glb",
+    "source_member": "droneG_full.stl",
+    "triangles": 1027260,
+    "note": "源包明确命名的完整机体 STL 已转为 GLB。约 103 万三角面，首次加载和旋转可能较慢；涂装为统一航空展示方案，非原厂贴图。尺寸按包络归一。"
+  },
+  {
+    "id": "mesh:gee-bee-r3",
+    "archive": "gee-bee-r3-rc-3d-printed-model-airplane-1 2 STL X_T.zip",
+    "title": "Gee Bee R3 遥控固定翼（STL 预览）",
+    "subgroup": "相关固定翼",
+    "output": "gee-bee-r3-preview.glb",
+    "source_member": "34 个共坐标 STL",
+    "triangles": 1065294,
+    "note": "源包 34 个 STL 的部件位置与参考图一致，可作为整机外形预览；打印设计中的内部件是否全部属于最终机体尚未逐件核实。涂装为展示方案，尺寸按包络归一。"
+  },
+  {
+    "id": "mesh:x-uav-clouds-vtol",
+    "archive": "x-uav-clouds-vtol-retrofit SW STL.zip",
+    "title": "X-UAV Clouds 垂直起降固定翼（STL 预览）",
+    "subgroup": "垂直起降",
+    "output": "x-uav-clouds-vtol-preview.glb",
+    "source_member": "X-UAV_CLOUDS_VTOL.STL",
+    "triangles": 349478,
+    "note": "源 STL 含完整机体外形，已从约 488 万面简化至约 35 万面以供浏览器旋转。材质为统一航空 PBR 展示方案，尺寸按包络归一。"
+  },
+  {
+    "id": "mesh:reconnaissance-hellfire-component",
+    "archive": "reconnaissance-attack-aircraft-1 6 STL X_T.zip",
+    "title": "Hellfire 弹体组件（STL 外观预览）",
+    "subgroup": "机载设备与部件",
+    "output": "reconnaissance-hellfire-appearance-preview.glb",
+    "source_member": "Assem1 - Hellfire_Assembly_Halcyon1-2.STL",
+    "triangles": 33006,
+    "component_only": true,
+    "note": "仅展示源 STL 的 Hellfire 弹体外表面，不是侦察攻击无人机机体或飞机整机。十个表面岛使用源文件中的相对坐标；原厂涂装、贴图、长度单位和 CAD 装配完整性均未验证。中性灰色材质仅供预览。"
+  }
+]

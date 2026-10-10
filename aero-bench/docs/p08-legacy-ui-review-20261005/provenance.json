@@ -1,0 +1,71 @@
+{
+  "schema_version": "p08.published-legacy-ui-qa/v2",
+  "scope": "Published legacy dataset / UI-only visual review; no original catalog, accepted13case execution or native-provider certification",
+  "ui_source_commit": "4f9adf6e8b851d3a7b1086fba3d297f1620607a2",
+  "legacy_source_commit": "7ca57707930fc45fdc1d48f32c6470beabf33bb8",
+  "qa_modified_source_hashes": {
+    "app.js": "3522bf782c40e6f9f7f5ecf2b4bfc24753721bfdd5760c160c464a1687556ec3",
+    "styles.css": "23a69f1ca3e68ec493511e3b49d05282e309994cdd45c0c1474b45563ce6e521",
+    "qa-entry.js": "cd622bfe47645a7e049ef0da88de11cfa2abe1119cb10c49bcd7125b8c9dc0a8",
+    "model.js": "0a77f60d903db221a4033b0721e3c1298234d82dddc09b20cadb2285b95e455e",
+    "renderer.js": "d7529ba410f8d6f7c23e302e23d6e36dfec6f69077c5ad036c5b69b90be51ede"
+  },
+  "capture_source_sha256": "6f5cbb2e6c518732a4476dde89192a97e9e0f7dfa002cb5ebe242e83092c92fb",
+  "files": [
+    {
+      "path": "initial-legacy-desktop.png",
+      "sha256": "0284c83b31b346c16aae906d8a8e43a27f59dcfbbfdee803f16257a78dce1fce",
+      "bytes": 530707
+    },
+    {
+      "path": "selected-rule-desktop.png",
+      "sha256": "d5557b4c1cf4b9c0d3e8ebb911ab000394565dec912d05012fd418f3f7ce4d31",
+      "bytes": 316505
+    },
+    {
+      "path": "selected-edge-desktop.png",
+      "sha256": "e7e8f6b05a4790764b9c674e94cabf4dcdf70d29086281e2d67920ad6dd5cd6e",
+      "bytes": 320000
+    },
+    {
+      "path": "legacy-mobile.png",
+      "sha256": "c4cfda60eec72781632bc39aa86927b4ee4c14a597e7c3d4a88d9fd4f5e48f93",
+      "bytes": 114786
+    },
+    {
+      "path": "viewport-390x844.png",
+      "sha256": "8f748d9c59fa19ec847c407839151e9eff19c09d25cd0f6008e7bdea84223091",
+      "bytes": 114684
+    },
+    {
+      "path": "viewport-844x390.png",
+      "sha256": "18c3fb3033f93a56695ce52b7df777b0c45d0ff2bdc60dc8b44f39cf5ac865ad",
+      "bytes": 100136
+    },
+    {
+      "path": "viewport-1280x720.png",
+      "sha256": "4359ee10f691ddcfcea0c4e128d8be5a2e7a7ab472a40828f493de982b6f6a7a",
+      "bytes": 222511
+    },
+    {
+      "path": "mobile-details-open.png",
+      "sha256": "be2305124bcb3f28dd8009c6516568e7fdd75c077c1c5a9c6944475f76e39f93",
+      "bytes": 106510
+    },
+    {
+      "path": "browser-report.json",
+      "sha256": "b9f50ff258580b58b60b3132f3b70a59b09343213aebe37b3a727f4664792fc7",
+      "bytes": 5802
+    },
+    {
+      "path": "independent-pixel-review.json",
+      "sha256": "789d427061e295c5df8fd3825812bfbed426dbacb8826150d996e4ca3704a329",
+      "bytes": 5203
+    }
+  ],
+  "review_interpretation": {
+    "portrait_minimum": "Requested >=500px applies to390x844; actual610.125px",
+    "landscape": "844x390 graph207.734px; constrained by390px total height, no500px claim",
+    "remaining": "Dense initial labels and edge tooltip endpoint occlusion remain visual follow-up; responsive viewport/notice/legend fixes pass this bounded slice"
+  }
+}

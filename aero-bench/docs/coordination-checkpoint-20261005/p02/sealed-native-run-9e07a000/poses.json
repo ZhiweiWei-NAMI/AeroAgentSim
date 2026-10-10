@@ -1,0 +1,590 @@
+{
+  "source_trajectory_sha256": "d630bd581cf723d6b9a1963586285cb0e68ffc3869ca6ffa08ef1c2396310b88",
+  "source_scene_history_sha256": "ef57ce2f1ffade55bb52f448a087c60d25b8750b873edd806de8d3176a9e74d0",
+  "actual_vehicle_ids": [
+    "uav.inspector"
+  ],
+  "note": "One actual aircraft; duplicated trajectory rows represent work orders. Named stages are supported by actual phase/contact attributes.",
+  "samples": [
+    {
+      "stage": "takeoff",
+      "trajectory": {
+        "vehicle_id": "uav.inspector",
+        "time": {
+          "sim_time_ns": 15000000000,
+          "tick": 30
+        },
+        "flight_mode": "TAKEOFF",
+        "armed": true,
+        "position_wgs84": {
+          "altitude_m": 32.95100021362305,
+          "latitude_deg": 31.224741199999997,
+          "longitude_deg": 121.4762768
+        },
+        "orientation": {
+          "qw": 0.9999977790246846,
+          "qx": 0.0011946097050992586,
+          "qy": -0.001690533481901139,
+          "qz": 0.00039616902589557375
+        },
+        "linear_velocity_enu_mps": {
+          "east_mps": 0.012251540087163448,
+          "north_mps": 0.01292395032942295,
+          "up_mps": 2.912274122238159
+        }
+      },
+      "scene_sample": {
+        "entity_id": "uav.inspector",
+        "at": {
+          "sim_time_ns": 15000000000,
+          "tick": 30
+        },
+        "provider_id": "flight",
+        "mode": "TAKEOFF",
+        "armed": true,
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999977790246846,
+            "qx": 0.0011946097050992586,
+            "qy": -0.001690533481901139,
+            "qz": 0.00039616902589557375
+          },
+          "orientation_ned": {
+            "qw": 0.0003506710655282533,
+            "qx": 0.707385344524548,
+            "qy": 0.7068250769151343,
+            "qz": -0.0020401043122221484
+          },
+          "position": {
+            "agl_m": 12.440756862051785,
+            "amsl_m": 32.440756862051785,
+            "ecef": {
+              "x_m": -2850480.6107616257,
+              "y_m": 4655887.642655163,
+              "z_m": 3287259.022939628
+            },
+            "enu": {
+              "east_m": -450.0252864837378,
+              "north_m": -450.0009532130919,
+              "up_m": 12.40895665383795
+            },
+            "geoid_separation_m": 30.0,
+            "ned": {
+              "down_m": -12.40895665383795,
+              "east_m": -450.0252864837378,
+              "north_m": -450.0009532130919
+            },
+            "terrain_amsl_m": 20.0,
+            "wgs84": {
+              "ellipsoid_height_m": 62.440756862051785,
+              "latitude_deg": 31.22474126031256,
+              "longitude_deg": 121.4762768364198
+            }
+          }
+        },
+        "linear_velocity_enu": {
+          "east_mps": 0.012251540087163448,
+          "frame_id": "ENU",
+          "north_mps": 0.01292395032942295,
+          "up_mps": 2.912274122238159
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "TAKING_OFF",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      }
+    },
+    {
+      "stage": "in-flight-1",
+      "trajectory": {
+        "vehicle_id": "uav.inspector",
+        "time": {
+          "sim_time_ns": 119500000000,
+          "tick": 239
+        },
+        "flight_mode": "HOLD",
+        "armed": true,
+        "position_wgs84": {
+          "altitude_m": 40.03000259399414,
+          "latitude_deg": 31.2247408,
+          "longitude_deg": 121.47626059999999
+        },
+        "orientation": {
+          "qw": 0.9994418413222919,
+          "qx": -0.0018136082002905252,
+          "qy": -0.03193908165032769,
+          "qz": 0.009623497437854322
+        },
+        "linear_velocity_enu_mps": {
+          "east_mps": 1.166961669921875,
+          "north_mps": 0.018955901265144348,
+          "up_mps": -0.003719823434948921
+        }
+      },
+      "scene_sample": {
+        "entity_id": "uav.inspector",
+        "at": {
+          "sim_time_ns": 119500000000,
+          "tick": 239
+        },
+        "provider_id": "flight",
+        "mode": "HOLD",
+        "armed": true,
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9994418413222919,
+            "qx": -0.0018136082002905252,
+            "qy": -0.03193908165032769,
+            "qz": 0.009623497437854322
+          },
+          "orientation_ned": {
+            "qw": 0.023866755876658492,
+            "qx": 0.7135169436976002,
+            "qy": 0.6999072631035237,
+            "qz": -0.021301926562976577
+          },
+          "position": {
+            "agl_m": 19.804881408810616,
+            "amsl_m": 39.804881408810616,
+            "ecef": {
+              "x_m": -2850482.530366479,
+              "y_m": 4655893.892516491,
+              "z_m": 3287262.7824312695
+            },
+            "enu": {
+              "east_m": -451.6519980411739,
+              "north_m": -450.0692811407991,
+              "up_m": 19.772961516244365
+            },
+            "geoid_separation_m": 30.0,
+            "ned": {
+              "down_m": -19.772961516244365,
+              "east_m": -451.6519980411739,
+              "north_m": -450.0692811407991
+            },
+            "terrain_amsl_m": 20.0,
+            "wgs84": {
+              "ellipsoid_height_m": 69.80488140881062,
+              "latitude_deg": 31.224740648126065,
+              "longitude_deg": 121.47625976904487
+            }
+          }
+        },
+        "linear_velocity_enu": {
+          "east_mps": 1.166961669921875,
+          "frame_id": "ENU",
+          "north_mps": 0.018955901265144348,
+          "up_mps": -0.003719823434948921
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      }
+    },
+    {
+      "stage": "in-flight-2",
+      "trajectory": {
+        "vehicle_id": "uav.inspector",
+        "time": {
+          "sim_time_ns": 121500000000,
+          "tick": 243
+        },
+        "flight_mode": "HOLD",
+        "armed": true,
+        "position_wgs84": {
+          "altitude_m": 40.03700256347656,
+          "latitude_deg": 31.2247411,
+          "longitude_deg": 121.4762746
+        },
+        "orientation": {
+          "qw": 0.9998989165540966,
+          "qx": 0.0003593061041272296,
+          "qy": -0.012821074244061901,
+          "qz": 0.006135766316891677
+        },
+        "linear_velocity_enu_mps": {
+          "east_mps": 0.21345391869544983,
+          "north_mps": 0.03748071566224098,
+          "up_mps": -0.007335038855671883
+        }
+      },
+      "scene_sample": {
+        "entity_id": "uav.inspector",
+        "at": {
+          "sim_time_ns": 121500000000,
+          "tick": 243
+        },
+        "provider_id": "flight",
+        "mode": "HOLD",
+        "armed": true,
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9998989165540966,
+            "qx": 0.0003593061041272296,
+            "qy": -0.012821074244061901,
+            "qz": 0.006135766316891677
+          },
+          "orientation_ned": {
+            "qw": 0.008811800757322274,
+            "qx": 0.7113739463669336,
+            "qy": 0.7026966624260333,
+            "qz": -0.009319936322822443
+          },
+          "position": {
+            "agl_m": 19.806481157429516,
+            "amsl_m": 39.806481157429516,
+            "ecef": {
+              "x_m": -2850483.754622835,
+              "y_m": 4655893.129636045,
+              "z_m": 3287262.8043024116
+            },
+            "enu": {
+              "east_m": -450.20954761955943,
+              "north_m": -450.04473673292864,
+              "up_m": 19.77466489082586
+            },
+            "geoid_separation_m": 30.0,
+            "ned": {
+              "down_m": -19.77466489082586,
+              "east_m": -450.20954761955943,
+              "north_m": -450.04473673292864
+            },
+            "terrain_amsl_m": 20.0,
+            "wgs84": {
+              "ellipsoid_height_m": 69.80648115742952,
+              "latitude_deg": 31.224740870055204,
+              "longitude_deg": 121.47627490800971
+            }
+          }
+        },
+        "linear_velocity_enu": {
+          "east_mps": 0.21345391869544983,
+          "frame_id": "ENU",
+          "north_mps": 0.03748071566224098,
+          "up_mps": -0.007335038855671883
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      }
+    },
+    {
+      "stage": "final-disarmed",
+      "trajectory": {
+        "vehicle_id": "uav.inspector",
+        "time": {
+          "sim_time_ns": 150000000000,
+          "tick": 300
+        },
+        "flight_mode": "HOLD",
+        "armed": false,
+        "position_wgs84": {
+          "altitude_m": 20.415000915527344,
+          "latitude_deg": 31.2247417,
+          "longitude_deg": 121.47627589999999
+        },
+        "orientation": {
+          "qw": 0.9999993660312122,
+          "qx": 7.602799753608587e-09,
+          "qy": 1.1279143906740902e-07,
+          "qz": 0.0011260271581745725
+        },
+        "linear_velocity_enu_mps": {
+          "east_mps": -0.009170684032142162,
+          "north_mps": 0.019528770819306374,
+          "up_mps": 0.004745339043438435
+        }
+      },
+      "scene_sample": {
+        "entity_id": "uav.inspector",
+        "at": {
+          "sim_time_ns": 150000000000,
+          "tick": 300
+        },
+        "provider_id": "flight",
+        "mode": "HOLD",
+        "armed": false,
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999993660312122,
+            "qx": 7.602799753608587e-09,
+            "qy": 1.1279143906740902e-07,
+            "qz": 0.0011260271581745725
+          },
+          "orientation_ned": {
+            "qw": 8.513158268613424e-08,
+            "qx": -0.7079025543422641,
+            "qy": -0.7063101114635731,
+            "qz": -7.437960016257416e-08
+          },
+          "position": {
+            "agl_m": 0.1688028248026967,
+            "amsl_m": 20.168802824802697,
+            "ecef": {
+              "x_m": -2850475.063894195,
+              "y_m": 4655878.715793686,
+              "z_m": 3287252.686538576
+            },
+            "enu": {
+              "east_m": -450.09398125400963,
+              "north_m": -449.9704544811149,
+              "up_m": 0.13699987109567124
+            },
+            "geoid_separation_m": 30.0,
+            "ned": {
+              "down_m": -0.13699987109567124,
+              "east_m": -450.09398125400963,
+              "north_m": -449.9704544811149
+            },
+            "terrain_amsl_m": 20.0,
+            "wgs84": {
+              "ellipsoid_height_m": 50.1688028248027,
+              "latitude_deg": 31.22474152752034,
+              "longitude_deg": 121.47627610635146
+            }
+          }
+        },
+        "linear_velocity_enu": {
+          "east_mps": -0.009170684032142162,
+          "frame_id": "ENU",
+          "north_mps": 0.019528770819306374,
+          "up_mps": 0.004745339043438435
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "ON_GROUND",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      }
+    },
+    {
+      "stage": "first-observed-touchdown-after-flight",
+      "scene_sample": {
+        "entity_id": "uav.inspector",
+        "at": {
+          "sim_time_ns": 142500000000,
+          "tick": 285
+        },
+        "provider_id": "flight",
+        "mode": "LAND",
+        "armed": true,
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999993660180282,
+            "qx": 3.8322638739856944e-07,
+            "qy": 5.1218833481417656e-06,
+            "qz": 0.0011260271582854643
+          },
+          "orientation_ned": {
+            "qw": 3.892700425176652e-06,
+            "qx": -0.70790255433302,
+            "qy": -0.7063101114541722,
+            "qz": -3.35073647065835e-06
+          },
+          "position": {
+            "agl_m": 0.16880027204751968,
+            "amsl_m": 20.16880027204752,
+            "ecef": {
+              "x_m": -2850475.0638929415,
+              "y_m": 4655878.715791889,
+              "z_m": 3287252.6865372616
+            },
+            "enu": {
+              "east_m": -450.09398138425644,
+              "north_m": -449.9704544714956,
+              "up_m": 0.13699731924554875
+            },
+            "geoid_separation_m": 30.0,
+            "ned": {
+              "down_m": -0.13699731924554875,
+              "east_m": -450.09398138425644,
+              "north_m": -449.9704544714956
+            },
+            "terrain_amsl_m": 20.0,
+            "wgs84": {
+              "ellipsoid_height_m": 50.16880027204752,
+              "latitude_deg": 31.22474152752043,
+              "longitude_deg": 121.4762761063501
+            }
+          }
+        },
+        "linear_velocity_enu": {
+          "east_mps": -0.002650899114087224,
+          "frame_id": "ENU",
+          "north_mps": -0.003512417199090123,
+          "up_mps": 0.01899062655866146
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "ON_GROUND",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      }
+    }
+  ]
+}

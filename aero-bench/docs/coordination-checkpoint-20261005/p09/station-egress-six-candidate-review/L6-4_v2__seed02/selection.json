@@ -1,0 +1,26 @@
+{
+  "message-native-packets.jsonl": {
+    "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed02/adopted/network_packets.jsonl",
+    "source_sha256": "11d06f352138b05b4aef5d94c81a05276cb6c8cfdf32be238be6b6e6484d03ce",
+    "selected_rows": 24,
+    "record_values_preserved": true
+  },
+  "message-native-diagnostics.jsonl": {
+    "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed02/adopted/network_diagnostics.jsonl",
+    "source_sha256": "6e62c9a7540cd24702dd9df045a36a367ec62705325e8d11fceb67d481c58a32",
+    "selected_rows": 42,
+    "record_values_preserved": true
+  },
+  "observed-guard-boundaries.jsonl": {
+    "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed02/adopted/receiver_observed_states.jsonl",
+    "source_sha256": "98c2d1162a730ce8a70cd72a5298e4e3349e3f3911c62203aa48844a83838366",
+    "selected_rows": 8,
+    "record_values_preserved": true
+  },
+  "actor-pose-boundaries.jsonl": {
+    "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed02/adopted/trajectories.jsonl",
+    "source_sha256": "cabf89d5c81af4a88827b65fbb8abc5940679e78887c09ca50b3ffe4082b42c4",
+    "selected_rows": 38,
+    "record_values_preserved": true
+  }
+}

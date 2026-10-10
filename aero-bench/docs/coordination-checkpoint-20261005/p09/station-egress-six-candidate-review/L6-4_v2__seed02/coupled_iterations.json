@@ -1,0 +1,173 @@
+[
+  {
+    "iteration": 0,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000,
+      "multi_uav_hold_entry": 27500000000,
+      "multi_uav_safe_hold": 40500000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2": 27000000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2_secondary": 27000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2": 40000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2_secondary": 40000000000,
+      "p09.backup-rendezvous": 46000000000
+    },
+    "packet_count": 20140,
+    "accepted_messages": {
+      "backup-ready-report:uav_digital_l6_4_v2": 46505271479,
+      "backup-ready-report:uav_digital_l6_4_v2_secondary": 46507976119
+    },
+    "native_wall_time_s": 2.099190833978355
+  },
+  {
+    "iteration": 1,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000,
+      "multi_uav_hold_entry": 27500000000,
+      "multi_uav_safe_hold": 40500000000,
+      "alternate_channel": 47500000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2": 27000000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2_secondary": 27000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2": 40000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2_secondary": 40000000000,
+      "alternate_channel:local:uav_digital_l6_4_v2": 47000000000,
+      "alternate_channel:local:uav_digital_l6_4_v2_secondary": 47000000000,
+      "p09.backup-rendezvous": 46000000000
+    },
+    "packet_count": 20146,
+    "accepted_messages": {
+      "backup-ready-report:uav_digital_l6_4_v2": 46505271232,
+      "command:alternate_channel:local:uav_digital_l6_4_v2:uav_digital_l6_4_v2": 46605491886,
+      "backup-ready-report:uav_digital_l6_4_v2_secondary": 46507975864,
+      "command:alternate_channel:local:uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary": 46608188139
+    },
+    "native_wall_time_s": 1.9494439754635096
+  },
+  {
+    "iteration": 2,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000,
+      "multi_uav_hold_entry": 27500000000,
+      "multi_uav_safe_hold": 40500000000,
+      "alternate_channel": 47500000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2": 27000000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2_secondary": 27000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2": 40000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2_secondary": 40000000000,
+      "alternate_channel:local:uav_digital_l6_4_v2": 47000000000,
+      "alternate_channel:local:uav_digital_l6_4_v2_secondary": 47000000000,
+      "p09.backup-rendezvous": 46000000000
+    },
+    "packet_count": 20152,
+    "accepted_messages": {
+      "backup-ready-report:uav_digital_l6_4_v2": 46505271232,
+      "command:alternate_channel:local:uav_digital_l6_4_v2:uav_digital_l6_4_v2": 46605491886,
+      "backup-execution-ack:uav_digital_l6_4_v2": 47102590035,
+      "backup-ready-report:uav_digital_l6_4_v2_secondary": 46507975864,
+      "command:alternate_channel:local:uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary": 46608188139,
+      "backup-execution-ack:uav_digital_l6_4_v2_secondary": 47102253843
+    },
+    "native_wall_time_s": 1.9550597434863448
+  },
+  {
+    "iteration": 3,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000,
+      "multi_uav_hold_entry": 27500000000,
+      "multi_uav_safe_hold": 40500000000,
+      "alternate_channel": 47500000000,
+      "lifecycle_landing_uav_digital_l6_4_v2": 55500000000,
+      "lifecycle_landing_uav_digital_l6_4_v2_secondary": 56000000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2": 27000000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2_secondary": 27000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2": 40000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2_secondary": 40000000000,
+      "alternate_channel:local:uav_digital_l6_4_v2": 47000000000,
+      "alternate_channel:local:uav_digital_l6_4_v2_secondary": 47000000000,
+      "p09.backup-rendezvous": 46000000000
+    },
+    "packet_count": 20158,
+    "accepted_messages": {
+      "backup-ready-report:uav_digital_l6_4_v2": 46505271232,
+      "command:alternate_channel:local:uav_digital_l6_4_v2:uav_digital_l6_4_v2": 46605491886,
+      "backup-execution-ack:uav_digital_l6_4_v2": 47102590035,
+      "command:lifecycle_landing_uav_digital_l6_4_v2:uav_digital_l6_4_v2": 55000214882,
+      "backup-ready-report:uav_digital_l6_4_v2_secondary": 46507975864,
+      "command:alternate_channel:local:uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary": 46608188139,
+      "backup-execution-ack:uav_digital_l6_4_v2_secondary": 47102253843,
+      "command:lifecycle_landing_uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary": 55800219448
+    },
+    "native_wall_time_s": 1.9413983942940831
+  },
+  {
+    "iteration": 4,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000,
+      "multi_uav_hold_entry": 27500000000,
+      "multi_uav_safe_hold": 40500000000,
+      "alternate_channel": 47500000000,
+      "lifecycle_landing_uav_digital_l6_4_v2": 55500000000,
+      "lifecycle_landing_uav_digital_l6_4_v2_secondary": 56000000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2": 27000000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2_secondary": 27000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2": 40000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2_secondary": 40000000000,
+      "alternate_channel:local:uav_digital_l6_4_v2": 47000000000,
+      "alternate_channel:local:uav_digital_l6_4_v2_secondary": 47000000000,
+      "p09.backup-rendezvous": 46000000000
+    },
+    "packet_count": 20158,
+    "accepted_messages": {
+      "backup-ready-report:uav_digital_l6_4_v2": 46505271232,
+      "command:alternate_channel:local:uav_digital_l6_4_v2:uav_digital_l6_4_v2": 46605491886,
+      "backup-execution-ack:uav_digital_l6_4_v2": 47102590035,
+      "command:lifecycle_landing_uav_digital_l6_4_v2:uav_digital_l6_4_v2": 55000214882,
+      "backup-ready-report:uav_digital_l6_4_v2_secondary": 46507975864,
+      "command:alternate_channel:local:uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary": 46608188139,
+      "backup-execution-ack:uav_digital_l6_4_v2_secondary": 47102253843,
+      "command:lifecycle_landing_uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary": 55800219456
+    },
+    "native_wall_time_s": 1.93999576382339
+  },
+  {
+    "iteration": 5,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000,
+      "multi_uav_hold_entry": 27500000000,
+      "multi_uav_safe_hold": 40500000000,
+      "alternate_channel": 47500000000,
+      "lifecycle_landing_uav_digital_l6_4_v2": 55500000000,
+      "lifecycle_landing_uav_digital_l6_4_v2_secondary": 56000000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2": 27000000000,
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2_secondary": 27000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2": 40000000000,
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2_secondary": 40000000000,
+      "alternate_channel:local:uav_digital_l6_4_v2": 47000000000,
+      "alternate_channel:local:uav_digital_l6_4_v2_secondary": 47000000000,
+      "p09.backup-rendezvous": 46000000000
+    },
+    "packet_count": 20158,
+    "accepted_messages": {
+      "backup-ready-report:uav_digital_l6_4_v2": 46505271232,
+      "command:alternate_channel:local:uav_digital_l6_4_v2:uav_digital_l6_4_v2": 46605491886,
+      "backup-execution-ack:uav_digital_l6_4_v2": 47102590035,
+      "command:lifecycle_landing_uav_digital_l6_4_v2:uav_digital_l6_4_v2": 55000214882,
+      "backup-ready-report:uav_digital_l6_4_v2_secondary": 46507975864,
+      "command:alternate_channel:local:uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary": 46608188139,
+      "backup-execution-ack:uav_digital_l6_4_v2_secondary": 47102253843,
+      "command:lifecycle_landing_uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary": 55800219456
+    },
+    "native_wall_time_s": 1.9372039642184973
+  }
+]

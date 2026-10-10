@@ -1,0 +1,4372 @@
+{
+  "scope": "same native run 9e07; post-run authoritative replay",
+  "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+  "status": "captured",
+  "screenshots": [
+    "in-flight-tick120.png",
+    "in-flight-tick240.png",
+    "touchdown-tick300.png",
+    "narrow-tick240.png",
+    "gif-frames/frame-080.png",
+    "gif-frames/frame-090.png",
+    "gif-frames/frame-100.png",
+    "gif-frames/frame-110.png",
+    "gif-frames/frame-120.png",
+    "gif-frames/frame-130.png",
+    "gif-frames/frame-140.png",
+    "gif-frames/frame-150.png",
+    "gif-frames/frame-160.png",
+    "gif-frames/frame-170.png",
+    "gif-frames/frame-180.png",
+    "gif-frames/frame-190.png",
+    "gif-frames/frame-200.png",
+    "gif-frames/frame-210.png",
+    "gif-frames/frame-220.png",
+    "gif-frames/frame-230.png",
+    "gif-frames/frame-240.png",
+    "gif-frames/frame-250.png",
+    "gif-frames/frame-260.png"
+  ],
+  "errors": [],
+  "failures": [
+    {
+      "path": "/building-renders/shanghai-huangpu-east-v1/assets/dc6d8057021f5622c0b7a3cd3b29d6c102ed86184400fc5471d376741bcd0844",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/building-renders/shanghai-huangpu-east-v1/assets/28d35f52f0363d088b8c4488ef68754c833777f83edbdbf3f8419a267dd3ea47",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1e1c35eb035f3d90aca7c2541db4ace86f7421eea8e614b0d2cceb5c898146db",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/ce0bc887d37991664d154af1df9d3584d504b305db8215ebeeb6c22c9ce408e7",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/aaec416215fafaef3480cf64e33b92ff1dc95eb85d152f30c8e41a488f41eedd",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/5995a8d82a7a11cf70b8e8a45e1ce51bf472520d0eb62888c4a9c114bb9552dd",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/477a0e6c4871bdd0d8c432f49c8cc31c374eda1f8957dbbe64150729e8dda266",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/16a5f3b4067ee1dc627746e7f4ba27691e328e749df9fae14d2e85022cbfd043",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/2736604495d0fb7732831e5a636c01a551b839073141383242d3691c0a9080ff",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/b8af9f33815059184cc6fe9e570ae2990bf1291d44f58caaed81ab47e5cebb21",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1e7a7134359d6b23a11c97cc88352a8e182cf98eefe9788fb715d59d95169d5d",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1264f7533f26e30007c9c09c3bcd1984e16d792ed53c7a6e6daec44e49764db4",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/8e078cd86874b016ab6ecfd79fe99a994e2a3272f56128e48f0cda7489013de9",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/44c7d1b18f51fab8b7e9b2a9ab56d6006d70a4d50dd204f4b61e9967cab4206c",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/5697f2c49567899d14066fdfc6c2dfcaced0a4f76d219fa36abc13e7f4ec78c7",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/d9801351e39d6fd3b86fcc0a4b3970f5dd8f4ccf6ce9f11531c08d29140e15a6",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/437f142a36f9d2b9ccef6785d0bf00facc49ccd1ac39deca38b31f6f7a83846d",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/8bba186839c24b0c5dfeae6d0ad3616946a346282067d33fe1d882c8052a0dfc",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9a96459eb3ac265574c1aa21b8ab8120f17f9a6695f6ba858cac00fecb93c6eb",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/5b0e4228d3a06e5dcdae757548de8e690747def14f16d320092b6623df20003e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/783dab0014222e44e67b42310f868432dea3cb0881d65d6cf27140aaf98d43a5",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3c26c6691839c756baa200abf8347b7d95025a281b5e5c946acad2f5d047f08a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/7ea2ca8b0612896df15771f7b9775b766581b24a6c69a9a841a76b14b2a2304d",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/213976ee854b6bd8266d9ced6c5205962c49fd5e3d54fe85724d0b7791bb278b",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/25779abc16178feb0b927bdc780ed974dd473162eb4ea9a6513f4d1b451c9bf8",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/f01747566f64f38b83f7ae0c23bc584cc86bf7b1702cd87d0a69fdfd070e2541",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/f0b21399de82967cd5acc6f890abf405a6c66baecb85ab0ce37c35135b15cb63",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/94552a279e411555485eb3e5f5760ee5f81f759fee09ee99931b42a114cbae15",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/6f2eb569d608d1ac8bed595f18cf5ba0cb73ba9722c52c697bcdcde2dc67ac11",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/4dba34a45c31a33a606c49ad04aaf79fdefd924e259e119adb5ea37c3a7d3051",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/f0e98222bc4bb67c376ec8b2e4da6f592c09fdb9647c021a28923907910a545e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/4713b1208a5a38ec24e492fa09b453a2da4282b271e4e66a9ea6b3e35131abf7",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/dcb1ce781215668d37fa4e527437d2c48e51612652fe5a78cdb4193ce95d99a7",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/5265992f77cf51c253432eb5fb05c325b06802c883990ee91e19a8c414d432c9",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9ebdc7a47fa20645137e87d9b4478c378b4d3816dca59de41f8782df93612fd2",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/d3db368a923a908e719ff2fe1626a6cfc95399fe07ec8720b980ef3cf65be459",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/7492045899155513e4c3007d1a8141cfd3f11041fb5a6628a1262a69561a1ab9",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/4f00cc46949a28c7fcd2c19c8c7e735032f77b32fda89a4ee2fd141a015e734c",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/859944f7f9ab682af6454dd4376a2983003909e536e00997f19b7d0332db8fff",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/16c20eb6984bbca13a683c6848b7c4956fc2999c1076c0c07e9054f58aa2d2f6",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/0c075e2a90ccc312978b51fe65d17d1547d5758259b3897095dcb8b98ddf5f17",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/e1054531d40d59362f318b85550db304dd769b813fdc92fa95e661df42e9bddb",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1b791153c5242c49b7805e284cca3648f26f457b43497a1f23834fd494e23e1d",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/097c2ee69a1489ceabb2a71d669d0a4c8ed02e3f4ffddd35334937c6d081f235",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/0e21d2c8e82aff71e1b5c033c8f41bff9e5f8f7a06e78950ebd7a423b7021715",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/62ac1841f00c32a00e6b919902726fbadeef45dbce6b4150f4b1119a1d5ff6e9",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/67e85844d86cd45cf0fece3a2315125ee6ea7e21c0b3567d709b0c00d8b403ba",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/05f0cf1b1f4ac7a2feb48f8e14ec8cfe843e912575ebc4aed21f50b273839a38",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/871a89866b691e45ef42255b50273b8a50cd87e57ca31f703cc2cb173b7bc534",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/257c97ed6384eadf2f57840a0cb3c13dbda18c0b1e7b215a717dd302191cc5b2",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/8f8cbf15980971f5e851349af031c4c949e0853e805e92c5173c26987e41a569",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1de7e462ca718d45121e0c0c57d40daa52c0618c1042bbc900c74754876c1edc",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/cb021c76134545786ef7ec5790e3c9e41e80b0481088187a18aa647397ff337b",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/c7b68b2bf5c58b151785ceebcbdbfc4fcef425d927df678b946c3f429b495c05",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/44fb961e7f8e7e22406db97eb06d975bc09a297ca9420c5bbff5deb154931ff1",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/605b5337c985ea9ec7ca809ec29684e2fe03a5c8689bc2cdc8e2ac1cd7b5e08d",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/547ab2cb5a56bfe1d3ac877f56479f2287dd636f3d011d476fb4946c554d00db",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/fd97844b2bb819983e7ad85dce33bb2047996bb0db4269e62a7cd06d1aeb3379",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/87fada5929d715cecdf4bb86b5e13426b2254a58ca0d819877aa297c2c602c98",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9210f2c24790ae44e1a40136739e00423aff30cb9d40aa0022fb8ec4b4eacb0a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/4eff58646ce287fa20e8dbb68a774aa56de4d45964d7795ba4e5ef25c0833349",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/bd0559e8f2843005bb5660a1a15327b515acd01af16f11110bb3318bb204485d",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3d82816c041169719d8ba95a9f9e30a432768e5122dc30745b58af92d80a41ce",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9bdbfe9dcb79ff779d167ea9be7d276750a047793d7bdac56831486e77c530e6",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/2083bf103a441e83d6cd745fc2e4e1a915c82921676ba6ecbb0342de3e6853dd",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/61a63264a25b453cb57b46de1e80b5d93862dfb32dc69bc6d56d824b9b089d3c",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1585e9f6c9989ee1f85f5dda74becbfdd2db077b4e251340938b9cb71213ffcc",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/2a4eb559ecd8e9b7ed8b9181a1e85725425c4b62bd2de714c615f651beb10707",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/2457a0b2026104960d34237e283684e7be7526c1faf378489ab9912850c69204",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9c3d25aa3ebdf2ded7b227338d6484c0613e5b91bf56026e33e1f5fbac2ad095",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/d979e7233c4da3fa7a400c6fd93eb4ffebdf1eb336acb1c3a806598a48ee1e04",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/41379ddae9bbddf782bc7482085759712f961303e6609660c1c21b641555f70b",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3c88c0e67c10d0912fe9d6c8d3a2e5f7a901e1a804981585bfecb099c6e96abd",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/555b82cdb61d0d39ce2de8d185a73c76ad10f2dc73562abdeb3875a47c7019c8",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/5d3609013647937ed565bf17d3a438ee69d30559b428d11b45cdd7b9ff355a00",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/feb8ae3fd70a1fb4903916509d1693f72a429248ca22ed98d4bcdf383ccd246e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/f8c4ba20a9f9d687e4ac26a3ede0fe67586e5c60a4ebc96e501d27c8679c6a86",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/2477eabb53ea89b00bfced68cb9e8884a97bfe5bdeed22d1812ff2088e51e7e5",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/b0486a98b4981e8fd4a216542d2122b308902648d8defe7d15ab014d0c375c62",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3c861b7f67a85d3a72815183cacf60d1d0cc5011b47757ca260bc3c9ef7c3482",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/6fc81e89b985ad1a2c0a33d0e159969b3f0ee716b4a061c742435ccc5432a545",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/633ed004c67bca08bc9b3963867820122990ffeeb691eaf25de91355a1dff86d",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/d6b6897e49f0a7d8a09e5e376bc5eba3dea82e11c48ad37f7bbaf6cb61f4593a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/07e8339077ee0ac0e1c6a8d042a2f83566619ef81535d9bb1ee3904c71aada32",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/c131bcfc8103d1cb96ee0d5c1c2d9694b578c501d968ce3f0f50973d0efc4b47",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/dbf5829b79c69a9fdcc49dffa74ce6ee0465cb889a7cb11cad511b6d475f7a61",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1f8119081020e07a0ea8c2c18986ee7f53f44d22a8b3f411bf922e5075232445",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/fa148a194a1ff95bd14988fdf847ededc0d4c501f68b1e79ef365f75a5ba0021",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/679b0b9edbae5b9fa8bfb01f3d486e1cf48051ea59cf61271025ed461cedad24",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/d4e75b9a491b0f0d8c398a959a85bc94e7c1ec07eeb122d719bd2b0b0983a8d9",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9b4fda46fb1d6e3616ac27d137c476c7386f9fa1376ab8049cae87b304bbfd7a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/14c5cca0319c702d67267880996f815a927075cbc1770a047a552c70eb5bb24b",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/93a5e993b5e9c71ed3fbc3daf68fa5f0ae3ac9419518ab0be04c023cef47e69f",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/a88547fe9ed16d9726b809195a7153ce28168f32415504bb37ce52506938090e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/a348addec9a2aa955399db6854efefa5393045c46ad6a46b5d34b63a396e844a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/2c5cbdd9a3337d5326645a4f05098958ee0ab322c597578496b5d9d23862fd6e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9a08236be1b47c4e805a0c4c98b5e5383289cbf16b5e4cc4ee75cb218681aec5",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/2686b42219ab8faabc87aba4e1ff6f1881b87a87fa84b94c53636ec26936b329",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/2b681be9e78218616b78b91245b6b34e90ce77629dceb973c78110223edfd8fd",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3689d62de0fb2ef2e9703eda0017033ecfa7dbf692c506407aec1d29eb690868",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/e13e11eaa19d8c7ee5ba584973f59368de6db464588e3f4041cb4de4a7c13be0",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/421c343c3fc26c87c784dd65c9e1ae815464d928e269b401faa06069a79a2e6b",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/c2bd64a7dfdf1d3c306a9fe385f3191808459fd42b31b0edc6ae3078a4ce4479",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/0990c88b04cf2cbc883344bf09890d8b260575f33b344d560332c5df097142e3",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/e8dc76c61f633cefaa767ebfe17a69fef685c05f1f60f27ce5dc62fa9cff3f73",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3e30db4804a2ad589382887b5fac43aa504a788a7dd610350d7ddba2a4ae49dc",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/77002192742fe7cf6b2b70ac3297d26c44a720cefa59a9a621fffecb2c0ce063",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/041616118a52d88ff03fd13c946e64b6dcec53361d1a4316ea4380e3bb5eb228",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/aa5ec7b5a0cfcf384fc942e2b914befd0c08c47a7f3933792762e2e4221d1eff",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/d86a469deddc85162a5006c5821a5c47e9866e3407ab42f3b40bed5e4038121e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1d08dec0886dfdec949d859b97e51871be6fcaafa72b863377f52fad4149506a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9e65ced7aa079ca4af8ccbebd1e973660df22b161e292bf25a232782d30d430b",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/c7787eb6f78cac086f842bbfee00428b0fab0690cff1f7b86b6c606edd0d293a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/a6186e5f8178cb77e5c38107251752fb12f0337b43eab63a0fb8487cb5d910b1",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/57d0fb597c0455a24b4018c9236cd8d53a7fa88afc9b36f60771faa3e32cd6bc",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/73004efea218ddcd188215aab6ba35fa2e6dc306c8fcbc26fcf33f3646689717",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/b1e516efe8f6fb1bc49d440f22c87286bd97f4ba424dcacea95a343ebeea1048",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/98b024208fbc4bc7461899ae39f136c29bd74eaead79b950bb539ff6d3e7fd3c",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/080258bb2df6a5ddb48b7ba86a1db4fb8a5b33fd1ff88e3c19b73c4e0b0f9a66",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/25b79566df129a455a475bbf05c68a29312321bff18fb1c6a990ab94f033a127",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/84af92984aeea8cab0c74f497bc2b94dd694bd0e0c1576e111ed2e1523d2e349",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/539e572d2be1b7fa3d3c508b31842df01e3600dd7922ae94d06adc1d3dfea9ac",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/4c08902c4b94ad1016bdeaad3d15a12e40e2e968f1378f697a73f9cc1272d26e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3ed6a46159019dc2f0d3519429e1e7a3e11701cff722754a2f6dcda952539b61",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/11e0b3cc4de709c200308903b97c9f120eaa3a4baa1efdddd1eb4b303ce5b8de",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/ba9ee601e89f34a6ec5174be96320f204c131a9fd1388a46a615c44e3f5a2980",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/523cd77d44ea752cb64147b342cb23b6e0e7ecbff0ab641606cc27930bb2846c",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1f82a9a4bcb82585ab5376065b832094241ecb1ab53fdd8bd2cbcfe71aece51e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/74a7b586c2aade543768dbcdf738f0b24525e3dae9a38c1b801efd175067a3be",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3891874697f4a69d2b9505aad2fcea05fd7fd9db69892ffcb9ff14e57fabafab",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/def5f021b85985a8f968c6776e3f60ecd61bd35f61439f1d90951545556efab6",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/6a9bd75f45b3b2b6ce8653926b658c4cd939b2f2acc62ffd7e4302ffceee0780",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/7b6d84cdb89c7a31628651832bf2bac84921badef6dac87fc3fe9702eb2324a0",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1c687466c925c7d26b871af869df2378951a618967234ac6a5f4cca7926b9474",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/52ba6fc5c5fb5453ed9d78bc564149ea99ef655db3f90169e472becee036cfd6",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/4c2ddf1da833321f8cdf4890b4d5b5f3dc8422c6691fd45e7000486722a9d202",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/931b0f30576d4b3b39cbeea11563134a15c9cd3c42549bafb535c92657dea15a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/0d35eae7479cb3770e05ec5e8fd3bd4b52ffe11ca0b6200b3fcb5be4bf0864b1",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/c3e2d39071d7d9db557773c575517c354a00b82dc4ac85d65f7087a4b3c78c04",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/8d3d86cbe3b9fda0b3d3488df73892c0e07018b89ce0a51ff9d023e08f4f7ff5",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/713c15abded5d5c72e397770c9177f3ea0465ca2161ecac859a7df17bd386091",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/78b591fb0ca3ae87971d06dceb50ff0cd927bdbf5cb540bb08444d2a4d40a005",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/2d42065e1785bf413ca6ad00ec2ca0918ac8d65dfe733471629bed28a4648a7d",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/269d6ac8b09fde7dd74c55f0dc35831c0bcfff45e153097ab5801bd246c48401",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/5139a02156ea3c344fe66330f6e377953c0f527115e0480964eb84e676379321",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/c39c4d1372d8e162ce5306e1aed4edd31f4bf88544b7d4aa48c174aaa703621f",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9106c32d53cc2c5f42094df09d8704f53091a55a7a218266d214b8b68192544b",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/6aa1e1193d1984edcc30a4836580c242e8e3ea6a47370ab1cffcd89fdfc52bf9",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/54c2ba2fbd6b8493d7bbedc715d61df23d48a34b377ef732539c09132f5511dc",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/aa856cae79f48fdc7755b16d9b046eb746e8d302894e4d0e04c33ce33d14d8bb",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/b51fe291e66b0eff557c3d2b51ee59a501ef8721bd74266a97c454cdf2eecd87",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/0acbd0f8ef64002bf6cc32cdf3d49656b7a0893064bea5aeac2121c4bc50afd4",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/85c68506c7bef3934a2c52de3e4a82c4462fd0ecc66fdf454083c95d1f7471e4",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/f4b9e2c3914a8eb660fb64dd366c432c5021927c106da4a19b96b4b87a3e8e07",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/6b501ae550b56ae8c3f2ce6f2e2f660ad9ccae3b2797b2fb94fe2e20db87d1d5",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/841ee85afef169a14ecd50a9fbeb3d776d8f53d2f9899fc094970872141a48f0",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/d8530a30e0c470c2ec3b7bcbad9915b2d7dfe4cfc5a7705f283c3df9af74d153",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/0dd706bf877a033be97afc487a53c0c4810633db6c29ed6402c58f26b2b7c607",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9bd97f26077957316103d6d8b0f4b349d061ec3952e98e32a3bb00e5950c6d78",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/c4067d26b7aa4a708954c46c6a9690019255a04eae9ad54d4aff4454a64a6dfa",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1803f04df6ef752086a503ea3557abe40dbad140a4da6a3c7ce0d9af903d446b",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/c741c15a3304f0440cd9ac4da9fbaf67454aa45321284f7835c76dd9f1f958c5",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/5822adeaf3114a11b851634449c03ec838f481ed12e89e58d521d522b81f9b55",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/7ffc0787898e4ffa21a52d995c0c32ba4d5421ebe27b46c00114133b4a123d2f",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/f58ed4ed710b01be36aa3316c9d629024d3f51cbd15585b7f5d99dd8c5fa91ab",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/36b45f00decf0723ef7b58392a79087f9606ea7f9aa579fda4a38984f9f0b331",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/b63b007c689f890857dd41264f81dd7df8ffee19ac634f9959506394edbd4335",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/fc6aded58080771acc96aaa6f6f4cbc58024422a29a51399f29fd19b92af3de6",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/619c89cfb5b54c992ecd3228e7332ce423c2b45a24c9358151cef7ceb41f73d8",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/f4bac30d77ebc284ea45f6c25e24245418840c8609e5af6e7056fedc1b8f43b6",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/729750b0adb516897bb8a3ce080916479cd0dbb24082e67565fd3d023b0723ea",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/8edf8df2fbdeedb2f15eacffee389a05a1c3f871c2635337aa3076d64cb3c951",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/33cf95f50d2ab17dfdcac2341ceebea06679336f354ed3cda14bba0950da44b1",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3b7da4a1c4c737209a9a2de60497523b32a67a65b1cbfb7a02be6282696522dd",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/5134081c0eefec9d2d2170dab0a72af0de7c9f8e41e33b7884d2d3a8aedbf71d",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/370e0f2dcd498ffe08589b8aec88bf6ef257c7e5983aadaf284c35b9e4229ac3",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/44b5e5051c676a1603cb2464cb08a54da919086cf38cde1ffe1c717761b00f7a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/6bc15e825fce476380fc1280e79b70bc6626343324e62d11dbcadad28963f3f9",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/e231fb03845b87938e78a988b13d2c8ed63f673c4272544b92d9a61e2e22f8af",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/d696517d63644308fec777770f87bddfd43f46987ba8ea2dc38d63b47334ecf0",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/7aed10d42ed7c675a78da15ad550009eef9c4592c91845878687e404caaac44e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/218d1a990f13ee460fd564c8cce8202baae63c03c732d68f83984f28639fc62a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/8fa94fff2769f9f7777a4909594aabb48a09660120d5812dfd452e78a1369e0e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/5b10873e433b17dfb12962483a6c2b42430056b1dd28e143d72127206f19fbe0",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/2d599473abaabf3cd99cde194d0ae1d7c301fb54b406ad0fa39d63b19b2c1664",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9f06fec2f874e6498a673d930712fe12c720de269b78cc6b376b612e9a462489",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/533d88f8fe9678ee36b7882f81f506f2fd0c42522fc4afdf14c96f6a910956b0",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/9094b6aefb5a8c5bedb7ce1423b58bca1ff9f5259793b037638391079347eb03",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/1075d0e3114b157e89a4f2ac5973dadb2e19e64a04ff6e5f390a097fc260d99a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3a96f735b57c2c2860358ee5b37595ae5b09e45dab2966ecc39d80e5272cbe22",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/583c9044e14ea6fe2ef20830edb4e4e05614f0ee349218dd734d2b44c44924b7",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/b3cadaba4322e5a06599230c4bd5737ff39b6ad92a61bbc79b9998fee6c77a72",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/579d12f7d295ee19aa040a79d5085e4d6ba17ff4c9110f034a4f32339a9f2a01",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/e26ed118e7d01c8c0d6a8d8102b751ed463dc54cf14f4fe0aabc9117ef24d35e",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/16c713d0aa797ab9e22b401b19e254a358e6303ee7708e9fa536e8498e329152",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/465a2e74c5733bb4cc19622c535ca95e71e9c689540d9aef9e5f25d4ed595cb3",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/6803ce1334a457fd876408b02561ae91249173884d6bc4e603cb10834d2928e1",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/912ab6b63d4077f77a8882c21313d77d76d97d5a4973de39b4afb1c202bf14a0",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/3c1bd26b0676656263156a63631c59bc7a903546c44947db8bac2545bebb5cb3",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/4c1aa2a6f3a8c8f6c855d64922b4ae098af2678abd5a585a574f31715ab64ce9",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/workspace-traces/validation/p02_same_run_9e07_visual_review/public/replay/assets/d31ea7316c0c2967a16d352bd841140e8a8ea626d6bf2581cb38a0d8a81601d8",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "frames": [
+    {
+      "name": "in-flight-tick120",
+      "tick": 120,
+      "authoritative_pose": {
+        "tick": 120,
+        "sim_time_ns": 60000000000,
+        "sample_digest": "ed0209bf7958d339d53072aa311df3ba182fd5f3ce19d8393312abc9f8a28312",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999750301558179,
+            "qx": -0.0012730989576597628,
+            "qy": -0.0016329769475586394,
+            "qz": 0.006756601971665642
+          },
+          "orientation_ned": {
+            "qw": 0.0020549059792227668,
+            "qx": 0.7118667639123444,
+            "qy": 0.7023114857684579,
+            "qz": -0.00025447216705727963
+          },
+          "position": {
+            "agl_m": 3.581260067410767,
+            "amsl_m": 23.581260067410767,
+            "ecef": {
+              "x_m": -2850421.9127480295,
+              "y_m": 4655906.955823959,
+              "z_m": 3287265.3192765024
+            },
+            "enu": {
+              "east_m": -510.1693798217268,
+              "north_m": -437.26391656248325,
+              "up_m": 3.545826224091761
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -3.545826224091761,
+              "east_m": -510.1693798217268,
+              "north_m": -437.26391656248325
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 53.58126006741077,
+              "latitude_deg": 31.224856108118697,
+              "longitude_deg": 121.47564559044724
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "6.500",
+        "observationMainCalls": "228",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "120",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "60",
+        "minimapUpdateMs": "35.200",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "119",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.17 m / N -437.26 mAltitude3.58 m AGLHeading89.2\u00b0 (Clockwise from true north)Speed0.03 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:00Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 120Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "in-flight-tick240",
+      "tick": 240,
+      "authoritative_pose": {
+        "tick": 240,
+        "sim_time_ns": 120000000000,
+        "sample_digest": "b7a694ffd69971c306dc72b3a78b6c10112edf9e4cb33211f4653880cfaf37d6",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.999630068205221,
+            "qx": -0.0025058033099739415,
+            "qy": -0.02574403293178046,
+            "qz": 0.008407880720138835
+          },
+          "orientation_ned": {
+            "qw": 0.019975650773954027,
+            "qx": 0.7127904693785007,
+            "qy": 0.700899930433265,
+            "qz": -0.016431909748349488
+          },
+          "position": {
+            "agl_m": 19.807148820720613,
+            "amsl_m": 39.80714882072061,
+            "ecef": {
+              "x_m": -2850483.0139917396,
+              "y_m": 4655893.601963191,
+              "z_m": 3287262.779015221
+            },
+            "enu": {
+              "east_m": -451.087824424625,
+              "north_m": -450.074674739974,
+              "up_m": 19.775268435959433
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -19.775268435959433,
+              "east_m": -451.087824424625,
+              "north_m": -450.074674739974
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 69.80714882072061,
+              "latitude_deg": 31.224740599699672,
+              "longitude_deg": 121.47626569023004
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "6.900",
+        "observationMainCalls": "241",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "240",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "120",
+        "minimapUpdateMs": "45.300",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "239",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -451.09 m / N -450.07 mAltitude19.81 m AGLHeading89\u00b0 (Clockwise from true north)Speed0.82 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:02:00Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 240Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "touchdown-tick300",
+      "tick": 300,
+      "authoritative_pose": {
+        "tick": 300,
+        "sim_time_ns": 150000000000,
+        "sample_digest": "341de0b05db8b63818aed9efa11ba1001f1a2abc09458a73ad5ff858c13e789d",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999993660312122,
+            "qx": 7.602799753608587e-09,
+            "qy": 1.1279143906740902e-07,
+            "qz": 0.0011260271581745725
+          },
+          "orientation_ned": {
+            "qw": 8.513158268613424e-08,
+            "qx": -0.7079025543422641,
+            "qy": -0.7063101114635731,
+            "qz": -7.437960016257416e-08
+          },
+          "position": {
+            "agl_m": 0.1688028248026967,
+            "amsl_m": 20.168802824802697,
+            "ecef": {
+              "x_m": -2850475.063894195,
+              "y_m": 4655878.715793686,
+              "z_m": 3287252.686538576
+            },
+            "enu": {
+              "east_m": -450.09398125400963,
+              "north_m": -449.9704544811149,
+              "up_m": 0.13699987109567124
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -0.13699987109567124,
+              "east_m": -450.09398125400963,
+              "north_m": -449.9704544811149
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 50.1688028248027,
+              "latitude_deg": 31.22474152752034,
+              "longitude_deg": 121.47627610635146
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "ON_GROUND",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.800",
+        "observationMainCalls": "241",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "300",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "150",
+        "minimapUpdateMs": "54.600",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "299",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -450.09 m / N -449.97 mAltitude0.17 m AGLHeading89.9\u00b0 (Clockwise from true north)Speed0.02 m/sBattery remaining99%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:02:30Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 300Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "narrow-tick240",
+      "tick": 240,
+      "authoritative_pose": {
+        "tick": 240,
+        "sim_time_ns": 120000000000,
+        "sample_digest": "b7a694ffd69971c306dc72b3a78b6c10112edf9e4cb33211f4653880cfaf37d6",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.999630068205221,
+            "qx": -0.0025058033099739415,
+            "qy": -0.02574403293178046,
+            "qz": 0.008407880720138835
+          },
+          "orientation_ned": {
+            "qw": 0.019975650773954027,
+            "qx": 0.7127904693785007,
+            "qy": 0.700899930433265,
+            "qz": -0.016431909748349488
+          },
+          "position": {
+            "agl_m": 19.807148820720613,
+            "amsl_m": 39.80714882072061,
+            "ecef": {
+              "x_m": -2850483.0139917396,
+              "y_m": 4655893.601963191,
+              "z_m": 3287262.779015221
+            },
+            "enu": {
+              "east_m": -451.087824424625,
+              "north_m": -450.074674739974,
+              "up_m": 19.775268435959433
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -19.775268435959433,
+              "east_m": -451.087824424625,
+              "north_m": -450.074674739974
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 69.80714882072061,
+              "latitude_deg": 31.224740599699672,
+              "longitude_deg": 121.47626569023004
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "10.500",
+        "observationMainCalls": "239",
+        "observationMainTriangles": "1263296",
+        "observationCameraMode": "free",
+        "sceneTick": "240",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "120",
+        "minimapUpdateMs": "53.500",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "239",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -451.09 m / N -450.07 mAltitude19.81 m AGLHeading89\u00b0 (Clockwise from true north)Speed0.82 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:02:00Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 240Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1280,
+        900
+      ],
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "name": "gif-frames/frame-080",
+      "tick": 80,
+      "authoritative_pose": {
+        "tick": 80,
+        "sim_time_ns": 40000000000,
+        "sample_digest": "7ab3bbf99c072097945f8e9e254790e12bbebbc904980358fd7a6c3156361ac5",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9975009438508923,
+            "qx": -0.07057776504144275,
+            "qy": -0.003261218450280907,
+            "qz": 0.00010272562201504081
+          },
+          "orientation_ned": {
+            "qw": 0.05221204594291934,
+            "qx": 0.705412319620876,
+            "qy": 0.7052670436530191,
+            "qz": 0.04759998658067071
+          },
+          "position": {
+            "agl_m": 19.787894963286817,
+            "amsl_m": 39.78789496328682,
+            "ecef": {
+              "x_m": -2850431.590938893,
+              "y_m": 4655922.371174597,
+              "z_m": 3287266.558983818
+            },
+            "enu": {
+              "east_m": -509.9658286233368,
+              "north_m": -445.64002403765187,
+              "up_m": 19.75189540776049
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -19.75189540776049,
+              "east_m": -509.9658286233368,
+              "north_m": -445.64002403765187
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 69.78789496328682,
+              "latitude_deg": 31.224780572464212,
+              "longitude_deg": 121.4756477446337
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.800",
+        "observationMainCalls": "224",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "80",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "40",
+        "minimapUpdateMs": "35.700",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "79",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -509.97 m / N -445.64 mAltitude19.79 m AGLHeading90\u00b0 (Clockwise from true north)Speed4.6 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:00:40Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 80Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-090",
+      "tick": 90,
+      "authoritative_pose": {
+        "tick": 90,
+        "sim_time_ns": 45000000000,
+        "sample_digest": "25bfcabd18d9be08a74156890c2ad6639d2255f56a6d212a7f85bbebb9c4bf2f",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.999898672803933,
+            "qx": 0.013901492210123082,
+            "qy": -0.0003371896859284909,
+            "qz": -0.003046135647177919
+          },
+          "orientation_ned": {
+            "qw": 0.0095914102969238,
+            "qx": -0.7048811888665564,
+            "qy": -0.7091890752116234,
+            "qz": 0.010068268523856195
+          },
+          "position": {
+            "agl_m": 19.699646062217653,
+            "amsl_m": 39.69964606221765,
+            "ecef": {
+              "x_m": -2850429.061680694,
+              "y_m": 4655918.714090145,
+              "z_m": 3287273.7122494765
+            },
+            "enu": {
+              "east_m": -510.2130266227259,
+              "north_m": -437.2214833072536,
+              "up_m": 19.6642117404673
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -19.6642117404673,
+              "east_m": -510.2130266227259,
+              "north_m": -437.2214833072536
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 69.69964606221765,
+              "latitude_deg": 31.224856500820724,
+              "longitude_deg": 121.47564514585645
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.000",
+        "observationMainCalls": "224",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "90",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "45",
+        "minimapUpdateMs": "36.600",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "89",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.21 m / N -437.22 mAltitude19.7 m AGLHeading90.3\u00b0 (Clockwise from true north)Speed0.49 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:00:45Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 90Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-100",
+      "tick": 100,
+      "authoritative_pose": {
+        "tick": 100,
+        "sim_time_ns": 50000000000,
+        "sample_digest": "a61ebd643e5eb9523203b1b4325665a7f581264fd8ba3aa62c9a47dbb09e8279",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999971152852609,
+            "qx": 0.00013714345073390788,
+            "qy": -0.00017644879506018588,
+            "qz": 0.002391543153041617
+          },
+          "orientation_ned": {
+            "qw": 2.7793075509983353e-05,
+            "qx": 0.7087958177662097,
+            "qy": 0.7054136650041777,
+            "qz": -0.00022174320352852226
+          },
+          "position": {
+            "agl_m": 12.749937788583338,
+            "amsl_m": 32.74993778858334,
+            "ecef": {
+              "x_m": -2850426.0471944753,
+              "y_m": 4655913.658092567,
+              "z_m": 3287270.015626165
+            },
+            "enu": {
+              "east_m": -510.14349904947807,
+              "north_m": -437.3308245225281,
+              "up_m": 12.71450145960001
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -12.71450145960001,
+              "east_m": -510.14349904947807,
+              "north_m": -437.3308245225281
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 62.74993778858334,
+              "latitude_deg": 31.224855510365263,
+              "longitude_deg": 121.47564586979854
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "4.800",
+        "observationMainCalls": "226",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "100",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "50",
+        "minimapUpdateMs": "33.900",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "99",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.14 m / N -437.33 mAltitude12.75 m AGLHeading89.7\u00b0 (Clockwise from true north)Speed1.52 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:00:50Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 100Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-110",
+      "tick": 110,
+      "authoritative_pose": {
+        "tick": 110,
+        "sim_time_ns": 55000000000,
+        "sample_digest": "abf75fcc1d328bc7a291a132b24cd160db6a78b4b9c4b8557b68be14400d3b62",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999857836322362,
+            "qx": 9.009048605617416e-07,
+            "qy": -0.0010838694221616916,
+            "qz": 0.005220896444714302
+          },
+          "orientation_ned": {
+            "qw": 0.0007657743823951698,
+            "qx": 0.7107884599764281,
+            "qy": 0.7034049974165677,
+            "qz": -0.0007670484542673841
+          },
+          "position": {
+            "agl_m": 5.3742252588272095,
+            "amsl_m": 25.37422525882721,
+            "ecef": {
+              "x_m": -2850422.7042618804,
+              "y_m": 4655908.286098433,
+              "z_m": 3287266.2246895134
+            },
+            "enu": {
+              "east_m": -510.1890565503156,
+              "north_m": -437.2921708401329,
+              "up_m": 5.338787906103858
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -5.338787906103858,
+              "east_m": -510.1890565503156,
+              "north_m": -437.2921708401329
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 55.37422525882721,
+              "latitude_deg": 31.224855854391638,
+              "longitude_deg": 121.47564538545112
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.300",
+        "observationMainCalls": "227",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "110",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "55",
+        "minimapUpdateMs": "40.000",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "109",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.19 m / N -437.29 mAltitude5.37 m AGLHeading89.4\u00b0 (Clockwise from true north)Speed1.02 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:00:55Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 110Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-120",
+      "tick": 120,
+      "authoritative_pose": {
+        "tick": 120,
+        "sim_time_ns": 60000000000,
+        "sample_digest": "ed0209bf7958d339d53072aa311df3ba182fd5f3ce19d8393312abc9f8a28312",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999750301558179,
+            "qx": -0.0012730989576597628,
+            "qy": -0.0016329769475586394,
+            "qz": 0.006756601971665642
+          },
+          "orientation_ned": {
+            "qw": 0.0020549059792227668,
+            "qx": 0.7118667639123444,
+            "qy": 0.7023114857684579,
+            "qz": -0.00025447216705727963
+          },
+          "position": {
+            "agl_m": 3.581260067410767,
+            "amsl_m": 23.581260067410767,
+            "ecef": {
+              "x_m": -2850421.9127480295,
+              "y_m": 4655906.955823959,
+              "z_m": 3287265.3192765024
+            },
+            "enu": {
+              "east_m": -510.1693798217268,
+              "north_m": -437.26391656248325,
+              "up_m": 3.545826224091761
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -3.545826224091761,
+              "east_m": -510.1693798217268,
+              "north_m": -437.26391656248325
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 53.58126006741077,
+              "latitude_deg": 31.224856108118697,
+              "longitude_deg": 121.47564559044724
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.200",
+        "observationMainCalls": "228",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "120",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "60",
+        "minimapUpdateMs": "35.700",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "119",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.17 m / N -437.26 mAltitude3.58 m AGLHeading89.2\u00b0 (Clockwise from true north)Speed0.03 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:00Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 120Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-130",
+      "tick": 130,
+      "authoritative_pose": {
+        "tick": 130,
+        "sim_time_ns": 65000000000,
+        "sample_digest": "9b680a434f2d74a255e553854c91c16030b282aca13174bf16f857e087150333",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999768375405026,
+            "qx": -0.0010276933431776101,
+            "qy": -0.00025643119045839943,
+            "qz": 0.006723278361939304
+          },
+          "orientation_ned": {
+            "qw": 0.0009080131656220352,
+            "qx": 0.7118444785759,
+            "qy": 0.7023363271328358,
+            "qz": 0.0005453646982602885
+          },
+          "position": {
+            "agl_m": 9.5293192807585,
+            "amsl_m": 29.5293192807585,
+            "ecef": {
+              "x_m": -2850424.608883378,
+              "y_m": 4655911.261256932,
+              "z_m": 3287268.413839635
+            },
+            "enu": {
+              "east_m": -510.11844459022944,
+              "north_m": -437.2513470526174,
+              "up_m": 9.493890404371003
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -9.493890404371003,
+              "east_m": -510.11844459022944,
+              "north_m": -437.2513470526174
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 59.5293192807585,
+              "latitude_deg": 31.224856225200906,
+              "longitude_deg": 121.47564613001236
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.200",
+        "observationMainCalls": "230",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "130",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "65",
+        "minimapUpdateMs": "44.900",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "129",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.12 m / N -437.25 mAltitude9.53 m AGLHeading89.2\u00b0 (Clockwise from true north)Speed2.93 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:05Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 130Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-140",
+      "tick": 140,
+      "authoritative_pose": {
+        "tick": 140,
+        "sim_time_ns": 70000000000,
+        "sample_digest": "f8b0457746a5169e039e7a2177d34039802d8d3a43cf6b6886b1c210a561c218",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.999978956387132,
+            "qx": 1.5524911560421126e-05,
+            "qy": -0.0015753659182131355,
+            "qz": 0.006293231610498533
+          },
+          "orientation_ned": {
+            "qw": 0.0011029741533769848,
+            "qx": 0.711541887852549,
+            "qy": 0.7026419143578267,
+            "qz": -0.0011249296938603754
+          },
+          "position": {
+            "agl_m": 18.637045618146658,
+            "amsl_m": 38.63704561814666,
+            "ecef": {
+              "x_m": -2850428.6405773372,
+              "y_m": 4655917.925864057,
+              "z_m": 3287273.1340988073
+            },
+            "enu": {
+              "east_m": -510.16052509274937,
+              "north_m": -437.253338125875,
+              "up_m": 18.60161329340933
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -18.60161329340933,
+              "east_m": -510.16052509274937,
+              "north_m": -437.253338125875
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 68.63704561814666,
+              "latitude_deg": 31.224856212878933,
+              "longitude_deg": 121.47564569600235
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.300",
+        "observationMainCalls": "229",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "140",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "70",
+        "minimapUpdateMs": "40.900",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "139",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.16 m / N -437.25 mAltitude18.64 m AGLHeading89.3\u00b0 (Clockwise from true north)Speed0.55 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:10Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 140Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-150",
+      "tick": 150,
+      "authoritative_pose": {
+        "tick": 150,
+        "sim_time_ns": 75000000000,
+        "sample_digest": "629797f4d409ae72f35fe3ad133b9450f58af5d7e3f17d6d2a7ca437d0919a1f",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999851498034436,
+            "qx": 0.001485262167559977,
+            "qy": -0.00019992010895317338,
+            "qz": 0.005239675641524499
+          },
+          "orientation_ned": {
+            "qw": 0.0009088740857851478,
+            "qx": -0.7108012906892005,
+            "qy": -0.7033912703345205,
+            "qz": 0.0011916038152578322
+          },
+          "position": {
+            "agl_m": 19.61243233922869,
+            "amsl_m": 39.61243233922869,
+            "ecef": {
+              "x_m": -2850429.038880312,
+              "y_m": 4655918.6450694315,
+              "z_m": 3287273.6607534206
+            },
+            "enu": {
+              "east_m": -510.19642738741015,
+              "north_m": -437.2288273571948,
+              "up_m": 19.576998837867695
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -19.576998837867695,
+              "east_m": -510.19642738741015,
+              "north_m": -437.2288273571948
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 69.61243233922869,
+              "latitude_deg": 31.224856434536377,
+              "longitude_deg": 121.47564532000149
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.200",
+        "observationMainCalls": "230",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "150",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "75",
+        "minimapUpdateMs": "47.100",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "149",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.2 m / N -437.23 mAltitude19.61 m AGLHeading89.4\u00b0 (Clockwise from true north)Speed0.45 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:15Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 150Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-160",
+      "tick": 160,
+      "authoritative_pose": {
+        "tick": 160,
+        "sim_time_ns": 80000000000,
+        "sample_digest": "4cf5b85a47081a021fa02fa344ede44aa3c5045fbd4c7a4cc6a6487b2e2c2abf",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999908172271613,
+            "qx": -0.0010376574288090848,
+            "qy": 0.0005404081346880998,
+            "qz": 0.004122703901849433
+          },
+          "orientation_ned": {
+            "qw": 0.0003516083478131727,
+            "qx": 0.7100154798714252,
+            "qy": 0.7041850960997811,
+            "qz": 0.0011158608611058296
+          },
+          "position": {
+            "agl_m": 12.687995831482112,
+            "amsl_m": 32.68799583148211,
+            "ecef": {
+              "x_m": -2850425.97488495,
+              "y_m": 4655913.5768826315,
+              "z_m": 3287270.0726709384
+            },
+            "enu": {
+              "east_m": -510.1627564699183,
+              "north_m": -437.2265610526182,
+              "up_m": 12.652565139404604
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -12.652565139404604,
+              "east_m": -510.1627564699183,
+              "north_m": -437.2265610526182
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 62.68799583148211,
+              "latitude_deg": 31.224856450692723,
+              "longitude_deg": 121.47564566758035
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "4.800",
+        "observationMainCalls": "233",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "160",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "80",
+        "minimapUpdateMs": "41.900",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "159",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.16 m / N -437.23 mAltitude12.69 m AGLHeading89.5\u00b0 (Clockwise from true north)Speed1.51 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:20Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 160Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-170",
+      "tick": 170,
+      "authoritative_pose": {
+        "tick": 170,
+        "sim_time_ns": 85000000000,
+        "sample_digest": "92bcaa5e792cbb4c022100f048764096f0eff42277c66118df1dac8689646d0c",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.999994633974175,
+            "qx": -0.0008046975353693951,
+            "qy": 0.0007258861485677466,
+            "qz": 0.003091532634767482
+          },
+          "orientation_ned": {
+            "qw": 5.572806604216176e-05,
+            "qx": 0.7092890305236023,
+            "qy": 0.7049169431429949,
+            "qz": 0.0010822861020854404
+          },
+          "position": {
+            "agl_m": 8.738556643016636,
+            "amsl_m": 28.738556643016636,
+            "ecef": {
+              "x_m": -2850424.199778243,
+              "y_m": 4655910.725023508,
+              "z_m": 3287267.995215622
+            },
+            "enu": {
+              "east_m": -510.18730536379564,
+              "north_m": -437.2614562987248,
+              "up_m": 8.70312156458721
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -8.70312156458721,
+              "east_m": -510.18730536379564,
+              "north_m": -437.2614562987248
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 58.738556643016636,
+              "latitude_deg": 31.224856133502396,
+              "longitude_deg": 121.47564540663654
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.300",
+        "observationMainCalls": "233",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "170",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "85",
+        "minimapUpdateMs": "46.800",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "169",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.19 m / N -437.26 mAltitude8.74 m AGLHeading89.6\u00b0 (Clockwise from true north)Speed0.15 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:25Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 170Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-180",
+      "tick": 180,
+      "authoritative_pose": {
+        "tick": 180,
+        "sim_time_ns": 90000000000,
+        "sample_digest": "c6107f4258106c68c38f7ddd9a67ccec9bced67bf60669182625ce5759f902a2",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999968601670677,
+            "qx": -0.0002600342569180352,
+            "qy": 0.0011104010640441968,
+            "qz": 0.0022313779751258816
+          },
+          "orientation_ned": {
+            "qw": 0.0006013001358148618,
+            "qx": -0.7086823834869912,
+            "qy": -0.7055267384917874,
+            "qz": -0.0009690441086299571
+          },
+          "position": {
+            "agl_m": 9.20368215162307,
+            "amsl_m": 29.20368215162307,
+            "ecef": {
+              "x_m": -2850424.4044977445,
+              "y_m": 4655911.042595171,
+              "z_m": 3287268.2693453156
+            },
+            "enu": {
+              "east_m": -510.1785587703567,
+              "north_m": -437.2228873820702,
+              "up_m": 9.168250429161649
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -9.168250429161649,
+              "east_m": -510.1785587703567,
+              "north_m": -437.2228873820702
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 59.20368215162307,
+              "latitude_deg": 31.22485648165642,
+              "longitude_deg": 121.47564549880559
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "4.700",
+        "observationMainCalls": "233",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "180",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "90",
+        "minimapUpdateMs": "60.400",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "179",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.18 m / N -437.22 mAltitude9.2 m AGLHeading89.7\u00b0 (Clockwise from true north)Speed2.02 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:30Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 180Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-190",
+      "tick": 190,
+      "authoritative_pose": {
+        "tick": 190,
+        "sim_time_ns": 95000000000,
+        "sample_digest": "615527171404b0ab2cf6c50860876bfd89256e3f4154a690e2c86472f4944664",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999990148418303,
+            "qx": -3.479213759573193e-05,
+            "qy": 0.0001630805360998373,
+            "qz": 0.0013937394357686139
+          },
+          "orientation_ned": {
+            "qw": 9.071359652981504e-05,
+            "qx": -0.7080916071807644,
+            "qy": -0.7061205619682861,
+            "qz": -0.00013991710938165
+          },
+          "position": {
+            "agl_m": 18.430421876721084,
+            "amsl_m": 38.430421876721084,
+            "ecef": {
+              "x_m": -2850428.535373894,
+              "y_m": 4655917.7797662215,
+              "z_m": 3287273.0316698146
+            },
+            "enu": {
+              "east_m": -510.1739494008347,
+              "north_m": -437.2478453755529,
+              "up_m": 18.39498885652624
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -18.39498885652624,
+              "east_m": -510.1739494008347,
+              "north_m": -437.2478453755529
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 68.43042187672108,
+              "latitude_deg": 31.224856262285027,
+              "longitude_deg": 121.47564555493369
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.200",
+        "observationMainCalls": "233",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "190",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "95",
+        "minimapUpdateMs": "44.600",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "189",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.17 m / N -437.25 mAltitude18.43 m AGLHeading89.8\u00b0 (Clockwise from true north)Speed0.65 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:35Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 190Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-200",
+      "tick": 200,
+      "authoritative_pose": {
+        "tick": 200,
+        "sim_time_ns": 100000000000,
+        "sample_digest": "6b9198a2fb7742bb48118100a8debc56d812e1d7b5636c063e137ab5b4c7209a",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9924307252891698,
+            "qx": 0.12273619080803691,
+            "qy": -0.001405238906079212,
+            "qz": 0.0038869360121306746
+          },
+          "orientation_ned": {
+            "qw": 0.08579393885769312,
+            "qx": -0.7045029745220716,
+            "qy": -0.6990060168976397,
+            "qz": 0.08778124677704467
+          },
+          "position": {
+            "agl_m": 19.753129601478577,
+            "amsl_m": 39.75312960147858,
+            "ecef": {
+              "x_m": -2850429.9999579107,
+              "y_m": 4655920.024509528,
+              "z_m": 3287271.1636921694
+            },
+            "enu": {
+              "east_m": -510.0971729472726,
+              "north_m": -440.23419738319535,
+              "up_m": 19.717496473385463
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -19.717496473385463,
+              "east_m": -510.0971729472726,
+              "north_m": -440.23419738319535
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 69.75312960147858,
+              "latitude_deg": 31.224829328627724,
+              "longitude_deg": 121.47564636335545
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.300",
+        "observationMainCalls": "233",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "200",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "100",
+        "minimapUpdateMs": "43.900",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "199",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.1 m / N -440.23 mAltitude19.75 m AGLHeading89.6\u00b0 (Clockwise from true north)Speed4.19 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:40Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 200Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-210",
+      "tick": 210,
+      "authoritative_pose": {
+        "tick": 210,
+        "sim_time_ns": 105000000000,
+        "sample_digest": "bc19b0ea7f1eb70f6046ee151bcf5d0cabe79909a96031eb8edbc8cfdbd06ed5",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999194396432916,
+            "qx": -0.012499721945662054,
+            "qy": -0.0008462017458705461,
+            "qz": 0.002038410491592007
+          },
+          "orientation_ned": {
+            "qw": 0.009436993143480904,
+            "qx": 0.7084911902934707,
+            "qy": 0.7056084425305776,
+            "qz": 0.008240283157966984
+          },
+          "position": {
+            "agl_m": 19.806077329441905,
+            "amsl_m": 39.806077329441905,
+            "ecef": {
+              "x_m": -2850432.568570754,
+              "y_m": 4655924.401268958,
+              "z_m": 3287262.8959354996
+            },
+            "enu": {
+              "east_m": -510.19223841715507,
+              "north_m": -449.93460081800185,
+              "up_m": 19.769756966668524
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -19.769756966668524,
+              "east_m": -510.19223841715507,
+              "north_m": -449.93460081800185
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 69.8060773294419,
+              "latitude_deg": 31.224741838721116,
+              "longitude_deg": 121.475645370589
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.000",
+        "observationMainCalls": "235",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "210",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "105",
+        "minimapUpdateMs": "47.900",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "209",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -510.19 m / N -449.93 mAltitude19.81 m AGLHeading89.8\u00b0 (Clockwise from true north)Speed0.13 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:45Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 210Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-220",
+      "tick": 220,
+      "authoritative_pose": {
+        "tick": 220,
+        "sim_time_ns": 110000000000,
+        "sample_digest": "b1656c4e355f37188b7b9e7c10add7c6e5d38e53a4c47e22be93c5582b9daba4",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9994162845976996,
+            "qx": -0.00020906352721251307,
+            "qy": 0.03302687661251283,
+            "qz": 0.008733372463900225
+          },
+          "orientation_ned": {
+            "qw": 0.023205698176328463,
+            "qx": -0.7128694589591497,
+            "qy": -0.7005186051754462,
+            "qz": -0.02350135865190996
+          },
+          "position": {
+            "agl_m": 19.81745522748679,
+            "amsl_m": 39.81745522748679,
+            "ecef": {
+              "x_m": -2850447.181800978,
+              "y_m": 4655915.4344884725,
+              "z_m": 3287262.9464319064
+            },
+            "enu": {
+              "east_m": -493.04728573763913,
+              "north_m": -449.8832653821096,
+              "up_m": 19.78248566638616
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -19.78248566638616,
+              "east_m": -493.04728573763913,
+              "north_m": -449.8832653821096
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 69.81745522748679,
+              "latitude_deg": 31.224742309099614,
+              "longitude_deg": 121.47582531229108
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "4.700",
+        "observationMainCalls": "238",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "220",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "110",
+        "minimapUpdateMs": "50.200",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "219",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -493.05 m / N -449.88 mAltitude19.82 m AGLHeading89\u00b0 (Clockwise from true north)Speed4.99 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:50Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 220Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-230",
+      "tick": 230,
+      "authoritative_pose": {
+        "tick": 230,
+        "sim_time_ns": 115000000000,
+        "sample_digest": "0420bff3ca279c0ed6876fc724dc251c0deccc8fe57b95352cf6fadd6a7738ce",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9994592079645014,
+            "qx": 0.0002473639797463486,
+            "qy": 0.030205446885899708,
+            "qz": 0.012994668308820291
+          },
+          "orientation_ned": {
+            "qw": 0.021533389069289702,
+            "qx": -0.7159130015514716,
+            "qy": -0.6975357653905979,
+            "qz": -0.021183563574289833
+          },
+          "position": {
+            "agl_m": 19.80072438623756,
+            "amsl_m": 39.80072438623756,
+            "ecef": {
+              "x_m": -2850468.575561191,
+              "y_m": 4655902.350914454,
+              "z_m": 3287262.8941892916
+            },
+            "enu": {
+              "east_m": -467.9699517426028,
+              "north_m": -449.9353585731209,
+              "up_m": 19.76763866396606
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -19.76763866396606,
+              "east_m": -467.9699517426028,
+              "north_m": -449.9353585731209
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 69.80072438623756,
+              "latitude_deg": 31.224741849571252,
+              "longitude_deg": 121.47608850688005
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.400",
+        "observationMainCalls": "238",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "230",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "115",
+        "minimapUpdateMs": "44.100",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "229",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -467.97 m / N -449.94 mAltitude19.8 m AGLHeading88.5\u00b0 (Clockwise from true north)Speed5.01 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:01:55Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 230Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-240",
+      "tick": 240,
+      "authoritative_pose": {
+        "tick": 240,
+        "sim_time_ns": 120000000000,
+        "sample_digest": "b7a694ffd69971c306dc72b3a78b6c10112edf9e4cb33211f4653880cfaf37d6",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.999630068205221,
+            "qx": -0.0025058033099739415,
+            "qy": -0.02574403293178046,
+            "qz": 0.008407880720138835
+          },
+          "orientation_ned": {
+            "qw": 0.019975650773954027,
+            "qx": 0.7127904693785007,
+            "qy": 0.700899930433265,
+            "qz": -0.016431909748349488
+          },
+          "position": {
+            "agl_m": 19.807148820720613,
+            "amsl_m": 39.80714882072061,
+            "ecef": {
+              "x_m": -2850483.0139917396,
+              "y_m": 4655893.601963191,
+              "z_m": 3287262.779015221
+            },
+            "enu": {
+              "east_m": -451.087824424625,
+              "north_m": -450.074674739974,
+              "up_m": 19.775268435959433
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -19.775268435959433,
+              "east_m": -451.087824424625,
+              "north_m": -450.074674739974
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 69.80714882072061,
+              "latitude_deg": 31.224740599699672,
+              "longitude_deg": 121.47626569023004
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "IN_AIR",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "4.700",
+        "observationMainCalls": "241",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "240",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "120",
+        "minimapUpdateMs": "44.000",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "239",
+      "selected": "\u25b3uav.inspectorHOLD \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 HOLDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity HOLDConnectivity UNKNOWNHealth HealthyPositionE -451.09 m / N -450.07 mAltitude19.81 m AGLHeading89\u00b0 (Clockwise from true north)Speed0.82 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:02:00Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 240Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-250",
+      "tick": 250,
+      "authoritative_pose": {
+        "tick": 250,
+        "sim_time_ns": 125000000000,
+        "sample_digest": "950f758de6ce26a41f184da563fda37e353159624d5bf49052a03108c9205907",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999916380748985,
+            "qx": 0.0011617073977793436,
+            "qy": -0.00012165943847793516,
+            "qz": 0.003919108978335142
+          },
+          "orientation_ned": {
+            "qw": 0.0007354249647812563,
+            "qx": -0.7098720969473944,
+            "qy": -0.7043296398778146,
+            "qz": 0.0009074773926674473
+          },
+          "position": {
+            "agl_m": 15.702238586731255,
+            "amsl_m": 35.702238586731255,
+            "ecef": {
+              "x_m": -2850482.0178942345,
+              "y_m": 4655890.047349058,
+              "z_m": 3287260.719351835
+            },
+            "enu": {
+              "east_m": -450.0810340821786,
+              "north_m": -449.99454895350857,
+              "up_m": 15.67043491881594
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -15.67043491881594,
+              "east_m": -450.0810340821786,
+              "north_m": -449.99454895350857
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 65.70223858673126,
+              "latitude_deg": 31.224741320136236,
+              "longitude_deg": 121.4762762537407
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "LANDING",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "6.200",
+        "observationMainCalls": "242",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "250",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "125",
+        "minimapUpdateMs": "47.400",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "249",
+      "selected": "\u25b3uav.inspectorLAND \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 LANDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity LANDConnectivity UNKNOWNHealth HealthyPositionE -450.08 m / N -449.99 mAltitude15.7 m AGLHeading89.6\u00b0 (Clockwise from true north)Speed1.51 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:02:05Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 250Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    },
+    {
+      "name": "gif-frames/frame-260",
+      "tick": 260,
+      "authoritative_pose": {
+        "tick": 260,
+        "sim_time_ns": 130000000000,
+        "sample_digest": "4d7c51a813f90b59b5838040b2e957687d6e02a4bb00d585cef0dc8586c2c583",
+        "pose": {
+          "orientation_enu": {
+            "qw": 0.9999951443821303,
+            "qx": 0.0009114037766878941,
+            "qy": 0.00104188063675692,
+            "qz": 0.002791959895259242
+          },
+          "orientation_ned": {
+            "qw": 0.0013811806543328159,
+            "qx": -0.7090775615209638,
+            "qy": -0.7051291339714862,
+            "qz": -9.226107254273663e-05
+          },
+          "position": {
+            "agl_m": 8.474149667657912,
+            "amsl_m": 28.474149667657912,
+            "ecef": {
+              "x_m": -2850478.750078573,
+              "y_m": 4655884.808001524,
+              "z_m": 3287256.9618704063
+            },
+            "enu": {
+              "east_m": -450.13180100608974,
+              "north_m": -450.00627451534706,
+              "up_m": 8.442341553144551
+            },
+            "geoid_separation_m": 30,
+            "ned": {
+              "down_m": -8.442341553144551,
+              "east_m": -450.13180100608974,
+              "north_m": -450.00627451534706
+            },
+            "terrain_amsl_m": 20,
+            "wgs84": {
+              "ellipsoid_height_m": 58.47414966765791,
+              "latitude_deg": 31.224741209743158,
+              "longitude_deg": 121.47627571558195
+            }
+          }
+        },
+        "attributes": [
+          {
+            "name": "collision_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "contacts_complete",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "ground_contact",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "in_air",
+            "value": true,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed",
+            "value": false,
+            "value_type": "bool"
+          },
+          {
+            "name": "landed_state",
+            "value": "LANDING",
+            "value_type": "str"
+          },
+          {
+            "name": "telemetry_source",
+            "value": "gazebo-mavsdk",
+            "value_type": "str"
+          }
+        ]
+      },
+      "map": {
+        "renderBackend": "software",
+        "p02DestinationState": "unknown",
+        "p02DestinationIds": "",
+        "p02AircraftMarkerIds": "uav.inspector",
+        "p02CarrierModelState": "native-entity-glb-binding-unavailable",
+        "observationMainSubmitMs": "5.800",
+        "observationMainCalls": "242",
+        "observationMainTriangles": "1263306",
+        "observationCameraMode": "free",
+        "sceneTick": "260",
+        "renderedUavCount": "1",
+        "cityMood": "day",
+        "cityTimeOfDay": "day",
+        "sceneReady": "true",
+        "texturesReady": "true",
+        "sceneLoadStage": "\u52a0\u8f7d\u89c6\u91ce\u5185\u5efa\u7b51\u6e32\u67d3\u8d44\u4ea7",
+        "observationTimeS": "130",
+        "minimapUpdateMs": "52.600",
+        "minimapBudget": "SVG; maximum 5 Hz during playback; immediate on interaction",
+        "skyReady": "true",
+        "meshCount": "2052",
+        "drawCalls": "47",
+        "buildingReplacements": "414",
+        "buildingVisualParts": "414",
+        "buildingStyle": "building-render-validated",
+        "buildingAssetCount": "0",
+        "buildingUsedAssets": "",
+        "occludedSourceBuildings": "0",
+        "treeReplacements": "30",
+        "streetLampCount": "992",
+        "buildingWindowMaterialCount": "0",
+        "storefrontLightCount": "0",
+        "trafficSignalCount": "154",
+        "flightSourceKind": "planned-visual-flight",
+        "vehicleLampMaterialCount": "11",
+        "buildingRenderBytes": "101076596",
+        "buildingRenderPackMissing": "4",
+        "buildingRenderBlocks": "78",
+        "roadAssetsEffectiveFixturesSha256": "779d65f408873b0272a77e29e416382f92600680cef42016708fe34a311dada1",
+        "roadAssetsFlightSha256": "2f45ac508783397aba5b6cbced775b6c818c26f322f3e7c9cb5bb866cf2b77b3",
+        "previewCameraX": "-559.200",
+        "previewCameraZ": "600.800",
+        "headlightBeamCount": "0",
+        "lightingSource": "verified-hdr-calibrated-display",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "nativeCityPresentation": "verified-declared-assets",
+        "nativeCityStats": "{\"buildingCount\":414,\"roadbedPolygonCount\":434,\"walkbedPolygonCount\":1163,\"fixtureCount\":1143,\"omittedFixtureInteriorRingCount\":15655,\"greenCount\":8,\"groundCoverCount\":19,\"osmElementCount\":4545,\"verifiedBytes\":160364476}",
+        "p02OverviewFrame": "declared-enu",
+        "p02OverviewAnchorEnu": "-450.000,-450.000,0.137",
+        "p02OverviewAnchorWorld": "-450.000,0.137,450.000",
+        "p02OverviewTarget": "-450.000,0.137,450.000",
+        "p02OverviewPosition": "-559.200,245.000,600.800"
+      },
+      "cursor": "259",
+      "selected": "\u25b3uav.inspectorLAND \u00b7 SEALED REPLAY sample is synchronized with source clock",
+      "detail": "uav.inspectorAircraft \u00b7 LANDGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity LANDConnectivity UNKNOWNHealth HealthyPositionE -450.13 m / N -450.01 mAltitude8.47 m AGLHeading89.7\u00b0 (Clockwise from true north)Speed1.19 m/sBattery remaining50%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:02:10Declared business associationBusiness source UNKNOWNNo associated order declared (order/parcel/custody/destination UNKNOWN; no explicit business record for this entity)Current cursor 260Open camera previewSwap main viewCamera source: Simulated RGB \u00b7 ReadyRaw camera sourcesimulated_rgb \u00b7 readyCamera image slot",
+      "body": [
+        1600,
+        1000
+      ],
+      "viewport": [
+        1600,
+        1000
+      ]
+    }
+  ],
+  "trace": {
+    "phase": "sealed",
+    "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+    "time": {
+      "sim_time_ns": 150000000000,
+      "tick": 300
+    },
+    "scene_frame_count": 300,
+    "timeline_ticks": 300
+  },
+  "gif": {
+    "file": "same-run-post-run-replay.gif",
+    "frame_count": 20,
+    "ticks": [
+      80,
+      90,
+      100,
+      110,
+      120,
+      130,
+      140,
+      150,
+      160,
+      170,
+      180,
+      190,
+      200,
+      210,
+      220,
+      230,
+      240,
+      250,
+      260,
+      300
+    ],
+    "wall_display_frame_ms": [
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      350,
+      1800
+    ],
+    "note": "Authoritative recorded ticks80\u2013260 plus existing tick300 touchdown screenshot held1800ms; accelerated post-run review."
+  },
+  "native_aircraft_mesh_note": "City GLB meshes/textures loaded; native UAV model binding remains unavailable in p02CarrierModelState. UAV marker visible; aircraft GLB loading is not claimed."
+}

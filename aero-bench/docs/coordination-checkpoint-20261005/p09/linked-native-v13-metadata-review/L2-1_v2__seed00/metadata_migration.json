@@ -1,0 +1,61 @@
+{
+  "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+  "episode_id": "L2-1_v2__seed00",
+  "simulation_source_revision": "p09.linked-native-causal/v12",
+  "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+  "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed00/adopted",
+  "source_trajectory_sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25",
+  "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_artifacts/L2-1_v2__seed00/trajectories.jsonl",
+  "current_trajectory_sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb",
+  "changed_trajectory_rows": 2703,
+  "physical_rows_verified_unchanged": 13515,
+  "numeric_motion_actions_unchanged": true,
+  "ns3_rerun": false,
+  "provider_endpoint_poses_unchanged": true,
+  "render_changes": [
+    "corridor_l2_1_v2_uav_l2_1_v2_03",
+    "corridor_l2_1_v2_uav_l2_1_v2_04"
+  ],
+  "route_field_owner": "uav_l2_1_v2",
+  "landing_execution_receipts": [
+    {
+      "action_id": "move_uav_l2_1_v2_landing_return",
+      "owner": "uav_l2_1_v2",
+      "dispatch_tick": 475,
+      "actual_motion_schedule": {
+        "terminal_tick": 627,
+        "endpoint_enu_m": [
+          6342.768,
+          6121.862,
+          3.0
+        ]
+      },
+      "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+      "operating_inputs": {
+        "model": "p09.landing-reference-operating-inputs/v1",
+        "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+        "landing_reference_enu_m": [
+          6342.768,
+          6121.862,
+          3.0
+        ],
+        "home_pose_origin_z_m": 3.0,
+        "touchdown_altitude_tolerance_m": 1.5,
+        "touchdown_dwell_ticks": 5,
+        "max_speed_mps": 8.0
+      }
+    }
+  ],
+  "late_historical_planning_bounds": [
+    {
+      "action_id": "move_uav_l2_1_v2_landing_return",
+      "owner": "uav_l2_1_v2",
+      "old_dispatch_upper_bound_tick": 425,
+      "actual_dispatch_tick": 475
+    }
+  ],
+  "actual_unfired_events": [],
+  "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+  "published210_modified": false,
+  "UE_capture_started": false
+}

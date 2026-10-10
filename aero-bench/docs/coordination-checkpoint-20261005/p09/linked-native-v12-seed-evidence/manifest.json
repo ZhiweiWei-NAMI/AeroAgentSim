@@ -1,0 +1,2397 @@
+[
+  {
+    "path": "30_episode_resolution.csv",
+    "bytes": 16237,
+    "sha256": "7605ab58b8c7389a2d97076a3a461cfc2da7ee5217982e5d2ae9b473fb1050fc"
+  },
+  {
+    "path": "30_episode_resolution.json",
+    "bytes": 32535,
+    "sha256": "e3fbacdd58712fcf6375e32e43564b218c1d991cf8720dec7215e3ede7ac19b3"
+  },
+  {
+    "path": "L2-1_v1__seed00/actions.json",
+    "bytes": 10448,
+    "sha256": "5a3a7f75c96421322eb04b226c9993cbc7bbab33de5892bbc311b74603dfc246"
+  },
+  {
+    "path": "L2-1_v1__seed00/actor_last_five_ticks.json",
+    "bytes": 14188,
+    "sha256": "b96de2c0d7a6099c9ab2fa42bb4ced34d2fcdddb0229223487256393a4569312"
+  },
+  {
+    "path": "L2-1_v1__seed00/admitted_event_rows.json",
+    "bytes": 9673,
+    "sha256": "ee8954aa60aaeb18dbf2516fa09447d13a420b2f93969412204b845006b0b86e"
+  },
+  {
+    "path": "L2-1_v1__seed00/adoption_profile.json",
+    "bytes": 3615,
+    "sha256": "f122aaf668601b3842428b2adec251e8a70cd55531aaa8c247d63da0aa610065"
+  },
+  {
+    "path": "L2-1_v1__seed00/command_receipts.json",
+    "bytes": 7340,
+    "sha256": "f7d52625556ceadf809c0a82c23eacb3f6c43612d6ea402d22e4675d6b724149"
+  },
+  {
+    "path": "L2-1_v1__seed00/coupled_iterations.json",
+    "bytes": 2686,
+    "sha256": "2130d97868b16058421c3aa7c02fe63a622f17c0a251aa63d5aa56796510c5d0"
+  },
+  {
+    "path": "L2-1_v1__seed00/event_script.json",
+    "bytes": 31939,
+    "sha256": "f5b8536676323716f25a21ccbbbe30bea63fe23c056aee6cd561882c935353a0"
+  },
+  {
+    "path": "L2-1_v1__seed00/event_trace.jsonl",
+    "bytes": 17881,
+    "sha256": "131e4319e6bd6253f10795ce328ffa5b338872bfdc171b2ae65353e2ecf39a1a"
+  },
+  {
+    "path": "L2-1_v1__seed00/execution_time.json",
+    "bytes": 39,
+    "sha256": "7f28e0ce350e0df15195b6257c1644731acc54cb0dd5c5938b07a10beb83222b"
+  },
+  {
+    "path": "L2-1_v1__seed00/native_message_attempt_packets.jsonl",
+    "bytes": 1986,
+    "sha256": "ca790e246b184c1afcf55bdf4e81e139e2cb5cf5c7d64a07bfef278a19c81621"
+  },
+  {
+    "path": "L2-1_v1__seed00/network_backend.json",
+    "bytes": 11374,
+    "sha256": "f892a481b3bedd4e9727234d5332ddba8d116d3debf7012e1da15fdab6e89e1e"
+  },
+  {
+    "path": "L2-1_v1__seed00/predicate_flips.jsonl",
+    "bytes": 1647,
+    "sha256": "e939e9e854d74780a4ab31fd7e2aa29003c21e037bcbcdfc5cc7f617b19f5f8c"
+  },
+  {
+    "path": "L2-1_v1__seed00/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "21d2c0ccc1d516d225fdd555991f1452691a9ce8345a791d2a1cb67557b42aca"
+  },
+  {
+    "path": "L2-1_v1__seed00/scene_setup.json",
+    "bytes": 114320,
+    "sha256": "b07e10ca6f4b0b3f30b79f9256c3cc2b54c00e9394151591682632a810200cfa"
+  },
+  {
+    "path": "L2-1_v1__seed00/scoped_receipt.json",
+    "bytes": 13194,
+    "sha256": "eea3b7a9a0e2487185e56e47023437ed9d1fcf031dd3aba1f46fd4b155f963e6"
+  },
+  {
+    "path": "L2-1_v1__seed00/summary.json",
+    "bytes": 1981,
+    "sha256": "37d7449c6b448b8b518445d38ec6e4956a7699e12f22933e3924be18b977a229"
+  },
+  {
+    "path": "L2-1_v1__seed00/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L2-1_v1__seed01/actions.json",
+    "bytes": 10448,
+    "sha256": "5a3a7f75c96421322eb04b226c9993cbc7bbab33de5892bbc311b74603dfc246"
+  },
+  {
+    "path": "L2-1_v1__seed01/actor_last_five_ticks.json",
+    "bytes": 14188,
+    "sha256": "b96de2c0d7a6099c9ab2fa42bb4ced34d2fcdddb0229223487256393a4569312"
+  },
+  {
+    "path": "L2-1_v1__seed01/admitted_event_rows.json",
+    "bytes": 9673,
+    "sha256": "19a8076fb876c6871b419f09294f90fef8c16ca642ae9e539593bb0810525350"
+  },
+  {
+    "path": "L2-1_v1__seed01/adoption_profile.json",
+    "bytes": 3615,
+    "sha256": "2b2be80f7a6109c10bb4722a4898d5d22718cf8f68b0bc3aabdaaf68cbe8ba5b"
+  },
+  {
+    "path": "L2-1_v1__seed01/command_receipts.json",
+    "bytes": 7340,
+    "sha256": "a0972a327b6d1d6a7b0d22d2b36dc3ce387bc3a39496aaf01a7056ff8d9708da"
+  },
+  {
+    "path": "L2-1_v1__seed01/coupled_iterations.json",
+    "bytes": 2685,
+    "sha256": "5bf8f8bd427fb3ae13d96c849dd80c88967bd91a15c692a5aea8f6b84705581d"
+  },
+  {
+    "path": "L2-1_v1__seed01/event_script.json",
+    "bytes": 31939,
+    "sha256": "f5b8536676323716f25a21ccbbbe30bea63fe23c056aee6cd561882c935353a0"
+  },
+  {
+    "path": "L2-1_v1__seed01/event_trace.jsonl",
+    "bytes": 17881,
+    "sha256": "ff99ba7db9fd4f5580a037a95dfe0bbcb27245a64cc255847fd2a8305830737b"
+  },
+  {
+    "path": "L2-1_v1__seed01/execution_time.json",
+    "bytes": 40,
+    "sha256": "69687d3826013939583f4d1373fdac8c015ce18cf73f0e54573657a364e7a597"
+  },
+  {
+    "path": "L2-1_v1__seed01/native_message_attempt_packets.jsonl",
+    "bytes": 1986,
+    "sha256": "fa785d68aad4bffbc8ec0ab3a6e2929f154d90837b8b66f14e135fcefcd3935c"
+  },
+  {
+    "path": "L2-1_v1__seed01/network_backend.json",
+    "bytes": 11372,
+    "sha256": "cb1e0600be664271bbcadf8090427964d44dfd0c27762854ed7eba4ac7f3cf4c"
+  },
+  {
+    "path": "L2-1_v1__seed01/predicate_flips.jsonl",
+    "bytes": 1647,
+    "sha256": "e939e9e854d74780a4ab31fd7e2aa29003c21e037bcbcdfc5cc7f617b19f5f8c"
+  },
+  {
+    "path": "L2-1_v1__seed01/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "0a84a89c4ee5ebda63554ee743f27824a33e84f0ee9523bed03d2c40d69b5f5e"
+  },
+  {
+    "path": "L2-1_v1__seed01/scene_setup.json",
+    "bytes": 114320,
+    "sha256": "b07e10ca6f4b0b3f30b79f9256c3cc2b54c00e9394151591682632a810200cfa"
+  },
+  {
+    "path": "L2-1_v1__seed01/scoped_receipt.json",
+    "bytes": 13194,
+    "sha256": "f05a6e97a37e4c24c4715f6f0e4da5750f2cbd8d5232659725f015cf372821d6"
+  },
+  {
+    "path": "L2-1_v1__seed01/summary.json",
+    "bytes": 1981,
+    "sha256": "2ecd8d1b6d9abd48cf21eb5adbe913bfabc340c42f3021328b3d89a2097cb852"
+  },
+  {
+    "path": "L2-1_v1__seed01/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L2-1_v1__seed02/actions.json",
+    "bytes": 10448,
+    "sha256": "5a3a7f75c96421322eb04b226c9993cbc7bbab33de5892bbc311b74603dfc246"
+  },
+  {
+    "path": "L2-1_v1__seed02/actor_last_five_ticks.json",
+    "bytes": 14188,
+    "sha256": "b96de2c0d7a6099c9ab2fa42bb4ced34d2fcdddb0229223487256393a4569312"
+  },
+  {
+    "path": "L2-1_v1__seed02/admitted_event_rows.json",
+    "bytes": 9673,
+    "sha256": "5c108a6547c6bdf398b2f09c060b4306ec4e80d973bab6a06e1806747ddba8a0"
+  },
+  {
+    "path": "L2-1_v1__seed02/adoption_profile.json",
+    "bytes": 3615,
+    "sha256": "8d10f509c4ffb859322df1de9712bcc1bf48fe1d59816bb51e026f5ad38d50fe"
+  },
+  {
+    "path": "L2-1_v1__seed02/command_receipts.json",
+    "bytes": 7340,
+    "sha256": "e6276c32878a66d78c771b3b3acbf01be23b9c928714719b6f786de8998b3361"
+  },
+  {
+    "path": "L2-1_v1__seed02/coupled_iterations.json",
+    "bytes": 2687,
+    "sha256": "0f0118ddb7fdc4ac8323218384149bc076332e198f103a3823a4ecaf81e26cf9"
+  },
+  {
+    "path": "L2-1_v1__seed02/event_script.json",
+    "bytes": 31939,
+    "sha256": "f5b8536676323716f25a21ccbbbe30bea63fe23c056aee6cd561882c935353a0"
+  },
+  {
+    "path": "L2-1_v1__seed02/event_trace.jsonl",
+    "bytes": 17881,
+    "sha256": "d0f4a71c844c0326790e0b9a7ad0bcd9f17ffb4dfd62b2827fec2ec65a77accc"
+  },
+  {
+    "path": "L2-1_v1__seed02/execution_time.json",
+    "bytes": 39,
+    "sha256": "fff9afe43907a9faf653350e5c8f0ebf5ec917a097a96e7eb5191a468329615a"
+  },
+  {
+    "path": "L2-1_v1__seed02/native_message_attempt_packets.jsonl",
+    "bytes": 1986,
+    "sha256": "7246cd5b26a00d11b92e89c8abec32c94e1407de3d4c417bdf4113a1ecf05f73"
+  },
+  {
+    "path": "L2-1_v1__seed02/network_backend.json",
+    "bytes": 11374,
+    "sha256": "a9748e8fa091d471932cc4d37a29c2f014caeeb3228110fbf538103992fb5893"
+  },
+  {
+    "path": "L2-1_v1__seed02/predicate_flips.jsonl",
+    "bytes": 1647,
+    "sha256": "e939e9e854d74780a4ab31fd7e2aa29003c21e037bcbcdfc5cc7f617b19f5f8c"
+  },
+  {
+    "path": "L2-1_v1__seed02/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "b5d2a9665c73fabfd3378035bc49c0ddb9048ee15ffebe28e93e0ad041f745dc"
+  },
+  {
+    "path": "L2-1_v1__seed02/scene_setup.json",
+    "bytes": 114320,
+    "sha256": "b07e10ca6f4b0b3f30b79f9256c3cc2b54c00e9394151591682632a810200cfa"
+  },
+  {
+    "path": "L2-1_v1__seed02/scoped_receipt.json",
+    "bytes": 13194,
+    "sha256": "8c3ff128daa349bfde3f9a53249d4fc1e0b8a27fc5a711ea4e6dcf6fac233c5e"
+  },
+  {
+    "path": "L2-1_v1__seed02/summary.json",
+    "bytes": 1981,
+    "sha256": "5aceb208f33c29ac8ac789e0aa1f2d60e87d9d7b88066755b697da110b9e519c"
+  },
+  {
+    "path": "L2-1_v1__seed02/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L2-1_v2__seed00/actions.json",
+    "bytes": 12262,
+    "sha256": "c864580fbd1be8286d7cf8b02d9defe6c393f25b339000d376cc237616ab1339"
+  },
+  {
+    "path": "L2-1_v2__seed00/actor_last_five_ticks.json",
+    "bytes": 14193,
+    "sha256": "8ee65353c32e6a6f0c3fdc70b5dc6944bbdb7eb857c07c5b9d8b497e336801e5"
+  },
+  {
+    "path": "L2-1_v2__seed00/admitted_event_rows.json",
+    "bytes": 11194,
+    "sha256": "3814f23e9c1d1297b477b1a71c26d1a4e9fe05a7031f53414e3db7c3f74d9205"
+  },
+  {
+    "path": "L2-1_v2__seed00/adoption_profile.json",
+    "bytes": 5031,
+    "sha256": "920bcd064b408c7cee17ea8939f3af89d96ae694f63a0e789426946b71a6cded"
+  },
+  {
+    "path": "L2-1_v2__seed00/command_receipts.json",
+    "bytes": 7332,
+    "sha256": "0b80669d11ba7871c41e65cfd4c061c83c2dc338f2d07c3ce65b94b4f0928995"
+  },
+  {
+    "path": "L2-1_v2__seed00/coupled_iterations.json",
+    "bytes": 4402,
+    "sha256": "5e001a570f0d6d0ca9fdac8cc004206965bec169d438710a0e6f390e7cc1fc9d"
+  },
+  {
+    "path": "L2-1_v2__seed00/event_script.json",
+    "bytes": 40233,
+    "sha256": "26116fa2c290c0b6b4ab3bed9f503178045083951aa08d118e009d36412ecb34"
+  },
+  {
+    "path": "L2-1_v2__seed00/event_trace.jsonl",
+    "bytes": 17899,
+    "sha256": "33734e799be0ed8120ab3376adc8ecaeb52583bea78f79ac1a7fd0585dce56d2"
+  },
+  {
+    "path": "L2-1_v2__seed00/execution_time.json",
+    "bytes": 39,
+    "sha256": "e430e986860b29588231360a8e8feea5ecee9b111c0487e4f61874d69135745c"
+  },
+  {
+    "path": "L2-1_v2__seed00/native_message_attempt_packets.jsonl",
+    "bytes": 1986,
+    "sha256": "ef8d12521847541c033c21c15e899a3d85926e88c863054528ef981ef32e2c41"
+  },
+  {
+    "path": "L2-1_v2__seed00/network_backend.json",
+    "bytes": 11374,
+    "sha256": "74a5b2cc1405bad855e38eedc9d860756ae222d63ad3580e66d4fe5fbfac5625"
+  },
+  {
+    "path": "L2-1_v2__seed00/predicate_flips.jsonl",
+    "bytes": 1647,
+    "sha256": "c6032b72d0c37d9f9cb50dd390b4d0840c2c7cc5edeb7fe928f70c0cb43327f9"
+  },
+  {
+    "path": "L2-1_v2__seed00/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "36441ba713968b2ca28d7ac3293e90cd37a7182ae4bc0e32bb0fba248978f69d"
+  },
+  {
+    "path": "L2-1_v2__seed00/scene_setup.json",
+    "bytes": 78595,
+    "sha256": "5d5e7e8f55d34f6c7c7c1b788c610624039a3faa2ce0c11fcf7bb3069e44dc81"
+  },
+  {
+    "path": "L2-1_v2__seed00/scoped_receipt.json",
+    "bytes": 14474,
+    "sha256": "724970924e9b87efd225bfa65bae783ccff38e1fec4327113119a85ad6fea012"
+  },
+  {
+    "path": "L2-1_v2__seed00/summary.json",
+    "bytes": 1981,
+    "sha256": "fcff0b8f99703010bbf735bfcfa0e69d5bd0b651c6d55181d03ef71dc05b9495"
+  },
+  {
+    "path": "L2-1_v2__seed00/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L2-1_v2__seed01/actions.json",
+    "bytes": 12262,
+    "sha256": "c864580fbd1be8286d7cf8b02d9defe6c393f25b339000d376cc237616ab1339"
+  },
+  {
+    "path": "L2-1_v2__seed01/actor_last_five_ticks.json",
+    "bytes": 14193,
+    "sha256": "8ee65353c32e6a6f0c3fdc70b5dc6944bbdb7eb857c07c5b9d8b497e336801e5"
+  },
+  {
+    "path": "L2-1_v2__seed01/admitted_event_rows.json",
+    "bytes": 11194,
+    "sha256": "70a66cab259ebd43c792bf84e9b834ef9cda9b68fe6019e57cf3f4bb6d217e4c"
+  },
+  {
+    "path": "L2-1_v2__seed01/adoption_profile.json",
+    "bytes": 5031,
+    "sha256": "102309fd2575fc7a5298289a1990097afaae8b4df03a06a1fe3616e83a57cf11"
+  },
+  {
+    "path": "L2-1_v2__seed01/command_receipts.json",
+    "bytes": 7332,
+    "sha256": "9948465f9cab2fca25d5cb8cfb738a428bba96de851fe4dd57560159e7f6be6b"
+  },
+  {
+    "path": "L2-1_v2__seed01/coupled_iterations.json",
+    "bytes": 4402,
+    "sha256": "445a6772d907724d1ac73e25d274813013d8ae87cfa9e39f065c89f5c1f1e9e5"
+  },
+  {
+    "path": "L2-1_v2__seed01/event_script.json",
+    "bytes": 40233,
+    "sha256": "26116fa2c290c0b6b4ab3bed9f503178045083951aa08d118e009d36412ecb34"
+  },
+  {
+    "path": "L2-1_v2__seed01/event_trace.jsonl",
+    "bytes": 17899,
+    "sha256": "b63898ac24a046bf0b1e6fdb4bfceac6a202b6d29ce72bea975038612c72f1f1"
+  },
+  {
+    "path": "L2-1_v2__seed01/execution_time.json",
+    "bytes": 40,
+    "sha256": "6df7d9d9a2b95e21cdbd23cdb8ddf115b5d333d676f0dc52beaa89eef9cbf499"
+  },
+  {
+    "path": "L2-1_v2__seed01/native_message_attempt_packets.jsonl",
+    "bytes": 1986,
+    "sha256": "cd497241e4ab8cd455496558301bd263455db4b73c55213e0cb5fc7f1b247634"
+  },
+  {
+    "path": "L2-1_v2__seed01/network_backend.json",
+    "bytes": 11374,
+    "sha256": "d0dffbedcc74264cdd251ba450a1e8e792878d1ebf99ec1ca13309b1f2f791f6"
+  },
+  {
+    "path": "L2-1_v2__seed01/predicate_flips.jsonl",
+    "bytes": 1647,
+    "sha256": "c6032b72d0c37d9f9cb50dd390b4d0840c2c7cc5edeb7fe928f70c0cb43327f9"
+  },
+  {
+    "path": "L2-1_v2__seed01/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "3a40cab4f714801fb5c90cc124ad7203205cf5ba1f750c03edc78ba975a31b8b"
+  },
+  {
+    "path": "L2-1_v2__seed01/scene_setup.json",
+    "bytes": 78595,
+    "sha256": "5d5e7e8f55d34f6c7c7c1b788c610624039a3faa2ce0c11fcf7bb3069e44dc81"
+  },
+  {
+    "path": "L2-1_v2__seed01/scoped_receipt.json",
+    "bytes": 14474,
+    "sha256": "8ee465e66e579e48936b6cea3510eb553842fdfdd32aee98a2b2d0455127b85b"
+  },
+  {
+    "path": "L2-1_v2__seed01/summary.json",
+    "bytes": 1981,
+    "sha256": "9070abfe591fd0fdd1418d74a31b005ffa1e8e0e90d27037174565fa9fd9719a"
+  },
+  {
+    "path": "L2-1_v2__seed01/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L2-1_v2__seed02/actions.json",
+    "bytes": 12262,
+    "sha256": "c864580fbd1be8286d7cf8b02d9defe6c393f25b339000d376cc237616ab1339"
+  },
+  {
+    "path": "L2-1_v2__seed02/actor_last_five_ticks.json",
+    "bytes": 14193,
+    "sha256": "8ee65353c32e6a6f0c3fdc70b5dc6944bbdb7eb857c07c5b9d8b497e336801e5"
+  },
+  {
+    "path": "L2-1_v2__seed02/admitted_event_rows.json",
+    "bytes": 11194,
+    "sha256": "9f5d82f85fc85e81be3ce27b7c36a7918319a60889adeb80d751fb41830fda05"
+  },
+  {
+    "path": "L2-1_v2__seed02/adoption_profile.json",
+    "bytes": 5031,
+    "sha256": "6cd5128237f7607975b47bfa4c4200a18d6f00d9dee8c13dae8be6336212492c"
+  },
+  {
+    "path": "L2-1_v2__seed02/command_receipts.json",
+    "bytes": 7332,
+    "sha256": "f2227740ccc59279a6cf36894ee4020efc3b8ac9c804d5496fe4535eb2a4a59c"
+  },
+  {
+    "path": "L2-1_v2__seed02/coupled_iterations.json",
+    "bytes": 4400,
+    "sha256": "f4d22127872287677815c099fd35f74137ab434a4bcb2dca8dab24cd9a5fde78"
+  },
+  {
+    "path": "L2-1_v2__seed02/event_script.json",
+    "bytes": 40233,
+    "sha256": "26116fa2c290c0b6b4ab3bed9f503178045083951aa08d118e009d36412ecb34"
+  },
+  {
+    "path": "L2-1_v2__seed02/event_trace.jsonl",
+    "bytes": 17899,
+    "sha256": "b933861bfabcd85234e5c5b28ff48ff48f373ba2b72ac2ce820a40de3e3f5b29"
+  },
+  {
+    "path": "L2-1_v2__seed02/execution_time.json",
+    "bytes": 38,
+    "sha256": "e8abe384918a6ecbb06f2ca44d31260757ead0cb94a2b9b130e8f9e370482755"
+  },
+  {
+    "path": "L2-1_v2__seed02/native_message_attempt_packets.jsonl",
+    "bytes": 1986,
+    "sha256": "ac48e18caac6d7fb30de99f2ace45884705db23f264ff1b7411986ec41298937"
+  },
+  {
+    "path": "L2-1_v2__seed02/network_backend.json",
+    "bytes": 11374,
+    "sha256": "5a90d5326a0da338306b20b51cb4c9ddeb4d52f9f9b44c22c9dd477a8fc645d4"
+  },
+  {
+    "path": "L2-1_v2__seed02/predicate_flips.jsonl",
+    "bytes": 1647,
+    "sha256": "c6032b72d0c37d9f9cb50dd390b4d0840c2c7cc5edeb7fe928f70c0cb43327f9"
+  },
+  {
+    "path": "L2-1_v2__seed02/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "aec1392c286ee4a0b91446ccbc787f349afde7b1e2f226868ac75ad423d89a98"
+  },
+  {
+    "path": "L2-1_v2__seed02/scene_setup.json",
+    "bytes": 78595,
+    "sha256": "5d5e7e8f55d34f6c7c7c1b788c610624039a3faa2ce0c11fcf7bb3069e44dc81"
+  },
+  {
+    "path": "L2-1_v2__seed02/scoped_receipt.json",
+    "bytes": 14474,
+    "sha256": "93cbc18243543c60ffc3610becdb73758e3d443b57e98009ad3807a7a9d5908f"
+  },
+  {
+    "path": "L2-1_v2__seed02/summary.json",
+    "bytes": 1981,
+    "sha256": "84523c49b5c61c8f84e913fa8efa24ec3cea2e4add5f3d6dcea54ce7e3efae6c"
+  },
+  {
+    "path": "L2-1_v2__seed02/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L5-1_v1__seed00/actions.json",
+    "bytes": 17524,
+    "sha256": "4e4784645fecf9c8b3dbea8f9fca1824cd372bfedd5c88f2878adb4394d179d8"
+  },
+  {
+    "path": "L5-1_v1__seed00/actor_last_five_ticks.json",
+    "bytes": 14248,
+    "sha256": "ca7b5f2a05505f186e2e3b077c8bae8e49031358900a48709fbec12348236626"
+  },
+  {
+    "path": "L5-1_v1__seed00/admitted_event_rows.json",
+    "bytes": 27355,
+    "sha256": "0e1aeca26ace325fd8c68df2dde5f6b4b6f57fe895b49925348e2ce77d665212"
+  },
+  {
+    "path": "L5-1_v1__seed00/adoption_profile.json",
+    "bytes": 3977,
+    "sha256": "90abe8d25b0c1ce4a2703efaa70cafe79add02fc09b2ad91ade4733b0fa8ff7b"
+  },
+  {
+    "path": "L5-1_v1__seed00/event_script.json",
+    "bytes": 57735,
+    "sha256": "4266941f629151ed8dbba9e03e5cbf98ab558825ca771d277cdcb221e0777317"
+  },
+  {
+    "path": "L5-1_v1__seed00/event_trace.jsonl",
+    "bytes": 46757,
+    "sha256": "25352ca9f779e83c00cd334c0474736331d7e792e1e4d45c67dd353b075dfdec"
+  },
+  {
+    "path": "L5-1_v1__seed00/scene_setup.json",
+    "bytes": 102905,
+    "sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b"
+  },
+  {
+    "path": "L5-1_v1__seed00/scoped_receipt.json",
+    "bytes": 21362,
+    "sha256": "4d4969cac6611914932e8493dc756141f5dbc63a1b95858487eb19fd28c4c15e"
+  },
+  {
+    "path": "L5-1_v1__seed00/summary.json",
+    "bytes": 3212,
+    "sha256": "3710053b5dc66207871504e7979c35c54dbbf202c7e44f97038fe89358510efe"
+  },
+  {
+    "path": "L5-1_v1__seed00/weather.jsonl",
+    "bytes": 271467,
+    "sha256": "fc3708f7142e00c557487ae65328e669093c11a92848ed14f2762186d15f3644"
+  },
+  {
+    "path": "L5-1_v1__seed01/actions.json",
+    "bytes": 17524,
+    "sha256": "4e4784645fecf9c8b3dbea8f9fca1824cd372bfedd5c88f2878adb4394d179d8"
+  },
+  {
+    "path": "L5-1_v1__seed01/actor_last_five_ticks.json",
+    "bytes": 14248,
+    "sha256": "ca7b5f2a05505f186e2e3b077c8bae8e49031358900a48709fbec12348236626"
+  },
+  {
+    "path": "L5-1_v1__seed01/admitted_event_rows.json",
+    "bytes": 27355,
+    "sha256": "0e1aeca26ace325fd8c68df2dde5f6b4b6f57fe895b49925348e2ce77d665212"
+  },
+  {
+    "path": "L5-1_v1__seed01/adoption_profile.json",
+    "bytes": 3977,
+    "sha256": "0082f0ee2dd64fdb4083dcaae7d7014a9b719cb849794d24d446bb7493285310"
+  },
+  {
+    "path": "L5-1_v1__seed01/event_script.json",
+    "bytes": 57735,
+    "sha256": "4266941f629151ed8dbba9e03e5cbf98ab558825ca771d277cdcb221e0777317"
+  },
+  {
+    "path": "L5-1_v1__seed01/event_trace.jsonl",
+    "bytes": 46757,
+    "sha256": "a6f91ae83ecb13f1f3534b07b144bde025d6d82da5f01e8352d152ccca4e828d"
+  },
+  {
+    "path": "L5-1_v1__seed01/scene_setup.json",
+    "bytes": 102905,
+    "sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b"
+  },
+  {
+    "path": "L5-1_v1__seed01/scoped_receipt.json",
+    "bytes": 21362,
+    "sha256": "a2232c07c6ce6f59ec113c88d380bc6892634c366f04c2f41ca0f63775e49723"
+  },
+  {
+    "path": "L5-1_v1__seed01/summary.json",
+    "bytes": 3212,
+    "sha256": "f1f5dfb65374835a38e812887695d4db39ff8ed26dbc342e0576ca2f4a122e6c"
+  },
+  {
+    "path": "L5-1_v1__seed01/weather.jsonl",
+    "bytes": 271467,
+    "sha256": "fc3708f7142e00c557487ae65328e669093c11a92848ed14f2762186d15f3644"
+  },
+  {
+    "path": "L5-1_v1__seed02/actions.json",
+    "bytes": 17524,
+    "sha256": "4e4784645fecf9c8b3dbea8f9fca1824cd372bfedd5c88f2878adb4394d179d8"
+  },
+  {
+    "path": "L5-1_v1__seed02/actor_last_five_ticks.json",
+    "bytes": 14248,
+    "sha256": "ca7b5f2a05505f186e2e3b077c8bae8e49031358900a48709fbec12348236626"
+  },
+  {
+    "path": "L5-1_v1__seed02/admitted_event_rows.json",
+    "bytes": 27355,
+    "sha256": "0e1aeca26ace325fd8c68df2dde5f6b4b6f57fe895b49925348e2ce77d665212"
+  },
+  {
+    "path": "L5-1_v1__seed02/adoption_profile.json",
+    "bytes": 3977,
+    "sha256": "9b4d514da4a7d5cb9179738a389ee1592b99063a44576a63d78827c5930d1ac6"
+  },
+  {
+    "path": "L5-1_v1__seed02/event_script.json",
+    "bytes": 57735,
+    "sha256": "4266941f629151ed8dbba9e03e5cbf98ab558825ca771d277cdcb221e0777317"
+  },
+  {
+    "path": "L5-1_v1__seed02/event_trace.jsonl",
+    "bytes": 46757,
+    "sha256": "062a9d1ee9c1381985cd2bdde395779bb21b0cf0a09ea2bd8b6a56aa66a67f36"
+  },
+  {
+    "path": "L5-1_v1__seed02/scene_setup.json",
+    "bytes": 102905,
+    "sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b"
+  },
+  {
+    "path": "L5-1_v1__seed02/scoped_receipt.json",
+    "bytes": 21362,
+    "sha256": "dd228f893379ee939cd403b92243710ca5c932b4f8f54c2bc62eabe884c1a3ce"
+  },
+  {
+    "path": "L5-1_v1__seed02/summary.json",
+    "bytes": 3212,
+    "sha256": "ad35683abb7ba160ec08b580ca892278569d001fcc725053d3a6e5a47f873ffb"
+  },
+  {
+    "path": "L5-1_v1__seed02/weather.jsonl",
+    "bytes": 271467,
+    "sha256": "fc3708f7142e00c557487ae65328e669093c11a92848ed14f2762186d15f3644"
+  },
+  {
+    "path": "L5-1_v2__seed00/actions.json",
+    "bytes": 19577,
+    "sha256": "a601a7dca75894c139c21392aafc708fde09f2dd58d15851e6a98a75974d4bc7"
+  },
+  {
+    "path": "L5-1_v2__seed00/actor_last_five_ticks.json",
+    "bytes": 14973,
+    "sha256": "c8f3757ca6335afc763c790bafd4247bdbe02735c8bb63f9839870ac7e5ba6a3"
+  },
+  {
+    "path": "L5-1_v2__seed00/admitted_event_rows.json",
+    "bytes": 27770,
+    "sha256": "199718092e6205292317b232cf674116dc98a48cc57eef0c708dc86ac99044fc"
+  },
+  {
+    "path": "L5-1_v2__seed00/adoption_profile.json",
+    "bytes": 4052,
+    "sha256": "de7351876da8c5d6042b89a3b4ce7c556e05596f7ea0aea3230f4ad052c666d2"
+  },
+  {
+    "path": "L5-1_v2__seed00/event_script.json",
+    "bytes": 60494,
+    "sha256": "1d6d76362a5ae668cd98fbe7b3ceafe660b08001367b931358402b2bdc3379b0"
+  },
+  {
+    "path": "L5-1_v2__seed00/event_trace.jsonl",
+    "bytes": 47225,
+    "sha256": "e6407c204ebdad2be4a569f9762aed9bea14feae1b895bd6c668c991c0de43c0"
+  },
+  {
+    "path": "L5-1_v2__seed00/scene_setup.json",
+    "bytes": 110664,
+    "sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2"
+  },
+  {
+    "path": "L5-1_v2__seed00/scoped_receipt.json",
+    "bytes": 23857,
+    "sha256": "20d64ccb8ae655f72cf79e5c5e35cb5f79dad671193308f7d75da528f91c2ecb"
+  },
+  {
+    "path": "L5-1_v2__seed00/summary.json",
+    "bytes": 3297,
+    "sha256": "3962e3cd7f23b39f422713c3589a60ee65a0f559a75bc5878475963a207ec755"
+  },
+  {
+    "path": "L5-1_v2__seed00/weather.jsonl",
+    "bytes": 271557,
+    "sha256": "bfa6c6351348cb137df24ef8e21124892f2ab8f3ae269a079d55a243e7cb2ab3"
+  },
+  {
+    "path": "L5-1_v2__seed01/actions.json",
+    "bytes": 19577,
+    "sha256": "a601a7dca75894c139c21392aafc708fde09f2dd58d15851e6a98a75974d4bc7"
+  },
+  {
+    "path": "L5-1_v2__seed01/actor_last_five_ticks.json",
+    "bytes": 14973,
+    "sha256": "c8f3757ca6335afc763c790bafd4247bdbe02735c8bb63f9839870ac7e5ba6a3"
+  },
+  {
+    "path": "L5-1_v2__seed01/admitted_event_rows.json",
+    "bytes": 27770,
+    "sha256": "199718092e6205292317b232cf674116dc98a48cc57eef0c708dc86ac99044fc"
+  },
+  {
+    "path": "L5-1_v2__seed01/adoption_profile.json",
+    "bytes": 4052,
+    "sha256": "754ec4ce04cf0534c9a96588c78d1c11da98c1a93c9f6c45cdd4a0a04125a913"
+  },
+  {
+    "path": "L5-1_v2__seed01/event_script.json",
+    "bytes": 60494,
+    "sha256": "1d6d76362a5ae668cd98fbe7b3ceafe660b08001367b931358402b2bdc3379b0"
+  },
+  {
+    "path": "L5-1_v2__seed01/event_trace.jsonl",
+    "bytes": 47225,
+    "sha256": "b50f231d0fea940d8c908d15638ca3652ba42013fe50919c74ff36d645d0223c"
+  },
+  {
+    "path": "L5-1_v2__seed01/scene_setup.json",
+    "bytes": 110664,
+    "sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2"
+  },
+  {
+    "path": "L5-1_v2__seed01/scoped_receipt.json",
+    "bytes": 23857,
+    "sha256": "ca57bba7a15fd5a13e3660dbf5b28d3b83a5dfd2837c5ac05dcac8d0779306ad"
+  },
+  {
+    "path": "L5-1_v2__seed01/summary.json",
+    "bytes": 3297,
+    "sha256": "535acee733f3552aa6eb180644bd5f6383c31ad427ab88a875f3c81d9a18df86"
+  },
+  {
+    "path": "L5-1_v2__seed01/weather.jsonl",
+    "bytes": 271557,
+    "sha256": "bfa6c6351348cb137df24ef8e21124892f2ab8f3ae269a079d55a243e7cb2ab3"
+  },
+  {
+    "path": "L5-1_v2__seed02/actions.json",
+    "bytes": 19577,
+    "sha256": "a601a7dca75894c139c21392aafc708fde09f2dd58d15851e6a98a75974d4bc7"
+  },
+  {
+    "path": "L5-1_v2__seed02/actor_last_five_ticks.json",
+    "bytes": 14973,
+    "sha256": "c8f3757ca6335afc763c790bafd4247bdbe02735c8bb63f9839870ac7e5ba6a3"
+  },
+  {
+    "path": "L5-1_v2__seed02/admitted_event_rows.json",
+    "bytes": 27770,
+    "sha256": "199718092e6205292317b232cf674116dc98a48cc57eef0c708dc86ac99044fc"
+  },
+  {
+    "path": "L5-1_v2__seed02/adoption_profile.json",
+    "bytes": 4052,
+    "sha256": "c2dae2e8185378f16f6ef8218287cef9fcfa0d1b5f198e206a10ba8baec1156a"
+  },
+  {
+    "path": "L5-1_v2__seed02/event_script.json",
+    "bytes": 60494,
+    "sha256": "1d6d76362a5ae668cd98fbe7b3ceafe660b08001367b931358402b2bdc3379b0"
+  },
+  {
+    "path": "L5-1_v2__seed02/event_trace.jsonl",
+    "bytes": 47225,
+    "sha256": "74deae0f31b86610aaf8fb000be31d7517a8adc87cac794da45895831da0208c"
+  },
+  {
+    "path": "L5-1_v2__seed02/scene_setup.json",
+    "bytes": 110664,
+    "sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2"
+  },
+  {
+    "path": "L5-1_v2__seed02/scoped_receipt.json",
+    "bytes": 23857,
+    "sha256": "5ee70c8c5602a29dbfb16e42f51f45ca364fa3d9b317b3ea6dccc943ed4bd29f"
+  },
+  {
+    "path": "L5-1_v2__seed02/summary.json",
+    "bytes": 3297,
+    "sha256": "afd1d3043a208f776fa1d1d8d9827a6ca581b0ffd41c3e8b14dcac99a0fa8ec8"
+  },
+  {
+    "path": "L5-1_v2__seed02/weather.jsonl",
+    "bytes": 271557,
+    "sha256": "bfa6c6351348cb137df24ef8e21124892f2ab8f3ae269a079d55a243e7cb2ab3"
+  },
+  {
+    "path": "L6-1_v1__seed00/actions.json",
+    "bytes": 8721,
+    "sha256": "ef42ffb850afff996e2daa57659984e8f5346ff01e4a1ba1d260806fabc341e7"
+  },
+  {
+    "path": "L6-1_v1__seed00/actor_last_five_ticks.json",
+    "bytes": 12778,
+    "sha256": "4b669bf3273923c1c38e66bb97aa7dfbdb8999d4ca0f1eddf866012a15b8ceb7"
+  },
+  {
+    "path": "L6-1_v1__seed00/admitted_event_rows.json",
+    "bytes": 12010,
+    "sha256": "283d0e6494e41abc4b6a69716fbe1993a4df0769e722169ba2cad746ae7ba84b"
+  },
+  {
+    "path": "L6-1_v1__seed00/adoption_profile.json",
+    "bytes": 2243,
+    "sha256": "04fc3ea07e065f998310476beface3e5dd794ebd610322dcce1af51f4a1e03de"
+  },
+  {
+    "path": "L6-1_v1__seed00/command_receipts.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "L6-1_v1__seed00/coupled_iterations.json",
+    "bytes": 757,
+    "sha256": "06e3e3946c9bd834802f98fe107df4caf58edce6f80e97570e5c6b90838e8097"
+  },
+  {
+    "path": "L6-1_v1__seed00/event_script.json",
+    "bytes": 28551,
+    "sha256": "70a350fdfd3628597afce252f2199423c830b4acd5c0790a6b407c2c6aa29efb"
+  },
+  {
+    "path": "L6-1_v1__seed00/event_trace.jsonl",
+    "bytes": 14936,
+    "sha256": "e4b1d50d295bd224227bbb3fcfe79aea0c0fa60d1028824433ea4473165a738a"
+  },
+  {
+    "path": "L6-1_v1__seed00/execution_time.json",
+    "bytes": 40,
+    "sha256": "7e4bb9ee0e1d5495caaf975db98dfc01fb24f90629d848d4fd20270838117fba"
+  },
+  {
+    "path": "L6-1_v1__seed00/native_message_attempt_packets.jsonl",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "L6-1_v1__seed00/network_backend.json",
+    "bytes": 10499,
+    "sha256": "e349c2ac9b14ed16f5219b190e8753d00cbd94903c2d3b277f2789e40ebd86d0"
+  },
+  {
+    "path": "L6-1_v1__seed00/predicate_flips.jsonl",
+    "bytes": 2230,
+    "sha256": "dd249c6a7338f357d208ba0b6f0381dccd5c5ac534566f4437fc9a1041ce6433"
+  },
+  {
+    "path": "L6-1_v1__seed00/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "a45d2254fe0e6b07f11ead6912b35bc41de7c27fe8c75ba0076a7fd1fee0722d"
+  },
+  {
+    "path": "L6-1_v1__seed00/scene_setup.json",
+    "bytes": 105832,
+    "sha256": "0d30da741f3fdc221d441d1632d7ac913836d7b1cb6a7fefa9785f43cb59e463"
+  },
+  {
+    "path": "L6-1_v1__seed00/scoped_receipt.json",
+    "bytes": 11527,
+    "sha256": "29b614aa9a87a6e3f7c09af51128fad56257e7ce4339894b06323cf2ca8d145d"
+  },
+  {
+    "path": "L6-1_v1__seed00/summary.json",
+    "bytes": 2286,
+    "sha256": "62b157ecab1fd916acccd7ca74281682fc0e20fac4dafc9e2222a6ce31951b2a"
+  },
+  {
+    "path": "L6-1_v1__seed00/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L6-1_v1__seed01/actions.json",
+    "bytes": 8721,
+    "sha256": "ef42ffb850afff996e2daa57659984e8f5346ff01e4a1ba1d260806fabc341e7"
+  },
+  {
+    "path": "L6-1_v1__seed01/actor_last_five_ticks.json",
+    "bytes": 12778,
+    "sha256": "4b669bf3273923c1c38e66bb97aa7dfbdb8999d4ca0f1eddf866012a15b8ceb7"
+  },
+  {
+    "path": "L6-1_v1__seed01/admitted_event_rows.json",
+    "bytes": 12010,
+    "sha256": "283d0e6494e41abc4b6a69716fbe1993a4df0769e722169ba2cad746ae7ba84b"
+  },
+  {
+    "path": "L6-1_v1__seed01/adoption_profile.json",
+    "bytes": 2243,
+    "sha256": "da73c5de3431f52e76ec678429ecaf862de1ae129fc6a65d249011be50333059"
+  },
+  {
+    "path": "L6-1_v1__seed01/command_receipts.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "L6-1_v1__seed01/coupled_iterations.json",
+    "bytes": 756,
+    "sha256": "a9b114d714f87be0b62eee82c47c43b860e81d0972278eff823c56b71e5cef4a"
+  },
+  {
+    "path": "L6-1_v1__seed01/event_script.json",
+    "bytes": 28551,
+    "sha256": "70a350fdfd3628597afce252f2199423c830b4acd5c0790a6b407c2c6aa29efb"
+  },
+  {
+    "path": "L6-1_v1__seed01/event_trace.jsonl",
+    "bytes": 14936,
+    "sha256": "23063b3eb83fc08a89744b075dfb46d53846b4c7284184995710757dd6f0140a"
+  },
+  {
+    "path": "L6-1_v1__seed01/execution_time.json",
+    "bytes": 39,
+    "sha256": "6197bf1f9cfc69e353730f58c10210e5974b0fe1d3d4186bd7e5377e1d08c837"
+  },
+  {
+    "path": "L6-1_v1__seed01/native_message_attempt_packets.jsonl",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "L6-1_v1__seed01/network_backend.json",
+    "bytes": 10500,
+    "sha256": "7012b1079b8ba7af565114c35f306dfeb320053e08709daca7e248b76618e6f6"
+  },
+  {
+    "path": "L6-1_v1__seed01/predicate_flips.jsonl",
+    "bytes": 2230,
+    "sha256": "dd249c6a7338f357d208ba0b6f0381dccd5c5ac534566f4437fc9a1041ce6433"
+  },
+  {
+    "path": "L6-1_v1__seed01/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "6ba162626757b6f3476886442b7e7a2f5aa56a9d92c8f544ebbff5ce0b4a1924"
+  },
+  {
+    "path": "L6-1_v1__seed01/scene_setup.json",
+    "bytes": 105832,
+    "sha256": "0d30da741f3fdc221d441d1632d7ac913836d7b1cb6a7fefa9785f43cb59e463"
+  },
+  {
+    "path": "L6-1_v1__seed01/scoped_receipt.json",
+    "bytes": 11527,
+    "sha256": "548b1e67ed74cf1045a9925cfaefe0ec14e04a0ded7275ed9ccb72eee71d1be0"
+  },
+  {
+    "path": "L6-1_v1__seed01/summary.json",
+    "bytes": 2286,
+    "sha256": "12ef75afb979fe8d26fed66e014a7665c33104e3da4b9500aa21e20869e87710"
+  },
+  {
+    "path": "L6-1_v1__seed01/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L6-1_v1__seed02/actions.json",
+    "bytes": 8721,
+    "sha256": "ef42ffb850afff996e2daa57659984e8f5346ff01e4a1ba1d260806fabc341e7"
+  },
+  {
+    "path": "L6-1_v1__seed02/actor_last_five_ticks.json",
+    "bytes": 12778,
+    "sha256": "4b669bf3273923c1c38e66bb97aa7dfbdb8999d4ca0f1eddf866012a15b8ceb7"
+  },
+  {
+    "path": "L6-1_v1__seed02/admitted_event_rows.json",
+    "bytes": 12010,
+    "sha256": "283d0e6494e41abc4b6a69716fbe1993a4df0769e722169ba2cad746ae7ba84b"
+  },
+  {
+    "path": "L6-1_v1__seed02/adoption_profile.json",
+    "bytes": 2243,
+    "sha256": "841b81499555056a17981c1c2f5480d1df5278457af898a126a8f7e75086f557"
+  },
+  {
+    "path": "L6-1_v1__seed02/command_receipts.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "L6-1_v1__seed02/coupled_iterations.json",
+    "bytes": 756,
+    "sha256": "e6b18de821823e6eb2b964291ea8e59fbe89ffc9efbde385b9fe15c96e23cdd8"
+  },
+  {
+    "path": "L6-1_v1__seed02/event_script.json",
+    "bytes": 28551,
+    "sha256": "70a350fdfd3628597afce252f2199423c830b4acd5c0790a6b407c2c6aa29efb"
+  },
+  {
+    "path": "L6-1_v1__seed02/event_trace.jsonl",
+    "bytes": 14936,
+    "sha256": "e0ad911230f3b3c68a73bad4d0c4bee8e07f4a752255f2fe6bcd791fb927d83e"
+  },
+  {
+    "path": "L6-1_v1__seed02/execution_time.json",
+    "bytes": 40,
+    "sha256": "28f3cb65c08ae0d5c5cb1c76939849cf52af21f01728a5ff6692691f97e81a3f"
+  },
+  {
+    "path": "L6-1_v1__seed02/native_message_attempt_packets.jsonl",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "L6-1_v1__seed02/network_backend.json",
+    "bytes": 10500,
+    "sha256": "6080d441e08625592680d83f401d4af051d59e29cb0be818c382edc9e4adde80"
+  },
+  {
+    "path": "L6-1_v1__seed02/predicate_flips.jsonl",
+    "bytes": 2230,
+    "sha256": "dd249c6a7338f357d208ba0b6f0381dccd5c5ac534566f4437fc9a1041ce6433"
+  },
+  {
+    "path": "L6-1_v1__seed02/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "f0ae5cb2a129b6872c41edf36306e1a15f98c0b04f9412faa44a8b6ae1ee42ab"
+  },
+  {
+    "path": "L6-1_v1__seed02/scene_setup.json",
+    "bytes": 105832,
+    "sha256": "0d30da741f3fdc221d441d1632d7ac913836d7b1cb6a7fefa9785f43cb59e463"
+  },
+  {
+    "path": "L6-1_v1__seed02/scoped_receipt.json",
+    "bytes": 11527,
+    "sha256": "26bae96b6337823abd3060c7b8848175097cafb47a15068171b8290f6e0ffaff"
+  },
+  {
+    "path": "L6-1_v1__seed02/summary.json",
+    "bytes": 2286,
+    "sha256": "27b19f2678f106a5341728dbbc694656812cb2b39800f4b81dbb4d7ca8fcde3c"
+  },
+  {
+    "path": "L6-1_v1__seed02/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L6-1_v2__seed00/actions.json",
+    "bytes": 8802,
+    "sha256": "65af1169c2d1f41de00db2c494ebc2be2a9486ff285eb2e31b6a216ab52dfd11"
+  },
+  {
+    "path": "L6-1_v2__seed00/actor_last_five_ticks.json",
+    "bytes": 13428,
+    "sha256": "4f50f870cf5e41f2d3c80092a504fed164094b201af0a1e070b273b72cd5f1fe"
+  },
+  {
+    "path": "L6-1_v2__seed00/admitted_event_rows.json",
+    "bytes": 12010,
+    "sha256": "23e94bad6766c3c9b573f2596d766946507ae2d22c29c694cf08298809fcb0d1"
+  },
+  {
+    "path": "L6-1_v2__seed00/adoption_profile.json",
+    "bytes": 2243,
+    "sha256": "e7ca3583bccda6709f9a0ad475f1b2fba5a3e1c4eda9ebbc1854836be39b4a47"
+  },
+  {
+    "path": "L6-1_v2__seed00/command_receipts.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "L6-1_v2__seed00/coupled_iterations.json",
+    "bytes": 755,
+    "sha256": "e808b0ac307f5addd22e9ea90bd7e2fc249e8f8bd12f9edfcea0d18595c897cf"
+  },
+  {
+    "path": "L6-1_v2__seed00/event_script.json",
+    "bytes": 28965,
+    "sha256": "aad8821298c8d5b0c317243e3d2c3a544f844d5e769c96ff02e55f077c45129e"
+  },
+  {
+    "path": "L6-1_v2__seed00/event_trace.jsonl",
+    "bytes": 14936,
+    "sha256": "8df66c4d5f613df1a2004b341de4455c240588d534f04aec520d5d29d459214d"
+  },
+  {
+    "path": "L6-1_v2__seed00/execution_time.json",
+    "bytes": 40,
+    "sha256": "614a1adb0d57a93adc912502ba40d343066bce94fbd24bc8ba88d51a65804254"
+  },
+  {
+    "path": "L6-1_v2__seed00/native_message_attempt_packets.jsonl",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "L6-1_v2__seed00/network_backend.json",
+    "bytes": 10500,
+    "sha256": "7e83ed7e4d6bb656677fbcc08e1f73ab9506ca716eaa7cfd6fed753e6992063f"
+  },
+  {
+    "path": "L6-1_v2__seed00/predicate_flips.jsonl",
+    "bytes": 2230,
+    "sha256": "b404664d12defbc5a581c58bee605069fac3f6b17f967b071604abd92bfc3c7f"
+  },
+  {
+    "path": "L6-1_v2__seed00/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "731ef88b769a1325380b1396d6f5a82240ef8bdfc62272b09e07be6c6c259311"
+  },
+  {
+    "path": "L6-1_v2__seed00/scene_setup.json",
+    "bytes": 108994,
+    "sha256": "194f2f5fb50e3783bf73748f0daa8aad09090ddf47a3cdadc8ff60812bf85eb8"
+  },
+  {
+    "path": "L6-1_v2__seed00/scoped_receipt.json",
+    "bytes": 11788,
+    "sha256": "bd9f906bdb7ee51eb25e9cd47d3eeda4309024a5beabbc1d216d2b731e093fc4"
+  },
+  {
+    "path": "L6-1_v2__seed00/summary.json",
+    "bytes": 2286,
+    "sha256": "4f259e2e8b6e44d0e78918da8a43b6cacf2e39139757fefbe856cbfc1122502a"
+  },
+  {
+    "path": "L6-1_v2__seed00/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L6-1_v2__seed01/actions.json",
+    "bytes": 8802,
+    "sha256": "65af1169c2d1f41de00db2c494ebc2be2a9486ff285eb2e31b6a216ab52dfd11"
+  },
+  {
+    "path": "L6-1_v2__seed01/actor_last_five_ticks.json",
+    "bytes": 13428,
+    "sha256": "4f50f870cf5e41f2d3c80092a504fed164094b201af0a1e070b273b72cd5f1fe"
+  },
+  {
+    "path": "L6-1_v2__seed01/admitted_event_rows.json",
+    "bytes": 12010,
+    "sha256": "23e94bad6766c3c9b573f2596d766946507ae2d22c29c694cf08298809fcb0d1"
+  },
+  {
+    "path": "L6-1_v2__seed01/adoption_profile.json",
+    "bytes": 2243,
+    "sha256": "88417d7b85cf9398b5c4833cdee637d9aa821b1eadf3844a7c50d26acf47b546"
+  },
+  {
+    "path": "L6-1_v2__seed01/command_receipts.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "L6-1_v2__seed01/coupled_iterations.json",
+    "bytes": 756,
+    "sha256": "cdeb9317622a672b5c8c8ca0345c133969e8d9df5f477ceeaf50de0398d40525"
+  },
+  {
+    "path": "L6-1_v2__seed01/event_script.json",
+    "bytes": 28965,
+    "sha256": "aad8821298c8d5b0c317243e3d2c3a544f844d5e769c96ff02e55f077c45129e"
+  },
+  {
+    "path": "L6-1_v2__seed01/event_trace.jsonl",
+    "bytes": 14936,
+    "sha256": "407f54085fe5eae5501ff928e22d8943bd5f00a72b349cd22a5c20f901c9e91b"
+  },
+  {
+    "path": "L6-1_v2__seed01/execution_time.json",
+    "bytes": 40,
+    "sha256": "d79f9ba8cfb113a80867353cdd2c6b19624fd7eb7a558694aa641eaabced5570"
+  },
+  {
+    "path": "L6-1_v2__seed01/native_message_attempt_packets.jsonl",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "L6-1_v2__seed01/network_backend.json",
+    "bytes": 10500,
+    "sha256": "5ad183e420050177e7440371d7a0259aee71237b2bfee97e2cf42e86035841ee"
+  },
+  {
+    "path": "L6-1_v2__seed01/predicate_flips.jsonl",
+    "bytes": 2230,
+    "sha256": "b404664d12defbc5a581c58bee605069fac3f6b17f967b071604abd92bfc3c7f"
+  },
+  {
+    "path": "L6-1_v2__seed01/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "68ed1ed114ad599a795f457586841602b84ecb783fd90ff1a812926edae30d15"
+  },
+  {
+    "path": "L6-1_v2__seed01/scene_setup.json",
+    "bytes": 108994,
+    "sha256": "194f2f5fb50e3783bf73748f0daa8aad09090ddf47a3cdadc8ff60812bf85eb8"
+  },
+  {
+    "path": "L6-1_v2__seed01/scoped_receipt.json",
+    "bytes": 11788,
+    "sha256": "123b79a1e979de634d289d02b1f602a0b9b336d3ec766b49aa8fac5c8b53e2ff"
+  },
+  {
+    "path": "L6-1_v2__seed01/summary.json",
+    "bytes": 2286,
+    "sha256": "0b3610eb5c0f9c98906d3084fdc94689cff45b73821123281910a370522c872f"
+  },
+  {
+    "path": "L6-1_v2__seed01/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L6-1_v2__seed02/actions.json",
+    "bytes": 8802,
+    "sha256": "65af1169c2d1f41de00db2c494ebc2be2a9486ff285eb2e31b6a216ab52dfd11"
+  },
+  {
+    "path": "L6-1_v2__seed02/actor_last_five_ticks.json",
+    "bytes": 13428,
+    "sha256": "4f50f870cf5e41f2d3c80092a504fed164094b201af0a1e070b273b72cd5f1fe"
+  },
+  {
+    "path": "L6-1_v2__seed02/admitted_event_rows.json",
+    "bytes": 12010,
+    "sha256": "23e94bad6766c3c9b573f2596d766946507ae2d22c29c694cf08298809fcb0d1"
+  },
+  {
+    "path": "L6-1_v2__seed02/adoption_profile.json",
+    "bytes": 2243,
+    "sha256": "169a511cd51adf92d9aee15c57f64da2ad3a906b7e8ab2407145495c373f0081"
+  },
+  {
+    "path": "L6-1_v2__seed02/command_receipts.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "L6-1_v2__seed02/coupled_iterations.json",
+    "bytes": 755,
+    "sha256": "11930d930f432cb421162314d3d1a793d4ba851b5e75611d04960e9cf332a6a9"
+  },
+  {
+    "path": "L6-1_v2__seed02/event_script.json",
+    "bytes": 28965,
+    "sha256": "aad8821298c8d5b0c317243e3d2c3a544f844d5e769c96ff02e55f077c45129e"
+  },
+  {
+    "path": "L6-1_v2__seed02/event_trace.jsonl",
+    "bytes": 14936,
+    "sha256": "4b8e4927ea07be1546737bc100953c040a87a4cb9aeb9b73dff47faf4fe7ca7e"
+  },
+  {
+    "path": "L6-1_v2__seed02/execution_time.json",
+    "bytes": 40,
+    "sha256": "1b103ee01bbeef4772f9267031b91e41ad4323bf26e32b1ea6e680ede42f798f"
+  },
+  {
+    "path": "L6-1_v2__seed02/native_message_attempt_packets.jsonl",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "L6-1_v2__seed02/network_backend.json",
+    "bytes": 10500,
+    "sha256": "e384f530b980649d884851bf507d7ba46f73c106babffc3742de576e163e3efe"
+  },
+  {
+    "path": "L6-1_v2__seed02/predicate_flips.jsonl",
+    "bytes": 2230,
+    "sha256": "b404664d12defbc5a581c58bee605069fac3f6b17f967b071604abd92bfc3c7f"
+  },
+  {
+    "path": "L6-1_v2__seed02/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "8c188d819339aa7a346468deeeb0a53df0fee75defeb8b7e82b7ad8f4ec96f3e"
+  },
+  {
+    "path": "L6-1_v2__seed02/scene_setup.json",
+    "bytes": 108994,
+    "sha256": "194f2f5fb50e3783bf73748f0daa8aad09090ddf47a3cdadc8ff60812bf85eb8"
+  },
+  {
+    "path": "L6-1_v2__seed02/scoped_receipt.json",
+    "bytes": 11788,
+    "sha256": "3a3e15086dfd7136e4dd59f29f0b00218eeacf4762ed95f6561f7480cedd71af"
+  },
+  {
+    "path": "L6-1_v2__seed02/summary.json",
+    "bytes": 2286,
+    "sha256": "3c2f0623fe34798cac9a27d03237ee11b3d8117b8b384f8aaa6f0afb3722ea95"
+  },
+  {
+    "path": "L6-1_v2__seed02/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L6-4_v1__seed00/actions.json",
+    "bytes": 17180,
+    "sha256": "c347ef234d77670c37999e6f9b59a9c8236c63f23d4639b7b4c14bcddeffd0a3"
+  },
+  {
+    "path": "L6-4_v1__seed00/actor_last_five_ticks.json",
+    "bytes": 27928,
+    "sha256": "0688ba5a88dbce570afdaeab319360a971b25702138bb1a8d76869b031bc049e"
+  },
+  {
+    "path": "L6-4_v1__seed00/admitted_event_rows.json",
+    "bytes": 40126,
+    "sha256": "8496f8768959ae6ded13a6d3b0c83ea2c71958b07ea4d2e6c6bd44253f48d8af"
+  },
+  {
+    "path": "L6-4_v1__seed00/adoption_profile.json",
+    "bytes": 4598,
+    "sha256": "248225dbec8d2b50dccff4ab00a6ff5066ab61105bf601922694c2bf82a23bf0"
+  },
+  {
+    "path": "L6-4_v1__seed00/command_receipts.json",
+    "bytes": 32083,
+    "sha256": "58029c48afe84f45247a68c27266863822e004cd9fb75acf3d6828901ec04fec"
+  },
+  {
+    "path": "L6-4_v1__seed00/coupled_iterations.json",
+    "bytes": 11362,
+    "sha256": "e78133e08fd31400f5e310dca684635a936dd0bf5a67ae9fc7821d6b44ea61ef"
+  },
+  {
+    "path": "L6-4_v1__seed00/event_script.json",
+    "bytes": 53960,
+    "sha256": "55ee2652b4338ddc13c0389cf3ef7785f1c9fcdb09090c58fbc53c1b7d5f9537"
+  },
+  {
+    "path": "L6-4_v1__seed00/event_trace.jsonl",
+    "bytes": 43487,
+    "sha256": "36fa28640a0bd8904649b42fd5e8c7f34095315ef9b7d751075dac045a54e44e"
+  },
+  {
+    "path": "L6-4_v1__seed00/execution_time.json",
+    "bytes": 39,
+    "sha256": "7cc7666d5f22c18573f2afa7bc058baae08db7cbd2d9cc3d32f3323cf7e9c927"
+  },
+  {
+    "path": "L6-4_v1__seed00/native_message_attempt_packets.jsonl",
+    "bytes": 9084,
+    "sha256": "62ef39159eb7a31831a19969ca43de40cdd59d4937b1fe09b4af5b62f6d39b00"
+  },
+  {
+    "path": "L6-4_v1__seed00/network_backend.json",
+    "bytes": 11381,
+    "sha256": "969b8345cb60390f47edcc666856bdc1207221664d424ebbf6522fa0cca171a6"
+  },
+  {
+    "path": "L6-4_v1__seed00/predicate_flips.jsonl",
+    "bytes": 4496,
+    "sha256": "0996380354649d47ac151b76a45b06b1c606cac3791b82fd91cf81518759f1ca"
+  },
+  {
+    "path": "L6-4_v1__seed00/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "7cea38d27805a2521dd0855ba48126f7ebca5e79ff57688e98bbe7a93694daac"
+  },
+  {
+    "path": "L6-4_v1__seed00/scene_setup.json",
+    "bytes": 112147,
+    "sha256": "ca1546576b4ce4159731671f4cddeb0b789aa98535222800afe78a14bc85ba45"
+  },
+  {
+    "path": "L6-4_v1__seed00/scoped_receipt.json",
+    "bytes": 41460,
+    "sha256": "a53c4d6702b3799de76fa66146e87536942bd501049278ebebb4f22d1342d538"
+  },
+  {
+    "path": "L6-4_v1__seed00/summary.json",
+    "bytes": 15550,
+    "sha256": "7325157c141147847d2f097120193634bea279d3b583c2ffebfd1de877aaba96"
+  },
+  {
+    "path": "L6-4_v1__seed00/weather.jsonl",
+    "bytes": 296756,
+    "sha256": "13060fa628661a0d251bb8cd415408eee2bece86aafbfc6401baf54bc96b1cbc"
+  },
+  {
+    "path": "L6-4_v1__seed01/actions.json",
+    "bytes": 17180,
+    "sha256": "ed8befbb6ba7aae391f59aa62df55ff2486f31640cd59e9130a2fc87d953f9bd"
+  },
+  {
+    "path": "L6-4_v1__seed01/actor_last_five_ticks.json",
+    "bytes": 27928,
+    "sha256": "82c4e1dd8c73ef5fb7e37046256cd5745aa3d48782c66a9edd8449426cf100c3"
+  },
+  {
+    "path": "L6-4_v1__seed01/admitted_event_rows.json",
+    "bytes": 41728,
+    "sha256": "5dd32a3abb81bc6d3b6915bb096aaf7e286b2aa83f56aeecafad01c48e7df580"
+  },
+  {
+    "path": "L6-4_v1__seed01/adoption_profile.json",
+    "bytes": 4598,
+    "sha256": "54177e7b5f4dde20114cdc23463db510826877a9f249e162d799afd14c0a440a"
+  },
+  {
+    "path": "L6-4_v1__seed01/command_receipts.json",
+    "bytes": 32083,
+    "sha256": "35aae4dc50c48869263d6dfd2bf70eb56940da686d57c6e04622965749d0cfac"
+  },
+  {
+    "path": "L6-4_v1__seed01/coupled_iterations.json",
+    "bytes": 11638,
+    "sha256": "f9569216ca3b429b5ce91dc07849138756b9764d25efa10ccb841bb590a28cec"
+  },
+  {
+    "path": "L6-4_v1__seed01/event_script.json",
+    "bytes": 53960,
+    "sha256": "55ee2652b4338ddc13c0389cf3ef7785f1c9fcdb09090c58fbc53c1b7d5f9537"
+  },
+  {
+    "path": "L6-4_v1__seed01/event_trace.jsonl",
+    "bytes": 43487,
+    "sha256": "ead0133f1e247f3952459992230cefb39c5d0b89015c6a4ddaee507d19a2e2a8"
+  },
+  {
+    "path": "L6-4_v1__seed01/execution_time.json",
+    "bytes": 39,
+    "sha256": "9c79dd7a5b28186e7750ad3e4ce813e90f0f59d994c047fa4b4061cef759fe72"
+  },
+  {
+    "path": "L6-4_v1__seed01/native_message_attempt_packets.jsonl",
+    "bytes": 9084,
+    "sha256": "a19227140cf57c8f02da13f98ee9d628398939a0707797b6274ee7fd7ab9b9db"
+  },
+  {
+    "path": "L6-4_v1__seed01/network_backend.json",
+    "bytes": 11382,
+    "sha256": "c888ce6322e2d376651494549794c19e49b3b8091c4520a33120e999bc6a873e"
+  },
+  {
+    "path": "L6-4_v1__seed01/predicate_flips.jsonl",
+    "bytes": 5635,
+    "sha256": "b7aac8a2b0bec240c056112fd3ef2c349d3e6c2399718ef9b32020433cbf29bb"
+  },
+  {
+    "path": "L6-4_v1__seed01/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "9062d112d886298ef482f2538ce9cc09048b787a58159325e564d0fd11307a7d"
+  },
+  {
+    "path": "L6-4_v1__seed01/scene_setup.json",
+    "bytes": 112147,
+    "sha256": "ca1546576b4ce4159731671f4cddeb0b789aa98535222800afe78a14bc85ba45"
+  },
+  {
+    "path": "L6-4_v1__seed01/scoped_receipt.json",
+    "bytes": 28289,
+    "sha256": "86a0ffdd265b28b47b90658a2b218f59729de5412a4ce23f401861ef38af0c95"
+  },
+  {
+    "path": "L6-4_v1__seed01/summary.json",
+    "bytes": 3575,
+    "sha256": "d7901ab3e862cd1c5f588224a92014ff93d2b9713243fad3b4c5fe1d0fcbd041"
+  },
+  {
+    "path": "L6-4_v1__seed01/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L6-4_v1__seed02/actions.json",
+    "bytes": 5375,
+    "sha256": "ffdd3860f7d3068380906425513471a07c2044acc2f799027a558074aafa6248"
+  },
+  {
+    "path": "L6-4_v1__seed02/actor_last_five_ticks.json",
+    "bytes": 27968,
+    "sha256": "9c93b68c82cde1c0286810fb8d35a5cda6130c31216e29c8a067499c31f80d2c"
+  },
+  {
+    "path": "L6-4_v1__seed02/admitted_event_rows.json",
+    "bytes": 1685,
+    "sha256": "2a2761b6aa1a0e3c8b8e4ffb811a8d272bc9f8823137709cf06c0e25fef23679"
+  },
+  {
+    "path": "L6-4_v1__seed02/adoption_profile.json",
+    "bytes": 4598,
+    "sha256": "3d06a5ee6c48d4ae043576185a14d344279a243228204164c1652794a382c959"
+  },
+  {
+    "path": "L6-4_v1__seed02/command_receipts.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "L6-4_v1__seed02/coupled_iterations.json",
+    "bytes": 1834,
+    "sha256": "1a443e5ce688d6d45603907211632901da4627d302d384221a7d7b188ab545e9"
+  },
+  {
+    "path": "L6-4_v1__seed02/event_script.json",
+    "bytes": 53960,
+    "sha256": "55ee2652b4338ddc13c0389cf3ef7785f1c9fcdb09090c58fbc53c1b7d5f9537"
+  },
+  {
+    "path": "L6-4_v1__seed02/event_trace.jsonl",
+    "bytes": 9966,
+    "sha256": "aca7d6d6a81fb6a190f37e7e06bf9735a907fd1f6c4cb76ed9cf4eb9426fd075"
+  },
+  {
+    "path": "L6-4_v1__seed02/execution_time.json",
+    "bytes": 38,
+    "sha256": "22c6a7f2cdf30ce08882a364cd9c950fde34da9263d4fae88dedb755a78f13b9"
+  },
+  {
+    "path": "L6-4_v1__seed02/native_message_attempt_packets.jsonl",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "L6-4_v1__seed02/network_backend.json",
+    "bytes": 11382,
+    "sha256": "df26af95ca93fe3db47e3cb7ade5a52cbf328a9c8a33cd1071f0fe02c17ef049"
+  },
+  {
+    "path": "L6-4_v1__seed02/predicate_flips.jsonl",
+    "bytes": 2246,
+    "sha256": "bdcf84c37f3682fb845ec93982d8ae9d4f3dc7ae26a1fedaf326dce70a11dd5c"
+  },
+  {
+    "path": "L6-4_v1__seed02/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "9956d855545e13d79ac452c85f7748ce839d0d058148e0c07c7d0371be192788"
+  },
+  {
+    "path": "L6-4_v1__seed02/scene_setup.json",
+    "bytes": 112147,
+    "sha256": "ca1546576b4ce4159731671f4cddeb0b789aa98535222800afe78a14bc85ba45"
+  },
+  {
+    "path": "L6-4_v1__seed02/scoped_receipt.json",
+    "bytes": 13664,
+    "sha256": "37afa662eebb16e07cb4f33c8fb65876c8a3dc8292fada52170a8647e93a17b2"
+  },
+  {
+    "path": "L6-4_v1__seed02/summary.json",
+    "bytes": 3461,
+    "sha256": "cfaee6dfbce696144c6edfc57c6bca13466148c9cf94dc90ccff89d73f282d4e"
+  },
+  {
+    "path": "L6-4_v1__seed02/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L6-4_v2__seed00/actions.json",
+    "bytes": 17178,
+    "sha256": "e5c68ab86101e697974bced42399fc06bad72480e1408b20dc4c2278c2bd0139"
+  },
+  {
+    "path": "L6-4_v2__seed00/actor_last_five_ticks.json",
+    "bytes": 27918,
+    "sha256": "11b29f7bc7ae6a6ec4693255e9ca34225c62b7346e2d93771262440e6947f734"
+  },
+  {
+    "path": "L6-4_v2__seed00/admitted_event_rows.json",
+    "bytes": 46294,
+    "sha256": "92d64eca60fc56d804a787ed939ae0bd031079d93da8ccb9cc5a45eef335b59c"
+  },
+  {
+    "path": "L6-4_v2__seed00/adoption_profile.json",
+    "bytes": 4598,
+    "sha256": "8b09386a0f747b6924158e219117046459264eca45e422bead2587f7eec4e62a"
+  },
+  {
+    "path": "L6-4_v2__seed00/command_receipts.json",
+    "bytes": 32083,
+    "sha256": "0873432768d28e2791af8c27a0b098f1920463c72edf5423767204556d07bdb4"
+  },
+  {
+    "path": "L6-4_v2__seed00/coupled_iterations.json",
+    "bytes": 10940,
+    "sha256": "d276a980c6e1b2ed6f8c2cf45dedefe771b4675125c3d03d1dfe57e50e60f097"
+  },
+  {
+    "path": "L6-4_v2__seed00/event_script.json",
+    "bytes": 53931,
+    "sha256": "7102a01df390deda45ca57cb0a05c29bffc2ba5a4e5f75c354b03c9fcd372954"
+  },
+  {
+    "path": "L6-4_v2__seed00/event_trace.jsonl",
+    "bytes": 43487,
+    "sha256": "a79ca8c0c7ac7a75137a7020e19a187a0f5a1d016fa55de904b03e6f2f020238"
+  },
+  {
+    "path": "L6-4_v2__seed00/execution_time.json",
+    "bytes": 39,
+    "sha256": "8438b2f68a992b1fed108c39da6725c3ded60e3a52123383a3bd0dac92efed44"
+  },
+  {
+    "path": "L6-4_v2__seed00/native_message_attempt_packets.jsonl",
+    "bytes": 9084,
+    "sha256": "f6c6bdb2e31a7290535b62af59e1642996c2ec88719908c39196822f69c9c384"
+  },
+  {
+    "path": "L6-4_v2__seed00/network_backend.json",
+    "bytes": 11382,
+    "sha256": "9608f16d0666c8bf8c2c8f6bb31a87774cee91a2b8b7a17ea4ac6cb6bc93e939"
+  },
+  {
+    "path": "L6-4_v2__seed00/predicate_flips.jsonl",
+    "bytes": 5635,
+    "sha256": "e6d3c4577dd272249d0089e577b83803abe297930cb30ab0c3384402f426dc51"
+  },
+  {
+    "path": "L6-4_v2__seed00/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "125dde8f510056bb8da2539b3d0b7d1af5e3b40e632a8ba55db89a9e44075f45"
+  },
+  {
+    "path": "L6-4_v2__seed00/scene_setup.json",
+    "bytes": 111791,
+    "sha256": "4fe170300c918118214ff4000ad6a2728237878fadca2a3f7810e055fee111d8"
+  },
+  {
+    "path": "L6-4_v2__seed00/scoped_receipt.json",
+    "bytes": 41457,
+    "sha256": "b23eaa55be50f2d5bc5dda88ba3094c604df0f514c400ee41e23b8b582fb00a6"
+  },
+  {
+    "path": "L6-4_v2__seed00/summary.json",
+    "bytes": 15551,
+    "sha256": "16bd49e8fd22cb7421e87ecd64f244b7bfdf20b5dd1bc06ce5be9c0f515e195b"
+  },
+  {
+    "path": "L6-4_v2__seed00/weather.jsonl",
+    "bytes": 280448,
+    "sha256": "68d9154707b36d4bea8a74aadacbe1abedcfe8c02ca8adc4821f84ba49b41874"
+  },
+  {
+    "path": "L6-4_v2__seed01/actions.json",
+    "bytes": 17178,
+    "sha256": "53f07a7411ba867374dd9c4dfaeeb684832268dde5239757d77cab6d4a4af480"
+  },
+  {
+    "path": "L6-4_v2__seed01/actor_last_five_ticks.json",
+    "bytes": 27918,
+    "sha256": "ea1ca0590fd85d68a0b5e35856276e7df79498c5ac554d1d0e1ef0eefbe021e0"
+  },
+  {
+    "path": "L6-4_v2__seed01/admitted_event_rows.json",
+    "bytes": 41728,
+    "sha256": "12b1d3e414b40944cff83ab0d8f2499f64e3fe0a936e87195619542b04f702f0"
+  },
+  {
+    "path": "L6-4_v2__seed01/adoption_profile.json",
+    "bytes": 4598,
+    "sha256": "cf96080468c2a92b7e924a520ff64cd69a50a3f7b1825fcf5d606eb1e521a87b"
+  },
+  {
+    "path": "L6-4_v2__seed01/command_receipts.json",
+    "bytes": 32083,
+    "sha256": "753c69a0a0673a58808c51dfee1c099a76df91991563bb2c5f5348d424435fd3"
+  },
+  {
+    "path": "L6-4_v2__seed01/coupled_iterations.json",
+    "bytes": 11636,
+    "sha256": "19793e957d9e41600ea89f9c9278f9deefa19bb8eef63480ad7ae9b76d158159"
+  },
+  {
+    "path": "L6-4_v2__seed01/event_script.json",
+    "bytes": 53931,
+    "sha256": "7102a01df390deda45ca57cb0a05c29bffc2ba5a4e5f75c354b03c9fcd372954"
+  },
+  {
+    "path": "L6-4_v2__seed01/event_trace.jsonl",
+    "bytes": 43487,
+    "sha256": "d14835435656f6a2086c9d51bc292fae1a7994873b2e04abcaf2e6e6d6db5dfe"
+  },
+  {
+    "path": "L6-4_v2__seed01/execution_time.json",
+    "bytes": 37,
+    "sha256": "ac9411e181d01e9d4fb7c67b5560daf8170754e7d8e51c741737772fb0b2032f"
+  },
+  {
+    "path": "L6-4_v2__seed01/native_message_attempt_packets.jsonl",
+    "bytes": 9084,
+    "sha256": "270dbfc5cce1116f6252de370f7526d7ff986bea2e8450fb2502e9149e1d5455"
+  },
+  {
+    "path": "L6-4_v2__seed01/network_backend.json",
+    "bytes": 11382,
+    "sha256": "0468c85eead8ca9ce51edc287dbfdeb4c647be1a3d9eb34b92c4575884373a3b"
+  },
+  {
+    "path": "L6-4_v2__seed01/predicate_flips.jsonl",
+    "bytes": 6772,
+    "sha256": "0e6eabdbc721a96847bd51cc2ed41ae42eac37b74b8580ef7272d9ed44ec2953"
+  },
+  {
+    "path": "L6-4_v2__seed01/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "d5cb02071d8b00ff3d484027d7c5e42257c7d3c7167e5ee95218448cd2d5e715"
+  },
+  {
+    "path": "L6-4_v2__seed01/scene_setup.json",
+    "bytes": 111791,
+    "sha256": "4fe170300c918118214ff4000ad6a2728237878fadca2a3f7810e055fee111d8"
+  },
+  {
+    "path": "L6-4_v2__seed01/scoped_receipt.json",
+    "bytes": 28285,
+    "sha256": "a78cf8e87503bd63f796257dc217c1d86d11fa10b567476cfd0f50ae0e59e606"
+  },
+  {
+    "path": "L6-4_v2__seed01/summary.json",
+    "bytes": 3575,
+    "sha256": "42f0f66623f044edfdd08b166494e252520c619982d7c70e5190f37562a349d8"
+  },
+  {
+    "path": "L6-4_v2__seed01/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "L6-4_v2__seed02/actions.json",
+    "bytes": 11338,
+    "sha256": "f9e1ab50d4973cea8f7d4670bdf57df71fb7c1591751b496fbbce3b5dac0d3b0"
+  },
+  {
+    "path": "L6-4_v2__seed02/actor_last_five_ticks.json",
+    "bytes": 27943,
+    "sha256": "95692a9c83b223253765d1e03082ef7ea6b7f3673722a1fcb839b351ad7fb352"
+  },
+  {
+    "path": "L6-4_v2__seed02/admitted_event_rows.json",
+    "bytes": 19309,
+    "sha256": "e49142cd3acad768bb29a9e3373ee2850eca9a45706432e1aafe182149a7e3e4"
+  },
+  {
+    "path": "L6-4_v2__seed02/adoption_profile.json",
+    "bytes": 4598,
+    "sha256": "cbb9d678c41da8702fca826b998aeb134c3f893c1f31b69bef799eefba0dfc7d"
+  },
+  {
+    "path": "L6-4_v2__seed02/command_receipts.json",
+    "bytes": 16463,
+    "sha256": "1d60b9e1e6b75ca8f072275b363159c63b03ae802795f371818a72ca3b61256e"
+  },
+  {
+    "path": "L6-4_v2__seed02/coupled_iterations.json",
+    "bytes": 7696,
+    "sha256": "af7b50b81355d3e287224b400d85a6d8a5b1b8bbd7057a9d9a49b2b82392cade"
+  },
+  {
+    "path": "L6-4_v2__seed02/event_script.json",
+    "bytes": 53931,
+    "sha256": "7102a01df390deda45ca57cb0a05c29bffc2ba5a4e5f75c354b03c9fcd372954"
+  },
+  {
+    "path": "L6-4_v2__seed02/event_trace.jsonl",
+    "bytes": 22619,
+    "sha256": "ef038252acb01da027f09684025eaa7645adff54c65eaaa2f0263e9b405d028f"
+  },
+  {
+    "path": "L6-4_v2__seed02/execution_time.json",
+    "bytes": 39,
+    "sha256": "b3f6a39f2ff3695930afc708934c4b0930872c2fc1c3c88f6c0f78397fabd6f8"
+  },
+  {
+    "path": "L6-4_v2__seed02/native_message_attempt_packets.jsonl",
+    "bytes": 4782,
+    "sha256": "38df70bf9381a9b0a1655ae9af791cda4c78b857e44a25b6b4e7897b1e9c03a5"
+  },
+  {
+    "path": "L6-4_v2__seed02/network_backend.json",
+    "bytes": 11382,
+    "sha256": "540ea25167f811fcea0ebca29a41ed5e13979bff64fdb0a204ac5ce196cbf4f7"
+  },
+  {
+    "path": "L6-4_v2__seed02/predicate_flips.jsonl",
+    "bytes": 3383,
+    "sha256": "44a3feb209208acdcf64c80162505f35930e33214d4f99aedfb141e2714bcd31"
+  },
+  {
+    "path": "L6-4_v2__seed02/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "8010cb63cc53451242c2c9efe77b6602f34488c1db30784ea9a287dd0c2442b0"
+  },
+  {
+    "path": "L6-4_v2__seed02/scene_setup.json",
+    "bytes": 111791,
+    "sha256": "4fe170300c918118214ff4000ad6a2728237878fadca2a3f7810e055fee111d8"
+  },
+  {
+    "path": "L6-4_v2__seed02/scoped_receipt.json",
+    "bytes": 21083,
+    "sha256": "f7c2295a159f380a15eaf34b8b85c353edf4a5875bf80ba291fedc6494d9ebae"
+  },
+  {
+    "path": "L6-4_v2__seed02/summary.json",
+    "bytes": 3513,
+    "sha256": "07fe605ae09b37c730d71346cf0f2178449a52493c629b9bfae460e27888dacd"
+  },
+  {
+    "path": "L6-4_v2__seed02/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "README.md",
+    "bytes": 5566,
+    "sha256": "3a02208166a3e555b10730720dbf9adbfe1b495bb7755ad80b235fe758293bb4"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/actions.json",
+    "bytes": 23548,
+    "sha256": "d62a5dbd986651bc5b2a97b845b307359a2868098d0d91ea25fcd61d370f496b"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/actor_last_five_ticks.json",
+    "bytes": 13783,
+    "sha256": "ed5caa9d784b642635828beced1028b9c66ea097cac5b649d1f98a8a943b2d18"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/admitted_event_rows.json",
+    "bytes": 7278,
+    "sha256": "4650c48825959ef219b0f3f39cc516a31ba0a11634160c90d2f2c92853070f14"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/adoption_profile.json",
+    "bytes": 2607,
+    "sha256": "32ca9d7e2097524aae07f903192d9d3b7db160de44c0513c338b89f2caf6f064"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/command_receipts.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/coupled_iterations.json",
+    "bytes": 1802,
+    "sha256": "f63890d619cd5c32d91ed3eebdccfcb9fddc3a6a006fce951f3a7394fcd3eca6"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/event_script.json",
+    "bytes": 63862,
+    "sha256": "49197ad404d0c306545e0b7d090e467969cfe30d2c8606ac90ff7f60c86a82e7"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/event_trace.jsonl",
+    "bytes": 38462,
+    "sha256": "35842fe8cf53419503e0d3ed5e69ea7242f34f14fd96727cd08929a90dad1f8f"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/execution_time.json",
+    "bytes": 40,
+    "sha256": "79316eaa68b86453c5bd5c7f7cc6f4b164a1cd645d3799b456dd697268b54d5f"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/native_message_attempt_packets.jsonl",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/network_backend.json",
+    "bytes": 10572,
+    "sha256": "73753c44079874c6fa08b4cf53b0fe859ac346503db2d17b7ecca70a059bee95"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/predicate_flips.jsonl",
+    "bytes": 2238,
+    "sha256": "682fef753b053db538ebc4f5a2af926ce3f19e8f67ecf1b6251c9b361acc93f5"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "493aeeeeea5d559447e8cb036eae602faf625f6bca9f8ec54a051d872bef756a"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/scene_setup.json",
+    "bytes": 97801,
+    "sha256": "180217e9619a20ffd6fd80b4d7d67163cab7638e432bd024f658993e9f560b30"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/scoped_receipt.json",
+    "bytes": 28899,
+    "sha256": "e9702f15c5f937dd6e303aaa8b9535fe2c80ff672bfa536bfc6f385c8b90b6dc"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/summary.json",
+    "bytes": 9577,
+    "sha256": "8bb743a9b4bd641ffb9813c7181baab0cf0ffe03a1634b279bbfd2e01140edb8"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "fc9ab01b518f2e0c69842273144a2d79583aabbb7c83b3fa995a376635256d01"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/actions.json",
+    "bytes": 23548,
+    "sha256": "d62a5dbd986651bc5b2a97b845b307359a2868098d0d91ea25fcd61d370f496b"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/actor_last_five_ticks.json",
+    "bytes": 13783,
+    "sha256": "ed5caa9d784b642635828beced1028b9c66ea097cac5b649d1f98a8a943b2d18"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/admitted_event_rows.json",
+    "bytes": 7278,
+    "sha256": "4650c48825959ef219b0f3f39cc516a31ba0a11634160c90d2f2c92853070f14"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/adoption_profile.json",
+    "bytes": 2607,
+    "sha256": "a01fd464b222b9ae11ccab915cb3614827c3a39c0db288ef8dd68b3ebef564d1"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/command_receipts.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/coupled_iterations.json",
+    "bytes": 1802,
+    "sha256": "fd212526aa1516fdcbcc5b754b1229fcf4d9913082901adda49e97efd4511acb"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/event_script.json",
+    "bytes": 63862,
+    "sha256": "49197ad404d0c306545e0b7d090e467969cfe30d2c8606ac90ff7f60c86a82e7"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/event_trace.jsonl",
+    "bytes": 38462,
+    "sha256": "e998dfded8be11066394368b1e2392ec5323bc11787536f2e48ffe16c4a6a39d"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/execution_time.json",
+    "bytes": 39,
+    "sha256": "a3e565cef1075b805e1417247c8ffdbae959ec437297bcc74af4292eb84e3bb3"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/native_message_attempt_packets.jsonl",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/network_backend.json",
+    "bytes": 10573,
+    "sha256": "f73ce74d999ed08c3e734d0d2015fef6f5198fd6894f38a38a6d517d93958ede"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/predicate_flips.jsonl",
+    "bytes": 2238,
+    "sha256": "682fef753b053db538ebc4f5a2af926ce3f19e8f67ecf1b6251c9b361acc93f5"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "ef77560d80a76882c86c53b8728dfe4f7448b30e6ec813ca112170f04243fef4"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/scene_setup.json",
+    "bytes": 97801,
+    "sha256": "180217e9619a20ffd6fd80b4d7d67163cab7638e432bd024f658993e9f560b30"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/scoped_receipt.json",
+    "bytes": 28899,
+    "sha256": "0c10110d83fac4742fe82e0d02dddbdd28b4a873880016a9e0c965320b94cef6"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/summary.json",
+    "bytes": 9577,
+    "sha256": "d145d4fb59322d6f41dbbc5c9ce679c47b135d85f81d05ca519f6d2712dd0208"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "fc9ab01b518f2e0c69842273144a2d79583aabbb7c83b3fa995a376635256d01"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/actions.json",
+    "bytes": 23548,
+    "sha256": "d62a5dbd986651bc5b2a97b845b307359a2868098d0d91ea25fcd61d370f496b"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/actor_last_five_ticks.json",
+    "bytes": 13783,
+    "sha256": "ed5caa9d784b642635828beced1028b9c66ea097cac5b649d1f98a8a943b2d18"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/admitted_event_rows.json",
+    "bytes": 7278,
+    "sha256": "4650c48825959ef219b0f3f39cc516a31ba0a11634160c90d2f2c92853070f14"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/adoption_profile.json",
+    "bytes": 2607,
+    "sha256": "75d34242c9a185f3a7c78a77204979086f693f53c81a020ba7a9caeaf7bdedac"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/command_receipts.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/coupled_iterations.json",
+    "bytes": 1802,
+    "sha256": "87c05781cbd076e753481422ddef4a2865f87779f53a481aa9de7745a5b4e7f7"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/event_script.json",
+    "bytes": 63862,
+    "sha256": "49197ad404d0c306545e0b7d090e467969cfe30d2c8606ac90ff7f60c86a82e7"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/event_trace.jsonl",
+    "bytes": 38462,
+    "sha256": "3092c078eabcd50dc936e4aac7e91dfa8e61bd3370bcb9a189d2225d88d146c4"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/execution_time.json",
+    "bytes": 39,
+    "sha256": "09fe8098bd47b25b9abcfad2e90b60223da07f86a7712c8a68d72c006c459de0"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/native_message_attempt_packets.jsonl",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/network_backend.json",
+    "bytes": 10573,
+    "sha256": "3ef3ebb72b8880d96cbbffd46f2ea534e5d8a197911626bb56415d345e309e0a"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/predicate_flips.jsonl",
+    "bytes": 2238,
+    "sha256": "682fef753b053db538ebc4f5a2af926ce3f19e8f67ecf1b6251c9b361acc93f5"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "a66fbe75f3811944e027ec9612089211e0e835016319d688fb70112a108c14c5"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/scene_setup.json",
+    "bytes": 97801,
+    "sha256": "180217e9619a20ffd6fd80b4d7d67163cab7638e432bd024f658993e9f560b30"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/scoped_receipt.json",
+    "bytes": 28899,
+    "sha256": "05f682d7eda602bcedefc570f604140409bb270ad566661dc50c1aa365aa75c0"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/summary.json",
+    "bytes": 9577,
+    "sha256": "94473322712395d00f036a11fd3431ba6017127a11c08887944304615ed2eecd"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "fc9ab01b518f2e0c69842273144a2d79583aabbb7c83b3fa995a376635256d01"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/actions.json",
+    "bytes": 20091,
+    "sha256": "57ac1ebf871bf7df3087cc9a78e535c9f8d69dcc7982deac22ab28b5ac1957a8"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/actor_last_five_ticks.json",
+    "bytes": 29223,
+    "sha256": "8ff467b304c4fefed217ee87a95227fce3fd3445987a760e07a56e052d89aacd"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/admitted_event_rows.json",
+    "bytes": 46762,
+    "sha256": "c89f67fc18741561162927ac7d07198c2c31a8256e12a7c76e765b950dc0c8c4"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/adoption_profile.json",
+    "bytes": 7894,
+    "sha256": "60630f721a653602ebf3163a2b9ef8ccfa4d7dca31202ed9f1c35dbd44685399"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/command_receipts.json",
+    "bytes": 28253,
+    "sha256": "61045dbb76c97d7d4bfc978217e491271a0f8a2222a4d2a5a6a576426967359e"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/coupled_iterations.json",
+    "bytes": 6747,
+    "sha256": "c34968e41c310d2d6698490cc478ea82dd10a847fec6ad370fb2775623f3bf55"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/event_script.json",
+    "bytes": 60488,
+    "sha256": "07cc7080899577c99c6dcf6506b7c91ab5de2ac2975df5287693ed9f948e4924"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/event_trace.jsonl",
+    "bytes": 55376,
+    "sha256": "56fc211de871a18d4d22b55ea70634d278772b214d558548be5580a869356b15"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/execution_time.json",
+    "bytes": 39,
+    "sha256": "d7aa69023ab1989cbb8224d1d9c5e90e1df909f9a2ec6e047fb193eec653895d"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/native_message_attempt_packets.jsonl",
+    "bytes": 6627,
+    "sha256": "c1258b09180cb2b9f61f823c9c1c8e91164e6014b5294dfa7e0661ad2295c748"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/network_backend.json",
+    "bytes": 12349,
+    "sha256": "fe681ff6fc7861ca2cd13cf75450f7434db2678a4c0e67758cd9993cdbf60a6c"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/predicate_flips.jsonl",
+    "bytes": 4420,
+    "sha256": "2163ffc5f308b2c625da40c1b106a3e60723c5d3d00a27225f4ca3026be1cdab"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "da1a4ac3a2f56efb55612f6de3202197977d9f5eb78efc57838cfe28b2250b40"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/scene_setup.json",
+    "bytes": 117976,
+    "sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/scoped_receipt.json",
+    "bytes": 26061,
+    "sha256": "b3a1b23eef11d788255ab8aef5cadd77656e37229e57d627c224d12a3a7450db"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/summary.json",
+    "bytes": 3402,
+    "sha256": "d278764cbd89743b84e02ce0e270fcf9ad8dd87a0132b1e1120e4f80906cc09f"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/actions.json",
+    "bytes": 20091,
+    "sha256": "57ac1ebf871bf7df3087cc9a78e535c9f8d69dcc7982deac22ab28b5ac1957a8"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/actor_last_five_ticks.json",
+    "bytes": 29223,
+    "sha256": "8ff467b304c4fefed217ee87a95227fce3fd3445987a760e07a56e052d89aacd"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/admitted_event_rows.json",
+    "bytes": 46762,
+    "sha256": "2215dc7286712f375eede76d877b62b2518d7fa200abd8742b2822e6b1649364"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/adoption_profile.json",
+    "bytes": 7894,
+    "sha256": "5f39e45bc81725e9cec6b017c894b5693976d74f982637d6107f56168e7c4aa5"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/command_receipts.json",
+    "bytes": 28253,
+    "sha256": "a37a49e88037784a2eda142498fc91d714202420a9095360fc11382386c99dd7"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/coupled_iterations.json",
+    "bytes": 6747,
+    "sha256": "8d0edfa6ffade6cd8f25eb1e8441d8631cc9d182e97654399ecde07776c911fe"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/event_script.json",
+    "bytes": 60488,
+    "sha256": "07cc7080899577c99c6dcf6506b7c91ab5de2ac2975df5287693ed9f948e4924"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/event_trace.jsonl",
+    "bytes": 55376,
+    "sha256": "c928dbd44bbbd082890c9be9c4c3d88a90d8c5491721730e50e225474844772f"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/execution_time.json",
+    "bytes": 39,
+    "sha256": "6e21727db831141aa8ab7396876823657205df9b7d788a9cc7fb5e2665fda751"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/native_message_attempt_packets.jsonl",
+    "bytes": 6627,
+    "sha256": "64ceb6d703d021068a98e401f8068f4ff6f492ad8ba9e44b4cc99b7716666dfa"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/network_backend.json",
+    "bytes": 12348,
+    "sha256": "a4e82f00aa3a174dd26810655422f2cff7854b7128813703bc54c393a763ed13"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/predicate_flips.jsonl",
+    "bytes": 4420,
+    "sha256": "2163ffc5f308b2c625da40c1b106a3e60723c5d3d00a27225f4ca3026be1cdab"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "0f4644d82aa3a4e1ed53145f2794a9a74874fb1c7bd2204918cb78a97652a58e"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/scene_setup.json",
+    "bytes": 117976,
+    "sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/scoped_receipt.json",
+    "bytes": 26033,
+    "sha256": "4979b021f657a8393c2c2b236a09426dccddc4ab3e4dcd2948b54189e40b0987"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/summary.json",
+    "bytes": 3405,
+    "sha256": "c2af5d847e9a21bc0b657e5992ad07d7073de5c84a2a743d61e8992c69712ea3"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/actions.json",
+    "bytes": 20091,
+    "sha256": "57ac1ebf871bf7df3087cc9a78e535c9f8d69dcc7982deac22ab28b5ac1957a8"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/actor_last_five_ticks.json",
+    "bytes": 29223,
+    "sha256": "8ff467b304c4fefed217ee87a95227fce3fd3445987a760e07a56e052d89aacd"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/admitted_event_rows.json",
+    "bytes": 46762,
+    "sha256": "3eb9591b8701f505ed7afb3537b679481d32ec2ef64a2535750c1dc06255c2ab"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/adoption_profile.json",
+    "bytes": 7894,
+    "sha256": "6f55c3df1fbae7118374d6eb2382b3d0684eedec6f5b41d7cc9eafd357d8dbf3"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/command_receipts.json",
+    "bytes": 28253,
+    "sha256": "006f21ea7c49a23500b075d98ec1be400e90d21bee20bcae079a82cab451d5f2"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/coupled_iterations.json",
+    "bytes": 6748,
+    "sha256": "e9a9564529ba0d28ae8d4025f08b54a1604ec31d21dc7790be51a9d80275103e"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/event_script.json",
+    "bytes": 60488,
+    "sha256": "07cc7080899577c99c6dcf6506b7c91ab5de2ac2975df5287693ed9f948e4924"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/event_trace.jsonl",
+    "bytes": 55376,
+    "sha256": "f55b96403981245c7424c5cd61b971ead5fa334d91bdb22fa7127463cc3947b8"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/execution_time.json",
+    "bytes": 39,
+    "sha256": "d812c8227d5fd09573123249e287d2f298dfefd282379f89baffbf0fa523e42f"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/native_message_attempt_packets.jsonl",
+    "bytes": 6627,
+    "sha256": "fa7044534ffb6240f3cf2f66cc4dbca302539a6e85f4be75a83ff7725eba4d18"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/network_backend.json",
+    "bytes": 12348,
+    "sha256": "2199ab230b70aab3403ecef8c02acb30d1cafbe992701edeb413b1b5efd9ef5e"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/predicate_flips.jsonl",
+    "bytes": 4420,
+    "sha256": "2163ffc5f308b2c625da40c1b106a3e60723c5d3d00a27225f4ca3026be1cdab"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "a07615d94ff8366507bb9c22ccb15dc1cf404062edb332f4004cf3ba36b4499b"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/scene_setup.json",
+    "bytes": 117976,
+    "sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/scoped_receipt.json",
+    "bytes": 26033,
+    "sha256": "27f25a9e11a2db26d451c39b9e9fa4991438ff67b3d9c4f1a1be3032e2be6bcf"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/summary.json",
+    "bytes": 3405,
+    "sha256": "7031d108b27491ec10bd692f8f73aeaa760e4a3a7f2b118ac74673364b087c29"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/weather.jsonl",
+    "bytes": 271992,
+    "sha256": "185667f91a526dc063b6aa87511b140c40f58327d3fb438912e92ca9e11b85a6"
+  },
+  {
+    "path": "arm_source_lineage_review_scope.json",
+    "bytes": 166319,
+    "sha256": "bb41ad0a18e1e2bca0bae79a8724c1e37d4a6a82d1a4da6be37306cc9537326d"
+  },
+  {
+    "path": "execution_scope.json",
+    "bytes": 9803,
+    "sha256": "1c395b7635fd8f72a51855e223ba7c2f76c3effbc6a213545ba554f3b15f794f"
+  },
+  {
+    "path": "mechanisms/backup_station.json",
+    "bytes": 19326,
+    "sha256": "f1f72ec0ed5ce481382105b158fd3ed4cb4af33d4b0cabc52d56ddf9536c0b21"
+  },
+  {
+    "path": "mechanisms/cochannel_backup.json",
+    "bytes": 77402,
+    "sha256": "9e41f7a2750d684cec873444d0973ce47386937f42a43b76a8110ec84c889314"
+  },
+  {
+    "path": "mechanisms/local_c2.json",
+    "bytes": 13896,
+    "sha256": "8a1f67cea7c5d795303e3426e7179cf4ff8fcf112068ffd5a6e38e3ee99f549f"
+  },
+  {
+    "path": "mechanisms/local_weather.json",
+    "bytes": 20864,
+    "sha256": "4f5270cf51226aa74f5d6a0e3ebc6b932738793a5c908dd0fe8d88afe57acb49"
+  },
+  {
+    "path": "mechanisms/pad_service.json",
+    "bytes": 22417,
+    "sha256": "b460900189b741b09c231cd530eabbfe4905567f17e21ee7ae78019cac7a7d81"
+  },
+  {
+    "path": "mechanisms/rain_service_descent.json",
+    "bytes": 35310,
+    "sha256": "533968f5899fd620a82983a826f6afdee047a3771edbcae85b5b83754b68c675"
+  }
+]

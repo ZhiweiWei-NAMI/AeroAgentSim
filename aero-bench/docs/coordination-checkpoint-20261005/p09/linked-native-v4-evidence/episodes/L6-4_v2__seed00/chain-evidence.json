@@ -1,0 +1,1142 @@
+{
+  "episode_id": "L6-4_v2__seed00",
+  "status": "complete",
+  "revision": "p09.linked-native-causal/v4",
+  "original_narrative": {
+    "scenario_description": "Wideband jamming affecting multiple UAVs",
+    "script_description": "Wideband jamming affecting multiple UAVs",
+    "original_event_titles": [
+      {
+        "event_id": "lifecycle_takeoff_uav_digital_l6_4_v2",
+        "title": "UAV takes off from visible home pad and enters mission airspace",
+        "intent": "uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+        "predecessors": null
+      },
+      {
+        "event_id": "lifecycle_takeoff_uav_digital_l6_4_v2_secondary",
+        "title": "UAV takes off from visible home pad and enters mission airspace",
+        "intent": "uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+        "predecessors": null
+      },
+      {
+        "event_id": "wideband_jamming",
+        "title": "Wideband jamming affects two UAVs",
+        "intent": "digital_anomaly",
+        "predecessors": [
+          "lifecycle_takeoff_uav_digital_l6_4_v2",
+          "lifecycle_takeoff_uav_digital_l6_4_v2_secondary"
+        ]
+      },
+      {
+        "event_id": "multi_uav_hold_entry",
+        "title": "Both UAVs maneuver to deterministic jamming hold points",
+        "intent": "digital_anomaly",
+        "predecessors": null
+      },
+      {
+        "event_id": "multi_uav_safe_hold",
+        "title": "Both UAVs remain stationary in safe hold under jamming",
+        "intent": "safe_hold",
+        "predecessors": null
+      },
+      {
+        "event_id": "alternate_channel",
+        "title": "Alternate channel recovers both UAVs",
+        "intent": "recovery_or_restore",
+        "predecessors": null
+      },
+      {
+        "event_id": "lifecycle_landing_uav_digital_l6_4_v2",
+        "title": "UAV returns to the visible home pad and lands after mission resolution",
+        "intent": "landing_or_terminal_resolution",
+        "predecessors": null
+      },
+      {
+        "event_id": "lifecycle_landing_uav_digital_l6_4_v2_secondary",
+        "title": "UAV returns to the visible home pad and lands after mission resolution",
+        "intent": "landing_or_terminal_resolution",
+        "predecessors": null
+      }
+    ]
+  },
+  "source_refs": [
+    "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/event_script.json",
+    "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/scene_setup.json"
+  ],
+  "scope": {
+    "schema_version": "p09.linked-source-adoption/v4",
+    "episode_id": "L6-4_v2__seed00",
+    "scenario_id": "L6-4_v2",
+    "seed": 0,
+    "ns3_seed": 1,
+    "ns3_run": 1,
+    "mechanism": "cochannel_backup",
+    "actor_ids": [
+      "uav_digital_l6_4_v2",
+      "uav_digital_l6_4_v2_secondary"
+    ],
+    "primary_station": "tower_l6_4_v2",
+    "backup_station": null,
+    "heartbeat": {
+      "period_ns": 100000000,
+      "payload_bytes": 256,
+      "ttl_ns": 200000000,
+      "window_ns": 1000000000,
+      "loss_limit": 0.05,
+      "consecutive_limit": 3
+    },
+    "receiver_state_namespace": "p09.actor-heartbeat-watchdog/v1",
+    "receiver_state_definitions": {
+      "loss_ratio": "unit1; mature expected local slots not received before strict generation+TTL; includes unsent expected slots",
+      "consecutive_missing": "packet; trailing mature missing sequence slots",
+      "degraded": "bool/UNKNOWN; loss_ratio>0.05 AND consecutive_missing>=3",
+      "observation_ns": "ns; local window close/available time, consumed strictly before actor decision"
+    },
+    "legacy_state_disposition": "old global accepted-TX/reference and initial runtime flags are separate; no actor-control causality claim from those flags",
+    "command": {
+      "payload_bytes": 64,
+      "attempts": 3,
+      "period_ns": 100000000,
+      "deadline_ns": 2000000000,
+      "policy_delay_ns": 0
+    },
+    "source_script": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/event_script.json",
+    "source_scene": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/scene_setup.json",
+    "source_script_sha256": "4f99989cfb512765b883adf45f2e13a976fa293938b8e8723db49f2614143eed",
+    "source_scene_sha256": "05ad4c78457da2b748c4d3d0c68b6f4cdddc2e344fd38e2c3b4b11e1d942e0df",
+    "corrections": [
+      {
+        "event_id": "wideband_jamming",
+        "change": "legacy IDs retained; simulated cause and hold titles declare cochannel competition, not certified wideband jamming"
+      }
+    ],
+    "assumptions": [
+      "receiver-visible periodic heartbeat is configured application traffic",
+      "actor observes local weather/nearby geometry after one original tick",
+      "10Hz authored waypoint engine, not PX4 aerodynamic flight"
+    ],
+    "rain_rf": "not amplified; dimensionless rain is not an observed mm/h rate",
+    "rf_profile": "R1:2412MHz/20MHz/HtMcs0/16dBm/NF7/n3/L0=40.09532929124565",
+    "motion_acquisition": {
+      "version": "p09.complete-admitted-landings/v1",
+      "nominal_duration_ticks": 900,
+      "landing_dwell_ticks": 5,
+      "extension_basis": "actual admitted landing motion terminal tick plus five original ticks; original speeds/routes unchanged"
+    },
+    "interference_offered_bps": 8000000,
+    "backup_channel": 6,
+    "interference_class": "legitimate cochannel UDP competition, not wideband jamming",
+    "channel_switch_authority": "preconfigured synchronized local failover after source safe-hold delay; no failed-link command required"
+  },
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+    "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+    "wideband_jamming": 24000000000,
+    "multi_uav_hold_entry": 49500000000,
+    "multi_uav_safe_hold": 62500000000,
+    "alternate_channel": 69000000000,
+    "lifecycle_landing_uav_digital_l6_4_v2": 77500000000,
+    "lifecycle_landing_uav_digital_l6_4_v2_secondary": 78000000000
+  },
+  "guard_refs": {
+    "lifecycle_takeoff_uav_digital_l6_4_v2": "trig_lifecycle_takeoff_uav_digital_l6_4_v2",
+    "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": "trig_lifecycle_takeoff_uav_digital_l6_4_v2_secondary",
+    "wideband_jamming": "trig_wideband_jamming",
+    "multi_uav_hold_entry": "trig_after_wideband_jamming_delay_30",
+    "multi_uav_safe_hold": "trig_after_multi_uav_hold_entry_delay_127",
+    "alternate_channel": "trig_after_multi_uav_safe_hold_delay_60",
+    "lifecycle_landing_uav_digital_l6_4_v2": "trig_after_alternate_channel_delay_80",
+    "lifecycle_landing_uav_digital_l6_4_v2_secondary": "trig_after_alternate_channel_delay_88"
+  },
+  "first_allowed_admissions": {
+    "lifecycle_takeoff_uav_digital_l6_4_v2": {
+      "event_id": "lifecycle_takeoff_uav_digital_l6_4_v2",
+      "decision_tick": 30,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "lifecycle_takeoff_uav_digital_l6_4_v2",
+        "decision_ns": 3000000000
+      }
+    },
+    "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": {
+      "event_id": "lifecycle_takeoff_uav_digital_l6_4_v2_secondary",
+      "decision_tick": 38,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "lifecycle_takeoff_uav_digital_l6_4_v2_secondary",
+        "decision_ns": 3800000000
+      }
+    },
+    "wideband_jamming": {
+      "event_id": "wideband_jamming",
+      "decision_tick": 240,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "wideband_jamming",
+        "decision_ns": 24000000000
+      }
+    },
+    "multi_uav_hold_entry": {
+      "event_id": "multi_uav_hold_entry",
+      "decision_tick": 366,
+      "allow": true,
+      "evidence": {
+        "rule_version": "p09.actor-heartbeat-watchdog/v1",
+        "rows": [
+          {
+            "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+            "observation_ns": 36500000000,
+            "receiver_owner": "uav_digital_l6_4_v2",
+            "receiver_epoch": 0,
+            "window_ns": 1000000000,
+            "mature_expected": 8,
+            "timely_received": 5,
+            "ttl_not_timely": 3,
+            "observed_late": 3,
+            "pending_expected": 2,
+            "loss_ratio": 0.375,
+            "availability": "KNOWN",
+            "reason": null,
+            "consecutive_missing": 3,
+            "degraded": true,
+            "rule_version": "p09.actor-heartbeat-watchdog/v1",
+            "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+          },
+          {
+            "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+            "observation_ns": 36500000000,
+            "receiver_owner": "uav_digital_l6_4_v2_secondary",
+            "receiver_epoch": 0,
+            "window_ns": 1000000000,
+            "mature_expected": 8,
+            "timely_received": 5,
+            "ttl_not_timely": 3,
+            "observed_late": 3,
+            "pending_expected": 2,
+            "loss_ratio": 0.375,
+            "availability": "KNOWN",
+            "reason": null,
+            "consecutive_missing": 3,
+            "degraded": true,
+            "rule_version": "p09.actor-heartbeat-watchdog/v1",
+            "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+          }
+        ],
+        "required": "degraded",
+        "decision_ns": 36600000000,
+        "authority": "local onboard",
+        "physical_motion_evidence": null
+      }
+    },
+    "multi_uav_safe_hold": {
+      "event_id": "multi_uav_safe_hold",
+      "decision_tick": 622,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "multi_uav_safe_hold",
+        "decision_ns": 62200000000
+      }
+    },
+    "alternate_channel": {
+      "event_id": "alternate_channel",
+      "decision_tick": 687,
+      "allow": true,
+      "evidence": {
+        "owners": [
+          {
+            "allow": true,
+            "evidence": {
+              "message_id": "command:alternate_channel:uav_digital_l6_4_v2",
+              "receipt": {
+                "schema_version": "p09.actual-downlink-command-receipt/v1",
+                "command_id": "command:alternate_channel:uav_digital_l6_4_v2",
+                "packet_id": "packet-38456",
+                "source_owner": "tower_l6_4_v2",
+                "source_epoch": 0,
+                "receiver_owner": "uav_digital_l6_4_v2",
+                "receiver_epoch": 0,
+                "evidence_available_ns": 68500000000,
+                "decision_ns": 68600000000,
+                "send_ns": 68600000000,
+                "deadline_ns": 70600000000,
+                "action": "alternate_channel",
+                "receive_ns": 68600211370,
+                "accepted_ns": 68600211370,
+                "status": "accepted"
+              },
+              "controller_decisions": [
+                {
+                  "schema_version": "p09.receiver-controller-consumption/v1",
+                  "command_id": "command:alternate_channel:uav_digital_l6_4_v2",
+                  "receiver_owner": "uav_digital_l6_4_v2",
+                  "receiver_epoch": 0,
+                  "action": "alternate_channel",
+                  "receive_ns": 68600211370,
+                  "accepted_ns": 68600211370,
+                  "policy_delay_ns": 0,
+                  "policy_ready_ns": 68600211370,
+                  "queue_available_ns": 68700000000,
+                  "execution_decision_ns": 68700000000,
+                  "status": "ready_for_executor",
+                  "physical_motion_evidence": null
+                }
+              ]
+            }
+          },
+          {
+            "allow": true,
+            "evidence": {
+              "message_id": "command:alternate_channel:uav_digital_l6_4_v2_secondary",
+              "receipt": {
+                "schema_version": "p09.actual-downlink-command-receipt/v1",
+                "command_id": "command:alternate_channel:uav_digital_l6_4_v2_secondary",
+                "packet_id": "packet-38457",
+                "source_owner": "tower_l6_4_v2",
+                "source_epoch": 0,
+                "receiver_owner": "uav_digital_l6_4_v2_secondary",
+                "receiver_epoch": 0,
+                "evidence_available_ns": 68500000000,
+                "decision_ns": 68600000000,
+                "send_ns": 68600000000,
+                "deadline_ns": 70600000000,
+                "action": "alternate_channel",
+                "receive_ns": 68600979623,
+                "accepted_ns": 68600979623,
+                "status": "accepted"
+              },
+              "controller_decisions": [
+                {
+                  "schema_version": "p09.receiver-controller-consumption/v1",
+                  "command_id": "command:alternate_channel:uav_digital_l6_4_v2_secondary",
+                  "receiver_owner": "uav_digital_l6_4_v2_secondary",
+                  "receiver_epoch": 0,
+                  "action": "alternate_channel",
+                  "receive_ns": 68600979623,
+                  "accepted_ns": 68600979623,
+                  "policy_delay_ns": 0,
+                  "policy_ready_ns": 68600979623,
+                  "queue_available_ns": 68700000000,
+                  "execution_decision_ns": 68700000000,
+                  "status": "ready_for_executor",
+                  "physical_motion_evidence": null
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "lifecycle_landing_uav_digital_l6_4_v2": {
+      "event_id": "lifecycle_landing_uav_digital_l6_4_v2",
+      "decision_tick": 771,
+      "allow": true,
+      "evidence": {
+        "message_id": "command:lifecycle_landing_uav_digital_l6_4_v2:uav_digital_l6_4_v2",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "command:lifecycle_landing_uav_digital_l6_4_v2:uav_digital_l6_4_v2",
+          "packet_id": "packet-38630",
+          "source_owner": "tower_l6_4_v2",
+          "source_epoch": 0,
+          "receiver_owner": "uav_digital_l6_4_v2",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 76900000000,
+          "decision_ns": 77000000000,
+          "send_ns": 77000000000,
+          "deadline_ns": 79000000000,
+          "action": "lifecycle_landing_uav_digital_l6_4_v2",
+          "receive_ns": 77000209713,
+          "accepted_ns": 77000209713,
+          "status": "accepted"
+        },
+        "controller_decisions": [
+          {
+            "schema_version": "p09.receiver-controller-consumption/v1",
+            "command_id": "command:lifecycle_landing_uav_digital_l6_4_v2:uav_digital_l6_4_v2",
+            "receiver_owner": "uav_digital_l6_4_v2",
+            "receiver_epoch": 0,
+            "action": "lifecycle_landing_uav_digital_l6_4_v2",
+            "receive_ns": 77000209713,
+            "accepted_ns": 77000209713,
+            "policy_delay_ns": 0,
+            "policy_ready_ns": 77000209713,
+            "queue_available_ns": 77100000000,
+            "execution_decision_ns": 77100000000,
+            "status": "ready_for_executor",
+            "physical_motion_evidence": null
+          }
+        ]
+      }
+    },
+    "lifecycle_landing_uav_digital_l6_4_v2_secondary": {
+      "event_id": "lifecycle_landing_uav_digital_l6_4_v2_secondary",
+      "decision_tick": 779,
+      "allow": true,
+      "evidence": {
+        "message_id": "command:lifecycle_landing_uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "command:lifecycle_landing_uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary",
+          "packet_id": "packet-38649",
+          "source_owner": "tower_l6_4_v2",
+          "source_epoch": 0,
+          "receiver_owner": "uav_digital_l6_4_v2_secondary",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 77700000000,
+          "decision_ns": 77800000000,
+          "send_ns": 77800000000,
+          "deadline_ns": 79800000000,
+          "action": "lifecycle_landing_uav_digital_l6_4_v2_secondary",
+          "receive_ns": 77800214287,
+          "accepted_ns": 77800214287,
+          "status": "accepted"
+        },
+        "controller_decisions": [
+          {
+            "schema_version": "p09.receiver-controller-consumption/v1",
+            "command_id": "command:lifecycle_landing_uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary",
+            "receiver_owner": "uav_digital_l6_4_v2_secondary",
+            "receiver_epoch": 0,
+            "action": "lifecycle_landing_uav_digital_l6_4_v2_secondary",
+            "receive_ns": 77800214287,
+            "accepted_ns": 77800214287,
+            "policy_delay_ns": 0,
+            "policy_ready_ns": 77800214287,
+            "queue_available_ns": 77900000000,
+            "execution_decision_ns": 77900000000,
+            "status": "ready_for_executor",
+            "physical_motion_evidence": null
+          }
+        ]
+      }
+    }
+  },
+  "unfired_events": [],
+  "trajectory_difference": {
+    "uav_digital_l6_4_v2": {
+      "first_changed_tick": 271,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6636.321,
+          6526.731,
+          31.8
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          -2.0
+        ],
+        "state": "descending",
+        "activity_type": "descending"
+      },
+      "after": {
+        "pos_enu": [
+          6636.321,
+          6526.731,
+          32.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "state": "jammed",
+        "activity_type": "jammed"
+      }
+    },
+    "uav_digital_l6_4_v2_secondary": {
+      "first_changed_tick": 271,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          6624.321,
+          6533.731,
+          34.2
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "state": "airborne",
+        "activity_type": "airborne"
+      },
+      "after": {
+        "pos_enu": [
+          6624.321,
+          6533.731,
+          34.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "state": "jammed",
+        "activity_type": "jammed"
+      }
+    },
+    "tower_l6_4_v2": {
+      "first_changed_tick": 461,
+      "fields": [
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "state": "alternate_channel",
+        "activity_type": "alternate_channel"
+      },
+      "after": {
+        "state": "jammed",
+        "activity_type": "jammed"
+      }
+    },
+    "bg_ped_l6_4_v2_01": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6643.300508,
+          6509.705046,
+          0.0
+        ],
+        "vel_mps": [
+          0.395538,
+          -1.166769,
+          0.0
+        ],
+        "yaw_deg": -71.273179,
+        "state": "walking",
+        "activity_type": "walking"
+      }
+    },
+    "bg_ped_l6_4_v2_02": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6641.489109,
+          6509.427766,
+          0.0
+        ],
+        "vel_mps": [
+          0.401094,
+          -1.182344,
+          0.0
+        ],
+        "yaw_deg": -71.261206,
+        "state": "walking",
+        "activity_type": "walking"
+      }
+    },
+    "bg_ped_l6_4_v2_03": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6643.934316,
+          6507.832842,
+          0.0
+        ],
+        "vel_mps": [
+          0.395088,
+          -1.164211,
+          0.0
+        ],
+        "yaw_deg": -71.254788,
+        "state": "walking",
+        "activity_type": "walking"
+      }
+    },
+    "bg_ped_l6_4_v2_04": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6642.043193,
+          6507.793912,
+          0.0
+        ],
+        "vel_mps": [
+          0.394561,
+          -1.162982,
+          0.0
+        ],
+        "yaw_deg": -71.259628,
+        "state": "walking",
+        "activity_type": "walking"
+      }
+    },
+    "bg_vehicle_l6_4_v2_01": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6642.533,
+          6562.965,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 84.98202,
+        "state": "traffic_flow",
+        "activity_type": "traffic_flow"
+      }
+    },
+    "bg_vehicle_l6_4_v2_02": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6675.92,
+          6430.31,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -70.974394,
+        "state": "traffic_flow",
+        "activity_type": "traffic_flow"
+      }
+    },
+    "bg_vehicle_l6_4_v2_03": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6677.757,
+          6434.18,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -70.709954,
+        "state": "traffic_flow",
+        "activity_type": "traffic_flow"
+      }
+    },
+    "contract_facility_l6_4_v2_02": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6656.893,
+          6514.759,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 45.0,
+        "state": "available",
+        "activity_type": "available"
+      }
+    },
+    "contract_facility_l6_4_v2_03": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6638.609,
+          6510.143,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 90.0,
+        "state": "online",
+        "activity_type": "online"
+      }
+    },
+    "corridor_l6_4_v2_uav_digital_l6_4_v2_00": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6653.956,
+          6527.6,
+          13.5
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 0.0,
+        "state": "semantic_corridor",
+        "activity_type": "semantic_corridor"
+      }
+    },
+    "corridor_l6_4_v2_uav_digital_l6_4_v2_01": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6645.139,
+          6527.166,
+          28.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -177.179,
+        "state": "semantic_corridor",
+        "activity_type": "semantic_corridor"
+      }
+    },
+    "corridor_l6_4_v2_uav_digital_l6_4_v2_02": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6636.321,
+          6526.731,
+          31.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 0.0,
+        "state": "semantic_corridor",
+        "activity_type": "semantic_corridor"
+      }
+    },
+    "corridor_l6_4_v2_uav_digital_l6_4_v2_03": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6638.321,
+          6528.731,
+          30.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 45.0,
+        "state": "semantic_corridor",
+        "activity_type": "semantic_corridor"
+      }
+    },
+    "corridor_l6_4_v2_uav_digital_l6_4_v2_04": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6645.821,
+          6534.731,
+          30.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 36.027,
+        "state": "semantic_corridor",
+        "activity_type": "semantic_corridor"
+      }
+    },
+    "corridor_l6_4_v2_uav_digital_l6_4_v2_05": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6651.321,
+          6538.731,
+          33.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 0.0,
+        "state": "semantic_corridor",
+        "activity_type": "semantic_corridor"
+      }
+    },
+    "corridor_l6_4_v2_uav_digital_l6_4_v2_06": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6652.639,
+          6533.166,
+          36.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -76.682,
+        "state": "semantic_corridor",
+        "activity_type": "semantic_corridor"
+      }
+    },
+    "corridor_l6_4_v2_uav_digital_l6_4_v2_07": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6653.956,
+          6527.6,
+          19.5
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 0.0,
+        "state": "semantic_corridor",
+        "activity_type": "semantic_corridor"
+      }
+    },
+    "corridor_l6_4_v2_uav_digital_l6_4_v2_secondary_00": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6675.925,
+          6529.012,
+          13.5
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 0.0,
+        "state": "semantic_corridor",
+        "activity_type": "semantic_corridor"
+      }
+    },
+    "corridor_l6_4_v2_uav_digital_l6_4_v2_secondary_01": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6662.477,
+          6524.217,
+          26.5
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": -160.373,
+        "state": "semantic_corridor",
+        "activity_type": "semantic_corridor"
+      }
+    },
+    "pad_home_uav_digital_l6_4_v2": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6653.956,
+          6527.6,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 90.924,
+        "state": "available",
+        "activity_type": "available"
+      }
+    },
+    "pad_home_uav_digital_l6_4_v2_secondary": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6675.925,
+          6529.012,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 84.723,
+        "state": "available",
+        "activity_type": "available"
+      }
+    },
+    "u_inspect_l6_4_v2": {
+      "first_changed_tick": 901,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg",
+        "state",
+        "activity_type"
+      ],
+      "before": null,
+      "after": {
+        "pos_enu": [
+          6604.920051,
+          6549.542063,
+          22.0
+        ],
+        "vel_mps": [
+          0.129241,
+          -4.990949,
+          0.0
+        ],
+        "yaw_deg": -88.516659,
+        "state": "inspect_racetrack",
+        "activity_type": "inspect_racetrack"
+      }
+    }
+  },
+  "duration_original_ticks": 900,
+  "duration_adopted_ticks": 1053,
+  "all_actor_final_states_ref": "episodes/L6-4_v2__seed00/all-actor-final-states.json",
+  "ue_dependencies": {
+    "changed_entities": [
+      "uav_digital_l6_4_v2",
+      "uav_digital_l6_4_v2_secondary",
+      "tower_l6_4_v2",
+      "bg_ped_l6_4_v2_01",
+      "bg_ped_l6_4_v2_02",
+      "bg_ped_l6_4_v2_03",
+      "bg_ped_l6_4_v2_04",
+      "bg_vehicle_l6_4_v2_01",
+      "bg_vehicle_l6_4_v2_02",
+      "bg_vehicle_l6_4_v2_03",
+      "contract_facility_l6_4_v2_02",
+      "contract_facility_l6_4_v2_03",
+      "corridor_l6_4_v2_uav_digital_l6_4_v2_00",
+      "corridor_l6_4_v2_uav_digital_l6_4_v2_01",
+      "corridor_l6_4_v2_uav_digital_l6_4_v2_02",
+      "corridor_l6_4_v2_uav_digital_l6_4_v2_03",
+      "corridor_l6_4_v2_uav_digital_l6_4_v2_04",
+      "corridor_l6_4_v2_uav_digital_l6_4_v2_05",
+      "corridor_l6_4_v2_uav_digital_l6_4_v2_06",
+      "corridor_l6_4_v2_uav_digital_l6_4_v2_07",
+      "corridor_l6_4_v2_uav_digital_l6_4_v2_secondary_00",
+      "corridor_l6_4_v2_uav_digital_l6_4_v2_secondary_01",
+      "pad_home_uav_digital_l6_4_v2",
+      "pad_home_uav_digital_l6_4_v2_secondary",
+      "u_inspect_l6_4_v2"
+    ],
+    "weather_changed": true,
+    "camera_declarations": [
+      {
+        "camera_id": "demo_high_overview",
+        "placement_mode": "world_pose",
+        "placement": {
+          "position_enu_m": [
+            6653.036,
+            6503.227,
+            180.0
+          ],
+          "rotation_deg": {
+            "pitch_deg": -70.0,
+            "yaw_deg": 0.0
+          }
+        },
+        "fov_deg": 90.0
+      }
+    ],
+    "camera_declarations_changed": false,
+    "model_or_material_change": false,
+    "capture_frame_step_original_ticks": 5,
+    "appended_frames_if_adopted": 30,
+    "review_before_collection": true
+  },
+  "classification": "A",
+  "classification_basis": "Actual render input trajectory/state/time differs",
+  "published_original210_changed": false,
+  "terminal_acceptance": "all fired is not a whole-chain pass; reviewers must check receipts, rule operands, actual motion and all actors"
+}

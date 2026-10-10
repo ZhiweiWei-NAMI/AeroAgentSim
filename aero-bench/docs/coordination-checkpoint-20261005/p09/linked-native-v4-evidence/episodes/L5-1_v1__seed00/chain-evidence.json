@@ -1,0 +1,410 @@
+{
+  "episode_id": "L5-1_v1__seed00",
+  "status": "complete",
+  "revision": "p09.linked-native-causal/v4",
+  "original_narrative": {
+    "scenario_description": "Rain slowdown with continuous recovery",
+    "script_description": "Rain slowdown with continuous recovery",
+    "original_event_titles": [
+      {
+        "event_id": "lifecycle_takeoff_uav_weather_l5_1_v1",
+        "title": "UAV takes off from visible home pad and enters mission airspace",
+        "intent": "uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+        "predecessors": null
+      },
+      {
+        "event_id": "clear_motion_baseline",
+        "title": "Vehicle enters its legal lane; UAV cruise has an independent task schedule",
+        "intent": "context",
+        "predecessors": null
+      },
+      {
+        "event_id": "weather_onset",
+        "title": "Rain onset is applied before threshold confirmation",
+        "intent": "weather_degradation",
+        "predecessors": null
+      },
+      {
+        "event_id": "rain_condition_met",
+        "title": "Rain threshold reached",
+        "intent": "weather_degradation",
+        "predecessors": null
+      },
+      {
+        "event_id": "rain_speed_reduction",
+        "title": "UAV follows the rain speed policy; vehicle follows its wet-road speed policy",
+        "intent": "slowdown",
+        "predecessors": null
+      },
+      {
+        "event_id": "rain_intensifies",
+        "title": "Rain intensifies and vehicle remains cautious",
+        "intent": "weather_degradation",
+        "predecessors": null
+      },
+      {
+        "event_id": "rain_recovery",
+        "title": "Rain recovers and both actors resume higher-speed motion",
+        "intent": "recovery_or_restore",
+        "predecessors": null
+      },
+      {
+        "event_id": "weather_vehicle_leaves_after_recovery",
+        "title": "Recovered traffic leaves the weather event stage after the higher-speed segment",
+        "intent": "context",
+        "predecessors": null
+      },
+      {
+        "event_id": "lifecycle_landing_uav_weather_l5_1_v1",
+        "title": "UAV returns to the visible home pad and lands after mission resolution",
+        "intent": "landing_or_terminal_resolution",
+        "predecessors": null
+      },
+      {
+        "event_id": "nominal_task_cruise",
+        "title": "UAV follows the scheduled nominal segment independently of weather arrival",
+        "intent": "nominal_task_progress",
+        "predecessors": null
+      }
+    ]
+  },
+  "source_refs": [
+    "Dataset/scenarios/L5_environment/interaction/L5-1_v1/event_script.json",
+    "Dataset/scenarios/L5_environment/interaction/L5-1_v1/scene_setup.json"
+  ],
+  "scope": {
+    "schema_version": "p09.linked-source-adoption/v4",
+    "episode_id": "L5-1_v1__seed00",
+    "scenario_id": "L5-1_v1",
+    "seed": 0,
+    "ns3_seed": 1,
+    "ns3_run": 1,
+    "mechanism": "local_weather",
+    "actor_ids": [
+      "uav_weather_l5_1_v1"
+    ],
+    "primary_station": null,
+    "backup_station": null,
+    "heartbeat": {
+      "period_ns": 100000000,
+      "payload_bytes": 256,
+      "ttl_ns": 200000000,
+      "window_ns": 1000000000,
+      "loss_limit": 0.05,
+      "consecutive_limit": 3
+    },
+    "receiver_state_namespace": "p09.actor-heartbeat-watchdog/v1",
+    "receiver_state_definitions": {
+      "loss_ratio": "unit1; mature expected local slots not received before strict generation+TTL; includes unsent expected slots",
+      "consecutive_missing": "packet; trailing mature missing sequence slots",
+      "degraded": "bool/UNKNOWN; loss_ratio>0.05 AND consecutive_missing>=3",
+      "observation_ns": "ns; local window close/available time, consumed strictly before actor decision"
+    },
+    "legacy_state_disposition": "old global accepted-TX/reference and initial runtime flags are separate; no actor-control causality claim from those flags",
+    "command": {
+      "payload_bytes": 64,
+      "attempts": 3,
+      "period_ns": 100000000,
+      "deadline_ns": 2000000000,
+      "policy_delay_ns": 0
+    },
+    "source_script": "Dataset/scenarios/L5_environment/interaction/L5-1_v1/event_script.json",
+    "source_scene": "Dataset/scenarios/L5_environment/interaction/L5-1_v1/scene_setup.json",
+    "source_script_sha256": "467e3b930f0dd99f8b82412248584d20d42e30e3e7f3c38fef5ee99b5514dfbf",
+    "source_scene_sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b",
+    "corrections": [
+      {
+        "trigger_id": "trig_rain_condition_met",
+        "change": "five consecutive original ticks, not post-false sustain"
+      },
+      {
+        "event_id": "rain_condition_met",
+        "change": "explicit L5 temporal-policy migration: threshold follows available consecutive samples"
+      }
+    ],
+    "assumptions": [
+      "receiver-visible periodic heartbeat is configured application traffic",
+      "actor observes local weather/nearby geometry after one original tick",
+      "10Hz authored waypoint engine, not PX4 aerodynamic flight"
+    ],
+    "rain_rf": "not amplified; dimensionless rain is not an observed mm/h rate",
+    "rf_profile": "R1:2412MHz/20MHz/HtMcs0/16dBm/NF7/n3/L0=40.09532929124565",
+    "weather_owner_ids": [
+      "uav_weather_l5_1_v1",
+      "weather_car_l5_1_v1"
+    ],
+    "rain_guard": {
+      "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+      "sample_period_ns": 100000000,
+      "consecutive_samples": 5,
+      "threshold": 0.5,
+      "duration_semantics": "five consecutive samples, spanning four sample intervals; no post-false hold"
+    }
+  },
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_weather_l5_1_v1": 3000000000,
+    "clear_motion_baseline": 500000000,
+    "weather_onset": 18000000000,
+    "rain_condition_met": 19000000000,
+    "rain_speed_reduction": 22000000000,
+    "rain_intensifies": 29500000000,
+    "rain_recovery": 36500000000,
+    "weather_vehicle_leaves_after_recovery": 44500000000,
+    "lifecycle_landing_uav_weather_l5_1_v1": 52500000000,
+    "nominal_task_cruise": 17500000000
+  },
+  "guard_refs": {
+    "lifecycle_takeoff_uav_weather_l5_1_v1": "trig_lifecycle_takeoff_uav_weather_l5_1_v1",
+    "clear_motion_baseline": "trig_clear_motion_baseline",
+    "weather_onset": "trig_weather_onset",
+    "rain_condition_met": "trig_rain_condition_met",
+    "rain_speed_reduction": "trig_after_rain_condition_met_delay_30",
+    "rain_intensifies": "trig_after_rain_speed_reduction_delay_72",
+    "rain_recovery": "trig_after_rain_intensifies_delay_68",
+    "weather_vehicle_leaves_after_recovery": "trig_after_rain_recovery_delay_80",
+    "lifecycle_landing_uav_weather_l5_1_v1": "trig_after_weather_vehicle_leaves_after_recovery_delay_80",
+    "nominal_task_cruise": "trig_nominal_task_cruise"
+  },
+  "first_allowed_admissions": {
+    "clear_motion_baseline": {
+      "event_id": "clear_motion_baseline",
+      "decision_tick": 1,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "clear_motion_baseline",
+        "decision_ns": 100000000
+      }
+    },
+    "lifecycle_takeoff_uav_weather_l5_1_v1": {
+      "event_id": "lifecycle_takeoff_uav_weather_l5_1_v1",
+      "decision_tick": 30,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "lifecycle_takeoff_uav_weather_l5_1_v1",
+        "decision_ns": 3000000000
+      }
+    },
+    "nominal_task_cruise": {
+      "event_id": "nominal_task_cruise",
+      "decision_tick": 175,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "nominal_task_cruise",
+        "decision_ns": 17500000000
+      }
+    },
+    "weather_onset": {
+      "event_id": "weather_onset",
+      "decision_tick": 180,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "weather_onset",
+        "decision_ns": 18000000000
+      }
+    },
+    "rain_condition_met": {
+      "event_id": "rain_condition_met",
+      "decision_tick": 186,
+      "allow": true,
+      "evidence": {
+        "rows": [
+          {
+            "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+            "owner": "uav_weather_l5_1_v1",
+            "observation_ns": 18600000000,
+            "sample_ns": 18400000000,
+            "available_ns": 18500000000,
+            "rain": 0.55,
+            "threshold": 0.5,
+            "sample_period_ns": 100000000,
+            "required_consecutive_samples": 5,
+            "consecutive_samples": 5,
+            "predicate": true,
+            "availability": "KNOWN",
+            "source": "authored weather state sampled locally; not a calibrated rain sensor"
+          },
+          {
+            "schema_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+            "owner": "weather_car_l5_1_v1",
+            "observation_ns": 18600000000,
+            "sample_ns": 18400000000,
+            "available_ns": 18500000000,
+            "rain": 0.55,
+            "threshold": 0.5,
+            "sample_period_ns": 100000000,
+            "required_consecutive_samples": 5,
+            "consecutive_samples": 5,
+            "predicate": true,
+            "availability": "KNOWN",
+            "source": "authored weather state sampled locally; not a calibrated rain sensor"
+          }
+        ]
+      }
+    },
+    "rain_speed_reduction": {
+      "event_id": "rain_speed_reduction",
+      "decision_tick": 220,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "rain_speed_reduction",
+        "decision_ns": 22000000000
+      }
+    },
+    "rain_intensifies": {
+      "event_id": "rain_intensifies",
+      "decision_tick": 292,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "rain_intensifies",
+        "decision_ns": 29200000000
+      }
+    },
+    "rain_recovery": {
+      "event_id": "rain_recovery",
+      "decision_tick": 363,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "rain_recovery",
+        "decision_ns": 36300000000
+      }
+    },
+    "weather_vehicle_leaves_after_recovery": {
+      "event_id": "weather_vehicle_leaves_after_recovery",
+      "decision_tick": 445,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "weather_vehicle_leaves_after_recovery",
+        "decision_ns": 44500000000
+      }
+    },
+    "lifecycle_landing_uav_weather_l5_1_v1": {
+      "event_id": "lifecycle_landing_uav_weather_l5_1_v1",
+      "decision_tick": 525,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "lifecycle_landing_uav_weather_l5_1_v1",
+        "decision_ns": 52500000000
+      }
+    }
+  },
+  "unfired_events": [],
+  "trajectory_difference": {
+    "uav_weather_l5_1_v1": {
+      "first_changed_tick": 211,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          7321.912429,
+          7279.204127,
+          30.0
+        ],
+        "vel_mps": [
+          2.285714,
+          1.269841,
+          0.0
+        ],
+        "state": "rain_caution_route",
+        "activity_type": "rain_caution_route"
+      },
+      "after": {
+        "pos_enu": [
+          7322.198143,
+          7279.362857,
+          30.0
+        ],
+        "vel_mps": [
+          5.142857,
+          2.857143,
+          0.0
+        ],
+        "state": "cruise",
+        "activity_type": "cruise"
+      }
+    },
+    "weather_car_l5_1_v1": {
+      "first_changed_tick": 211,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg"
+      ],
+      "before": {
+        "pos_enu": [
+          7297.480611,
+          7235.950222,
+          0.0
+        ],
+        "vel_mps": [
+          3.336111,
+          0.082222,
+          0.0
+        ],
+        "yaw_deg": 1.411833
+      },
+      "after": {
+        "pos_enu": [
+          7297.147,
+          7235.942,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 1.28926
+      }
+    }
+  },
+  "duration_original_ticks": 900,
+  "duration_adopted_ticks": 900,
+  "all_actor_final_states_ref": "episodes/L5-1_v1__seed00/all-actor-final-states.json",
+  "ue_dependencies": {
+    "changed_entities": [
+      "uav_weather_l5_1_v1",
+      "weather_car_l5_1_v1"
+    ],
+    "weather_changed": true,
+    "camera_declarations": [
+      {
+        "camera_id": "demo_high_overview",
+        "placement_mode": "world_pose",
+        "placement": {
+          "position_enu_m": [
+            7360.859,
+            7238.085,
+            180.0
+          ],
+          "rotation_deg": {
+            "pitch_deg": -70.0,
+            "yaw_deg": 0.0
+          }
+        },
+        "fov_deg": 90.0
+      }
+    ],
+    "camera_declarations_changed": false,
+    "model_or_material_change": false,
+    "capture_frame_step_original_ticks": 5,
+    "appended_frames_if_adopted": 0,
+    "review_before_collection": true
+  },
+  "classification": "A",
+  "classification_basis": "Actual render input trajectory/state/time differs",
+  "published_original210_changed": false,
+  "terminal_acceptance": "all fired is not a whole-chain pass; reviewers must check receipts, rule operands, actual motion and all actors"
+}

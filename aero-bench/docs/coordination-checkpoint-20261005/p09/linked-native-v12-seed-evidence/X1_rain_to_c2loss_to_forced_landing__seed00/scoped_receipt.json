@@ -1,0 +1,1295 @@
+{
+  "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed00",
+  "seed": 0,
+  "source_revision": "p09.linked-native-causal/v12",
+  "source_commit": "fd407a065d4eb6f4ff5863c3bfb175eb64d17515",
+  "source_script_sha256": "34b9b1dd71c7ae47fd6a03635374e856a447171f82ecb15bdd808a7e9446f77f",
+  "source_scene_sha256": "180217e9619a20ffd6fd80b4d7d67163cab7638e432bd024f658993e9f560b30",
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_x1_forced_landing": 3000000000,
+    "x1_ped_approach": 12000000000,
+    "crowd_present": 15000000000,
+    "rain_onset": 18000000000,
+    "rain_threshold": 18500000000,
+    "c2_loss_tick": 26000000000,
+    "c2_loss_after_rain": 27000000000,
+    "c2_safe_hold": 37000000000,
+    "forced_landing_descent": 40000000000,
+    "crowd_reacts_to_landing": 45500000000,
+    "x1_recovery": 61500000000
+  },
+  "native_accepted_receipts": [],
+  "actual_move_dispatches": [
+    {
+      "tick": 30,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_uav_x1_forced_landing_takeoff_entry",
+        "entity_id": "uav_x1_forced_landing",
+        "waypoints_enu_m": [
+          [
+            6351.654,
+            6527.313,
+            3.0
+          ],
+          [
+            6351.654,
+            6527.313,
+            24.0
+          ],
+          [
+            6369.849,
+            6550.439,
+            32.0
+          ]
+        ],
+        "velocity_mps": 5.0,
+        "activity_type": "takeoff",
+        "post_activity_type": "cruise",
+        "uav_corridor_validation": {
+          "status": "low_altitude_waypoints_preserved_and_building_clear",
+          "assigned_altitude_m": 50.0,
+          "original_waypoints_enu_m": [
+            [
+              6351.654,
+              6527.313,
+              3.0
+            ],
+            [
+              6351.654,
+              6527.313,
+              24.0
+            ],
+            [
+              6372.145,
+              6555.982,
+              32.0
+            ]
+          ],
+          "preserved_action_type": "move_entity"
+        }
+      },
+      "result": {
+        "status": "ok",
+        "tick": 30,
+        "scheduled_tick": 30,
+        "entity_id": "uav_x1_forced_landing",
+        "path_length_m": 51.493768
+      },
+      "motion_schedule": {
+        "terminal_tick": 133,
+        "endpoint_enu_m": [
+          6369.849,
+          6550.439,
+          32.0
+        ]
+      }
+    },
+    {
+      "tick": 120,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_ped_approach",
+        "entity_id": "ped_x1_crowd_x1_08",
+        "waypoints_enu_m": [
+          [
+            6390.211,
+            6594.361,
+            0.0
+          ],
+          [
+            6396.696,
+            6582.535,
+            0.0
+          ]
+        ],
+        "velocity_mps": 1.25,
+        "activity_type": "walking",
+        "post_activity_type": "waiting"
+      },
+      "result": {
+        "status": "ok",
+        "tick": 120,
+        "scheduled_tick": 120,
+        "entity_id": "ped_x1_crowd_x1_08",
+        "path_length_m": 13.487383
+      },
+      "motion_schedule": {
+        "terminal_tick": 228,
+        "endpoint_enu_m": [
+          6396.696,
+          6582.535,
+          0.0
+        ]
+      }
+    },
+    {
+      "tick": 270,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_uav_degraded",
+        "entity_id": "uav_x1_forced_landing",
+        "waypoints_enu_m": [
+          [
+            6369.849,
+            6550.439,
+            32.0
+          ],
+          [
+            6369.849,
+            6550.439,
+            50.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            50.0
+          ]
+        ],
+        "velocity_mps": 6.0,
+        "uav_corridor_validation": {
+          "status": "waypoints_repaired_for_building_clearance",
+          "assigned_altitude_m": 50.0,
+          "original_waypoints_enu_m": [
+            [
+              6372.145,
+              6555.982,
+              32.0
+            ],
+            [
+              6400.145,
+              6577.982,
+              26.0
+            ]
+          ],
+          "preserved_action_type": "move_entity"
+        }
+      },
+      "result": {
+        "status": "ok",
+        "tick": 270,
+        "scheduled_tick": 270,
+        "entity_id": "uav_x1_forced_landing",
+        "path_length_m": 58.944651
+      },
+      "motion_schedule": {
+        "terminal_tick": 369,
+        "endpoint_enu_m": [
+          6400.145,
+          6577.982,
+          50.0
+        ]
+      }
+    },
+    {
+      "tick": 400,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_forced_landing",
+        "entity_id": "uav_x1_forced_landing",
+        "waypoints_enu_m": [
+          [
+            6400.145,
+            6577.982,
+            50.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            18.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            8.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            4.0
+          ]
+        ],
+        "velocity_mps": 8.0,
+        "activity_type": "descending",
+        "post_activity_type": "low_altitude_hold",
+        "uav_corridor_validation": {
+          "status": "low_altitude_waypoints_preserved_and_building_clear",
+          "assigned_altitude_m": 50.0,
+          "original_waypoints_enu_m": [
+            [
+              6400.145,
+              6577.982,
+              26.0
+            ],
+            [
+              6400.145,
+              6577.982,
+              18.0
+            ],
+            [
+              6400.145,
+              6577.982,
+              8.0
+            ],
+            [
+              6400.145,
+              6577.982,
+              4.0
+            ]
+          ],
+          "preserved_action_type": "move_entity"
+        }
+      },
+      "result": {
+        "status": "ok",
+        "tick": 400,
+        "scheduled_tick": 400,
+        "entity_id": "uav_x1_forced_landing",
+        "path_length_m": 46.0
+      },
+      "motion_schedule": {
+        "terminal_tick": 458,
+        "endpoint_enu_m": [
+          6400.145,
+          6577.982,
+          4.0
+        ]
+      }
+    },
+    {
+      "tick": 455,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_crowd_clear_00",
+        "entity_id": "ped_x1_crowd_x1_00",
+        "waypoints_enu_m": [
+          [
+            6398.556,
+            6577.378,
+            0.0
+          ],
+          [
+            6402.996,
+            6562.978,
+            0.0
+          ],
+          [
+            6407.437,
+            6548.578,
+            0.0
+          ]
+        ],
+        "velocity_mps": 2.0,
+        "activity_type": "walking",
+        "post_activity_type": "observing"
+      },
+      "result": {
+        "status": "ok",
+        "tick": 455,
+        "scheduled_tick": 455,
+        "entity_id": "ped_x1_crowd_x1_00",
+        "path_length_m": 30.138218
+      },
+      "motion_schedule": {
+        "terminal_tick": 607,
+        "endpoint_enu_m": [
+          6407.437,
+          6548.578,
+          0.0
+        ]
+      }
+    },
+    {
+      "tick": 455,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_crowd_clear_01",
+        "entity_id": "ped_x1_crowd_x1_01",
+        "waypoints_enu_m": [
+          [
+            6396.867,
+            6581.432,
+            0.0
+          ],
+          [
+            6403.331,
+            6567.094,
+            0.0
+          ],
+          [
+            6409.795,
+            6552.757,
+            0.0
+          ]
+        ],
+        "velocity_mps": 2.0,
+        "activity_type": "walking",
+        "post_activity_type": "observing"
+      },
+      "result": {
+        "status": "ok",
+        "tick": 455,
+        "scheduled_tick": 455,
+        "entity_id": "ped_x1_crowd_x1_01",
+        "path_length_m": 31.454551
+      },
+      "motion_schedule": {
+        "terminal_tick": 613,
+        "endpoint_enu_m": [
+          6409.795,
+          6552.757,
+          0.0
+        ]
+      }
+    },
+    {
+      "tick": 455,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_crowd_clear_02",
+        "entity_id": "ped_x1_crowd_x1_02",
+        "waypoints_enu_m": [
+          [
+            6400.023,
+            6573.069,
+            0.0
+          ],
+          [
+            6402.891,
+            6560.772,
+            0.0
+          ],
+          [
+            6405.76,
+            6548.475,
+            0.0
+          ]
+        ],
+        "velocity_mps": 2.0,
+        "activity_type": "walking",
+        "post_activity_type": "observing"
+      },
+      "result": {
+        "status": "ok",
+        "tick": 455,
+        "scheduled_tick": 455,
+        "entity_id": "ped_x1_crowd_x1_02",
+        "path_length_m": 25.254267
+      },
+      "motion_schedule": {
+        "terminal_tick": 583,
+        "endpoint_enu_m": [
+          6405.76,
+          6548.475,
+          0.0
+        ]
+      }
+    },
+    {
+      "tick": 455,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_crowd_clear_03",
+        "entity_id": "ped_x1_crowd_x1_03",
+        "waypoints_enu_m": [
+          [
+            6395.065,
+            6585.254,
+            0.0
+          ],
+          [
+            6393.391,
+            6599.71,
+            0.0
+          ]
+        ],
+        "velocity_mps": 2.0,
+        "activity_type": "walking",
+        "post_activity_type": "observing"
+      },
+      "result": {
+        "status": "ok",
+        "tick": 455,
+        "scheduled_tick": 455,
+        "entity_id": "ped_x1_crowd_x1_03",
+        "path_length_m": 14.552602
+      },
+      "motion_schedule": {
+        "terminal_tick": 528,
+        "endpoint_enu_m": [
+          6393.391,
+          6599.71,
+          0.0
+        ]
+      }
+    },
+    {
+      "tick": 455,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_crowd_clear_04",
+        "entity_id": "ped_x1_crowd_x1_04",
+        "waypoints_enu_m": [
+          [
+            6401.097,
+            6568.47,
+            0.0
+          ],
+          [
+            6398.064,
+            6556.283,
+            0.0
+          ],
+          [
+            6395.031,
+            6544.097,
+            0.0
+          ]
+        ],
+        "velocity_mps": 2.0,
+        "activity_type": "walking",
+        "post_activity_type": "observing"
+      },
+      "result": {
+        "status": "ok",
+        "tick": 455,
+        "scheduled_tick": 455,
+        "entity_id": "ped_x1_crowd_x1_04",
+        "path_length_m": 25.116518
+      },
+      "motion_schedule": {
+        "terminal_tick": 581,
+        "endpoint_enu_m": [
+          6395.031,
+          6544.097,
+          0.0
+        ]
+      }
+    },
+    {
+      "tick": 455,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_crowd_clear_05",
+        "entity_id": "ped_x1_crowd_x1_05",
+        "waypoints_enu_m": [
+          [
+            6393.15,
+            6588.968,
+            0.0
+          ],
+          [
+            6391.742,
+            6598.767,
+            0.0
+          ]
+        ],
+        "velocity_mps": 2.0,
+        "activity_type": "walking",
+        "post_activity_type": "observing"
+      },
+      "result": {
+        "status": "ok",
+        "tick": 455,
+        "scheduled_tick": 455,
+        "entity_id": "ped_x1_crowd_x1_05",
+        "path_length_m": 9.89964
+      },
+      "motion_schedule": {
+        "terminal_tick": 505,
+        "endpoint_enu_m": [
+          6391.742,
+          6598.767,
+          0.0
+        ]
+      }
+    },
+    {
+      "tick": 455,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_crowd_clear_06",
+        "entity_id": "ped_x1_crowd_x1_06",
+        "waypoints_enu_m": [
+          [
+            6401.491,
+            6563.112,
+            0.0
+          ],
+          [
+            6395.765,
+            6552.623,
+            0.0
+          ],
+          [
+            6390.04,
+            6542.135,
+            0.0
+          ]
+        ],
+        "velocity_mps": 2.0,
+        "activity_type": "walking",
+        "post_activity_type": "observing"
+      },
+      "result": {
+        "status": "ok",
+        "tick": 455,
+        "scheduled_tick": 455,
+        "entity_id": "ped_x1_crowd_x1_06",
+        "path_length_m": 23.898952
+      },
+      "motion_schedule": {
+        "terminal_tick": 575,
+        "endpoint_enu_m": [
+          6390.04,
+          6542.135,
+          0.0
+        ]
+      }
+    },
+    {
+      "tick": 455,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_crowd_clear_07",
+        "entity_id": "ped_x1_crowd_x1_07",
+        "waypoints_enu_m": [
+          [
+            6391.204,
+            6592.565,
+            0.0
+          ],
+          [
+            6397.929,
+            6599.922,
+            0.0
+          ]
+        ],
+        "velocity_mps": 2.0,
+        "activity_type": "walking",
+        "post_activity_type": "observing"
+      },
+      "result": {
+        "status": "ok",
+        "tick": 455,
+        "scheduled_tick": 455,
+        "entity_id": "ped_x1_crowd_x1_07",
+        "path_length_m": 9.967501
+      },
+      "motion_schedule": {
+        "terminal_tick": 505,
+        "endpoint_enu_m": [
+          6397.929,
+          6599.922,
+          0.0
+        ]
+      }
+    },
+    {
+      "tick": 455,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_crowd_clear_08",
+        "entity_id": "ped_x1_crowd_x1_08",
+        "waypoints_enu_m": [
+          [
+            6396.696,
+            6582.535,
+            0.0
+          ],
+          [
+            6388.704,
+            6597.028,
+            0.0
+          ]
+        ],
+        "velocity_mps": 2.0,
+        "activity_type": "walking",
+        "post_activity_type": "observing"
+      },
+      "result": {
+        "status": "ok",
+        "tick": 455,
+        "scheduled_tick": 455,
+        "entity_id": "ped_x1_crowd_x1_08",
+        "path_length_m": 16.550502
+      },
+      "motion_schedule": {
+        "terminal_tick": 538,
+        "endpoint_enu_m": [
+          6388.704,
+          6597.028,
+          0.0
+        ]
+      }
+    },
+    {
+      "tick": 615,
+      "action": {
+        "type": "move_entity",
+        "action_id": "move_x1_safe_touchdown",
+        "entity_id": "uav_x1_forced_landing",
+        "waypoints_enu_m": [
+          [
+            6400.145,
+            6577.982,
+            4.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            0.8
+          ]
+        ],
+        "velocity_mps": 3.0,
+        "activity_type": "descending",
+        "post_activity_type": "landed",
+        "uav_corridor_validation": {
+          "status": "low_altitude_waypoints_preserved_and_building_clear",
+          "assigned_altitude_m": 50.0,
+          "original_waypoints_enu_m": [
+            [
+              6400.145,
+              6577.982,
+              4.0
+            ],
+            [
+              6400.145,
+              6577.982,
+              0.8
+            ]
+          ],
+          "preserved_action_type": "move_entity"
+        },
+        "terminal_feasibility": {
+          "model": "constant_speed_path_with_explicit_landing_reference_v2",
+          "dispatch_upper_bound_tick": 615,
+          "route_length_m": 3.2,
+          "available_ticks": 275,
+          "required_speed_mps": 0.116364,
+          "max_speed_mps": 8.0,
+          "home_pose_origin_z_m": 3.0,
+          "landing_reference_enu_m": [
+            6400.145,
+            6577.982,
+            0.8
+          ],
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5
+        }
+      },
+      "result": {
+        "status": "ok",
+        "tick": 615,
+        "scheduled_tick": 615,
+        "entity_id": "uav_x1_forced_landing",
+        "path_length_m": 3.2
+      },
+      "motion_schedule": {
+        "terminal_tick": 626,
+        "endpoint_enu_m": [
+          6400.145,
+          6577.982,
+          0.8
+        ]
+      }
+    }
+  ],
+  "actor_endpoints": {
+    "uav_x1_forced_landing": {
+      "ticks": [
+        896,
+        897,
+        898,
+        899,
+        900
+      ],
+      "stationary_landed": true,
+      "last": {
+        "tick": 900,
+        "entity_id": "uav_x1_forced_landing",
+        "label_class": "uav",
+        "asset_id": "uav.inspect.quad.v1",
+        "pos_enu": [
+          6400.145,
+          6577.982,
+          0.8
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 42.274913,
+        "state": "landed",
+        "activity_type": "landed",
+        "animation_hint": "landed",
+        "posture": "standing",
+        "social_state": "solo",
+        "task_id": "uav_x1_forced_landing.task",
+        "role": "mission_uav",
+        "state_sequence": [
+          "rain_patrol"
+        ],
+        "semantic_role": "rain_patrol",
+        "uav_corridor_role": "mission_uav",
+        "uav_corridor": {
+          "assigned_altitude_m": 50.0,
+          "altitude_layers_m": [
+            30.0,
+            50.0,
+            80.0
+          ],
+          "used_lateral_bypass": false
+        },
+        "assigned_altitude_m": 50.0,
+        "ground_reference_z_m": 3.0,
+        "ground_reference_source": "home_hover_pose_origin_v1",
+        "lifecycle": {
+          "auto_lifecycle_applied": true,
+          "home_pad_entity_id": "pad_home_uav_x1_forced_landing",
+          "home_hover_enu_m": [
+            6351.654,
+            6527.313,
+            3.0
+          ],
+          "mission_start_enu_m": [
+            6369.849,
+            6550.439,
+            32.0
+          ],
+          "requires_takeoff": true,
+          "requires_landing_or_terminal_resolution": true,
+          "assigned_altitude_m": 50.0,
+          "waypoint_repair_applied": true
+        },
+        "activation_tick": 0,
+        "category": "uav",
+        "route_waypoints_enu_m": [
+          [
+            6351.654,
+            6527.313,
+            24.0
+          ],
+          [
+            6369.849,
+            6550.439,
+            32.0
+          ],
+          [
+            6369.849,
+            6550.439,
+            50.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            50.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            18.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            8.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            4.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            0.8
+          ]
+        ],
+        "planned_route_waypoints_enu_m": [
+          [
+            6351.654,
+            6527.313,
+            24.0
+          ],
+          [
+            6369.849,
+            6550.439,
+            32.0
+          ],
+          [
+            6369.849,
+            6550.439,
+            50.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            50.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            18.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            8.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            4.0
+          ],
+          [
+            6400.145,
+            6577.982,
+            0.8
+          ]
+        ],
+        "control_state": {
+          "safe_hold_active": false
+        },
+        "mission_state": {
+          "unsafe": false
+        },
+        "communication_state": {
+          "communication_unavailable": false
+        }
+      }
+    }
+  },
+  "audit_counts": {
+    "rows": 36,
+    "ok_handlers": 36,
+    "omitted": 0,
+    "ok_move_handlers": 14
+  },
+  "capture_dependency": {
+    "proposed_class": "A",
+    "changed_owners_and_first_recorded_fields": {
+      "tower_x1_c2": {
+        "first_changed_tick": 181,
+        "fields": [
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "state": "rain_stressed",
+          "activity_type": "rain_stressed"
+        },
+        "after": {
+          "state": "online",
+          "activity_type": "online"
+        }
+      },
+      "uav_x1_forced_landing": {
+        "first_changed_tick": 266,
+        "fields": [
+          "pos_enu",
+          "vel_mps",
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "pos_enu": [
+            6369.849,
+            6550.439,
+            32.6
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            6.0
+          ],
+          "state": "airborne",
+          "activity_type": "airborne"
+        },
+        "after": {
+          "pos_enu": [
+            6369.849,
+            6550.439,
+            32.0
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "state": "cruise",
+          "activity_type": "cruise"
+        }
+      },
+      "ped_x1_crowd_x1_00": {
+        "first_changed_tick": 451,
+        "fields": [
+          "pos_enu",
+          "vel_mps",
+          "yaw_deg",
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "pos_enu": [
+            6398.614421,
+            6577.188526,
+            0.0
+          ],
+          "vel_mps": [
+            0.584211,
+            -1.894737,
+            0.0
+          ],
+          "yaw_deg": -72.863725,
+          "state": "walking",
+          "activity_type": "walking"
+        },
+        "after": {
+          "pos_enu": [
+            6398.556,
+            6577.378,
+            0.0
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "yaw_deg": -69.203,
+          "state": "observing",
+          "activity_type": "observing"
+        }
+      },
+      "ped_x1_crowd_x1_01": {
+        "first_changed_tick": 451,
+        "fields": [
+          "pos_enu",
+          "vel_mps",
+          "yaw_deg",
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "pos_enu": [
+            6396.948823,
+            6581.250506,
+            0.0
+          ],
+          "vel_mps": [
+            0.818228,
+            -1.814937,
+            0.0
+          ],
+          "yaw_deg": -65.732722,
+          "state": "walking",
+          "activity_type": "walking"
+        },
+        "after": {
+          "pos_enu": [
+            6396.867,
+            6581.432,
+            0.0
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "yaw_deg": -65.689,
+          "state": "observing",
+          "activity_type": "observing"
+        }
+      },
+      "ped_x1_crowd_x1_02": {
+        "first_changed_tick": 451,
+        "fields": [
+          "pos_enu",
+          "vel_mps",
+          "yaw_deg",
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "pos_enu": [
+            6400.067813,
+            6572.876859,
+            0.0
+          ],
+          "vel_mps": [
+            0.448125,
+            -1.921406,
+            0.0
+          ],
+          "yaw_deg": -76.871722,
+          "state": "walking",
+          "activity_type": "walking"
+        },
+        "after": {
+          "pos_enu": [
+            6400.023,
+            6573.069,
+            0.0
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "yaw_deg": -74.16,
+          "state": "observing",
+          "activity_type": "observing"
+        }
+      },
+      "ped_x1_crowd_x1_03": {
+        "first_changed_tick": 451,
+        "fields": [
+          "pos_enu",
+          "vel_mps",
+          "yaw_deg",
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "pos_enu": [
+            6395.042068,
+            6585.452027,
+            0.0
+          ],
+          "vel_mps": [
+            -0.229315,
+            1.980274,
+            0.0
+          ],
+          "yaw_deg": 96.605412,
+          "state": "walking",
+          "activity_type": "walking"
+        },
+        "after": {
+          "pos_enu": [
+            6395.065,
+            6585.254,
+            0.0
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "yaw_deg": -63.665,
+          "state": "observing",
+          "activity_type": "observing"
+        }
+      },
+      "ped_x1_crowd_x1_04": {
+        "first_changed_tick": 451,
+        "fields": [
+          "pos_enu",
+          "vel_mps",
+          "yaw_deg",
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "pos_enu": [
+            6401.048857,
+            6568.276556,
+            0.0
+          ],
+          "vel_mps": [
+            -0.481429,
+            -1.934444,
+            0.0
+          ],
+          "yaw_deg": -103.975386,
+          "state": "walking",
+          "activity_type": "walking"
+        },
+        "after": {
+          "pos_enu": [
+            6401.097,
+            6568.47,
+            0.0
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "yaw_deg": -80.662,
+          "state": "observing",
+          "activity_type": "observing"
+        }
+      },
+      "ped_x1_crowd_x1_05": {
+        "first_changed_tick": 451,
+        "fields": [
+          "pos_enu",
+          "vel_mps",
+          "yaw_deg",
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "pos_enu": [
+            6393.12184,
+            6589.16398,
+            0.0
+          ],
+          "vel_mps": [
+            -0.2816,
+            1.9598,
+            0.0
+          ],
+          "yaw_deg": 98.176757,
+          "state": "walking",
+          "activity_type": "walking"
+        },
+        "after": {
+          "pos_enu": [
+            6393.15,
+            6588.968,
+            0.0
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "yaw_deg": -62.063,
+          "state": "observing",
+          "activity_type": "observing"
+        }
+      },
+      "ped_x1_crowd_x1_06": {
+        "first_changed_tick": 451,
+        "fields": [
+          "pos_enu",
+          "vel_mps",
+          "yaw_deg",
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "pos_enu": [
+            6401.395567,
+            6562.937183,
+            0.0
+          ],
+          "vel_mps": [
+            -0.954333,
+            -1.748167,
+            0.0
+          ],
+          "yaw_deg": -118.630357,
+          "state": "walking",
+          "activity_type": "walking"
+        },
+        "after": {
+          "pos_enu": [
+            6401.491,
+            6563.112,
+            0.0
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "yaw_deg": -93.062,
+          "state": "observing",
+          "activity_type": "observing"
+        }
+      },
+      "ped_x1_crowd_x1_07": {
+        "first_changed_tick": 451,
+        "fields": [
+          "pos_enu",
+          "vel_mps",
+          "yaw_deg",
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "pos_enu": [
+            6391.3385,
+            6592.71214,
+            0.0
+          ],
+          "vel_mps": [
+            1.345,
+            1.4714,
+            0.0
+          ],
+          "yaw_deg": 47.56971,
+          "state": "walking",
+          "activity_type": "walking"
+        },
+        "after": {
+          "pos_enu": [
+            6391.204,
+            6592.565,
+            0.0
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "yaw_deg": -61.267,
+          "state": "observing",
+          "activity_type": "observing"
+        }
+      },
+      "ped_x1_crowd_x1_08": {
+        "first_changed_tick": 451,
+        "fields": [
+          "pos_enu",
+          "vel_mps",
+          "yaw_deg",
+          "state",
+          "activity_type"
+        ],
+        "before": {
+          "pos_enu": [
+            6396.599711,
+            6582.709614,
+            0.0
+          ],
+          "vel_mps": [
+            -0.962892,
+            1.746145,
+            0.0
+          ],
+          "yaw_deg": 118.874039,
+          "state": "walking",
+          "activity_type": "walking"
+        },
+        "after": {
+          "pos_enu": [
+            6396.696,
+            6582.535,
+            0.0
+          ],
+          "vel_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "yaw_deg": -61.261046,
+          "state": "observing",
+          "activity_type": "observing"
+        }
+      }
+    },
+    "weather_changed": true,
+    "source_sensor_geometry_modified": false,
+    "comparison": "same-seed current authored source replay; historical captured trajectory hash unavailable",
+    "first_changed_pixel": "NOT_MEASURED",
+    "formal_capture_channel_ids": "NOT_RESOLVED_FROM_THIS_PACKET"
+  },
+  "independent_adoption_status": "PENDING",
+  "published210_modified": false,
+  "ue_capture_started": false
+}

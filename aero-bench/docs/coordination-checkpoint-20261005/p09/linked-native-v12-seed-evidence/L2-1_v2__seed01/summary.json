@@ -1,0 +1,65 @@
+{
+  "schema_version": "p09.linked-native-causal/v12",
+  "episode_id": "L2-1_v2__seed01",
+  "seed": 1,
+  "scenario_id": "L2-1_v2",
+  "source_refs": [
+    "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/event_script.json",
+    "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/scene_setup.json"
+  ],
+  "guard_version": null,
+  "healthy_control": false,
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_l2_1_v2": 3000000000,
+    "station_degraded": 26000000000,
+    "uav_link_response": 30000000000,
+    "patrol_resume_via_backup_link": 39500000000,
+    "lifecycle_landing_uav_l2_1_v2": 47500000000,
+    "p09_actor_observed_station_loss": 27000000000
+  },
+  "unfired_events": [],
+  "pose_and_visual_differences_from_same_seed_source_replay": {
+    "uav_l2_1_v2": {
+      "first_changed_tick": 271,
+      "fields": [
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "state": "cruise",
+        "activity_type": "cruise"
+      },
+      "after": {
+        "state": "hover",
+        "activity_type": "hover"
+      }
+    },
+    "tower_l2_1_v2": {
+      "first_changed_tick": 346,
+      "fields": [
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "state": "backup_link",
+        "activity_type": "backup_link"
+      },
+      "after": {
+        "state": "degraded",
+        "activity_type": "degraded"
+      }
+    }
+  },
+  "weather_changed": false,
+  "adoption_class": "A",
+  "published210_modified": false,
+  "collection_status": "one-shot collection pending final freeze",
+  "iteration_count": 8,
+  "backend": "p01.ns3.frozen-wifi/v8-switch-completion",
+  "duration_ticks": 900,
+  "motion_acquisition": null,
+  "output_dir": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed01/adopted",
+  "motion_scope": "authored waypoint engine; not PX4 motion feedback",
+  "missing_event_disposition": "complete",
+  "rf_weather_scope": "not amplified; dimensionless rain is not an observed mm/h rate"
+}

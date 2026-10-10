@@ -1,0 +1,644 @@
+{
+  "schema_version": "p09.input-assembly-verification/v2",
+  "episodes_checked": 36,
+  "errors": [],
+  "ue_truth_frames": 32436,
+  "planned_capture_grid_frames": 6516,
+  "ue_entity_rows": 1391374,
+  "new_simulations": 0,
+  "actual_sensor_captures": 0,
+  "results": [
+    {
+      "episode_id": "L2-1_v1__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L2-1_v1__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L2-1_v1__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L2-1_v2__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L2-1_v2__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L2-1_v2__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L5-1_v1__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L5-1_v1__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L5-1_v1__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L5-1_v2__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L5-1_v2__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L5-1_v2__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-1_v1__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-1_v1__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-1_v1__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-1_v2__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-1_v2__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-1_v2__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-2_v1__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-2_v1__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-2_v1__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-2_v2__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-2_v2__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-2_v2__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "REVIEWED_CAUSAL_RECEIPT_AND_LANDING",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-4_v1__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": true,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-4_v1__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-4_v1__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "INCOMPLETE",
+      "unfired_events": [
+        "multi_uav_hold_entry",
+        "multi_uav_safe_hold",
+        "alternate_channel",
+        "lifecycle_landing_uav_digital_l6_4_v1",
+        "lifecycle_landing_uav_digital_l6_4_v1_secondary",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v1",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v1_secondary",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v1",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v1_secondary",
+        "alternate_channel:local:uav_digital_l6_4_v1",
+        "alternate_channel:local:uav_digital_l6_4_v1_secondary"
+      ],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-4_v2__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": true,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-4_v2__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "L6-4_v2__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "INCOMPLETE",
+      "unfired_events": [
+        "multi_uav_hold_entry",
+        "multi_uav_safe_hold",
+        "alternate_channel",
+        "lifecycle_landing_uav_digital_l6_4_v2",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v2",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v2",
+        "alternate_channel:local:uav_digital_l6_4_v2"
+      ],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed00",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed01",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    },
+    {
+      "episode_id": "X5_comm_failure_to_pad_contention__seed02",
+      "all_entry_files_exist": true,
+      "frame_and_weather_clock_complete": true,
+      "source_files_match": true,
+      "story_status": "ALL_DECLARED_EVENTS_FIRED",
+      "unfired_events": [],
+      "ue_capture_tick_range": [
+        0,
+        900
+      ],
+      "planned_capture_frames": 181,
+      "capture_background_bindings_present": true,
+      "retained_extra_suffix_bytes_verified": false,
+      "technical_window_file_checks_passed": true,
+      "actual_ue_execution_or_sensor_calibration_verified": false
+    }
+  ]
+}

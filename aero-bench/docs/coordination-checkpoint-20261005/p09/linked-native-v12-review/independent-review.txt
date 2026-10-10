@@ -1,0 +1,10 @@
+Independent existing p09_causal_crossreview leaf, read-only assigned source/numerical review:
+- All15 code/test snapshot hashes match current bytes.
+- Actual result packet1177 RX58.503246845s carries arbitration58s; due61s agrees with dispatchtick610.
+- Repeated offline tests using unchanged native receipts allow654 and deny655/656/660/900 for all4 service facts; global580/581 and no interpreter all yieldtrue610, false609.
+- All20 saved probe receipts structurally equal finalaccepted records.
+- All6 requested identity fields differ across4 phase rows.
+- Both actors stationary landed ticks896..900 at distincthomes.
+- Numerical initialization denies arbitration and received-resulttimer; no invented result.
+- No source/numerical defect found in assigned scope; parent/native adoption and allseed acceptance remain pending.
+- X5 audit23rows =18ok+5omitted. Do not call these23physical motions.

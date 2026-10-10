@@ -1,0 +1,128 @@
+{
+  "schema_version": "p01.first-epoch820.independent-result-review/v1",
+  "verdict": "PASS",
+  "result_ref": "/mnt/data2/weizhiwei/AERO_WORLD/design/p01_generic/qwen_preparation/first_epoch_820_result.json",
+  "findings": [],
+  "verification": "Completed artifacts and CPU cached-array arithmetic only. No Qwen forward, training, inference, simulation, source changes or old checkpoint decompression.",
+  "checks": {
+    "updates": "Both receipts contain exactly282 B2 updates, additional1..282 and cumulative539..820; actual arm orders equal each other and persisted schedule.",
+    "exposure": "564 distinct suffix indices match fixed seed0 first1640 permutation positions1076..1639, disjoint from its prior1076 positions; completed permutation has1640 unique windows. Previous prefix acceptance reused; no old-prefix re-audit.",
+    "optimizer": "Each arm records own last538 source checkpoint, head optimizer steps[538] before/[820] after, unchanged AdamW lr0.0001/weight_decay0.01, and final checkpoint metadata820. Result review uses persisted receipts, not a new model/checkpoint execution.",
+    "VALID": "Both cached PMFs have shape[820,2,11]. Exact equal targets[820,2,10], target_known and compatible arrays (including UNKNOWN NaNs) across arms. L3470 knownCDF cells/346 knownterminal; P8200/820.",
+    "metrics": "Independently recomputed threshold0.5 confusion/F1, known-cell RPS over all10 columns, terminal Brier/stable BCE, and conditional timing. CPU cumulative_loss independently reproduces per-predicate Hybrid and all three full-known-cell losses. Floating differences within1e-7 from float32 reductions.",
+    "timing": "First10 PMF bins only, conditional E[T|T<=5s]. Exact singleton supported positive first-flips: L26, P60; L12 interval-censored flips excluded. No timestamp assigned to class11. K8 P all60 exact flips include28 detection false negatives; detected subset32 kept separate. All timing mass finite/positive.",
+    "report_statistics": "Actual282 batch Hybrid mean matches report; it remains mean of B2 objectives with their own known-cell denominators, not full TRAIN reevaluation.",
+    "selection": "Endpoint metadata820 replaces stale128 helper metadata. Receipts specify one full820 VALID evaluation per arm, fixed threshold and no checkpoint selection; no extra evaluation was performed by reviewer."
+  },
+  "arms": [
+    {
+      "K": 1,
+      "receipt_ref": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/K1/receipt.json",
+      "predictions_ref": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/K1/full_VALID_predictions.npz",
+      "additional_updates": 282,
+      "optimizer_head_step_before": [
+        538
+      ],
+      "optimizer_head_step_after": [
+        820
+      ],
+      "VALID_windows": 820,
+      "per_predicate": {
+        "L": {
+          "tp": 38,
+          "fp": 23,
+          "fn": 0,
+          "tn": 285,
+          "f1": 0.7676767676767676,
+          "RPS": 0.026328419567057865,
+          "known_F10": 346,
+          "known_cdf_cells": 3470,
+          "known_exact_flips": 26,
+          "interval_censored_flips": 12,
+          "timing_all_denominator": 26,
+          "timing_detected_denominator": 26,
+          "missed_known_exact_flips": 0,
+          "timing_mae_all_known_flips_s": 0.9924644422550789
+        },
+        "P": {
+          "tp": 60,
+          "fp": 127,
+          "fn": 0,
+          "tn": 633,
+          "f1": 0.48582995951417,
+          "RPS": 0.0470442374780948,
+          "known_F10": 820,
+          "known_cdf_cells": 8200,
+          "known_exact_flips": 60,
+          "interval_censored_flips": 0,
+          "timing_all_denominator": 60,
+          "timing_detected_denominator": 60,
+          "missed_known_exact_flips": 0,
+          "timing_mae_all_known_flips_s": 1.1300984274727253
+        }
+      },
+      "full_losses": {
+        "hybrid": 0.21033573875124517,
+        "rps": 0.040884522149562515,
+        "cumulative_bce": 0.16976238787174225
+      }
+    },
+    {
+      "K": 8,
+      "receipt_ref": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/K8/receipt.json",
+      "predictions_ref": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/K8/full_VALID_predictions.npz",
+      "additional_updates": 282,
+      "optimizer_head_step_before": [
+        538
+      ],
+      "optimizer_head_step_after": [
+        820
+      ],
+      "VALID_windows": 820,
+      "per_predicate": {
+        "L": {
+          "tp": 38,
+          "fp": 1,
+          "fn": 0,
+          "tn": 307,
+          "f1": 0.987012987012987,
+          "RPS": 0.01604678352772531,
+          "known_F10": 346,
+          "known_cdf_cells": 3470,
+          "known_exact_flips": 26,
+          "interval_censored_flips": 12,
+          "timing_all_denominator": 26,
+          "timing_detected_denominator": 26,
+          "missed_known_exact_flips": 0,
+          "timing_mae_all_known_flips_s": 1.0042173125078275
+        },
+        "P": {
+          "tp": 32,
+          "fp": 25,
+          "fn": 28,
+          "tn": 735,
+          "f1": 0.5470085470085471,
+          "RPS": 0.035497567051317645,
+          "known_F10": 820,
+          "known_cdf_cells": 8200,
+          "known_exact_flips": 60,
+          "interval_censored_flips": 0,
+          "timing_all_denominator": 60,
+          "timing_detected_denominator": 32,
+          "missed_known_exact_flips": 28,
+          "timing_mae_all_known_flips_s": 1.2005829397205376
+        }
+      },
+      "full_losses": {
+        "hybrid": 0.15330213867320447,
+        "rps": 0.02971400152898294,
+        "cumulative_bce": 0.14778542518615723
+      }
+    }
+  ],
+  "interpretation_limits": [
+    "Oracle/noisy-future information diagnostic, not deployable forecast evaluation.",
+    "K8 L F1 improves to0.987012987; K8 P F1 is0.547008547 with28false negatives. K1 P F1 rises with127false positives and higher RPS0.047044237, so improvedF1 does not establish improved probability accuracy.",
+    "Original128 recoverable compression and preserved538 artifacts were not modified or reopened by this bounded result review."
+  ]
+}

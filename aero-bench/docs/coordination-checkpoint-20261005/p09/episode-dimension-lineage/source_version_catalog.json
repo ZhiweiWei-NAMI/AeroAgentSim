@@ -1,0 +1,266 @@
+{
+ "schema_version": "p09.lineage.source-version-catalog/v2",
+ "status": "EXTRACTION_PROVISIONAL_NOT_ACCEPTANCE",
+ "hash_policy": "no new digests computed; known version labels only",
+ "adoption_basis_rule": "current-adopted status is taken ONLY from documentary adoption statements (change-table release_adoption / original_model_version; current_state_facts.md released legacy supplements; adoption_configuration.json); path or source existence supports coverage only and never adoption",
+ "v14_package_vs_producer_revisions": {
+  "principle": "the 36x8 inherited package label (v14) never proves all eight producers changed; producer_revision is mapped per dimension from projection_receipt.json files lists",
+  "package_label": "p09.ue-input-overlay/v14 (package label)",
+  "per_episode_source_revision_values": [
+   "p09.linked-native-causal/v12",
+   "p09.receipt_replay/v5/run1"
+  ],
+  "per_episode_metadata_revision_values": [
+   "",
+   "p09.linked-source-adoption/v13-metadata"
+  ],
+  "source_revision_groups": {
+   "source_revision=p09.linked-native-causal/v12 | metadata_revision=p09.linked-source-adoption/v13-metadata": {
+    "episodes": 30,
+    "members": [
+     "L2-1_v1__seed00",
+     "L2-1_v1__seed01",
+     "L2-1_v1__seed02",
+     "L2-1_v2__seed00",
+     "L2-1_v2__seed01",
+     "L2-1_v2__seed02",
+     "L5-1_v1__seed00",
+     "L5-1_v1__seed01",
+     "L5-1_v1__seed02",
+     "L5-1_v2__seed00",
+     "L5-1_v2__seed01",
+     "L5-1_v2__seed02",
+     "L6-1_v1__seed00",
+     "L6-1_v1__seed01",
+     "L6-1_v1__seed02",
+     "L6-1_v2__seed00",
+     "L6-1_v2__seed01",
+     "L6-1_v2__seed02",
+     "L6-4_v1__seed00",
+     "L6-4_v1__seed01",
+     "L6-4_v1__seed02",
+     "L6-4_v2__seed00",
+     "L6-4_v2__seed01",
+     "L6-4_v2__seed02",
+     "X1_rain_to_c2loss_to_forced_landing__seed00",
+     "X1_rain_to_c2loss_to_forced_landing__seed01",
+     "X1_rain_to_c2loss_to_forced_landing__seed02",
+     "X5_comm_failure_to_pad_contention__seed00",
+     "X5_comm_failure_to_pad_contention__seed01",
+     "X5_comm_failure_to_pad_contention__seed02"
+    ]
+   },
+   "source_revision=p09.receipt_replay/v5/run1 | metadata_revision=ABSENT": {
+    "episodes": 6,
+    "members": [
+     "L6-2_v1__seed00",
+     "L6-2_v1__seed01",
+     "L6-2_v1__seed02",
+     "L6-2_v2__seed00",
+     "L6-2_v2__seed01",
+     "L6-2_v2__seed02"
+    ]
+   }
+  },
+  "files_actually_listed_in_projection_receipts": [
+   "actions.json",
+   "adoption_profile.json",
+   "cached_clearance_provenance.json",
+   "causal_event_bindings.jsonl.gz",
+   "command_receipts.json",
+   "command_receipts.jsonl.gz",
+   "event_admission.json",
+   "event_script.json",
+   "event_trace.jsonl",
+   "local_predicate_evaluations.jsonl.gz",
+   "metadata_migration.json",
+   "mission_trajectory.jsonl.gz",
+   "predicate_binding_definitions.json",
+   "predicate_flips.jsonl",
+   "receipt.json",
+   "receipt_timeline.json",
+   "receiver_observed_states.jsonl",
+   "run_config.json",
+   "scene_setup.json",
+   "summary.json",
+   "trajectories.jsonl",
+   "weather.jsonl"
+  ],
+  "producer_by_file": {
+   "event_script.json": "authored event script producer",
+   "scene_setup.json": "authored scene producer",
+   "adoption_profile.json": "adoption metadata (not an episode producer)",
+   "summary.json": "authored plan/closure producer (v12 adopted summary)",
+   "actions.json": "authored plan/closure producer (v12 adopted actions)",
+   "event_admission.json": "authored plan/closure producer (v12 adopted admission)",
+   "event_trace.jsonl": "event realization producer (v12)",
+   "weather.jsonl": "authored weather schedule producer (v12)",
+   "command_receipts.json": "command receipt producer (v12; RX evidence only, not completed physical actions)",
+   "receiver_observed_states.jsonl": "communication observation producer (v12)",
+   "predicate_flips.jsonl": "predicate evaluation producer (v12)",
+   "trajectories.jsonl": "motion producer (v12; authored waypoint engine, not PX4 feedback)",
+   "receipt.json": "receipt replay evidence (v5/run1; RX/accept timing, not completed physical actions)",
+   "receipt_timeline.json": "receipt replay evidence (v5/run1)",
+   "run_config.json": "replay run configuration (v5/run1)",
+   "cached_clearance_provenance.json": "clearance provenance cache (v5/run1)",
+   "causal_event_bindings.jsonl.gz": "causal event bindings (v5/run1; event-layer evidence, not a weather producer)",
+   "command_receipts.jsonl.gz": "command receipts (v5/run1; RX evidence only)",
+   "local_predicate_evaluations.jsonl.gz": "predicate evaluations (v5/run1)",
+   "mission_trajectory.jsonl.gz": "mission trajectory (v5/run1)",
+   "metadata_migration.json": "metadata migration record (not an episode producer)",
+   "predicate_binding_definitions.json": "predicate binding definitions (not an episode producer)"
+  },
+  "per_dimension_producer_revision": {
+   "communication": "24 of the 30 v12/v13-metadata episodes have the copied native v12 gateway expected-sequence producer artifact (receiver_observed_states.jsonl, schema p09.gateway-scheduled-sequence-ttl/v1, state_source native receiver RX vs declared expected sequence) - distinct from the published old q formula (p09.LP.q-derived/v1) and from the accepted-TX matured-TTL cohort (p09.LP.mature-ttl-cohort/v1); six L5-1_v1/v2 seed episodes have NO mapped receiver artifact in this export: receiver coverage NOT established by this export (unmapped is not evidence of absence); six L6-2 episodes (p09.receipt_replay/v5/run1): receipt.json/receipt_timeline.json replay evidence, not a new physical comm producer; NOT all comm changed, NOT all native",
+   "computation": "1.6.0 unchanged (no compute file listed in projection receipts)",
+   "energy/thermal": "2.2.0 unchanged",
+   "motion/geometry": "30 episodes: v12 authored waypoint engine trajectories.jsonl listed (physical_motion_scope = authored waypoint engine, not PX4 motion feedback); 6 L6-2 episodes: receipt_replay/v5/run1 output",
+   "localization/navigation": "2.2.0 unchanged",
+   "weather/environment": "v12 weather.jsonl authored schedule inherited (30 episodes); 6 L6-2 episodes list no weather file (no weather producer change evidenced); no new weather dynamics anywhere",
+   "perception/capture": "capture config projected (render_host_config + capture_window.json planned times); no new capture producer; UE capture not yet run",
+   "facility/task state": "2.2.0 unchanged (no facility file listed beyond v12/v5 event sources)"
+  },
+  "not_recomputed_rule": "empty new event_realization is marked NOT_RECOMPUTED, which is not zero events"
+ },
+ "model_visible_vs_archive_only": {
+  "model_visible": "observer evidence actually available by cutoff in the chosen experimental view (NEVER mere readable-file existence); manifests/occupancy/event_script/future plans/semantic names/terminal states stay archive-only unless independently known by cutoff; config pointers are not actual observed input",
+  "archive_only": "archive/address-only unless known by cutoff: full event_script/scene_setup, future fault and weather schedules, terminal/hidden control, semantic episode names, manifests/occupancy",
+  "known_plan_experiments": "explicit known-plan experiments (authored schedules, planned fault injection, ARM windows) carry their own labels and are never counted as observed model-visible history"
+ },
+ "lp_definitions": {
+  "q_derived": "definition_id=p09.LP.q-derived/v1 (published old q-based scalar L/P; source distribution/statistics not demonstrated per root causal summary)",
+  "gateway_declared_sequence": "definition_id=p09.LP.gateway-declared-sequence/v1 (gateway declared-expected-sequence deadline stats: schema p09.gateway-scheduled-sequence-ttl/v1, state_source 'native receiver RX versus declared expected sequence'; counts mature_expected/timely_received over declared expected sequences; UNKNOWN when no_mature_expected_sequence)",
+  "mature_ttl_cohort": "definition_id=p09.LP.mature-ttl-cohort/v1 (accepted-TX matured TTL cohort: strict RX<firstTX+TTL; count actual available_time<=cutoff; no timely RX means L undefined, never zero; incomplete compute tasks remain pending/right-censored without hindsight outcomes)"
+ },
+ "evidence_axes": {
+  "rule": "THREE separate evidence axes, never collapsed: (a) producer/source lineage = log_ref, producer/source_ref, source_version_or_hash, source_family; (b) source schema availability-time fields/support = time_support_recorded, time_support_planned (receiver rows carry observation_ns/available_ns at schema level); (c) confirmed per-run consumer/cutoff use = current_consumer tier + available_time. Axis (a) existence never implies (c); consumer=0 never implies logs lack availability-time fields (axis b)",
+  "axis_a_producer_source_lineage": "log_ref; producer/source_ref; source_version_or_hash; source_family",
+  "axis_b_schema_availability_time_support": "time_support_recorded (declared reference grid; receiver schema observation_ns/available_ns header-verified); time_support_planned (planned capture schedule)",
+  "axis_c_confirmed_consumer_cutoff_use": "current_consumer [tier=...] + available_time (UNKNOWN_no_actual_ingest_receipt on all 1680 rows)"
+ },
+ "split_group_semantics": {
+  "rule": "ONE split policy in BOTH tables: scenario_family = scenario_id stripped trailing _vN (39); base_episode_family = scenario_family + original seed (117); split_group = scenario_family everywhere (conservative entire-family/all-seeds grouping). Producer source_family is a separate producer label, not a split level. ORIGINAL scenario+seed and all versions/overlays/load branches/windows stay together; never derived from revision; the inventory makes NO actual TRAIN/VALID assignment claim",
+  "base_families": 39,
+  "note": "39 base families behind 70 scenario_ids: 25 paired v1/v2, 3 triple (L4-3/L4-5/L5-1 v1/v2/v3), 5 single-version L-series, 6 X-named episodes; new-scenario generalization claims require the ENTIRE base family across ALL seeds held out",
+  "transported_q": "ORACLE_ONLY: transported_q TRUE future + TRAIN-frozen Gaussian noise is an oracle diagnostic, never a historical available prediction input"
+ },
+ "versions": [
+  {
+   "label": "compute_comm:1.6.0",
+   "producer": "aeroworld_discrete_compute_comm_sim",
+   "scope": "all 210 (published/reference output)",
+   "adoption": "current_adoption_unconfirmed (published/reference output; actual per-run consumer adoption unconfirmed, matching confirmed actual_consumer_confirmed=0; scope/adoption previously based on paths only)",
+   "paths": [
+    "aw_data/compute_comm_supplement/<episode>/{summary.json,simulation_manifest.json}",
+    "aw_data/objective_semantic_truth/<episode>/{communication_state,compute_state}.jsonl"
+   ],
+   "coverage_claim": "manifest-asserted + path-existence checked; field-observed only for representative episodes"
+  },
+  {
+   "label": "domain_state:2.2.0",
+   "producer": "aeroworld_domain_state_observation_sim",
+   "scope": "all 210 (published/reference output)",
+   "adoption": "current_adoption_unconfirmed (published/reference output; actual per-run consumer adoption unconfirmed, matching confirmed actual_consumer_confirmed=0; scope/adoption previously based on paths only)",
+   "paths": [
+    "aw_data/objective_semantic_truth/<episode>/domain_state_observations.jsonl"
+   ],
+   "coverage_claim": "path-existence checked; per-family row presence not read"
+  },
+  {
+   "label": "capture_filtered_boundary(unversioned)",
+   "producer": "server semantic pipeline + UE capture",
+   "scope": "all 210",
+   "adoption": "current_adoption",
+   "boundary_files": [
+    "episode_manifest.json",
+    "trajectories.jsonl",
+    "truth_frames.jsonl",
+    "weather_meta.jsonl",
+    "render_host_config.json",
+    "scene_occupancy_manifest.json"
+   ],
+   "paths": [
+    "aw_data/render_ready_episodes_capture_filtered/<episode>/{episode_manifest.json,trajectories.jsonl,truth_frames.jsonl,weather_meta.jsonl,render_host_config.json,scene_occupancy_manifest.json} (corpus layout; per-episode exact refs in existing_evidence_index.per_episode_canonical)"
+   ],
+   "coverage_claim": "path-existence checked per episode and file; newest boundary file 2026-09-24"
+  },
+  {
+   "label": "p09.ue-input-overlay/v14 (assembly v2, pull_entry v2)",
+   "commit": "a9a6f8d87d86c410cd22f72f399abc3b09e942ab (parent-verified; not reverified here)",
+   "scope": "36 episodes technical input, original 0..90s window",
+   "adoption": "output_coverage_candidate",
+   "paths": [
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/ue_input_overlay_v14/source_manifest.json",
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/ue_input_overlay_v14/capture_filtered_updates"
+   ],
+   "per_episode_refs": "existing_evidence_index.json -> v14_exact36_source_manifest.entries (exact source/artifact refs for all 36 episodes, digest fields excluded)",
+   "coverage_claim": "source_manifest.json read this session: 36 entries with exact source_output/current_trajectory/base_capture_dir and per-file source/package_path; original210_modified=false; empty new event_realization = NOT_RECOMPUTED (not zero)"
+  },
+  {
+   "label": "compute_source_all210_v2_reference",
+   "scope": "210 episodes",
+   "adoption": "output_coverage_NOT_adopted",
+   "paths": [
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/compute_source_all210_v2_reference/batch_receipt.json"
+   ],
+   "per_episode_refs": "existing_evidence_index.json -> low_load_exact210_run_mappings.mappings (exact output dirs for all 210)",
+   "coverage_claim": "batch_receipt.json read this session: 210 exact run mappings (producer p09.compute.local-resource-fifo/v2, COMPLETED); LOW_LOAD_REFERENCE_ONLY, adopted_as_final_workload=false — coverage never adoption"
+  },
+  {
+   "label": "p09.compute.local-resource-fifo/v3 (business requests)",
+   "scope": "6 episodes x normal/congested branches",
+   "episodes": [
+    "L2-3_v1__seed00",
+    "L2-3_v1__seed01",
+    "L2-3_v1__seed02",
+    "L6-2_v1__seed00",
+    "L6-2_v1__seed01",
+    "L6-2_v1__seed02"
+   ],
+   "adoption": "candidate",
+   "paths": [
+    "design/p09/compute_resource/business_group_batch_review.json",
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/compute_business_requests_v3_pilot",
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/compute_business_group_seeds_v3"
+   ],
+   "per_episode_refs": "existing_evidence_index.json -> business_exact12_run_outputs.runs (12 exact run output dirs)",
+   "coverage_claim": "receipts read; independent review verdict PASS_REPAIRED_CODE_AND_ACTUAL_TWELVE_RUNS; mechanism evidence only, not 210-wide adoption"
+  },
+  {
+   "label": "receipt replay v4/v5 candidates",
+   "scope": "L6-2 seed batch",
+   "adoption": "plan_adopted_pending_combined_release_freeze (recapture required)",
+   "episodes": [
+    "L6-2_v1__seed00",
+    "L6-2_v1__seed01",
+    "L6-2_v1__seed02",
+    "L6-2_v2__seed00",
+    "L6-2_v2__seed01",
+    "L6-2_v2__seed02"
+   ],
+   "paths": [
+    "design/p09/source_group_plan/current_radio_checkpoint.md",
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_seed_batch_v5_candidates",
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_v2_seed00_v5_candidate"
+   ],
+   "coverage_claim": "accepted_receipt_candidate=L6-2seed00receiptv4 (adoption_configuration.json); change-table recommendation A: planned new version, release_modified_by_this_work=False"
+  },
+  {
+   "label": "ns3 versioned stack (R1 radio ns3.48 params; v7 training_r1; v8 linked; v9 reactive)",
+   "scope": "versioned experiment dirs, not formal",
+   "adoption": "candidate",
+   "paths": [
+    "aw_data/ns3_episode_v7_training_r1",
+    "aw_data/ns3_episode_v8_linked_scenario",
+    "aw_data/ns3_episode_v9_reactive_replay/L6-2_v1__seed00/reactive_replay/run1"
+   ],
+   "coverage_claim": "v9 exists for 1 episode only; NOT promoted into formal 210"
+  },
+  {
+   "label": "transported_q oracle diagnostic",
+   "scope": "diagnostic only",
+   "adoption": "oracle_diagnostic_NEVER_historical_input",
+   "coverage_claim": "transported_q TRUE future + TRAIN-frozen Gaussian noise is oracle diagnostic, never a historical available prediction input"
+  }
+ ]
+}

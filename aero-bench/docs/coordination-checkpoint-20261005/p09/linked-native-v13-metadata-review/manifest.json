@@ -1,0 +1,2297 @@
+[
+  {
+    "path": "30_metadata_resolution.json",
+    "bytes": 75497,
+    "sha256": "e5e7766dd3faf92b1fbe71a767c076d76127bd117bd1288b4c6eb7a841e5e715"
+  },
+  {
+    "path": "L2-1_v1__seed00/actions.json",
+    "bytes": 11261,
+    "sha256": "4c0da736f4fc94c6a27ef88c3b87932e9887780933a2ac099d56f28c8b5c4cc0"
+  },
+  {
+    "path": "L2-1_v1__seed00/adoption_profile.json",
+    "bytes": 4047,
+    "sha256": "5ec226cf20f895129dbe5bcbf1949d80aba8115c412d81d829ac141d3880f982"
+  },
+  {
+    "path": "L2-1_v1__seed00/causal_boundary_poses.json",
+    "bytes": 1332978,
+    "sha256": "e2bb948ac1d7d15476a0ec7e91514ebe488338df1287054c4c23a4752354329a"
+  },
+  {
+    "path": "L2-1_v1__seed00/event_script.json",
+    "bytes": 32824,
+    "sha256": "863282757427e594a99499b340d63be7ef35e6fa46397fa44ea3a4a4216b6d23"
+  },
+  {
+    "path": "L2-1_v1__seed00/metadata_migration.json",
+    "bytes": 2163,
+    "sha256": "63beb69632671b8226e454fa4f838032efe5ca95a58e7f7c21d2a8221ecce2fd"
+  },
+  {
+    "path": "L2-1_v1__seed00/native_raw/event_admission.json",
+    "bytes": 10777,
+    "sha256": "bf2288b5183a7e059e3bcb0ba117497d0d98005c7f1184997799616c31bb7c49"
+  },
+  {
+    "path": "L2-1_v1__seed00/native_raw/final_native_run_config.json",
+    "bytes": 8351,
+    "sha256": "a67aef6e47c12ba9b173cb295d8c549d134e34e0eaae9326b1c6249a1c39512c"
+  },
+  {
+    "path": "L2-1_v1__seed00/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 315580,
+    "sha256": "3ee885588658685fb8ece449cc526e012a03a51c418d1b03a92ad602009eb16d"
+  },
+  {
+    "path": "L2-1_v1__seed00/native_raw/heartbeat_scope.json",
+    "bytes": 761,
+    "sha256": "37340a82cce776951673a56b6f7419ec925a1229442e3a8e0e783c38b48f6219"
+  },
+  {
+    "path": "L2-1_v1__seed00/native_raw/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "21d2c0ccc1d516d225fdd555991f1452691a9ce8345a791d2a1cb67557b42aca"
+  },
+  {
+    "path": "L2-1_v1__seed00/native_raw/receiver_observed_states.jsonl",
+    "bytes": 494378,
+    "sha256": "fcf398dc81bb2427e30521dc643298807cfcb27cb907ffc1181f9b3c5e413de7"
+  },
+  {
+    "path": "L2-1_v1__seed00/scene_setup.json",
+    "bytes": 114320,
+    "sha256": "b07e10ca6f4b0b3f30b79f9256c3cc2b54c00e9394151591682632a810200cfa"
+  },
+  {
+    "path": "L2-1_v1__seed00/whole_scene_last_five_ticks.json",
+    "bytes": 185092,
+    "sha256": "004eee42fc9606f4f65af909dbdcd9485be5c8cc7c82ece3b9a95ba23d0f91aa"
+  },
+  {
+    "path": "L2-1_v1__seed01/actions.json",
+    "bytes": 11261,
+    "sha256": "4c0da736f4fc94c6a27ef88c3b87932e9887780933a2ac099d56f28c8b5c4cc0"
+  },
+  {
+    "path": "L2-1_v1__seed01/adoption_profile.json",
+    "bytes": 4047,
+    "sha256": "f4c9d4956c48fa285b04d99564eda7c8441c8c3269a854b2d6ebe71492733209"
+  },
+  {
+    "path": "L2-1_v1__seed01/causal_boundary_poses.json",
+    "bytes": 1332978,
+    "sha256": "e2bb948ac1d7d15476a0ec7e91514ebe488338df1287054c4c23a4752354329a"
+  },
+  {
+    "path": "L2-1_v1__seed01/event_script.json",
+    "bytes": 32824,
+    "sha256": "863282757427e594a99499b340d63be7ef35e6fa46397fa44ea3a4a4216b6d23"
+  },
+  {
+    "path": "L2-1_v1__seed01/metadata_migration.json",
+    "bytes": 2163,
+    "sha256": "c77da5bcd7d2b51ec03a3409e4e3d4c26e9d6bffafae4d410722d5877a2fd264"
+  },
+  {
+    "path": "L2-1_v1__seed01/native_raw/event_admission.json",
+    "bytes": 10777,
+    "sha256": "f0fd93c1bd62dc9c3ae58905ec4212239d2e98251b007377c8e318bec07c7d39"
+  },
+  {
+    "path": "L2-1_v1__seed01/native_raw/final_native_run_config.json",
+    "bytes": 8351,
+    "sha256": "db36cdf0fbe760e761c114ce6fa841daceaf7b676857cf5860a47d5b6d1efe9b"
+  },
+  {
+    "path": "L2-1_v1__seed01/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 315580,
+    "sha256": "864f804cc5afeccacfe530694e730bd25d0b8cb019a1680090c331a04a0ade8b"
+  },
+  {
+    "path": "L2-1_v1__seed01/native_raw/heartbeat_scope.json",
+    "bytes": 761,
+    "sha256": "2f9778a7dbf13cfb0fad217ca63299ebdfa457a56021eebb355a4eb40f2d8c37"
+  },
+  {
+    "path": "L2-1_v1__seed01/native_raw/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "0a84a89c4ee5ebda63554ee743f27824a33e84f0ee9523bed03d2c40d69b5f5e"
+  },
+  {
+    "path": "L2-1_v1__seed01/native_raw/receiver_observed_states.jsonl",
+    "bytes": 494378,
+    "sha256": "fcf398dc81bb2427e30521dc643298807cfcb27cb907ffc1181f9b3c5e413de7"
+  },
+  {
+    "path": "L2-1_v1__seed01/scene_setup.json",
+    "bytes": 114320,
+    "sha256": "b07e10ca6f4b0b3f30b79f9256c3cc2b54c00e9394151591682632a810200cfa"
+  },
+  {
+    "path": "L2-1_v1__seed01/whole_scene_last_five_ticks.json",
+    "bytes": 185092,
+    "sha256": "004eee42fc9606f4f65af909dbdcd9485be5c8cc7c82ece3b9a95ba23d0f91aa"
+  },
+  {
+    "path": "L2-1_v1__seed02/actions.json",
+    "bytes": 11261,
+    "sha256": "4c0da736f4fc94c6a27ef88c3b87932e9887780933a2ac099d56f28c8b5c4cc0"
+  },
+  {
+    "path": "L2-1_v1__seed02/adoption_profile.json",
+    "bytes": 4047,
+    "sha256": "2dccea9c9b1533d5e0a8a41d58c0bf180601b0b9a9c2828777f1b1fad812773a"
+  },
+  {
+    "path": "L2-1_v1__seed02/causal_boundary_poses.json",
+    "bytes": 1332978,
+    "sha256": "e2bb948ac1d7d15476a0ec7e91514ebe488338df1287054c4c23a4752354329a"
+  },
+  {
+    "path": "L2-1_v1__seed02/event_script.json",
+    "bytes": 32824,
+    "sha256": "863282757427e594a99499b340d63be7ef35e6fa46397fa44ea3a4a4216b6d23"
+  },
+  {
+    "path": "L2-1_v1__seed02/metadata_migration.json",
+    "bytes": 2163,
+    "sha256": "44e3ade26d931bc41719317140ef3679288d09dbc614d2d491072b4593d96320"
+  },
+  {
+    "path": "L2-1_v1__seed02/native_raw/event_admission.json",
+    "bytes": 10777,
+    "sha256": "079edeadfa994a12596d8e7afd59b7516b07a75d1bef65c5d3f0893b6815c7b0"
+  },
+  {
+    "path": "L2-1_v1__seed02/native_raw/final_native_run_config.json",
+    "bytes": 8351,
+    "sha256": "23fa12856264ee632af9a150daf9eb98e8005a2fc9f201942f92c5c2bbddf10d"
+  },
+  {
+    "path": "L2-1_v1__seed02/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 315581,
+    "sha256": "2ff9f41793d01995f7949ebeb611b33aa41b271066c97855266ad8dba0cfad53"
+  },
+  {
+    "path": "L2-1_v1__seed02/native_raw/heartbeat_scope.json",
+    "bytes": 761,
+    "sha256": "7f4fa00114e6069cb733db6793eea04ebd31958ad29b8ceba80aa3be9ad3f322"
+  },
+  {
+    "path": "L2-1_v1__seed02/native_raw/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "b5d2a9665c73fabfd3378035bc49c0ddb9048ee15ffebe28e93e0ad041f745dc"
+  },
+  {
+    "path": "L2-1_v1__seed02/native_raw/receiver_observed_states.jsonl",
+    "bytes": 494378,
+    "sha256": "fcf398dc81bb2427e30521dc643298807cfcb27cb907ffc1181f9b3c5e413de7"
+  },
+  {
+    "path": "L2-1_v1__seed02/scene_setup.json",
+    "bytes": 114320,
+    "sha256": "b07e10ca6f4b0b3f30b79f9256c3cc2b54c00e9394151591682632a810200cfa"
+  },
+  {
+    "path": "L2-1_v1__seed02/whole_scene_last_five_ticks.json",
+    "bytes": 185092,
+    "sha256": "004eee42fc9606f4f65af909dbdcd9485be5c8cc7c82ece3b9a95ba23d0f91aa"
+  },
+  {
+    "path": "L2-1_v2__seed00/actions.json",
+    "bytes": 13075,
+    "sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247"
+  },
+  {
+    "path": "L2-1_v2__seed00/adoption_profile.json",
+    "bytes": 8833,
+    "sha256": "8b41faf458a7538da02fec45b1de17fa3645ceea2d6887d982e32913399402b3"
+  },
+  {
+    "path": "L2-1_v2__seed00/cached_clearance_provenance.json",
+    "bytes": 3511,
+    "sha256": "ce7b4fee0d406b43780406450c0526f4784ae6f489d86660f8ef85cedc5eacf5"
+  },
+  {
+    "path": "L2-1_v2__seed00/causal_boundary_poses.json",
+    "bytes": 916056,
+    "sha256": "3a73e1b9e9f32c8f5345435f38a1f2345e3d7c72227fdd7122883abc5d60f3cf"
+  },
+  {
+    "path": "L2-1_v2__seed00/event_script.json",
+    "bytes": 54064,
+    "sha256": "282b8d0a3ff3a0e3c3f5ef0b347f33b8384d11ec9f6fdf1c7037b50ff31ea19e"
+  },
+  {
+    "path": "L2-1_v2__seed00/metadata_migration.json",
+    "bytes": 2256,
+    "sha256": "903683efae8bc8775ebf9e8a40846e1e3502ec6950bb24e88678207693e9e383"
+  },
+  {
+    "path": "L2-1_v2__seed00/native_raw/event_admission.json",
+    "bytes": 13270,
+    "sha256": "5205d2b190aaac0b5f8a4d69fddbba63ce6c0cfdb617b75f8f926b2b792b9e4c"
+  },
+  {
+    "path": "L2-1_v2__seed00/native_raw/final_native_run_config.json",
+    "bytes": 8351,
+    "sha256": "94febc32a448d9876fe57961e1e62d343e1ff8cd1da8143804a72e7847298449"
+  },
+  {
+    "path": "L2-1_v2__seed00/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 315580,
+    "sha256": "31d99dfdf0d6ff7556f25ea8e0ac778d80e3a9e114003f8ffa14f6b71e73a818"
+  },
+  {
+    "path": "L2-1_v2__seed00/native_raw/heartbeat_scope.json",
+    "bytes": 761,
+    "sha256": "d69a18bd9034f649b3f5011deabd9345a3f5755e5be958d0447064cb93f67fea"
+  },
+  {
+    "path": "L2-1_v2__seed00/native_raw/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "36441ba713968b2ca28d7ac3293e90cd37a7182ae4bc0e32bb0fba248978f69d"
+  },
+  {
+    "path": "L2-1_v2__seed00/native_raw/receiver_observed_states.jsonl",
+    "bytes": 494378,
+    "sha256": "e155d36358916ee0c3cb8b877e5af780db6201873c4835907c6aca8f0cc3e8b6"
+  },
+  {
+    "path": "L2-1_v2__seed00/scene_setup.json",
+    "bytes": 82428,
+    "sha256": "6d16a7f2e4a83a7cde38401fa464f9d8f66e403e15dcfa4343447facaa4463f2"
+  },
+  {
+    "path": "L2-1_v2__seed00/whole_scene_last_five_ticks.json",
+    "bytes": 127267,
+    "sha256": "11ecef34219896c963c4c68ed9e9adfa8015e3aebddecfc00e8700c60162a6f7"
+  },
+  {
+    "path": "L2-1_v2__seed01/actions.json",
+    "bytes": 13075,
+    "sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247"
+  },
+  {
+    "path": "L2-1_v2__seed01/adoption_profile.json",
+    "bytes": 8833,
+    "sha256": "8235b3671756d4ce77b833d1cedd6eb384008b231afd97736a5c127306a0b5ff"
+  },
+  {
+    "path": "L2-1_v2__seed01/cached_clearance_provenance.json",
+    "bytes": 3511,
+    "sha256": "20dff73742331fc188d51bc996ca3b81c933d3996d8e988284d01399655294e4"
+  },
+  {
+    "path": "L2-1_v2__seed01/causal_boundary_poses.json",
+    "bytes": 916056,
+    "sha256": "3a73e1b9e9f32c8f5345435f38a1f2345e3d7c72227fdd7122883abc5d60f3cf"
+  },
+  {
+    "path": "L2-1_v2__seed01/event_script.json",
+    "bytes": 54064,
+    "sha256": "282b8d0a3ff3a0e3c3f5ef0b347f33b8384d11ec9f6fdf1c7037b50ff31ea19e"
+  },
+  {
+    "path": "L2-1_v2__seed01/metadata_migration.json",
+    "bytes": 2256,
+    "sha256": "df7ca77bcae414de811a401ff56546d1e0c2e3de30d40f5c83712a2458ad3bca"
+  },
+  {
+    "path": "L2-1_v2__seed01/native_raw/event_admission.json",
+    "bytes": 13270,
+    "sha256": "99fa988cb5814d16c9a8f2d68ae745c438ff8acdb085609d654adff7ec080ef5"
+  },
+  {
+    "path": "L2-1_v2__seed01/native_raw/final_native_run_config.json",
+    "bytes": 8351,
+    "sha256": "74e582e58635f6331a108f1d3f845f1d9cd491aedaf3b4626ea6cb12a9e09961"
+  },
+  {
+    "path": "L2-1_v2__seed01/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 315580,
+    "sha256": "950a41282d71bd7c90d04b7e991db43f825a8c8b4fa7b080d700faf20122aa1a"
+  },
+  {
+    "path": "L2-1_v2__seed01/native_raw/heartbeat_scope.json",
+    "bytes": 761,
+    "sha256": "0215ad07089f8d0baf8c82526ab2138c82b79cc2c02da7c54b48bf98674875b7"
+  },
+  {
+    "path": "L2-1_v2__seed01/native_raw/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "3a40cab4f714801fb5c90cc124ad7203205cf5ba1f750c03edc78ba975a31b8b"
+  },
+  {
+    "path": "L2-1_v2__seed01/native_raw/receiver_observed_states.jsonl",
+    "bytes": 494378,
+    "sha256": "e155d36358916ee0c3cb8b877e5af780db6201873c4835907c6aca8f0cc3e8b6"
+  },
+  {
+    "path": "L2-1_v2__seed01/scene_setup.json",
+    "bytes": 82428,
+    "sha256": "6d16a7f2e4a83a7cde38401fa464f9d8f66e403e15dcfa4343447facaa4463f2"
+  },
+  {
+    "path": "L2-1_v2__seed01/whole_scene_last_five_ticks.json",
+    "bytes": 127267,
+    "sha256": "11ecef34219896c963c4c68ed9e9adfa8015e3aebddecfc00e8700c60162a6f7"
+  },
+  {
+    "path": "L2-1_v2__seed02/actions.json",
+    "bytes": 13075,
+    "sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247"
+  },
+  {
+    "path": "L2-1_v2__seed02/adoption_profile.json",
+    "bytes": 8833,
+    "sha256": "01f9d0895d63501399e9055b1eedba575067f930dcf8e84e48db0b8a9b69e266"
+  },
+  {
+    "path": "L2-1_v2__seed02/cached_clearance_provenance.json",
+    "bytes": 3511,
+    "sha256": "92caf4982f30faf989e847f12fb88eaa2e5dc21a0543f54c4d56bb3bb890efe9"
+  },
+  {
+    "path": "L2-1_v2__seed02/causal_boundary_poses.json",
+    "bytes": 916056,
+    "sha256": "3a73e1b9e9f32c8f5345435f38a1f2345e3d7c72227fdd7122883abc5d60f3cf"
+  },
+  {
+    "path": "L2-1_v2__seed02/event_script.json",
+    "bytes": 54064,
+    "sha256": "282b8d0a3ff3a0e3c3f5ef0b347f33b8384d11ec9f6fdf1c7037b50ff31ea19e"
+  },
+  {
+    "path": "L2-1_v2__seed02/metadata_migration.json",
+    "bytes": 2256,
+    "sha256": "dc2fc41c5305824b18bca44881fe8c58cd7b808a6cce640da557ce3b77c9eb0b"
+  },
+  {
+    "path": "L2-1_v2__seed02/native_raw/event_admission.json",
+    "bytes": 13270,
+    "sha256": "67f1b4b3f790ade68695a969c6ce44af15bd7c40176ab016709cda0a2ffdca26"
+  },
+  {
+    "path": "L2-1_v2__seed02/native_raw/final_native_run_config.json",
+    "bytes": 8351,
+    "sha256": "aa34b91e6e44b5d68b44fca56ba3a179d4fea045a3d2bd85d40a6007390e183f"
+  },
+  {
+    "path": "L2-1_v2__seed02/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 315581,
+    "sha256": "b0549140a05b2de3c8efdda0ece5478bd725a37f418af346de12499f924fabe1"
+  },
+  {
+    "path": "L2-1_v2__seed02/native_raw/heartbeat_scope.json",
+    "bytes": 761,
+    "sha256": "5e15306fc0d9544c8dbda0554769180cd309dfd3eafd8a560328f78fa0d7c31a"
+  },
+  {
+    "path": "L2-1_v2__seed02/native_raw/radio_actions.jsonl",
+    "bytes": 126,
+    "sha256": "aec1392c286ee4a0b91446ccbc787f349afde7b1e2f226868ac75ad423d89a98"
+  },
+  {
+    "path": "L2-1_v2__seed02/native_raw/receiver_observed_states.jsonl",
+    "bytes": 494378,
+    "sha256": "e155d36358916ee0c3cb8b877e5af780db6201873c4835907c6aca8f0cc3e8b6"
+  },
+  {
+    "path": "L2-1_v2__seed02/scene_setup.json",
+    "bytes": 82428,
+    "sha256": "6d16a7f2e4a83a7cde38401fa464f9d8f66e403e15dcfa4343447facaa4463f2"
+  },
+  {
+    "path": "L2-1_v2__seed02/whole_scene_last_five_ticks.json",
+    "bytes": 127267,
+    "sha256": "11ecef34219896c963c4c68ed9e9adfa8015e3aebddecfc00e8700c60162a6f7"
+  },
+  {
+    "path": "L5-1_v1__seed00/actions.json",
+    "bytes": 18338,
+    "sha256": "72a9074019a149c73deda69e21fa11b484f18b27849a11dcda7b3fc693dd0074"
+  },
+  {
+    "path": "L5-1_v1__seed00/adoption_profile.json",
+    "bytes": 4425,
+    "sha256": "1e95c61ae411d22cf3cd342a107a791533e8a5136afa07879d4a361abde29897"
+  },
+  {
+    "path": "L5-1_v1__seed00/causal_boundary_poses.json",
+    "bytes": 2452282,
+    "sha256": "8cae9d5eda6dd6855d1091b0b9d98cb965f4a230b7e841a90d9742563ad46516"
+  },
+  {
+    "path": "L5-1_v1__seed00/event_script.json",
+    "bytes": 58621,
+    "sha256": "56b735f94170eb6ef00de6383461fd4961e5a1fea02b30807b259ea6e98ebdeb"
+  },
+  {
+    "path": "L5-1_v1__seed00/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "b4f598e8ef596c3e5e5275f129e115147ee30af94ca8a1d8d5fdfb807cdbd788"
+  },
+  {
+    "path": "L5-1_v1__seed00/scene_setup.json",
+    "bytes": 102905,
+    "sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b"
+  },
+  {
+    "path": "L5-1_v1__seed00/whole_scene_last_five_ticks.json",
+    "bytes": 165629,
+    "sha256": "c592d2d53533377bcb07522915c3f2324a598aab5ed2777e77f793561fed5dcc"
+  },
+  {
+    "path": "L5-1_v1__seed01/actions.json",
+    "bytes": 18338,
+    "sha256": "72a9074019a149c73deda69e21fa11b484f18b27849a11dcda7b3fc693dd0074"
+  },
+  {
+    "path": "L5-1_v1__seed01/adoption_profile.json",
+    "bytes": 4425,
+    "sha256": "bd1fc9421bcc9e0bd0ffe114c5699a8ad65997470b18608ec2a3ce6344d6b1b4"
+  },
+  {
+    "path": "L5-1_v1__seed01/causal_boundary_poses.json",
+    "bytes": 2452282,
+    "sha256": "8cae9d5eda6dd6855d1091b0b9d98cb965f4a230b7e841a90d9742563ad46516"
+  },
+  {
+    "path": "L5-1_v1__seed01/event_script.json",
+    "bytes": 58621,
+    "sha256": "56b735f94170eb6ef00de6383461fd4961e5a1fea02b30807b259ea6e98ebdeb"
+  },
+  {
+    "path": "L5-1_v1__seed01/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "843df1c8f903238ad6434af047bff6b3bf7aab185bb05d7eff8165ab6cd7c724"
+  },
+  {
+    "path": "L5-1_v1__seed01/scene_setup.json",
+    "bytes": 102905,
+    "sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b"
+  },
+  {
+    "path": "L5-1_v1__seed01/whole_scene_last_five_ticks.json",
+    "bytes": 165629,
+    "sha256": "c592d2d53533377bcb07522915c3f2324a598aab5ed2777e77f793561fed5dcc"
+  },
+  {
+    "path": "L5-1_v1__seed02/actions.json",
+    "bytes": 18338,
+    "sha256": "72a9074019a149c73deda69e21fa11b484f18b27849a11dcda7b3fc693dd0074"
+  },
+  {
+    "path": "L5-1_v1__seed02/adoption_profile.json",
+    "bytes": 4425,
+    "sha256": "6504a126976573080721c1fe4786f2ceefb2766a8afedf7a09f4553237f28e09"
+  },
+  {
+    "path": "L5-1_v1__seed02/causal_boundary_poses.json",
+    "bytes": 2452282,
+    "sha256": "8cae9d5eda6dd6855d1091b0b9d98cb965f4a230b7e841a90d9742563ad46516"
+  },
+  {
+    "path": "L5-1_v1__seed02/event_script.json",
+    "bytes": 58621,
+    "sha256": "56b735f94170eb6ef00de6383461fd4961e5a1fea02b30807b259ea6e98ebdeb"
+  },
+  {
+    "path": "L5-1_v1__seed02/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "0408ae1ddc17f13a4dcabcd51b14f9d43c74853489ad3b0ba5baa096c91cc645"
+  },
+  {
+    "path": "L5-1_v1__seed02/scene_setup.json",
+    "bytes": 102905,
+    "sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b"
+  },
+  {
+    "path": "L5-1_v1__seed02/whole_scene_last_five_ticks.json",
+    "bytes": 165629,
+    "sha256": "c592d2d53533377bcb07522915c3f2324a598aab5ed2777e77f793561fed5dcc"
+  },
+  {
+    "path": "L5-1_v2__seed00/actions.json",
+    "bytes": 20391,
+    "sha256": "82fca0fca83249b1f0f8656ef697eb1a52ea0365244599b20b94c77ea751df0a"
+  },
+  {
+    "path": "L5-1_v2__seed00/adoption_profile.json",
+    "bytes": 4500,
+    "sha256": "c765aa0e5119bc5868232baa8be77626c0686fca8bb75e0eb5e1f04bcbe1e5a5"
+  },
+  {
+    "path": "L5-1_v2__seed00/causal_boundary_poses.json",
+    "bytes": 2538756,
+    "sha256": "873e6f7dd676c0a6bf6f7b4cdd19d2a62c68300453334a570834ecd21080e073"
+  },
+  {
+    "path": "L5-1_v2__seed00/event_script.json",
+    "bytes": 61380,
+    "sha256": "5a70c027d60760797900f5a14d27669b5451bea262b48d42b24d4671e6f9cd44"
+  },
+  {
+    "path": "L5-1_v2__seed00/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "b0f579f8a1f08fec9f5c94466428232d24f98f0b85c93ec69ec1e1f5f6eb7dfb"
+  },
+  {
+    "path": "L5-1_v2__seed00/scene_setup.json",
+    "bytes": 110664,
+    "sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2"
+  },
+  {
+    "path": "L5-1_v2__seed00/whole_scene_last_five_ticks.json",
+    "bytes": 178981,
+    "sha256": "6500b86972e5411c09f4d0a6ed23b822e396bc254b894158f173fabf71bf4628"
+  },
+  {
+    "path": "L5-1_v2__seed01/actions.json",
+    "bytes": 20391,
+    "sha256": "82fca0fca83249b1f0f8656ef697eb1a52ea0365244599b20b94c77ea751df0a"
+  },
+  {
+    "path": "L5-1_v2__seed01/adoption_profile.json",
+    "bytes": 4500,
+    "sha256": "1d5104a1dbe95463b77fffdad8737ce2b438415d8550655301b7be42af38c915"
+  },
+  {
+    "path": "L5-1_v2__seed01/causal_boundary_poses.json",
+    "bytes": 2538756,
+    "sha256": "873e6f7dd676c0a6bf6f7b4cdd19d2a62c68300453334a570834ecd21080e073"
+  },
+  {
+    "path": "L5-1_v2__seed01/event_script.json",
+    "bytes": 61380,
+    "sha256": "5a70c027d60760797900f5a14d27669b5451bea262b48d42b24d4671e6f9cd44"
+  },
+  {
+    "path": "L5-1_v2__seed01/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "5cead7b1f4354dc04ed764a1a6230412a9f77bb9a84decd9b4fb0ebd1ce8bf17"
+  },
+  {
+    "path": "L5-1_v2__seed01/scene_setup.json",
+    "bytes": 110664,
+    "sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2"
+  },
+  {
+    "path": "L5-1_v2__seed01/whole_scene_last_five_ticks.json",
+    "bytes": 178981,
+    "sha256": "6500b86972e5411c09f4d0a6ed23b822e396bc254b894158f173fabf71bf4628"
+  },
+  {
+    "path": "L5-1_v2__seed02/actions.json",
+    "bytes": 20391,
+    "sha256": "82fca0fca83249b1f0f8656ef697eb1a52ea0365244599b20b94c77ea751df0a"
+  },
+  {
+    "path": "L5-1_v2__seed02/adoption_profile.json",
+    "bytes": 4500,
+    "sha256": "7b66fb2c3d127672d754b5c89db25597efec45ee78456b7821c9daae63e10d17"
+  },
+  {
+    "path": "L5-1_v2__seed02/causal_boundary_poses.json",
+    "bytes": 2538756,
+    "sha256": "873e6f7dd676c0a6bf6f7b4cdd19d2a62c68300453334a570834ecd21080e073"
+  },
+  {
+    "path": "L5-1_v2__seed02/event_script.json",
+    "bytes": 61380,
+    "sha256": "5a70c027d60760797900f5a14d27669b5451bea262b48d42b24d4671e6f9cd44"
+  },
+  {
+    "path": "L5-1_v2__seed02/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "9a782fec79eb1ed7c846196a9d4e10af849ec0ccae80f75ed1d3c9b935100197"
+  },
+  {
+    "path": "L5-1_v2__seed02/scene_setup.json",
+    "bytes": 110664,
+    "sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2"
+  },
+  {
+    "path": "L5-1_v2__seed02/whole_scene_last_five_ticks.json",
+    "bytes": 178981,
+    "sha256": "6500b86972e5411c09f4d0a6ed23b822e396bc254b894158f173fabf71bf4628"
+  },
+  {
+    "path": "L6-1_v1__seed00/actions.json",
+    "bytes": 9533,
+    "sha256": "360d6c48ea810a2a3991a648f2a19590c0ceb33e4b4866ea2f051df5a8edaaa7"
+  },
+  {
+    "path": "L6-1_v1__seed00/adoption_profile.json",
+    "bytes": 2691,
+    "sha256": "8b7e222832ef83cba688bb00e7f72bbe028e3f4fe3c500b8e44e13d7423ef904"
+  },
+  {
+    "path": "L6-1_v1__seed00/causal_boundary_poses.json",
+    "bytes": 948245,
+    "sha256": "6a4b106b98d40d16dac932677aa8114767afa638d83ba8811fe09c1af074d5cc"
+  },
+  {
+    "path": "L6-1_v1__seed00/event_script.json",
+    "bytes": 29435,
+    "sha256": "7a7fab2653035a5176cc7bea941d2c1ee98cd43c7fb27203e87d1f5e3d693a2e"
+  },
+  {
+    "path": "L6-1_v1__seed00/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "56da75ec8b945caa43102c20259071afd8cdf11afa3ecd480261506636ccebcb"
+  },
+  {
+    "path": "L6-1_v1__seed00/native_raw/event_admission.json",
+    "bytes": 13106,
+    "sha256": "706ea728e21a4514ad98adac25e70c3d2e34382a19113bffe7ced0d567ee83dc"
+  },
+  {
+    "path": "L6-1_v1__seed00/native_raw/final_native_run_config.json",
+    "bytes": 7704,
+    "sha256": "e2517d6ede842fd4c911ced170e8d5cb91bc84c3d772cc2d449209adcc2621e3"
+  },
+  {
+    "path": "L6-1_v1__seed00/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 341093,
+    "sha256": "40cf6d45704618cdca99551cb0093c1368ae0b0529a02812a7459587b0f36efb"
+  },
+  {
+    "path": "L6-1_v1__seed00/native_raw/heartbeat_scope.json",
+    "bytes": 777,
+    "sha256": "fa6b694f63e13e550aa05cf664aff8497a99fb630e59e721c47c358ea7679d1f"
+  },
+  {
+    "path": "L6-1_v1__seed00/native_raw/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "a45d2254fe0e6b07f11ead6912b35bc41de7c27fe8c75ba0076a7fd1fee0722d"
+  },
+  {
+    "path": "L6-1_v1__seed00/native_raw/receiver_observed_states.jsonl",
+    "bytes": 501050,
+    "sha256": "b5fba1723d3656886de078e641d0ec3c668ba45886bc313fe75f192488c55875"
+  },
+  {
+    "path": "L6-1_v1__seed00/scene_setup.json",
+    "bytes": 105832,
+    "sha256": "0d30da741f3fdc221d441d1632d7ac913836d7b1cb6a7fefa9785f43cb59e463"
+  },
+  {
+    "path": "L6-1_v1__seed00/whole_scene_last_five_ticks.json",
+    "bytes": 175508,
+    "sha256": "d380023e4b861c9fdcc8c65acc2009acb5241d2e0544cb4d248ac1c6f35961a6"
+  },
+  {
+    "path": "L6-1_v1__seed01/actions.json",
+    "bytes": 9533,
+    "sha256": "360d6c48ea810a2a3991a648f2a19590c0ceb33e4b4866ea2f051df5a8edaaa7"
+  },
+  {
+    "path": "L6-1_v1__seed01/adoption_profile.json",
+    "bytes": 2691,
+    "sha256": "6c4902100ed07e6e2269d73c8d52f6d89e7196fa48022115af888967ba451027"
+  },
+  {
+    "path": "L6-1_v1__seed01/causal_boundary_poses.json",
+    "bytes": 948245,
+    "sha256": "6a4b106b98d40d16dac932677aa8114767afa638d83ba8811fe09c1af074d5cc"
+  },
+  {
+    "path": "L6-1_v1__seed01/event_script.json",
+    "bytes": 29435,
+    "sha256": "7a7fab2653035a5176cc7bea941d2c1ee98cd43c7fb27203e87d1f5e3d693a2e"
+  },
+  {
+    "path": "L6-1_v1__seed01/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "f43ef748ecf16b2628be9b60189e06e7c0f936a70cd8cea33bf6efbe65ca2a27"
+  },
+  {
+    "path": "L6-1_v1__seed01/native_raw/event_admission.json",
+    "bytes": 13106,
+    "sha256": "706ea728e21a4514ad98adac25e70c3d2e34382a19113bffe7ced0d567ee83dc"
+  },
+  {
+    "path": "L6-1_v1__seed01/native_raw/final_native_run_config.json",
+    "bytes": 7704,
+    "sha256": "5ae7982dd822a8116f156b9b47dd03d2ce5518f68242d9bd44017665a345a89a"
+  },
+  {
+    "path": "L6-1_v1__seed01/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 341093,
+    "sha256": "e4ab4957ef616ff17c5830c1d13595ac15278989a78a17323bebcd0ab79fd08e"
+  },
+  {
+    "path": "L6-1_v1__seed01/native_raw/heartbeat_scope.json",
+    "bytes": 777,
+    "sha256": "69ac36cdd9def30ef11096c7b8e2d11e4a3d9e634bd1909786c263e6f6fc1fd0"
+  },
+  {
+    "path": "L6-1_v1__seed01/native_raw/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "6ba162626757b6f3476886442b7e7a2f5aa56a9d92c8f544ebbff5ce0b4a1924"
+  },
+  {
+    "path": "L6-1_v1__seed01/native_raw/receiver_observed_states.jsonl",
+    "bytes": 501050,
+    "sha256": "b5fba1723d3656886de078e641d0ec3c668ba45886bc313fe75f192488c55875"
+  },
+  {
+    "path": "L6-1_v1__seed01/scene_setup.json",
+    "bytes": 105832,
+    "sha256": "0d30da741f3fdc221d441d1632d7ac913836d7b1cb6a7fefa9785f43cb59e463"
+  },
+  {
+    "path": "L6-1_v1__seed01/whole_scene_last_five_ticks.json",
+    "bytes": 175508,
+    "sha256": "d380023e4b861c9fdcc8c65acc2009acb5241d2e0544cb4d248ac1c6f35961a6"
+  },
+  {
+    "path": "L6-1_v1__seed02/actions.json",
+    "bytes": 9533,
+    "sha256": "360d6c48ea810a2a3991a648f2a19590c0ceb33e4b4866ea2f051df5a8edaaa7"
+  },
+  {
+    "path": "L6-1_v1__seed02/adoption_profile.json",
+    "bytes": 2691,
+    "sha256": "f76e4b1747d2c6183d739e2f06e2a838f7a4e8004aa061c46358cda2959f47a8"
+  },
+  {
+    "path": "L6-1_v1__seed02/causal_boundary_poses.json",
+    "bytes": 948245,
+    "sha256": "6a4b106b98d40d16dac932677aa8114767afa638d83ba8811fe09c1af074d5cc"
+  },
+  {
+    "path": "L6-1_v1__seed02/event_script.json",
+    "bytes": 29435,
+    "sha256": "7a7fab2653035a5176cc7bea941d2c1ee98cd43c7fb27203e87d1f5e3d693a2e"
+  },
+  {
+    "path": "L6-1_v1__seed02/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "9c1466b0a9f45050dbd67a448522febb4bca4413d83a6ab0d75543820736c294"
+  },
+  {
+    "path": "L6-1_v1__seed02/native_raw/event_admission.json",
+    "bytes": 13106,
+    "sha256": "706ea728e21a4514ad98adac25e70c3d2e34382a19113bffe7ced0d567ee83dc"
+  },
+  {
+    "path": "L6-1_v1__seed02/native_raw/final_native_run_config.json",
+    "bytes": 7704,
+    "sha256": "26a80f4ddd804bc1600e2acf1f5c54b6e36df3fa9d0aa7a5f68d15957e65ae3e"
+  },
+  {
+    "path": "L6-1_v1__seed02/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 341093,
+    "sha256": "2323933890c6503a4cde2b441ae8d31617741f42896db88b828de9418bbd442c"
+  },
+  {
+    "path": "L6-1_v1__seed02/native_raw/heartbeat_scope.json",
+    "bytes": 777,
+    "sha256": "982675dfbd384fd24bb148717bd2b549f8f5141ae116bbf0a6598644a16b3ed4"
+  },
+  {
+    "path": "L6-1_v1__seed02/native_raw/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "f0ae5cb2a129b6872c41edf36306e1a15f98c0b04f9412faa44a8b6ae1ee42ab"
+  },
+  {
+    "path": "L6-1_v1__seed02/native_raw/receiver_observed_states.jsonl",
+    "bytes": 501050,
+    "sha256": "b5fba1723d3656886de078e641d0ec3c668ba45886bc313fe75f192488c55875"
+  },
+  {
+    "path": "L6-1_v1__seed02/scene_setup.json",
+    "bytes": 105832,
+    "sha256": "0d30da741f3fdc221d441d1632d7ac913836d7b1cb6a7fefa9785f43cb59e463"
+  },
+  {
+    "path": "L6-1_v1__seed02/whole_scene_last_five_ticks.json",
+    "bytes": 175508,
+    "sha256": "d380023e4b861c9fdcc8c65acc2009acb5241d2e0544cb4d248ac1c6f35961a6"
+  },
+  {
+    "path": "L6-1_v2__seed00/actions.json",
+    "bytes": 9614,
+    "sha256": "c22bf1aaae30e5e4a81445b0d5df08fbc14eb89e1d105ca89b71ef933f1ef8e1"
+  },
+  {
+    "path": "L6-1_v2__seed00/adoption_profile.json",
+    "bytes": 2691,
+    "sha256": "0f071b1387a555332dd976406f319573d333ee0dc7d564e54b6c77aa20fead43"
+  },
+  {
+    "path": "L6-1_v2__seed00/causal_boundary_poses.json",
+    "bytes": 971156,
+    "sha256": "3d33954ca32a67d1815243ef4a417251033aae800af8b4ddc678705da96d7ef4"
+  },
+  {
+    "path": "L6-1_v2__seed00/event_script.json",
+    "bytes": 29849,
+    "sha256": "4203cb26214a5b6b9ac91ee9c4e0b13d0b728a2b6831b7203a89e331a22cfa98"
+  },
+  {
+    "path": "L6-1_v2__seed00/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "eec3f21fcb10aeafc00c248fa201fa06a8dcd051052979741dcbe50e650870b1"
+  },
+  {
+    "path": "L6-1_v2__seed00/native_raw/event_admission.json",
+    "bytes": 13106,
+    "sha256": "a9ad5e8ae02ca6431b7e12f87717feeab5f6844f75912b16838b7cb00a5d7e80"
+  },
+  {
+    "path": "L6-1_v2__seed00/native_raw/final_native_run_config.json",
+    "bytes": 7704,
+    "sha256": "8de16fc6dd5d5c8c62534c09745a0a90b7e81073d7a64fba119a5699d4a360f7"
+  },
+  {
+    "path": "L6-1_v2__seed00/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 341093,
+    "sha256": "7ac3b57c6bd89264ea3b8e4ac876763e3bc84be113bdfdfc8ca672a6253a3bb0"
+  },
+  {
+    "path": "L6-1_v2__seed00/native_raw/heartbeat_scope.json",
+    "bytes": 777,
+    "sha256": "ee4fe403395429afad9fba4a84aee29067972ba393690aed2de30d4022fd47c0"
+  },
+  {
+    "path": "L6-1_v2__seed00/native_raw/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "731ef88b769a1325380b1396d6f5a82240ef8bdfc62272b09e07be6c6c259311"
+  },
+  {
+    "path": "L6-1_v2__seed00/native_raw/receiver_observed_states.jsonl",
+    "bytes": 501050,
+    "sha256": "dc179927d3a8015ac8c56731a3e9dc5288a6d7e8d01cab1008edb3c33013c7fa"
+  },
+  {
+    "path": "L6-1_v2__seed00/scene_setup.json",
+    "bytes": 108994,
+    "sha256": "194f2f5fb50e3783bf73748f0daa8aad09090ddf47a3cdadc8ff60812bf85eb8"
+  },
+  {
+    "path": "L6-1_v2__seed00/whole_scene_last_five_ticks.json",
+    "bytes": 179740,
+    "sha256": "40015e433c36cf00780ef066d5c9834ec879386630ddb9ea6e859ff0965c4e0a"
+  },
+  {
+    "path": "L6-1_v2__seed01/actions.json",
+    "bytes": 9614,
+    "sha256": "c22bf1aaae30e5e4a81445b0d5df08fbc14eb89e1d105ca89b71ef933f1ef8e1"
+  },
+  {
+    "path": "L6-1_v2__seed01/adoption_profile.json",
+    "bytes": 2691,
+    "sha256": "21225457f596eb11286c5e353fab8affda46125fce59a318754ac34bd6b76378"
+  },
+  {
+    "path": "L6-1_v2__seed01/causal_boundary_poses.json",
+    "bytes": 971156,
+    "sha256": "3d33954ca32a67d1815243ef4a417251033aae800af8b4ddc678705da96d7ef4"
+  },
+  {
+    "path": "L6-1_v2__seed01/event_script.json",
+    "bytes": 29849,
+    "sha256": "4203cb26214a5b6b9ac91ee9c4e0b13d0b728a2b6831b7203a89e331a22cfa98"
+  },
+  {
+    "path": "L6-1_v2__seed01/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "5c26af5dca220ff2fd55ea70f37aa34d883a823428c2a5d8932e40dff894d84e"
+  },
+  {
+    "path": "L6-1_v2__seed01/native_raw/event_admission.json",
+    "bytes": 13106,
+    "sha256": "a9ad5e8ae02ca6431b7e12f87717feeab5f6844f75912b16838b7cb00a5d7e80"
+  },
+  {
+    "path": "L6-1_v2__seed01/native_raw/final_native_run_config.json",
+    "bytes": 7704,
+    "sha256": "b5c38e669d00aa2ac4c9e5d044c9218631b78a53797723460351c33fb7eee42c"
+  },
+  {
+    "path": "L6-1_v2__seed01/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 341093,
+    "sha256": "67001e20a486b4e9bc46664015d3f88673ef5a6baae9d08aed7f3403689bcb7d"
+  },
+  {
+    "path": "L6-1_v2__seed01/native_raw/heartbeat_scope.json",
+    "bytes": 777,
+    "sha256": "72a45c0b1b3aa639fc640a8e2b51b3066e915aed83c93c165e22eab1291ec675"
+  },
+  {
+    "path": "L6-1_v2__seed01/native_raw/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "68ed1ed114ad599a795f457586841602b84ecb783fd90ff1a812926edae30d15"
+  },
+  {
+    "path": "L6-1_v2__seed01/native_raw/receiver_observed_states.jsonl",
+    "bytes": 501050,
+    "sha256": "dc179927d3a8015ac8c56731a3e9dc5288a6d7e8d01cab1008edb3c33013c7fa"
+  },
+  {
+    "path": "L6-1_v2__seed01/scene_setup.json",
+    "bytes": 108994,
+    "sha256": "194f2f5fb50e3783bf73748f0daa8aad09090ddf47a3cdadc8ff60812bf85eb8"
+  },
+  {
+    "path": "L6-1_v2__seed01/whole_scene_last_five_ticks.json",
+    "bytes": 179740,
+    "sha256": "40015e433c36cf00780ef066d5c9834ec879386630ddb9ea6e859ff0965c4e0a"
+  },
+  {
+    "path": "L6-1_v2__seed02/actions.json",
+    "bytes": 9614,
+    "sha256": "c22bf1aaae30e5e4a81445b0d5df08fbc14eb89e1d105ca89b71ef933f1ef8e1"
+  },
+  {
+    "path": "L6-1_v2__seed02/adoption_profile.json",
+    "bytes": 2691,
+    "sha256": "42e61b2d251954b47288da34ef87f9c0d7373a041b2f8dc79b1aeb57a37c5b77"
+  },
+  {
+    "path": "L6-1_v2__seed02/causal_boundary_poses.json",
+    "bytes": 971156,
+    "sha256": "3d33954ca32a67d1815243ef4a417251033aae800af8b4ddc678705da96d7ef4"
+  },
+  {
+    "path": "L6-1_v2__seed02/event_script.json",
+    "bytes": 29849,
+    "sha256": "4203cb26214a5b6b9ac91ee9c4e0b13d0b728a2b6831b7203a89e331a22cfa98"
+  },
+  {
+    "path": "L6-1_v2__seed02/metadata_migration.json",
+    "bytes": 2195,
+    "sha256": "fb4c9b3c7b0b4baed0b9efb205475a35f950a228c819b3b45be5c9d24708c8da"
+  },
+  {
+    "path": "L6-1_v2__seed02/native_raw/event_admission.json",
+    "bytes": 13106,
+    "sha256": "a9ad5e8ae02ca6431b7e12f87717feeab5f6844f75912b16838b7cb00a5d7e80"
+  },
+  {
+    "path": "L6-1_v2__seed02/native_raw/final_native_run_config.json",
+    "bytes": 7704,
+    "sha256": "c2a343f9c3ea88aa230622b3e466832a94a548afa303a666a4b136533a36b687"
+  },
+  {
+    "path": "L6-1_v2__seed02/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 341093,
+    "sha256": "36f1489ff49da7d3c4c2d92a4400638463ba34508bdfdb44751a05b32ed1d5c9"
+  },
+  {
+    "path": "L6-1_v2__seed02/native_raw/heartbeat_scope.json",
+    "bytes": 777,
+    "sha256": "169a73b033825a1723313378cf664885fc7a35cf69346718570bb1da6f1de898"
+  },
+  {
+    "path": "L6-1_v2__seed02/native_raw/radio_actions.jsonl",
+    "bytes": 252,
+    "sha256": "8c188d819339aa7a346468deeeb0a53df0fee75defeb8b7e82b7ad8f4ec96f3e"
+  },
+  {
+    "path": "L6-1_v2__seed02/native_raw/receiver_observed_states.jsonl",
+    "bytes": 501050,
+    "sha256": "dc179927d3a8015ac8c56731a3e9dc5288a6d7e8d01cab1008edb3c33013c7fa"
+  },
+  {
+    "path": "L6-1_v2__seed02/scene_setup.json",
+    "bytes": 108994,
+    "sha256": "194f2f5fb50e3783bf73748f0daa8aad09090ddf47a3cdadc8ff60812bf85eb8"
+  },
+  {
+    "path": "L6-1_v2__seed02/whole_scene_last_five_ticks.json",
+    "bytes": 179740,
+    "sha256": "40015e433c36cf00780ef066d5c9834ec879386630ddb9ea6e859ff0965c4e0a"
+  },
+  {
+    "path": "L6-4_v1__seed00/actions.json",
+    "bytes": 18802,
+    "sha256": "4cc20c98c89bf6644b71cdb1ab7d673cb94c3968f9ea98f503957e1d926b45f0"
+  },
+  {
+    "path": "L6-4_v1__seed00/adoption_profile.json",
+    "bytes": 5253,
+    "sha256": "dd9d4c9c64691f5e1af158c47416c85b6d6d704055f1b4af6ff4e6edc8c14e96"
+  },
+  {
+    "path": "L6-4_v1__seed00/causal_boundary_poses.json",
+    "bytes": 2297505,
+    "sha256": "23793d9ebe1ad02b1db53e4b97ac76f010fadcb62e5e799a840a02b3e399a8e4"
+  },
+  {
+    "path": "L6-4_v1__seed00/event_script.json",
+    "bytes": 55726,
+    "sha256": "67060d6bc94dcf9429cbe01cfb4dfb9f5a5682c7d5769c8235a2070e356c9e8a"
+  },
+  {
+    "path": "L6-4_v1__seed00/metadata_migration.json",
+    "bytes": 3250,
+    "sha256": "5345270b5b74ed4ea3f2f76a94bde376370da81a16bc47a55a2309af6b196d09"
+  },
+  {
+    "path": "L6-4_v1__seed00/native_raw/event_admission.json",
+    "bytes": 47451,
+    "sha256": "e7ebb48ac570af3e19096c964b4a20db394a895cfc7f70b9e2f096e2dcaa28ce"
+  },
+  {
+    "path": "L6-4_v1__seed00/native_raw/final_native_run_config.json",
+    "bytes": 12402,
+    "sha256": "aaef72d9dd1d25d64204875a7708284317b0d37598897e2595c4882a2e52b188"
+  },
+  {
+    "path": "L6-4_v1__seed00/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 777926,
+    "sha256": "1d9d580df693f6efd7849fe0d969d9fdc7b57f884e354392b3cffb41beafc153"
+  },
+  {
+    "path": "L6-4_v1__seed00/native_raw/heartbeat_scope.json",
+    "bytes": 908,
+    "sha256": "1a8edef61c650209fc11db9c69749e5144bb02c604f1956c9aade365bb806ed0"
+  },
+  {
+    "path": "L6-4_v1__seed00/native_raw/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "7cea38d27805a2521dd0855ba48126f7ebca5e79ff57688e98bbe7a93694daac"
+  },
+  {
+    "path": "L6-4_v1__seed00/native_raw/receiver_observed_states.jsonl",
+    "bytes": 1103413,
+    "sha256": "42fcb3ad85fff46dc97ea6081fd95e3ec21dd1befe7ab496062716bb0ea4cd87"
+  },
+  {
+    "path": "L6-4_v1__seed00/scene_setup.json",
+    "bytes": 112147,
+    "sha256": "ca1546576b4ce4159731671f4cddeb0b789aa98535222800afe78a14bc85ba45"
+  },
+  {
+    "path": "L6-4_v1__seed00/whole_scene_extended_suffix.json",
+    "bytes": 3041133,
+    "sha256": "b6725564b4d9b81f1350e038aa10176bf7bce790dfb2419d865e604691984e70"
+  },
+  {
+    "path": "L6-4_v1__seed00/whole_scene_last_five_ticks.json",
+    "bytes": 185266,
+    "sha256": "6e6c13c92ee338e2234bfca6fe1a880aec39fdaf77ab377b8b0fbfde50d4584d"
+  },
+  {
+    "path": "L6-4_v1__seed01/actions.json",
+    "bytes": 18802,
+    "sha256": "235f57aebc07bc088e7b32880b7060c60646bead33e5bec04d9d66d1f2e5c9a8"
+  },
+  {
+    "path": "L6-4_v1__seed01/adoption_profile.json",
+    "bytes": 5253,
+    "sha256": "3c7b1e0a8094e821362e549cb1cdf428664901673218d03ee92997a93f9967bf"
+  },
+  {
+    "path": "L6-4_v1__seed01/causal_boundary_poses.json",
+    "bytes": 2853374,
+    "sha256": "09ebf5cad961792f9692e28eb2de8198dc28d6f4150d14b52950c6f608941236"
+  },
+  {
+    "path": "L6-4_v1__seed01/event_script.json",
+    "bytes": 55726,
+    "sha256": "67060d6bc94dcf9429cbe01cfb4dfb9f5a5682c7d5769c8235a2070e356c9e8a"
+  },
+  {
+    "path": "L6-4_v1__seed01/metadata_migration.json",
+    "bytes": 3250,
+    "sha256": "bee116d6b4019b06dabcad369558d52e2410109cb07ed8ea3323b7aa3b857643"
+  },
+  {
+    "path": "L6-4_v1__seed01/native_raw/event_admission.json",
+    "bytes": 49052,
+    "sha256": "45853b64e25000f73d1f16367704a71031a39d125110d6252ee35109b498ac22"
+  },
+  {
+    "path": "L6-4_v1__seed01/native_raw/final_native_run_config.json",
+    "bytes": 12402,
+    "sha256": "4259d92d68b41871c2a3970106679562a443cc429243ccb32a7c69b1f9997ec0"
+  },
+  {
+    "path": "L6-4_v1__seed01/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 712825,
+    "sha256": "7707043f18a913cfe756cf63b8d9351a7734a430cb9daf4357f3dcd7fe810eb2"
+  },
+  {
+    "path": "L6-4_v1__seed01/native_raw/heartbeat_scope.json",
+    "bytes": 908,
+    "sha256": "23ea33217cf9fd432a4755b212780ebe31c6019a0e8072b5cdb84bb8adb66220"
+  },
+  {
+    "path": "L6-4_v1__seed01/native_raw/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "9062d112d886298ef482f2538ce9cc09048b787a58159325e564d0fd11307a7d"
+  },
+  {
+    "path": "L6-4_v1__seed01/native_raw/receiver_observed_states.jsonl",
+    "bytes": 1011218,
+    "sha256": "eaa6b4b351b07cc7c51081db6b43475957ffeb0e80f0fe13931dce6c5a820105"
+  },
+  {
+    "path": "L6-4_v1__seed01/scene_setup.json",
+    "bytes": 112147,
+    "sha256": "ca1546576b4ce4159731671f4cddeb0b789aa98535222800afe78a14bc85ba45"
+  },
+  {
+    "path": "L6-4_v1__seed01/whole_scene_extended_suffix.json",
+    "bytes": 3,
+    "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  {
+    "path": "L6-4_v1__seed01/whole_scene_last_five_ticks.json",
+    "bytes": 185290,
+    "sha256": "fd4b1c621d82d694183dbcffd458abbd6b7db1aa0c1e8e2669b67a20e5e4e72d"
+  },
+  {
+    "path": "L6-4_v1__seed02/actions.json",
+    "bytes": 5375,
+    "sha256": "ffdd3860f7d3068380906425513471a07c2044acc2f799027a558074aafa6248"
+  },
+  {
+    "path": "L6-4_v1__seed02/adoption_profile.json",
+    "bytes": 5253,
+    "sha256": "f52d09b77cd13a461335081f7490cf46cbae9a85e33f8b3dfef445474c30b176"
+  },
+  {
+    "path": "L6-4_v1__seed02/causal_boundary_poses.json",
+    "bytes": 814679,
+    "sha256": "6b1875a619fc6713e11c44832cc6b711830405df24f5fca53d506d39d4322157"
+  },
+  {
+    "path": "L6-4_v1__seed02/event_script.json",
+    "bytes": 55726,
+    "sha256": "67060d6bc94dcf9429cbe01cfb4dfb9f5a5682c7d5769c8235a2070e356c9e8a"
+  },
+  {
+    "path": "L6-4_v1__seed02/metadata_migration.json",
+    "bytes": 1683,
+    "sha256": "6aa5f96f56456717a0ccec48739b634efbc8c421186a5046271ea7b3fb250194"
+  },
+  {
+    "path": "L6-4_v1__seed02/native_raw/event_admission.json",
+    "bytes": 4382,
+    "sha256": "3877c04e58df80b6afa146eac842c87d9dc8af3081374d062b278161972bc8b6"
+  },
+  {
+    "path": "L6-4_v1__seed02/native_raw/final_native_run_config.json",
+    "bytes": 8758,
+    "sha256": "1c69ee386dcd4ea85c4c159cbf11c190a6fea0ab739c9f5e9742c66a6b3b6b9a"
+  },
+  {
+    "path": "L6-4_v1__seed02/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 712832,
+    "sha256": "34d55e3675f870934f6bd36160936a792b1027306905c39cf500afb29ee034e5"
+  },
+  {
+    "path": "L6-4_v1__seed02/native_raw/heartbeat_scope.json",
+    "bytes": 908,
+    "sha256": "ef9a1921bb2236efb6efa598fbd56cdb27977685c8768d80cf139dde27dc6161"
+  },
+  {
+    "path": "L6-4_v1__seed02/native_raw/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "9956d855545e13d79ac452c85f7748ce839d0d058148e0c07c7d0371be192788"
+  },
+  {
+    "path": "L6-4_v1__seed02/native_raw/receiver_observed_states.jsonl",
+    "bytes": 1011251,
+    "sha256": "c4a162b4ea4f6c8545ef84bbfefcfc301a1a4d92fded9bf94b35b2f402bc3a7d"
+  },
+  {
+    "path": "L6-4_v1__seed02/scene_setup.json",
+    "bytes": 112147,
+    "sha256": "ca1546576b4ce4159731671f4cddeb0b789aa98535222800afe78a14bc85ba45"
+  },
+  {
+    "path": "L6-4_v1__seed02/whole_scene_extended_suffix.json",
+    "bytes": 3,
+    "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  {
+    "path": "L6-4_v1__seed02/whole_scene_last_five_ticks.json",
+    "bytes": 185330,
+    "sha256": "4ca8b207f44709c81c09df976a0dbcedbfad512851042efd532d6a0e26500915"
+  },
+  {
+    "path": "L6-4_v2__seed00/actions.json",
+    "bytes": 18800,
+    "sha256": "ee7dd1687c8e2fb8f951ff58eb63f8e19308b320b117dded41a15acc60ac5f3a"
+  },
+  {
+    "path": "L6-4_v2__seed00/adoption_profile.json",
+    "bytes": 5253,
+    "sha256": "87b67742925ec53e61c5898e27ec841a6ccd5d21f5659b5c2c0d9aaf31136a1b"
+  },
+  {
+    "path": "L6-4_v2__seed00/causal_boundary_poses.json",
+    "bytes": 2289996,
+    "sha256": "a5837b422818d57df856eaff2b60b7896ca7ae9ed1460efb61db58d3c9868884"
+  },
+  {
+    "path": "L6-4_v2__seed00/event_script.json",
+    "bytes": 55697,
+    "sha256": "ed818c6bce7be287f1fc03db6d1b34095569f3bc4438fd92b3ad685a08b5667a"
+  },
+  {
+    "path": "L6-4_v2__seed00/metadata_migration.json",
+    "bytes": 3250,
+    "sha256": "0166028a9f0768bfc24bcfe88a69035639af1a8f2c0213d81d5342cd6332dbc5"
+  },
+  {
+    "path": "L6-4_v2__seed00/native_raw/event_admission.json",
+    "bytes": 53619,
+    "sha256": "899dbde88b226778676edbcc4b80cca45aa9d8ad7bcace98b8058e608c4c3efa"
+  },
+  {
+    "path": "L6-4_v2__seed00/native_raw/final_native_run_config.json",
+    "bytes": 12402,
+    "sha256": "c548bd3eb701858c5ac36b62028743b4403db5879fb56c40c9bbb6c9e65be7f1"
+  },
+  {
+    "path": "L6-4_v2__seed00/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 735064,
+    "sha256": "58048cdca275f4792f6fc99b2aa0dc86914d047b28837fcf8483d29f6b04a400"
+  },
+  {
+    "path": "L6-4_v2__seed00/native_raw/heartbeat_scope.json",
+    "bytes": 908,
+    "sha256": "7dd0533509bb6a4aa40e4cce914c15e5498d53621ac877d463ec2d6c561f529e"
+  },
+  {
+    "path": "L6-4_v2__seed00/native_raw/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "125dde8f510056bb8da2539b3d0b7d1af5e3b40e632a8ba55db89a9e44075f45"
+  },
+  {
+    "path": "L6-4_v2__seed00/native_raw/receiver_observed_states.jsonl",
+    "bytes": 1042681,
+    "sha256": "6d0da509ee98cfc98990233375a36276f024de806cf4595f1d45e851d9690ad8"
+  },
+  {
+    "path": "L6-4_v2__seed00/scene_setup.json",
+    "bytes": 111791,
+    "sha256": "4fe170300c918118214ff4000ad6a2728237878fadca2a3f7810e055fee111d8"
+  },
+  {
+    "path": "L6-4_v2__seed00/whole_scene_extended_suffix.json",
+    "bytes": 1035026,
+    "sha256": "0e9248fc181b5b1ac42e929dfe702060c8071341a00cd4c0bfded86f0fd2d266"
+  },
+  {
+    "path": "L6-4_v2__seed00/whole_scene_last_five_ticks.json",
+    "bytes": 184694,
+    "sha256": "ca7a14d17f9b93441538495f7aa8cc98eb9e735d8778bf38d4d01e31d5abce86"
+  },
+  {
+    "path": "L6-4_v2__seed01/actions.json",
+    "bytes": 18800,
+    "sha256": "1537fdd459c844d8ed5916ed0d48ea89560681378e53d6b3498f43561246eb0e"
+  },
+  {
+    "path": "L6-4_v2__seed01/adoption_profile.json",
+    "bytes": 5253,
+    "sha256": "adf434bf85b1736a6815b4370eeadba2de6510c172a4b3abfd749939996f3eca"
+  },
+  {
+    "path": "L6-4_v2__seed01/causal_boundary_poses.json",
+    "bytes": 2844159,
+    "sha256": "8d593c40c5b0087938eaf3db8cb5509446b42dcdd7ed4312b26d2366e19bbffe"
+  },
+  {
+    "path": "L6-4_v2__seed01/event_script.json",
+    "bytes": 55697,
+    "sha256": "ed818c6bce7be287f1fc03db6d1b34095569f3bc4438fd92b3ad685a08b5667a"
+  },
+  {
+    "path": "L6-4_v2__seed01/metadata_migration.json",
+    "bytes": 3250,
+    "sha256": "85ac415e0526f049854a38edb61aadd62344ed6b3de96b5bee65760c78b22969"
+  },
+  {
+    "path": "L6-4_v2__seed01/native_raw/event_admission.json",
+    "bytes": 49052,
+    "sha256": "21a9fe2b60c96d11aacd511568eac7e629b93a6a16479bf210b6a8d8fb3f8e83"
+  },
+  {
+    "path": "L6-4_v2__seed01/native_raw/final_native_run_config.json",
+    "bytes": 12402,
+    "sha256": "f9710272e4470ac07e439459504dc492e097297879d102fe4930d306caebf91e"
+  },
+  {
+    "path": "L6-4_v2__seed01/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 712825,
+    "sha256": "90c9d26b2db8e67ad7ec57a6c4883d971585e8a7f190cb8a0193f68b3f92c5de"
+  },
+  {
+    "path": "L6-4_v2__seed01/native_raw/heartbeat_scope.json",
+    "bytes": 908,
+    "sha256": "2638a7bb43f749078b165310cef100f6f079027347e86cabd6955d618b735fb7"
+  },
+  {
+    "path": "L6-4_v2__seed01/native_raw/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "d5cb02071d8b00ff3d484027d7c5e42257c7d3c7167e5ee95218448cd2d5e715"
+  },
+  {
+    "path": "L6-4_v2__seed01/native_raw/receiver_observed_states.jsonl",
+    "bytes": 1011247,
+    "sha256": "e87df7e6f8b4b833af9cb87a872276bae2260fec8700f56b7d8c6524fcec7e25"
+  },
+  {
+    "path": "L6-4_v2__seed01/scene_setup.json",
+    "bytes": 111791,
+    "sha256": "4fe170300c918118214ff4000ad6a2728237878fadca2a3f7810e055fee111d8"
+  },
+  {
+    "path": "L6-4_v2__seed01/whole_scene_extended_suffix.json",
+    "bytes": 3,
+    "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  {
+    "path": "L6-4_v2__seed01/whole_scene_last_five_ticks.json",
+    "bytes": 184696,
+    "sha256": "d37a0d67d4cc447c798a7a2d2c15ef6d37bcb6933544fad4229533599bf777b3"
+  },
+  {
+    "path": "L6-4_v2__seed02/actions.json",
+    "bytes": 12150,
+    "sha256": "2a33b2a0c47d5bc8b1694503436fa103c2c1544bf835b5b992aca4b7b8731e70"
+  },
+  {
+    "path": "L6-4_v2__seed02/adoption_profile.json",
+    "bytes": 5253,
+    "sha256": "3f65f738aed7d59c55338023b70b8c03427dba90063a5a24a17d684822ad789b"
+  },
+  {
+    "path": "L6-4_v2__seed02/causal_boundary_poses.json",
+    "bytes": 1366108,
+    "sha256": "2a225a28e8cb3144f28dcfc101ddeeeadef54cd285a156d57f4ed812e49a9a74"
+  },
+  {
+    "path": "L6-4_v2__seed02/event_script.json",
+    "bytes": 55697,
+    "sha256": "ed818c6bce7be287f1fc03db6d1b34095569f3bc4438fd92b3ad685a08b5667a"
+  },
+  {
+    "path": "L6-4_v2__seed02/metadata_migration.json",
+    "bytes": 2503,
+    "sha256": "98117eb699f26c7022adcaaecff85279bc5de249bf73d40c938f1230e6b63720"
+  },
+  {
+    "path": "L6-4_v2__seed02/native_raw/event_admission.json",
+    "bytes": 24196,
+    "sha256": "c6ad32f6fb8c4847201c759c355000780ff6148e8aa5c7f5d1980d7a4107818b"
+  },
+  {
+    "path": "L6-4_v2__seed02/native_raw/final_native_run_config.json",
+    "bytes": 10660,
+    "sha256": "85458db531a62e2039c40382b70df028895b3d40dcdc815cf5c0b72f3c4e2e16"
+  },
+  {
+    "path": "L6-4_v2__seed02/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 712832,
+    "sha256": "f1a67f6ed073fb3a21c16da191c84eb945fcecf855b62c2de0bf128ebfe72f23"
+  },
+  {
+    "path": "L6-4_v2__seed02/native_raw/heartbeat_scope.json",
+    "bytes": 908,
+    "sha256": "fe9a221a3db47f52ea69e3da165061bf2ab3acf00465644d806621fa9851347a"
+  },
+  {
+    "path": "L6-4_v2__seed02/native_raw/radio_actions.jsonl",
+    "bytes": 1022,
+    "sha256": "8010cb63cc53451242c2c9efe77b6602f34488c1db30784ea9a287dd0c2442b0"
+  },
+  {
+    "path": "L6-4_v2__seed02/native_raw/receiver_observed_states.jsonl",
+    "bytes": 1011189,
+    "sha256": "b1fd9eeeed922968c6cde8d739b54c558f48bc3273222a57ea251ce55014a662"
+  },
+  {
+    "path": "L6-4_v2__seed02/scene_setup.json",
+    "bytes": 111791,
+    "sha256": "4fe170300c918118214ff4000ad6a2728237878fadca2a3f7810e055fee111d8"
+  },
+  {
+    "path": "L6-4_v2__seed02/whole_scene_extended_suffix.json",
+    "bytes": 3,
+    "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  {
+    "path": "L6-4_v2__seed02/whole_scene_last_five_ticks.json",
+    "bytes": 184721,
+    "sha256": "5903f71086df64e9807ff177c328eadd2a04cd0c7b55f28fa973f92af6dc3db4"
+  },
+  {
+    "path": "L6_seed02_observed_fault_failure.json",
+    "bytes": 9754,
+    "sha256": "40df88831703d1691f5949e42342f085a36cb297914696fd0b517e325c09e466"
+  },
+  {
+    "path": "README.md",
+    "bytes": 7598,
+    "sha256": "e732df8952fc99e5b5a139eeed0d2b7783e27a20f62edb9b22141feabb357600"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/actions.json",
+    "bytes": 24377,
+    "sha256": "01c331673eab03853bc1da7c1211d677a92d4f24ca63742692e8f815ee672071"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/adoption_profile.json",
+    "bytes": 3012,
+    "sha256": "af5961ac7ff66b51e7ecb107adb275ec42b73d76f45e0bdc6c6480beab74b9ba"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/causal_boundary_poses.json",
+    "bytes": 1795495,
+    "sha256": "946b4c6a1be996bba94e3c2dbfdd2395f90b32a1494bae19c19cc5d135de3ab9"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/event_script.json",
+    "bytes": 64763,
+    "sha256": "da33ed2183f6953e7477afd2f5c6c4b71e62755d0d0919f1fa21d1fa4ae78e8c"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/first_permission_source_poses_450_452.json",
+    "bytes": 12355,
+    "sha256": "cec52cda16bee8c5739844cfc10c5ae238a444539070358c0277ac3679edf282"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/first_permission_source_poses_450_452.raw-index.json",
+    "bytes": 2476,
+    "sha256": "7ccfabfb018aabd0cde471c3a2e8ebac30a6a908520768aa7082cdc5c93b5e22"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/first_permission_source_poses_450_452.raw.jsonl",
+    "bytes": 6451,
+    "sha256": "250cd56fda2a9e23de3b4596df6bc2fd658155c84efedcb1879c93a789693bed"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/metadata_migration.json",
+    "bytes": 2071,
+    "sha256": "7c7fa43bac9284e2427af4e4e281f76a2f222650571a57715272b20f6c0cc5cc"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/native_raw/event_admission.json",
+    "bytes": 7278,
+    "sha256": "4650c48825959ef219b0f3f39cc516a31ba0a11634160c90d2f2c92853070f14"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/native_raw/final_native_run_config.json",
+    "bytes": 7700,
+    "sha256": "2ed80d8260c52735487201c168e7a16050c6c28e7b80172a751f7905f9d657d8"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 389603,
+    "sha256": "2163492f554b89e8640411816251c17849f62a24b4181373e29ee00f925a3c33"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/native_raw/heartbeat_scope.json",
+    "bytes": 807,
+    "sha256": "616d1fbd7899ad9980b99fc1992e202b8bafaf4e9455340019e6f4ce285986a0"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/native_raw/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "493aeeeeea5d559447e8cb036eae602faf625f6bca9f8ec54a051d872bef756a"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/native_raw/receiver_observed_states.jsonl",
+    "bytes": 503105,
+    "sha256": "106c8cd76a296d047b2e58bb13d8e68d46ab39648f446898e51be8f795a6f023"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/scene_setup.json",
+    "bytes": 97801,
+    "sha256": "180217e9619a20ffd6fd80b4d7d67163cab7638e432bd024f658993e9f560b30"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/whole_scene_last_five_ticks.json",
+    "bytes": 157475,
+    "sha256": "872c92e9e01b8abe1864f9af0ff0e13eaa2c890487ea78011de9ffef5c00744c"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/actions.json",
+    "bytes": 24377,
+    "sha256": "01c331673eab03853bc1da7c1211d677a92d4f24ca63742692e8f815ee672071"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/adoption_profile.json",
+    "bytes": 3012,
+    "sha256": "ea1cfc6932cd2197a64c9c0bd7e5cfe00c337243db4ac96b2791cc80c8bf9798"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/causal_boundary_poses.json",
+    "bytes": 1795495,
+    "sha256": "946b4c6a1be996bba94e3c2dbfdd2395f90b32a1494bae19c19cc5d135de3ab9"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/event_script.json",
+    "bytes": 64763,
+    "sha256": "da33ed2183f6953e7477afd2f5c6c4b71e62755d0d0919f1fa21d1fa4ae78e8c"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/first_permission_source_poses_450_452.json",
+    "bytes": 12355,
+    "sha256": "b700e6692ac3751f18779d35cc871f727bc06e0eb74465870ed8e2f44f595640"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/first_permission_source_poses_450_452.raw-index.json",
+    "bytes": 2476,
+    "sha256": "1271583303d77503fa5bdc7c8f991408b7da89eb03849f38d07e452f2585146d"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/first_permission_source_poses_450_452.raw.jsonl",
+    "bytes": 6451,
+    "sha256": "250cd56fda2a9e23de3b4596df6bc2fd658155c84efedcb1879c93a789693bed"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/metadata_migration.json",
+    "bytes": 2071,
+    "sha256": "55d484b874add867ddabb711c6cd8fd2d21dbae2120fdf525db2525297ad82e4"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/native_raw/event_admission.json",
+    "bytes": 7278,
+    "sha256": "4650c48825959ef219b0f3f39cc516a31ba0a11634160c90d2f2c92853070f14"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/native_raw/final_native_run_config.json",
+    "bytes": 7700,
+    "sha256": "8ab21b9088f6cc7211fb0a005443c8815f4f410159c2c739533d898a76b0a28f"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 389603,
+    "sha256": "d0cbfb05e8dc7a9dc8377463c76d2c0a121671a782104081cd2bd981f7fded64"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/native_raw/heartbeat_scope.json",
+    "bytes": 807,
+    "sha256": "9ca03a771bdac77c9ca8038735623c208e38628f36b4abc321dc9dcc51d11e81"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/native_raw/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "ef77560d80a76882c86c53b8728dfe4f7448b30e6ec813ca112170f04243fef4"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/native_raw/receiver_observed_states.jsonl",
+    "bytes": 503105,
+    "sha256": "106c8cd76a296d047b2e58bb13d8e68d46ab39648f446898e51be8f795a6f023"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/scene_setup.json",
+    "bytes": 97801,
+    "sha256": "180217e9619a20ffd6fd80b4d7d67163cab7638e432bd024f658993e9f560b30"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/whole_scene_last_five_ticks.json",
+    "bytes": 157475,
+    "sha256": "872c92e9e01b8abe1864f9af0ff0e13eaa2c890487ea78011de9ffef5c00744c"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/actions.json",
+    "bytes": 24377,
+    "sha256": "01c331673eab03853bc1da7c1211d677a92d4f24ca63742692e8f815ee672071"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/adoption_profile.json",
+    "bytes": 3012,
+    "sha256": "fd40da7fb0404c296c5b3223bae5d518faeaeb345dbe5a617b39472c39a6c5b4"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/causal_boundary_poses.json",
+    "bytes": 1795495,
+    "sha256": "946b4c6a1be996bba94e3c2dbfdd2395f90b32a1494bae19c19cc5d135de3ab9"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/event_script.json",
+    "bytes": 64763,
+    "sha256": "da33ed2183f6953e7477afd2f5c6c4b71e62755d0d0919f1fa21d1fa4ae78e8c"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/first_permission_source_poses_450_452.json",
+    "bytes": 12355,
+    "sha256": "061e756f7847fb7b259273ca2ce0df02fbe275d2c3909c0baa93e43cda59bbb2"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/first_permission_source_poses_450_452.raw-index.json",
+    "bytes": 2476,
+    "sha256": "2c9349c158f91a8e6268ecb3bb46c73ba28a3e98e405961f9285964bb3fac497"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/first_permission_source_poses_450_452.raw.jsonl",
+    "bytes": 6451,
+    "sha256": "250cd56fda2a9e23de3b4596df6bc2fd658155c84efedcb1879c93a789693bed"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/metadata_migration.json",
+    "bytes": 2071,
+    "sha256": "b40e0aeffccfe085d686b8d1144d5b318f0250601254ac926d838ba002ac7f8c"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/native_raw/event_admission.json",
+    "bytes": 7278,
+    "sha256": "4650c48825959ef219b0f3f39cc516a31ba0a11634160c90d2f2c92853070f14"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/native_raw/final_native_run_config.json",
+    "bytes": 7700,
+    "sha256": "cad76cd3a40d9981a8e381c08c0bc02e6274c350a50d3d312dd9b29e8541b2f2"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 389603,
+    "sha256": "803beba622b0f4da44f37d8505f7f77c244723f30a2ccfd2e42c4735a39dac89"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/native_raw/heartbeat_scope.json",
+    "bytes": 807,
+    "sha256": "35b8b9558afd90004ce0b958fcef9e8b643679c615ec779061b35dfc92053a27"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/native_raw/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "a66fbe75f3811944e027ec9612089211e0e835016319d688fb70112a108c14c5"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/native_raw/receiver_observed_states.jsonl",
+    "bytes": 503105,
+    "sha256": "106c8cd76a296d047b2e58bb13d8e68d46ab39648f446898e51be8f795a6f023"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/scene_setup.json",
+    "bytes": 97801,
+    "sha256": "180217e9619a20ffd6fd80b4d7d67163cab7638e432bd024f658993e9f560b30"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/whole_scene_last_five_ticks.json",
+    "bytes": 157475,
+    "sha256": "872c92e9e01b8abe1864f9af0ff0e13eaa2c890487ea78011de9ffef5c00744c"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/actions.json",
+    "bytes": 21745,
+    "sha256": "75adf92684b2f3759b6fb5b186b91ae0911a3ab0df214f520ed0a3d828b00f37"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/adoption_profile.json",
+    "bytes": 8509,
+    "sha256": "4d53d33b7767268d8169b28e0e7a9ec57219b4f59a58fb1b20f2ec268142ea9f"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/causal_boundary_poses.json",
+    "bytes": 2872021,
+    "sha256": "4a4193b46ef9cd91670fdf5ead0511efc75b24ac9f7cfeee4fb0e7f8e0d0bdcb"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/event_script.json",
+    "bytes": 62286,
+    "sha256": "df35e1114af8486fe17e624c97a9566734d8e7dc54535ca6dc0f4911a4746d05"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/metadata_migration.json",
+    "bytes": 2882,
+    "sha256": "061d416ded2aa68ecb7c2a65ee2644bb33d64192470d02149f768156988b55a1"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/native_raw/event_admission.json",
+    "bytes": 57135,
+    "sha256": "8ddf963e5d8ee320e3a40461ba400f44ac7713470fb4df4561a5b801011a4c39"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/native_raw/final_native_run_config.json",
+    "bytes": 10489,
+    "sha256": "6182936a1969ff301f915dd96833e8fa5b2b33a16028046dad6b5b718c135673"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 744799,
+    "sha256": "5284f0a485ab94aeb2d0cc8094405630cd9d1fe00a57fb6278ea44adfb0d64fd"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/native_raw/heartbeat_scope.json",
+    "bytes": 881,
+    "sha256": "e7a9759759e951fdfd6a78839c45fb10115bce6585d45e575335fefca7eb8c95"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/native_raw/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "da1a4ac3a2f56efb55612f6de3202197977d9f5eb78efc57838cfe28b2250b40"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/native_raw/receiver_observed_states.jsonl",
+    "bytes": 993770,
+    "sha256": "f60addd984fe847d2f9a78e03f1cd7b7d69c952e5a82481f33daf96d79bd8cd1"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/scene_setup.json",
+    "bytes": 117976,
+    "sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed00/whole_scene_last_five_ticks.json",
+    "bytes": 199296,
+    "sha256": "15d13e0861983308ad0cd0fd70349ee3d3043bba4e600d519234ca14fcda7e4e"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/actions.json",
+    "bytes": 21745,
+    "sha256": "75adf92684b2f3759b6fb5b186b91ae0911a3ab0df214f520ed0a3d828b00f37"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/adoption_profile.json",
+    "bytes": 8509,
+    "sha256": "0c7007516b4fef4706e1f5a095f82bc01b936bf5ae65f7eb458a0a3763347f20"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/causal_boundary_poses.json",
+    "bytes": 2872021,
+    "sha256": "4a4193b46ef9cd91670fdf5ead0511efc75b24ac9f7cfeee4fb0e7f8e0d0bdcb"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/event_script.json",
+    "bytes": 62286,
+    "sha256": "df35e1114af8486fe17e624c97a9566734d8e7dc54535ca6dc0f4911a4746d05"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/metadata_migration.json",
+    "bytes": 2888,
+    "sha256": "b4459193f907b6f81e3922bdd04aaed66795e99d20d2fb96d6274cc56608c15e"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/native_raw/event_admission.json",
+    "bytes": 57135,
+    "sha256": "da34804fd73f6dc9ff46aaa8a3f766490a88b73513ef41daabe67e8aceed225c"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/native_raw/final_native_run_config.json",
+    "bytes": 10489,
+    "sha256": "d6cbc74246806286a930f55d70b4ce91060b8068ca4de23832797ac436513f8d"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 744799,
+    "sha256": "f4e2f96a1b9e875bd31e2c3f96d6b225e46bd5cce3cf6c753b55c6716deb7d16"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/native_raw/heartbeat_scope.json",
+    "bytes": 884,
+    "sha256": "b0764b4f2d4fc45ccb4f7accbdf478d0777f6f5d6372203dba6d48c4455277cf"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/native_raw/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "0f4644d82aa3a4e1ed53145f2794a9a74874fb1c7bd2204918cb78a97652a58e"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/native_raw/receiver_observed_states.jsonl",
+    "bytes": 993770,
+    "sha256": "f60addd984fe847d2f9a78e03f1cd7b7d69c952e5a82481f33daf96d79bd8cd1"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/scene_setup.json",
+    "bytes": 117976,
+    "sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed01/whole_scene_last_five_ticks.json",
+    "bytes": 199296,
+    "sha256": "15d13e0861983308ad0cd0fd70349ee3d3043bba4e600d519234ca14fcda7e4e"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/actions.json",
+    "bytes": 21745,
+    "sha256": "75adf92684b2f3759b6fb5b186b91ae0911a3ab0df214f520ed0a3d828b00f37"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/adoption_profile.json",
+    "bytes": 8509,
+    "sha256": "a0c106287731f03ab8b197b22e98d22f7fba9f947f630b341e71d79dc8e0e4af"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/causal_boundary_poses.json",
+    "bytes": 2872021,
+    "sha256": "4a4193b46ef9cd91670fdf5ead0511efc75b24ac9f7cfeee4fb0e7f8e0d0bdcb"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/event_script.json",
+    "bytes": 62286,
+    "sha256": "df35e1114af8486fe17e624c97a9566734d8e7dc54535ca6dc0f4911a4746d05"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/metadata_migration.json",
+    "bytes": 2888,
+    "sha256": "ca319f83cb1c8af45da50a91e05a0adb1e05176e1d39d137c33422e263e6ed47"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/native_raw/event_admission.json",
+    "bytes": 57135,
+    "sha256": "57c6ad4a73e6529aa9578f349d7eae04fd576245c862c13c99d1333fe6086e1d"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/native_raw/final_native_run_config.json",
+    "bytes": 10489,
+    "sha256": "ce55b67a0c751bc4f674d928cfe23bb246e6a1049efcb5675573c9a8a889cd68"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/native_raw/heartbeat_native_packets.jsonl",
+    "bytes": 744799,
+    "sha256": "f828d08700b336212aa1a4c39a73e0b65fedbff5fa1e874eae6ee65c5765a466"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/native_raw/heartbeat_scope.json",
+    "bytes": 884,
+    "sha256": "ddeea09c1f8cbc4e1bdbd17201378df7e27b88533cd9ce41ccb365e171967874"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/native_raw/radio_actions.jsonl",
+    "bytes": 304,
+    "sha256": "a07615d94ff8366507bb9c22ccb15dc1cf404062edb332f4004cf3ba36b4499b"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/native_raw/receiver_observed_states.jsonl",
+    "bytes": 993770,
+    "sha256": "f60addd984fe847d2f9a78e03f1cd7b7d69c952e5a82481f33daf96d79bd8cd1"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/scene_setup.json",
+    "bytes": 117976,
+    "sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d"
+  },
+  {
+    "path": "X5_comm_failure_to_pad_contention__seed02/whole_scene_last_five_ticks.json",
+    "bytes": 199296,
+    "sha256": "15d13e0861983308ad0cd0fd70349ee3d3043bba4e600d519234ca14fcda7e4e"
+  },
+  {
+    "path": "actual_scene_sensor_channel_clock_index.json",
+    "bytes": 407276,
+    "sha256": "a742320575a0f43b094d20ed7b06aa226e9f30c268344340efd81b153deedf30"
+  },
+  {
+    "path": "diagnostic_attribution_limits.json",
+    "bytes": 1692,
+    "sha256": "f2e76c795638c2fdb638d4fbe339049be47a55d8c4781b23d852351037ab4969"
+  },
+  {
+    "path": "focused_validation.json",
+    "bytes": 672,
+    "sha256": "794c4f04d50ebe0a903a12571c1517e3ced6fa3c4d950d328c2eb80458c07f67"
+  },
+  {
+    "path": "full_trajectory_delta_comparison.json",
+    "bytes": 20686,
+    "sha256": "dd95d7f624de7d5cad27b99e3dee0f1c725203a90c1809689e89698759f9a07c"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/inventory.json",
+    "bytes": 5194,
+    "sha256": "ca0f416e0585e85f7d7d1f6b37d1afe650e29cb65aab4b290b840bc4d8c3bf21"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v10/L2-1_v2__seed00/adoption_profile.json",
+    "bytes": 2947,
+    "sha256": "75a84ea8f73f65b388273acb8a0a4599194e75a9bf652f0beac9db2519025ed4"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v10/L2-1_v2__seed00/command_receipts.json",
+    "bytes": 2268,
+    "sha256": "5684c33986520d56e51cb126a878ac5f3ad2407d611758c8db375468bf292576"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v10/L2-1_v2__seed00/network_backend.json",
+    "bytes": 11375,
+    "sha256": "1745ac358d604042c789387f726add652a486c3a042bc151edbff2960404f462"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v10/L2-1_v2__seed00/network_events.jsonl",
+    "bytes": 422777,
+    "sha256": "9ec73d5cbb08d02e4c1aa7b3cb1c6052bf3a013594ca5b3e4777d64f98bfba63"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v10/L2-1_v2__seed00/network_packets.jsonl",
+    "bytes": 316483,
+    "sha256": "5e6cae0b8b96e9f84d388a7db0b5acba275f690df543cd4be2e25d309b494e0e"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v10/L2-1_v2__seed00/summary.json",
+    "bytes": 1974,
+    "sha256": "d34e5f3dacf8ce21fef1b7e7794218bf521cbf093d8d3b38fb192a8267f41b8e"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v1__seed00/adoption_profile.json",
+    "bytes": 3615,
+    "sha256": "7f6dc4693f634767007c10063ddb22402e9707e58cb6d62114c274221bd550c3"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v1__seed00/command_receipts.json",
+    "bytes": 7340,
+    "sha256": "f7d52625556ceadf809c0a82c23eacb3f6c43612d6ea402d22e4675d6b724149"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v1__seed00/network_backend.json",
+    "bytes": 11374,
+    "sha256": "b64e6a8798468b43e813dac538fa669e488ac7ed67a8a9b36598d6e8da1f56dd"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v1__seed00/network_diagnostics.jsonl",
+    "bytes": 204380,
+    "sha256": "2faf7022420c428d80103f73d9933a9b6e4c189c88cc98c6d2da8a592d149683"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v1__seed00/network_events.jsonl",
+    "bytes": 425870,
+    "sha256": "a9b6c00d96ed086bc30db9db47279299329eea5a08f5ecc04796689ad1e06c67"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v1__seed00/network_packets.jsonl",
+    "bytes": 317566,
+    "sha256": "a0e8ad6d113256316fb1fcd39e3d210498601c3e67bd2c9773035a37e19d9494"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v1__seed00/summary.json",
+    "bytes": 1971,
+    "sha256": "eb201210108ceba39042b2784ab06e57e6b7b7faa848e8d4a723224874cc3190"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v2__seed00/adoption_profile.json",
+    "bytes": 5031,
+    "sha256": "0000a3183ad14c304b43e0f4473d2f663c8885ed88f55eb4aad75322ebf99f9e"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v2__seed00/command_receipts.json",
+    "bytes": 7332,
+    "sha256": "0b80669d11ba7871c41e65cfd4c061c83c2dc338f2d07c3ce65b94b4f0928995"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v2__seed00/network_backend.json",
+    "bytes": 11373,
+    "sha256": "0f862022827fb579b99c2af6341dac5ccb1f4791847a8085c88b7b4d0629e877"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v2__seed00/network_diagnostics.jsonl",
+    "bytes": 204380,
+    "sha256": "15627145db4406857e237e203cad88174fce722f96e098ef2e26a791056df999"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v2__seed00/network_events.jsonl",
+    "bytes": 425870,
+    "sha256": "02f0aac200f9f2ae49b81ef9854297e7b29f7db08039c57839b8cac8c8a5c0f7"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v2__seed00/network_packets.jsonl",
+    "bytes": 317566,
+    "sha256": "d91e38fb5826c6a277d4f904539bffd2ac1fc401fcf3bcc800b30e5e756b4f06"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v11/L2-1_v2__seed00/summary.json",
+    "bytes": 1971,
+    "sha256": "ea62bbe04ce5d0feb190fa7166e8dcfa40ed43b1de536d567d79e30c947d1468"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed00/adoption_profile.json",
+    "bytes": 3615,
+    "sha256": "f122aaf668601b3842428b2adec251e8a70cd55531aaa8c247d63da0aa610065"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed00/command_receipts.json",
+    "bytes": 7340,
+    "sha256": "f7d52625556ceadf809c0a82c23eacb3f6c43612d6ea402d22e4675d6b724149"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed00/network_backend.json",
+    "bytes": 11374,
+    "sha256": "f892a481b3bedd4e9727234d5332ddba8d116d3debf7012e1da15fdab6e89e1e"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed00/network_diagnostics.jsonl",
+    "bytes": 204380,
+    "sha256": "2faf7022420c428d80103f73d9933a9b6e4c189c88cc98c6d2da8a592d149683"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed00/network_events.jsonl",
+    "bytes": 425870,
+    "sha256": "a9b6c00d96ed086bc30db9db47279299329eea5a08f5ecc04796689ad1e06c67"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed00/network_packets.jsonl",
+    "bytes": 317566,
+    "sha256": "a0e8ad6d113256316fb1fcd39e3d210498601c3e67bd2c9773035a37e19d9494"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed00/summary.json",
+    "bytes": 1981,
+    "sha256": "37d7449c6b448b8b518445d38ec6e4956a7699e12f22933e3924be18b977a229"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed01/adoption_profile.json",
+    "bytes": 3615,
+    "sha256": "2b2be80f7a6109c10bb4722a4898d5d22718cf8f68b0bc3aabdaaf68cbe8ba5b"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed01/command_receipts.json",
+    "bytes": 7340,
+    "sha256": "a0972a327b6d1d6a7b0d22d2b36dc3ce387bc3a39496aaf01a7056ff8d9708da"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed01/network_backend.json",
+    "bytes": 11372,
+    "sha256": "cb1e0600be664271bbcadf8090427964d44dfd0c27762854ed7eba4ac7f3cf4c"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed01/network_diagnostics.jsonl",
+    "bytes": 204380,
+    "sha256": "22313059a417dc82dd8b9b9b6a1bbd935246a8769d0c441ae0ddbb5b8f008127"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed01/network_events.jsonl",
+    "bytes": 425870,
+    "sha256": "1143eb61e67904cb432d9c81cc799f6bc7380896002dabd7030f13e9caf10e2e"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed01/network_packets.jsonl",
+    "bytes": 317566,
+    "sha256": "401dddae0b079e35165a1b5d5f58ce1f29f66872e19da511c75f8433b99cc1bc"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed01/summary.json",
+    "bytes": 1981,
+    "sha256": "2ecd8d1b6d9abd48cf21eb5adbe913bfabc340c42f3021328b3d89a2097cb852"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed02/adoption_profile.json",
+    "bytes": 3615,
+    "sha256": "8d10f509c4ffb859322df1de9712bcc1bf48fe1d59816bb51e026f5ad38d50fe"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed02/command_receipts.json",
+    "bytes": 7340,
+    "sha256": "e6276c32878a66d78c771b3b3acbf01be23b9c928714719b6f786de8998b3361"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed02/network_backend.json",
+    "bytes": 11374,
+    "sha256": "a9748e8fa091d471932cc4d37a29c2f014caeeb3228110fbf538103992fb5893"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed02/network_diagnostics.jsonl",
+    "bytes": 204383,
+    "sha256": "6455019c242ba5e283f1a30daacc9480f37c51aa8cbd6b4ec10e57e8a6f3d025"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed02/network_events.jsonl",
+    "bytes": 425871,
+    "sha256": "23920817206017f17ab6c1f5ef90d441d50fc688c37849ade359d7a6f5799796"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed02/network_packets.jsonl",
+    "bytes": 317567,
+    "sha256": "5f9b02131e1c1191f01f2a542c877de15a2c2c431c44ca370cb86cb8949fc89a"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v1__seed02/summary.json",
+    "bytes": 1981,
+    "sha256": "5aceb208f33c29ac8ac789e0aa1f2d60e87d9d7b88066755b697da110b9e519c"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed00/adoption_profile.json",
+    "bytes": 5031,
+    "sha256": "920bcd064b408c7cee17ea8939f3af89d96ae694f63a0e789426946b71a6cded"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed00/command_receipts.json",
+    "bytes": 7332,
+    "sha256": "0b80669d11ba7871c41e65cfd4c061c83c2dc338f2d07c3ce65b94b4f0928995"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed00/network_backend.json",
+    "bytes": 11374,
+    "sha256": "74a5b2cc1405bad855e38eedc9d860756ae222d63ad3580e66d4fe5fbfac5625"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed00/network_diagnostics.jsonl",
+    "bytes": 204380,
+    "sha256": "15627145db4406857e237e203cad88174fce722f96e098ef2e26a791056df999"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed00/network_events.jsonl",
+    "bytes": 425870,
+    "sha256": "02f0aac200f9f2ae49b81ef9854297e7b29f7db08039c57839b8cac8c8a5c0f7"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed00/network_packets.jsonl",
+    "bytes": 317566,
+    "sha256": "d91e38fb5826c6a277d4f904539bffd2ac1fc401fcf3bcc800b30e5e756b4f06"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed00/summary.json",
+    "bytes": 1981,
+    "sha256": "fcff0b8f99703010bbf735bfcfa0e69d5bd0b651c6d55181d03ef71dc05b9495"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed01/adoption_profile.json",
+    "bytes": 5031,
+    "sha256": "102309fd2575fc7a5298289a1990097afaae8b4df03a06a1fe3616e83a57cf11"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed01/command_receipts.json",
+    "bytes": 7332,
+    "sha256": "9948465f9cab2fca25d5cb8cfb738a428bba96de851fe4dd57560159e7f6be6b"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed01/network_backend.json",
+    "bytes": 11374,
+    "sha256": "d0dffbedcc74264cdd251ba450a1e8e792878d1ebf99ec1ca13309b1f2f791f6"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed01/network_diagnostics.jsonl",
+    "bytes": 204380,
+    "sha256": "232cef68457b90a0e1c0fc857d280850bae86f9dfacc8a3126079dfeb64525b7"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed01/network_events.jsonl",
+    "bytes": 425870,
+    "sha256": "8bb3327590f2ad1210261342e7cf93c4239489e56db45f0814a5210b3d41c984"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed01/network_packets.jsonl",
+    "bytes": 317566,
+    "sha256": "23022f7c2cd7d2a01b948fccfff7314b2f9315829fd4e22c0bd6964f2f73eaaa"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed01/summary.json",
+    "bytes": 1981,
+    "sha256": "9070abfe591fd0fdd1418d74a31b005ffa1e8e0e90d27037174565fa9fd9719a"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed02/adoption_profile.json",
+    "bytes": 5031,
+    "sha256": "6cd5128237f7607975b47bfa4c4200a18d6f00d9dee8c13dae8be6336212492c"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed02/command_receipts.json",
+    "bytes": 7332,
+    "sha256": "f2227740ccc59279a6cf36894ee4020efc3b8ac9c804d5496fe4535eb2a4a59c"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed02/network_backend.json",
+    "bytes": 11374,
+    "sha256": "5a90d5326a0da338306b20b51cb4c9ddeb4d52f9f9b44c22c9dd477a8fc645d4"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed02/network_diagnostics.jsonl",
+    "bytes": 204383,
+    "sha256": "16e99491b50243a207d734d79712d2a07c1e4ce3454dcb1e48c06e97375fcaf3"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed02/network_events.jsonl",
+    "bytes": 425871,
+    "sha256": "d021572fb6102d86bdf95b999832bfec66954d36a35569d525c57b97e24a44d7"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed02/network_packets.jsonl",
+    "bytes": 317567,
+    "sha256": "c6758ab6f2a2ac6861f904027c5366546256ccad262278e13c6a62a5f0432c05"
+  },
+  {
+    "path": "l2_existing_phy_arp_diagnostics/linked_native_v12_remaining/L2-1_v2__seed02/summary.json",
+    "bytes": 1981,
+    "sha256": "84523c49b5c61c8f84e913fa8efa24ec3cea2e4add5f3d6dcea54ce7e3efae6c"
+  },
+  {
+    "path": "outer_batch_persisted_status.json",
+    "bytes": 13178,
+    "sha256": "16842a48acf68918f3ef848e7d4960ecc0f6487c4d19ac344194ad4bdbb2b29f"
+  },
+  {
+    "path": "scope.json",
+    "bytes": 678,
+    "sha256": "0118b59ab093e9f2190f3e62e133093829afad8563ad42f5e6cb380c71061308"
+  },
+  {
+    "path": "source/batch_status.py",
+    "bytes": 895,
+    "sha256": "90a2de0d9cf91da33ffaf47dddb03cf1a24af0dc4d25418fc294e7494808c8ff"
+  },
+  {
+    "path": "source/export_v13_metadata_review.py",
+    "bytes": 16923,
+    "sha256": "0eec56fb60db2351f3d5d08635abca2023f58f639999d85bd7d29aa0a99a0e9c"
+  },
+  {
+    "path": "source/export_v13_raw_pose_delta.py",
+    "bytes": 5502,
+    "sha256": "da5e15ce71da50596c876a23b89559deaa3c4c29e0dc075d31722d25305bcc99"
+  },
+  {
+    "path": "source/linked_backup.py",
+    "bytes": 7193,
+    "sha256": "021079f825acd1dd63d36a49c1965bc5e1984739d2c981b6b8ebd0ff49f6cae3"
+  },
+  {
+    "path": "source/linked_contract.py",
+    "bytes": 17380,
+    "sha256": "5bc6eb4f7d6fc7d85b436686a3a9c6a5bc331582c78f1df0904627a84a4875d5"
+  },
+  {
+    "path": "source/linked_metadata.py",
+    "bytes": 7412,
+    "sha256": "aaabc0df97ea1acefe584f3e066306671d5e27168a29971ac1c2ae7e259e6592"
+  },
+  {
+    "path": "source/linked_replay.py",
+    "bytes": 37964,
+    "sha256": "c44c788be32483580930565a21451875c509db22f6ff99a95105d8499a1d4333"
+  },
+  {
+    "path": "source/linked_route_geometry.py",
+    "bytes": 2350,
+    "sha256": "3031c964be2b2e1731e7b510b0c08fce3a090ad585f03b3450abff1c73351f18"
+  },
+  {
+    "path": "source/run_remaining_v12.py",
+    "bytes": 3755,
+    "sha256": "74478c580395d636b724cab5b318ad1ff5f913a9fd7a4791a2974918f41a5838"
+  },
+  {
+    "path": "source/test_batch_status.py",
+    "bytes": 1499,
+    "sha256": "f5b1851422e8d8cb33e1e63eb63940b57ee7842059f4bfa408c28dca30a5d808"
+  },
+  {
+    "path": "source/test_linked_backup.py",
+    "bytes": 8103,
+    "sha256": "8eff2870636c18f9ebe70d8bc8a92469548ee122cce170fac7fa4646a12c34d2"
+  },
+  {
+    "path": "terminal_planning_bound_resolution.json",
+    "bytes": 7748,
+    "sha256": "b62b232b4916b2d23878665316c62b1e52d38df961e55a4ab57429d9709b794f"
+  },
+  {
+    "path": "whole-trajectory-pair/corrected-v13.jsonl.gz",
+    "bytes": 258394,
+    "sha256": "f21fbefab37937486c3c3fc7ea49d00b735e32ff5731277426c0e567b6b83ab4"
+  },
+  {
+    "path": "whole-trajectory-pair/manifest.json",
+    "bytes": 3056,
+    "sha256": "e8ee368782a3bd5ae4eb2e653f64bf7677beb62cceda953cd6bc341072fa3f0d"
+  },
+  {
+    "path": "whole-trajectory-pair/old-v12.jsonl.gz",
+    "bytes": 258633,
+    "sha256": "0b7bc3af526588eb6cf3ca2568af5e1dcb3fb5fdd7f63643d7967f56afd8bab3"
+  }
+]

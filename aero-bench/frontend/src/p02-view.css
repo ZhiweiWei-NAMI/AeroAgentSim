@@ -1,0 +1,698 @@
+/* ==================================================================
+   P02 Run / Configuration views — light white/gray/bright-blue layer.
+   Independent 2.5D business aesthetic for the ORIGINAL PublicTraceMap
+   host: the 3D city keeps its own renderer, models and lighting; this
+   file only styles the added business dock, view switch and config
+   panel. Map-first: the canvas owns the viewport, panels float over it
+   and scroll locally — the body never gains a vertical scrollbar.
+   ================================================================== */
+
+:root {
+  --p02-surface: #ffffff;
+  --p02-surface-soft: #f4f7fa;
+  --p02-border: #d7e0e8;
+  --p02-border-strong: #b9c8d4;
+  --p02-ink: #1d3a52;
+  --p02-ink-dim: #5a7186;
+  --p02-blue: #1f7fd4;
+  --p02-blue-soft: rgba(31, 127, 212, 0.12);
+  --p02-ok: #1d9e6f;
+  --p02-warn: #c2820a;
+  --p02-shadow: 0 10px 28px rgba(18, 58, 92, 0.16);
+}
+
+/* Map-first shell: keep the app grid but let the map fill the viewport.
+   The side rails become overlay panels in run view; nothing else in the
+   existing console changes its behavior. */
+body.p02-active {
+  overflow: hidden;
+  --surface-canvas: #f4f7fa;
+  --surface-raised: #edf3f8;
+  --surface-panel: #ffffff;
+  --surface-panel-strong: #f7f9fc;
+  --surface-control: #f1f5fa;
+  --surface-hover: #e5f0fb;
+  --border-default: #d7e0e8;
+  --border-strong: #b9c8d4;
+  --ink-strong: #17354e;
+  --ink-default: #1d3a52;
+  --ink-dim: #49647a;
+  --ink-muted: #5a7186;
+  --ink-faint: #667e91;
+  --accent-primary: #1f7fd4;
+  --accent-bright: #1264b0;
+  --status-positive: #15815a;
+  --status-warning: #9c6606;
+  --status-danger: #bc3434;
+  --status-info: #2474c4;
+  --panel: rgba(255, 255, 255, 0.96);
+  --panel-2: #f7f9fc;
+  --bg-glow: #dceafb;
+  --cyan-soft: rgba(31, 127, 212, 0.12);
+  --shadow-panel: 0 8px 24px rgba(18, 58, 92, 0.12);
+  --shadow-overlay: 0 12px 30px rgba(18, 58, 92, 0.16);
+}
+
+body.p02-active .topbar,
+body.p02-active :is(.viewer-chrome-toggle, .viewer-chrome-visibility, .scene-library-link) {
+  background: var(--p02-surface);
+  color: var(--p02-ink);
+  border-color: var(--p02-border);
+}
+
+body.p02-active :is(.viewer-chrome-toggle, .viewer-chrome-visibility, .scene-library-link):hover {
+  background: var(--p02-surface-soft);
+  color: var(--p02-blue);
+}
+
+body.p02-active .app {
+  display: grid;
+  grid-template-rows: 54px minmax(0, 1fr) 0;
+  height: 100dvh;
+  min-height: 0;
+}
+/* Scene mode restores the header; its main row must not add another 100vh. */
+body.p02-active.scene-view .main { height: auto; min-height: 0; }
+
+body.p02-active .timeline {
+  min-height: 0;
+  height: 0;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  visibility: hidden;
+}
+
+/* The 3D map owns the viewport; side rails overlay it. */
+body.p02-active .map {
+  position: fixed;
+  inset: 54px 0 0 0;
+  width: 100vw;
+  height: calc(100vh - 54px);
+  z-index: 1;
+}
+
+body.p02-active .sidebar,
+body.p02-active .rightbar {
+  position: absolute;
+  top: 54px;
+  bottom: 0;
+  z-index: 3;
+  width: 348px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 54px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+body.p02-active .sidebar { left: 0; }
+
+body.p02-active .rightbar { right: 0; }
+
+/* Configuration view reveals the sidebar (which carries the config panel);
+   the run view hides both rails entirely. */
+body.p02-active.p02-view-config .sidebar {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The dock floats over the map's left edge and scrolls locally. */
+.p02-run-dock {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(336px, calc(100vw - 24px));
+  max-height: calc(100% - 24px);
+  padding: 10px;
+  border: 1px solid var(--p02-border);
+  border-radius: 10px;
+  background: var(--p02-surface);
+  box-shadow: var(--p02-shadow);
+  color: var(--p02-ink);
+  font: 12px/1.45 var(--font-sans, Inter, "Noto Sans SC", system-ui, sans-serif);
+  overflow: hidden;
+}
+
+.p02-run-dock[hidden] { display: none; }
+
+.p02-dock-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.p02-dock-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--p02-ink);
+  white-space: nowrap;
+  min-width: max-content;
+  flex-shrink: 0;
+}
+
+.p02-dock-source {
+  font-size: 10.5px;
+  color: var(--p02-ink-dim);
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+}
+
+.p02-orders-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.p02-orders-head {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--p02-ink-dim);
+  text-transform: uppercase;
+}
+
+.p02-orders-empty,
+.p02-cargo-empty {
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px dashed var(--p02-border-strong);
+  border-radius: 8px;
+  background: var(--p02-surface-soft);
+  color: var(--p02-ink-dim);
+  font-size: 11px;
+}
+
+.p02-order-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--p02-border);
+  border-radius: 8px;
+  background: var(--p02-surface);
+  color: var(--p02-ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.p02-order-row:hover { border-color: var(--p02-blue); }
+
+.p02-order-row.is-selected {
+  border-color: var(--p02-blue);
+  background: var(--p02-blue-soft);
+}
+
+.p02-order-row-unbound { cursor: default; background: var(--p02-surface-soft); }
+
+.p02-order-id {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--p02-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.p02-order-stage {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--p02-blue-soft);
+  color: var(--p02-blue);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.p02-order-meta {
+  width: 100%;
+  font-size: 10.5px;
+  color: var(--p02-ink-dim);
+}
+
+.p02-order-source { color: var(--p02-ink-dim); opacity: 0.85; font-family: var(--font-mono, ui-monospace, monospace); font-size: 9.5px; }
+
+/* Collapsed detail line: raw paths / repeated identifiers stay out of the
+   way until opened; the summary never shifts the row's primary content. */
+.p02-order-details {
+  width: 100%;
+  font-size: 10px;
+  color: var(--p02-ink-dim);
+}
+
+.p02-order-details summary {
+  cursor: pointer;
+  user-select: none;
+  color: var(--p02-blue);
+  font-weight: 600;
+}
+
+.p02-order-details[open] summary { margin-bottom: 3px; }
+
+.p02-order-detail-line {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  overflow-wrap: anywhere;
+}
+
+.p02-stage-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+}
+
+.p02-stage-badge {
+  padding: 1px 6px;
+  border: 1px solid var(--p02-border);
+  border-radius: 999px;
+  background: var(--p02-surface-soft);
+  color: var(--p02-ink-dim);
+  font-size: 9.5px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.p02-stage-badge.is-done { border-color: rgba(29, 158, 111, 0.55); color: var(--p02-ok); background: rgba(29, 158, 111, 0.08); }
+.p02-stage-badge.is-current { border-color: var(--p02-blue); color: var(--p02-blue); background: var(--p02-blue-soft); }
+.p02-stage-badge.is-unknown { border-style: dashed; }
+
+.p02-order-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px 9px;
+  border: 1px solid var(--p02-border);
+  border-radius: 8px;
+  background: var(--p02-surface-soft);
+}
+
+.p02-detail-row { font-size: 10.5px; color: var(--p02-ink-dim); overflow-wrap: anywhere; }
+.p02-detail-evidence { font-family: var(--font-mono, ui-monospace, monospace); font-size: 9.5px; }
+
+/* Selected-cargo inspector pinned under the order list. */
+.p02-cargo-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 38%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+  border: 1px solid var(--p02-border);
+  border-radius: 8px;
+  background: var(--p02-surface-soft);
+}
+
+.p02-cargo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.p02-cargo-focus {
+  padding: 3px 10px;
+  border: 1px solid var(--p02-border-strong);
+  border-radius: 6px;
+  background: var(--p02-surface);
+  color: var(--p02-ink);
+  font: 600 10.5px var(--font-sans, Inter, "Noto Sans SC", system-ui, sans-serif);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.p02-cargo-focus[aria-pressed="true"] {
+  border-color: var(--p02-blue);
+  background: var(--p02-blue);
+  color: #ffffff;
+}
+
+.p02-cargo-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--p02-ink);
+  overflow-wrap: anywhere;
+}
+
+.p02-cargo-kind { margin: 0; font-size: 10.5px; color: var(--p02-ink-dim); }
+
+.p02-cargo-order {
+  padding: 4px 7px;
+  border: 1px solid var(--p02-border);
+  border-radius: 6px;
+  background: var(--p02-surface);
+  font-size: 11px;
+  color: var(--p02-ink);
+  overflow-wrap: anywhere;
+}
+
+.p02-cargo-attributes {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  margin: 0;
+  font-size: 10.5px;
+}
+
+.p02-cargo-attributes dt { color: var(--p02-ink-dim); }
+.p02-cargo-attributes dd { margin: 0; color: var(--p02-ink); overflow-wrap: anywhere; }
+
+/* View switch in the topbar. */
+.p02-view-switch {
+  display: inline-flex;
+  border: 1px solid var(--p02-border-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.p02-view-button {
+  padding: 4px 12px;
+  border: 0;
+  background: var(--p02-surface);
+  color: var(--p02-ink-dim);
+  font: 600 11.5px var(--font-sans, Inter, "Noto Sans SC", system-ui, sans-serif);
+  cursor: pointer;
+}
+
+.p02-view-button + .p02-view-button { border-left: 1px solid var(--p02-border); }
+
+.p02-view-button[aria-pressed="true"] {
+  background: var(--p02-blue);
+  color: #ffffff;
+}
+
+.p02-view-button:focus-visible { outline: 2px solid var(--p02-blue); outline-offset: -2px; }
+
+/* Configuration section in the sidebar: visible only in config view. */
+.p02-config-section { display: none; }
+
+body.p02-view-config .p02-config-section { display: block; }
+
+body.p02-view-config .p02-run-dock { display: none; }
+
+.p02-section-title {
+  margin: 14px 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--p02-ink-dim);
+}
+
+.p02-config-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--p02-border);
+  border-radius: 8px;
+  background: var(--p02-surface);
+  color: var(--p02-ink);
+}
+
+.p02-config-table {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 11px;
+}
+
+.p02-config-table dt { color: var(--p02-ink-dim); white-space: nowrap; }
+.p02-config-table dd { margin: 0; overflow-wrap: anywhere; }
+
+.p02-config-note { margin: 0; font-size: 10.5px; color: var(--p02-ink-dim); }
+
+/* Config rows: real controls bound to existing authorities. */
+.p02-config-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.p02-config-label {
+  width: 100%;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--p02-ink-dim);
+}
+
+.p02-config-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--p02-border-strong);
+  border-radius: 6px;
+  background: var(--p02-surface);
+  color: var(--p02-ink);
+  font: 11px var(--font-sans, Inter, "Noto Sans SC", system-ui, sans-serif);
+}
+
+.p02-config-save {
+  padding: 4px 10px;
+  border: 1px solid var(--p02-blue);
+  border-radius: 6px;
+  background: var(--p02-blue);
+  color: #ffffff;
+  font: 600 11px var(--font-sans, Inter, "Noto Sans SC", system-ui, sans-serif);
+  cursor: pointer;
+}
+
+.p02-config-save:hover { filter: brightness(1.08); }
+
+.p02-config-status {
+  width: 100%;
+  font-size: 10.5px;
+  color: var(--p02-ink-dim);
+  overflow-wrap: anywhere;
+}
+
+/* Mobile: the dock stays usable over the map; the config rail overlays the
+   full width and the rails never push the body scroll size. */
+@media (max-width: 760px) {
+  body.p02-active .map {
+    inset: 54px 0 0 0;
+    height: calc(100vh - 54px);
+  }
+  body.p02-active .sidebar,
+  body.p02-active .rightbar {
+    top: 54px;
+    bottom: 0;
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 54px);
+  }
+  .p02-run-dock {
+    top: 8px;
+    left: 8px;
+    width: calc(100vw - 76px);
+    max-height: calc(100vh - 70px);
+    padding: 8px;
+  }
+  .p02-cargo-body { max-height: 32%; }
+}
+
+/* ==================================================================
+   Light chrome for the run view (fix 3): the shared topbar, the right
+   inspector and the event strip join the dock's white/slate/blue
+   surfaces. Scoped under body.p02-active so the dark console — and
+   every other task's view — keeps its original presentation. This
+   file loads after styles.css, so equal-specificity rules win here.
+   ================================================================== */
+
+body.p02-active .topbar {
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom-color: var(--p02-border);
+  box-shadow: 0 2px 10px rgba(18, 58, 92, 0.10);
+  color: var(--p02-ink);
+}
+
+body.p02-active .topbar .pill,
+body.p02-active .topbar button,
+body.p02-active .topbar select {
+  color: var(--p02-ink);
+}
+
+body.p02-active .topbar .app-title,
+body.p02-active .topbar .topbar-title,
+body.p02-active .topbar h1 {
+  color: var(--p02-ink);
+}
+
+body.p02-active .rightbar {
+  background: var(--p02-surface-soft);
+  border-left: 1px solid var(--p02-border);
+  color: var(--p02-ink);
+}
+
+body.p02-active .rightbar .panel,
+body.p02-active .rightbar .inspector {
+  background: var(--p02-surface);
+  border-bottom-color: var(--p02-border);
+  color: var(--p02-ink);
+}
+
+body.p02-active .rightbar h2,
+body.p02-active .rightbar h3,
+body.p02-active .rightbar strong {
+  color: var(--p02-ink);
+}
+
+body.p02-active .rightbar .muted,
+body.p02-active .rightbar .dim,
+body.p02-active .rightbar small {
+  color: var(--p02-ink-dim);
+}
+
+body.p02-active .rightbar .key-value dt,
+body.p02-active .rightbar .kv dt,
+body.p02-active .rightbar dt {
+  color: var(--p02-ink-dim);
+}
+
+body.p02-active .rightbar dd {
+  color: var(--p02-ink);
+}
+
+/* Event strip lives in the right rail above the inspector. */
+body.p02-active .event-list {
+  background: var(--p02-surface);
+  border-right-color: var(--p02-border);
+}
+
+body.p02-active .event,
+body.p02-active .event-button {
+  color: var(--p02-ink-dim);
+  border-bottom-color: var(--p02-border);
+}
+
+body.p02-active .event.selected,
+body.p02-active .event-button.selected {
+  color: var(--p02-blue);
+}
+
+body.p02-active .event time {
+  color: var(--p02-ink-dim);
+}
+
+body.p02-active .topbar {
+  flex-wrap: nowrap;
+  min-height: 54px;
+  overflow: hidden;
+  gap: 10px;
+}
+body.p02-active .topbar :is(button, .brand, .p02-view-switch) { flex-shrink: 0; white-space: nowrap; }
+body.p02-active .topbar .trace-source-control { min-width: 0; flex: 1 1 auto; }
+body.p02-active .topbar :is(input, select) { min-width: 0; max-width: 100%; background: var(--p02-surface-soft); border-color: var(--p02-border); }
+body.p02-active .topbar .brand-sub { color: var(--p02-ink-dim); }
+body.p02-active .rightbar :is(pre, code, .json-view) { background: var(--p02-surface-soft); color: var(--p02-ink); }
+body.p02-active .rightbar :is(.inspector-subtitle, .inspector-body, .event-list, .tab-panel) { min-width: 0; overflow-wrap: anywhere; }
+body.p02-active :is(.map-stats, .viewer-chrome-header, .map-legend) { color: var(--p02-ink); }
+
+/* The existing header remains the language and Run/Config control in scene mode. */
+body.p02-active.scene-view .topbar {
+  display: flex !important;
+  position: relative;
+  width: 100%;
+  height: 54px;
+  padding-inline: 16px;
+  background: #ffffff;
+  color: var(--p02-ink);
+}
+body.p02-active.scene-view .topbar .run-meta { min-width: 0; flex: 1 1 auto; }
+body.p02-active.scene-view .topbar .run-meta > :not(.p02-view-switch),
+body.p02-active.scene-view .topbar :is(.trace-source-control, .clock, .brand-sub) { display: none; }
+body.p02-active.scene-view .topbar .lang-switch {
+  display: flex;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+body.p02-active.scene-view .topbar .lang-button {
+  min-width: 40px;
+  color: var(--p02-ink);
+  background: var(--p02-surface-soft);
+  border-color: var(--p02-border);
+}
+body.p02-active.scene-view .topbar .lang-button[aria-pressed="true"] {
+  color: var(--p02-blue);
+  background: var(--p02-blue-soft);
+  border-color: var(--p02-blue);
+}
+
+/* Keep the scene toggle clear of the existing language buttons. */
+body.p02-active.scene-view .scene-view-toggle {
+  top: 12px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--p02-surface);
+  color: var(--p02-ink);
+  border-color: var(--p02-border);
+}
+body.p02-active .viewer-chrome-header :is(.viewer-chrome-toggle, .viewer-chrome-visibility) {
+  background: #ffffff;
+  color: var(--p02-ink);
+  border-color: var(--p02-border);
+  box-shadow: 0 3px 12px rgba(18, 58, 92, 0.1);
+}
+body.p02-active .viewer-chrome-header :is(.viewer-chrome-toggle, .viewer-chrome-visibility):hover {
+  background: var(--p02-surface-soft);
+  color: var(--p02-blue);
+}
+
+/* Intrinsic EN/ZH link widths share one row and leave language controls free. */
+.scene-navigation { display: none; }
+.scene-view .scene-navigation {
+  display: flex;
+  position: fixed;
+  top: 12px;
+  right: 124px;
+  z-index: 20;
+  gap: 8px;
+  max-width: 38vw;
+}
+.scene-view .scene-navigation .scene-library-link {
+  position: static;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 760px) {
+  .scene-view .scene-navigation { display: none; }
+}
+
+/* Provenance remains readable in both desktop widths. */
+body.p02-active .p02-dock-head { flex-wrap: wrap; }
+body.p02-active .p02-dock-source { white-space: normal; overflow: visible; overflow-wrap: anywhere; flex-basis: 100%; }
+body.p02-active .operations-monitor-map-legend { white-space: normal; overflow-wrap: anywhere; }
+/* Reserve the minimap and events below the business dock. */
+body.p02-active .p02-run-dock { max-height: calc(100% - 390px); }
+body.p02-active .p02-cargo-body { flex: 1 1 auto; min-height: 0; max-height: none; }
+body.p02-active .p02-orders-body { flex: 0 0 auto; max-height: 180px; }

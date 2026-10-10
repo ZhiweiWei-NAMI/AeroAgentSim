@@ -1,0 +1,145 @@
+{
+  "scope": "Actual native Studio UI save/readback, immutable compiler publication and real Control consumer load. No native Provider execution or verification claimed.",
+  "storageKey": "aero-bench.city-workspace.v3",
+  "rawLocalStorageBytesSha256": "99b099b1e07544b84497b97eb97abf80efcdd6ee7fb20dcd15f3189e7e937b0b",
+  "backendCanonicalDraftSha256": "68c049b28e15d4e2886b36ff222361e6bfb059b4ff8b23339dd7e0a4fa7f368f",
+  "immutableCompilationId": "a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610",
+  "resolvedRunIds": [
+    "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd"
+  ],
+  "seed": 20261002,
+  "registration": {
+    "id": "inspection.huangpu.native.v7",
+    "sha256": "fa67a3c5f15b5f1fa37d1b7ab72936e5ca404ced09e9b19459a338a1fa38b962",
+    "sceneSelector": "/city-presentation/huangpu-native-inspection-v7.json",
+    "verifiedSceneRequest": "/authoring/v1/native-scenes/inspection.huangpu.native.v7/scene",
+    "sceneSha256": "840df3a3eec4f9e70ec7f3e6a4d95209b1824a54cecf8f7e64c88ae32ce51508",
+    "worldDigest": "18e3ac14954a515f85e0753ba050452a58fe933cbcfd1923fcd65b51b4560eed"
+  },
+  "compilePostStatus": 201,
+  "publicationGetStatus": 200,
+  "postGetIdentityMatch": true,
+  "publicationRequestEqualsSaved": true,
+  "privateSnapshotEqualsSaved": true,
+  "immutablePublicationIndependentlyResolved": true,
+  "actualConsumer": "ControlRunManager.from_compilation",
+  "correctedReloadSteps": [
+    {
+      "step": "07-corrected-reload-zh",
+      "exactSavedBytes": true,
+      "previewStatus": "原生城市呈现已就绪，尚未运行",
+      "issues": ""
+    },
+    {
+      "step": "08-handoff-zh",
+      "exactSavedBytes": true,
+      "previewStatus": "原生城市呈现已就绪，尚未运行",
+      "issues": ""
+    },
+    {
+      "step": "10-corrected-reload-en",
+      "exactSavedBytes": true,
+      "previewStatus": "原生城市呈现已就绪，尚未运行",
+      "issues": ""
+    },
+    {
+      "step": "11-handoff-en",
+      "exactSavedBytes": true,
+      "previewStatus": "原生城市呈现已就绪，尚未运行",
+      "issues": ""
+    },
+    {
+      "step": "12-handoff-zh-visible",
+      "exactSavedBytes": true,
+      "previewStatus": "原生城市呈现已就绪，尚未运行",
+      "issues": ""
+    }
+  ],
+  "actualSceneRequests": [
+    {
+      "path": "/authoring/v1/native-scenes/inspection.huangpu.native.v7/scene",
+      "status": 200
+    },
+    {
+      "path": "/authoring/v1/native-scenes/inspection.huangpu.native.v7/scene",
+      "status": 200
+    },
+    {
+      "path": "/authoring/v1/native-scenes/inspection.huangpu.native.v7/scene",
+      "status": 200
+    }
+  ],
+  "providerStarted": false,
+  "runtimeExecuted": false,
+  "verified": false,
+  "executionBlocker": "Unauthenticated catalog returns 401. Existing Control service is sealed replay only and does not bind this compilation. Credentials or an authorized compiled-execution service change are required; neither was performed.",
+  "supportedAuthFlow": {
+    "path": "/v1/catalog",
+    "method": "GET",
+    "status": 401,
+    "requestHeaderNames": [
+      "Accept"
+    ],
+    "responseHeaderNames": [
+      "connection",
+      "content-length",
+      "content-type",
+      "date",
+      "server",
+      "vary"
+    ],
+    "errorCode": "authentication.failed",
+    "credentialValuesInspected": false,
+    "supportedUI": {
+      "url": "/?view=live",
+      "fields": [
+        "Control service origin",
+        "Bootstrap operator token",
+        "Bootstrap CSRF token"
+      ],
+      "action": "Load catalog",
+      "catalogHeaderNames": [
+        "Authorization",
+        "Accept"
+      ],
+      "startHeaderNames": [
+        "Authorization",
+        "X-Aero-Bench-CSRF",
+        "Content-Type",
+        "Accept"
+      ],
+      "noCookieLoginFlow": true
+    },
+    "currentService": {
+      "mode": "sealed_replay",
+      "sourceSuite": "validation/platform-plan-20261001/W1-I5/native-v8/suite.yaml",
+      "sealedRunId": "c69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba",
+      "port": 5393,
+      "compilationBound": false
+    }
+  },
+  "checks": {
+    "focusedTests": 23,
+    "typecheck": "passed",
+    "productionBuild": "passed (existing large-chunk warning only)"
+  },
+  "sourceSha256": {
+    "frontend/src/city-studio.ts": "59464c9eaf690bb89a19f5e4f11d4cd7b451a10c3ee0172e69c906b33eafb5bd",
+    "frontend/src/city-studio.test.ts": "a229332f471f0abf90e67404557f36da5daffe3d4bd9610e3e2f4d759ed1c428",
+    "frontend/src/city-compile-panel.ts": "b3036433aba9c8a5d6fdc01bb8b54276265242898501995183ec1b24b632c85a",
+    "frontend/src/city-compile-panel.test.ts": "b87e5c15e52f3ebc749e8f6fc50133d1815aa341ad550f63e5b428836ccfd9f7",
+    "frontend/src/i18n.ts": "493d7d5e5bb88adc3bec1b221098ac6b3ede2338637314e8961186c2495a6f16",
+    "validation/platform-plan-20261001/W4-NATIVE/registered-city-inspection-v7/native-scenes.json": "90c25528eddf023bbbf3868f7dd6fd48dee2fe98bb16b65ee4f03ac7fb2cd72e",
+    "validation/platform-plan-20261001/W1-I5/runner-v8.yaml": "2015d7cea2a2090e65ed61b9ef9714f60638582572b6964568ca0201298331b2"
+  },
+  "screenshots": [
+    "02-saved-zh.png",
+    "03-reloaded-zh.png",
+    "07-corrected-reload-zh.png",
+    "08-handoff-zh.png",
+    "10-corrected-reload-en.png",
+    "11-handoff-en.png",
+    "12-handoff-zh-visible.png"
+  ],
+  "privacy": "No localStorage draft body, compiled request, private snapshot, credentials, raw scene or assets included."
+}

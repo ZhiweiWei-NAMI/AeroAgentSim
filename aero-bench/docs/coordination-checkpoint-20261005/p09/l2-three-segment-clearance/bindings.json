@@ -1,0 +1,167 @@
+[
+  {
+    "episode_id": "L2-1_v2__seed00",
+    "owner_entity_id": "uav_l2_1_v2",
+    "action_id": "move_uav_backup_loiter",
+    "action_row_pointer": "/6",
+    "dispatch_tick": 300,
+    "actions_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_review/L2-1_v2__seed00/actions.json",
+    "actions_sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247",
+    "waypoints_enu_m": [
+      [
+        6341.975,
+        6137.542,
+        31.0
+      ],
+      [
+        6341.975,
+        6137.542,
+        30.0
+      ],
+      [
+        6308.0,
+        6134.0,
+        30.0
+      ]
+    ],
+    "velocity_mps": 4.0,
+    "profile_sha256": "8b41faf458a7538da02fec45b1de17fa3645ceea2d6887d982e32913399402b3",
+    "current_receipt_pointer": "/backup_contact_geometry/spatial_check",
+    "cached_validation_disposition": "Historical cached annotation excluded; current profile receipt is authoritative for this geometry check."
+  },
+  {
+    "episode_id": "L2-1_v2__seed00",
+    "owner_entity_id": "uav_l2_1_v2",
+    "action_id": "move_uav_resume_patrol",
+    "action_row_pointer": "/10",
+    "dispatch_tick": 395,
+    "actions_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_review/L2-1_v2__seed00/actions.json",
+    "actions_sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247",
+    "waypoints_enu_m": [
+      [
+        6308.0,
+        6134.0,
+        30.0
+      ],
+      [
+        6330.975,
+        6139.542,
+        30.0
+      ]
+    ],
+    "velocity_mps": 7.0,
+    "profile_sha256": "8b41faf458a7538da02fec45b1de17fa3645ceea2d6887d982e32913399402b3",
+    "current_receipt_pointer": "/backup_contact_geometry/spatial_check",
+    "cached_validation_disposition": "Historical cached annotation excluded; current profile receipt is authoritative for this geometry check."
+  },
+  {
+    "episode_id": "L2-1_v2__seed01",
+    "owner_entity_id": "uav_l2_1_v2",
+    "action_id": "move_uav_backup_loiter",
+    "action_row_pointer": "/6",
+    "dispatch_tick": 300,
+    "actions_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_review/L2-1_v2__seed01/actions.json",
+    "actions_sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247",
+    "waypoints_enu_m": [
+      [
+        6341.975,
+        6137.542,
+        31.0
+      ],
+      [
+        6341.975,
+        6137.542,
+        30.0
+      ],
+      [
+        6308.0,
+        6134.0,
+        30.0
+      ]
+    ],
+    "velocity_mps": 4.0,
+    "profile_sha256": "8235b3671756d4ce77b833d1cedd6eb384008b231afd97736a5c127306a0b5ff",
+    "current_receipt_pointer": "/backup_contact_geometry/spatial_check",
+    "cached_validation_disposition": "Historical cached annotation excluded; current profile receipt is authoritative for this geometry check."
+  },
+  {
+    "episode_id": "L2-1_v2__seed01",
+    "owner_entity_id": "uav_l2_1_v2",
+    "action_id": "move_uav_resume_patrol",
+    "action_row_pointer": "/10",
+    "dispatch_tick": 395,
+    "actions_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_review/L2-1_v2__seed01/actions.json",
+    "actions_sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247",
+    "waypoints_enu_m": [
+      [
+        6308.0,
+        6134.0,
+        30.0
+      ],
+      [
+        6330.975,
+        6139.542,
+        30.0
+      ]
+    ],
+    "velocity_mps": 7.0,
+    "profile_sha256": "8235b3671756d4ce77b833d1cedd6eb384008b231afd97736a5c127306a0b5ff",
+    "current_receipt_pointer": "/backup_contact_geometry/spatial_check",
+    "cached_validation_disposition": "Historical cached annotation excluded; current profile receipt is authoritative for this geometry check."
+  },
+  {
+    "episode_id": "L2-1_v2__seed02",
+    "owner_entity_id": "uav_l2_1_v2",
+    "action_id": "move_uav_backup_loiter",
+    "action_row_pointer": "/6",
+    "dispatch_tick": 300,
+    "actions_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_review/L2-1_v2__seed02/actions.json",
+    "actions_sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247",
+    "waypoints_enu_m": [
+      [
+        6341.975,
+        6137.542,
+        31.0
+      ],
+      [
+        6341.975,
+        6137.542,
+        30.0
+      ],
+      [
+        6308.0,
+        6134.0,
+        30.0
+      ]
+    ],
+    "velocity_mps": 4.0,
+    "profile_sha256": "01f9d0895d63501399e9055b1eedba575067f930dcf8e84e48db0b8a9b69e266",
+    "current_receipt_pointer": "/backup_contact_geometry/spatial_check",
+    "cached_validation_disposition": "Historical cached annotation excluded; current profile receipt is authoritative for this geometry check."
+  },
+  {
+    "episode_id": "L2-1_v2__seed02",
+    "owner_entity_id": "uav_l2_1_v2",
+    "action_id": "move_uav_resume_patrol",
+    "action_row_pointer": "/10",
+    "dispatch_tick": 395,
+    "actions_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_review/L2-1_v2__seed02/actions.json",
+    "actions_sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247",
+    "waypoints_enu_m": [
+      [
+        6308.0,
+        6134.0,
+        30.0
+      ],
+      [
+        6330.975,
+        6139.542,
+        30.0
+      ]
+    ],
+    "velocity_mps": 7.0,
+    "profile_sha256": "01f9d0895d63501399e9055b1eedba575067f930dcf8e84e48db0b8a9b69e266",
+    "current_receipt_pointer": "/backup_contact_geometry/spatial_check",
+    "cached_validation_disposition": "Historical cached annotation excluded; current profile receipt is authoritative for this geometry check."
+  }
+]

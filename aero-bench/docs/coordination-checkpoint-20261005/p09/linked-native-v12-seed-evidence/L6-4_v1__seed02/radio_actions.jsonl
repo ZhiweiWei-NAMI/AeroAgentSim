@@ -1,0 +1,6 @@
+{"node_id":"L6-4_v1__seed02:uav_digital_l6_4_v1:life0","time_ns":46000000000,"opcode":2,"requested_channel":6,"observed_channel":1}
+{"node_id":"L6-4_v1__seed02:uav_digital_l6_4_v1_secondary:life0","time_ns":46000000000,"opcode":2,"requested_channel":6,"observed_channel":6}
+{"node_id":"L6-4_v1__seed02:tower_l6_4_v1:life0","time_ns":46000000000,"opcode":2,"requested_channel":6,"observed_channel":6}
+{"node_id":"L6-4_v1__seed02:uav_digital_l6_4_v1_secondary:life0","time_ns":46000250001,"opcode":2,"requested_channel":6,"observed_channel":6,"phase":"native_switch_completed","adhoc_peer_capabilities_restored":true}
+{"node_id":"L6-4_v1__seed02:tower_l6_4_v1:life0","time_ns":46000250001,"opcode":2,"requested_channel":6,"observed_channel":6,"phase":"native_switch_completed","adhoc_peer_capabilities_restored":true}
+{"node_id":"L6-4_v1__seed02:uav_digital_l6_4_v1:life0","time_ns":46004315367,"opcode":2,"requested_channel":6,"observed_channel":6,"phase":"native_switch_completed","adhoc_peer_capabilities_restored":true}

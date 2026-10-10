@@ -1,0 +1,453 @@
+{
+  "scope": "published legacy dataset / UI-only visual review",
+  "ui_commit": "4f9adf6e8b851d3a7b1086fba3d297f1620607a2",
+  "legacy_commit": "7ca57707930fc45fdc1d48f32c6470beabf33bb8",
+  "checks": {
+    "initial_source": "instances",
+    "unavailable_controls": [
+      {
+        "id": "source-coherent",
+        "disabled": true,
+        "label": "连贯案例 未加载 / UNLOADED"
+      },
+      {
+        "id": "source-native",
+        "disabled": true,
+        "label": "类型目录 未加载 / UNLOADED"
+      }
+    ],
+    "overview_label_budget": true,
+    "overview_duplicate_budget": true,
+    "pointer_rotation": true,
+    "shift_pan": true,
+    "wheel_zoom": true,
+    "keyboard_rotate": true,
+    "search_shortcut": true,
+    "search_results": 1,
+    "node_inspector": true,
+    "hover": true,
+    "edge_inspector": true,
+    "tooltip_avoids_selected_edge_endpoints": true,
+    "escape_clear": true,
+    "unloaded_provenance": true,
+    "desktop_no_horizontal_overflow": true,
+    "desktop_no_body_overflow": true,
+    "mobile_no_horizontal_overflow": true,
+    "mobile_no_body_overflow": true,
+    "legend_colors": true,
+    "all_viewport_no_body_overflow": true,
+    "all_viewport_qa_visible": true,
+    "mobile_graph_500px": true,
+    "mobile_filter_drawer": true,
+    "mobile_filter_escape": true,
+    "mobile_details_drawer": true,
+    "drawer_preserves_orientation": true,
+    "drawer_labels_above_panel": true,
+    "mobile_details_escape": true,
+    "drawer_restores_manual_view": true,
+    "drawer_keeps_keyboard_view": true,
+    "drawer_keeps_zoom_button_view": true,
+    "drawer_resize_keeps_explicit_fit_view": true,
+    "drawer_keeps_fit_button_view": true
+  },
+  "screenshots": [
+    "initial-legacy-desktop.png",
+    "selected-rule-desktop.png",
+    "selected-edge-desktop.png",
+    "legacy-mobile.png",
+    "viewport-390x844.png",
+    "viewport-844x390.png",
+    "viewport-1280x720.png",
+    "mobile-details-open.png"
+  ],
+  "unavailable": [
+    "Original1686catalog",
+    "Accepted13casebrowsercoverage",
+    "Native provider integration",
+    "C01new explanationchain"
+  ],
+  "dataset": {
+    "scenario": "DLV-A27-001",
+    "full_nodes": 254,
+    "full_edges": 586,
+    "visible_nodes": 240,
+    "visible_edges": 585,
+    "rendered_labels": 12
+  },
+  "overview_labels": [
+    {
+      "id": "n:147115496336fc4c7f244011",
+      "text": "locker",
+      "name": "locker",
+      "box": {
+        "x": 591.3996534740523,
+        "y": 76.26783962644899,
+        "w": 44.488250732421875,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:29dcd1e2c1500d4c37904faa",
+      "text": "社区接收点 B27",
+      "name": "社区接收点 B27",
+      "box": {
+        "x": 426.9453358566584,
+        "y": 110.70277267106749,
+        "w": 93.89262390136719,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:ff46cced74a6f0391f58e671",
+      "text": "受限通道范围",
+      "name": "受限通道范围",
+      "box": {
+        "x": 404.2388148344251,
+        "y": 59.14575512030626,
+        "w": 82.00054931640625,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:312df4f0fc49b27fdfecfd76",
+      "text": "夹具检查结果 · .pre_start",
+      "name": "夹具检查结果",
+      "box": {
+        "x": 593.728637662435,
+        "y": 593.8674493626473,
+        "w": 153.56907653808594,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:e49bbfbee60e5ce6e850123a",
+      "text": "夹具检查结果 · .pre_start",
+      "name": "夹具检查结果",
+      "box": {
+        "x": 243.1779027887435,
+        "y": 549.4173997473811,
+        "w": 153.56907653808594,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:96b812f188381de9771fe14d",
+      "text": "表达式 · 规则项 · expr.state",
+      "name": "表达式 · 规则项",
+      "box": {
+        "x": 192.1099268262244,
+        "y": 96.07012035036038,
+        "w": 171.12522888183594,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:40e33ece117dd2cd9750aec6",
+      "text": "表达式 · 规则项 · expr.param",
+      "name": "表达式 · 规则项",
+      "box": {
+        "x": 158.3111194223266,
+        "y": 222.68049323296736,
+        "w": 180.18527221679688,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:cb9de57b3ce210fcc3133f12",
+      "text": "航路运输证据匹配规则",
+      "name": "航路运输证据匹配规则",
+      "box": {
+        "x": 191.964647641052,
+        "y": 265.8257328684874,
+        "w": 130.00091552734375,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:15cca6db6571837dd48c8981",
+      "text": "回执证据匹配规则",
+      "name": "回执证据匹配规则",
+      "box": {
+        "x": 413.1582475660568,
+        "y": 512.7628242486724,
+        "w": 106.000732421875,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:0a735d458857809aaebc57c8",
+      "text": "最后一米交付证据匹配规则",
+      "name": "最后一米交付证据匹配规则",
+      "box": {
+        "x": 728.105562057387,
+        "y": 133.55976500208374,
+        "w": 154.0010986328125,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:49a7412f89d515192bcb3b70",
+      "text": "本规则操作/叶节点元类型 · .expr_type",
+      "name": "本规则操作/叶节点元类型",
+      "box": {
+        "x": 160.68214935219976,
+        "y": 67.092287485383,
+        "w": 223.4575958251953,
+        "h": 23
+      }
+    },
+    {
+      "id": "n:aecaa960e62d8fc9d0c51b0f",
+      "text": "本规则操作/叶节点元类型 · .expr_type",
+      "name": "本规则操作/叶节点元类型",
+      "box": {
+        "x": 744.7709190372611,
+        "y": 101.38750303086886,
+        "w": 223.4575958251953,
+        "h": 23
+      }
+    }
+  ],
+  "selected_record": {
+    "id": "n:023d74eae3977224020fc6ce",
+    "kind": "constraint_check_result"
+  },
+  "selected_edge": "e:31d903f09082e2bd61743032",
+  "tooltip_geometry": {
+    "rect": {
+      "x": 437.3125,
+      "y": 380.703125,
+      "w": 183.140625,
+      "h": 68.59375
+    },
+    "endpoints": [
+      {
+        "id": "n:c73cdec50d2bb7f981b2606a",
+        "x": 659.8972480107525,
+        "y": 383.4024929064288,
+        "r": 20
+      },
+      {
+        "id": "n:023d74eae3977224020fc6ce",
+        "x": 574.4492962098096,
+        "y": 299.78466205989446,
+        "r": 20
+      }
+    ],
+    "overlap": false
+  },
+  "desktop_layout": {
+    "width": 1600,
+    "height": 1000,
+    "scroll_width": 1600,
+    "scroll_height": 1000,
+    "body_width": 1600,
+    "body_height": 1000,
+    "panels": [
+      {
+        "class": "navigator",
+        "overflowY": "auto",
+        "height": 851,
+        "scroll_height": 1366
+      },
+      {
+        "class": "inspector",
+        "overflowY": "auto",
+        "height": 851,
+        "scroll_height": 851
+      }
+    ]
+  },
+  "mobile_layout": {
+    "width": 390,
+    "height": 844,
+    "scroll_width": 390,
+    "scroll_height": 844
+  },
+  "legend": [
+    {
+      "type": "资源 / 时空",
+      "ring": false,
+      "color": "rgb(54, 143, 181)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#368fb5"
+    },
+    {
+      "type": "约束 / 权限",
+      "ring": false,
+      "color": "rgb(210, 138, 71)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#d28a47"
+    },
+    {
+      "type": "决策 / 目标",
+      "ring": false,
+      "color": "rgb(183, 104, 165)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#b768a5"
+    },
+    {
+      "type": "行为 / 执行",
+      "ring": false,
+      "color": "rgb(105, 127, 204)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#697fcc"
+    },
+    {
+      "type": "实体",
+      "ring": false,
+      "color": "rgb(56, 114, 201)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#3872c9"
+    },
+    {
+      "type": "状态 / 事实",
+      "ring": false,
+      "color": "rgb(0, 163, 163)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#00a3a3"
+    },
+    {
+      "type": "规则 / AST",
+      "ring": false,
+      "color": "rgb(212, 155, 42)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#d49b2a"
+    },
+    {
+      "type": "谓词",
+      "ring": true,
+      "color": "rgba(0, 0, 0, 0)",
+      "border": "rgb(142, 99, 207)",
+      "variable": "#8e63cf"
+    },
+    {
+      "type": "事件",
+      "ring": false,
+      "color": "rgb(233, 119, 103)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#e97767"
+    },
+    {
+      "type": "其他类型",
+      "ring": false,
+      "color": "rgb(115, 131, 155)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#73839b"
+    }
+  ],
+  "viewport_cases": [
+    {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 844,
+      "graph": {
+        "x": 0,
+        "y": 175.875,
+        "width": 390,
+        "height": 610.125
+      },
+      "qa": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 38.875
+      },
+      "qaText": "published legacy dataset / UI-only visual review新13案例及原始目录未加载 · provider未接入",
+      "noBodyOverflow": true,
+      "qaVisible": true
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "scrollWidth": 844,
+      "scrollHeight": 390,
+      "graph": {
+        "x": 0,
+        "y": 130.265625,
+        "width": 844,
+        "height": 207.734375
+      },
+      "qa": {
+        "x": 0,
+        "y": 0,
+        "width": 844,
+        "height": 38.875
+      },
+      "qaText": "published legacy dataset / UI-only visual review新13案例及原始目录未加载 · provider未接入",
+      "noBodyOverflow": true,
+      "qaVisible": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "scrollWidth": 1280,
+      "scrollHeight": 720,
+      "graph": {
+        "x": 230,
+        "y": 203.0625,
+        "width": 750,
+        "height": 417.9375
+      },
+      "qa": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 38.875
+      },
+      "qaText": "published legacy dataset / UI-only visual review新13案例及原始目录未加载 · provider未接入",
+      "noBodyOverflow": true,
+      "qaVisible": true
+    }
+  ],
+  "drawer_geometry": {
+    "visible": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 373.703125
+    },
+    "camera": {
+      "yaw": -0.16,
+      "pitch": 0.11,
+      "zoom": 2.596701388888889,
+      "panX": 20.747566292379435,
+      "panY": -146.8689151422931
+    },
+    "labels": [
+      {
+        "text": "夹具检查结果",
+        "focused": true,
+        "box": {
+          "x": 238.85944691249586,
+          "y": 141.8572475405419,
+          "w": 88.00009155273438,
+          "h": 23
+        }
+      },
+      {
+        "text": "检查绑定",
+        "focused": false,
+        "box": {
+          "x": 314.5942649012786,
+          "y": 208.22837220875712,
+          "w": 58.0003662109375,
+          "h": 23
+        }
+      },
+      {
+        "text": "最后一米交付执行实例占位",
+        "focused": false,
+        "box": {
+          "x": 18.60934293839682,
+          "y": 213.47672295277596,
+          "w": 154.0010986328125,
+          "h": 23
+        }
+      }
+    ]
+  },
+  "page_errors": [],
+  "failed_requests": []
+}

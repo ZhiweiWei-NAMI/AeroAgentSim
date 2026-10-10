@@ -1,0 +1,74 @@
+{
+  "source_files": [
+    {
+      "source_path": "/mnt/data2/weizhiwei/AERO_WORLD/Dataset/semantic_simulation/ns3_episode/linked_route_geometry.py",
+      "packet_path": "private-inputs/Dataset/semantic_simulation/ns3_episode/linked_route_geometry.py",
+      "bytes": 2350,
+      "sha256": "3031c964be2b2e1731e7b510b0c08fce3a090ad585f03b3450abff1c73351f18"
+    },
+    {
+      "source_path": "/mnt/data2/weizhiwei/AERO_WORLD/Dataset/tools/map_spatial_index.py",
+      "packet_path": "private-inputs/Dataset/tools/map_spatial_index.py",
+      "bytes": 42480,
+      "sha256": "22078eb5d1a77103c83cc3624cbdd599d3c6c3b83069130de0ca8cf18dce336f"
+    },
+    {
+      "source_path": "/mnt/data2/weizhiwei/AERO_WORLD/Dataset/tools/uav_corridor_planner.py",
+      "packet_path": "private-inputs/Dataset/tools/uav_corridor_planner.py",
+      "bytes": 28383,
+      "sha256": "46c0962375efeb25a0423ccda02edf211e2fb3c846b7597dca6956a5d799c0d2"
+    },
+    {
+      "source_path": "/mnt/data2/weizhiwei/AERO_WORLD/Config/LowAltitude/Maps/donghu_road_topo/map_package.json",
+      "packet_path": "private-inputs/Config/LowAltitude/Maps/donghu_road_topo/map_package.json",
+      "bytes": 1461,
+      "sha256": "114a92d637b44ad9bfee1bd1f60545403e17e1ddc90e27874127319f768719b5"
+    },
+    {
+      "source_path": "/mnt/data2/weizhiwei/AERO_WORLD/Config/LowAltitude/Maps/donghu_road_topo/map_context.json",
+      "packet_path": "private-inputs/Config/LowAltitude/Maps/donghu_road_topo/map_context.json",
+      "bytes": 600,
+      "sha256": "d77999e1f288c4bea962781eb5964c2e347b819ab53a8059409d32cbed189dba"
+    },
+    {
+      "source_path": "/mnt/data2/weizhiwei/AERO_WORLD/Config/LowAltitude/Maps/donghu_road_topo/traffic_bundle/road_geojson_transform.json",
+      "packet_path": "private-inputs/Config/LowAltitude/Maps/donghu_road_topo/traffic_bundle/road_geojson_transform.json",
+      "bytes": 707,
+      "sha256": "6d7946f54fe4d97be81f6c0f9778c7fe8968e669bb6b955ec135b26504e94705"
+    },
+    {
+      "source_path": "/mnt/data2/weizhiwei/AERO_WORLD/Content/Maps/donghu_road_topo/bounds.geojson",
+      "packet_path": "private-inputs/Content/Maps/donghu_road_topo/bounds.geojson",
+      "bytes": 481,
+      "sha256": "d949c60ee998be49ebc96b7aeaa966e272105f13bad4b886eda60e6502c40a3e"
+    },
+    {
+      "source_path": "/mnt/data2/weizhiwei/AERO_WORLD/Content/Maps/donghu_road_topo/building/building.geojson",
+      "packet_path": "private-inputs/Content/Maps/donghu_road_topo/building/building.geojson",
+      "bytes": 831551,
+      "sha256": "b2cb210d282152e7f941a3c36ffa823b62d8adb75b3efe9793a844b8dbc26e30"
+    }
+  ],
+  "profiles": [
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_review/L2-1_v2__seed00/adoption_profile.json",
+      "packet_path": "profiles/L2-1_v2__seed00.json",
+      "bytes": 8833,
+      "sha256": "8b41faf458a7538da02fec45b1de17fa3645ceea2d6887d982e32913399402b3"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_review/L2-1_v2__seed01/adoption_profile.json",
+      "packet_path": "profiles/L2-1_v2__seed01.json",
+      "bytes": 8833,
+      "sha256": "8235b3671756d4ce77b833d1cedd6eb384008b231afd97736a5c127306a0b5ff"
+    },
+    {
+      "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_review/L2-1_v2__seed02/adoption_profile.json",
+      "packet_path": "profiles/L2-1_v2__seed02.json",
+      "bytes": 8833,
+      "sha256": "01f9d0895d63501399e9055b1eedba575067f930dcf8e84e48db0b8a9b69e266"
+    }
+  ],
+  "imports": "Only map_spatial_index is a local helper import; all three raw Python files retained.",
+  "sharing": "Full building and bounds/map inputs remain private; no public asset upload authorized."
+}

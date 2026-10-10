@@ -1,0 +1,33 @@
+{
+  "description": "S01.01 schema validation cases; negative cases each name the expected field path anchor",
+  "positive": [
+    {"case": "bool_present", "family": "roster.observer_role_present_flag", "note": "bool support exercised via annotations-adjacent roster flag in schema.py tests", "record": {"record_kind": "entity", "id": "uav_x", "fields": {"roster.entity_id": "uav_x"}}},
+    {"case": "enum_present", "family": "roster.observer_role", "record": {"record_kind": "entity", "id": "uav_x", "fields": {"roster.observer_role": "observer"}}},
+    {"case": "real_scalar_present", "family": "motion.speed_mps", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"motion.speed_mps": 1.2332}}},
+    {"case": "bounded_zero_is_present_not_missing", "family": "motion.speed_mps", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"motion.speed_mps": 0.0}}},
+    {"case": "circular_yaw_at_180", "family": "pose.yaw_deg", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"pose.yaw_deg": 180.0}}},
+    {"case": "circular_yaw_negative", "family": "pose.yaw_deg", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"pose.yaw_deg": -179.9}}},
+    {"case": "vector_world_frame", "family": "pose.position_enu_m", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"pose.position_enu_m": {"frame": "world_enu_m", "value": [6629.444, 6424.243, 0.0]}}}},
+    {"case": "optional_missing_marker", "family": "event.end_tick", "record": {"record_kind": "event", "id": "ev1", "tick": 35, "fields": {"event.end_tick": {"kind": "missing"}}}},
+    {"case": "ragged_bindings", "family": "relation.bindings", "record": {"record_kind": "edge", "id": "e1", "tick": 0, "fields": {"relation.bindings": {"aircraft": "uav_a", "road_segment": "cg_edge_54_f_pl0"}}}},
+    {"case": "inapplicable_marker", "family": "pose.velocity_enu_mps", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"pose.velocity_enu_mps": {"kind": "inapplicable"}}}},
+    {"case": "absent_marker", "family": "identity.capture_view_id", "record": {"record_kind": "episode", "id": "ep", "fields": {"identity.capture_view_id": {"kind": "absent"}}}},
+    {"case": "source_unknown_marker", "family": "event.detection_tick", "record": {"record_kind": "event", "id": "ev1", "tick": 35, "fields": {"event.event_id": "objective_event:x", "event.event_family_id": "uav_takeoff", "event.detection_tick": 35, "event.end_tick": {"kind": "source_unknown"}}}}
+  ],
+  "negative": [
+    {"case": "duplicate_id", "error_anchor": "duplicate entity_id", "description": "two entity records with the same roster.entity_id in one episode index"},
+    {"case": "unknown_field_family", "family": "pose.altitude_ft", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"pose.altitude_ft": 100.0}}, "error_contains": "unknown field family"},
+    {"case": "illegal_unit_family", "family": "pose.position_enu_m", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"pose.position_enu_m": {"frame": "sensor_body_ned", "value": [1.0, 2.0, 3.0]}}}, "error_contains": "frame mismatch", "error_anchor": "frame#t0.pose.position_enu_m"},
+    {"case": "nan_value", "family": "motion.speed_mps", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"motion.speed_mps": "NaN"}}, "note": "encoded NaN floats are rejected at validation; string NaN also rejected by dtype"},
+    {"case": "inf_value", "family": "motion.speed_mps", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"motion.speed_mps": "Infinity"}}, "note": "encoded Inf floats are rejected at validation"},
+    {"case": "camera_frame_in_pose_family", "family": "pose.position_enu_m", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"pose.position_enu_m": {"frame": "sensor_body_ned", "value": [1.0, 2.0, 3.0]}}}, "error_contains": "frame mismatch"},
+    {"case": "wrong_vector_length", "family": "pose.position_enu_m", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"pose.position_enu_m": {"frame": "world_enu_m", "value": [1.0, 2.0]}}}, "error_contains": "vector length"},
+    {"case": "enum_violation", "family": "relation.value", "record": {"record_kind": "edge", "id": "e1", "tick": 0, "fields": {"relation.value": "maybe"}}, "error_contains": "not in enum"},
+    {"case": "bounded_violation", "family": "motion.speed_mps", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"motion.speed_mps": -0.5}}, "error_contains": "below bounded minimum"},
+    {"case": "circular_violation", "family": "pose.yaw_deg", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"pose.yaw_deg": 180.5}}, "error_contains": "outside (-180, 180]"},
+    {"case": "unknown_value_kind", "family": "event.end_tick", "record": {"record_kind": "event", "id": "ev1", "tick": 35, "fields": {"event.end_tick": {"kind": "unknown_placeholder"}}}, "error_contains": "unknown value kind"},
+    {"case": "present_without_value", "family": "event.end_tick", "record": {"record_kind": "event", "id": "ev1", "tick": 35, "fields": {"event.end_tick": {"kind": "present"}}}, "error_contains": "must carry a 'value'"},
+    {"case": "family_not_applicable_to_record_kind", "family": "relation.predicate_id", "record": {"record_kind": "frame", "id": "t0", "tick": 0, "fields": {"relation.predicate_id": "x"}}, "error_contains": "not applicable to record kind"},
+    {"case": "undeclared_non_present_kind", "family": "roster.entity_id", "record": {"record_kind": "entity", "id": "e1", "fields": {"roster.entity_id": {"kind": "inapplicable"}}}, "error_contains": "not declared for family"}
+  ]
+}

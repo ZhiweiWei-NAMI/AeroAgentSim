@@ -1,0 +1,31 @@
+{
+  "protocol_version": "aero-bench.px4-gazebo-rpc/v4",
+  "base_image": {
+    "image": "px4io/px4-sitl-gazebo@sha256:6f687ce0dad52b648c6f882ebaee93a03254001a8857b761312bafb689f7803e"
+  },
+  "px4": {
+    "version": "v1.17.0-alpha1-1551-g381149fb01",
+    "commit": "381149fb012762f5e38c4a7fdc1b905b28038970",
+    "sha256": "b6d41b7e7d8be65017a1dc4cfe12502382e8595d2408c4c27d28c64a7cff66f6"
+  },
+  "gazebo": {
+    "version": "8.11.0",
+    "commit": "1be3cc376fec778cc725b4eeea463245affa56d3",
+    "sha256": "6e9cccdef9f9f266f45b76559c0974b1970e4348e82feb7a51964b4854cdd22a"
+  },
+  "mavsdk": {
+    "version": "3.17.2",
+    "commit": "9e3ca17faa84aa868caea10a3bbdab7e53810ced",
+    "source_sha256": "709de37d225f6374b3ebe65af8e34921759b7a8c2bbe611a581fd614126293c0",
+    "patch_sha256": "972bef4a0d23a72a1fa46c3d9fa808e4f2f73467da32692b1c5b5d681e3bfed5"
+  },
+  "mavlink": {
+    "commit": "d6a7eeaf43319ce6da19a1973ca40180a4210643",
+    "source_sha256": "1e82b295bfd4fb9c3ce4d7f503e445c2050ea6d254dfd8addf56b7f2fa8b984d",
+    "offline_build_patch_sha256": "777a0f83ab88ab9eff71a51daeddc7e88efcf58c23b1c73c5477c788ce82734a",
+    "pymavlink_commit": "5977f44504f01715a44bed44a4601e6c12cef92d",
+    "pymavlink_source_sha256": "e0949dd5858ecce28c52f5b30a7957f2236482417798867f5e961d7a2abd1fc8",
+    "pymavlink_build_lock_sha256": "4c51de8177452454bc62e795ee802c521e442b1b2a8429dc01cde45675546795"
+  },
+  "mavsdk_server_sha256": "6f7978e40127849d925cfc5b3181b4fd3e3bb2b3701d5fb591e92d8710e1deee"
+}

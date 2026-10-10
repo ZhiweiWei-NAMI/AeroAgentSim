@@ -1,0 +1,60 @@
+{
+  "schema_version": "p09.linked-source-adoption/v4",
+  "episode_id": "L2-1_v2__seed00",
+  "scenario_id": "L2-1_v2",
+  "seed": 0,
+  "ns3_seed": 1,
+  "ns3_run": 1,
+  "mechanism": "backup_station",
+  "actor_ids": [
+    "uav_l2_1_v2"
+  ],
+  "primary_station": "tower_l2_1_v2",
+  "backup_station": "contract_facility_l2_1_v2_03",
+  "heartbeat": {
+    "period_ns": 100000000,
+    "payload_bytes": 256,
+    "ttl_ns": 200000000,
+    "window_ns": 1000000000,
+    "loss_limit": 0.05,
+    "consecutive_limit": 3
+  },
+  "receiver_state_namespace": "p09.actor-heartbeat-watchdog/v1",
+  "receiver_state_definitions": {
+    "loss_ratio": "unit1; mature expected local slots not received before strict generation+TTL; includes unsent expected slots",
+    "consecutive_missing": "packet; trailing mature missing sequence slots",
+    "degraded": "bool/UNKNOWN; loss_ratio>0.05 AND consecutive_missing>=3",
+    "observation_ns": "ns; local window close/available time, consumed strictly before actor decision"
+  },
+  "legacy_state_disposition": "old global accepted-TX/reference and initial runtime flags are separate; no actor-control causality claim from those flags",
+  "command": {
+    "payload_bytes": 64,
+    "attempts": 3,
+    "period_ns": 100000000,
+    "deadline_ns": 2000000000,
+    "policy_delay_ns": 0
+  },
+  "source_script": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/event_script.json",
+  "source_scene": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/scene_setup.json",
+  "source_script_sha256": "eda41c304f3bd445a68c7af748edf384770306ce79ce417f5c72b85b26fca6aa",
+  "source_scene_sha256": "5d5e7e8f55d34f6c7c7c1b788c610624039a3faa2ce0c11fcf7bb3069e44dc81",
+  "corrections": [
+    {
+      "profile": "backup_discovery",
+      "change": "activate backup discovery at locally observed arrival at authored backup-loiter endpoint; avoid unsupported pre-contact ARP resolution"
+    },
+    {
+      "trigger_id": "trig_after_station_degraded_delay_30",
+      "change": "response delay starts at actor-observed loss, not station global truth"
+    }
+  ],
+  "assumptions": [
+    "receiver-visible periodic heartbeat is configured application traffic",
+    "actor observes local weather/nearby geometry after one original tick",
+    "10Hz authored waypoint engine, not PX4 aerodynamic flight"
+  ],
+  "rain_rf": "not amplified; dimensionless rain is not an observed mm/h rate",
+  "rf_profile": "R1:2412MHz/20MHz/HtMcs0/16dBm/NF7/n3/L0=40.09532929124565",
+  "backup_discovery_policy": "actor reaches its existing authored backup-loiter endpoint, observes arrival after one tick, then begins backup discovery/request",
+  "landing_authority": "preloaded onboard mission termination after receipt-admitted patrol resumption; no new failed-path landing command assumed"
+}

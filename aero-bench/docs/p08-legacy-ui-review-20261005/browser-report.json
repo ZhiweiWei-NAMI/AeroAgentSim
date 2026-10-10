@@ -1,0 +1,239 @@
+{
+  "scope": "published legacy dataset / UI-only visual review",
+  "ui_commit": "4f9adf6e8b851d3a7b1086fba3d297f1620607a2",
+  "legacy_commit": "7ca57707930fc45fdc1d48f32c6470beabf33bb8",
+  "checks": {
+    "initial_source": "instances",
+    "unavailable_controls": [
+      {
+        "id": "source-coherent",
+        "disabled": true,
+        "label": "连贯案例 未加载 / UNLOADED"
+      },
+      {
+        "id": "source-native",
+        "disabled": true,
+        "label": "类型目录 未加载 / UNLOADED"
+      }
+    ],
+    "pointer_rotation": true,
+    "shift_pan": true,
+    "wheel_zoom": true,
+    "keyboard_rotate": true,
+    "search_shortcut": true,
+    "search_results": 1,
+    "node_inspector": true,
+    "hover": true,
+    "edge_inspector": true,
+    "escape_clear": true,
+    "unloaded_provenance": true,
+    "desktop_no_horizontal_overflow": true,
+    "desktop_no_body_overflow": true,
+    "mobile_no_horizontal_overflow": true,
+    "mobile_no_body_overflow": true,
+    "legend_colors": true,
+    "all_viewport_no_body_overflow": true,
+    "all_viewport_qa_visible": true,
+    "mobile_graph_500px": true,
+    "mobile_filter_drawer": true,
+    "mobile_filter_escape": true,
+    "mobile_details_drawer": true,
+    "mobile_details_escape": true
+  },
+  "screenshots": [
+    "initial-legacy-desktop.png",
+    "selected-rule-desktop.png",
+    "selected-edge-desktop.png",
+    "legacy-mobile.png",
+    "viewport-390x844.png",
+    "viewport-844x390.png",
+    "viewport-1280x720.png",
+    "mobile-details-open.png"
+  ],
+  "unavailable": [
+    "Original1686catalog",
+    "Accepted13casebrowsercoverage",
+    "Native provider integration",
+    "C01new explanationchain"
+  ],
+  "dataset": {
+    "scenario": "DLV-A27-001",
+    "full_nodes": 254,
+    "full_edges": 586,
+    "visible_nodes": 240,
+    "visible_edges": 585,
+    "rendered_labels": 20
+  },
+  "selected_record": {
+    "id": "n:023d74eae3977224020fc6ce",
+    "kind": "constraint_check_result"
+  },
+  "selected_edge": "e:31d903f09082e2bd61743032",
+  "desktop_layout": {
+    "width": 1600,
+    "height": 1000,
+    "scroll_width": 1600,
+    "scroll_height": 1000,
+    "body_width": 1600,
+    "body_height": 1000,
+    "panels": [
+      {
+        "class": "navigator",
+        "overflowY": "auto",
+        "height": 851,
+        "scroll_height": 1366
+      },
+      {
+        "class": "inspector",
+        "overflowY": "auto",
+        "height": 851,
+        "scroll_height": 851
+      }
+    ]
+  },
+  "mobile_layout": {
+    "width": 390,
+    "height": 844,
+    "scroll_width": 390,
+    "scroll_height": 844
+  },
+  "legend": [
+    {
+      "type": "资源 / 时空",
+      "ring": false,
+      "color": "rgb(54, 143, 181)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#368fb5"
+    },
+    {
+      "type": "约束 / 权限",
+      "ring": false,
+      "color": "rgb(210, 138, 71)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#d28a47"
+    },
+    {
+      "type": "决策 / 目标",
+      "ring": false,
+      "color": "rgb(183, 104, 165)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#b768a5"
+    },
+    {
+      "type": "行为 / 执行",
+      "ring": false,
+      "color": "rgb(105, 127, 204)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#697fcc"
+    },
+    {
+      "type": "实体",
+      "ring": false,
+      "color": "rgb(56, 114, 201)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#3872c9"
+    },
+    {
+      "type": "状态 / 事实",
+      "ring": false,
+      "color": "rgb(0, 163, 163)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#00a3a3"
+    },
+    {
+      "type": "规则 / AST",
+      "ring": false,
+      "color": "rgb(212, 155, 42)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#d49b2a"
+    },
+    {
+      "type": "谓词",
+      "ring": true,
+      "color": "rgba(0, 0, 0, 0)",
+      "border": "rgb(142, 99, 207)",
+      "variable": "#8e63cf"
+    },
+    {
+      "type": "事件",
+      "ring": false,
+      "color": "rgb(233, 119, 103)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#e97767"
+    },
+    {
+      "type": "其他类型",
+      "ring": false,
+      "color": "rgb(115, 131, 155)",
+      "border": "rgb(38, 52, 77)",
+      "variable": "#73839b"
+    }
+  ],
+  "viewport_cases": [
+    {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 844,
+      "graph": {
+        "x": 0,
+        "y": 175.875,
+        "width": 390,
+        "height": 610.125
+      },
+      "qa": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 38.875
+      },
+      "qaText": "published legacy dataset / UI-only visual review新13案例及原始目录未加载 · provider未接入",
+      "noBodyOverflow": true,
+      "qaVisible": true
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "scrollWidth": 844,
+      "scrollHeight": 390,
+      "graph": {
+        "x": 0,
+        "y": 130.265625,
+        "width": 844,
+        "height": 207.734375
+      },
+      "qa": {
+        "x": 0,
+        "y": 0,
+        "width": 844,
+        "height": 38.875
+      },
+      "qaText": "published legacy dataset / UI-only visual review新13案例及原始目录未加载 · provider未接入",
+      "noBodyOverflow": true,
+      "qaVisible": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "scrollWidth": 1280,
+      "scrollHeight": 720,
+      "graph": {
+        "x": 230,
+        "y": 203.0625,
+        "width": 750,
+        "height": 417.9375
+      },
+      "qa": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 38.875
+      },
+      "qaText": "published legacy dataset / UI-only visual review新13案例及原始目录未加载 · provider未接入",
+      "noBodyOverflow": true,
+      "qaVisible": true
+    }
+  ],
+  "page_errors": [],
+  "failed_requests": []
+}

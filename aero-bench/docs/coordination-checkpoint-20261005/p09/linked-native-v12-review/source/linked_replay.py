@@ -1,0 +1,615 @@
+"""Coupled native UDP / authored linked-event replay in a new namespace.
+
+Numerical iterations are provisional. A fixed point is a review candidate;
+independent source and causal review must precede dataset adoption.
+Native receptions and actor-available measurements admit events; the original
+executor remains responsible for motion and local weather/business actions.
+"""
+from __future__ import annotations
+
+import argparse
+import copy
+import json
+from pathlib import Path
+import time
+
+from .linked_contract import GROUPS, STEP_NS, load_contract, filtered_source_action
+from .linked_observations import available_weather, consecutive_rain
+from .linked_transport import (episode_from_engine, owner_node, flow,
+                               receiver_monitors, message_flow, message_receipts)
+from .controller_receipt_consumer import consume_received_commands
+from .command_receipts import controller_receipts_before
+from .provider_adapter import ProviderAdapter
+from .linked_backup import arrival_request_authority, validate_backup_request
+from .linked_pad import service_expiry_ns, allocation_payload, received_reroute_timer
+
+ROOT = Path(__file__).resolve().parents[3]
+RADIO_SOURCE = Path('/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_v2_seed00_v5_candidate/coupled/L6-2_v2__seed00/receipt_replay/run1/run_config.json')
+REVISION = 'p09.linked-native-causal/v12'
+
+
+def write_json(path, value):
+    with Path(path).open('x') as f:
+        json.dump(value, f, indent=2, allow_nan=False)
+        f.write('\n')
+
+
+def write_rows(path, rows):
+    with Path(path).open('x') as f:
+        for row in rows:
+            f.write(json.dumps(row, ensure_ascii=False, allow_nan=False, separators=(',', ':')) + '\n')
+
+
+def event_times(run):
+    return {key: value.last_fired_tick * STEP_NS
+            for key, value in run['interpreter'].event_states.items() if value.fired}
+
+
+def due_time(script, event_id, times):
+    event = next(e for e in script['events'] if e['event_id'] == event_id)
+    trigger = next(t for t in script['triggers'] if t['trigger_id'] == event['trigger_ref'])
+    if trigger['type'] == 'tick':
+        return trigger['tick'] * STEP_NS
+    if trigger['type'] == 'event_fired_after' and trigger['event_id'] in times:
+        return times[trigger['event_id']] + trigger['delay_ticks'] * STEP_NS
+    return None
+
+
+def heartbeat_id(source, owner):
+    return f'heartbeat:{source}:to:{owner}:heartbeat:expected'
+
+
+def make_network_plan(profile, script, run, original_times, previous_receipts, *, healthy=False):
+    episode = episode_from_engine(profile, run['engine'])
+    times = event_times(run)
+    primary, actors, mechanism = profile['primary_station'], profile['actor_ids'], profile['mechanism']
+    flows, messages, controls = [], [], []
+    duration = episode['duration_ns']
+    backup_arrival = (arrival_request_authority(profile, script, run,
+                      times.get('uav_link_response'), STEP_NS)
+                      if mechanism == 'backup_station' else None)
+    # Backup station cannot know actor-local arrival. Its reply is sent only
+    # after actual request RX below; no unused remote heartbeat is invented.
+    for station in (primary,):
+        for actor in actors:
+            life = owner_node(episode, actor, 0)
+            end = duration if life['death_ns'] is None else life['death_ns']
+            flows.append(flow(episode, heartbeat_id(station, actor), station, actor, life['birth_ns'], end))
+
+    def radio(owner, t, operation, channel=0):
+        if t is not None and t < duration:
+            node = owner_node(episode, owner, t)
+            controls.append({'owner': owner, 'life_epoch': node['life_epoch'], 'time_ns': t,
+                             'operation': operation, 'channel_number': channel})
+
+    def message(mid, source, receiver, t, evidence_ns, action, evidence_source=None, application_payload=None):
+        if t is not None and t < duration:
+            m = message_flow(episode, profile, mid, source, receiver, t, evidence_ns, action)
+            m['sender_decision_evidence'] = evidence_source
+            m['application_payload'] = application_payload
+            messages.append(m)
+            flows.append(m['flow'])
+
+    def accepted(mid):
+        item = previous_receipts.get(mid)
+        return None if item is None else item['accepted']
+
+    def remote(event_id, source, receiver, *, required_request=None,
+               reported_execution_event=None, sender_owned_event=None):
+        event = next(e for e in script['events'] if e['event_id'] == event_id)
+        trigger = next(t for t in script['triggers'] if t['trigger_id'] == event['trigger_ref'])
+        if required_request is not None:
+            request = accepted(required_request)
+            if request is None:
+                return
+            evidence = request['accepted_ns']
+            planned = evidence + STEP_NS
+            authority = {'type': 'actual received application report',
+                         'message_id': required_request, 'receipt': request}
+            if reported_execution_event is not None:
+                submission = previous_receipts[required_request]['submission']
+                payload = submission['application_payload']
+                if (not isinstance(payload, dict)
+                    or submission['source'] != receiver or submission['receiver'] != source
+                    or payload.get('kind') != 'execution_report'
+                    or payload.get('owner') != receiver
+                    or payload.get('executed_event_id') != reported_execution_event
+                    or type(payload.get('executed_ns')) is not int
+                    or not 0 <= payload['executed_ns'] <= submission['send_ns'] <= evidence
+                    or trigger['type'] != 'event_fired_after'
+                    or trigger['event_id'] != reported_execution_event):
+                    raise ValueError('landing timer requires exact received execution report and declared timer binding')
+                delay_ns = trigger['delay_ticks'] * STEP_NS
+                planned = max(planned, payload['executed_ns'] + delay_ns)
+                authority['received_application_payload'] = payload
+                authority['preloaded_delay_ns'] = delay_ns
+                authority['timer_basis'] = 'received execution-report payload; no actor-private event table lookup'
+        elif sender_owned_event is not None:
+            evidence = times.get(sender_owned_event)
+            if evidence is None:
+                return
+            if trigger['type'] != 'event_fired_after' or trigger['event_id'] != sender_owned_event:
+                raise ValueError('sender-owned landing timer must reference exact sender-local service event')
+            planned = max(evidence + trigger['delay_ticks'] * STEP_NS, evidence + STEP_NS)
+            authority = {'type': 'sender-owned service event and preloaded termination timer',
+                         'event_id': sender_owned_event, 'owner': source, 'time_ns': evidence}
+        else:
+            raise ValueError('remote command requires actual report RX or an explicit sender-owned event')
+        message(f'command:{event_id}:{receiver}', source, receiver, planned, evidence, event_id, authority)
+
+    if mechanism == 'local_c2' and not healthy:
+        radio(primary, original_times['c2_loss'], 'off')
+        radio(primary, original_times['c2_recovered'], 'on')
+    elif mechanism == 'backup_station':
+        if not healthy:
+            radio(primary, original_times['station_degraded'], 'off')
+        actor, = actors
+        request_id = f'backup-request:{actor}'
+        if backup_arrival is not None:
+            message(request_id, actor, profile['backup_station'], backup_arrival['decision_ns'],
+                    backup_arrival['available_ns'], 'request_backup_path', backup_arrival)
+        validate_backup_request(previous_receipts.get(request_id), actor, profile['backup_station'])
+        remote('patrol_resume_via_backup_link', profile['backup_station'], actor,
+               required_request=request_id)
+    elif mechanism == 'rain_service_descent' and not healthy:
+        radio(primary, times.get('c2_loss_tick'), 'off')
+        radio(primary, times.get('x1_recovery'), 'on')
+    elif mechanism == 'cochannel_backup':
+        switch_ns = profile['rendezvous']['time_ns']
+        if not healthy:
+            start = original_times['wideband_jamming']
+            end = min(duration, switch_ns)
+            if start < end:
+                # One declared peer UDP workload, sharing the existing Yans channel.
+                flows.append(flow(episode, 'cochannel:peer-workload', actors[0], actors[1], start, end,
+                                  payload_bytes=1200, period_ns=1_200_000))
+        for owner in [primary, *actors]:
+            radio(owner, switch_ns, 'channel', profile['backup_channel'])
+        for actor in actors:
+            local_event = 'alternate_channel:local:' + actor
+            local_due = due_time(script, local_event, times)
+            report_id = 'backup-ready-report:' + actor
+            if local_due is not None:
+                message(report_id, actor, primary, local_due + STEP_NS, local_due,
+                    'report_backup_ready', {'type': 'owner-local safe-hold timer',
+                        'event_id': 'multi_uav_safe_hold:local:' + actor,
+                        'event_time_ns': times['multi_uav_safe_hold:local:' + actor],
+                        'owner': actor, 'timer_mature_ns': local_due})
+            remote(local_event, primary, actor, required_request=report_id)
+            ack_id = 'backup-execution-ack:' + actor
+            if local_event in times:
+                received = accepted('command:' + local_event + ':' + actor)
+                if received is not None:
+                    applied = times[local_event]
+                    message(ack_id, actor, primary, applied + STEP_NS, applied,
+                        'report_backup_execution', {'type': 'owner executed received command',
+                            'event_id': local_event, 'event_time_ns': applied,
+                            'owner': actor, 'command_receipt': received},
+                        {'kind': 'execution_report', 'owner': actor,
+                         'executed_event_id': local_event, 'executed_ns': applied})
+            remote(f'lifecycle_landing_{actor}', primary, actor, required_request=ack_id,
+                   reported_execution_event=local_event)
+    elif mechanism == 'pad_service':
+        if not healthy:
+            radio(primary, original_times['station_failure'], 'off')
+            radio(primary, times.get('station_recovered'), 'on')
+        for actor in actors:
+            intent_id = 'p09.pad-request-intent:local:' + actor
+            intent = times.get(intent_id)
+            if intent is not None:
+                message(f'pad-request:{actor}', actor, profile['pad_owner'], intent + STEP_NS,
+                        intent, 'request_pad', {'type': 'owner-local admitted approach and available arrival pose',
+                            'event_id': intent_id, 'owner': actor, 'time_ns': intent,
+                            'policy_version': profile['pad_owner_policy']['version']})
+        arbitration = times.get('pad_priority_arbitration')
+        if arbitration is not None:
+            decisions = [r for r in run['gate_evidence']
+                         if r['event_id'] == 'pad_priority_arbitration' and r['allow']
+                         and r['decision_tick'] * STEP_NS == arbitration]
+            if len(decisions) > 1:
+                raise ValueError('pad arbitration requires one exact sender-owned decision')
+            # The unadmitted numerical bootstrap has no sender authority.
+            # Event presence alone must never issue a pad result.
+            if decisions:
+                requests = {actor: accepted(f'pad-request:{actor}') for actor in actors}
+                if any(r is None or r['source_owner'] != actor
+                       or r['receiver_owner'] != profile['pad_owner']
+                       or r['accepted_ns'] >= arbitration
+                       for actor, r in requests.items()):
+                    raise ValueError('admitted pad arbitration requires both exact prior request receipts')
+                authority = {'type': 'pad-owned admitted service arbitration',
+                    'owner': profile['pad_owner'], 'event_id': 'pad_priority_arbitration',
+                    'time_ns': arbitration, 'decision': decisions[0],
+                    'request_receipts': requests}
+                for actor, request in requests.items():
+                    send = max(arbitration + profile['service_delay_ns'], request['accepted_ns'] + STEP_NS)
+                    if send >= service_expiry_ns(profile):
+                        continue  # The pad's preloaded service lease has already expired.
+                    action = 'priority_granted' if actor == actors[0] else 'reroute'
+                    message(f'pad-result:{actor}', profile['pad_owner'], actor, send,
+                            arbitration, action, authority,
+                            allocation_payload(profile, actor, arbitration, action))
+        for actor in actors:
+            remote(f'lifecycle_landing_{actor}', primary, actor, sender_owned_event='station_recovered')
+    else:
+        if mechanism not in ('local_c2', 'rain_service_descent'):
+            raise ValueError('undeclared native mechanism')
+    return episode, flows, messages, controls
+
+
+class Admission:
+    """One run-local decision table. No instance state survives another run."""
+    def __init__(self, profile, monitors, receipts, episode=None):
+        self.profile, self.monitors, self.receipts = profile, monitors, receipts
+        self.episode = episode
+        self.state_rows, self.transitions = [], []
+        self.last = {}
+        self.weather = None
+        self.pose_prefix = []
+        self.pad_requests = None
+        self.pending_hold_decisions = {}
+
+    def monitor(self, owner, tick, station=None):
+        station = self.profile['primary_station'] if station is None else station
+        fid = heartbeat_id(station, owner)
+        exact = [rows for (receiver, _, flow_id), rows in self.monitors.items()
+                 if receiver == owner and flow_id == fid]
+        if len(exact) != 1 or tick < 1 or tick > len(exact[0]):
+            return None
+        return exact[0][tick - 1]  # strict availability before this decision tick
+
+    def observe(self, tick, engine, interpreter, current_rows):
+        self.pose_prefix.append((tick, copy.deepcopy(current_rows)))
+        self.pose_prefix = self.pose_prefix[-3:]
+        if self.profile['mechanism'] in ('rain_service_descent', 'pad_service'):
+            available = [rows for sample_tick, rows in self.pose_prefix if sample_tick + 1 < tick]
+            # Proximity is observed one original tick later, strictly before
+            # this barrier. No future/current global geometry enters the rule.
+            interpreter.entity_states.clear()
+            if available:
+                for row in available[-1]:
+                    interpreter.update_entity_state(row['entity_id'], row['pos_enu'], {}, row['vel_mps'])
+        if self.profile['mechanism'] == 'pad_service':
+            owners = [owner for owner in self.profile['actor_ids']
+                if self.received_fact(f'pad-request:{owner}', self.profile['pad_owner'], tick)['allow']]
+            states = interpreter.event_states
+            arbitration = states['pad_priority_arbitration']
+            if arbitration.fired and (tick-arbitration.last_fired_tick)*STEP_NS >= self.profile['service_delay_ns']:
+                owners = [self.profile['priority_order'][0]]
+            if states['station_recovered'].fired:
+                owners = []
+            if owners != self.pad_requests:
+                engine._handle_set_runtime_state({'type': 'set_runtime_state',
+                    'action_id': 'p09_received_pad_requests', 'entity_id': self.profile['pad_owner'],
+                    'state_patch': {'facility_state': {'request_count': len(owners), 'requester_ids': owners}}}, tick)
+                self.pad_requests = owners
+        self.weather = available_weather(engine.weather_rows, tick * STEP_NS)
+        if self.profile['mechanism'] in ('local_weather', 'rain_service_descent'):
+            # The selected scenarios use actual numeric weather; omitted fields
+            # stay missing and the admission gate preserves UNKNOWN.
+            interpreter.update_weather_state({} if self.weather is None else self.weather['weather'])
+        for owner in self.profile['actor_ids']:
+            row = self.monitor(owner, tick)
+            if row is None:
+                continue
+            scoped = {**row, 'decision_tick': tick, 'available_ns': row['observation_ns']}
+            self.state_rows.append(scoped)
+            bad = row['degraded']
+            if owner not in self.last or self.last[owner] != bad:
+                self.transitions.append(scoped)
+                self.last[owner] = bad
+                # Receiver state and rule evaluations are materialized in the
+                # declared sidecar namespace below. The old engine's global
+                # communication_unavailable field has a different source and
+                # is neither relabelled nor used to admit actor events.
+
+    def command(self, mid, owner, tick):
+        item = self.receipts.get(mid)
+        receipt = None if item is None else item['accepted']
+        if receipt is None:
+            return {'allow': False, 'evidence': {'message_id': mid, 'receipt': None, 'availability': 'UNKNOWN'}}
+        now = tick * STEP_NS
+        node = owner_node(self.episode, owner, now)
+        if not controller_receipts_before([receipt], now, receiver_owner=owner,
+                                          receiver_epoch=node['life_epoch']):
+            return {'allow': False, 'evidence': {'message_id': mid, 'receipt': receipt,
+                'current_receiver_epoch': node['life_epoch'], 'reason': 'not available to exact current owner/epoch before barrier'}}
+        # Receipt availability uses strict now above. The helper's open cutoff
+        # now+1 only admits the executor slot AT now; it reads no extra record.
+        decisions, _ = consume_received_commands([receipt], observation_ns=now + 1,
+            receiver_owner=owner, receiver_epoch=node['life_epoch'],
+            policy_delay_ns=self.profile['command']['policy_delay_ns'], queue_available_ns=now)
+        allow = any(d['status'] == 'ready_for_executor' for d in decisions)
+        return {'allow': allow, 'evidence': {'message_id': mid, 'receipt': receipt,
+                                            'controller_decisions': decisions}}
+
+    def received_fact(self, mid, owner, tick):
+        """Transport-accepted service facts expire at the declared lease end."""
+        item = self.receipts.get(mid)
+        receipt = None if item is None else item['accepted']
+        now = tick * STEP_NS
+        node = owner_node(self.episode, owner, now)
+        expiry = service_expiry_ns(self.profile)
+        if now >= expiry:
+            return {'allow': False, 'evidence': {'message_id': mid, 'receipt': receipt,
+                'current_receiver_epoch': node['life_epoch'], 'use_ns': now,
+                'valid_until_ns': expiry, 'reason': 'pad service lease expired',
+                'service_policy': self.profile['service_record_policy'], 'custody_claim': False}}
+        ready = () if receipt is None else controller_receipts_before(
+            [receipt], now, receiver_owner=owner, receiver_epoch=node['life_epoch'])
+        return {'allow': bool(ready), 'evidence': {'message_id': mid, 'receipt': receipt,
+            'current_receiver_epoch': node['life_epoch'], 'use_ns': now,
+            'valid_until_ns': expiry,
+            'service_policy': self.profile['service_record_policy'], 'custody_claim': False}}
+
+    def bad(self, tick, *, owner=None, healthy=False):
+        if owner is None:
+            owner, = self.profile['actor_ids']  # no private cross-owner AND
+        if owner not in self.profile['actor_ids']:
+            raise ValueError('watchdog decision owner is not an exact bound actor')
+        rows = [self.monitor(owner, tick)]
+        allow = all(row is not None and row['degraded'] is (False if healthy else True) for row in rows)
+        return {'allow': allow, 'evidence': {'rule_version': 'p09.actor-heartbeat-watchdog/v1',
+            'rows': rows, 'required': 'healthy' if healthy else 'degraded',
+            'decision_ns': tick * STEP_NS, 'owner': owner,
+            'authority': 'local onboard', 'physical_motion_evidence': None}}
+
+    def gate(self, event, tick, engine, interpreter):
+        event_id, mechanism = event['event_id'], self.profile['mechanism']
+        if 'p09_local_children' in event:
+            children = {key: interpreter.event_states[key] for key in event['p09_local_children']}
+            return {'allow': all(s.fired for s in children.values()), 'evidence': {
+                'authority': event['p09_authority'],
+                'completed_local_event_ticks': {key: s.last_fired_tick if s.fired else None
+                                              for key, s in children.items()}}}
+        if 'p09_owner_id' in event:
+            owner, phase = event['p09_owner_id'], event['p09_phase']
+            if phase == 'pad_received_result_timer':
+                mid = 'pad-result:' + owner
+                fact = self.received_fact(mid, owner, tick)
+                return received_reroute_timer(self.profile, self.receipts.get(mid), owner,
+                    tick * STEP_NS, STEP_NS, fact)
+            if phase == 'weather_response':
+                weather = available_weather(engine.weather_rows, tick * STEP_NS)
+                update = interpreter.event_states[event['p09_weather_update_event']]
+                expected = event['p09_weather_expected']
+                known = weather is not None and all(k in weather['weather'] for k in expected)
+                allow = (known and update.fired
+                         and weather['sample_ns'] > update.last_fired_tick * STEP_NS
+                         and all(weather['weather'][k] == v for k, v in expected.items()))
+                return {'allow': bool(allow), 'evidence': {'owner': owner,
+                    'rule_version': self.profile['weather_response_version'],
+                    'observation': weather, 'expected_operands': expected,
+                    'weather_update_tick': update.last_fired_tick if update.fired else None,
+                    'decision_ns': tick * STEP_NS, 'availability': 'KNOWN' if known else 'UNKNOWN'}}
+            if phase == 'multi_uav_hold_entry':
+                if owner not in self.pending_hold_decisions:
+                    decision = self.bad(tick, owner=owner)
+                    if not decision['allow']:
+                        return decision
+                    self.pending_hold_decisions[owner] = {'decision_tick': tick,
+                        'decision_ns': tick * STEP_NS, **copy.deepcopy(decision)}
+                return {'allow': True, 'evidence': {'owner': owner,
+                    'policy': self.profile['hold_decision_queue']['version'],
+                    'queued_decision': self.pending_hold_decisions[owner], 'action_check_tick': tick}}
+            if phase == 'multi_uav_safe_hold':
+                return {'allow': True, 'evidence': {'owner': owner,
+                    'authority': 'preloaded owner-local safe-hold timer', 'decision_ns': tick * STEP_NS}}
+            if phase == 'alternate_channel':
+                return self.command(f'command:{event_id}:{owner}', owner, tick)
+            if phase == 'pad_request_intent':
+                available = [(sample_tick, rows) for sample_tick, rows in self.pose_prefix
+                             if sample_tick + 1 < tick]
+                sample = None
+                if available:
+                    sample_tick, rows = available[-1]
+                    exact = [r for r in rows if r['entity_id'] == owner]
+                    if len(exact) != 1:
+                        raise ValueError('pad request pose must bind exactly one local owner')
+                    sample = {'owner': owner, 'sample_ns': sample_tick * STEP_NS,
+                              'available_ns': (sample_tick + 1) * STEP_NS,
+                              'position_enu_m': exact[0]['pos_enu']}
+                approach = interpreter.event_states[event['p09_approach_event']]
+                target = event['p09_arrival_target_enu_m']
+                allow = (sample is not None and approach.fired
+                         and sample['sample_ns'] > approach.last_fired_tick * STEP_NS
+                         and all(abs(x-y) <= self.profile['pad_owner_policy']['arrival_tolerance_m']
+                                 for x,y in zip(sample['position_enu_m'], target)))
+                return {'allow': bool(allow), 'evidence': {'owner': owner,
+                    'policy': self.profile['pad_owner_policy'], 'local_pose': sample,
+                    'authored_target_enu_m': target, 'decision_ns': tick * STEP_NS,
+                    'availability': 'KNOWN' if sample is not None else 'UNKNOWN'}}
+            if phase == 'pad_approach':
+                if owner not in self.pending_hold_decisions:
+                    decision = self.bad(tick, owner=owner)
+                    if not decision['allow']:
+                        return decision
+                    self.pending_hold_decisions[owner] = {'decision_tick': tick,
+                        'decision_ns': tick * STEP_NS, **copy.deepcopy(decision)}
+                return {'allow': True, 'evidence': {'owner': owner,
+                    'policy': self.profile['pad_owner_policy']['version'],
+                    'queued_decision': self.pending_hold_decisions[owner], 'action_check_tick': tick}}
+            if phase == 'pad_local_recovery':
+                return self.bad(tick, owner=owner, healthy=True)
+            raise ValueError('undeclared owner-local admission phase')
+        if mechanism == 'local_c2':
+            if event_id == 'c2_loss':
+                return self.bad(tick)
+            if event_id == 'c2_recovered':
+                return self.bad(tick, healthy=True)
+        elif mechanism == 'backup_station':
+            if event_id == 'p09_actor_observed_station_loss':
+                return self.bad(tick)
+            if event_id == 'patrol_resume_via_backup_link':
+                owner, = self.profile['actor_ids']
+                return self.command(f'command:{event_id}:{owner}', owner, tick)
+            if event_id.startswith('lifecycle_landing_'):
+                return {'allow': True, 'evidence': {'authority': self.profile['landing_authority'],
+                    'predecessor': 'patrol_resume_via_backup_link', 'decision_ns': tick * STEP_NS}}
+        elif mechanism == 'local_weather':
+            if event_id == 'rain_condition_met':
+                guard = self.profile['rain_guard']
+                evidence = [consecutive_rain(engine.weather_rows, tick * STEP_NS, owner,
+                    threshold=guard['threshold'], count=guard['consecutive_samples'])
+                    for owner in self.profile['weather_owner_ids']]
+                return {'allow': all(e['predicate'] is True for e in evidence), 'evidence': {'rows': evidence}}
+        elif mechanism == 'rain_service_descent':
+            if event_id == 'rain_threshold':
+                return {'allow': self.weather is not None and self.weather['weather'].get('rain') is not None,
+                        'evidence': {'local_weather': self.weather, 'legacy_sustain_semantics_retained': True}}
+            if event_id == 'c2_loss_after_rain':
+                return self.bad(tick)
+        elif mechanism == 'cochannel_backup':
+            if event_id.startswith('lifecycle_landing_'):
+                owner = event_id.removeprefix('lifecycle_landing_')
+                return self.command(f'command:{event_id}:{owner}', owner, tick)
+        elif mechanism == 'pad_service':
+            if event_id == 'pad_priority_arbitration':
+                decisions = [self.received_fact(f'pad-request:{owner}', self.profile['pad_owner'], tick)
+                             for owner in self.profile['actor_ids']]
+                return {'allow': all(d['allow'] for d in decisions), 'evidence': {'requests': decisions,
+                    'service_policy': self.profile['priority_order'], 'custody_claim': False}}
+            if event_id.startswith('lifecycle_landing_'):
+                owner = event_id.removeprefix('lifecycle_landing_')
+                return self.command(f'command:{event_id}:{owner}', owner, tick)
+        return {'allow': True, 'evidence': {'authority': 'authored exogenous/local event',
+                                          'source_event': event_id, 'decision_ns': tick * STEP_NS}}
+
+
+def pose_difference(old_rows, new_rows):
+    old = {(r['entity_id'], r['tick']): r for r in old_rows}
+    changed = {}
+    for row in new_rows:
+        before = old.get((row['entity_id'], row['tick']))
+        fields = ['pos_enu', 'vel_mps', 'yaw_deg', 'state', 'activity_type']
+        difference = fields if before is None else [f for f in fields if before.get(f) != row.get(f)]
+        if difference and row['entity_id'] not in changed:
+            changed[row['entity_id']] = {'first_changed_tick': row['tick'], 'fields': difference,
+                'before': None if before is None else {f: before.get(f) for f in difference},
+                'after': {f: row.get(f) for f in difference}}
+    new_keys = {(r['entity_id'], r['tick']) for r in new_rows}
+    for key in old.keys() - new_keys:
+        changed.setdefault(key[0], {'first_changed_tick': key[1], 'fields': ['presence_removed']})
+    return changed
+
+
+def run_one(scenario, seed, output_root, provider=None, *, healthy=False):
+    from .linked_engine import execute_linked
+    profile, scene, script = load_contract(ROOT, scenario, seed)
+    output = Path(output_root) / profile['episode_id'] / ('healthy' if healthy else 'adopted')
+    output.mkdir(parents=True, exist_ok=False)
+    write_json(output / 'scene_setup.json', scene)
+    write_json(output / 'event_script.json', script)
+    write_json(output / 'adoption_profile.json', profile)
+    script_path = output / 'event_script.json'
+    # A source replay is a numerical initialization and comparison only.
+    source_path = ROOT / profile['source_script']
+    original_script = json.loads(source_path.read_text())
+    original = execute_linked(scene, original_script, source_path, profile['episode_id'], seed=seed)
+    acquisition = profile.get('motion_acquisition')
+    dwell = None if acquisition is None else acquisition['landing_dwell_ticks']
+    successor_wait = profile.get('pending_successor_wait_ticks')
+    bootstrap = execute_linked(scene, script, script_path, profile['episode_id'], seed=seed,
+        landing_dwell_ticks=dwell, pending_successor_wait_ticks=successor_wait,
+        decision_gate=(lambda event, *_: {'allow': event.get('p09_phase') != 'pad_received_result_timer'
+            and event['event_id'] != 'pad_priority_arbitration',
+            'evidence': {'authority': 'numerical initialization; no received allocation payload'}})
+            if profile['mechanism'] == 'pad_service' else None)
+    if profile['mechanism'] == 'local_weather':
+        admission = Admission(profile, {}, {})
+        run = execute_linked(scene, script, script_path, profile['episode_id'], seed=seed,
+            decision_gate=admission.gate, observe_tick=admission.observe,
+            action_filter=lambda a, t: filtered_source_action(a, t, profile=profile))
+        history, final_network, final_receipts = [], None, {}
+    else:
+        if provider is None:
+            raise ValueError('native mechanisms require an explicit live provider')
+        radio_config = json.loads(RADIO_SOURCE.read_text())['radio']
+        previous, receipts, prior_signature, history = bootstrap, {}, None, []
+        started = time.perf_counter()
+        for iteration in range(12):
+            episode, flows, messages, controls = make_network_plan(profile, script, previous,
+                event_times(original), receipts, healthy=healthy)
+            config = {'network_profile': 'timed_flow', 'network': {'traffic_windows': flows},
+                      'seed': profile['ns3_seed'], 'run': profile['ns3_run'], 'radio': radio_config,
+                      'radio_actions': controls, 'radio_config_source_ref': str(RADIO_SOURCE)}
+            folder = output / f'iteration{iteration:02d}'
+            folder.mkdir()
+            write_json(folder / 'run_config.json', config)
+            network = provider.run_episode(episode, config, folder)
+            monitor = receiver_monitors(episode, flows, network, profile)
+            receipts = message_receipts(episode, messages, network)
+            admission = Admission(profile, monitor, receipts, episode)
+            run = execute_linked(scene, script, script_path, profile['episode_id'], seed=seed,
+                decision_gate=admission.gate, observe_tick=admission.observe,
+                action_filter=lambda a, t: filtered_source_action(a, t, profile=profile),
+                landing_dwell_ticks=dwell, pending_successor_wait_ticks=successor_wait)
+            signature = {'events': event_times(run), 'flows': flows, 'radio_actions': controls,
+                'receipts': {k: None if v['accepted'] is None else v['accepted']['accepted_ns']
+                             for k, v in receipts.items()}}
+            history.append({'iteration': iteration, 'event_times_ns': event_times(run),
+                'packet_count': len(network['network_packets']),
+                'accepted_messages': signature['receipts'],
+                'native_wall_time_s': network['wall_time_s']})
+            write_json(folder / 'iteration_receipt.json', history[-1])
+            if signature == prior_signature:
+                final_network, final_receipts = network, receipts
+                break
+            previous, prior_signature = run, signature
+        else:
+            write_json(output / 'not_adopted.json', {'reason': 'coupled event/flow/receipt fixed point not reached',
+                                                     'iterations': history})
+            raise RuntimeError(f'coupled solution not adopted: {output}')
+        write_json(output / 'network_backend.json', final_network['backend'])
+        write_rows(output / 'network_packets.jsonl', final_network['network_packets'])
+        write_rows(output / 'network_events.jsonl', final_network['network_events'])
+        write_rows(output / 'network_diagnostics.jsonl', final_network['network_diagnostics'])
+        write_rows(output / 'radio_actions.jsonl', final_network['radio_action_records'])
+        write_rows(output / 'receiver_observed_states.jsonl', admission.state_rows)
+        write_rows(output / 'predicate_flips.jsonl', admission.transitions)
+        write_json(output / 'command_receipts.json', final_receipts)
+        write_json(output / 'coupled_iterations.json', history)
+        write_json(output / 'execution_time.json', {'wall_time_s': time.perf_counter() - started})
+    differences = pose_difference(original['engine'].trajectory_rows, run['engine'].trajectory_rows)
+    write_rows(output / 'trajectories.jsonl', run['engine'].trajectory_rows)
+    write_rows(output / 'weather.jsonl', run['engine'].weather_rows)
+    write_json(output / 'actions.json', run['audit'])
+    write_json(output / 'event_admission.json', run['gate_evidence'])
+    write_rows(output / 'event_trace.jsonl', run['interpreter'].get_event_log())
+    times = event_times(run)
+    missing = [e['event_id'] for e in script['events'] if e['event_id'] not in times]
+    summary = {'schema_version': REVISION, 'episode_id': profile['episode_id'], 'seed': seed,
+        'scenario_id': scenario, 'source_refs': [profile['source_script'], profile['source_scene']],
+        'guard_version': profile.get('rain_guard', {}).get('schema_version'),
+        'healthy_control': healthy, 'event_times_ns': times, 'unfired_events': missing,
+        'pose_and_visual_differences_from_same_seed_source_replay': differences,
+        'weather_changed': original['engine'].weather_rows != run['engine'].weather_rows,
+        'adoption_class': 'A' if differences or original['engine'].weather_rows != run['engine'].weather_rows else 'B',
+        'published210_modified': False, 'collection_status': 'one-shot collection pending final freeze',
+        'iteration_count': len(history), 'backend': None if final_network is None else final_network['backend']['name'],
+        'duration_ticks': run['engine'].duration_ticks,
+        'motion_acquisition': acquisition,
+        'output_dir': str(output), 'motion_scope': 'authored waypoint engine; not PX4 motion feedback',
+        'missing_event_disposition': 'healthy-control events remain conditional' if healthy else 'requires resolution before adoption' if missing else 'complete',
+        'rf_weather_scope': profile['rain_rf']}
+    write_json(output / 'summary.json', summary)
+    print(json.dumps(summary, ensure_ascii=False), flush=True)
+    return summary
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--scenario', choices=GROUPS, required=True)
+    parser.add_argument('--seed', type=int, choices=(0, 1, 2), required=True)
+    parser.add_argument('--output-root', type=Path, required=True)
+    parser.add_argument('--healthy', action='store_true')
+    args = parser.parse_args()
+    if GROUPS[args.scenario] == 'local_weather':
+        run_one(args.scenario, args.seed, args.output_root, healthy=args.healthy)
+    else:
+        with ProviderAdapter() as provider:
+            run_one(args.scenario, args.seed, args.output_root, provider, healthy=args.healthy)
+
+
+if __name__ == '__main__':
+    main()

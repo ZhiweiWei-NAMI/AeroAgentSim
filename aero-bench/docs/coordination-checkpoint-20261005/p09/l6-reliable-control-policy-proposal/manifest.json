@@ -1,0 +1,17 @@
+{
+  "schema_version": "p09.policy-proposal-evidence/v1",
+  "source_path": "/mnt/data2/weizhiwei/AERO_WORLD/design/p09/remaining_completion/l6_reliable_control_policy_proposal.json",
+  "status": "PROPOSED_NOT_ACTIVATED",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2053,
+      "sha256": "55e3186fa8a966238ea2186fab75f3a68330987ab160be73034ceaea9f7d7072"
+    },
+    {
+      "path": "policy.json",
+      "bytes": 5717,
+      "sha256": "f0d7bf6850e5eda2d2aaf40efe89c02ed8470eb0f1eebf989ddb8927bf204206"
+    }
+  ]
+}

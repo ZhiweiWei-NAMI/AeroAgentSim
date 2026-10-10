@@ -1,0 +1,154 @@
+[
+  {
+    "iteration": 0,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_x5_priority": 3000000000,
+      "lifecycle_takeoff_uav_x5_second": 4000000000,
+      "station_failure": 22000000000,
+      "backup_pad_unavailable": 25000000000,
+      "dual_uav_pad_contention": 28500000000,
+      "pad_priority_arbitration": 56000000000,
+      "station_recovered": 65500000000,
+      "lifecycle_landing_uav_x5_priority": 69000000000,
+      "lifecycle_landing_uav_x5_second": 74500000000,
+      "dual_uav_pad_contention:local:uav_x5_priority": 28000000000,
+      "p09.pad-request-intent:local:uav_x5_priority": 57500000000,
+      "dual_uav_pad_contention:local:uav_x5_second": 28000000000,
+      "p09.pad-request-intent:local:uav_x5_second": 33500000000,
+      "station_recovered:local:uav_x5_priority": 66000000000,
+      "station_recovered:local:uav_x5_second": 66000000000
+    },
+    "packet_count": 1812,
+    "accepted_messages": {
+      "pad-request:uav_x5_priority": 30603273780,
+      "pad-request:uav_x5_second": 29603478848,
+      "command:lifecycle_landing_uav_x5_priority:uav_x5_priority": 68500221019,
+      "command:lifecycle_landing_uav_x5_second:uav_x5_second": 74300222539
+    },
+    "native_wall_time_s": 0.4248214792460203
+  },
+  {
+    "iteration": 1,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_x5_priority": 3000000000,
+      "lifecycle_takeoff_uav_x5_second": 4000000000,
+      "station_failure": 22000000000,
+      "backup_pad_unavailable": 25000000000,
+      "dual_uav_pad_contention": 28500000000,
+      "pad_priority_arbitration": 58000000000,
+      "second_uav_reroute": 59000000000,
+      "station_recovered": 65500000000,
+      "lifecycle_landing_uav_x5_priority": 69000000000,
+      "lifecycle_landing_uav_x5_second": 74500000000,
+      "dual_uav_pad_contention:local:uav_x5_priority": 28000000000,
+      "p09.pad-request-intent:local:uav_x5_priority": 57500000000,
+      "dual_uav_pad_contention:local:uav_x5_second": 28000000000,
+      "p09.pad-request-intent:local:uav_x5_second": 33500000000,
+      "station_recovered:local:uav_x5_priority": 66000000000,
+      "station_recovered:local:uav_x5_second": 66000000000
+    },
+    "packet_count": 1818,
+    "accepted_messages": {
+      "pad-request:uav_x5_priority": 57610319208,
+      "pad-request:uav_x5_second": 33610443683,
+      "pad-result:uav_x5_priority": 56502522179,
+      "pad-result:uav_x5_second": 56504208521,
+      "command:lifecycle_landing_uav_x5_priority:uav_x5_priority": 68500221019,
+      "command:lifecycle_landing_uav_x5_second:uav_x5_second": 74300221537
+    },
+    "native_wall_time_s": 0.4199244435876608
+  },
+  {
+    "iteration": 2,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_x5_priority": 3000000000,
+      "lifecycle_takeoff_uav_x5_second": 4000000000,
+      "station_failure": 22000000000,
+      "backup_pad_unavailable": 25000000000,
+      "dual_uav_pad_contention": 28500000000,
+      "pad_priority_arbitration": 58000000000,
+      "second_uav_reroute": 61000000000,
+      "station_recovered": 65500000000,
+      "lifecycle_landing_uav_x5_priority": 69000000000,
+      "lifecycle_landing_uav_x5_second": 74500000000,
+      "dual_uav_pad_contention:local:uav_x5_priority": 28000000000,
+      "p09.pad-request-intent:local:uav_x5_priority": 57500000000,
+      "dual_uav_pad_contention:local:uav_x5_second": 28000000000,
+      "p09.pad-request-intent:local:uav_x5_second": 33500000000,
+      "station_recovered:local:uav_x5_priority": 66000000000,
+      "station_recovered:local:uav_x5_second": 66000000000
+    },
+    "packet_count": 1818,
+    "accepted_messages": {
+      "pad-request:uav_x5_priority": 57610362351,
+      "pad-request:uav_x5_second": 33610443683,
+      "pad-result:uav_x5_priority": 58502280505,
+      "pad-result:uav_x5_second": 58503966845,
+      "command:lifecycle_landing_uav_x5_priority:uav_x5_priority": 68500225173,
+      "command:lifecycle_landing_uav_x5_second:uav_x5_second": 74300213530
+    },
+    "native_wall_time_s": 0.42474753875285387
+  },
+  {
+    "iteration": 3,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_x5_priority": 3000000000,
+      "lifecycle_takeoff_uav_x5_second": 4000000000,
+      "station_failure": 22000000000,
+      "backup_pad_unavailable": 25000000000,
+      "dual_uav_pad_contention": 28500000000,
+      "pad_priority_arbitration": 58000000000,
+      "second_uav_reroute": 61000000000,
+      "station_recovered": 65500000000,
+      "lifecycle_landing_uav_x5_priority": 69000000000,
+      "lifecycle_landing_uav_x5_second": 74500000000,
+      "dual_uav_pad_contention:local:uav_x5_priority": 28000000000,
+      "p09.pad-request-intent:local:uav_x5_priority": 57500000000,
+      "dual_uav_pad_contention:local:uav_x5_second": 28000000000,
+      "p09.pad-request-intent:local:uav_x5_second": 33500000000,
+      "station_recovered:local:uav_x5_priority": 66000000000,
+      "station_recovered:local:uav_x5_second": 66000000000
+    },
+    "packet_count": 1818,
+    "accepted_messages": {
+      "pad-request:uav_x5_priority": 57610362351,
+      "pad-request:uav_x5_second": 33610443683,
+      "pad-result:uav_x5_priority": 58502280505,
+      "pad-result:uav_x5_second": 58503966845,
+      "command:lifecycle_landing_uav_x5_priority:uav_x5_priority": 68500225001,
+      "command:lifecycle_landing_uav_x5_second:uav_x5_second": 74300213358
+    },
+    "native_wall_time_s": 0.43492840230464935
+  },
+  {
+    "iteration": 4,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_x5_priority": 3000000000,
+      "lifecycle_takeoff_uav_x5_second": 4000000000,
+      "station_failure": 22000000000,
+      "backup_pad_unavailable": 25000000000,
+      "dual_uav_pad_contention": 28500000000,
+      "pad_priority_arbitration": 58000000000,
+      "second_uav_reroute": 61000000000,
+      "station_recovered": 65500000000,
+      "lifecycle_landing_uav_x5_priority": 69000000000,
+      "lifecycle_landing_uav_x5_second": 74500000000,
+      "dual_uav_pad_contention:local:uav_x5_priority": 28000000000,
+      "p09.pad-request-intent:local:uav_x5_priority": 57500000000,
+      "dual_uav_pad_contention:local:uav_x5_second": 28000000000,
+      "p09.pad-request-intent:local:uav_x5_second": 33500000000,
+      "station_recovered:local:uav_x5_priority": 66000000000,
+      "station_recovered:local:uav_x5_second": 66000000000
+    },
+    "packet_count": 1818,
+    "accepted_messages": {
+      "pad-request:uav_x5_priority": 57610362351,
+      "pad-request:uav_x5_second": 33610443683,
+      "pad-result:uav_x5_priority": 58502280505,
+      "pad-result:uav_x5_second": 58503966845,
+      "command:lifecycle_landing_uav_x5_priority:uav_x5_priority": 68500225001,
+      "command:lifecycle_landing_uav_x5_second:uav_x5_second": 74300213358
+    },
+    "native_wall_time_s": 0.4174404898658395
+  }
+]

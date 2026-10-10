@@ -1,0 +1,70 @@
+[
+  {
+    "role": "author",
+    "session_id": "1f23ed1c-08e5-4996-bc85-8d595cd59318",
+    "request_header_excerpt": [
+      {
+        "event": "request/header",
+        "seq": 12,
+        "time": 1791290427262,
+        "config": {
+          "provider": "workbuddy",
+          "model": "glm-5.3-flash",
+          "maxTokens": 131072
+        }
+      },
+      {
+        "event": "request/header",
+        "seq": 875,
+        "time": 1791293854841,
+        "config": {
+          "provider": "workbuddy",
+          "model": "glm-5.3-flash",
+          "maxTokens": 131072
+        }
+      },
+      {
+        "event": "request/header",
+        "seq": 952,
+        "time": 1791294269282,
+        "config": {
+          "provider": "workbuddy",
+          "model": "glm-5.3-flash",
+          "maxTokens": 131072
+        }
+      }
+    ],
+    "effective_route": "glm_sdk -> workbuddy/glm-5.3-flash",
+    "reasoningEffort": "omitted/provider default",
+    "quota_or_balance_claim": "none"
+  },
+  {
+    "role": "initial_reviewer",
+    "session_id": "a38f2965-e4a2-435c-a7fd-153b9cb0a49d",
+    "request_header_excerpt": [
+      {
+        "event": "request/header",
+        "seq": 12,
+        "time": 1791294024311,
+        "config": {
+          "provider": "workbuddy",
+          "model": "glm-5.3-flash",
+          "maxTokens": 131072
+        }
+      },
+      {
+        "event": "request/header",
+        "seq": 455,
+        "time": 1791296283165,
+        "config": {
+          "provider": "workbuddy",
+          "model": "glm-5.3-flash",
+          "maxTokens": 131072
+        }
+      }
+    ],
+    "effective_route": "glm_sdk -> workbuddy/glm-5.3-flash",
+    "reasoningEffort": "omitted/provider default",
+    "quota_or_balance_claim": "none"
+  }
+]

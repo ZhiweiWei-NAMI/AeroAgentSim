@@ -1,0 +1,147 @@
+[
+  {
+    "revision": "linked_native_v10",
+    "episode": "L2-1_v2__seed00",
+    "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v10/L2-1_v2__seed00/adopted",
+    "present": [
+      "network_packets.jsonl",
+      "network_events.jsonl",
+      "network_backend.json",
+      "adoption_profile.json",
+      "command_receipts.json",
+      "summary.json"
+    ],
+    "missing": [
+      "network_diagnostics.jsonl"
+    ],
+    "meaning": "Existing actual rows only; provider callback metadata is not evidence that a particular ARP/PHY callback fired"
+  },
+  {
+    "revision": "linked_native_v11",
+    "episode": "L2-1_v1__seed00",
+    "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v11/L2-1_v1__seed00/adopted",
+    "present": [
+      "network_packets.jsonl",
+      "network_events.jsonl",
+      "network_diagnostics.jsonl",
+      "network_backend.json",
+      "adoption_profile.json",
+      "command_receipts.json",
+      "summary.json"
+    ],
+    "missing": [],
+    "meaning": "Existing actual rows only; provider callback metadata is not evidence that a particular ARP/PHY callback fired"
+  },
+  {
+    "revision": "linked_native_v11",
+    "episode": "L2-1_v2__seed00",
+    "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v11/L2-1_v2__seed00/adopted",
+    "present": [
+      "network_packets.jsonl",
+      "network_events.jsonl",
+      "network_diagnostics.jsonl",
+      "network_backend.json",
+      "adoption_profile.json",
+      "command_receipts.json",
+      "summary.json"
+    ],
+    "missing": [],
+    "meaning": "Existing actual rows only; provider callback metadata is not evidence that a particular ARP/PHY callback fired"
+  },
+  {
+    "revision": "linked_native_v12_remaining",
+    "episode": "L2-1_v1__seed00",
+    "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed00/adopted",
+    "present": [
+      "network_packets.jsonl",
+      "network_events.jsonl",
+      "network_diagnostics.jsonl",
+      "network_backend.json",
+      "adoption_profile.json",
+      "command_receipts.json",
+      "summary.json"
+    ],
+    "missing": [],
+    "meaning": "Existing actual rows only; provider callback metadata is not evidence that a particular ARP/PHY callback fired"
+  },
+  {
+    "revision": "linked_native_v12_remaining",
+    "episode": "L2-1_v1__seed01",
+    "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed01/adopted",
+    "present": [
+      "network_packets.jsonl",
+      "network_events.jsonl",
+      "network_diagnostics.jsonl",
+      "network_backend.json",
+      "adoption_profile.json",
+      "command_receipts.json",
+      "summary.json"
+    ],
+    "missing": [],
+    "meaning": "Existing actual rows only; provider callback metadata is not evidence that a particular ARP/PHY callback fired"
+  },
+  {
+    "revision": "linked_native_v12_remaining",
+    "episode": "L2-1_v1__seed02",
+    "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed02/adopted",
+    "present": [
+      "network_packets.jsonl",
+      "network_events.jsonl",
+      "network_diagnostics.jsonl",
+      "network_backend.json",
+      "adoption_profile.json",
+      "command_receipts.json",
+      "summary.json"
+    ],
+    "missing": [],
+    "meaning": "Existing actual rows only; provider callback metadata is not evidence that a particular ARP/PHY callback fired"
+  },
+  {
+    "revision": "linked_native_v12_remaining",
+    "episode": "L2-1_v2__seed00",
+    "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed00/adopted",
+    "present": [
+      "network_packets.jsonl",
+      "network_events.jsonl",
+      "network_diagnostics.jsonl",
+      "network_backend.json",
+      "adoption_profile.json",
+      "command_receipts.json",
+      "summary.json"
+    ],
+    "missing": [],
+    "meaning": "Existing actual rows only; provider callback metadata is not evidence that a particular ARP/PHY callback fired"
+  },
+  {
+    "revision": "linked_native_v12_remaining",
+    "episode": "L2-1_v2__seed01",
+    "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed01/adopted",
+    "present": [
+      "network_packets.jsonl",
+      "network_events.jsonl",
+      "network_diagnostics.jsonl",
+      "network_backend.json",
+      "adoption_profile.json",
+      "command_receipts.json",
+      "summary.json"
+    ],
+    "missing": [],
+    "meaning": "Existing actual rows only; provider callback metadata is not evidence that a particular ARP/PHY callback fired"
+  },
+  {
+    "revision": "linked_native_v12_remaining",
+    "episode": "L2-1_v2__seed02",
+    "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed02/adopted",
+    "present": [
+      "network_packets.jsonl",
+      "network_events.jsonl",
+      "network_diagnostics.jsonl",
+      "network_backend.json",
+      "adoption_profile.json",
+      "command_receipts.json",
+      "summary.json"
+    ],
+    "missing": [],
+    "meaning": "Existing actual rows only; provider callback metadata is not evidence that a particular ARP/PHY callback fired"
+  }
+]

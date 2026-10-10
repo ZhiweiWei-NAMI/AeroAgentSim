@@ -1,0 +1,50 @@
+[
+  {
+    "iteration": 0,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_l2_1_v1": 3000000000,
+      "station_degraded": 26000000000,
+      "uav_link_response": 30000000000,
+      "p09_actor_observed_station_loss": 27000000000
+    },
+    "packet_count": 903,
+    "accepted_messages": {
+      "backup-request:uav_l2_1_v1": 34609279423
+    },
+    "native_wall_time_s": 0.20736346766352654
+  },
+  {
+    "iteration": 1,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_l2_1_v1": 3000000000,
+      "station_degraded": 26000000000,
+      "uav_link_response": 30000000000,
+      "patrol_resume_via_backup_link": 36000000000,
+      "lifecycle_landing_uav_l2_1_v1": 44000000000,
+      "p09_actor_observed_station_loss": 27000000000
+    },
+    "packet_count": 906,
+    "accepted_messages": {
+      "backup-request:uav_l2_1_v1": 35609279423,
+      "command:patrol_resume_via_backup_link:uav_l2_1_v1": 35902279306
+    },
+    "native_wall_time_s": 0.21072240266948938
+  },
+  {
+    "iteration": 2,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_l2_1_v1": 3000000000,
+      "station_degraded": 26000000000,
+      "uav_link_response": 30000000000,
+      "patrol_resume_via_backup_link": 36000000000,
+      "lifecycle_landing_uav_l2_1_v1": 44000000000,
+      "p09_actor_observed_station_loss": 27000000000
+    },
+    "packet_count": 906,
+    "accepted_messages": {
+      "backup-request:uav_l2_1_v1": 35609279423,
+      "command:patrol_resume_via_backup_link:uav_l2_1_v1": 35902279306
+    },
+    "native_wall_time_s": 0.21078000776469707
+  }
+]

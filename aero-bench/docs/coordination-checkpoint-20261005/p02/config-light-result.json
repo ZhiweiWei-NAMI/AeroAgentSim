@@ -1,0 +1,64 @@
+{
+  "scope": "Configuration shell, runtime form and compile/handoff presentation only",
+  "sourceChanges": [
+    "frontend/city-studio.html",
+    "frontend/src/city-studio.ts",
+    "frontend/src/city-studio.test.ts",
+    "frontend/src/city-studio.css",
+    "frontend/src/city-runtime-panel.ts",
+    "frontend/src/city-compile-panel.ts",
+    "frontend/src/city-preview-scenes.ts",
+    "frontend/src/i18n.ts"
+  ],
+  "sourceSha256": {
+    "frontend/city-studio.html": "76c572135741161e1bf457e47bc473f82cce62f78a72d5a915fb39b758ef8a94",
+    "frontend/src/city-studio.ts": "8be0613b6202f050bc02b86ce902f816bdd331a3e75ad6decef5b56add7e5fd3",
+    "frontend/src/city-studio.test.ts": "b3ea84a10a305989ef7e8309ce44d86a19f544d57478207cceb8651d08b67b94",
+    "frontend/src/city-studio.css": "a42cd79a4b61c40ccda8d42229ce49ffd4f4cffe08d0ac4bb65a9b34167a70c0",
+    "frontend/src/city-runtime-panel.ts": "435a14e35a4d2409ee2d972d347b16918f96334d2b242b004c76f00c8e16d8eb",
+    "frontend/src/city-compile-panel.ts": "8365746eed7acc2519818e7318475d19de4a3a49d1a4c1769e7c39b55ea0f63d",
+    "frontend/src/city-preview-scenes.ts": "a5173bce752340426ea1f0a405feed80e9301dfbc20ab70d29b1cc143d300017",
+    "frontend/src/i18n.ts": "3870bbb24e84e4e5be85b86c3b7c91dc83c48b394c5cf469187ceb1745477fec"
+  },
+  "checks": {
+    "focusedSuites": 4,
+    "focusedTestsPassed": 34,
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "warning": "existing large-chunk warning"
+  },
+  "actualBrowser": {
+    "screenshots": [
+      "13-config-light-en.png",
+      "14-compile-light-en.png"
+    ],
+    "pageErrors": [],
+    "bodyOverflow": false,
+    "exactSavedBytes": true,
+    "dirtySeedSurvivedLanguageSwitch": true,
+    "palette": {
+      "topbar": "rgb(255, 255, 255)",
+      "sidebar": "rgb(255, 255, 255)",
+      "card": "rgb(255, 255, 255)"
+    },
+    "compiledIdentity": {
+      "savedDraftSha256": "68c049b28e15d4e2886b36ff222361e6bfb059b4ff8b23339dd7e0a4fa7f368f",
+      "compilationId": "a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610"
+    },
+    "compiledStatus": "Compiled, not yet run"
+  },
+  "preserved": "Actual save/readback and immutable compilation identities; original native scene GLBs, geometry, materials and assets; no map/provider/auth source changes",
+  "providerStarted": false,
+  "runtimeExecuted": false,
+  "verified": false,
+  "remainingBoundaries": [
+    "Spatial, algorithm, event and selected-authoring module interior labels outside this scope remain untranslated.",
+    "Existing map reference/replay chrome remains a renderer presentation; this is not a native runtime result or whole-platform visual acceptance.",
+    "Existing Control service remains authenticated sealed replay for the old run; it cannot start this compilation. See startup-boundary.json."
+  ],
+  "publication": {
+    "reviewPending": true,
+    "branch": "codex/aerobench-source-config-20261005",
+    "priorPublishedCommit": "943581df7c72f4e391f9e3d2f32be5f070c44c3b"
+  }
+}

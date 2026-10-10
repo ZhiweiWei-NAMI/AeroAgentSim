@@ -1,0 +1,51 @@
+{
+  "schema_version": "p02.screenshot-review.v1",
+  "status": "original_scene_published_integrated_scene_in_progress",
+  "source_repository": "AERO_BENCH",
+  "source_head": "ea295073cdd310a31fa2e29317a3571bc716bb87",
+  "capture_worktree": "Existing server viewer before the current P02 business-UI edits; exact dirty-file hashes at capture were not retained. Source HEAD is provenance, not a claim of a clean checkout.",
+  "render_entry": [
+    "frontend/index.html",
+    "frontend/src/main.ts",
+    "PublicTraceApp",
+    "PublicTraceMap"
+  ],
+  "model_loader": [
+    "frontend/src/entity-visuals.ts",
+    "frontend/src/city-asset-cache.ts"
+  ],
+  "scene_configuration": {
+    "source_path": "frontend/public/city-presentation/jingan-engineering-preview-v3.json",
+    "sha256_current_unchanged_source": "ae56bd4d9b81d99b1f2a67734bde9ecaa5dabc3a00525c23918a5ca69c4771df",
+    "mode": "engineering/authoring preview; not a formal live execution"
+  },
+  "screenshots": [
+    {
+      "path": "original-bench-glb-complete-desktop.png",
+      "sha256": "b50cf2952098603bb871792306eb9c3250cac49fe24dc528cc07b624235ec243",
+      "bytes": 630094,
+      "file_mtime_utc": "2026-10-05T12:54:05.063791+00:00",
+      "file_mtime_la": "2026-10-05T05:54:05.063791-07:00",
+      "status": "original_existing_city_and_GLB_scene",
+      "review": "Viewed actual pixels before publication; only project scene/UI, no visible credentials, account details, private URLs or personal data."
+    }
+  ],
+  "integrated_scene": {
+    "status": "IN_PROGRESS",
+    "screenshot_path": null,
+    "reason": "Current implementation has not delivered a completed integrated capture. Existing source patch is not visual acceptance."
+  },
+  "publication_scope": [
+    "one existing project-scene PNG",
+    "README",
+    "screenshot provenance metadata"
+  ],
+  "not_uploaded": [
+    "GLB/model binaries",
+    "map/city assets",
+    "raw episode traces",
+    "account/credential data",
+    "private host URLs"
+  ],
+  "claims": "Rendering evidence only; does not certify task/custody/rule integration or formal execution."
+}

@@ -1,0 +1,110 @@
+{
+  "schema_version": "p09.linked-native-causal/v4",
+  "episode_id": "L5-1_v1__seed01",
+  "seed": 1,
+  "scenario_id": "L5-1_v1",
+  "source_refs": [
+    "Dataset/scenarios/L5_environment/interaction/L5-1_v1/event_script.json",
+    "Dataset/scenarios/L5_environment/interaction/L5-1_v1/scene_setup.json"
+  ],
+  "guard_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+  "healthy_control": false,
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_weather_l5_1_v1": 3000000000,
+    "clear_motion_baseline": 500000000,
+    "weather_onset": 18000000000,
+    "rain_condition_met": 19000000000,
+    "rain_speed_reduction": 22000000000,
+    "rain_intensifies": 29500000000,
+    "rain_recovery": 36500000000,
+    "weather_vehicle_leaves_after_recovery": 44500000000,
+    "lifecycle_landing_uav_weather_l5_1_v1": 52500000000,
+    "nominal_task_cruise": 17500000000
+  },
+  "unfired_events": [],
+  "pose_and_visual_differences_from_same_seed_source_replay": {
+    "uav_weather_l5_1_v1": {
+      "first_changed_tick": 211,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          7321.912429,
+          7279.204127,
+          30.0
+        ],
+        "vel_mps": [
+          2.285714,
+          1.269841,
+          0.0
+        ],
+        "state": "rain_caution_route",
+        "activity_type": "rain_caution_route"
+      },
+      "after": {
+        "pos_enu": [
+          7322.198143,
+          7279.362857,
+          30.0
+        ],
+        "vel_mps": [
+          5.142857,
+          2.857143,
+          0.0
+        ],
+        "state": "cruise",
+        "activity_type": "cruise"
+      }
+    },
+    "weather_car_l5_1_v1": {
+      "first_changed_tick": 211,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg"
+      ],
+      "before": {
+        "pos_enu": [
+          7297.480611,
+          7235.950222,
+          0.0
+        ],
+        "vel_mps": [
+          3.336111,
+          0.082222,
+          0.0
+        ],
+        "yaw_deg": 1.411833
+      },
+      "after": {
+        "pos_enu": [
+          7297.147,
+          7235.942,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 1.28926
+      }
+    }
+  },
+  "weather_changed": true,
+  "adoption_class": "A",
+  "published210_modified": false,
+  "collection_status": "one-shot collection pending final freeze",
+  "iteration_count": 0,
+  "backend": null,
+  "duration_ticks": 900,
+  "motion_acquisition": null,
+  "output_dir": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/L5-1_v1__seed01/adopted",
+  "motion_scope": "authored waypoint engine; not PX4 motion feedback",
+  "missing_event_disposition": "complete",
+  "rf_weather_scope": "not amplified; dimensionless rain is not an observed mm/h rate"
+}

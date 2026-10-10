@@ -1,0 +1,102 @@
+{
+  "reviewed_at": "2026-10-05T15:40:53-07:00",
+  "scope": "Independent read-only review of v9 overview labels, selected-edge tooltip, drawer label visibility and manual camera retention. Published legacy UI only; no overall P08/native13/evaluator acceptance.",
+  "inputs": [
+    "results-v9/initial-legacy-desktop.png",
+    "results-v9/selected-edge-desktop.png",
+    "results-v9/mobile-details-open.png",
+    "results-v9/browser-report.json",
+    "ui/renderer.js",
+    "ui/app.js",
+    "ui/qa-entry.js"
+  ],
+  "source_identity": {
+    "ui_commit": "4f9adf6e8b851d3a7b1086fba3d297f1620607a2",
+    "legacy_commit": "7ca57707930fc45fdc1d48f32c6470beabf33bb8",
+    "local_changes": "Current bounded QA presentation changes reviewed; reviewer made no UI/data/provider changes."
+  },
+  "prior_accepted_scope": "Three-size viewport behavior, permanent QA label, colored legend, centering and selected-edge hierarchy were not reopened.",
+  "pixel_passes": [
+    {
+      "check": "Overview label readability",
+      "evidence": "Viewed actual initial desktop image. Twelve labels sit around the node cloud with spacing and dotted leaders; the central repeated-label crowding is removed. Text is readable at the captured desktop size."
+    },
+    {
+      "check": "Tooltip endpoint clearance",
+      "evidence": "Viewed actual selected-edge image. Tooltip is below-left of the edge, leaving the orange focused endpoint, gray source endpoint and its node label visible. Reported endpoint overlap is false.",
+      "geometry": {
+        "rect": {
+          "x": 437.3125,
+          "y": 380.703125,
+          "w": 183.140625,
+          "h": 68.59375
+        },
+        "endpoints": [
+          {
+            "id": "n:c73cdec50d2bb7f981b2606a",
+            "x": 659.8972480107525,
+            "y": 383.4024929064288,
+            "r": 20
+          },
+          {
+            "id": "n:023d74eae3977224020fc6ce",
+            "x": 574.4492962098096,
+            "y": 299.78466205989446,
+            "r": 20
+          }
+        ],
+        "overlap": false
+      }
+    },
+    {
+      "check": "Drawer labels and camera-control visibility",
+      "evidence": "Viewed actual 390x844 drawer image. Three node names and both relation labels remain above the pane. Camera buttons are now visible in a strip immediately above the pane, rather than hidden beneath its node-ID content.",
+      "visible_graph": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 373.703125
+      }
+    }
+  ],
+  "resolved_v7_findings": [
+    {
+      "id": "P08-V7-CAMERA-01",
+      "resolution": "renderer.zoom invokes onChange; explicit fit controls call fit({notify:true}); auto-rotate control also invokes onChange. Programmatic fitting retains default notify=false. Reported real-click zoom and fit drawer-retention checks pass."
+    },
+    {
+      "id": "P08-V7-CAMERA-02",
+      "resolution": "qa-entry refits the occluded graph only while drawerManuallyChanged is false. Reported drawer_resize_keeps_explicit_fit_view passes."
+    }
+  ],
+  "resolved_v8_observation": {
+    "evidence": "V8 browser report failed when the open inspector intercepted the zoom button click; that failure evidence is preserved. Current qa-entry positions .canvas-bottom above the measured unoccluded graph bottom while a bottom drawer is open, clearing inline position when closed. V9 actual drawer image confirms visible buttons and reported real-click regression passes."
+  },
+  "reported_browser_checks": {
+    "overview_label_budget": true,
+    "overview_duplicate_budget": true,
+    "tooltip_avoids_selected_edge_endpoints": true,
+    "drawer_preserves_orientation": true,
+    "drawer_labels_above_panel": true,
+    "drawer_restores_manual_view": true,
+    "drawer_keeps_keyboard_view": true,
+    "drawer_keeps_zoom_button_view": true,
+    "drawer_resize_keeps_explicit_fit_view": true,
+    "drawer_keeps_fit_button_view": true
+  },
+  "browser_errors": {
+    "failure": null,
+    "page_errors": [],
+    "failed_requests": []
+  },
+  "remaining_findings": [],
+  "limitations": [
+    "Reviewer inspected actual screenshots, source paths and coordinator browser measurements; reviewer did not independently launch or replay browser actions.",
+    "Original1686 catalog, accepted13 cases, native provider and evaluator coverage remain unloaded and outside acceptance.",
+    "Camera regression report supplies Boolean outcomes; detailed before/after camera values are not included for the new button/resize cases."
+  ],
+  "conclusion": "All narrowed v9 pixel checks pass. Source changes address both v7 camera gaps, and provided real-click regressions pass including zoom, fit and resize retention. No remaining defect identified within this review scope.",
+  "writes": [
+    "results-v9/independent-review.json"
+  ]
+}

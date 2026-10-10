@@ -1,0 +1,65 @@
+{
+  "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/trajectories.jsonl",
+  "source_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+  "raw_file_sha256": "250cd56fda2a9e23de3b4596df6bc2fd658155c84efedcb1879c93a789693bed",
+  "byte_preserving_export": true,
+  "tick_duration_ns": 100000000,
+  "raw_rows": [
+    {
+      "source_line_1based": 12624,
+      "source_byte_offset": 14194773,
+      "bytes": 521,
+      "raw_line_sha256": "805bcee41a9951db33447c8be41e01e7a12fb05a332a1a6810d54f7b5d2f5821",
+      "tick": 450,
+      "entity_id": "ped_x1_crowd_x1_08",
+      "simulation_time_ns_from_declared_tick": 45000000000
+    },
+    {
+      "source_line_1based": 12628,
+      "source_byte_offset": 14203664,
+      "bytes": 1630,
+      "raw_line_sha256": "81741fcb7319500ec4df07ecc1c96ec78c9ed35e7cae16eb9ca6b02ba3af9301",
+      "tick": 450,
+      "entity_id": "uav_x1_forced_landing",
+      "simulation_time_ns_from_declared_tick": 45000000000
+    },
+    {
+      "source_line_1based": 12652,
+      "source_byte_offset": 14226275,
+      "bytes": 521,
+      "raw_line_sha256": "35992f041629eff04dde34417bfd5eaf5af9550532c212f618ca50268007fd50",
+      "tick": 451,
+      "entity_id": "ped_x1_crowd_x1_08",
+      "simulation_time_ns_from_declared_tick": 45100000000
+    },
+    {
+      "source_line_1based": 12656,
+      "source_byte_offset": 14235160,
+      "bytes": 1629,
+      "raw_line_sha256": "b78182a250f5820925836479c4575b0ad1aa1a5c2cb18d98eb5d9e82cf1e2df3",
+      "tick": 451,
+      "entity_id": "uav_x1_forced_landing",
+      "simulation_time_ns_from_declared_tick": 45100000000
+    },
+    {
+      "source_line_1based": 12680,
+      "source_byte_offset": 14257776,
+      "bytes": 521,
+      "raw_line_sha256": "1fe876621b8d1a51681e46c584c3b987d77e1cf4fd2fb10323ae77ccbaea3fcc",
+      "tick": 452,
+      "entity_id": "ped_x1_crowd_x1_08",
+      "simulation_time_ns_from_declared_tick": 45200000000
+    },
+    {
+      "source_line_1based": 12684,
+      "source_byte_offset": 14266667,
+      "bytes": 1629,
+      "raw_line_sha256": "eb608cf71033972708fdbadbdcfd9c4f108ed1183bf4f47976701ebfaa979a27",
+      "tick": 452,
+      "entity_id": "uav_x1_forced_landing",
+      "simulation_time_ns_from_declared_tick": 45200000000
+    }
+  ],
+  "time_note": "Derived integer time is index metadata, not a new observed field.",
+  "native_execution": "existing v12, no rerun"
+}

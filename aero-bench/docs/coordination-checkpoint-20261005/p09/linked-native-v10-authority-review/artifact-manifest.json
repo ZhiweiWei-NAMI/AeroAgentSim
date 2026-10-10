@@ -1,0 +1,532 @@
+{
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 7106,
+      "sha256": "ee766884422acad03bbacc58805e4e009e4ff3321155b33aa3c8c332492ab111"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/actions.json",
+      "bytes": 17524,
+      "sha256": "4e4784645fecf9c8b3dbea8f9fca1824cd372bfedd5c88f2878adb4394d179d8"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/adoption_profile.json",
+      "bytes": 3977,
+      "sha256": "867cfa3a1b6763543458b10f1e018f5f40aae3d263f2ebbdd680080a750934ee"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/all-entity-terminal.json",
+      "bytes": 9213,
+      "sha256": "0a5e474dbc6b474d1798da7c91fa881e58a1f2fcb0c396c805e7cb26f7923f0e"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/boundary-poses.json",
+      "bytes": 44713,
+      "sha256": "079128b9e8ed1682aaae172ff6b7f164ee695b43c5f13be191c335bb597f656a"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/boundary-weather.json",
+      "bytes": 32497,
+      "sha256": "4e90e00a6e5f873a8a9f43b3fb5f1dde848bb7e50d8fa437a2438142eb2a81e2"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/event_admission.json",
+      "bytes": 32236,
+      "sha256": "42ba72c9496f42e4ab33bf02284e3afd127a9f7558cb207a6c2ad104211fbdec"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/event_script.json",
+      "bytes": 57735,
+      "sha256": "4266941f629151ed8dbba9e03e5cbf98ab558825ca771d277cdcb221e0777317"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/original/event_script.json",
+      "bytes": 48758,
+      "sha256": "467e3b930f0dd99f8b82412248584d20d42e30e3e7f3c38fef5ee99b5514dfbf"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/original/scene_setup.json",
+      "bytes": 102905,
+      "sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/scene_setup.json",
+      "bytes": 102905,
+      "sha256": "df631f52f524460c59c2778cd6d47103ffce50f85a15dc783d425a6755357b9b"
+    },
+    {
+      "path": "cases/L5-1_v1__seed00/summary.json",
+      "bytes": 3202,
+      "sha256": "4c7359a9e7e04a140a287815f5827070ecfac410f340d3f2bc11c283453fc57a"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/actions.json",
+      "bytes": 19577,
+      "sha256": "a601a7dca75894c139c21392aafc708fde09f2dd58d15851e6a98a75974d4bc7"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/adoption_profile.json",
+      "bytes": 4052,
+      "sha256": "d4c9839b80a3f61a0b56ed6af17e39c549e4867cd1ed7993c2d93139acf6e690"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/all-entity-terminal.json",
+      "bytes": 9217,
+      "sha256": "0c417098f21d39e1368ee239a2fb5a427cfd12b3aa82ec44c6a836c2b148adb8"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/boundary-poses.json",
+      "bytes": 44891,
+      "sha256": "bbe61e34593d22cf0e08ce78cb1f8fd0647087fc88d4d2696326b68ceaadf5d0"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/boundary-weather.json",
+      "bytes": 31619,
+      "sha256": "6c94e7ae7d0128a80a2e7d684ab93126285bc6bc24a4b0d623d7626b0d501e4d"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/event_admission.json",
+      "bytes": 32738,
+      "sha256": "87752dbd25f402ee68486d21b891a1e01e33211b0692dc2c80737a83a9217548"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/event_script.json",
+      "bytes": 60494,
+      "sha256": "1d6d76362a5ae668cd98fbe7b3ceafe660b08001367b931358402b2bdc3379b0"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/original/event_script.json",
+      "bytes": 51265,
+      "sha256": "694174868dcc77e4db8e631b2af47948e99d6e44f4950b8722411e24808b35b5"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/original/scene_setup.json",
+      "bytes": 110664,
+      "sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/scene_setup.json",
+      "bytes": 110664,
+      "sha256": "130862fddbee3a1e29a52ddeb088c44639f0df4692a7d6bbe58d69a657e006d2"
+    },
+    {
+      "path": "cases/L5-1_v2__seed00/summary.json",
+      "bytes": 3287,
+      "sha256": "c6ef7cab9cc8b6191b684b48d679600692f8f9f6af0a2f6faa058191432f7610"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/accepted-message-native-packets.json",
+      "bytes": 3910,
+      "sha256": "7171fb6d98cc839a50702fa3cf6d4a77adf4f3c412b369fd4ea42f90c0552002"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/actions.json",
+      "bytes": 17180,
+      "sha256": "c347ef234d77670c37999e6f9b59a9c8236c63f23d4639b7b4c14bcddeffd0a3"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/adoption_profile.json",
+      "bytes": 4329,
+      "sha256": "50eaa026a0ade51691df325502bb16b8e3f021700a8eb3c4e4a744986e1baf69"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/all-entity-extended-suffix.jsonl",
+      "bytes": 450301,
+      "sha256": "8586023a52549641cd76a217afe88c9e186cf402e5a052672d6a9d9fabf6cbae"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/all-entity-terminal.json",
+      "bytes": 12437,
+      "sha256": "b32ed11c20dba13addb18588be152a31f349ac56ac477f433f33ffb6b7b499ff"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/backend-projection.json",
+      "bytes": 10159,
+      "sha256": "163b721f629142ccdd6ad194a0f6875191562728a1eafd924c7e08835e3b1299"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/boundary-poses.json",
+      "bytes": 61481,
+      "sha256": "0184df749787fdb09647200c9da88db5992670afa9a13d85c2ad5e73241ad1b7"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/boundary-weather.json",
+      "bytes": 28209,
+      "sha256": "8241c57e347239ae43ece21dfd01ead3e784c727b11eba6eb55024b24f9a64d2"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/command_receipts.json",
+      "bytes": 32083,
+      "sha256": "58029c48afe84f45247a68c27266863822e004cd9fb75acf3d6828901ec04fec"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/coupled_iterations.json",
+      "bytes": 11363,
+      "sha256": "ad4a1073c9c91c6e076a68edafbe01ca42de63920da1138d309fb6fe2dc31b59"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/event_admission.json",
+      "bytes": 47451,
+      "sha256": "e7ebb48ac570af3e19096c964b4a20db394a895cfc7f70b9e2f096e2dcaa28ce"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/event_script.json",
+      "bytes": 53834,
+      "sha256": "6c211b955e466fae4a6043a282b70dee985009897e21284e76c164cc19fc99db"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/execution_time.json",
+      "bytes": 39,
+      "sha256": "70f9e58bdf721d8c69bfb32abf236b61bae5ca599c469d7590899c94b7400f35"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/final-network-config.json",
+      "bytes": 12402,
+      "sha256": "aaef72d9dd1d25d64204875a7708284317b0d37598897e2595c4882a2e52b188"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/original/event_script.json",
+      "bytes": 43345,
+      "sha256": "798017de70a367fb5675d46cd49f429c194c28ec52e6213b6590255645509e6d"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/original/scene_setup.json",
+      "bytes": 112021,
+      "sha256": "e0905cd75ba3d01a1d5f75cd704c72c1219d738ccbbe6410e5c8eae899a6034b"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/radio_actions.jsonl",
+      "bytes": 1022,
+      "sha256": "7cea38d27805a2521dd0855ba48126f7ebca5e79ff57688e98bbe7a93694daac"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/scene_setup.json",
+      "bytes": 112021,
+      "sha256": "e0905cd75ba3d01a1d5f75cd704c72c1219d738ccbbe6410e5c8eae899a6034b"
+    },
+    {
+      "path": "cases/L6-4_v1__seed00/summary.json",
+      "bytes": 15540,
+      "sha256": "97207386c2a9e8b05407d863c227fcb2f853dce070c3d0ca72a8ea242a929f47"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/accepted-message-native-packets.json",
+      "bytes": 3910,
+      "sha256": "660550f51b51140e8250cb128f4150e7bb754f346b1ec5cf511bcc725a21ddda"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/actions.json",
+      "bytes": 17178,
+      "sha256": "53f07a7411ba867374dd9c4dfaeeb684832268dde5239757d77cab6d4a4af480"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/adoption_profile.json",
+      "bytes": 4329,
+      "sha256": "6c8fb93af2f34a0d2aa3a08dc3f4a495b6cd4256c37e4176f847fd67af34bfa9"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/all-entity-terminal.json",
+      "bytes": 12445,
+      "sha256": "6061a67908296a533d1bc8709aa0b0be7b98d55a6aaca448f96805e4d93b0a08"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/backend-projection.json",
+      "bytes": 10159,
+      "sha256": "57e2f767556bcc3bce69a16ea336aaa7c13c64ecea503136fdd3577ea02d2684"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/boundary-poses.json",
+      "bytes": 76858,
+      "sha256": "08e11e4ab00d494fa626243e7ce78883215cbfb92a86c47d68e202ff34999699"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/boundary-weather.json",
+      "bytes": 34689,
+      "sha256": "2379f2dc35e999bdce489f9360def75a43fd9901f96056b7edb0f4ceaba4c0ad"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/command_receipts.json",
+      "bytes": 32083,
+      "sha256": "753c69a0a0673a58808c51dfee1c099a76df91991563bb2c5f5348d424435fd3"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/coupled_iterations.json",
+      "bytes": 11636,
+      "sha256": "ae11c5544b686195e74089b772a42624892c4d63c36c7178b2ee5b7fc787845c"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/event_admission.json",
+      "bytes": 49052,
+      "sha256": "21a9fe2b60c96d11aacd511568eac7e629b93a6a16479bf210b6a8d8fb3f8e83"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/event_script.json",
+      "bytes": 53798,
+      "sha256": "e44b06ee8ce0885d00c8dd3229c4cefc7a09a9c9dd170dd9034561c0af5e3a43"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/execution_time.json",
+      "bytes": 39,
+      "sha256": "73732e42152382c0c3dd506d9f9bde8c967d4d343dd461c2458344166d9f4f79"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/final-network-config.json",
+      "bytes": 12402,
+      "sha256": "f9710272e4470ac07e439459504dc492e097297879d102fe4930d306caebf91e"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/original/event_script.json",
+      "bytes": 43309,
+      "sha256": "4f99989cfb512765b883adf45f2e13a976fa293938b8e8723db49f2614143eed"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/original/scene_setup.json",
+      "bytes": 111658,
+      "sha256": "05ad4c78457da2b748c4d3d0c68b6f4cdddc2e344fd38e2c3b4b11e1d942e0df"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/radio_actions.jsonl",
+      "bytes": 1022,
+      "sha256": "d5cb02071d8b00ff3d484027d7c5e42257c7d3c7167e5ee95218448cd2d5e715"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/scene_setup.json",
+      "bytes": 111658,
+      "sha256": "05ad4c78457da2b748c4d3d0c68b6f4cdddc2e344fd38e2c3b4b11e1d942e0df"
+    },
+    {
+      "path": "cases/L6-4_v2__seed01/summary.json",
+      "bytes": 3565,
+      "sha256": "6cffc4f0b30b298237ae4f0fbbd952b1174db7229cdc9fbb2feb1fd5f51104fc"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/accepted-message-native-packets.json",
+      "bytes": 2953,
+      "sha256": "d4bd988e77d641872a9e8d62586794e4d01f43e1f405e1031ee841e49d5d6d74"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/actions.json",
+      "bytes": 20091,
+      "sha256": "57ac1ebf871bf7df3087cc9a78e535c9f8d69dcc7982deac22ab28b5ac1957a8"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/adoption_profile.json",
+      "bytes": 5369,
+      "sha256": "3152b4c5b64d62bccd46b843c9fdf9f2e1343a638971f01ec43326ee86c0a122"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/all-entity-terminal.json",
+      "bytes": 13426,
+      "sha256": "085b1dd9aa518992fb902ce8950625dff804762784658c0e6dddab405a5e677c"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/backend-projection.json",
+      "bytes": 11110,
+      "sha256": "bcbc8859da4263605c638ee7326c2a75213169d57b1ea138d971d534aad3c3f4"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/boundary-poses.json",
+      "bytes": 93521,
+      "sha256": "0bc71976dd2c25012e8537a765eb12248eaac718ef6708632501dc5976cf22f6"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/boundary-weather.json",
+      "bytes": 32555,
+      "sha256": "0d00b6d8617bc32dde78190e192567f148c1ddb6fc2aa3e7af42a88f4cf75e2b"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/command_receipts.json",
+      "bytes": 27162,
+      "sha256": "25ded4eb10f7a255f41ae72d4f6cb604356499cd59f5203009a603a115fd8ca9"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/coupled_iterations.json",
+      "bytes": 5372,
+      "sha256": "7677d42a4824bec42edf6c9f8b3ad037466dcdde95429c80be6718bc5da9a2b1"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/event_admission.json",
+      "bytes": 54288,
+      "sha256": "69c0153cde946c5a28582654ef0788ab82bd0fff582d8481ebb5998adf821326"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/event_script.json",
+      "bytes": 60294,
+      "sha256": "c10edff54bf5042b57c42e11891704651bed45ee3da6b0fe30c45387ff8d8cf9"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/execution_time.json",
+      "bytes": 40,
+      "sha256": "294f55a3b5b10e77afb6cbde7d8c156fe0bd09985dc3ca32927200b0649a55d3"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/final-network-config.json",
+      "bytes": 10489,
+      "sha256": "6182936a1969ff301f915dd96833e8fa5b2b33a16028046dad6b5b718c135673"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/original/event_script.json",
+      "bytes": 51586,
+      "sha256": "eb5da8e7d89a2c791dbd776648c521271450be3b4ad767dac3f7ecdcfff4b6d4"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/original/scene_setup.json",
+      "bytes": 117976,
+      "sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/radio_actions.jsonl",
+      "bytes": 304,
+      "sha256": "da1a4ac3a2f56efb55612f6de3202197977d9f5eb78efc57838cfe28b2250b40"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/scene_setup.json",
+      "bytes": 117976,
+      "sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d"
+    },
+    {
+      "path": "cases/X5_comm_failure_to_pad_contention__seed00/summary.json",
+      "bytes": 3395,
+      "sha256": "e4c53d92a1453212fe6f3ff8abd26d96aa5bcc3672d4c395db5e23edf2898da4"
+    },
+    {
+      "path": "episode-index.json",
+      "bytes": 3508,
+      "sha256": "5fd8426c04ab71f7c736a01438d148ecd73884e574785a8cebd6c6fc0a7606c2"
+    },
+    {
+      "path": "focused-tests.txt",
+      "bytes": 124,
+      "sha256": "ec4a5bfa508e5a974dde5b651a34e66c2ec5ff32f7be8c520db18af2789fea30"
+    },
+    {
+      "path": "frozen-source.json",
+      "bytes": 1830,
+      "sha256": "1557228dfd771919fc9d34c4a3676312b17555cc2ca9b3832d95f3c6a1824b3e"
+    },
+    {
+      "path": "review-summary.json",
+      "bytes": 47839,
+      "sha256": "829bfed753c41884a27594e7fcbcbaf94e14ff0ffb88319d1cea86f3ca32146f"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/command_receipts.py",
+      "bytes": 2886,
+      "sha256": "518eb0309eaaa1c056f556a87aa360e1f34d528ba7e93faf7678f3d3da8be224"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/controller_receipt_consumer.py",
+      "bytes": 2312,
+      "sha256": "d4e8b7bf9547447514fa4d0d3a72a94899401d44d086c52575b2cac85c3c88aa"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/linked_adoption.py",
+      "bytes": 12301,
+      "sha256": "87bd8502eefec8fea161c2f32f9e6e519b895dbc4aac5d46d828f0724efadb57"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/linked_contract.py",
+      "bytes": 15563,
+      "sha256": "e4f706317664ceb1227e78d923211e13f7c1a695f0fc27b97864a7e0c5a093f2"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/linked_engine.py",
+      "bytes": 6746,
+      "sha256": "4291534e5fbf60114600be47f958a66d550a5be784621e03ebf91f52ca500d51"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/linked_observations.py",
+      "bytes": 3249,
+      "sha256": "b931e0456458b4782ca38662e44274ccd87d7d97ae626490f7715e1f3c2f1547"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/linked_replay.py",
+      "bytes": 36951,
+      "sha256": "87d5555cd9044501cc1c103f5608dd6bc91af77c52b2cb42ad0887a00f8bc807"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/linked_transport.py",
+      "bytes": 9710,
+      "sha256": "1a298bd1c7642fe30f3ff276f61d8246d2a3f42a1382d96d447e25082a76d836"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/p01_ns3_provider.cc",
+      "bytes": 31021,
+      "sha256": "8a1faa1e80ab5ad1f052bc77db109fb92183ddf455a9c37fc79ee4f34af638b5"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/provider_adapter.py",
+      "bytes": 23419,
+      "sha256": "8f70a2adc0f137dd07596487c2842f3e2f5dff1491ef6fd2654e6a73be38c58d"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/receipt_scope.py",
+      "bytes": 3339,
+      "sha256": "377260dd3b9e682c4c17e55ae7c581570fdb66407ec06f5fb51a692c31a91727"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/receipt_semantics.py",
+      "bytes": 11679,
+      "sha256": "1ef5bccf2647838fbe1b6a4717ce7b0d899ed7c39f8683d424ed10647ff70e6f"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/test_linked_authority.py",
+      "bytes": 14273,
+      "sha256": "cbc967b591758c86f8ffac43881f9bd225c3d9e4e38af1c58c9117727e5e5058"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/test_linked_observations.py",
+      "bytes": 2705,
+      "sha256": "dc103f076cba3092c63013333d6b67e148a35ca85f8344b0780e897bdcb66907"
+    },
+    {
+      "path": "source/Dataset/semantic_simulation/ns3_episode/test_linked_replay.py",
+      "bytes": 7815,
+      "sha256": "5c7e09840c2f2d4b6f50c092a75f0b2574b6472e4d6f482c2affe5eb3aff6e75"
+    },
+    {
+      "path": "source/Dataset/tools/batch_generate.py",
+      "bytes": 102907,
+      "sha256": "32ed48f6d984bf36f5e4327f81b91c6afc3712d9dcd9b85eb6fe28a723be69d5"
+    },
+    {
+      "path": "source/Dataset/tools/l6_v2/common.py",
+      "bytes": 2660,
+      "sha256": "1ddd7bc95bafff90cfe0cf65a4c28edc1ab41b7fed328580db01001d7b567561"
+    },
+    {
+      "path": "source/Dataset/tools/l6_v2/engine.py",
+      "bytes": 8854,
+      "sha256": "e03f6d3aa6f5b05452d14399832a0a1c2b5d642bf70de67ca160193668fb78e1"
+    },
+    {
+      "path": "source/Plugins/SumoImporter/Scripts/donghu_core/event_script_interpreter.py",
+      "bytes": 24219,
+      "sha256": "71a01b82a44bd0687c445f1a0dcb56b4ef4c03cc37a467839d7f79747cf420c4"
+    },
+    {
+      "path": "source/design/p09/source_group_plan/communication_bindings_review.json",
+      "bytes": 221989,
+      "sha256": "e7fa8920eb67da33da91b1c3c132db85457b9a177f4546eff5c760c34fb7ab91"
+    },
+    {
+      "path": "source-manifest.json",
+      "bytes": 24610,
+      "sha256": "cc117ca60ac43a24b13959efedb84acc805f5fef62e0f521fd895b1aca123120"
+    },
+    {
+      "path": "tools/export_linked_authority_review.py",
+      "bytes": 9429,
+      "sha256": "6e464ea23b7f62210d5ad871a688a56c9b0e9c60628f1dcf459a1152cf7b7da0"
+    },
+    {
+      "path": "x5-v4-missing-operands-556-557.json",
+      "bytes": 27242,
+      "sha256": "6636a104bb58b3da94da1a55b8530037c0819e3bcb8ccde2fd36ebf0ae204853"
+    }
+  ],
+  "count": 105,
+  "bytes": 3847243,
+  "scope": "This manifest excludes itself; bounded public review packet only."
+}

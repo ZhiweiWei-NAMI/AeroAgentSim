@@ -1,0 +1,617 @@
+{
+ "schema_id": "p01v4/canonical-record",
+ "schema_version": "1.0.0",
+ "contract_version": 1,
+ "value_kinds": [
+  "present",
+  "missing",
+  "inapplicable",
+  "absent",
+  "source_unknown"
+ ],
+ "zero_semantics": "zero is a present value; it is never a missing marker",
+ "missing_semantics": {
+  "missing": "source declared the field but produced no value at this tick",
+  "inapplicable": "field family does not apply to this record kind or instance",
+  "absent": "value not carried by this source record grammar instance",
+  "source_unknown": "source's own unknown sentinel (e.g. compute_state deadline)"
+ },
+ "record_kinds": [
+  "episode",
+  "entity",
+  "frame",
+  "edge",
+  "event",
+  "observation"
+ ],
+ "record_field_families": {
+  "episode": [
+   "identity"
+  ],
+  "entity": [
+   "roster"
+  ],
+  "frame": [
+   "pose",
+   "motion",
+   "annotations"
+  ],
+  "edge": [
+   "relation"
+  ],
+  "event": [
+   "event"
+  ],
+  "observation": [
+   "observation"
+  ]
+ },
+ "axis_roles": [
+  "position",
+  "velocity",
+  "acceleration",
+  "direction",
+  "sensor_point"
+ ],
+ "units": {
+  "simulation_tick": "simulation_time_step",
+  "s": "time",
+  "ms": "time",
+  "m": "length",
+  "m/s": "speed",
+  "m/s^2": "acceleration",
+  "deg": "plane_angle",
+  "deg/simulation_tick": "angular_rate_per_simulation_tick",
+  "count": "discrete_count",
+  "index": "ordinal_index",
+  "ratio": "dimensionless_ratio",
+  "percent": "percentage",
+  "pixel": "image_axis_pixel_count",
+  "Hz": "frequency",
+  "Mbps": "data_rate",
+  "MB": "data_size",
+  "lux": "illuminance",
+  "degC": "temperature",
+  "ppm": "parts_per_million",
+  "bitmask": "discrete_bitmask",
+  "cpu_core": "processor_capacity",
+  "gpu_unit": "accelerator_capacity",
+  "service_slot": "service_capacity",
+  "source_frame": "source_frame_count",
+  "vehicle": "entity_count",
+  "aircraft": "entity_count",
+  "none": "dimensionless_non_quantity"
+ },
+ "coordinate_frames": {
+  "world_enu_m": {
+   "contract_id": "coord.external_enu_m.v1",
+   "axes": [
+    "e",
+    "n",
+    "u"
+   ],
+   "units": "m",
+   "basis": "Dataset/world_model/graph/field_contract.py:FORMAL_COORDINATE_CONTRACT_ID"
+  },
+  "sensor_body_ned": {
+   "contract_id": "sensor_body_ned_m.v1",
+   "axes": [
+    "n",
+    "e",
+    "d"
+   ],
+   "units": "m",
+   "basis": "aeroworld_lidar_sample_v2:points_sensor_ned_m"
+  }
+ },
+ "field_families": {
+  "identity.episode_id": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "episode"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Source episode identifier"
+  },
+  "identity.scenario_id": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "episode"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Source scenario identifier"
+  },
+  "identity.capture_view_id": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [
+    "missing",
+    "absent"
+   ],
+   "records": [
+    "episode"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "UE capture view identifier when a capture view is bound"
+  },
+  "roster.entity_id": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "entity"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Roster entity identifier, unique within episode"
+  },
+  "roster.entity_category": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "entity"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Producer entity category"
+  },
+  "roster.entity_kind": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "entity"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Producer entity kind"
+  },
+  "roster.observer_role": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [
+    "missing"
+   ],
+   "records": [
+    "entity"
+   ],
+   "enum": [
+    "observer",
+    "subject",
+    "background"
+   ],
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Identity role: observer, subject or background"
+  },
+  "pose.position_enu_m": {
+   "dtype": "real",
+   "unit": "m",
+   "frame": "world_enu_m",
+   "axis_role": "position",
+   "non_present_kinds": [],
+   "records": [
+    "frame",
+    "entity"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": 3,
+   "ragged": false,
+   "description": "World ENU position at tick, declared contract coord.external_enu_m.v1; mandatory when the entity record exists"
+  },
+  "pose.velocity_enu_mps": {
+   "dtype": "real",
+   "unit": "m/s",
+   "frame": "world_enu_m",
+   "axis_role": "velocity",
+   "non_present_kinds": [
+    "missing",
+    "inapplicable"
+   ],
+   "records": [
+    "frame",
+    "entity"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": 3,
+   "ragged": false,
+   "description": "World ENU velocity at tick"
+  },
+  "pose.yaw_deg": {
+   "dtype": "real",
+   "unit": "deg",
+   "frame": "world_enu_m",
+   "axis_role": null,
+   "non_present_kinds": [
+    "missing",
+    "inapplicable"
+   ],
+   "records": [
+    "frame",
+    "entity"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": true,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Yaw angle, circular on (-180, 180]"
+  },
+  "motion.speed_mps": {
+   "dtype": "real",
+   "unit": "m/s",
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [
+    "missing",
+    "inapplicable"
+   ],
+   "records": [
+    "frame"
+   ],
+   "enum": null,
+   "bounded": [
+    0.0,
+    null
+   ],
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Scalar speed facet from the source frame annotations"
+  },
+  "annotations.state": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [
+    "missing",
+    "inapplicable"
+   ],
+   "records": [
+    "frame"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": true,
+   "description": "Producer activity/state facet"
+  },
+  "annotations.activity_type": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [
+    "missing",
+    "inapplicable"
+   ],
+   "records": [
+    "frame"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": true,
+   "description": "Producer activity facet"
+  },
+  "annotations.visibility_state": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [
+    "missing",
+    "inapplicable"
+   ],
+   "records": [
+    "frame"
+   ],
+   "enum": [
+    "visible",
+    "occluded",
+    "out_of_view"
+   ],
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": true,
+   "description": "Render/visibility state; never consumed as future input"
+  },
+  "relation.predicate_id": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "edge"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "World/semantic predicate identifier of the asserted relation"
+  },
+  "relation.tuple_id": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "edge"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Source predicate tuple identifier"
+  },
+  "relation.value": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "edge"
+   ],
+   "enum": [
+    "true",
+    "false",
+    "unknown",
+    "out_of_scope"
+   ],
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Truth value carried by the relation assertion"
+  },
+  "relation.bindings": {
+   "dtype": "object",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "edge"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": true,
+   "description": "Role->entity binding map of the predicate"
+  },
+  "event.event_id": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "event"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Source objective event identifier"
+  },
+  "event.event_family_id": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "event"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Producer event family identifier"
+  },
+  "event.detection_tick": {
+   "dtype": "int",
+   "unit": "simulation_tick",
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "event"
+   ],
+   "enum": null,
+   "bounded": [
+    0,
+    null
+   ],
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Tick at which the source detected the event"
+  },
+  "event.end_tick": {
+   "dtype": "int",
+   "unit": "simulation_tick",
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [
+    "missing",
+    "source_unknown"
+   ],
+   "records": [
+    "event"
+   ],
+   "enum": null,
+   "bounded": [
+    0,
+    null
+   ],
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Tick at which the event ends; missing while ongoing, source_unknown when the source cannot determine it"
+  },
+  "event.bindings": {
+   "dtype": "object",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "event"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": true,
+   "description": "Role->entity binding map of the event"
+  },
+  "observation.path": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "observation"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Relative path of the source capture file"
+  },
+  "observation.modality": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "observation"
+   ],
+   "enum": [
+    "rgb",
+    "lidar"
+   ],
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Capture modality declared by the producer"
+  },
+  "observation.tick": {
+   "dtype": "int",
+   "unit": "simulation_tick",
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "observation"
+   ],
+   "enum": null,
+   "bounded": [
+    0,
+    null
+   ],
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Simulation tick of the capture frame"
+  },
+  "observation.observer_entity_id": {
+   "dtype": "string",
+   "unit": null,
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "observation"
+   ],
+   "enum": null,
+   "bounded": null,
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Observer entity that produced the capture"
+  },
+  "observation.record_count": {
+   "dtype": "int",
+   "unit": "count",
+   "frame": null,
+   "axis_role": null,
+   "non_present_kinds": [],
+   "records": [
+    "observation"
+   ],
+   "enum": null,
+   "bounded": [
+    0,
+    null
+   ],
+   "circular": false,
+   "vector_length": null,
+   "ragged": false,
+   "description": "Point/record count inside the capture file"
+  }
+ }
+}

@@ -1,0 +1,50 @@
+{
+  "actual_consumer_example": {
+    "status": "NONE_ESTABLISHED_IN_NAMED_INPUTS",
+    "scope": "No positive example can be supplied from this evidence scope; do not invent one."
+  },
+  "configured_pointer_only_example": {
+    "episode_id": "L1-1_v1__seed00",
+    "dimension": "perception/capture",
+    "log_ref": "aw_data/render_ready_episodes_capture_filtered/L1-1_v1__seed00/render_host_config.json; aw_data/render_ready_episodes_capture_filtered/L1-1_v1__seed00/scene_occupancy_manifest.json",
+    "producer/source_ref": "UE capture owned by UE side; server owns capture_filtered transfer boundary",
+    "source_version_or_hash": "capture contract 181 frames/0.5s step (representative-verified)",
+    "run_or_profile_revision": "uav_camera_rule + 60m padding (unchanged)",
+    "evidence_ref": "aw_data/render_ready_episodes_capture_filtered/L1-1_v1__seed00/render_host_config.json",
+    "evidence_scope": "episode_output",
+    "current_consumer": "[tier=configured_pointer] persisted UE config pointer exists per episode (intake bounded example); runtime capture consumption not proven by pointer alone",
+    "used_fields": "render_host_config scope pointers; scene_occupancy_manifest; per-frame sidecars live inside tars (not read here)",
+    "observation_or_truth": "capture config + occupancy metadata; RGB/depth/seg/LiDAR payload not read per assignment | model-visible: boundary config/occupancy metadata | archive-only view: address/archive-only unless known at cutoff: full event_script/scene_setup, future fault and weather schedules, terminal/hidden control, semantic episode names",
+    "ue_input_ref": "",
+    "disposition": "",
+    "pending_check": "camera/LiDAR sidecar clock/extrinsic fields are presence-verified only; validity unaudited; no per-frame occlusion ground truth (prior P09 finding); per-episode capture_tick list verified 1/210",
+    "source_family": "original_210_capture_boundary",
+    "split_group": "L1-1",
+    "available_time": "UNKNOWN_no_actual_ingest_receipt",
+    "same_run_capture_binding": "original_capture_run(capture_filtered_boundary)",
+    "time_support_recorded": "",
+    "time_support_planned": "planned_capture_grid_0_90s_every_0.5s(181_planned_times;6516_grid_36eps)"
+  },
+  "mechanism_pending_example": {
+    "episode_id": "L1-1_v1__seed00",
+    "dimension": "communication",
+    "log_ref": "aw_data/objective_semantic_truth/L1-1_v1__seed00/communication_state.jsonl",
+    "producer/source_ref": "aw_data/compute_comm_supplement/L1-1_v1__seed00/simulation_manifest.json (model aeroworld_discrete_compute_comm_sim)",
+    "source_version_or_hash": "compute_comm:1.6.0",
+    "run_or_profile_revision": "aeroworld_compute_comm_supplement_v1",
+    "evidence_ref": "aw_data/compute_comm_supplement/L1-1_v1__seed00/summary.json",
+    "evidence_scope": "episode_output",
+    "current_consumer": "[tier=documented_corpus_or_contract_level] documented corpus-level: Qwen fit consumes latency_mean_ms+packet_loss_ratio only (design/p09/source_group_plan/current_state_facts.md); episode-level consumption unconfirmed; definition_id=p09.LP.q-derived/v1 (old q-based scalar L/P; source distribution/statistics not demonstrated per root causal summary)",
+    "used_fields": "bandwidth.allocated/dropped_mbps; link_quality; handover.active; requirement.status (row schema verified L1-1_v1__seed00)",
+    "observation_or_truth": "truth=1.6.0 supplement model output; agent comm observations in communication_state.jsonl; command RX not evidence of actions",
+    "ue_input_ref": "",
+    "disposition": "",
+    "pending_check": "confirm whether the adopted training pipeline consumes this episode's 1.6.0 comm outputs directly or only derived fit fields; group-specific ns3 replay candidates (12 groups/36 eps) not adopted; definition_id=p09.LP.mature-ttl-cohort/v1 (native ns3 receipt cohort; strict RX<firstTX+TTL; count actual available_time<=cutoff; no timely RX means L undefined, never zero; incomplete compute tasks remain pending/right-censored without hindsight outcomes)",
+    "source_family": "original_210_compute_comm_1.6.0",
+    "split_group": "L1-1",
+    "available_time": "UNKNOWN_no_actual_ingest_receipt",
+    "same_run_capture_binding": "unknown",
+    "time_support_recorded": "recorded_time_support_full_episode_0_90s(901_truth_ticks;181_capture_frames)",
+    "time_support_planned": ""
+  }
+}

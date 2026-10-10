@@ -1,0 +1,342 @@
+{
+  "name": "p01.ns3.frozen-wifi/v8-switch-completion",
+  "ns3_version": "3.48",
+  "image": "127.0.0.1:5000/aero-bench/ns3:urban-current",
+  "source_ref": "/mnt/data2/weizhiwei/AERO_WORLD/Dataset/semantic_simulation/ns3_episode/p01_ns3_provider.cc",
+  "radio_config": {
+    "schema_version": "p01.radio-config/v1",
+    "profile_id": "p01.wifi.adhoc.fspl2412.v1",
+    "parameters": {
+      "channel_number": {
+        "value": 1,
+        "unit": "1",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "channel_width_mhz": {
+        "value": 20,
+        "unit": "MHz",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "standard": {
+        "value": "802.11n",
+        "unit": "1",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "data_mode": {
+        "value": "HtMcs0",
+        "unit": "1",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "control_mode": {
+        "value": "HtMcs0",
+        "unit": "1",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "tx_power_dbm": {
+        "value": 16.0,
+        "unit": "dBm",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "tx_gain_db": {
+        "value": 0.0,
+        "unit": "dB",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "rx_gain_db": {
+        "value": 0.0,
+        "unit": "dB",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "rx_sensitivity_dbm": {
+        "value": -95.0,
+        "unit": "dBm",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "rx_noise_figure_db": {
+        "value": 7.0,
+        "unit": "dB",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "logdistance_exponent": {
+        "value": 3.0,
+        "unit": "1",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "logdistance_reference_distance_m": {
+        "value": 1.0,
+        "unit": "m",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "logdistance_reference_loss_db": {
+        "value": 40.09532929124565,
+        "unit": "dB",
+        "status": "derived_from_current",
+        "source": [
+          "design/p01_ns3/realistic_parameter_plan_zh.md#1",
+          "ns3.48:/opt/ns-3.48/src/propagation/model/propagation-loss-model.cc:212"
+        ],
+        "assumption": "1m free-space reference at configured2412MHz:20log10(4*pi*d_m*f_hz/c_mps), c=299792458m/s. Other parameters unchanged.",
+        "calibration_need": "No empirical city calibration; exponent3 and obstruction-free model retained."
+      },
+      "mac_max_packets": {
+        "value": 500,
+        "unit": "packet",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      },
+      "mac_max_delay_ns": {
+        "value": 500000000,
+        "unit": "ns",
+        "status": "proposal_assumption",
+        "source": [
+          "Dataset/semantic_simulation/ns3_episode/provider_adapter.py"
+        ],
+        "assumption": "Current declared P01 value; not a calibrated low-altitude parameter.",
+        "calibration_need": "Source-backed parameter matrix and scenario-specific calibration pending."
+      }
+    }
+  },
+  "loaded_radio": [
+    {
+      "node_id": "X5_comm_failure_to_pad_contention__seed02:uav_x5_priority:life0",
+      "standard": "802.11n",
+      "channel_number": 1,
+      "channel_width_mhz": 20,
+      "frequency_mhz": 2412,
+      "data_mode": "HtMcs0",
+      "control_mode": "HtMcs0",
+      "tx_power_dbm": 16,
+      "tx_gain_db": 0,
+      "rx_gain_db": 0,
+      "rx_sensitivity_dbm": -95,
+      "configured_rx_noise_figure_db": 7,
+      "rx_noise_figure_observation": "applied via WifiPhy::SetRxNoiseFigure; no public getter",
+      "mac_queues": [
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        }
+      ]
+    },
+    {
+      "node_id": "X5_comm_failure_to_pad_contention__seed02:uav_x5_second:life0",
+      "standard": "802.11n",
+      "channel_number": 1,
+      "channel_width_mhz": 20,
+      "frequency_mhz": 2412,
+      "data_mode": "HtMcs0",
+      "control_mode": "HtMcs0",
+      "tx_power_dbm": 16,
+      "tx_gain_db": 0,
+      "rx_gain_db": 0,
+      "rx_sensitivity_dbm": -95,
+      "configured_rx_noise_figure_db": 7,
+      "rx_noise_figure_observation": "applied via WifiPhy::SetRxNoiseFigure; no public getter",
+      "mac_queues": [
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        }
+      ]
+    },
+    {
+      "node_id": "X5_comm_failure_to_pad_contention__seed02:tower_x5_comm:life0",
+      "standard": "802.11n",
+      "channel_number": 1,
+      "channel_width_mhz": 20,
+      "frequency_mhz": 2412,
+      "data_mode": "HtMcs0",
+      "control_mode": "HtMcs0",
+      "tx_power_dbm": 16,
+      "tx_gain_db": 0,
+      "rx_gain_db": 0,
+      "rx_sensitivity_dbm": -95,
+      "configured_rx_noise_figure_db": 7,
+      "rx_noise_figure_observation": "applied via WifiPhy::SetRxNoiseFigure; no public getter",
+      "mac_queues": [
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        }
+      ]
+    },
+    {
+      "node_id": "X5_comm_failure_to_pad_contention__seed02:pad_x5_primary:life0",
+      "standard": "802.11n",
+      "channel_number": 1,
+      "channel_width_mhz": 20,
+      "frequency_mhz": 2412,
+      "data_mode": "HtMcs0",
+      "control_mode": "HtMcs0",
+      "tx_power_dbm": 16,
+      "tx_gain_db": 0,
+      "rx_gain_db": 0,
+      "rx_sensitivity_dbm": -95,
+      "configured_rx_noise_figure_db": 7,
+      "rx_noise_figure_observation": "applied via WifiPhy::SetRxNoiseFigure; no public getter",
+      "mac_queues": [
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        }
+      ]
+    }
+  ],
+  "propagation_attributes": {
+    "model": "ns3::LogDistancePropagationLossModel",
+    "exponent": 3,
+    "reference_distance_m": 1,
+    "reference_loss_db": 40.09532929124565
+  },
+  "network_profile": "timed_flow",
+  "geometry": {
+    "enabled": false,
+    "configuration_ref": null,
+    "support": "inactive",
+    "metadata": null,
+    "initial_application_link_geometry": [],
+    "propagation_los_evaluations": 0,
+    "propagation_nlos_evaluations": 0,
+    "shadowing_applied": false,
+    "applied_shadowing": false,
+    "extra_fast_fading": false,
+    "shadowing": null
+  },
+  "traffic_selection": {
+    "owner_ids": [],
+    "offered_load_bps": null,
+    "condition": "explicit owner/epoch-bound application windows; persistent sockets remain open after generation stops"
+  },
+  "diagnostic_observation": "actual PhyTxBegin/retry-bit, PhyTxDrop, PhyRxDrop, DroppedMpdu, MpduResponseTimeout, ArpL3Protocol.Drop and ArpCache.Drop; tagged endpoints per packet, untagged/control/overheard counts aggregated",
+  "arp_diagnostic_observation": "protocol/cache Drop callbacks expose packet only, no reason argument; ARP pending occupancy has no public read-only getter and remains unobserved",
+  "container_uid_gid": "1007:1007",
+  "network": "none",
+  "host_mounts": [],
+  "compilation_wall_time_s": 12.21706405468285,
+  "simulation_wall_time_s": 0.304691561,
+  "mobility": "WaypointMobilityModel; linear interpolation of frozen 10Hz ENU positions",
+  "gateway_position_enu_m": [
+    6634.427,
+    6522.465,
+    3.0
+  ],
+  "gateway_position_source_ref": "Dataset/scenarios/X_cross_layer/X5_comm_failure_to_pad_contention/event_script.json",
+  "gateway_antenna_offset_m": [
+    0,
+    0,
+    3
+  ],
+  "queue_observation": "sum of actual device non-QoS and supported EDCA MAC queues; GetNPackets/GetNBytes; 2Hz at t-1ns, initial before t0 applications"
+}

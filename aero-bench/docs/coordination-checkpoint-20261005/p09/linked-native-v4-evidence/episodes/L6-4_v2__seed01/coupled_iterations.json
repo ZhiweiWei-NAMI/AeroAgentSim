@@ -1,0 +1,81 @@
+[
+  {
+    "iteration": 0,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000,
+      "multi_uav_hold_entry": 46000000000,
+      "multi_uav_safe_hold": 59000000000
+    },
+    "packet_count": 20146,
+    "accepted_messages": {
+      "command:alternate_channel:uav_digital_l6_4_v2": 46104049600,
+      "command:alternate_channel:uav_digital_l6_4_v2_secondary": 46125018810,
+      "command:lifecycle_landing_uav_digital_l6_4_v2:uav_digital_l6_4_v2": 54000211240,
+      "command:lifecycle_landing_uav_digital_l6_4_v2_secondary:uav_digital_l6_4_v2_secondary": 54800215874
+    },
+    "native_wall_time_s": 2.2693462055176497
+  },
+  {
+    "iteration": 1,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000
+    },
+    "packet_count": 35973,
+    "accepted_messages": {
+      "command:alternate_channel:uav_digital_l6_4_v2": 65150909061,
+      "command:alternate_channel:uav_digital_l6_4_v2_secondary": 65409121874
+    },
+    "native_wall_time_s": 3.2217241851612926
+  },
+  {
+    "iteration": 2,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000,
+      "multi_uav_hold_entry": 65000000000,
+      "multi_uav_safe_hold": 78000000000
+    },
+    "packet_count": 56800,
+    "accepted_messages": {},
+    "native_wall_time_s": 4.946528702042997
+  },
+  {
+    "iteration": 3,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000,
+      "multi_uav_hold_entry": 65000000000,
+      "multi_uav_safe_hold": 78000000000,
+      "alternate_channel": 84500000000
+    },
+    "packet_count": 51806,
+    "accepted_messages": {
+      "command:alternate_channel:uav_digital_l6_4_v2": 84106040710,
+      "command:alternate_channel:uav_digital_l6_4_v2_secondary": 84122101431
+    },
+    "native_wall_time_s": 4.833884693682194
+  },
+  {
+    "iteration": 4,
+    "event_times_ns": {
+      "lifecycle_takeoff_uav_digital_l6_4_v2": 3000000000,
+      "lifecycle_takeoff_uav_digital_l6_4_v2_secondary": 4000000000,
+      "wideband_jamming": 24000000000,
+      "multi_uav_hold_entry": 65000000000,
+      "multi_uav_safe_hold": 78000000000,
+      "alternate_channel": 84500000000
+    },
+    "packet_count": 51806,
+    "accepted_messages": {
+      "command:alternate_channel:uav_digital_l6_4_v2": 84106040710,
+      "command:alternate_channel:uav_digital_l6_4_v2_secondary": 84122101431
+    },
+    "native_wall_time_s": 4.857185638509691
+  }
+]

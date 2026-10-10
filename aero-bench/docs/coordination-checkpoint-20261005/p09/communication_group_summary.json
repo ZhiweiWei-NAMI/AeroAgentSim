@@ -1,0 +1,287 @@
+{
+  "schema_version": "p09.public-communication-group-summary/v1",
+  "source_review_ref": "design/p09/source_group_plan/communication_bindings_review.json",
+  "scope": "12 authored groups /36 episodes under investigation, NOT36 recapture decisions",
+  "stale_source_review_note": "The old source-review execution restriction for L6-2 seed00 is superseded by current v5 six-episode independent adoption review; authored chain differences for the other10 groups remain relevant.",
+  "groups": [
+    {
+      "scenario_id": "L2-1_v1",
+      "episode_ids": [
+        "L2-1_v1__seed00",
+        "L2-1_v1__seed01",
+        "L2-1_v1__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v1/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v1/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_l2_1_v1"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "INCOMPATIBLE_FOUR_POST_TAKEOFF_STAGES",
+        "reason": "station_degraded -> uav_link_response -> patrol_resume_via_backup_link -> landing is four stages, not degradation/response/backup/observed-restore/landing. No separate recovery stage exists. Taking the initial takeoff as degradation would invent semantics.",
+        "unsupported": [
+          "Station-unavailable and UAV communication-unavailable patches do not define a packet outage mechanism or aircraft-visible notification. A fully unavailable same link cannot be assumed to deliver the response command.",
+          "backup_link_active/alternate_link_active and tower visual backup state do not specify a second radio, channel, association or real handover. Background secondary tower is present but no action binds a flow to it.",
+          "Safe hold is patched at the failure event, not an independent prefault planned hold. Actor-local failsafe and receipt policy require explicit transport/controller binding."
+        ]
+      },
+      "current_execution": "Own exact multi-event binding pending; not executed/adopted by the L6-2 repair"
+    },
+    {
+      "scenario_id": "L2-1_v2",
+      "episode_ids": [
+        "L2-1_v2__seed00",
+        "L2-1_v2__seed01",
+        "L2-1_v2__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_l2_1_v2"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "INCOMPATIBLE_FOUR_POST_TAKEOFF_STAGES",
+        "reason": "station_degraded -> uav_link_response -> patrol_resume_via_backup_link -> landing is four stages, not degradation/response/backup/observed-restore/landing. No separate recovery stage exists. Taking the initial takeoff as degradation would invent semantics.",
+        "unsupported": [
+          "Station-unavailable and UAV communication-unavailable patches do not define a packet outage mechanism or aircraft-visible notification. A fully unavailable same link cannot be assumed to deliver the response command.",
+          "backup_link_active/alternate_link_active and tower visual backup state do not specify a second radio, channel, association or real handover. Background secondary tower is present but no action binds a flow to it.",
+          "Safe hold is patched at the failure event, not an independent prefault planned hold. Actor-local failsafe and receipt policy require explicit transport/controller binding."
+        ]
+      },
+      "current_execution": "Own exact multi-event binding pending; not executed/adopted by the L6-2 repair"
+    },
+    {
+      "scenario_id": "L5-1_v1",
+      "episode_ids": [
+        "L5-1_v1__seed00",
+        "L5-1_v1__seed01",
+        "L5-1_v1__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/L5_environment/interaction/L5-1_v1/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/L5_environment/interaction/L5-1_v1/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_weather_l5_1_v1"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "INCOMPATIBLE_WEATHER_CONDITION_AND_MULTIACTOR_CHAIN",
+        "reason": "Rain threshold is weather_state rain>=.5 sustained5ticks, followed by weather/UAV/vehicle branches. No C2 degradation, backup-lock or packet-recovery event exists in the script.",
+        "unsupported": [
+          "No radio-tower or GCS entity appears in either scene; a command gateway/sender cannot be selected from a landing pad or charger.",
+          "Rain/wetness/visibility are authored environmental values, not an ns3 rainfall attenuation calibration or packet-loss receipt. Rain caution/low-visibility vehicle and UAV routes cannot be renamed C2 commands.",
+          "Actor weather observation/notification provenance is absent. Any weather-driven local policy or communicated caution needs a separate available observation/receipt contract."
+        ]
+      },
+      "current_execution": "Own exact multi-event binding pending; not executed/adopted by the L6-2 repair"
+    },
+    {
+      "scenario_id": "L5-1_v2",
+      "episode_ids": [
+        "L5-1_v2__seed00",
+        "L5-1_v2__seed01",
+        "L5-1_v2__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/L5_environment/interaction/L5-1_v2/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/L5_environment/interaction/L5-1_v2/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_weather_l5_1_v2"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "INCOMPATIBLE_WEATHER_CONDITION_AND_MULTIACTOR_CHAIN",
+        "reason": "Rain threshold is weather_state rain>=.5 sustained5ticks, followed by weather/UAV/vehicle branches. No C2 degradation, backup-lock or packet-recovery event exists in the script.",
+        "unsupported": [
+          "No radio-tower or GCS entity appears in either scene; a command gateway/sender cannot be selected from a landing pad or charger.",
+          "Rain/wetness/visibility are authored environmental values, not an ns3 rainfall attenuation calibration or packet-loss receipt. Rain caution/low-visibility vehicle and UAV routes cannot be renamed C2 commands.",
+          "Actor weather observation/notification provenance is absent. Any weather-driven local policy or communicated caution needs a separate available observation/receipt contract."
+        ]
+      },
+      "current_execution": "Own exact multi-event binding pending; not executed/adopted by the L6-2 repair"
+    },
+    {
+      "scenario_id": "L6-1_v1",
+      "episode_ids": [
+        "L6-1_v1__seed00",
+        "L6-1_v1__seed01",
+        "L6-1_v1__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/L6_digital_layer/failure/L6-1_v1/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/L6_digital_layer/failure/L6-1_v1/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_digital_l6_1_v1"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "INCOMPATIBLE_FOUR_POST_TAKEOFF_STAGES",
+        "reason": "c2_loss -> rth_engaged -> c2_recovered -> landing has four stages. c2_loss also moves the UAV. No second commanded backup-route stage exists.",
+        "unsupported": [
+          "communication_unavailable is authored state, not measured receiver loss. RTH after total loss requires an explicit aircraft-local timeout/failsafe or a viable command path; gateway global evidence alone is insufficient.",
+          "c2_loss contains a route move, so preserving only pre-root source motion then replaying existing three commanded moves would omit an authored motion action.",
+          "Recovery is an authored state reset after RTH, not proof of a gateway loss<=.05 observation. Preserve that distinction."
+        ]
+      },
+      "current_execution": "Own exact multi-event binding pending; not executed/adopted by the L6-2 repair"
+    },
+    {
+      "scenario_id": "L6-1_v2",
+      "episode_ids": [
+        "L6-1_v2__seed00",
+        "L6-1_v2__seed01",
+        "L6-1_v2__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/L6_digital_layer/failure/L6-1_v2/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/L6_digital_layer/failure/L6-1_v2/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_digital_l6_1_v2"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "INCOMPATIBLE_FOUR_POST_TAKEOFF_STAGES",
+        "reason": "c2_loss -> rth_engaged -> c2_recovered -> landing has four stages. c2_loss also moves the UAV. No second commanded backup-route stage exists.",
+        "unsupported": [
+          "communication_unavailable is authored state, not measured receiver loss. RTH after total loss requires an explicit aircraft-local timeout/failsafe or a viable command path; gateway global evidence alone is insufficient.",
+          "c2_loss contains a route move, so preserving only pre-root source motion then replaying existing three commanded moves would omit an authored motion action.",
+          "Recovery is an authored state reset after RTH, not proof of a gateway loss<=.05 observation. Preserve that distinction."
+        ]
+      },
+      "current_execution": "Own exact multi-event binding pending; not executed/adopted by the L6-2 repair"
+    },
+    {
+      "scenario_id": "L6-2_v1",
+      "episode_ids": [
+        "L6-2_v1__seed00",
+        "L6-2_v1__seed01",
+        "L6-2_v1__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/L6_digital_layer/failure/L6-2_v1/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/L6_digital_layer/failure/L6-2_v1/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_digital_l6_2_v1"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "EXACT_FIVE_STAGE_SOURCE_TOPOLOGY_IDENTITY_PARAMETERIZATION_CANDIDATE",
+        "reason": "c2_degradation -> uav_delayed_response -> backup_link_lock -> nominal_c2_restore -> own landing; delays30/30/32/80ticks. Exactly one mission-owner move in slots1/2/4 and none in slots0/3.",
+        "unsupported": [
+          "Tower mode degraded does not define offered traffic or a physical packet-failure cause. The accepted v4 burst is a separately authored controlled mechanism, not a calibrated source cause.",
+          "backup_link/handover flags and route movement do not prove an alternate radio or cellular handover. Existing replay supports numerical route commands over one declared Wi-Fi mechanism only.",
+          "Current constants and semantic binding still restrict direct execution to v1seed00/epoch0. Other seeds/v2 need explicit identities, lifecycle, geometry, run configuration and actual same-run receipts; no copied timestamps."
+        ]
+      },
+      "current_execution": "v5: all seed00/01/02 healthy/fault pairs passed; plan adopted, recapture required"
+    },
+    {
+      "scenario_id": "L6-2_v2",
+      "episode_ids": [
+        "L6-2_v2__seed00",
+        "L6-2_v2__seed01",
+        "L6-2_v2__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/L6_digital_layer/failure/L6-2_v2/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/L6_digital_layer/failure/L6-2_v2/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_digital_l6_2_v2"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "EXACT_FIVE_STAGE_SOURCE_TOPOLOGY_IDENTITY_PARAMETERIZATION_CANDIDATE",
+        "reason": "c2_degradation -> uav_delayed_response -> backup_link_lock -> nominal_c2_restore -> own landing; delays30/30/32/80ticks. Exactly one mission-owner move in slots1/2/4 and none in slots0/3.",
+        "unsupported": [
+          "Tower mode degraded does not define offered traffic or a physical packet-failure cause. The accepted v4 burst is a separately authored controlled mechanism, not a calibrated source cause.",
+          "backup_link/handover flags and route movement do not prove an alternate radio or cellular handover. Existing replay supports numerical route commands over one declared Wi-Fi mechanism only.",
+          "Current constants and semantic binding still restrict direct execution to v1seed00/epoch0. Other seeds/v2 need explicit identities, lifecycle, geometry, run configuration and actual same-run receipts; no copied timestamps."
+        ]
+      },
+      "current_execution": "v5: all seed00/01/02 healthy/fault pairs passed; plan adopted, recapture required"
+    },
+    {
+      "scenario_id": "L6-4_v1",
+      "episode_ids": [
+        "L6-4_v1__seed00",
+        "L6-4_v1__seed01",
+        "L6-4_v1__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_digital_l6_4_v1",
+        "uav_digital_l6_4_v1_secondary"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "INCOMPATIBLE_TWO_ACTORS_AND_STATE_ONLY_HOLD_STAGE",
+        "reason": "wideband_jamming -> multi_uav_hold_entry(two moves) -> multi_uav_safe_hold(state-only) -> alternate_channel(two moves) -> two separate landing events. Existing slot2 requires a single-owner move and slot3 is gateway recovery, so this cannot be flattened into its five slots.",
+        "unsupported": [
+          "No jammer actor, waveform, frequency/power or packet interference producer is declared; jamming_active/visual jammed state is not physical jamming evidence.",
+          "Two aircraft require independent owner/epoch flows, receptions and controller execution, preserving distinct safe-hold delays1/5ticks and separate landing dependencies.",
+          "alternate_channel_active plus state clearing does not declare an actual alternate frequency/radio/handover. No GCS-compromise actor/event appears in these scripts."
+        ]
+      },
+      "current_execution": "Own exact multi-event binding pending; not executed/adopted by the L6-2 repair"
+    },
+    {
+      "scenario_id": "L6-4_v2",
+      "episode_ids": [
+        "L6-4_v2__seed00",
+        "L6-4_v2__seed01",
+        "L6-4_v2__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v2/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_digital_l6_4_v2",
+        "uav_digital_l6_4_v2_secondary"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "INCOMPATIBLE_TWO_ACTORS_AND_STATE_ONLY_HOLD_STAGE",
+        "reason": "wideband_jamming -> multi_uav_hold_entry(two moves) -> multi_uav_safe_hold(state-only) -> alternate_channel(two moves) -> two separate landing events. Existing slot2 requires a single-owner move and slot3 is gateway recovery, so this cannot be flattened into its five slots.",
+        "unsupported": [
+          "No jammer actor, waveform, frequency/power or packet interference producer is declared; jamming_active/visual jammed state is not physical jamming evidence.",
+          "Two aircraft require independent owner/epoch flows, receptions and controller execution, preserving distinct safe-hold delays1/5ticks and separate landing dependencies.",
+          "alternate_channel_active plus state clearing does not declare an actual alternate frequency/radio/handover. No GCS-compromise actor/event appears in these scripts."
+        ]
+      },
+      "current_execution": "Own exact multi-event binding pending; not executed/adopted by the L6-2 repair"
+    },
+    {
+      "scenario_id": "X1_rain_to_c2loss_to_forced_landing",
+      "episode_ids": [
+        "X1_rain_to_c2loss_to_forced_landing__seed00",
+        "X1_rain_to_c2loss_to_forced_landing__seed01",
+        "X1_rain_to_c2loss_to_forced_landing__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/X_cross_layer/X1_rain_to_c2loss_to_forced_landing/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/X_cross_layer/X1_rain_to_c2loss_to_forced_landing/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_x1_forced_landing"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "INCOMPATIBLE_WEATHER_SPATIAL_AND_FORCED_LANDING_GRAPH",
+        "reason": "Rain threshold -> station loss -> UAV move -> safe-hold -> descent -> crowd proximity AND predecessor -> recovery/landing. No backup-lock stage; landing occurs with recovery action and crowd-dependent timing.",
+        "unsupported": [
+          "Station availability.45/.0 and UAV communication-unavailable need an actual radio/station-service mechanism. Rain values alone do not calibrate attenuation.",
+          "After station loss, forced landing cannot be justified by an invented same-link downlink receipt; explicit actor-local failsafe or viable command path is missing.",
+          "Crowd reaction requires actual xy-plus-z proximity sustained2ticks and forced_landing_descent predecessor; preserve nine pedestrian actions and their motion, not gateway recovery."
+        ]
+      },
+      "current_execution": "Own exact multi-event binding pending; not executed/adopted by the L6-2 repair"
+    },
+    {
+      "scenario_id": "X5_comm_failure_to_pad_contention",
+      "episode_ids": [
+        "X5_comm_failure_to_pad_contention__seed00",
+        "X5_comm_failure_to_pad_contention__seed01",
+        "X5_comm_failure_to_pad_contention__seed02"
+      ],
+      "source_event_script": "Dataset/scenarios/X_cross_layer/X5_comm_failure_to_pad_contention/event_script.json",
+      "source_scene_setup": "Dataset/scenarios/X_cross_layer/X5_comm_failure_to_pad_contention/scene_setup.json",
+      "mission_motion_actor_ids": [
+        "uav_x5_priority",
+        "uav_x5_second"
+      ],
+      "authored_trigger_chain_and_gaps": {
+        "compatibility": "INCOMPATIBLE_TWO_ACTORS_PAD_ALLOCATION_AND_SPATIAL_ARBITRATION",
+        "reason": "station_failure -> backup_pad_unavailable -> dual_uav_pad_contention -> proximity AND predecessor arbitration -> second_uav_reroute -> station_recovered -> two landings; not one-owner five-stage chain.",
+        "unsupported": [
+          "Stale/failed pad allocation, request_count/requester_ids and arbitration_winner are authored facility state patches, not actual request/result messages or service receipts. A pad-allocation request/service/response producer is absent.",
+          "Two independent UAV command paths and executor queues are needed; primary arbitration depends on actual3D proximity<=11.485m for2ticks and contention predecessor.",
+          "station_unavailable is patched on both UAVs while tower failure is visual; do not pretend these are identical to a simulated gateway shutdown or use the unavailable link to deliver assumed commands."
+        ]
+      },
+      "current_execution": "Own exact multi-event binding pending; not executed/adopted by the L6-2 repair"
+    }
+  ]
+}

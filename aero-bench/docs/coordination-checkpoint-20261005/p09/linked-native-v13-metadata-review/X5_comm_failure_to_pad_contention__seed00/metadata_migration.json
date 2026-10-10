@@ -1,0 +1,78 @@
+{
+  "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+  "episode_id": "X5_comm_failure_to_pad_contention__seed00",
+  "simulation_source_revision": "p09.linked-native-causal/v12",
+  "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+  "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_review/X5_comm_failure_to_pad_contention__seed00/adopted",
+  "source_trajectory_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+  "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_review/X5_comm_failure_to_pad_contention__seed00/adopted/trajectories.jsonl",
+  "current_trajectory_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+  "changed_trajectory_rows": 0,
+  "physical_rows_verified_unchanged": 24327,
+  "numeric_motion_actions_unchanged": true,
+  "ns3_rerun": false,
+  "provider_endpoint_poses_unchanged": true,
+  "render_changes": [],
+  "route_field_owner": null,
+  "landing_execution_receipts": [
+    {
+      "action_id": "move_uav_x5_priority_landing_return",
+      "owner": "uav_x5_priority",
+      "dispatch_tick": 690,
+      "actual_motion_schedule": {
+        "terminal_tick": 852,
+        "endpoint_enu_m": [
+          6671.908,
+          6530.889,
+          3.0
+        ]
+      },
+      "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+      "operating_inputs": {
+        "model": "p09.landing-reference-operating-inputs/v1",
+        "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+        "landing_reference_enu_m": [
+          6671.908,
+          6530.889,
+          3.0
+        ],
+        "home_pose_origin_z_m": 3.0,
+        "touchdown_altitude_tolerance_m": 1.5,
+        "touchdown_dwell_ticks": 5,
+        "max_speed_mps": 8.0
+      }
+    },
+    {
+      "action_id": "move_uav_x5_second_landing_return",
+      "owner": "uav_x5_second",
+      "dispatch_tick": 745,
+      "actual_motion_schedule": {
+        "terminal_tick": 846,
+        "endpoint_enu_m": [
+          6659.262,
+          6513.999,
+          3.0
+        ]
+      },
+      "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+      "operating_inputs": {
+        "model": "p09.landing-reference-operating-inputs/v1",
+        "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+        "landing_reference_enu_m": [
+          6659.262,
+          6513.999,
+          3.0
+        ],
+        "home_pose_origin_z_m": 3.0,
+        "touchdown_altitude_tolerance_m": 1.5,
+        "touchdown_dwell_ticks": 5,
+        "max_speed_mps": 8.0
+      }
+    }
+  ],
+  "late_historical_planning_bounds": [],
+  "actual_unfired_events": [],
+  "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+  "published210_modified": false,
+  "UE_capture_started": false
+}

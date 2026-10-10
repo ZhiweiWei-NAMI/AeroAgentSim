@@ -1,0 +1,144 @@
+[
+  {
+    "id": "incoming:citizens:cc0aaf43cf6ba61429c7eacf13c12863",
+    "status": "ready",
+    "format": "GLB",
+    "source_path": "public/models/incoming/citizens/glb/casual27_m_highpoly_walk.glb",
+    "model_url": "/models/incoming/citizens/glb/casual27_m_highpoly_walk.glb",
+    "animation_clip": "walk",
+    "material_origin": "源 Unity Material 的 Albedo 与法线贴图；含 walk 骨骼动画",
+    "note": "角色 GLB 含蒙皮、原包贴图和 walk 动作；Unity Controller 状态机未移入 GLB。"
+  },
+  {
+    "id": "incoming:urban-traffic:347f1e1f374fb2445993538838586103",
+    "kind": "model",
+    "status": "ready",
+    "format": "GLB",
+    "source_path": "public/models/incoming/urban-traffic/glb/Bicycle_Man_34-bike-only.glb",
+    "model_url": "/models/incoming/urban-traffic/glb/Bicycle_Man_34-bike-only.glb",
+    "material_origin": "源 FBX 自行车 LOD0 的车身与辐条贴图；辐条透明度按源 alpha 图合成",
+    "note": "可旋转预览只含自行车，不含骑手。原 FBX 骑手蒙皮在浏览器及独立导入器中碎裂；保留源 FBX，需从 Unity 核验后重导骑手。"
+  },
+  {
+    "id": "incoming:urban-traffic:693e8c2beb6b4784c8a7c43c9a367d33",
+    "material_overrides": {
+      "Bicycle_Body": {
+        "colorLinear": [1, 1, 1],
+        "normalMap": "/models/incoming/urban-traffic/images/c6f76766c67955c45a25b3651759e51f.webp",
+        "metalness": 0.673,
+        "roughness": 0.854
+      },
+      "Bicycle_alpha": {
+        "normalMap": "/models/incoming/urban-traffic/images/87ed1b6e8be11864fb0560547dbd769c.webp",
+        "alphaMap": null,
+        "colorLinear": [0.41960788, 0.41960788, 0.41960788],
+        "metalness": 1,
+        "roughness": 0.5,
+        "alphaTest": 0.487,
+        "transparent": false,
+        "depthWrite": true
+      }
+    },
+    "material_origin": "源 Unity Bicycle_Body_D1 与 Bicycle_alpha_D MAT 中的法线、金属度、光泽度和透明裁切；按相同主贴图路径匹配 FBX 材质",
+    "note": "源 FBX 的 6 个 LOD0 部件可旋转查看；按对应 MAT 的贴图路径补充法线、金属度和透明裁切。透明部件使用主贴图的 alpha 通道，避免 FBX 重复 alphaMap 叠乘。未找到通用 Bicycle Prefab，材质对应关系依据 MainTex 与 FBX 材质贴图路径。"
+  },
+  {
+    "id": "incoming:urban-traffic:9061b400618ce314f99935f53bd421f0",
+    "note": "独立 Bicycle_Man_33.FBX 的骑手和自行车在静态预览中完整；当前未播放 Take 001 动作。同名 Unity Prefab 引用的是 Bicycle_Man_34.FBX，不能据此把此 FBX 当成该 Prefab 的完整还原。"
+  },
+  {
+    "id": "incoming:urban-traffic:314e4aab42e9d0b4c8f78c56bf020eec",
+    "status": "ready",
+    "format": "GLB",
+    "source_path": "public/models/incoming/urban-traffic/glb/Car_6-preview.glb",
+    "model_url": "/models/incoming/urban-traffic/glb/Car_6-preview.glb",
+    "material_origin": "源 Unity Prefab 的车身、玻璃、灯和车轮 MAT；内嵌 8 张源包贴图",
+    "note": "按源 Prefab 的 LOD0 Renderer 还原蓝色车身、玻璃、灯和车轮材质；车灯使用原 MAT 的法线与发光贴图。源 FBX 及 Unity 包保留。LOD1 未放入此展示 GLB。"
+  },
+  {
+    "id": "incoming:urban-traffic:1542742ca34addb40a14f00917ca1154",
+    "status": "ready",
+    "format": "GLB",
+    "source_path": "public/models/incoming/urban-traffic/glb/Taxi_1-day-preview.glb",
+    "model_url": "/models/incoming/urban-traffic/glb/Taxi_1-day-preview.glb",
+    "material_origin": "源 Unity Taxi Day Prefab 的 7 个材质与原包色彩图、法线图；LOD0 展示模型",
+    "note": "按源 Taxi Day Prefab 还原黄色车身、车窗、车灯和车轮。原 FBX 中 5 张缺失的 disk 贴图仅属于未用材质槽，展示 GLB 不加载这些槽；LOD1、Unity 灯光和后处理未移入。"
+  },
+  {
+    "id": "incoming:urban-traffic:fe10f308c8e5c764d99b29414041f41f",
+    "status": "ready",
+    "format": "GLB",
+    "source_path": "public/models/incoming/urban-traffic/glb/Police_1-day-preview.glb",
+    "model_url": "/models/incoming/urban-traffic/glb/Police_1-day-preview.glb",
+    "material_origin": "源 Unity Police_1 Day Prefab 的 9 个材质和原包贴图；LOD0 展示模型",
+    "note": "按源 Day Prefab 的 LOD0 Renderer 还原蓝白警车、车窗、红蓝灯条和车轮；法线贴图保持源像素。原 FBX 和 Unity 包保留；未复现 Unity 的灯光与后处理。"
+  },
+  {
+    "id": "incoming:urban-traffic:be26cf360b3c78246861865af8f359d3",
+    "texture_alias_overrides": {
+      "sportive02_f_35_hair.tga": "/models/incoming/citizens/images/52712208700ec8641ae852377a3582ee.webp"
+    },
+    "material_overrides": {
+      "hair11": {
+        "color": "#ffffff",
+        "alphaMap": null,
+        "alphaTest": 0.5,
+        "transparent": false,
+        "depthWrite": true
+      }
+    },
+    "material_origin": "源 Urban Prefab 的 Girl_11_hair.mat 主贴图与 0.5 透明裁剪",
+    "note": "按源 Prefab 还原 Girl_11 头发的主贴图和透明裁剪；FBX 的旧外部 alpha 图用 Citizens 同名源图解析，最终材质不使用该 alphaMap。"
+  },
+  {
+    "id": "incoming:urban-traffic:2168bed0527644f45a2491554a3f77a7",
+    "texture_alias_overrides": {
+      "sportive02_f_35_hair.tga": "/models/incoming/urban-traffic/images/eefe8195635179842b602d6c37549e96.webp"
+    },
+    "material_overrides": {
+      "hair44": {
+        "color": "#ffffff",
+        "alphaMap": null,
+        "alphaTest": 0.506,
+        "transparent": false,
+        "depthWrite": true
+      }
+    },
+    "material_origin": "源 Urban Gyroscooter_2_Girl_44 Prefab 的头发主贴图与 0.506 透明裁剪",
+    "note": "源 Prefab 使用 Girl_44_hair 主贴图及透明裁剪；FBX 还请求一张来源未确认的旧 alpha 图。此模型单独解析该请求，显示时按 Prefab 清除旧 alphaMap 并使用主贴图的透明通道。"
+  },
+  {
+    "id": "incoming:urban-traffic:19e647db8431b394688cda3426045732",
+    "texture_alias_overrides": {
+      "sportive02_f_35_hair.tga": "/models/incoming/citizens/images/52712208700ec8641ae852377a3582ee.webp"
+    },
+    "material_overrides": {
+      "hair11": {
+        "color": "#ffffff",
+        "alphaMap": null,
+        "alphaTest": 0.5,
+        "transparent": false,
+        "depthWrite": true
+      }
+    },
+    "material_origin": "源 Urban Gyroscooter_2_Girl_11 Prefab 的 Girl_11_hair.mat 主贴图与 0.5 透明裁剪",
+    "note": "按源 Prefab 使用 Girl_11 头发主贴图和 0.5 透明裁剪；FBX 请求的旧外部 alpha 图由单模型别名解析，最终材质不使用该 alphaMap。"
+  },
+  {
+    "id": "incoming:urban-traffic:58c9dd9a24aa6f047be5c445498f0145",
+    "texture_alias_overrides": {
+      "sportive02_f_35_hair.tga": "/models/incoming/urban-traffic/images/eefe8195635179842b602d6c37549e96.webp"
+    },
+    "material_overrides": {
+      "hair44": {
+        "color": "#c9c9c9",
+        "alphaMap": null,
+        "alphaTest": 0.5,
+        "transparent": false,
+        "depthWrite": true
+      }
+    },
+    "material_origin": "源 Urban Gyroscooter_Girl_44 Prefab 的 LOD0 头发主贴图、色值与 0.5 透明裁剪",
+    "note": "头发按源 Prefab LOD0 的主贴图、色值和透明裁剪显示；FBX 旧 alpha 图来源未确认。单模型别名只用于解析旧请求，最终材质不使用该 alphaMap。"
+  }
+]

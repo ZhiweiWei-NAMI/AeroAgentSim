@@ -1,0 +1,147 @@
+{
+  "snapshot": "B01.frozen_v1",
+  "created_at_utc": "2026-10-06T14:15:18.873542+00:00",
+  "source_root": "/mnt/data2/weizhiwei/AERO_WORLD/Dataset/world_model/p01_schema_rollout_v4",
+  "root": "/mnt/data2/weizhiwei/AERO_WORLD/design/p01_generic/schema_rollout_v4/reports/B01/frozen_v1",
+  "author_session": "1f23ed1c-08e5-4996-bc85-8d595cd59318",
+  "source_status": "author finished; copies fixed read-only; later amendments require a separate version",
+  "files": [
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/README.md",
+      "bytes": 1608
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/tests/__init__.py",
+      "bytes": 0
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/tests/unit/test_schema.py",
+      "bytes": 8269
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/tests/unit/__init__.py",
+      "bytes": 0
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/tests/unit/test_roundtrip.py",
+      "bytes": 7087
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/tests/unit/test_no_future_leak.py",
+      "bytes": 8803
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/tests/unit/test_import_episode.py",
+      "bytes": 7027
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/tests/unit/test_split_provenance.py",
+      "bytes": 17168
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/tests/fixtures/schema_cases.json",
+      "bytes": 5682
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/__init__.py",
+      "bytes": 0
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/contracts/schema.py",
+      "bytes": 19232
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/contracts/__init__.py",
+      "bytes": 0
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/windows.py",
+      "bytes": 8467
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/__init__.py",
+      "bytes": 0
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/serialization.py",
+      "bytes": 9767
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/provenance.py",
+      "bytes": 15693
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/normalization.py",
+      "bytes": 3057
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/src/p01v4/data/import_episode.py",
+      "bytes": 17517
+    },
+    {
+      "path": "Dataset/world_model/p01_schema_rollout_v4/contracts/schema-v1.json",
+      "bytes": 12642
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/B01-specification.md",
+      "bytes": 7227
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/configs/serialization.json",
+      "bytes": 2343
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/configs/pilot-windows.json",
+      "bytes": 5763
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/manifests/episode-pilot.json",
+      "bytes": 2190
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/manifests/pilot-import.json",
+      "bytes": 1698
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/derived/pilot-norm-scope.json",
+      "bytes": 839
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/reports/B01/author_result.json",
+      "bytes": 26471
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/reports/B01/source_frozen_receipt.json",
+      "bytes": 4140
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/reports/S01.01/junit.xml",
+      "bytes": 1572
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/reports/S01.02/junit.xml",
+      "bytes": 1523
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/reports/S01.03/junit.xml",
+      "bytes": 1492
+    },
+    {
+      "path": "design/p01_generic/schema_rollout_v4/reports/S01.04/junit.xml",
+      "bytes": 9617
+    }
+  ],
+  "local_input_references": [
+    "aw_data",
+    "design/p01_generic/structured_mm_20261006/host_data_v2",
+    "design/p01_generic/schema_rollout_v4/derived/pilot_L4-1_v1__seed00.canonical.jsonl"
+  ],
+  "public_packet_excludes": "all input symlinks, raw media, large canonical derivative, model weights, credentials",
+  "author_execution": {
+    "four_original_suites": 50,
+    "final_supplemented_run": 82,
+    "exit": 0,
+    "wall_seconds": 76.17
+  },
+  "initial_review": "pending written review of this fixed copy; old50 results remain version-qualified"
+}

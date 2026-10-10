@@ -1,0 +1,75 @@
+{
+  "schema_version": "p09.station-egress-metadata-only-reuse/v1",
+  "current_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+  "executed_numerical_revision": "p09.station-egress-congestion/v1-candidate",
+  "original_result_dir": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_two_recipient_v1_representative/L6-4_v1__seed02/adopted",
+  "original_summary_sha256": "bcdef46fc45dffeeece86c0429c54ff6822d395d9228dd914203c3b7b5dc2492",
+  "numeric_actions_rules_radio_weather_flow_schedule_unchanged": true,
+  "original_numeric_outputs_modified": false,
+  "contracts": {
+    "adoption_profile.json": {
+      "source_sha256": "6c6bcfaa243071d1e09b2aca411149eb37828c35fa94c3fa91e91f9998cc56f9",
+      "current_sha256": "aa28539fa9364541e77726e6901da1f6fde6744a3cdd684214415c4b495c8fdd",
+      "differences": [
+        {
+          "pointer": "/station_egress_workload/candidate_revision",
+          "before": "p09.station-egress-congestion/v1-candidate",
+          "after": "p09.station-egress-congestion/v2-metadata-candidate"
+        }
+      ]
+    },
+    "scene_setup.json": {
+      "source_sha256": "fe7931bf37d37660ae0700f0d0d9bb4ace98f87bc1d5264e0ec17a455e018a18",
+      "current_sha256": "0283759e34ed1bf76138721b1f4278ad2ca420261c03d83a88091684ba28a2fe",
+      "differences": [
+        {
+          "pointer": "/description",
+          "before": "Station-egress UDP bulk congestion saturates the shared downlink queue; owner-local hold and receipt-bound backup response",
+          "after": "Declared station-egress offered UDP workload; owner-local heartbeat deadline-miss guard and receipt-bound backup response"
+        },
+        {
+          "pointer": "/validation_rules/4/contract/required_event",
+          "before": "station-egress UDP congestion > owner-local safe hold > received backup response > landing",
+          "after": "declared station-egress offered UDP workload > owner-local heartbeat deadline-miss guard > received backup response > landing"
+        }
+      ]
+    },
+    "event_script.json": {
+      "source_sha256": "a3b48ad5c191d5649ebeeb8b0aec6e21694fe246f88c238be87bea803305e581",
+      "current_sha256": "e7d1d0444713a8fcce1d73b5423b5bf690cc6d3b919caea1d072f5c820326359",
+      "differences": [
+        {
+          "pointer": "/description",
+          "before": "Station-egress UDP bulk congestion saturates the shared downlink queue; owner-local hold and receipt-bound backup response",
+          "after": "Declared station-egress offered UDP workload; owner-local heartbeat deadline-miss guard and receipt-bound backup response"
+        },
+        {
+          "pointer": "/parameters/semantic_event_contract/required_event",
+          "before": "station-egress UDP congestion > owner-local safe hold > received backup response > landing",
+          "after": "declared station-egress offered UDP workload > owner-local heartbeat deadline-miss guard > received backup response > landing"
+        },
+        {
+          "pointer": "/parameters/station_egress_candidate/revision",
+          "before": "p09.station-egress-congestion/v1-candidate",
+          "after": "p09.station-egress-congestion/v2-metadata-candidate"
+        },
+        {
+          "pointer": "/parameters/station_egress_candidate/required_event",
+          "before": "station-egress UDP congestion > owner-local safe hold > received backup response > landing",
+          "after": "declared station-egress offered UDP workload > owner-local heartbeat deadline-miss guard > received backup response > landing"
+        },
+        {
+          "pointer": "/events/2/log_event/title",
+          "before": "Declared station-egress UDP bulk workload congests the shared downlink queue",
+          "after": "Declared station-egress offered UDP workload competes with two UAV heartbeat flows"
+        },
+        {
+          "pointer": "/events/3/log_event/title",
+          "before": "Two UAVs hold under observed station-egress downlink queue congestion",
+          "after": "Owner-local heartbeat deadline-miss guards enter the declared workload hold"
+        }
+      ]
+    }
+  },
+  "status": "one reviewed numerical result reused through an explicit metadata-only delta; not a new run"
+}
