@@ -2641,7 +2641,7 @@ bindings:
 algorithms:
   allocation: nearest
   path_planning: corridor_astar
-  conflict_resolution: altitude_layers
+  conflict_resolution: hold_and_go
   charging: threshold_return
 generators:
   fleet:
@@ -2723,7 +2723,7 @@ engines:
         charging:
           threshold: 1.0
         conflict_resolution:
-          minimum_altitude_m: 125.0
+          hold_s: 3.0
       separation_horizontal_m: 20.0
       separation_vertical_m: 8.0
       activation_events: []

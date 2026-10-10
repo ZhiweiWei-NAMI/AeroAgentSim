@@ -18,7 +18,7 @@ knobs:
 - id: fleet_size
   label: Number of aircraft
   type: integer
-  default: 4
+  default: 6
   min: 1
   max: 12
   pointer: /generators/fleet/count

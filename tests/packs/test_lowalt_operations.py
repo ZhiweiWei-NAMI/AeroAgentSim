@@ -12,6 +12,9 @@ import pytest
 from aerokernel import Instant
 from aerokernel.sdk import EngineContext
 
+from aeroagentsim.algorithms import load_algorithm
+from aeroagentsim.algorithms.builtins import HoldAndGo
+from aeroagentsim.authoring.templates import TemplateRegistry
 from aeroagentsim.packs.lowalt.core import SnapshotIndex, refs, snapshot
 from aeroagentsim.packs.lowalt.tasks import LowaltTasks
 from aeroagentsim.packs.lowalt.template import parcel_document
@@ -125,3 +128,21 @@ def test_callback_snapshot_reuse_preserves_entire_committed_journal(
 
     monkeypatch.setattr(LowaltTasks, "_snapshot", uncached)
     assert _run(document, 30) == cached
+
+
+def test_delivery_default_resolvers_and_fleet_metadata_are_loadable() -> None:
+    registry = TemplateRegistry(BASE.parent)
+    for identity, fleet in (("parcel-delivery", 8), ("medical-delivery", 6)):
+        prepared = registry.apply(identity)
+        assert prepared.knobs["fleet_size"] == fleet
+        assert prepared.document["generators"]["fleet"]["count"] == fleet
+        scenario = load_scenario(prepared.document, base=prepared.base)
+        configuration = scenario.engines["airspace"]["config"]
+        name = configuration["algorithms"]["conflict_resolution"]
+        resolver = load_algorithm(
+            "conflict_resolution",
+            name,
+            configuration["algorithm_config"]["conflict_resolution"],
+        )
+        assert isinstance(resolver, HoldAndGo)
+        assert resolver.hold_s == 3.0

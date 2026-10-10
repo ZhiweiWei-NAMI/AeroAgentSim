@@ -38,4 +38,3 @@ const commits: FeedCommit[] = [
   { ...empty(5, '1000000000', 3), chainInstances: [notice] },
 ];
 export const traceStore = () => { const value = new TemporalFeedStore(header); commits.forEach(commit => value.ingest(commit)); value.seek('2000000000'); return value; };
-

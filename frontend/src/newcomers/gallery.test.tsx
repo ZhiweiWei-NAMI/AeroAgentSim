@@ -62,7 +62,7 @@ it('renders real templates from the API, filters by category and starts a run wi
 
   // Primary Run: a real request shaped like POST /v1/templates/{id}/runs with defaults.
   fireEvent.click(screen.getByTestId('run-template-parcel-delivery'));
-  await waitFor(()=>expect(screen.getByTestId('destination')).toHaveTextContent('/runs/run-123?mode=live&view=simple&template=parcel-delivery')); 
+  await waitFor(()=>expect(screen.getByTestId('destination')).toHaveTextContent('/runs/run-123?mode=live&view=simple&template=parcel-delivery'));
   const call = (fetchSpy.mock.calls as unknown as Array<[RequestInfo | URL, RequestInit | undefined]>).find(([, i]) => String(i?.method) === 'POST');
   const url = String(call?.[0]);
   const init = (call?.[1] ?? {}) as RequestInit;
