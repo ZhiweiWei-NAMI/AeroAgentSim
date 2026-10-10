@@ -6,7 +6,6 @@ from typing import Any
 
 import yaml
 
-
 POS = "he.aircraft.position_enu_m"
 VEL = "aas.p1.velocity_enu_m_s"
 ENERGY = "aas.p1.energy_j"

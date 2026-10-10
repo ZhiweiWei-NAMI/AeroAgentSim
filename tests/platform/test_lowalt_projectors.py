@@ -200,6 +200,47 @@ def expected_schemas() -> dict[str, dict[str, object]]:
             "reason": "wind subsided",
             "wind_mps": 8.0,
         },
+        "lowalt.task.preempted": {
+            "task": "task-1",
+            "vehicle": "drone-1",
+            "urgent_task": "task-9",
+        },
+        "lowalt.task.resumed": {"task": "task-1", "vehicle": "drone-1"},
+        "lowalt.task.replanned": {
+            "task": "task-1",
+            "vehicle": "drone-1",
+            "reason": "zone closed",
+            "zone": "accident-zone",
+        },
+        "lowalt.inspection.observed": {
+            "task": "task-3",
+            "vehicle": "drone-2",
+            "position": [10.0, 20.0, 40.0],
+            "distance_m": 25.0,
+        },
+        "lowalt.spraying.applied": {
+            "task": "task-4",
+            "vehicle": "drone-3",
+            "position": [5.0, 6.0, 4.0],
+            "distance_m": 30.0,
+        },
+        "lowalt.patrol.visited": {
+            "task": "task-5",
+            "vehicle": "drone-4",
+            "position": [0.0, 0.0, 60.0],
+        },
+        "lowalt.site.closed": {"site": "vertiport-1"},
+        "lowalt.mobility.pad_wait": {
+            "task": "task-6",
+            "vehicle": "taxi-1",
+            "site": "vertiport-2",
+        },
+        "lowalt.energy.swap_started": {"vehicle": "drone-4", "pad": "pad-1"},
+        "lowalt.energy.swap_finished": {
+            "vehicle": "drone-4",
+            "pad": "pad-1",
+            "soc": 1.0,
+        },
     }
 
 
