@@ -2,7 +2,7 @@
 
 Six drones deliver seeded orders from two vertiports to 25 customer rooftops.
 Use the fleet size, order rate, allocator, path planner and wind knobs to compare
-completed deliveries, latency and energy in a 300 s run.
+completed deliveries, latency and energy in a 300 s run. Orders arrive in bursts of four and are allocated every 10 s over all pending orders and free drones, so `nearest`, `auction` and `hungarian` give different results (see `docs/guides/algorithms.md`).
 
 ## Huangpu city placement
 

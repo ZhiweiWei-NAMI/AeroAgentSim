@@ -20,14 +20,24 @@ def arrival_times(
         if times != tuple(sorted(times)):
             raise ValueError("arrivals: times must be nondecreasing")
         return times
-    if config["mode"] != "poisson" or set(config) != {"mode", "rate_per_s", "start_ns"}:
+    allowed = {"mode", "rate_per_s", "start_ns"}
+    if config["mode"] != "poisson" or not allowed <= set(config) <= allowed | {
+        "burst_size"
+    }:
         raise ValueError("arrivals: select scheduled or poisson parameters")
     rate = finite(config["rate_per_s"], "arrival rate", 0)
     if rate == 0:
         raise ValueError("arrival rate must be positive")
+    # burst_size > 1 releases orders in simultaneous groups; rate_per_s stays the
+    # average number of orders per second, so bursts arrive at rate / burst_size;
+    # the first burst is released 2 s after start so a run never opens empty.
+    burst = ns(config.get("burst_size", 1), "burst size", 1)
     current = ns(config["start_ns"], "arrival start")
     result: list[int] = []
-    for _ in range(count):
-        current += max(1, math.ceil(rng.expovariate(rate) * 1e9))
-        result.append(current)
+    while len(result) < count:
+        if burst > 1 and not result:
+            current += 2_000_000_000  # the first burst opens the run
+        else:
+            current += max(1, math.ceil(rng.expovariate(rate / burst) * 1e9))
+        result.extend([current] * min(burst, count - len(result)))
     return tuple(result)

@@ -18,10 +18,17 @@ knobs:
 - id: fleet_size
   label: Number of aircraft
   type: integer
-  default: 2
+  default: 4
   min: 1
   max: 12
   pointer: /generators/fleet/count
+- id: order_rate
+  label: Routine parcel orders per second
+  type: number
+  default: 0.06
+  min: 0.005
+  max: 1
+  pointer: /engines/tasks/config/generators/0/arrivals/rate_per_s
 - id: wind_speed
   label: Normal wind speed (m/s)
   type: number

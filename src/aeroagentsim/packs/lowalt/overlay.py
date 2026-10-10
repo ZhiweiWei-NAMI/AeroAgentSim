@@ -48,32 +48,32 @@ def record(members: dict[str, Any], optional: tuple[str, ...] = ()) -> dict[str,
 
 EVENT_NARRATIVES: dict[str, dict[str, Any]] = {
     "lowalt.task.created": {
-        "text": "Order {task} appeared",
+        "text": "New {noun} for {destination}",
         "category": "logistics",
         "severity": "info",
     },
     "lowalt.task.assigned": {
-        "text": "{vehicle} was assigned to {task}",
+        "text": "{vehicle} was assigned the {noun} for {destination}",
         "category": "logistics",
         "severity": "info",
     },
     "lowalt.task.started": {
-        "text": "{vehicle} started {task}",
+        "text": "{vehicle} is heading to {origin} for the {noun}",
         "category": "logistics",
         "severity": "info",
     },
     "lowalt.task.picked_up": {
-        "text": "{vehicle} picked up {task}",
+        "text": "{vehicle} picked up the {noun} at {origin}",
         "category": "logistics",
         "severity": "info",
     },
     "lowalt.task.completed": {
-        "text": "{vehicle} completed {task}",
+        "text": "{vehicle} {done} {destination} ({latency_s} s)",
         "category": "logistics",
         "severity": "info",
     },
     "lowalt.task.failed": {
-        "text": "{task} failed: {reason}",
+        "text": "The {noun} for {destination} failed: {reason}",
         "category": "logistics",
         "severity": "warning",
     },

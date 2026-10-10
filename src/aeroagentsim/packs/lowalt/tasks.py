@@ -14,7 +14,12 @@ from aerokernel.sdk import ContextEngine, EngineContext
 from aerokernel.values import thaw
 
 from aeroagentsim.algorithms import load_algorithm
-from aeroagentsim.algorithms.protocols import Allocation, Assignment, PathPlanning
+from aeroagentsim.algorithms.protocols import (
+    Allocation,
+    Assignment,
+    PathPlanning,
+    Snapshot,
+)
 from aeroagentsim.engines.common import bootstrap_owned, policies
 from aeroagentsim.packs.arrivals import arrival_times
 from aeroagentsim.packs.common import distance, finite, ns, read, vec
@@ -122,6 +127,13 @@ class LowaltTasks(ContextEngine):
         self.moves: dict[str, Flight] = {}
         self.llm_pending = False
         self.llm_tasks: tuple[str, ...] = ()
+        # Allocation batching: pending orders accumulate for batch_window_s and
+        # the allocator then sees all of them (and all free drones) at once.
+        window = finite(self.cfg.get("batch_window_s", 0.0), "batch window", 0)
+        self.batch_ns = round(window * 1e9)
+        self.last_batch_slot = -1
+        # Cost-model constants handed to allocators (speed, energy per metre).
+        self.vehicle_model = self.cfg.get("vehicle_model", {})
         self.motion = self.cfg["motion"]
         self.radius = finite(self.cfg["arrival_radius_m"], "arrival radius", 0)
         produced = TASK_FIELDS + CONSTANT_FIELDS + ("lowalt.payload_kg",)
@@ -933,6 +945,7 @@ class LowaltTasks(ContextEngine):
         )
         from aeroagentsim.algorithms.builtins import eligible
 
+        state = self._with_vehicle_model(ctx, state)
         if any(eligible(t, v) for t in state.tasks for v in state.vehicles):
             if self.algorithms["allocation"] == "llm":
                 if not self.llm_pending:
@@ -950,8 +963,40 @@ class LowaltTasks(ContextEngine):
                     )
                     self.llm_pending = True
                     self.llm_tasks = tuple(t.id for t in state.tasks)
-            else:
+            elif self._batch_due(ctx):
                 self._assign(ctx, self.allocator.allocate(state))
+
+    def _batch_due(self, ctx: EngineContext) -> bool:
+        """True at the first poll of each batch window (always without a window)."""
+        if self.batch_ns <= 0:
+            return True
+        slot = ctx.now.ns // self.batch_ns
+        if slot <= self.last_batch_slot:
+            return False
+        self.last_batch_slot = slot
+        return True
+
+    def _with_vehicle_model(self, ctx: EngineContext, state: Snapshot) -> Snapshot:
+        """Attach speed, energy rate and battery capacity for cost estimates."""
+        model = self.vehicle_model
+        return replace(
+            state,
+            vehicles=tuple(
+                replace(
+                    v,
+                    speed_m_s=finite(
+                        model.get("speed_m_s", v.speed_m_s), "speed", 1e-9
+                    ),
+                    energy_per_m_j=finite(
+                        model.get("energy_per_m_j", v.energy_per_m_j), "energy rate", 0
+                    ),
+                    capacity_j=finite(
+                        read(ctx, self.by_id[v.id], "lowalt.capacity_j"), "capacity", 0
+                    ),
+                )
+                for v in state.vehicles
+            ),
+        )
 
 
 def build(context: EngineBuild) -> LowaltTasks:

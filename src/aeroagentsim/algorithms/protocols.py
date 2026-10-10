@@ -17,6 +17,11 @@ class Vehicle:
     payload_capacity_kg: float
     available: bool
     task_kinds: tuple[str, ...] = ()
+    # Cost-model inputs; the defaults keep hand-made snapshots working.
+    speed_m_s: float = 15.0  # cruise speed used for completion-time estimates
+    energy_per_m_j: float = 12.0  # distance-proportional energy per metre
+    capacity_j: float = 0.0  # battery capacity; 0 means unknown (no energy check)
+    busy_s: float = 0.0  # remaining time on the current leg before it is free
 
 
 @dataclass(frozen=True)

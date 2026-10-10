@@ -6,7 +6,7 @@ first. One shared simulated world, one clock, 300 simulated seconds.
 
 ## What happens
 
-- Routine parcel tasks are released from the home vertiport over the run.
+- Routine parcel orders arrive in small bursts at two vertiports; allocation runs every 10 s over all pending orders, so `nearest`, `auction` and `hungarian` choose differently.
 - Urgent medical tasks (priority 100) are released at 8 s, 110 s and 200 s.
 - With `medical_preemption` on, an eligible parcel flight is suspended, the
   drone flies the medical leg, then the parcel resumes.
@@ -17,7 +17,8 @@ first. One shared simulated world, one clock, 300 simulated seconds.
 
 | Knob | Meaning | Default |
 | --- | --- | --- |
-| `fleet_size` | Number of aircraft (1–12) | 2 |
+| `fleet_size` | Number of aircraft (1–12) | 4 |
+| `order_rate` | Routine parcel orders per second | 0.06 |
 | `wind_speed` | Base wind speed in m/s (0–15) | 2.0 |
 | `allocator` | Task allocation: `nearest`, `auction`, `hungarian`, `llm` | nearest |
 

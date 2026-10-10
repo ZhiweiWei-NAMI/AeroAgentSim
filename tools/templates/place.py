@@ -276,6 +276,7 @@ def place_document(document: dict[str, Any], layout: dict[str, Any]) -> dict[str
         "clinic": layout["clinic"],
         "customer": layout["customer"],
         "customer-east": layout["customer"],
+        "depot-east": layout["east"],
         "east-port": layout["east"],
         "east-pad": layout["east"],
         "north-port": layout["north"],
@@ -375,6 +376,9 @@ def place_document(document: dict[str, Any], layout: dict[str, Any]) -> dict[str
                 ]
     fleet = doc["generators"]["fleet"]
     fleet["starts"] = [locations.get("home", layout["plaza"])]
+    if identity in {"parcel-delivery", "medical-delivery"}:
+        # Drones start at both vertiports so allocators see different distances.
+        fleet["starts"] = [layout["plaza"], layout["east"]]
     fleet["spacing_m"] = 1.0
     if identity == "city-day":
         # A second rooftop pickup keeps a parcel departure independent of the
@@ -445,6 +449,7 @@ def place_document(document: dict[str, Any], layout: dict[str, Any]) -> dict[str
         "home-pad": "West Plaza charging pad",
         "hospital": "Hospital rooftop pad",
         "clinic": "Clinic rooftop",
+        "depot-east": "Vertiport East Roof",
         "east-port": "Vertiport East Roof",
         "north-port": "Vertiport North Roof",
         "vertiport-1": "Vertiport West Plaza",
