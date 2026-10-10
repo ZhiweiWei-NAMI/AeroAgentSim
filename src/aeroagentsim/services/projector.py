@@ -459,6 +459,19 @@ def header(directory: Path) -> dict[str, Any]:
                     "kind": "model", "scale": 1.0,
                     "asset": "/v1/studio/demo-assets/models/" + model + ".glb" if detailed_city() else "procedural:" + model,
                 }
+        # v1.1 packs carry a display-model catalog. The viewer (never the capture path)
+        # may then pick a catalogued model per entity; `catalog` only names the model kind.
+        from aeroagentsim.assets import model_catalog
+
+        catalog = model_catalog()
+        if catalog:
+            result["modelCatalog"] = catalog
+            for binding in result["presentation"]:
+                kind = {
+                    "aas:TrafficRoadVehicle": "road_vehicle", "aas:TrafficUAV": "uav", "lowalt:UAV": "uav",
+                }.get(binding["typeId"])
+                if kind is not None:
+                    binding["visual"] = {**binding["visual"], "catalog": kind}
     subject_spec = scenario["registry"]
     declared = dict(subject_spec.get("message_subjects", {}))
     declared.update(

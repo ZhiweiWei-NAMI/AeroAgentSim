@@ -16,8 +16,8 @@ from typing import Any
 
 FORMAT = "aeroagentsim.asset-pack/v1"
 PACK_ID = "huangpu-city"
-VERSION = "1.0.0"
-DEFAULT_URL = "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/download/assets-huangpu-city-v1/huangpu-city-v1.zip"
+VERSION = "1.1.0"
+DEFAULT_URL = "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/download/assets-huangpu-city-v1.1/huangpu-city-v1.1.zip"
 
 
 def data_dir() -> Path:
@@ -34,6 +34,36 @@ def _relative(value: Any) -> str:
     if path.is_absolute() or any(part in {"..", "."} for part in value.split("/")):
         raise ValueError("asset pack: file path escapes pack")
     return value
+
+
+MODEL_KINDS = frozenset({"road_vehicle", "bicycle", "pedestrian", "uav", "furniture"})
+_AXIS = re.compile(r"[+-][xyz]")
+
+
+def _model_catalog(value: Any, names: set[str]) -> dict[str, dict[str, Any]]:
+    """Validate the optional v1.1 ``models`` catalog; absent catalogs are legal (v1.0 packs)."""
+    if not isinstance(value, dict) or not value:
+        raise ValueError("asset pack: models catalog must be a nonempty object")
+    for ident, row in value.items():
+        if not isinstance(ident, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", ident) or not isinstance(row, dict):
+            raise ValueError("asset pack: invalid model entry")
+        if row.get("kind") not in MODEL_KINDS:
+            raise ValueError(f"asset pack: model {ident} has an unknown kind")
+        if "path" not in row:
+            raise ValueError(f"asset pack: model {ident} has no path")
+        for key in ("path", "lod"):
+            if key in row and _relative(row[key]) not in names:
+                raise ValueError(f"asset pack: model {ident} {key} is not a pack file")
+        size = row.get("size_m")
+        if not (isinstance(size, list) and len(size) == 3
+                and all(type(n) in (int, float) and 0 < n < 1000 for n in size)):
+            raise ValueError(f"asset pack: model {ident} needs size_m [length, width, height] in metres")
+        for key in ("forward", "up"):
+            if not (isinstance(row.get(key), str) and _AXIS.fullmatch(row[key])):
+                raise ValueError(f"asset pack: model {ident} needs {key} as one of +x -x +y -y +z -z")
+        if row["forward"][1] == row["up"][1]:
+            raise ValueError(f"asset pack: model {ident} forward and up must use different axes")
+    return dict(value)
 
 
 def read_pack(root: Path, *, check_files: bool = True) -> dict[str, Any]:
@@ -62,6 +92,8 @@ def read_pack(root: Path, *, check_files: bool = True) -> dict[str, Any]:
                 raise FileNotFoundError(f"asset pack: missing {name}")
     if "assets/scene.json" not in names or "NOTICE.txt" not in names:
         raise ValueError("asset pack: scene and NOTICE.txt required")
+    if "models" in pack:
+        _model_catalog(pack["models"], names)
     return dict(pack)
 
 
@@ -93,6 +125,27 @@ def traffic_root() -> Path | None:
         return root
     pack = selected()
     return Path(pack["directory"]) / "assets" if pack else None
+
+
+def model_catalog() -> dict[str, dict[str, Any]]:
+    """Viewer-facing display-model catalog of the selected pack ({} for v1.0 packs or no pack).
+
+    URLs are service-relative (``/v1/studio/demo-assets/...``); the same route serves the scene.
+    """
+    pack = None if os.environ.get("AEROAGENTSIM_TRAFFIC_ASSET_ROOT") else selected()
+    if not pack or "models" not in pack:
+        return {}
+    url = "/v1/studio/demo-assets/"
+    return {
+        ident: {
+            "url": url + row["path"].removeprefix("assets/"),
+            "kind": row["kind"], "label": row.get("label", ident),
+            "sizeM": row["size_m"], "forward": row["forward"], "up": row["up"],
+            **({"lodUrl": url + row["lod"].removeprefix("assets/")} if "lod" in row else {}),
+            **({"skinned": True} if row.get("skinned") else {}),
+        }
+        for ident, row in pack["models"].items()
+    }
 
 
 def install(source: Path) -> dict[str, Any]:
