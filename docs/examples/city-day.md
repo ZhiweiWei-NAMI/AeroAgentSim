@@ -24,7 +24,7 @@ one shared `lowalt.wind` field owned by the environment engine.
 | `road_motion` (traffic_road_motion) | Road vehicles | `traffic.road.position_enu_m`, `traffic.road.velocity_enu_mps`, `traffic.road.speed_mps`, lane/route/blocked fields |
 | `route_inputs` (traffic_route_inputs) | Authored routes | `traffic.route.*` |
 | `tasks` (lowalt_tasks) | Task state, assignments, work routes | `lowalt.task_*`, task site/vehicle state |
-| `airspace` (lowalt_airspace) | Geofences, separation and wind detection | `lowalt.zone_active`, incident-zone bounds, `lowalt.membership`, `lowalt.conflicts`, `lowalt.breached_zones`, `lowalt.conflict_partner`, `lowalt.conflict_gap_m`, `lowalt.wind_mps` |
+| `airspace` (lowalt_airspace) | Geofences, separation and wind detection | `lowalt.zone_id`, `lowalt.zone_active`, incident-zone bounds, `lowalt.membership`, `lowalt.conflicts`, `lowalt.breached_zones`, `lowalt.conflict_partner`, `lowalt.conflict_gap_m`, `lowalt.wind_mps` |
 | `energy` (lowalt_energy) | Battery and charging | `lowalt.soc`, `lowalt.charging`, `lowalt.energy_used_j`, `lowalt.distance_m`, `lowalt.motion_energy_j` |
 | `environment` | Weather | `lowalt.wind` |
 | `traffic_assessment` | Feasibility/eligibility inputs for responders | `traffic.assessment.*` |
@@ -93,18 +93,22 @@ City defaults use `hold_and_go` so congested pickup points make progress; the st
 
 The city camera reuses the traffic capture owner and binds storage to the actual RunSession directory. It honors an explicit Chromium override, discovers an installed Playwright headless shell, or uses Playwright's standard browser installation. No image fixture substitutes for a failed render.
 
-## Measured default run (LA4)
+## Measured default run (2.1)
 
-On this 96-CPU machine with AeroGraph unset, the 300 s city run took 150.23 s
-including load, execution and journal close: RTF 1.997. Load averages at start
-were 36.78 / 37.83 / 39.23. This narrowly misses the 2× target. KPI projection
-and replay are excluded from that wall time. The journal contains one real
-accepted capture, two wind holds, 16 separation alerts and 14 completed tasks.
+With the public lite city, no AeroGraph checkout and fast pacing, the 300 s
+city run took 132.76 s: **RTF 2.26×**. This measures `RunSession.run()`, including
+execution, native capture and journal close; scenario parsing, constructor
+setup, KPI projection and replay are excluded. This is one shared-host sample
+on 96 logical CPUs, with load averages 34.33 / 31.83 / 31.40 at start, not a
+hardware-independent guarantee. The journal contains one real accepted capture,
+two wind holds, 16 separation alerts and 14 completed tasks.
 
-The delivery quality target is also unfinished: default parcel completes
-13/20 orders, medical 11/18. Late arrivals are bounded, and landed-pair alerts
-are removed, but route interruptions and repeated separation manoeuvres still
-limit completion. Tuning stopped after three attempts, per the loop budget.
+Default seed-42 delivery examples complete 18/20 parcel orders and 15/18 medical
+orders. The existing `hold_and_go` policy avoids repeated altitude manoeuvres
+at busy pickup points; failed terminal-reservation prototypes were rolled back.
+The three-seed allocator/fleet experiment nevertheless shows congestion can
+make a larger fleet complete fewer orders. See
+[the comparison and its limits](../guides/algorithms.md#comparing-allocators).
 
 ## Huangpu placements (LA3)
 

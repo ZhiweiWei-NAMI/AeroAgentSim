@@ -989,7 +989,7 @@ chains:
       from: staged
       'on':
         predicate: traffic.p.detected
-        edge: entered
+        edge: while
       to: reporting
       priority: 0
       actions:

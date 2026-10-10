@@ -18,6 +18,7 @@ from aeroagentsim.algorithms.protocols import (
     Allocation,
     Assignment,
     PathPlanning,
+    Point,
     Snapshot,
 )
 from aeroagentsim.engines.common import bootstrap_owned, policies
@@ -62,6 +63,23 @@ class Job:
     vehicle: str | None = None
     phase: str = "unreleased"
     created_ns: int = 0
+    # None means unplanned; () means every original work waypoint has a real
+    # success receipt. Job ownership also preserves work across preemption.
+    work_obligations: tuple[Point, ...] | None = None
+
+
+class _WorkPlanRecorder:
+    """Retain the winning planner output, excluding emergency egress prefixes."""
+
+    def __init__(self, planner: PathPlanning) -> None:
+        self.planner = planner
+        self.points: tuple[Point, ...] = ()
+        self.start: Point | None = None
+
+    def plan(self, snapshot: Snapshot, start: Point, goal: Point) -> tuple[Point, ...]:
+        self.start = start
+        self.points = self.planner.plan(snapshot, start, goal)
+        return self.points
 
 
 @dataclass
@@ -79,6 +97,9 @@ class Flight:
     deferred_brake: bool = False
     waypoint: tuple[float, float, float] | None = None
     waypoint_start: tuple[float, float, float] | None = None
+    waypoint_is_work: bool = False
+    waypoint_is_connector: bool = False
+    work_reconnect_goal: Point | None = None
     suspended: Job | None = None
     suspended_phase: str | None = None
     work_active: bool = False
@@ -89,6 +110,8 @@ class Flight:
     cruise_altitude_m: float | None = None
     avoidance_resume_goal: tuple[float, float, float] | None = None
     avoidance_resume_purpose: str = "task"
+    egress_waypoint: tuple[float, float, float] | None = None
+    route_blocked_reason: str | None = None
 
 
 class LowaltTasks(ContextEngine):
@@ -212,6 +235,7 @@ class LowaltTasks(ContextEngine):
             kind = group["kind"]
             if kind not in TASK_KINDS:
                 raise ValueError(f"unsupported task kind {kind}")
+            payload_kg = finite(group["payload_kg"], "task payload", 0)
             pool = [self.by_id[identity] for identity in group["tasks"]]
             releases = arrival_times(group["arrivals"], len(pool), ctx.rng("arrivals"))
             for index, ref in enumerate(pool):
@@ -236,7 +260,7 @@ class LowaltTasks(ContextEngine):
                     ("priority", group["priority"]),
                     ("origin", origin),
                     ("destination", destination),
-                    ("payload_kg", group["payload_kg"]),
+                    ("payload_kg", payload_kg),
                 ):
                     initial[ref.id]["lowalt.task_" + key] = value
         if set(self.jobs) != {r.id for r in refs(self.build, "lowalt:Task")}:
@@ -278,6 +302,17 @@ class LowaltTasks(ContextEngine):
         if goal is not None:
             payload["target"] = list(goal)
         flight.waypoint = goal
+        flight.waypoint_is_work = bool(
+            goal is not None
+            and flight.purpose == "task"
+            and flight.job is not None
+            and flight.job.work_obligations
+            and goal == flight.job.work_obligations[0]
+            and goal != flight.egress_waypoint
+        )
+        flight.waypoint_is_connector = (
+            goal is not None and goal == flight.work_reconnect_goal
+        )
         flight.waypoint_start = vec(read(ctx, flight.vehicle, "lowalt.position"))
         ctx.submit(CommandRequest(schema, self.motion["target"], ctx.now, payload))
         flight.pending, flight.status = True, None
@@ -291,7 +326,7 @@ class LowaltTasks(ContextEngine):
 
     def _route(
         self, ctx: EngineContext, flight: Flight, goal: tuple[float, float, float]
-    ) -> None:
+    ) -> bool:
         start = vec(read(ctx, flight.vehicle, "lowalt.position"))
         state = self._snapshot(ctx)
         exemptions = self.cfg.get("zone_exemptions", {})
@@ -304,14 +339,21 @@ class LowaltTasks(ContextEngine):
             ),
         )
         planner = self.travel_planner if self.work_planners else self.planner
+        work_active_before = flight.work_active
+        recorder: _WorkPlanRecorder | None = None
+        obligations: tuple[Point, ...] = ()
         if (
             flight.job is not None
             and flight.job.phase == "picked_up"
             and flight.purpose == "task"
         ):
             kind = read(ctx, flight.job.ref, "lowalt.task_kind")
-            if kind in self.work_planners and not flight.work_active:
-                planner = self.work_planners[kind]
+            if flight.job.work_obligations is not None:
+                obligations = flight.job.work_obligations
+                flight.work_active = True
+            elif kind in self.work_planners:
+                recorder = _WorkPlanRecorder(self.work_planners[kind])
+                planner = recorder
                 flight.work_active = True
         cruise = (
             flight.cruise_altitude_m
@@ -320,28 +362,63 @@ class LowaltTasks(ContextEngine):
                 read(ctx, flight.vehicle, "lowalt.vehicle_class")
             )
         )
-        if (
-            planner in self.work_planners.values()
+        from aeroagentsim.algorithms.routes import (
+            NoFlyRouteUnavailable,
+            containing_no_fly,
+            plan_with_egress,
+            route_avoids_no_fly,
+        )
+
+        target = obligations[0] if obligations else goal
+        altitude = (
+            None
+            if recorder is not None
             or cruise is None
-            or distance(start, goal) <= self.radius
-        ):
-            points = planner.plan(state, start, goal)
-        else:
-            from aeroagentsim.algorithms.routes import cruise_plan
-
-            points = cruise_plan(planner, state, start, goal, cruise)
-        from aeroagentsim.packs.geometry import segment_hits_box
-
-        if any(
-            z.active and z.kind == "no_fly" and segment_hits_box(a, b, z.lower, z.upper)
-            for a, b in zip((start,) + tuple(points), points)
-            for z in state.zones
-        ):
-            raise ValueError("path proposal crosses an active no-fly zone")
+            or distance(start, target) <= self.radius
+            else cruise
+        )
+        try:
+            points = plan_with_egress(planner, state, start, target, altitude)
+            if obligations:
+                # The reconnecting path is disposable, the original routine is
+                # not. Never jump straight to the final destination on replan.
+                points += obligations[1:]
+                if points[-1] != goal:
+                    points += (goal,)
+                if not route_avoids_no_fly(
+                    state,
+                    start,
+                    points,
+                    initial_exit=bool(containing_no_fly(state, start)),
+                ):
+                    raise NoFlyRouteUnavailable(
+                        "remaining original work route is blocked"
+                    )
+        except ValueError as exc:
+            if not isinstance(exc, NoFlyRouteUnavailable) and recorder is None:
+                raise
+            # Keep the original mission/charging goal and retry after a zone
+            # change. This stopped flight waits; no arrival/completion is faked.
+            flight.goal, flight.route = goal, ()
+            flight.egress_waypoint = None
+            flight.route_blocked_reason = str(exc)
+            flight.work_active = work_active_before
+            flight.replan = True
+            return False
         if not points or distance(points[-1], goal) > self.radius:
             raise ValueError("path planner must reach requested goal")
+        if recorder is not None:
+            assert flight.job is not None
+            original = recorder.points
+            while original and original[0] == recorder.start:
+                original = original[1:]
+            flight.job.work_obligations = original
+        flight.egress_waypoint = points[0] if containing_no_fly(state, start) else None
+        flight.work_reconnect_goal = obligations[0] if obligations else None
+        flight.route_blocked_reason = None
         flight.goal, flight.route = goal, tuple(points)
         flight.replan = False
+        return True
 
     def _assign(self, ctx: EngineContext, assignments: tuple[Assignment, ...]) -> None:
         used_tasks: set[str] = set()
@@ -477,6 +554,8 @@ class LowaltTasks(ContextEngine):
                     if status in {"succeeded", "failed", "rejected", "canceled"}:
                         if status == "succeeded" and flight.waypoint is not None:
                             self._observation(ctx, flight)
+                            if flight.waypoint == flight.egress_waypoint:
+                                flight.egress_waypoint = None
                         flight.waypoint = None
                         flight.command_id = None
                         if status != "succeeded" and not flight.replan:
@@ -659,11 +738,23 @@ class LowaltTasks(ContextEngine):
             or flight.purpose != "task"
         ):
             return
-        if flight.transit_resume:
-            flight.transit_resume = False
+        flight.transit_resume = False
+        obligations = flight.job.work_obligations
+        if (
+            not flight.waypoint_is_work
+            or not obligations
+            or flight.waypoint != obligations[0]
+        ):
             return
         assert flight.waypoint_start is not None
         point = vec(read(ctx, flight.vehicle, "lowalt.position"))
+        if distance(point, obligations[0]) > self.radius:
+            return
+        # Called only on a matching succeeded native command; reconnect/egress
+        # points cannot consume original work or manufacture observations.
+        flight.job.work_obligations = obligations[1:]
+        if flight.waypoint == flight.work_reconnect_goal:
+            flight.work_reconnect_goal = None
         moved = distance(flight.waypoint_start, point)
         if moved <= 1e-6:
             return
@@ -681,7 +772,9 @@ class LowaltTasks(ContextEngine):
                 "position": list(point),
             }
             if kind != "patrol":
-                payload["distance_m"] = moved
+                # Arrival at an original asset waypoint is real, but its new
+                # reconnection leg must not inflate surveyed/applied distance.
+                payload["distance_m"] = 0.0 if flight.waypoint_is_connector else moved
             ctx.emit(schema, payload, topic="lowalt.events")
 
     def _operator(
@@ -829,10 +922,15 @@ class LowaltTasks(ContextEngine):
                         "lowalt.site_position",
                     )
                 )
-                if flight.replan or not flight.route and flight.goal is None:
-                    self._route(ctx, flight, goal)
+                if flight.replan or (
+                    not flight.route
+                    and (flight.goal is None or bool(job.work_obligations))
+                ):
+                    if not self._route(ctx, flight, goal):
+                        continue
                 if (
                     not flight.route
+                    and not job.work_obligations
                     and distance(
                         vec(read(ctx, flight.vehicle, "lowalt.position")), goal
                     )
@@ -905,22 +1003,30 @@ class LowaltTasks(ContextEngine):
                             )
                         continue
             if flight.replan and flight.goal is not None:
-                self._route(ctx, flight, flight.goal)
+                if not self._route(ctx, flight, flight.goal):
+                    continue
             if flight.route:
                 # Replan a remaining segment if a dynamic zone activated.
                 goal = flight.route[0]
-                from aeroagentsim.packs.geometry import segment_hits_box
+                from aeroagentsim.algorithms.routes import route_avoids_no_fly
 
                 state = self._snapshot(ctx)
+                exemptions = self.cfg.get("zone_exemptions", {})
+                state = replace(
+                    state,
+                    zones=tuple(
+                        z
+                        for z in state.zones
+                        if flight.vehicle.id not in exemptions.get(z.id, ())
+                    ),
+                )
                 start = vec(read(ctx, flight.vehicle, "lowalt.position"))
-                if any(
-                    z.active
-                    and z.kind == "no_fly"
-                    and segment_hits_box(start, goal, z.lower, z.upper)
-                    for z in state.zones
+                if not route_avoids_no_fly(
+                    state, start, (goal,), initial_exit=goal == flight.egress_waypoint
                 ):
                     assert flight.goal is not None
-                    self._route(ctx, flight, flight.goal)
+                    if not self._route(ctx, flight, flight.goal):
+                        continue
                     goal = flight.route[0]
                 if (
                     flight.job is not None

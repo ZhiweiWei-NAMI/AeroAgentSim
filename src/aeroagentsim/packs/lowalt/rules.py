@@ -618,9 +618,12 @@ def configure_detection(document: dict[str, Any]) -> None:
         document["engines"]["airspace"]["config"]["separation_horizontal_m"] = finite(
             radius, "safety distance", 1e-9
         )
-        limits = package["predicates"]["wind_above_limit"]["parameters"]
-        for name, limit in limits.items():
-            finite(limit, name, 0)
+        limits = {
+            name: finite(limit, name, 0)
+            for name, limit in package["predicates"]["wind_above_limit"][
+                "parameters"
+            ].items()
+        }
         # Expose the actual authored class limit as committed configuration,
         # rather than leave the obsolete WIP fact inconsistent with the knob.
         facts = [e["facts"] for e in document["entities"] if e["type"] == UAV]

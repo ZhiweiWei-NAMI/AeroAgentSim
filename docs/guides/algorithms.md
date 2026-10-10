@@ -59,28 +59,41 @@ ended, not only at a pad), but a drone still flying a task is not offered: the
 engine has no per-drone task queue, so `busy_s` is `0` for built-in dispatch and
 is available to custom allocators and future queued dispatch.
 
-Measured with `experiment <template> --vary allocator=nearest,auction,hungarian
---seeds 3` (300 s, 6 and 4 drones, mean over seeds 0-2, plus or minus one standard deviation):
+The 2.1 worked comparison uses unchanged parcel demand, 300 simulated seconds,
+`hold_and_go`, three matched seeds (0–2) and both fleet sizes. All 18 runs
+completed without a runtime failure; that does **not** mean every order finished.
+Each cell has three observations. Values are mean ± sample standard deviation
+of per-run KPIs, not confidence intervals:
 
-| Template | Allocator | Completed | Mean latency (s) | p95 latency (s) | Energy (kJ) |
-| --- | --- | --- | --- | --- | --- |
-| parcel-delivery | nearest | 13.3 ± 4.7 | 103.0 ± 14.4 | 188.9 ± 52.7 | 328 ± 29 |
-| parcel-delivery | auction | 10.7 ± 2.1 | 96.0 ± 22.4 | 169.1 ± 49.5 | 299 ± 31 |
-| parcel-delivery | hungarian | 10.7 ± 1.5 | 92.8 ± 18.2 | 155.1 ± 41.0 | 297 ± 29 |
-| medical-delivery | nearest | 12.3 ± 2.1 | 100.1 ± 9.3 | 167.6 ± 32.6 | 252 ± 13 |
-| medical-delivery | auction | 12.7 ± 1.5 | 86.7 ± 6.4 | 142.8 ± 11.0 | 236 ± 11 |
-| medical-delivery | hungarian | 12.7 ± 1.5 | 89.1 ± 2.3 | 149.0 ± 6.3 | 235 ± 12 |
+```sh
+aeroagentsim experiment parcel-delivery \
+  --vary allocator=nearest,auction,hungarian --vary fleet_size=4,8 \
+  --seeds 3 --jobs 3 --horizon 300
+```
 
-Why they differ, in two sentences: when a burst of orders meets several free
-drones, `nearest` hands each order (in arrival order) the closest drone, which
-can leave a later order with only a distant one. `auction` and `hungarian`
-choose drones by the whole trip time and, for `hungarian`, over the whole batch,
-so long pickups are avoided and drones fly less. With three seeds the
-differences between `auction` and `hungarian` are inside the noise; the gap to
-`nearest` shows in mean and p95 latency and in energy on both templates. In
-parcel-delivery the smarter methods finish slightly fewer orders in 300 s while
-the fleet is saturated, and mean latency only counts finished orders. Run more seeds (`--seeds 10`) before drawing
-conclusions of your own.
+| Allocator | Aircraft | Completed tasks | Completion (%) | Mean latency (s) | Energy (kJ) | Separation alerts |
+| --- | --- | --- | --- | --- | --- | --- |
+| nearest | 4 | 13.3 ± 4.6 | 74.6 ± 22.5 | 86.3 ± 28.4 | 211.2 ± 69.0 | 17.7 ± 4.5 |
+| nearest | 8 | 9.7 ± 5.0 | 52.4 ± 17.5 | 77.8 ± 30.9 | 229.5 ± 72.3 | 34.3 ± 22.8 |
+| auction | 4 | 14.0 ± 5.2 | 77.2 ± 20.4 | 79.6 ± 24.5 | 203.3 ± 62.2 | 22.7 ± 10.4 |
+| auction | 8 | 10.0 ± 5.0 | 53.6 ± 15.5 | 71.1 ± 22.2 | 224.1 ± 66.7 | 35.7 ± 23.1 |
+| hungarian | 4 | 14.0 ± 5.2 | 77.2 ± 20.4 | 80.1 ± 24.9 | 203.7 ± 62.5 | 20.7 ± 8.5 |
+| hungarian | 8 | 10.0 ± 4.6 | 53.4 ± 12.4 | 71.4 ± 18.5 | 225.2 ± 68.2 | 38.0 ± 26.9 |
+
+Created orders average 20 ± 10.6 in every cell; arrivals are matched within
+seeds. There are no invented delivery deadlines (`on_time_rate` is unmeasured).
+Greedy pickup distance, energy-weighted whole-trip bids and batch-wide trip-time
+matching make different proposals, but these three seeds do not establish a
+universal winner. A larger fleet finishes **fewer** tasks in this grid while
+producing more separation alerts: shared-site congestion and interruptions are
+important, not just allocation cost. Lower completion-only latency can also
+reflect which orders finish; it is not proof of better service.
+
+The fixed default seed 42 is a separate demo, completing 18/20 parcel orders
+with eight aircraft. Do not generalize that example to arbitrary seeds or
+assume adding aircraft monotonically improves throughput. Run more seeds and
+inspect unfinished orders before drawing conclusions. See the
+[experiment guide](experiments.md) for raw CSV/Markdown outputs and viewer links.
 
 ## Writing your own allocator
 

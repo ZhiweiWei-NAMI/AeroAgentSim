@@ -34,9 +34,21 @@ layer proposals. A duplicate resolution request is rejected rather than
 replacing the executing request: the original chain retains its physical
 separation receipt. Landed pairs on site aprons are excluded; hovering aircraft
 at cruise height are still monitored. Transit routes retain assigned altitude
-layers rather than immediately descending into the same conflict. Rerouting
-currently applies to active missions; an idle aircraft has no destination
-from which to construct an evacuation route.
+layers rather than immediately descending into the same conflict.
+
+When a zone activates around an active flight, its owner can prepend a bounded
+emergency exit and then use the configured planner to reach the original goal.
+The first waypoint must be outside **all** start-containing no-fly boxes. Only
+the unavoidable first straight exit prefix is exempted; other boxes and every
+later segment retain the normal inclusive crossing guard. Zones are never
+silently deactivated for planning. A forbidden destination or exhausted bounded
+search retains a stopped flight and its goal for retry, without false pickup or
+completion; this is not a complete arbitrary-3D escape algorithm.
+
+Goal-less idle evacuation remains unimplemented. Already charging and
+weather-held aircraft retain their existing owner-controlled movement gates;
+the rule does not invent a charging-stop handshake or a certified emergency
+priority policy.
 
 The behaviour engine alone owns the weather hold, battery recall and class
 limit facts. Energy owns SOC and charging; tasks own assignments and route

@@ -17,6 +17,9 @@ Unreleased authored task slots are capacity, not created orders. Multi-bay
 vertiports have four bays; parcel pickup does not use the passenger pad queue.
 Battery, airspace and wind policy is editable in [the shared rules](../../../docs/guides/lowalt-rules.md).
 
-The measured default completes 13 of 20 created orders by 300 s; the rest
-remain pending or in flight. Repeated airborne separation interruptions still
-limit completion. These are unfinished orders, not reported task failures.
+At the default seed 42, the shipped `hold_and_go` resolver completes 18 of 20
+created orders by 300 s, versus 13 with altitude layers at the same demand and
+horizon. Two orders remain unfinished, not reported as failures. This is a worked
+example, not a guarantee: the matched three-seed experiment found that eight
+aircraft completed fewer orders than four under heavier shared-site congestion.
+See [the measured comparison](../../../docs/guides/algorithms.md#comparing-allocators).

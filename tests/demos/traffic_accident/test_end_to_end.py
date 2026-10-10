@@ -11,9 +11,12 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
+import yaml
+from aerokernel import CommandRequest, Instant, Stamp
 from aerokernel.codec import decode_record
 from aerokernel.compact import expand_record
 from aerokernel.journal import iter_records, replay
+from aerokernel.state import Fact
 from aerokernel.values import thaw
 from fastapi.testclient import TestClient
 
@@ -21,11 +24,12 @@ from aeroagentsim.behaviours.evaluation import Evaluator
 from aeroagentsim.observations.artifacts import ArtifactStore
 from aeroagentsim.observations.renderer import BrowserRenderer
 from aeroagentsim.packs.traffic_accident.decisions import Decisions
+from aeroagentsim.platform import RunSession
 from aeroagentsim.platform.plugins import EngineCatalog
 from aeroagentsim.scenario import load_scenario
 from aeroagentsim.services.app import create_app
 from aeroagentsim.services.storage import RunStorage
-from tests.demos.conftest import SCENARIO
+from tests.demos.conftest import SCENARIO, document
 
 # Full-scene runs plus engine-free replay take minutes; marked slow so fast
 # suites can deselect them, while the final gate still collects this module.
@@ -54,7 +58,9 @@ def trace(path: Path) -> list[tuple[int, str, dict[str, Any]]]:
     return result
 
 
-def assert_chain(path: Path, *, source: str) -> None:
+def assert_chain(
+    path: Path, *, source: str, operator_activation_ns: int = 3_133_333_334
+) -> None:
     rows = trace(path)
     events: dict[str, list[dict[str, Any]]] = {}
     for _, schema, payload in rows:
@@ -74,7 +80,14 @@ def assert_chain(path: Path, *, source: str) -> None:
     )
     times = [min(ns for ns, key, _ in rows if key == schema) for schema in expected]
     assert times == sorted(times)
-    assert times[0] == (8_000_000_000 if source == "timer" else 3_133_333_334)
+    assert times[0] == (8_000_000_000 if source == "timer" else operator_activation_ns)
+    if source == "timer":
+        # Pin the original entered-edge timeline: the level trigger must not
+        # change the scheduled award, real capture, or verified upload times.
+        assert times[5] == 13_700_000_001
+        assert times[6] == 15_066_666_667
+        assert times[7] == times[8] == 49_066_666_667
+        assert times[9] == times[10] == 49_266_666_667
     bids = events["traffic.proposal.bid"]
     assert {p["actor"]["$ref"]["id"]: p["accept"] for p in bids} == {
         "uav.alpha": False,
@@ -266,3 +279,95 @@ def test_live_http_accident_runs_full_chain(tmp_path: Path) -> None:
             time.sleep(0.5)
         assert metadata["status"] == "completed", metadata
     assert_chain(tmp_path / "runs" / identity, source="operator")
+
+
+def test_late_operator_accident_reports_when_detection_is_already_true(
+    tmp_path: Path,
+) -> None:
+    doc = document()
+    package = cast(
+        dict[str, Any], yaml.safe_load((SCENARIO / "behaviours.yaml").read_text())
+    )
+    transitions = package["chains"]["traffic.incident_report"]["transitions"]
+    schedule = next(t for t in transitions if t["id"] == "schedule")
+    # Only defer the automatic accident; keep real motion, decisions, capture
+    # and upload owners. The operator is now the sole activation source.
+    schedule["actions"][0]["duration_ns"] = 120_000_000_000
+    doc["behaviours"] = [package]
+    doc["ingress_streams"][0]["initial_watermark_ns"] = 0
+    scenario = load_scenario(doc, base=SCENARIO)
+    refs = {ref.id: ref for ref in scenario.manifest.entities}
+    path = tmp_path / "late-operator"
+    with RunSession(scenario, path) as session:
+        session.start()
+        session.advance_watermark(29_000_000_000, stream_id="operator")
+        view = session.run_until(29_000_000_000)
+
+        def value(identity: str, field: str) -> Any:
+            fact = view.field((refs[identity], field), view.instant)
+            assert isinstance(fact, Fact)
+            return thaw(fact.value)
+
+        assert value("incident.01", "traffic.incident.active") is False
+        # All physical detection conditions were satisfied before injection.
+        for identity in ("vehicle.reporter", "vehicle.incident.a", "vehicle.incident.b"):
+            assert value(identity, "traffic.road.speed_mps") == 0.0
+        radius = package["predicates"]["traffic.p.detected"]["parameters"][
+            "detect_radius_m"
+        ]
+        assert math.dist(
+            value("vehicle.reporter", "traffic.road.position_enu_m"),
+            value("vehicle.incident.a", "traffic.road.position_enu_m"),
+        ) <= radius
+        receipt = session.submit_live(
+            "behaviour",
+            CommandRequest(
+                "aas.runtime.inject_event",
+                "behaviour",
+                Instant(30_000_000_000),
+                {
+                    "injection_point": "accident",
+                    "payload": {
+                        "incident": {"$ref": refs["incident.01"].to_data()},
+                        "reason": "late operator regression",
+                    },
+                },
+            ),
+            Stamp("canonical", 30_000_000_000, 1, "canonical"),
+            stream_id="operator",
+        )
+        assert receipt.disposition == "accepted"
+        session.advance_watermark(scenario.until_ns, stream_id="operator")
+        session.run()
+
+    rows = trace(path)
+    report_transitions = [
+        payload
+        for _, schema, payload in rows
+        if schema == "aas.behaviour.transitioned"
+        and payload["templateId"] == "traffic.incident_report"
+        and payload["op"] == "assert"
+        and payload["transitionId"] is not None
+    ]
+    assert [p["transitionId"] for p in report_transitions] == [
+        "schedule",
+        "inject",
+        "detect",
+        "report",
+    ]
+    detect = report_transitions[2]
+    assert detect["state"] == "reporting"
+    evaluation = detect["trigger"]["evaluation"]
+    known = [
+        payload
+        for _, schema, payload in rows
+        if schema == "aas.behaviour.predicate_evaluated"
+        and payload["contextId"] == evaluation["contextId"]
+        and payload["op"] == "assert"
+        and payload["status"] == "known"
+    ]
+    # The first committed evaluation at staging is already true, not a new
+    # false-to-true edge. Requiring entered leaves this real chain staged.
+    assert known[0]["value"] is True
+    assert evaluation == known[0]
+    assert_chain(path, source="operator", operator_activation_ns=30_133_333_334)

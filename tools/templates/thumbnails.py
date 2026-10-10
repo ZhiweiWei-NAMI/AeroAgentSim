@@ -246,10 +246,24 @@ def capture_png(request: CaptureRequest, browser: Path | None) -> bytes:
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
-            if self.path not in assets:
+            from urllib.parse import unquote, urlsplit
+
+            name = unquote(urlsplit(self.path).path)
+            if name in assets:
+                data, mime = assets[name]
+            elif name.startswith("/addons/"):
+                # The shared camera imports GLTFLoader even for the lite scene.
+                # Serve its relative addon imports, with the same boundary as
+                # the production camera server; never expose arbitrary files.
+                root = (modules / "three/examples/jsm").resolve()
+                path = (root / name[8:]).resolve()
+                if not path.is_relative_to(root) or not path.is_file():
+                    self.send_error(404)
+                    return
+                data, mime = path.read_bytes(), "text/javascript"
+            else:
                 self.send_error(404)
                 return
-            data, mime = assets[self.path]
             self.send_response(200)
             self.send_header("Content-Type", mime)
             self.send_header("Content-Length", str(len(data)))

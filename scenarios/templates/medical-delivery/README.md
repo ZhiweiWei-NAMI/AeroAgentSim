@@ -1,13 +1,13 @@
 # Urgent medical delivery
 
-A beginner template: a couple of drones carry routine parcels, and when an
+A beginner template: six drones carry routine parcels, and when an
 urgent medical request appears they pause the parcel and fly the medicine
 first. One shared simulated world, one clock, 300 simulated seconds.
 
 ## What happens
 
 - Routine parcel orders arrive in small bursts at two vertiports; allocation runs every 10 s over all pending orders, so `nearest`, `auction` and `hungarian` choose differently.
-- Urgent medical tasks (priority 100) are released at 8 s, 110 s and 200 s.
+- Urgent medical tasks (priority 100) are released at 8 s, 90 s and 150 s.
 - With `medical_preemption` on, an eligible parcel flight is suspended, the
   drone flies the medical leg, then the parcel resumes.
 - The environment engine publishes `lowalt.wind`; each aircraft class has a
@@ -17,7 +17,7 @@ first. One shared simulated world, one clock, 300 simulated seconds.
 
 | Knob | Meaning | Default |
 | --- | --- | --- |
-| `fleet_size` | Number of aircraft (1–12) | 4 |
+| `fleet_size` | Number of aircraft (1–12) | 6 |
 | `order_rate` | Routine parcel orders per second | 0.06 |
 | `wind_speed` | Base wind speed in m/s (0–15) | 2.0 |
 | `allocator` | Task allocation: `nearest`, `auction`, `hungarian`, `llm` | nearest |
@@ -55,6 +55,8 @@ Routine arrivals stop at 180 s. Urgent supplies arrive at 8, 90 and 150 s;
 late routine deliveries have time to resume after preemption. Edit battery,
 separation and wind policy in [the shared rules](../../../docs/guides/lowalt-rules.md).
 
-The measured default completes 11 of 18 created orders by 300 s. Priority
-preemption works, but route and separation interruptions leave a backlog;
-uncompleted orders are not reported task failures.
+At seed 42 the six-aircraft default, using `hold_and_go`, completes 15 of 18
+created orders by 300 s. Keeping four aircraft and changing only the resolver
+improves 11/18 to 14/18; the extra two aircraft complete one further order.
+Preemption and congestion still leave a backlog. These are unfinished orders,
+not task failures, and adding aircraft is not guaranteed to improve every seed.

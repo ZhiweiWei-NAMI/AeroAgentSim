@@ -5,7 +5,7 @@ test('Configure replaceable engines and the weather field writer',async({page})=
  await segment(page,async()=>{
   await choose(page.getByRole('combobox',{name:'Engine air_motion',exact:true}),'PX4 Gazebo');
   await hold(page,1300);
-  await page.getByRole('heading',{name:'Field writers / replacement profiles'}).scrollIntoViewIfNeeded();
+  await page.getByRole('heading',{name:'Who controls each value'}).scrollIntoViewIfNeeded();
   await expect(page.locator('.guided-ownership-table')).toContainText('PX4 Gazebo');await hold(page,1600);
  },'Choose PX4/Gazebo for flight and check which fields it controls');
  await segment(page,async()=>{
@@ -18,7 +18,7 @@ test('Configure replaceable engines and the weather field writer',async({page})=
   await fill(page.getByLabel('Weather profiles.wind.region.oo:digital_twin.wind.horizontalVelocity.mode',{exact:true}),'windy');
   await fill(page.getByLabel('Weather profiles.wind.region.oo:digital_twin.wind.horizontalVelocity.value[0][0]',{exact:true}),'3');
   await hold(page,1800);
-  await page.getByRole('heading',{name:'Field writers / replacement profiles'}).scrollIntoViewIfNeeded();await hold(page,1700);
+  await page.getByRole('heading',{name:'Who controls each value'}).scrollIntoViewIfNeeded();await hold(page,1700);
  },'Set wind to 3 m/s · see which plugin updates each field');
  // These are draft profile selections; launching native engines requires their config and validation.
 });

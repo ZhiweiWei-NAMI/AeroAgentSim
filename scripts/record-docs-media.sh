@@ -10,6 +10,7 @@ SKIP_BUILD=0
 SKIP_GIFS=0
 REPLAY_SOURCE=""
 REUSE_CONTEXT=""
+FLOW_FILTER=""
 MEDIA_ARGS=(--trim 00-overview=0.8:30 --trim 04-aerograph=0.8:30)
 while [ "$#" -gt 0 ]; do
  case "$1" in
@@ -20,6 +21,7 @@ while [ "$#" -gt 0 ]; do
   --work-dir) WORK_DIR="$2"; shift;;
   --python) PYTHON="$2"; shift;;
   --reuse-context) REUSE_CONTEXT="$2"; shift;;
+   --flows) FLOW_FILTER="$2"; shift;;
   --replay-source) REPLAY_SOURCE="$2"; shift;;
   --speed|--trim) MEDIA_ARGS+=("$1" "$2"); shift;;
   *) echo "Unknown argument: $1" >&2; exit 2;;
@@ -129,8 +131,14 @@ PYTHONPATH=aerokernel:src "$PYTHON" tools/docs/prepare_recording.py --base-url "
 else
  [ "$REUSE_CONTEXT" = "$AEROAGENTSIM_DOCS_CONTEXT" ] || cp "$REUSE_CONTEXT" "$AEROAGENTSIM_DOCS_CONTEXT"
 fi
-rm -f "$AEROAGENTSIM_DOCS_VIDEO_DIR/recordings.json"
-(cd frontend && npx playwright test --config playwright.flows.config.ts)
+FLOW_ARGS=()
+if [ -n "$FLOW_FILTER" ]; then
+ FLOW_ARGS+=("$FLOW_FILTER")
+ echo "Re-recording matching flows; preserving other successful recordings: $FLOW_FILTER"
+else
+ rm -f "$AEROAGENTSIM_DOCS_VIDEO_DIR/recordings.json"
+fi
+(cd frontend && npx playwright test --config playwright.flows.config.ts "${FLOW_ARGS[@]}")
 if [ "$SKIP_GIFS" -eq 1 ]; then
  echo "Skipping GIF conversion (--skip-gifs); videos remain in $AEROAGENTSIM_DOCS_VIDEO_DIR"
 else

@@ -75,3 +75,4 @@ kpis:
 - separation_conflicts
 - medical_mean_task_latency_s
 - medical_p95_task_latency_s
+thumbnail: thumbnail.png

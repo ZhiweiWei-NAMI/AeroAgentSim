@@ -50,7 +50,7 @@ Field ownership follows the shared kernel contract:
 | Traffic UAV pose, velocity and energy | `air_motion` |
 | Road position, velocity and occupancy | `road_motion` |
 | Lowalt task state, payload, site configuration/open state; static zone geometry | `tasks` |
-| Incident zone geometry/activation, membership, conflict distances and measured wind | `airspace` |
+| Zone IDs, incident zone geometry/activation, membership, conflict distances and measured wind | `airspace` |
 | Lowalt SOC, charging, consumed energy, distance and available motion energy | `energy` |
 | Shared `lowalt.wind` | `environment` |
 | Traffic incident/task/bid/report state, operator event admission, `lowalt.weather_held`, `lowalt.returning_to_charge`, `lowalt.wind_limit_mps` | `behaviour` |

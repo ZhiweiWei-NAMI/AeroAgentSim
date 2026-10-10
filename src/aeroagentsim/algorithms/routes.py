@@ -11,11 +11,12 @@ built-in ``CorridorAstar``.
 from __future__ import annotations
 
 import math
+from itertools import product
 from typing import Any, Sequence
 
 from aeroagentsim.algorithms.builtins import CorridorAstar
 from aeroagentsim.algorithms.protocols import PathPlanning, Point, Snapshot
-from aeroagentsim.packs.common import finite
+from aeroagentsim.packs.common import distance, finite
 from aeroagentsim.packs.geometry import segment_hits_box
 
 
@@ -39,6 +40,122 @@ def cruise_plan(
             points.extend(planner.plan(snapshot, prior, target))
         prior = target
     return tuple(points)
+
+
+class NoFlyRouteUnavailable(ValueError):
+    """A forbidden destination or bounded egress search requires safe waiting."""
+
+
+def containing_no_fly(snapshot: Snapshot, point: Point) -> tuple[str, ...]:
+    return tuple(
+        z.id
+        for z in snapshot.zones
+        if z.active
+        and z.kind == "no_fly"
+        and all(z.lower[i] <= point[i] <= z.upper[i] for i in range(3))
+    )
+
+
+def route_avoids_no_fly(
+    snapshot: Snapshot,
+    start: Point,
+    points: tuple[Point, ...],
+    *,
+    initial_exit: bool = False,
+) -> bool:
+    """Permit only a straight first exit from boxes containing this start.
+
+    A convex box cannot be re-entered on that straight segment. Its endpoint
+    must be outside EVERY start-containing box; all later segments and all
+    initially noncontaining boxes retain the normal inclusive crossing guard.
+    """
+    containing = set(containing_no_fly(snapshot, start)) if initial_exit else set()
+    exit_ok = bool(points) and not containing_no_fly(snapshot, points[0])
+    return not any(
+        z.active
+        and z.kind == "no_fly"
+        and segment_hits_box(a, b, z.lower, z.upper)
+        and not (index == 0 and exit_ok and z.id in containing)
+        for index, (a, b) in enumerate(zip((start,) + points, points))
+        for z in snapshot.zones
+    )
+
+
+def plan_with_egress(
+    planner: PathPlanning,
+    snapshot: Snapshot,
+    start: Point,
+    goal: Point,
+    altitude: float | None = None,
+    clearance_m: float = 1.0,
+) -> tuple[Point, ...]:
+    """Plan unchanged outside starts; prepend one bounded emergency exit inside.
+
+    The original planner operates on the original snapshot from a safe exit,
+    not on globally deactivated zones. No route is promised for every possible
+    obstacle arrangement: exhausted candidates explicitly request safe waiting.
+    """
+    if containing_no_fly(snapshot, goal):
+        raise NoFlyRouteUnavailable("destination is inside an active no-fly zone")
+
+    def onward(point: Point) -> tuple[Point, ...]:
+        return (
+            planner.plan(snapshot, point, goal)
+            if altitude is None
+            else cruise_plan(planner, snapshot, point, goal, altitude)
+        )
+
+    containing = set(containing_no_fly(snapshot, start))
+    if not containing:
+        points = onward(start)
+        if not route_avoids_no_fly(snapshot, start, points):
+            raise NoFlyRouteUnavailable("path proposal crosses an active no-fly zone")
+        return points
+    clearance = finite(clearance_m, "egress clearance", 1e-6)
+    boxes = tuple(z for z in snapshot.zones if z.id in containing)
+    lower = tuple(min(z.lower[i] for z in boxes) - clearance for i in range(3))
+    upper = tuple(max(z.upper[i] for z in boxes) + clearance for i in range(3))
+    height = max(start[2], altitude or start[2])
+    above = (start[0], start[1], max(upper[2], height))
+    candidates: set[Point] = {above}
+    for axis in range(3):
+        for edge in (lower[axis], upper[axis]):
+            point = list(start)
+            point[2] = height
+            point[axis] = edge
+            candidates.add((point[0], point[1], point[2]))
+    candidates.update(
+        (x, y, z)
+        for x, y, z in product(
+            (lower[0], upper[0]), (lower[1], upper[1]), (lower[2], upper[2])
+        )
+    )
+    for exit_point in sorted(
+        candidates,
+        key=lambda p: (
+            0 if altitude is not None and p == above else 1,
+            distance(start, p),
+            p,
+        ),
+    ):
+        # With a roof cruise configured, do not choose a downward face/corner
+        # below that clearance merely because it is a shorter emergency leg.
+        if exit_point[2] < (
+            height if altitude is not None else 0.0
+        ) or not route_avoids_no_fly(snapshot, start, (exit_point,), initial_exit=True):
+            continue
+        try:
+            rest = onward(exit_point)
+        except ValueError:
+            continue
+        points = (exit_point,) + rest
+        if (
+            rest
+            and rest[-1] == goal
+            and route_avoids_no_fly(snapshot, start, points, initial_exit=True)
+        ):
+            return points
+    raise NoFlyRouteUnavailable("no safe route from bounded no-fly egress candidates")
 
 
 def _box(value: Sequence[float], name: str) -> tuple[float, float]:

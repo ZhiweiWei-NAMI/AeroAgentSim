@@ -101,9 +101,10 @@ def normalize_wire(
         t["id"] for t in registry.get("types", []) if isinstance(t, dict) and "id" in t
     }
     source_types = {} if snapshot_bound else catalog.sources().types
-    for entity in entities:
+
+    def restore_facts(entity: Any) -> None:
         if not isinstance(entity, dict):
-            continue
+            return
         typ = entity.get("type")
         if isinstance(typ, str) and typ not in custom and typ in source_types:
             detail = catalog.type_detail(typ)
@@ -116,6 +117,16 @@ def normalize_wire(
                 key: _value(value, fields[key], definitions) if key in fields else value
                 for key, value in facts.items()
             }
+
+    for entity in entities:
+        restore_facts(entity)
+    # Generator prototypes are expanded into real entities by the loader. Their
+    # facts need the same declared-type schemas as explicit entities, including
+    # inherited source fields when no explicit instance imported that type.
+    generators = result.get("generators", {})
+    if isinstance(generators, dict):
+        for prototype in generators.values():
+            restore_facts(prototype)
     messages = {
         item["id"]: item["schema"]
         for item in registry.get("messages", [])
