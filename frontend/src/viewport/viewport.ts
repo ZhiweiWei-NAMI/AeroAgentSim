@@ -7,6 +7,7 @@ import { Assets, disposeObject, type AssetOptions } from './assets';
 import { StaticOcclusion } from './occlusion';
 import { GpuTimer } from './gpu-timer';
 import { EntityLayer } from './entities';
+import { parseModelCatalog } from './model-catalog';
 import { SemanticLayer } from './semantic-layer';
 import {activeZones,semanticSites} from './semantic';
 import {ProceduralDistrict} from '../scene/procedural-district';
@@ -82,11 +83,13 @@ export class Viewport {
     this.container.dataset.gpu = info ? context.getParameter(info.UNMASKED_RENDERER_WEBGL) : context.getParameter(context.RENDERER);
     this.overlay.className = 'viewport-labels'; this.container.append(this.overlay);
     this.camera.position.set(140, 95, 170);
+
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.target.set(0, 5, 0); this.controls.enableDamping = true;
     this.controls.maxPolarAngle = Math.PI * 0.485; this.controls.minDistance = 3; this.controls.maxDistance = 9000;
     this.lighting = setupScene(this.renderer, this.scene); this.assets = new Assets(this.renderer, options);
     this.layer = new EntityLayer(header, this.assets, this.overlay, key => options.onSelect?.(key), error => options.onError?.(error), this.status);
+    try{this.layer.setCatalog(parseModelCatalog(header.modelCatalog));}catch(error){this.status(`Model catalog unavailable: ${String(error)} · stand-ins active`);}
     if(options.semantic!==undefined)this.layer.semantic=options.semantic;
     if(options.showAllLabels!==undefined)this.layer.showAllLabels=options.showAllLabels;
     this.scene.add(this.layer.root, this.staticRoot);

@@ -449,6 +449,10 @@ def create_app(
                 visual = binding.get("visual", {})
                 if str(visual.get("asset", "")).startswith("/v1/studio/demo-assets/"):
                     visual["asset"] = str(request.base_url).rstrip("/") + visual["asset"]
+            for model in result.get("modelCatalog", {}).values():
+                for key in ("url", "lodUrl"):
+                    if key in model:
+                        model[key] = str(request.base_url).rstrip("/") + model[key]
         return result
 
     @app.get("/v1/runs/{run_id}/commits")

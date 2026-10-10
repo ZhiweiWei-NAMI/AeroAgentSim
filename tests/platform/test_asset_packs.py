@@ -113,3 +113,69 @@ def test_city_feed_advertises_quality_and_installed_packs(tmp_path: Path, monkey
         assert detailed["assetPacks"][0]["id"] == "huangpu-city"
         assert "hint" not in detailed["scene"]
         assert client.get("/v1/studio/demo-assets/scene.json").status_code == 200
+
+
+def _glb(path: Path, extras: dict[str, Any] | None = None) -> None:
+    import struct
+
+    document = {"asset": {"version": "2.0", "generator": "test", **({"extras": extras} if extras else {})}}
+    body = json.dumps(document).encode()
+    body += b" " * (-len(body) % 4)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"glTF" + struct.pack("<II", 2, 20 + len(body)) + struct.pack("<I", len(body)) + b"JSON" + body)
+
+
+def _catalog_pack(tmp_path: Path) -> Path:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "scene.json").write_text(json.dumps({"buildings": [], "roads": {}}))
+    models = tmp_path / "models"
+    _glb(models / "a/car.glb")
+    _glb(models / "a/drone.glb", {"source_archive": "drone.zip"})
+    catalog = tmp_path / "catalog.json"
+    row = {"forward": "+z", "up": "+y", "size_m": [4.0, 1.8, 1.5]}
+    catalog.write_text(json.dumps({
+        "sedan": {"kind": "road_vehicle", "source": "a/car.glb", "path": "models/vehicles/car.glb", **row},
+        "x500": {"kind": "uav", "source": "a/drone.glb", "path": "models/uav/drone.glb",
+                 "lod_source": "a/drone.glb", "lod": "models/uav/drone-lod.glb", **row},
+    }))
+    archive = tmp_path / "city11.zip"
+    build_pack(source, archive, catalog=catalog, model_source=models)
+    return archive
+
+
+def test_v11_pack_carries_model_catalog_and_provenance(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import zipfile
+
+    monkeypatch.setenv("AEROAGENTSIM_ASSETS_DIR", str(tmp_path / "installed"))
+    monkeypatch.delenv("AEROAGENTSIM_TRAFFIC_ASSET_ROOT", raising=False)
+    assert assets.model_catalog() == {}
+    archive = _catalog_pack(tmp_path)
+    with zipfile.ZipFile(archive) as z:
+        notice = z.read("NOTICE.txt").decode()
+    assert "drone.zip" in notice and "to be stated by the project owner" in notice
+    assets.install(archive)
+    catalog = assets.model_catalog()
+    assert catalog["sedan"]["url"] == "/v1/studio/demo-assets/models/vehicles/car.glb"
+    assert catalog["x500"]["lodUrl"].endswith("models/uav/drone-lod.glb")
+    assert catalog["x500"]["sizeM"] == [4.0, 1.8, 1.5]
+    assert "source" not in assets.selected()["models"]["sedan"]
+
+
+def test_v10_pack_without_catalog_still_installs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AEROAGENTSIM_ASSETS_DIR", str(tmp_path / "installed"))
+    monkeypatch.delenv("AEROAGENTSIM_TRAFFIC_ASSET_ROOT", raising=False)
+    assets.install(pack(tmp_path))
+    assert assets.model_catalog() == {}
+
+
+def test_bad_catalog_is_rejected(tmp_path: Path) -> None:
+    names = {"assets/m.glb"}
+    good = {"kind": "uav", "path": "assets/m.glb", "size_m": [1, 1, 1], "forward": "+z", "up": "+y"}
+    assets._model_catalog({"ok": good}, names)
+    for bad in (
+        {**good, "kind": "boat"}, {**good, "path": "assets/missing.glb"}, {**good, "size_m": [1, 0, 1]},
+        {**good, "up": "+z"}, {**good, "forward": "z"}, {**good, "lod": "assets/nope.glb"},
+    ):
+        with pytest.raises(ValueError):
+            assets._model_catalog({"x": bad}, names)

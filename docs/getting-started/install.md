@@ -68,7 +68,7 @@ The console and simulation camera automatically use the installed city on their
 next load. The ZIP is kept outside the repository. Offline installation is supported:
 
 ```bash
-aeroagentsim assets install /path/to/huangpu-city-v1.zip
+aeroagentsim assets install /path/to/huangpu-city-v1.1.zip
 aeroagentsim assets remove huangpu-city
 ```
 

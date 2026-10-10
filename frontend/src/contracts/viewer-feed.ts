@@ -83,7 +83,8 @@ export interface PresentationBinding {
   positionField: string;
   orientationField?: string;
   frame: "enu" | "ned" | "wgs84";
-  visual: { kind: "model" | "marker" | "label"; asset?: string; scale?: number; color?: string };
+  /** `catalog` asks the viewer to pick a display model of this kind from `RunHeader.modelCatalog`, when installed. */
+  visual: { kind: "model" | "marker" | "label"; asset?: string; scale?: number; color?: string; catalog?: "road_vehicle" | "uav" };
 }
 
 export interface RunHeader {
@@ -97,6 +98,10 @@ export interface RunHeader {
   types: TypeInfo[];
   fields: FieldInfo[];
   presentation: PresentationBinding[];
+  /** Authored entity metadata (only what the scenario declared). */
+  entities?: Array<{ id: string; type: string; label?: string; business?: string; vehicle_class?: string }>;
+  /** Display models of the installed asset pack (v1.1+); absent without a pack. Parsed by viewport/model-catalog. */
+  modelCatalog?: unknown;
   start: Instant;
   end?: Instant;
   runtimeRegistry?: unknown;
