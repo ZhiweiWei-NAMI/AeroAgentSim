@@ -46,6 +46,7 @@ it.each(['zh-CN', 'en-US'] as const)('uses bilingual controls and toasts with pe
   const request = vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
     if (path.endsWith('/configuration')) return configuration();
     if (path.includes('/commits?')) return { status, commits: [], next: 8 };
+    if (path.endsWith('/inputs')) return {status,watermarks:{operator:0},pause_requested:status==='paused'};
     // Source progress is independent of pause/resume/stop and may tick during
     // slow UI queries. Acknowledge it instead of treating it as a control.
     if (path === '/v1/runs/service%2Frun%20id/watermark') {
@@ -90,6 +91,7 @@ it.each(['completed', 'faulted'])('disables controls and operator watermarks for
   const request = vi.spyOn(api, 'request').mockImplementation(async path => {
     if (path.endsWith('/configuration')) return configuration();
     if (path.includes('/commits?')) return { status, commits: [], next: 8 };
+    if (path.endsWith('/inputs')) return {status,watermarks:{operator:0},pause_requested:status==='paused'};
     throw Error(`Terminal run must not be mutated: ${path}`);
   });
   await act(async () => { mount(api, runStore(), 'zh-CN', { onInjections, onRequestInject }); });
@@ -111,6 +113,7 @@ it('fails closed before initial status and locks duplicate clicks and Space unti
   let firstStatus = true;
   const request = vi.spyOn(api, 'request').mockImplementation(async path => {
     if (path.endsWith('/configuration')) return configuration();
+    if (path.endsWith('/inputs')) return {status,watermarks:{operator:0},pause_requested:status==='paused'};
     if (path.includes('/commits?')) { if (firstStatus) { firstStatus = false; return initial; } return { status, commits: [], next: 8 }; }
     if (path.endsWith('/pause')) return pause;
     throw Error(`Unexpected request ${path}`);
@@ -137,6 +140,7 @@ it('rechecks status before a mutation and does not POST if the run completed aft
   const request = vi.spyOn(api, 'request').mockImplementation(async path => {
     if (path.endsWith('/configuration')) return configuration();
     if (path.includes('/commits?')) return { status, commits: [], next: 8 };
+    if (path.endsWith('/inputs')) return {status,watermarks:{operator:0},pause_requested:status==='paused'};
     throw Error(`Stale run must not be mutated: ${path}`);
   });
   mount(api, runStore());
@@ -150,7 +154,7 @@ it('rechecks status before a mutation and does not POST if the run completed aft
 
 it.each([{ mode: 'replay' as const, interactive: true }, { mode: 'live' as const, interactive: false }])('keeps buttons and shortcuts read-only in $mode / interactive=$interactive', async props => {
   const api = new RunsApi('http://api'), onRequestInject = vi.fn();
-  const request = vi.spyOn(api, 'request').mockImplementation(async path => path.endsWith('/configuration') ? configuration() : { status: 'running', commits: [], next: 8 });
+  const request = vi.spyOn(api, 'request').mockImplementation(async path => path.endsWith('/configuration') ? configuration() : path.endsWith('/inputs') ? {status:'running',watermarks:{operator:0},pause_requested:false} : { status: 'running', commits: [], next: 8 });
   await act(async () => { mount(api, runStore(), 'en-US', { ...props, onRequestInject }); });
   ['Pause simulation', 'Resume simulation', 'Stop simulation', 'Submit typed ingress'].forEach(name => expect(screen.getByRole('button', { name })).toBeDisabled());
   fireEvent.keyDown(document, { key: ' ' }); fireEvent.keyDown(document, { key: 'i' });
@@ -166,6 +170,7 @@ it.each(['zh-CN', 'en-US'] as const)('localizes event notices and admission expl
   vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
     if (path.endsWith('/configuration')) return configuration();
     if (path.includes('/commits?')) return { status: 'running', commits: [], next: 8 };
+    if (path.endsWith('/inputs')) return {status:'running',watermarks:{operator:0},pause_requested:false};
     if (path.endsWith('/ingress')) { bodies.push(JSON.parse(String(options?.body))); return receipt; }
     if (path.endsWith('/watermark')) return { watermark_ns: JSON.parse(String(options?.body)).watermark_ns };
     throw Error(`Unexpected request ${path}`);
@@ -191,6 +196,7 @@ it('explains missing operator timing, localizes transport validation and keeps g
   vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
     if (path.endsWith('/configuration')) return { scenario: { id: 'external', behaviours: [{ document: { injection_points: [point] } }] } };
     if (path.includes('/commits?')) return { status: 'running', commits: [], next: 8 };
+    if (path.endsWith('/inputs')) return {status:'running',watermarks:{operator:0},pause_requested:false};
     if (path.endsWith('/ingress')) { bodies.push(String(options?.body)); return { disposition: 'accepted' }; }
     throw Error(`Unexpected request ${path}`);
   });

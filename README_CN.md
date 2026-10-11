@@ -1,33 +1,119 @@
-# AeroAgentSim
+<p align="center"><img src="docs/media/logo.png" alt="AeroAgentSim" width="160"></p>
 
-AeroAgentSim 是面向科研实验的通用仿真平台：用 AeroGraph 类型、状态和关系描述场景，由一个共享离散事件内核协调时间、外部输入、状态更新与事件链。可替换领域插件负责运动、交通、网络和天气；LangGraph 插件支持模型驱动的智能体决策。控制台提供场景配置、运行控制及时间同步的关系图和三维视图。
+<p align="center"><b>模拟一座城市的低空业务，调整规则与算法，观察变化如何发生。</b></p>
 
-默认交通事故示例使用已提交的注册表快照和 OSM 简化城市，不需要访问 AeroGraph 仓库或额外模型包。默认决策是明确标注的脚本回复；真实模型和原生仿真器需要单独配置。
+<p align="center">
+  <a href="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/actions/workflows/tests.yml"><img alt="测试" src="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/actions/workflows/tests.yml/badge.svg"></a>
+  <a href="CHANGELOG.md"><img alt="版本 2.1.0" src="https://img.shields.io/badge/release-2.1.0-brightgreen.svg"></a>
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
+  <a href="LICENSE"><img alt="许可证：Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
+</p>
 
-发布版安装并运行：
 
-```bash
-python -m pip install -e ./aerokernel -e '.[server]'
-(cd frontend && npm ci && npm run build)
-aeroagentsim demo traffic-accident
-```
+<p align="center"><img src="docs/media/workbench-city.png" alt="AeroAgentSim operational workbench with graph, real Huangpu city and contextual inspector" width="1100"></p>
 
-浏览器依赖和系统环境见英文安装指南。
+## 三条命令开始
 
-## 日常低空实验（2.1）
-
-在 **Home → Choose your scenario** 选择快递配送、医疗配送、电力巡检、农田喷洒、空中出租车、安防巡逻或混合城市日。**Run now** 运行默认配置，**Customize** 调节无人机数量、任务分配算法等参数，**Open in Studio** 编辑真实场景。
-
-简单视图优先显示城市、可读事件和实际 KPI；专家视图补充同步关系图与状态。七个日常模板共用电量储备、禁飞区、间隔和风速规则。在 Studio 修改谓词参数，再在 Inspect 点击事件旁的 **Why?**，查看“读取的状态 → 谓词 → 事件链 → 共享状态变化 → 命令回执”。
+需要 Python 3.10+、Node.js 22 和 npm。包裹配送场景无需 GPU、Docker 或账户。
 
 ```bash
-aeroagentsim run-template parcel-delivery --set allocator=auction --headless
-aeroagentsim experiment parcel-delivery --vary allocator=nearest,auction,hungarian --seeds 3 --jobs 2
+git clone https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git && cd AeroAgentSim
+python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./aerokernel -e '.[server]'
+(cd frontend && npm ci && npm run build) && aeroagentsim run-template parcel-delivery
 ```
 
-也可在场景库点击 **Compare changes · Experiment** 发起匹配随机种子的对比实验。[规则编辑](docs/guides/lowalt-rules.md) · [算法实验](docs/guides/experiments.md)
+最后一条命令打开可编辑的 Studio 工作区，依次选择 **验证并运行 → 验证 → 立即运行** 即可启动。加上 `--headless` 可直接在终端运行。`aeroagentsim templates` 列出全部九个场景。[安装指南](docs/getting-started/install.md) 包含 Windows 设置，以及交通事故和城市综合场景拍摄所需的 Chromium 配置。[English](README.md)
 
-- [英文文档首页](docs/README.md)
-- [安装](docs/getting-started/install.md)与[快速入门](docs/getting-started/quickstart.md)
-- [交通事故实验](docs/examples/traffic-accident.md)
-- [架构](docs/concepts/architecture.md)与[开发贡献](CONTRIBUTING.md)
+## 选择一个场景
+
+九个可直接运行的场景，都有可调参数和用于衡量结果的指标（KPI）。点击缩略图查看场景说明。
+
+<table>
+  <tr>
+    <td align="center" width="25%"><a href="scenarios/templates/parcel-delivery/README.md"><img src="scenarios/templates/parcel-delivery/thumbnail.png" alt="城市包裹配送"><br><b>包裹配送</b></a><br><code>parcel-delivery</code><br>从两座垂直起降场调度机队，为街区内的客户配送包裹。</td>
+    <td align="center" width="25%"><a href="scenarios/templates/medical-delivery/README.md"><img src="scenarios/templates/medical-delivery/thumbnail.png" alt="紧急医疗配送"><br><b>医疗配送</b></a><br><code>medical-delivery</code><br>暂停常规配送，优先运送医院的紧急物资。</td>
+    <td align="center" width="25%"><a href="scenarios/templates/powerline-inspection/README.md"><img src="scenarios/templates/powerline-inspection/thumbnail.png" alt="电力线路巡检"><br><b>电力巡检</b></a><br><code>powerline-inspection</code><br>沿巡检航线飞行，记录观测结果。</td>
+    <td align="center" width="25%"><a href="scenarios/templates/crop-spraying/README.md"><img src="scenarios/templates/crop-spraying/thumbnail.png" alt="农田喷洒"><br><b>农田喷洒</b></a><br><code>crop-spraying</code><br>逐行喷洒农田、更换电池，并在大风时暂停作业。</td>
+  </tr>
+  <tr>
+    <td align="center"><a href="scenarios/templates/air-taxi/README.md"><img src="scenarios/templates/air-taxi/thumbnail.png" alt="空中出租车"><br><b>空中出租车</b></a><br><code>air-taxi</code><br>在三座垂直起降场之间运送乘客。</td>
+    <td align="center"><a href="scenarios/templates/security-patrol/README.md"><img src="scenarios/templates/security-patrol/thumbnail.png" alt="安防巡逻"><br><b>安防巡逻</b></a><br><code>security-patrol</code><br>巡查街区，响应操作员上报的事件。</td>
+    <td align="center"><a href="docs/examples/traffic-accident.md"><img src="scenarios/templates/traffic-accident/thumbnail.png" alt="交通事故响应"><br><b>交通事故响应</b></a><br><code>traffic-accident</code><br>评估事故、选派响应机，拍摄并上传仿真相机图像。</td>
+    <td align="center"><a href="docs/examples/city-day.md"><img src="scenarios/templates/city-day/thumbnail.png" alt="共享城市的一天"><br><b>共享城市的一天</b></a><br><code>city-day</code><br>配送、巡检、空中出租车与事故响应相互影响。</td>
+  </tr>
+
+<tr><td align="center"><a href="scenarios/templates/food-delivery/README.md"><img src="scenarios/templates/food-delivery/thumbnail.png" alt="Restaurant meal delivery"><br><b>餐厅外卖配送</b></a><br><code>food-delivery</code><br>备餐、取餐、配送、延误干预与准时送达统计。</td></tr>
+</table>
+
+用 `aeroagentsim run-template <id>` 打开任意场景。各模板分别定义可调参数，例如：`aeroagentsim run-template parcel-delivery --set fleet_size=12 --set wind_speed=8`。[模板指南](docs/guides/templates.md)
+
+## 改一条规则，看世界如何变化
+
+*当无人机电量低于预留阈值时，让它返回充电。* 电量预留、禁飞区、安全间隔和风速限制都由可编辑的谓词与事件链表达。用 `--set battery_reserve=35` 将预留电量从 20% 改为 35%，或在 Studio 中编辑谓词，再运行一次。在 **检查（Inspect）** 中，沿着记录的条件 → 事件链 → 命令 → 状态变化追查原因，同时观察三维城市中的无人机。通过回放，可以反复查看同一时刻。
+
+
+[修改低空运行规则](docs/guides/lowalt-rules.md) · [编写谓词](docs/guides/predicates.md) · [编写事件链](docs/guides/behaviours.md)
+
+## 一条命令对比算法
+
+任务分配、航线规划、冲突消解和充电策略各有独立的算法接口，也可以接入自己的 `module:Class`。下面用相同的三个随机种子对比三种内置分配算法：
+
+```bash
+aeroagentsim experiment parcel-delivery --vary allocator=nearest,auction,hungarian --seeds 3 --jobs 3 --out runs
+```
+
+| 分配算法 | 完成任务数 | 平均任务时延（秒） | 能量消耗（kJ） |
+|---|---:|---:|---:|
+| nearest | 9.7 ± 5.0 | 77.8 ± 30.9 | 229.5 ± 72.3 |
+| auction | 10.0 ± 5.0 | 71.1 ± 22.2 | 224.1 ± 66.7 |
+| hungarian | 10.0 ± 4.6 | 71.4 ± 18.5 | 225.2 ± 68.2 |
+
+实测日期为 2026-10-10，采用随项目提供的包裹配送默认配置：8 架无人机、300 秒仿真时间、随机种子 0–2，共 9 次运行。数值为 **均值 ± 样本标准差**，每格含 3 个观测值。时延只统计已完成任务；这三个种子不足以证明哪种算法普遍更优。原始表格及运行链接保存在 `runs/.experiments/<id>/` 下的 `experiment.csv` 和 `experiment.md` 中。
+
+
+[算法指南](docs/guides/algorithms.md) · [实验指南](docs/guides/experiments.md)
+
+## 多种业务，同一片天空
+
+在 **city-day** 中，包裹与医疗配送、电力巡检、空中出租车和道路事故响应共用一座城市、同一个时钟。事故关闭附近空域，配送航线随之改变；紧急物资打断包裹任务；大风使巡检暂停。事件流说明发生了什么，指标展示这些变化带来的结果。
+
+
+[城市综合场景详解](docs/examples/city-day.md)
+
+## 像塔台一样观察
+
+**自动导播（Director）** 自动跟随业务活动，**影院模式（Cinema）** 让城市画面和事件字幕占据屏幕。选中一架无人机，即可查看任务、下一站、电量和近期历程。状态说明会解释它*为什么*正在等待、绕行或返回充电；点击说明可查看记录中的原因。回放支持 0.5–8 倍速，关系图与城市画面始终使用同一条时间线。
+
+控件、模板说明和事件流均可切换 **中文 / English**。在简洁视图中，按 `D` 切换自动导播，`C` 进入影院模式，`W` 解释所选实体的最近事件，`L` 切换语言；按 `?` 查看全部快捷键。
+
+
+## 工作原理
+
+```mermaid
+flowchart LR
+    C["场景 · 规则 · 算法"] --> R["共享运行时：aerokernel"]
+    P["插件：运动 · 交通 · 网络<br/>天气 · 智能体"] <--> R
+    R --> J["记录的状态与事件"]
+    J --> V["三维城市 · 关系图 · 指标 · 回放"]
+```
+
+- **统一时钟。** 各领域插件与智能体通过同一个离散事件运行时协作。
+- **每个事实只有一个写入者。** 算法提出动作，由负责该状态的引擎执行命令并提交结果。
+- **从记录回放。** 查看已记录的状态和智能体决策，无需重新运行物理仿真、相机或模型调用。
+- **AeroGraph 类型系统。** 按类型定义实体、关系与规则；项目自带的快照无需另行安装 AeroGraph。
+
+[架构](docs/concepts/architecture.md) · [插件与原生仿真器](docs/guides/plugins.md) · [设计说明](docs/design-notes.md)
+
+## 代码在哪里
+
+[代码地图](docs/repo-map.md) 标出场景、算法、规则、服务与控制台对应的源码目录，并为研究者和贡献者提供阅读路线。
+
+---
+
+[文档](docs/README.md) · [快速开始](docs/getting-started/quickstart.md) · [命令行](docs/reference/cli.md) · [容器](docs/guides/containers.md) · [更新日志](CHANGELOG.md) · [English](README.md)
+
+欢迎贡献场景、算法或插件，详见[贡献指南](CONTRIBUTING.md)。代码采用 [Apache-2.0](LICENSE) 许可证；城市数据署名为 © OpenStreetMap contributors，采用 **ODbL 1.0** 许可（[署名说明](scenarios/demos/traffic-accident/inputs/lite-city/ATTRIBUTION.txt)）。
+
+项目已包含轻量城市。需要精细建筑与展示模型时，运行 `aeroagentsim assets fetch`，从发布标签 [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1) 安装黄浦城市资源包 1.1，然后重新加载视图。资源包附有独立的 `NOTICE.txt`，详见[资源条款与来源](ASSETS.md)。
+
+早期 AirFogSim 代码保留在 [`archive/airfogsim`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/tree/archive/airfogsim) 分支；此前发布的软件包仍可从 PyPI 获取：[1.1.1](https://pypi.org/project/aeroagentsim/1.1.1/)。

@@ -318,7 +318,7 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
         workspace_id = drafts[0]["id"] if drafts else None
     draft = store.get(workspace_id) if workspace_id is not None else None
     scenario = draft["scenario"] if draft is not None else {}
-    catalog = store.catalog_for(workspace_id)
+    catalog = store.catalog if store.ontology_root is not None else store.catalog_for(workspace_id)
     sources = None if isinstance(catalog, SnapshotCatalog) else catalog.sources()
     snapshot = catalog.search() if sources is None else None
     concepts = (

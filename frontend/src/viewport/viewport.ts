@@ -15,6 +15,7 @@ import { pipeline, PRESETS, type Quality } from './pipeline';
 import { setupScene } from './scene';
 import { scenePresentation, type ScenePresentation } from '../scene/presentation';
 import { loadSceneLayer } from '../scene/city-layer';
+import type { CityProgress } from '../scene/traffic-city';
 import { CameraDirector, type CameraMode } from '../scene/camera-director';
 import { translate } from '../i18n/translate';
 import type {DirectorTarget} from './business-director';
@@ -28,6 +29,7 @@ export interface ViewportOptions extends AssetOptions {
   onError?: (error: unknown) => void;
   onQuality?: (quality: Quality, fps?: number) => void;
   onStatus?: (status: string) => void;
+  onCityProgress?: (progress?: CityProgress) => void;
   onCameraInteraction?: () => void;
   /** Newcomer semantic overlay: friendly labels, zones and site markers. */
   semantic?: boolean;
@@ -77,6 +79,9 @@ export class Viewport {
   private lastStatus = '';
   private attribution = '';
   private hoverMarkerId?: string;
+  private cameraTransition?: { position: T.Vector3; target: T.Vector3 };
+  private lastLegend = '';
+  private cityGeometryRevision = 0;
   constructor(private container: HTMLElement, private header: RunHeader, private options: ViewportOptions = {}) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'high-performance' });
@@ -115,10 +120,11 @@ export class Viewport {
     if(options.semantic&&!presentation?.city){this.district=new ProceduralDistrict();this.scene.add(this.district.root);this.container.dataset.context='illustrative';this.setAttribution('Illustrative city · recorded actors and airspace');}
     if(presentation?.camera){this.camera.position.fromArray(presentation.camera.position);this.controls.target.fromArray(presentation.camera.target);this.authoredCamera=true;}
     if(presentation){
+      if(presentation.city)this.options.onCityProgress?.({phase:'roads',loaded:0,total:0});
       if(presentation.attribution)this.setAttribution(presentation.attribution);
       if(presentation.city?.kind==='osm2world')this.setAttribution('© OpenStreetMap contributors · ODbL · Procedural display materials');
-      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);this.occlusion.setObjects(this.staticRoot.children);this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city='loaded';container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});}},this.status)
-        .catch(error=>{if(!this.disposed){this.status(String(error));options.onError?.(error);}});
+      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;if(object.parent!==this.staticRoot)this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);if(object.name==='city'&&object.userData.geometryRevision!==undefined&&object.userData.geometryRevision!==this.cityGeometryRevision){this.cityGeometryRevision=object.userData.geometryRevision;this.occlusion.setObjects(this.staticRoot.children);}else this.occlusion.addObjects([object]);this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city=object.userData.loading?'loading':'loaded';container.dataset.cityProgress=JSON.stringify(object.userData.progress??{});this.options.onCityProgress?.(object.userData.loading?object.userData.progress:undefined);container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});}},this.status)
+        .catch(error=>{if(!this.disposed){this.options.onCityProgress?.(undefined);this.status(String(error));options.onError?.(error);}});
       if(presentation.hdri)void this.assets.hdri(presentation.hdri,this.renderer).then(environment=>{
         if(this.disposed){environment.dispose();return;}this.environment=environment;this.scene.environment=environment.texture;this.revision++;container.dataset.ibl='hdri';
       }).catch(error=>{if(!this.disposed){container.dataset.ibl='analytic-sky';this.status(`HDRI unavailable: ${String(error)} · analytic sky IBL active`);}});
@@ -128,6 +134,8 @@ export class Viewport {
     const locale = this.options.locale;
     if (message === 'Base scene · no city selected') return translate(locale, 'Base scene · no city selected');
     if (message === 'Loading city geometry…') return translate(locale, 'Loading city geometry…');
+    const progress = /^Loading city: (roads|buildings) · (\d+)\/(\d+) buildings$/.exec(message);
+    if (progress) return locale?.startsWith('zh') ? `${progress[1]==='roads'?'道路几何':'建筑模型'}加载中 · ${progress[2]}/${progress[3]} 栋` : message;
     let match = /^Loading model: (.*) · markers active$/.exec(message);
     if (match) return translate(locale, 'Loading model: {asset} · markers active', { asset: match[1] });
     match = /^Loading model: (.*) · stand-ins active$/.exec(message);
@@ -189,6 +197,7 @@ export class Viewport {
   setSelection(key?: EntityKey) { this.selected = key; this.revision++; }
   setHighlights(keys: EntityKey[]) { this.layer.setHighlights(new Set(keys.map(entityId))); this.revision++; }
   setCameraMode(mode: CameraMode) {
+    if(mode!=='orbit')this.cameraTransition=undefined;
     this.revision++; this.mode = mode; this.controls.enabled = mode === 'orbit'; this.container.dataset.camera=mode;
   }
   setDirectorTarget(target?:DirectorTarget) {
@@ -198,15 +207,20 @@ export class Viewport {
     this.container.dataset.directorEvent=target?.eventKey??'';
   }
   private cameraInteraction=()=>{
+    this.cameraTransition=undefined;
     this.setDirectorTarget(undefined);this.setCameraMode('orbit');
     this.options.onCameraInteraction?.();
   };
   /** Event coordinates are ENU; camera positions are local east/up/south. */
-  focusPosition(position: [number,number,number]) {
+  focusPosition(position: [number,number,number], radius?: number, immediate = false) {
     const target=new T.Vector3(position[0],position[2],-position[1]).sub(this.origin);
-    this.setCameraMode('orbit');this.controls.target.copy(target);
-    this.camera.position.copy(target).add(new T.Vector3(65,50,65));
-    this.camera.lookAt(target);this.authoredCamera=true;this.revision++;
+    const offset=new T.Vector3(65,65,80);
+    if(radius!==undefined){const vertical=this.camera.fov*Math.PI/360,horizontal=Math.atan(Math.tan(vertical)*this.camera.aspect);offset.setLength(radius/Math.sin(Math.min(vertical,horizontal))*1.12);}
+    const destination=target.clone().add(offset);
+    this.setCameraMode('orbit');
+    if(immediate){this.controls.target.copy(target);this.camera.position.copy(destination);this.camera.lookAt(target);this.cameraTransition=undefined;}
+    else this.cameraTransition={position:destination,target};
+    this.authoredCamera=true;this.revision++;
   }
   setQuality(quality: Quality, manual = false) {
     if(manual)this.manualQuality=true;
@@ -222,13 +236,36 @@ export class Viewport {
   render(store: FeedStore, ns: string, deltaSeconds: number, trails = true) {
     if (this.disposed) return;
     const frameStarted = performance.now();
+    if(this.cameraTransition){
+      const {position,target}=this.cameraTransition,amount=1-Math.exp(-7*Math.min(0.1,Math.max(0,deltaSeconds)));
+      this.camera.position.lerp(position,amount);this.controls.target.lerp(target,amount);this.camera.lookAt(this.controls.target);
+      if(this.camera.position.distanceToSquared(position)<0.0025&&this.controls.target.distanceToSquared(target)<0.0025){this.camera.position.copy(position);this.controls.target.copy(target);this.cameraTransition=undefined;}
+    }
     if(this.mode==='orbit')this.controls.update();
     const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.camera.position.toArray()}/${this.camera.quaternion.toArray()}/${this.controls.target.toArray()}`;
-    if(this.mode!=='cinematic'&&frameKey===this.lastFrame){this.container.dataset.idle='true';return;}
+    if(this.mode==='orbit'&&!this.cameraTransition&&frameKey===this.lastFrame){this.container.dataset.idle='true';return;}
     this.lastFrame=frameKey;this.container.dataset.idle='false';
     this.district?.update(store,this.origin);
     const chosen = this.mode === 'cinematic' ? (this.businessShot ? this.businessShot.entity : (this.options.semantic ? this.selected : this.director.choose(store,ns,deltaSeconds,this.selected))) : this.selected;
-    this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion);
+    const aimCamera=()=>{
+      if(!this.framed && this.layer.positions.size){
+        const bounds=this.district?.bounds?.clone().translate(this.origin.clone().negate())??new T.Box3().setFromPoints([...this.layer.positions.values()]),center=bounds.getCenter(new T.Vector3());
+        if(!this.authoredCamera){const span=Math.max(100,bounds.getSize(new T.Vector3()).length());this.controls.target.copy(center);this.camera.position.copy(center).add(new T.Vector3(0.7,0.55,0.9).multiplyScalar(span));}
+        this.framed=true;
+      }
+      const eventPosition=this.businessShot?.position;
+      const focus=(chosen?this.layer.positions.get(entityId(chosen)):undefined)??(eventPosition?new T.Vector3(eventPosition[0],eventPosition[2],-eventPosition[1]).sub(this.origin):undefined);
+      if(focus&&this.mode!=='orbit'){
+        let offset=this.followOffset;
+        if(this.mode==='chase'){
+          const orientation=this.layer.orientations.get(entityId(chosen!));offset=new T.Vector3(-4,2.4,5.5);if(orientation)offset.applyQuaternion(orientation);
+        }else if(this.mode==='cinematic'&&!this.options.semantic)offset=this.director.offset();
+        const delta=Math.min(0.1,Math.max(0,deltaSeconds));
+        this.camera.position.lerp(focus.clone().add(offset),1-Math.exp(-(this.mode==='cinematic'?1.8:5)*delta));
+        this.controls.target.lerp(focus,1-Math.exp(-(this.mode==='cinematic'?2.4:8)*delta));this.camera.lookAt(this.controls.target);
+      }
+    };
+    this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion, aimCamera);
     if(this.semanticLayer&&this.layer.semantic){
       this.semanticLayer.update(store,ns,this.origin);
       this.semanticLayer.root.visible=true;
@@ -238,25 +275,10 @@ export class Viewport {
     this.container.dataset.payloadCount=String(this.layer.payloadCount);
     this.container.dataset.chargingPadCount=String(this.semanticLayer?.chargingPadCount??0);
     const entitiesFinished = performance.now();
-    if(!this.framed && this.layer.positions.size){
-      const bounds=this.district?.bounds?.clone().translate(this.origin.clone().negate())??new T.Box3().setFromPoints([...this.layer.positions.values()]),center=bounds.getCenter(new T.Vector3());
-      if(!this.authoredCamera){const span=Math.max(100,bounds.getSize(new T.Vector3()).length());this.controls.target.copy(center);this.camera.position.copy(center).add(new T.Vector3(0.7,0.55,0.9).multiplyScalar(span));}
-      this.framed=true;
-    }
-    const eventPosition=this.businessShot?.position;
-    const focus=(chosen?this.layer.positions.get(entityId(chosen)):undefined)??(eventPosition?new T.Vector3(eventPosition[0],eventPosition[2],-eventPosition[1]).sub(this.origin):undefined);
-    if(focus&&this.mode!=='orbit'){
-      let offset=this.followOffset;
-      if(this.mode==='chase'){
-        const orientation=this.layer.orientations.get(entityId(chosen!));offset=new T.Vector3(-4,2.4,5.5);if(orientation)offset.applyQuaternion(orientation);
-      }else if(this.mode==='cinematic'&&!this.options.semantic)offset=this.director.offset();
-      const delta=Math.min(0.1,Math.max(0,deltaSeconds));
-      this.camera.position.lerp(focus.clone().add(offset),1-Math.exp(-(this.mode==='cinematic'?1.8:5)*delta));
-      this.controls.target.lerp(focus,1-Math.exp(-(this.mode==='cinematic'?2.4:8)*delta));this.camera.lookAt(this.controls.target);
-    }
     // Rebase all display coordinates together once the camera leaves a 2 km cell.
     if(Math.hypot(this.controls.target.x,this.controls.target.z)>2000){
       const shift=this.controls.target.clone();shift.y=0;this.origin.add(shift);this.camera.position.sub(shift);this.controls.target.sub(shift);
+      if(this.cameraTransition){this.cameraTransition.position.sub(shift);this.cameraTransition.target.sub(shift);}
       this.staticRoot.position.copy(this.origin).negate();
       this.staticRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.revision++;
       this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion);
@@ -315,7 +337,8 @@ export class Viewport {
     const labels={no_fly:translate(locale, 'No-fly zone'),restricted:translate(locale, 'Restricted zone'),altitude_band:translate(locale, 'Altitude band'),corridor:translate(locale, 'Corridor')};
     for (const [label,color] of SemanticLayer.zoneLegend(locale)) if([...activeKinds].some(kind=>labels[kind]===label))entries.set(label,color);
     const sites=semanticSites(store.header,store);if(sites.some(site=>site.isVertiport))entries.set(translate(locale, 'Vertiport'),'#009e73');if(sites.some(site=>site.isPad))entries.set(translate(locale, 'Charging pad'),'#e69f00');
-    this.options.onLegend?.([...entries].map(([label, color]) => ({ label, color })), this.layer.activeZoneCount(store));
+    const legend=[...entries].map(([label,color])=>({label,color})),zones=this.layer.activeZoneCount(store),key=JSON.stringify([legend,zones]);
+    if(key!==this.lastLegend){this.lastLegend=key;this.options.onLegend?.(legend,zones);}
   }
   setSemantic(next: { semantic?: boolean; showAllLabels?: boolean }) {
     if (next.semantic !== undefined) {

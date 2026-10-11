@@ -5,6 +5,7 @@ import type { PlaybackClock } from './clock';
 import { Viewport, type CameraMode } from './viewport';
 import { LiveFollowClock } from './live-interpolation';
 import type { Quality } from './pipeline';
+import type { CityProgress } from '../scene/traffic-city';
 import { MissionTimeline } from './MissionTimeline';
 import { initialActionFraming } from './action-framing';
 import { entityId } from './bindings';
@@ -37,6 +38,7 @@ export function ViewportView(props: Props) {
     const value=new URLSearchParams(location.search).get('camera');return ['orbit','follow','chase','cinematic'].includes(value ?? '')?value as CameraMode:undefined;
   });
   const [quality,setQuality]=useState<Quality>(props.quality),[fps,setFps]=useState<number>(),[status,setStatus]=useState(''),[collapsed,setCollapsed]=useState(false);
+  const [cityProgress,setCityProgress]=useState<CityProgress>();
   const [dusk,setDusk]=useState(new URLSearchParams(location.search).get('lighting')==='dusk');
   const activeMode=useRef(mode ?? props.mode);activeMode.current=mode ?? props.mode;
   const previousMode=useRef(props.mode);
@@ -58,7 +60,7 @@ export function ViewportView(props: Props) {
     const liveClock=new LiveFollowClock();
     try{
       viewport.current=new Viewport(root.current!,props.store.header,{
-        quality:props.quality,locale,onSelect:key=>current.current.onSelect(key),onError:error=>current.current.onError(error),onStatus:setStatus,
+        quality:props.quality,locale,onSelect:key=>current.current.onSelect(key),onError:error=>current.current.onError(error),onStatus:setStatus,onCityProgress:setCityProgress,
         onQuality:(quality,fps)=>{setQuality(quality);setFps(fps);current.current.onQuality(quality,fps);},
         onCameraInteraction:()=>{
           interacted=true;director.pauseOnInteraction();autoActive=false;
@@ -81,13 +83,7 @@ export function ViewportView(props: Props) {
             const framing=initialActionFraming(p.store.header,p.store.entities.values());
             if(framing){
               const view=viewport.current!;
-              view.focusPosition(framing.center);
-              // Fit the actor bounding sphere using the smaller camera field of view.
-              const halfVertical=view.camera.fov*Math.PI/360;
-              const halfHorizontal=Math.atan(Math.tan(halfVertical)*view.camera.aspect);
-              const distance=framing.radius/Math.sin(Math.min(halfVertical,halfHorizontal))*1.12;
-              const scale=distance/Math.hypot(65,50,65);
-              view.camera.position.x+=65*(scale-1);view.camera.position.y+=50*(scale-1);view.camera.position.z+=65*(scale-1);
+              view.focusPosition(framing.center,framing.radius,true);
               actionFramed=true;if(root.current)root.current.dataset.framing='main-actors';
             }
           }
@@ -133,6 +129,12 @@ export function ViewportView(props: Props) {
   const duration=BigInt(props.clock.end)-BigInt(props.store.header.start.ns);
   return <>
     <div className="viewport-canvas" data-testid="viewport" ref={root} aria-label={t('Simulation viewport')} />
+    {cityProgress&&<div className="viewport-city-progress" role="status" aria-live="polite">
+      <span>{locale.startsWith('zh')?'黄浦实景资源':'Huangpu city assets'}</span>
+      <strong>{cityProgress.phase==='roads'?(locale.startsWith('zh')?'正在构建道路':'Preparing roads'):`${cityProgress.loaded} / ${cityProgress.total} ${locale.startsWith('zh')?'栋建筑':'buildings'}`}</strong>
+      <progress aria-label={locale.startsWith('zh')?'城市资源加载进度':'City asset loading progress'} max={cityProgress.total||1} value={cityProgress.total?cityProgress.loaded:undefined}/>
+      <small>{locale.startsWith('zh')?'场景逐步加载，运行控制可用':'Scene loads progressively; run controls are available'}</small>
+    </div>}
     {!props.simple&&<div className="director-toolbar">
       <select aria-label={t('View camera')} value={mode ?? props.mode} onChange={event=>{const next=event.target.value as CameraMode;setMode(next);props.onCameraMode?.(next);}}>
         <option value="orbit">{t('Orbit')}</option><option value="follow">{t('Follow unit')}</option><option value="chase">{t('Chase')}</option><option value="cinematic">{t('Event director')}</option>

@@ -1,5 +1,5 @@
 import * as T from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader, type GLTFParser } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
@@ -28,7 +28,37 @@ export function disposeObject(root: T.Object3D) {
 
 /** Page-session cache of parsed GLB scenes, keyed by URL. Views receive clones sharing geometry/materials. */
 const sharedModels = new Map<string, Promise<T.Object3D>>();
-export function clearSharedModels() { sharedModels.clear(); }
+const sharedImages = new Map<string, Promise<T.Texture>>();
+export function clearSharedModels() { sharedModels.clear(); sharedImages.clear(); }
+
+/** GLBs in the city pack repeat identical embedded PNGs. Share decoded Sources,
+ * while each texture keeps its own sampler, colour space and UV transform. */
+export function shareImageSources(parser: GLTFParser) {
+  const load = parser.loadImageSource.bind(parser);
+  let failure: unknown;
+  parser.loadImageSource = async (index, loader) => {
+    try {
+    const source = parser.json.images[index];
+    let key: string;
+    if (source.bufferView !== undefined && globalThis.crypto?.subtle) {
+      const bytes = await parser.getDependency('bufferView', source.bufferView) as ArrayBuffer;
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      key = `${source.mimeType}:${Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')}`;
+    } else if (source.uri) key = new URL(source.uri, new URL(parser.options.path || '.', location.href)).href;
+    else return load(index, loader);
+    let image = sharedImages.get(key);
+    if (!image) {
+      image = load(index, loader);
+      sharedImages.set(key, image);
+      void image.catch(() => { if (sharedImages.get(key) === image) sharedImages.delete(key); });
+    }
+    return (await image).clone();
+    } catch (error) { failure = error; throw error; }
+  };
+  // GLTFLoader permits null textures after an image failure. A real asset load
+  // must report that failure instead of accepting an untextured success.
+  return { name: 'AERO_shared_image_sources', afterRoot: () => failure === undefined ? null : Promise.reject(failure) };
+}
 function markShared(root: T.Object3D) {
   root.traverse(node => {
     if (!(node instanceof T.Mesh)) return;
@@ -42,10 +72,13 @@ export class Assets {
   private ktx: KTX2Loader;
   private loader: GLTFLoader;
   private pending = new Set<Promise<unknown>>();
+  private retained = 0;
+  private disposed = false;
   constructor(renderer: T.WebGLRenderer, options: AssetOptions = {}) {
     this.draco.setDecoderPath(options.dracoPath ?? '/decoders/draco/');
     this.ktx = new KTX2Loader().setTranscoderPath(options.ktx2Path ?? '/decoders/basis/').detectSupport(renderer);
     this.loader = new GLTFLoader().setDRACOLoader(this.draco).setKTX2Loader(this.ktx).setMeshoptDecoder(MeshoptDecoder);
+    this.loader.register(shareImageSources);
   }
   model(url: string): Promise<T.Object3D> {
     let task = sharedModels.get(url);
@@ -63,7 +96,7 @@ export class Assets {
       });
       sharedModels.set(url, task);
       const own = task.then(() => {}, () => { if (sharedModels.get(url) === task) sharedModels.delete(url); });
-      this.pending.add(own); void own.finally(() => this.pending.delete(own));
+      this.pending.add(own); void own.finally(() => { this.pending.delete(own); this.releaseLoaders(); });
     }
     return task.then(scene => scene.clone(true));
   }
@@ -75,8 +108,12 @@ export class Assets {
     return environment;
   }
   dispose() {
-    // Loaders may still be serving a cache entry other views wait on; release them afterwards.
-    void Promise.allSettled([...this.pending]).then(() => { this.draco.dispose(); this.ktx.dispose(); });
+    this.disposed = true; this.releaseLoaders();
+  }
+  /** A shared progressive scene can outlive the view that started its load. */
+  retain() { this.retained++; return () => { this.retained--; this.releaseLoaders(); }; }
+  private releaseLoaders() {
+    if (this.disposed && !this.retained && !this.pending.size) { this.draco.dispose(); this.ktx.dispose(); }
   }
 }
 

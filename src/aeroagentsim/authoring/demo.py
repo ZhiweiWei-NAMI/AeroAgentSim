@@ -184,17 +184,28 @@ def live_decisions(document: dict[str, Any], provider: dict[str, Any]) -> None:
         ),
     }
     tasks = [row for row in document["entities"] if row["id"] in task_ids]
+    incident_observers = [
+        row
+        for row in document["entities"]
+        if row["facts"].get("traffic.actor.role") == "reporter"
+        or "traffic.incident.position_enu_m" in row["facts"]
+    ]
     grants = [
         {"entity": row["id"], "field": field}
-        for row in candidates + tasks
+        for row in candidates + tasks + incident_observers
         for field in row["facts"]
         if field
         in {
             "traffic.actor.current_task",
+            "traffic.task.kind",
+            "traffic.task.phase",
             "traffic.task.interruptible",
             "traffic.task.capture_altitude_m",
+            "traffic.task.target_enu_m",
             "he.aircraft.position_enu_m",
-            "he.aircraft.energy_j",
+            "traffic.uav.energy_j",
+            "traffic.road.position_enu_m",
+            "traffic.incident.position_enu_m",
         }
     ]
     document["engines"]["decisions"] = {

@@ -52,6 +52,11 @@ describe('committed one-line entity stories',()=>{
   expect(story(store)).toMatchObject({business:'Parcel',vehicleClass:'Parcel',battery:.18,nextStop:'Customer rooftop 4',status:'Delivering parcel to Customer rooftop 4'});
   expect(story(store).task?.key).toEqual(task);
   expect(story(store,'zh-CN').status).toBe('正在向客户屋顶 4配送包裹');
+  const food=new TemporalFeedStore({...header,types:[...header.types,{typeId:'research:MealOrder',displayName:'Meal order',ancestors:['lowalt:Task']}]});
+  food.ingest({...store.commits[0],created:store.commits[0].created.map(row=>row.id===task.id?{...row,typeId:'research:MealOrder'}:row),facts:store.commits[0].facts.map(row=>row.fieldId==='lowalt.task_kind'?{...row,value:'food'}:row)});food.seek('0');
+  expect(story(food)).toMatchObject({business:'Food',status:'Delivering meal to Customer rooftop 4'});
+  expect(story(food,'zh-CN')).toMatchObject({business:'外卖配送',status:'正在向客户屋顶 4配送餐食'});
+  expect(entityStory(food,food.entities.get('task-1:0')!,[],'zh-CN').status).toBe('正在向客户屋顶 4配送餐食');
  });
  it('describes a recorded separation hold only until its committed deadline',()=>{
   const store=session();store.ingest({...emptyCommit(2),messages:[{id:'hold',kind:'event',schemaId:'lowalt.control',source:'airspace',at:at('0'),subjects:[drone],payload:{vehicle:drone.id,action:'hold',reason:'separation conflict',until_ns:1000000000}}]});store.seek('0');

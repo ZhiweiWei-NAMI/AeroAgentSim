@@ -117,9 +117,9 @@ export MY_KEY_VAR="sk-..."                          # the populated credential
 aeroagentsim demo traffic-accident --profile live-llm --headless --out runs/demo
 ```
 
-All three `AEROAGENTSIM_LLM_*` variables are required (checked in
+The base URL and model are required (checked in
 [../../src/aeroagentsim/services/demo.py](../../src/aeroagentsim/services/demo.py));
-the third names the environment variable that actually holds the key. These
+`AEROAGENTSIM_LLM_API_KEY_ENV` names the credential variable when the endpoint requires authentication. These
 operator settings define the built-in `live-llm` provider profile; the scenario
 stores only its name. Without
 them, or with the `agents` extra missing, the command fails fast. The

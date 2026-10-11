@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -50,7 +51,13 @@ def build_graph(
 
             value = await client.ask_json(
                 "vehicle_report",
-                "Report the observed accident. Return JSON decision=report, reason, action, departure=reroute_when_clear, route_id=adjacent_lane_bypass, route_reason. Use the committed observation; propose no state edits.",
+                "You are the reporting road vehicle. Report the observed accident "
+                "and propose the adjacent-lane bypass once the road owner confirms "
+                "a safe gap. UAV bids and assignment are handled separately. "
+                "Return exactly one raw JSON object without Markdown or code fences: "
+                "decision=report, reason, action, departure=reroute_when_clear, "
+                "route_id=adjacent_lane_bypass, route_reason. Use the committed "
+                "observation; propose no state edits.",
                 {"trigger": trigger, "observation": observation},
                 report,
             )
@@ -110,11 +117,12 @@ def build_graph(
                         set(value) != {"accept", "reason", "action", "alt_target_m"}
                         or type(value["accept"]) is not bool
                         or type(value["alt_target_m"]) not in (int, float)
+                        or not math.isfinite(value["alt_target_m"])
                     ):
                         raise ValueError(
                             "Bid requires typed accept/reason/action/alt_target_m"
                         )
-                    if value["alt_target_m"] != expected_altitude:
+                    if value["accept"] and value["alt_target_m"] != expected_altitude:
                         raise ValueError(
                             "Bid altitude differs from the authored capture task"
                         )
@@ -128,7 +136,11 @@ def build_graph(
 
                 value = await client.ask_json(
                     identity,
-                    "Propose a UAV bid using this actor's committed state and current task. Refuse when interruptible=false. Return JSON accept:boolean, reason:string, action:string, alt_target_m:number. Match the capture task's authored altitude.",
+                    "Propose a UAV bid using this actor's committed state and current "
+                    "task. Refuse when interruptible=false. Return exactly one raw "
+                    "JSON object without Markdown or code fences: accept:boolean, "
+                    "reason:string, action:string, alt_target_m:number. Accepted "
+                    "bids must match the capture task's authored altitude.",
                     {
                         "actor": actor_fields,
                         "current_task": task_fields,

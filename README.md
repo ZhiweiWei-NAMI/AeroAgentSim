@@ -1,237 +1,119 @@
-<p align="center">
-  <img src="docs/media/logo.png" alt="AeroAgentSim" width="220">
-</p>
+<p align="center"><img src="docs/media/logo.png" alt="AeroAgentSim" width="160"></p>
 
-<h1 align="center">AeroAgentSim</h1>
-
-<p align="center">
-  <b>An open-source research platform for multi-agent low-altitude simulation.</b><br>
-  Model the world with AeroGraph, wire behaviour with predicates and event chains,<br>
-  plug in PX4/Gazebo, SUMO, ns-3 and weather, deploy LangGraph agents — and watch it all on one timeline.
-</p>
+<p align="center"><b>Simulate a city's low-altitude businesses, change the rules and algorithms, and watch the consequences.</b></p>
 
 <p align="center">
   <a href="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/actions/workflows/tests.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
+  <a href="CHANGELOG.md"><img alt="Release 2.1.0" src="https://img.shields.io/badge/release-2.1.0-brightgreen.svg"></a>
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
-  <img alt="Node 22" src="https://img.shields.io/badge/node-22-green.svg">
-  <a href="docs/README.md"><img alt="Docs" src="https://img.shields.io/badge/docs-read-brightgreen.svg"></a>
+  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
 </p>
 
-<p align="center">
-  <a href="#quickstart">Quickstart</a> ·
-  <a href="#a-tour-of-the-console">Console tour</a> ·
-  <a href="#how-it-works">How it works</a> ·
-  <a href="#the-flagship-demo-a-traffic-accident">Flagship demo</a> ·
-  <a href="docs/README.md">Documentation</a> ·
-  <a href="README_CN.md">中文</a>
-</p>
 
-<p align="center">
-  <img src="docs/media/00-overview.gif" alt="AeroAgentSim console overview: configure in Studio, run, and inspect the same simulation in synchronized graph and 3D views" width="900">
-</p>
+<p align="center"><img src="docs/media/workbench-city.png" alt="AeroAgentSim operational workbench with graph, real Huangpu city and contextual inspector" width="1100"></p>
 
----
+## Try it in three commands
 
-## Why AeroAgentSim
-
-Research on drones, ground traffic, networks and AI agents usually means gluing several simulators together with scripts, clocks that drift apart and state that nobody owns. AeroAgentSim gives you **one discrete-event runtime** that every model plugs into, and a **console** to configure, run and inspect experiments without writing glue code.
-
-| | |
-|---|---|
-| 🧭 **One shared runtime** | A single discrete-event kernel coordinates time, external event ingestion, state updates and event-chain execution for every plugin. Runs are journaled and **replay deterministically**. |
-| 🕸️ **AeroGraph-driven modelling** | Entities, relations and typed state come from the AeroGraph ontology. Configure by type: every `Traffic UAV` gets its fields, routines and rules automatically. |
-| 🔁 **Predicates → event chains** | “When predicate *P* becomes true for entity *e*, do *A*.” Triggers, guards and transitions are predicates; routine chains are auto-instantiated from types, tasks and relations; conflict predicates raise events. |
-| 🔌 **Replaceable domain plugins** | Kinematic, **PX4/Gazebo**, **SUMO**, **ns-3** and **weather** plug in behind the same contract. Every state field has exactly **one writer**, so swapping a simulator is a configuration change. |
-| 🤖 **LLM agents that are reproducible** | LangGraph decision agents propose actions; the runtime authorizes them against committed state. Model calls are journaled, so replay makes **zero** model calls. |
-| 👀 **Two synchronized views** | An AeroGraph graph view (including entities without a 3D pose) and a Three.js city view share identities, state and one timeline. |
-| 🧪 **Built for experiments** | Inject external events while a run is live, pause/stop cleanly, compare runs, export captures. Lean provenance by default; `--provenance full` when you need an audit trail. |
-
-## Quickstart
-
-Requirements: Python ≥ 3.10, Node.js 22 + npm, and a Chromium that Playwright can use (for the in-simulation camera). No GPU, Docker, AeroGraph checkout or private assets are needed for the demo.
+Python 3.10+ and Node.js 22 with npm. The parcel scenario needs no GPU, Docker or account.
 
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git && cd AeroAgentSim
-python -m venv .venv && source .venv/bin/activate
-
-python -m pip install -e ./aerokernel -e '.[server]'   # kernel + platform
-(cd frontend && npm ci && npm run build)                 # console
-aeroagentsim demo traffic-accident                       # opens the console with the demo
+python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./aerokernel -e '.[server]'
+(cd frontend && npm ci && npm run build) && aeroagentsim run-template parcel-delivery
 ```
 
-Prefer the terminal? `aeroagentsim demo traffic-accident --headless` runs the same experiment and prints the accident, award, capture and upload times plus the journal path; `aeroagentsim replay <run-dir>` replays it without calling any physics engine, camera or model.
+The last command opens an editable Studio workspace: choose **Validate & run → Validate → Run now**. Add `--headless` to run directly in the terminal. `aeroagentsim templates` lists all nine scenarios. [Install](docs/getting-started/install.md) covers Windows and Chromium setup for traffic-accident and city-day camera capture. [中文](README_CN.md)
 
-## Everyday low-altitude experiments
+## Pick a scenario
 
-Start on **Home → Choose your scenario**. Choose **Run now** for the defaults, **Customize** to change a few controls, or **Open in Studio** to edit the actual world, predicates and event chains. Simple view puts the city, readable events and measured results first; Expert view adds the synchronized entity graph and recorded state.
+Nine ready-made worlds, each with controls to change and KPIs to measure the result. Click a thumbnail for the scenario guide.
 
-| Template | What to investigate |
-|---|---|
-| Urban parcel delivery | Fleet size, order rate and nearest / auction / Hungarian allocation |
-| Medical delivery | Urgent requests sharing aircraft with routine deliveries |
-| Powerline inspection | Inspection routes, observations and weather interruptions |
-| Crop spraying | Coverage routes and battery / wind limits |
-| Air taxi | Passenger requests, pad capacity and waiting |
-| Security patrol | Patrol waypoints and incident response |
-| City day | Deliveries, inspections, traffic and an accident interacting in one shared world |
-| Traffic accident | Report → agent bids → award → camera capture → upload |
+<table>
+  <tr>
+    <td align="center" width="25%"><a href="scenarios/templates/parcel-delivery/README.md"><img src="scenarios/templates/parcel-delivery/thumbnail.png" alt="Urban parcel delivery"><br><b>Parcel delivery</b></a><br><code>parcel-delivery</code><br>Dispatch a fleet from two vertiports to customers across the district.</td>
+    <td align="center" width="25%"><a href="scenarios/templates/medical-delivery/README.md"><img src="scenarios/templates/medical-delivery/thumbnail.png" alt="Urgent medical delivery"><br><b>Medical delivery</b></a><br><code>medical-delivery</code><br>Interrupt routine deliveries to carry urgent hospital supplies.</td>
+    <td align="center" width="25%"><a href="scenarios/templates/powerline-inspection/README.md"><img src="scenarios/templates/powerline-inspection/thumbnail.png" alt="Power line inspection"><br><b>Power line inspection</b></a><br><code>powerline-inspection</code><br>Follow a survey route and record inspection observations.</td>
+    <td align="center" width="25%"><a href="scenarios/templates/crop-spraying/README.md"><img src="scenarios/templates/crop-spraying/thumbnail.png" alt="Crop spraying"><br><b>Crop spraying</b></a><br><code>crop-spraying</code><br>Treat a field in rows, swap batteries and pause in strong wind.</td>
+  </tr>
+  <tr>
+    <td align="center"><a href="scenarios/templates/air-taxi/README.md"><img src="scenarios/templates/air-taxi/thumbnail.png" alt="Air taxi service"><br><b>Air taxi</b></a><br><code>air-taxi</code><br>Carry passengers between three vertiports.</td>
+    <td align="center"><a href="scenarios/templates/security-patrol/README.md"><img src="scenarios/templates/security-patrol/thumbnail.png" alt="Security patrol"><br><b>Security patrol</b></a><br><code>security-patrol</code><br>Patrol the district and respond to an operator-reported incident.</td>
+    <td align="center"><a href="docs/examples/traffic-accident.md"><img src="scenarios/templates/traffic-accident/thumbnail.png" alt="Traffic accident response"><br><b>Traffic accident</b></a><br><code>traffic-accident</code><br>Assess an accident, choose a responder and upload a simulated camera image.</td>
+    <td align="center"><a href="docs/examples/city-day.md"><img src="scenarios/templates/city-day/thumbnail.png" alt="One day in a shared city"><br><b>One day in a shared city</b></a><br><code>city-day</code><br>Deliveries, inspections, air taxis and incident response interact.</td>
+  </tr>
+
+<tr><td align="center"><a href="scenarios/templates/food-delivery/README.md"><img src="scenarios/templates/food-delivery/thumbnail.png" alt="Restaurant meal delivery"><br><b>Restaurant meal delivery</b></a><br><code>food-delivery</code><br>Preparation, pickup, physical delivery, kitchen disruptions and on-time results.</td></tr>
+</table>
+
+Open any scenario with `aeroagentsim run-template <id>`. Each declares its own knobs; for example, `aeroagentsim run-template parcel-delivery --set fleet_size=12 --set wind_speed=8`. [Template guide](docs/guides/templates.md)
+
+## Change a rule, watch the world change
+
+*When a drone's battery drops below its reserve, send it to charge.* Battery reserve, no-fly zones, separation and wind limits are editable predicates and event chains. Change `battery_reserve` from 20 to 35 with `--set battery_reserve=35`, or edit the predicate in Studio, then run again. In **Inspect**, follow the recorded condition → chain → command → state change, alongside the drone in the 3D city. Replay lets you revisit the same moment.
+
+
+[Edit the low-altitude rules](docs/guides/lowalt-rules.md) · [Write a predicate](docs/guides/predicates.md) · [Author an event chain](docs/guides/behaviours.md)
+
+## Compare algorithms in one command
+
+Swap task allocation, route planning, conflict resolution or charging through four algorithm slots, or supply your own `module:Class`. This compares three built-in allocators on the same three random seeds:
 
 ```bash
-aeroagentsim templates
-aeroagentsim run-template parcel-delivery --set allocator=auction --headless
-aeroagentsim experiment parcel-delivery \
-  --vary allocator=nearest,auction,hungarian --seeds 3 --jobs 2 --out runs
+aeroagentsim experiment parcel-delivery --vary allocator=nearest,auction,hungarian --seeds 3 --jobs 3 --out runs
 ```
 
-Use **Compare changes · Experiment** in the gallery for the same matched-seed experiment without the terminal. Completion, latency, battery use, distance and safety events come from committed records, not a simulated leaderboard.
+| Allocator | Tasks completed | Mean task latency (s) | Energy used (kJ) |
+|---|---:|---:|---:|
+| nearest | 9.7 ± 5.0 | 77.8 ± 30.9 | 229.5 ± 72.3 |
+| auction | 10.0 ± 5.0 | 71.1 ± 22.2 | 224.1 ± 66.7 |
+| hungarian | 10.0 ± 4.6 | 71.4 ± 18.5 | 225.2 ± 68.2 |
 
-The seven everyday templates share four editable policies: **battery reserve, no-fly zones, separation and wind limits**. In Studio, change a predicate parameter; in Inspect, click an event's **Why?** to follow **the values read → predicate → event chain → shared-state change → command receipt**. One field still has one writer. [Edit the rules](docs/guides/lowalt-rules.md) · [Compare algorithms](docs/guides/experiments.md) · [Make a template](docs/guides/templates.md)
+Measured on 2026-10-10 with the shipped parcel defaults: eight drones, 300 simulated seconds, seeds 0–2, nine runs. Values are **mean ± sample standard deviation**, with three observations per cell. Latency covers completed tasks; these three seeds do not establish a general winner. Raw tables and run links are saved under `runs/.experiments/<id>/` as `experiment.csv` and `experiment.md`.
 
-➡️ Full instructions: [Install](docs/getting-started/install.md) · [Quickstart](docs/getting-started/quickstart.md) · [Your first scenario](docs/getting-started/first-scenario.md) · [Repo map — where things live](docs/repo-map.md)
 
-## A tour of the console
+[Algorithms](docs/guides/algorithms.md) · [Experiments](docs/guides/experiments.md)
 
-The console follows the research workflow: **know the world → configure → simulate → deploy agents → visualize**.
+## Many businesses, one sky
 
-### 1. Get to know AeroGraph
+In **city-day**, parcel and medical deliveries, power line inspections, air taxis and road-incident responders share one city and one clock. An accident closes nearby airspace and changes delivery routes; urgent supplies interrupt parcel jobs; wind pauses inspections. The event feed explains what happened, and KPIs show the consequences.
 
-Browse the ontology behind your scenario: type ancestry, fields and units, which plugin writes each field, relations, and the predicates and event chains that use a type. Without an AeroGraph checkout the catalog comes from the scenario's committed snapshot.
 
-<p align="center"><img src="docs/media/04-aerograph.gif" alt="AeroGraph explorer: type tree, ancestry, fields with plugin writers and relation graph" width="860"></p>
+[City-day walkthrough](docs/examples/city-day.md)
 
-📖 [AeroGraph concepts](docs/concepts/aerograph.md)
+## Watch like a control tower
 
-### 2. Configure domain plugins — PX4/Gazebo, SUMO, weather
+**Director** follows activity automatically; **Cinema** fills the view with the city and an event ticker. Select a drone for its task, next stop, battery and recent journey. Its status explains *why* it is holding, rerouting or returning to charge; click the explanation to inspect the recorded cause. Replay runs at 0.5–8× speed, with graph and city views on the same timeline.
 
-Studio walks through seven steps: **Scene → Entities → Domain plugins → Predicates → Event chains & rules → Agents → Validate & run**. In *Domain plugins*, pick the engine for each domain (air motion: kinematic or PX4/Gazebo; road traffic: kinematic or SUMO; network: ns-3; weather), tune its parameters, and check the field-ownership table — conflicts are flagged before you run.
+Switch the controls, template descriptions and event feed between **中文 / English**. In Simple view, use `D` for Director, `C` for cinema, `W` for the selected entity's latest event explanation and `L` for language; `?` shows all shortcuts.
 
-<p align="center"><img src="docs/media/01-configure-plugins.gif" alt="Switching air motion between kinematic and PX4/Gazebo, road traffic to SUMO and configuring wind, with field ownership" width="860"></p>
-
-📖 [Plugins & field ownership](docs/concepts/plugins.md) · [PX4/Gazebo](docs/guides/px4-gazebo.md) · [SUMO](docs/guides/sumo.md) · [Weather](docs/guides/weather.md) · [Write your own plugin](docs/guides/plugins.md)
-
-### 3. Define predicates
-
-Predicates are typed conditions over AeroGraph state — distances, speeds, relations, dwell times. Pick fields with an AeroGraph-aware picker, set thresholds and let the compiler check them against the registry. The recording edits the parcel template's battery reserve and follows the resulting real event back to its predicate, chain and committed recall state.
-
-<p align="center"><img src="docs/media/02-predicates.gif" alt="Editing the battery reserve, validating, and explaining a real predicate-to-chain-to-state change in replay" width="860"></p>
-
-📖 [Predicates](docs/concepts/predicates.md) · [Write a predicate](docs/guides/predicates.md) · [Predicate dialect](docs/reference/predicate-dialect.md)
-
-### 4. Author rules, event chains and external events
-
-Build rules like *“when `accident detected` becomes true for every Traffic UAV → emit an event / issue a command / update state”*. Chains bind automatically to entities by type, task or relation; conflict rules turn predicate conflicts into events; injection points let operators or external systems drive the run.
-
-<p align="center"><img src="docs/media/03-rules-events.gif" alt="Creating a predicate rule, reviewing auto-instantiated chains and injection points" width="860"></p>
-
-📖 [Behaviours & event chains](docs/concepts/behaviours.md) · [Author a rule](docs/guides/behaviours.md) · [Inject external events](docs/guides/external-events.md)
-
-### 5. Deploy agents
-
-Attach LangGraph decision agents to decision points: choose recorded (scripted, reproducible) or live model mode, select an operator-configured provider profile, and grant the tools an agent may use. Every prompt, reply and resulting command is journaled and inspectable.
-
-<p align="center"><img src="docs/media/05-agents.gif" alt="Configuring LangGraph decision points and inspecting recorded agent decisions" width="860"></p>
-
-📖 [Agents](docs/concepts/agents.md) · [Deploy an agent](docs/guides/agents.md)
-
-### 6. Simulate
-
-Validate, start a run, and operate it live: pause, resume, stop, or inject an event with one click. A run waiting for input shows the pending streams; it times out only when the scenario declares a wait budget.
-
-<p align="center"><img src="docs/media/06-simulate.gif" alt="Validating and starting a live run, injecting the accident and following the response" width="860"></p>
-
-📖 [Runs, replay & provenance](docs/concepts/runs.md)
-
-### 7. Visualize and inspect
-
-Inspect any run — live or replayed — in synchronized graph and 3D views: switch cameras, jump to the accident, award and capture moments on the timeline, select an entity in either view and see its committed state, active chains and predicate truth.
-
-<p align="center"><img src="docs/media/07-visualize.gif" alt="Inspecting a completed run: cameras, timeline markers, shared selection and the captured photo" width="860"></p>
-
-📖 [Views](docs/concepts/views.md) · [Visualize & inspect](docs/guides/visualization.md)
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    subgraph Configure["Console · configure"]
-        AG["AeroGraph<br/>types · relations · fields"]
-        ST["Studio<br/>entities · plugins · predicates<br/>event chains · agents"]
-    end
-    subgraph Runtime["One discrete-event runtime (aerokernel)"]
-        T["time coordination"]
-        I["external event ingestion<br/>(watermarks)"]
-        S["state updates<br/>(one writer per field)"]
-        E["event-chain execution"]
-        J[("journal<br/>deterministic replay")]
-    end
-    subgraph Plugins["Domain plugins"]
-        K["kinematic"]
-        PX["PX4 / Gazebo"]
-        SU["SUMO"]
-        NS["ns-3"]
-        W["weather"]
-        LG["LangGraph agents"]
-    end
-    subgraph Views["Console · inspect"]
-        GV["AeroGraph graph view"]
-        V3["Three.js city view"]
-    end
-    AG --> ST --> Runtime
-    Plugins <--> Runtime
-    OP["operators / external systems"] -- inject events --> I
-    Runtime --> J --> Views
+    C["Scenario · rules · algorithms"] --> R["Shared runtime: aerokernel"]
+    P["Plugins: motion · traffic · network<br/>weather · agents"] <--> R
+    R --> J["Recorded state and events"]
+    J --> V["3D city · graph · KPIs · replay"]
 ```
 
-- **The console configures, the runtime executes.** A scenario (YAML) is compiled against the AeroGraph registry; the runtime then owns time, state and event delivery for every plugin.
-- **Single field ownership.** Each `(entity, field)` has exactly one writer. Physics, traffic, network, weather and business logic can own different fields of the same entity — never the same one.
-- **Predicates drive behaviour.** Predicate transitions trigger chains; guards and transitions are predicates too; conflicts become events.
-- **Everything is a recorded fact.** Views read the committed feed, never engine internals, so the graph view, the 3D view and replay always agree.
+- **One clock.** Domain plugins and agents coordinate through one discrete-event runtime.
+- **One writer per fact.** Algorithms propose actions; the owning engine executes commands and commits state.
+- **Replay from the record.** Inspect recorded state and agent decisions without rerunning physics, cameras or model calls.
+- **Typed by AeroGraph.** Define entities, relations and rules by type; shipped snapshots work without an AeroGraph checkout.
 
-📖 [Architecture](docs/concepts/architecture.md) · [Design notes](docs/design-notes.md)
+[Architecture](docs/concepts/architecture.md) · [Plugins and native simulators](docs/guides/plugins.md) · [Design notes](docs/design-notes.md)
 
-## The flagship demo: a traffic accident
+## Where things live
 
-63 road vehicles, 8 UAVs and an edge coordinator in a city block from OpenStreetMap. Two vehicles collide; a passing vehicle reports it; the coordinator asks nearby UAVs for bids; **Alpha** declines because it is on a non-interruptible medical delivery; **Bravo** wins, flies over, holds position and photographs the scene with a camera rendered in the city view; the upload completes the task.
+The [repo map](docs/repo-map.md) connects scenarios, algorithms, rules, services and the console to their source directories, with reading routes for researchers and contributors.
 
-| Simulated time | What happens |
-|---:|---|
-| 0 s | Routine chains start for every vehicle and UAV |
-| 8 s | Accident (timer, or injected by an operator in the console) |
-| ~15 s | Bids collected, Bravo awarded; Alpha keeps its medical task |
-| ~49 s | Bravo holds over the scene, captures and uploads the photo |
+---
 
-On a desktop CPU the whole chain completes in about **30 seconds of wall time** (1 Hz physics, faster than real time). Every step is visible in both views and in the journal.
+[Docs](docs/README.md) · [Quickstart](docs/getting-started/quickstart.md) · [CLI](docs/reference/cli.md) · [Containers](docs/guides/containers.md) · [Changelog](CHANGELOG.md) · [中文](README_CN.md)
 
-📖 [Walkthrough and how to change it](docs/examples/traffic-accident.md)
+Contribute a scenario, algorithm or plugin: [Contributing](CONTRIBUTING.md). Code is licensed under [Apache-2.0](LICENSE); city data is © OpenStreetMap contributors, **ODbL 1.0** ([attribution](scenarios/demos/traffic-accident/inputs/lite-city/ATTRIBUTION.txt)).
 
-## Repository layout
+The lightweight city is included. For detailed buildings and display models, run `aeroagentsim assets fetch` to install Huangpu city pack 1.1 from release tag [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1), then reload the viewer. The pack has its own `NOTICE.txt`; see [asset terms and provenance](ASSETS.md).
 
-```text
-aerokernel/          the discrete-event kernel (pure Python, standalone package)
-src/aeroagentsim/    platform: scenario compiler, plugins, behaviours, agents, HTTP API, CLI
-frontend/            console: React + Three.js (Studio, AeroGraph, Runs, Inspect)
-scenarios/           example scenarios, incl. demos/traffic-accident
-containers/          PX4/Gazebo, SUMO and ns-3 services
-docs/                getting started, concepts, guides, reference
-```
-
-## Status
-
-AeroAgentSim 2.1 adds everyday low-altitude templates, newcomer views, matched-seed experiments and explainable operational rules to the consolidated platform. Things to know:
-
-- The shipped demo runs on the kinematic and scripted-decision profiles out of the box. PX4/Gazebo, SUMO and ns-3 run as separate container services — see [Containers](docs/guides/containers.md).
-- Pure-Python kernel performance: real time at 1 Hz for the full demo; high-rate (15 Hz) physics currently runs at about 0.25× real time.
-- Live LLM mode needs your own provider configuration; recorded mode reproduces results exactly.
-
-Looking for the earlier AirFogSim code base? It is preserved on the [`archive/airfogsim`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/tree/archive/airfogsim) branch, and the earlier public package remains available as [version 1.1.1](https://pypi.org/project/aeroagentsim/1.1.1/).
-
-## Contributing
-
-Issues and pull requests are welcome — new domain plugins, scenarios, predicates and agent graphs especially. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [plugin guide](docs/guides/plugins.md).
-
-## License and acknowledgements
-
-AeroAgentSim is released under the [Apache License 2.0](LICENSE). The demo city is derived from © OpenStreetMap contributors (ODbL 1.0). AeroAgentSim integrates with PX4, Gazebo, SUMO, ns-3, LangGraph and Three.js; each remains under its own license.
-
-Optional detailed Huangpu city (separate download; automatically used by viewer and camera): `aeroagentsim assets fetch`.
+Earlier AirFogSim code is preserved on [`archive/airfogsim`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/tree/archive/airfogsim); the earlier public package remains on PyPI as [1.1.1](https://pypi.org/project/aeroagentsim/1.1.1/).

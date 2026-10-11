@@ -51,6 +51,8 @@ export default function StudioPage() {
   const [placeId, setPlaceId] = useState(''), [placeType, setPlaceType] = useState<string>(), [position, setPosition] = useState([0, 0, 10]);
   const [placementOverride, setPlacementOverride] = useState<string>();
   const launch = useRef<string>();
+  const editVersion = useRef(0);
+  const [sourceTypes,setSourceTypes] = useState<TypeRow[]>([]), [schemas,setSchemas] = useState<Record<string,any>>({});
   const scenario = workspace?.scenario;
   const labels: Record<StudioStep, string> = {
     scene: t('Scene'), entities: t('Entities'), plugins: t('Domain plugins'), predicates: t('Predicates'),
@@ -74,7 +76,7 @@ export default function StudioPage() {
     agents: { description: t('Decision agents propose actions. The same safety checks and controllers apply to their proposals.'), guide: 'langgraph.md' },
     validate: { description: t('Validation checks your complete draft. A new run records its own timeline without changing previous runs.'), guide: 'console.md' },
   };
-  const placementTypes = [...types, ...(workspace?.registry_catalog?.types ?? []), ...(scenario?.registry?.types ?? [])];
+  const placementTypes = [...new Map<string,any>([...(scenario?.registry?.compile ? sourceTypes : []), ...types, ...(scenario?.registry?.types ?? [])].map(row => [row.id,row])).values()];
   const ancestry = new Set<string>(), pending = placeType ? [placeType] : [];
   while (pending.length) { const id = pending.pop()!; if (ancestry.has(id)) continue; ancestry.add(id); const row = placementTypes.find(row => row.id === id); pending.push(...(row?.parents ?? []), ...(row?.ancestors ?? [])); }
   const moving = ['oo:UAV', 'oo:Aircraft', 'oo:GroundVehicle', 'oo:Vehicle'].some(id => ancestry.has(id));
@@ -89,7 +91,7 @@ export default function StudioPage() {
     if (workspace?.id !== next.id) { setPlaceId(''); setPlaceType(undefined); setPlacementOverride(undefined); setVisited(new Set(['scene'])); setStep('scene'); setFocusIssue(undefined); setIssuesOpen(false); setYaml(''); }
     setWorkspaces(previous => recentWorkspaces([...previous.filter(row => row.id !== next.id), next]));
   };
-  const onChange = (scenario: Record<string, any>) => { setWorkspace(current => current ? { ...current, scenario, validation: undefined } : current); setRaw(JSON.stringify(scenario, null, 2)); setRawError(''); setDirty(true); };
+  const onChange = (scenario: Record<string, any>) => { editVersion.current++; setWorkspace(current => current ? { ...current, scenario, validation: undefined } : current); setRaw(JSON.stringify(scenario, null, 2)); setRawError(''); setDirty(true); };
   const behaviourValidity = useCallback((valid: boolean) => setValidity(current => ({ ...current, rules: valid })), []);
   const predicateValidity = useCallback((valid: boolean) => setValidity(current => ({ ...current, predicates: valid })), []);
   const pluginValidity = useCallback((valid: boolean) => setValidity(current => ({ ...current, plugins: valid })), []);
@@ -101,12 +103,18 @@ export default function StudioPage() {
   const save = async (): Promise<Workspace> => {
     if (!workspace) throw Error(t('Open a workspace first'));
     if (!buffersValid) throw Error(t('Correct the invalid editor content before saving'));
-    const next = await api.request<Workspace>(`/v1/studio/workspaces/${workspace.id}`, { name: workspace.name, scenario: workspace.scenario }); apply(next); return next;
+    const captured = editVersion.current;
+    const next = await api.request<Workspace>(`/v1/studio/workspaces/${workspace.id}`, { name: workspace.name, scenario: workspace.scenario, revision: workspace.revision });
+    if (captured !== editVersion.current) {
+      setWorkspace(current => current?.id === next.id ? {...current, revision: next.revision, updated_at: next.updated_at} : current);
+      throw Error(t('Draft changed while saving. Save the latest edits before continuing.'));
+    }
+    apply(next); return next;
   };
   const openDemo = async () => { const created = await api.request<Workspace>('/v1/studio/workspaces', { name: t('Traffic accident (demo)') }); apply(await api.request<Workspace>(`/v1/studio/workspaces/${created.id}/templates/traffic-accident`, { console: true, capture_mode: 'city' })); setValidity({}); chooseStep('scene'); };
   useEffect(() => {
     let active = true;
-    void Promise.all([api.request<Catalog>('/v1/studio/catalog'), api.request<Workspace[]>('/v1/studio/workspaces'), api.request<{ types: TypeRow[]; fields: Record<string, unknown>[]; relations: Record<string, unknown>[] }>('/v1/studio/types?q=')]).then(([c, w, catalog]) => { if (!active) return; setCatalog(c); setWorkspaces(previous => recentWorkspaces([...w, ...previous])); setTypes(catalog.types); setFields(catalog.fields); setRelations(catalog.relations); }).catch(problem => { if (active) setError(String(problem)); });
+    void Promise.all([api.request<Catalog>('/v1/studio/catalog'), api.request<Workspace[]>('/v1/studio/workspaces'), api.request<{ types: TypeRow[]; fields: Record<string, unknown>[]; relations: Record<string, unknown>[] }>('/v1/studio/types?q=')]).then(([c, w, catalog]) => { if (!active) return; setCatalog(c); setWorkspaces(previous => recentWorkspaces([...w, ...previous])); setSourceTypes(catalog.types); }).catch(problem => { if (active) setError(String(problem)); });
     return () => { active = false; };
   }, [api]);
   useEffect(() => {
@@ -115,22 +123,34 @@ export default function StudioPage() {
     launch.current = key;
     void action(async () => { if (target) { const next = await api.request<Workspace>(`/v1/studio/workspaces/${encodeURIComponent(target)}`), entity = query.get('entity'); if (entity && !next.scenario.entities?.some((row: { id: string }) => row.id === entity)) throw Error(t('The linked entity is absent from this workspace')); apply(next); if (entity) chooseStep('entities'); } else await openDemo(); setValidity({}); });
   }, [api, location.search]);
+  useEffect(() => {
+    let active = true;
+    setTypes([]); setFields([]); setRelations([]); setSchemas({});
+    if (!workspace) return;
+    void api.request<{types:TypeRow[];fields:Record<string,unknown>[];relations:Record<string,unknown>[];schemas?:Record<string,any>}>(`/v1/studio/types?workspace=${encodeURIComponent(workspace.id)}`)
+      .then(value => { if(active){ setTypes(value.types); setFields(value.fields); setRelations(value.relations); setSchemas(value.schemas ?? {}); } })
+      .catch(problem => {if(active)setError(String(problem));});
+    return () => { active = false; };
+  }, [api, workspace?.id, workspace?.revision]);
   const mergeRows = <T extends { id: string }>(...rows: T[][]): T[] => [...new Map(rows.flat().map(row => [row.id, row])).values()];
-  const allTypes = mergeRows(types, workspace?.registry_catalog?.types ?? [], scenario?.registry?.types ?? []);
-  const allFields = mergeRows(fields as Array<Record<string, unknown> & { id: string }>, workspace?.registry_catalog?.fields ?? [], scenario?.registry?.fields ?? []);
+  const allTypes = mergeRows(types, scenario?.registry?.types ?? []);
+  const allFields = mergeRows(fields as Array<Record<string, unknown> & { id: string }>, scenario?.registry?.fields ?? []);
   const allRelations = mergeRows(relations as Array<Record<string, unknown> & { id: string }>, scenario?.registry?.relations ?? []);
   const issues = validationIssues(workspace?.validation);
   const validate = async () => {
     if (!workspace) throw Error(t('Open a workspace first'));
     if (!buffersValid) throw Error(t('Correct the invalid editor content before validation'));
-    const result = await api.request<NonNullable<Workspace['validation']>>(`/v1/studio/workspaces/${workspace.id}/validate`, { scenario: workspace.scenario });
-    const next = await api.request<Workspace>(`/v1/studio/workspaces/${workspace.id}`); apply({ ...next, validation: result });
+    const saved = await save(), captured = editVersion.current;
+    const result = await api.request<NonNullable<Workspace['validation']>>(`/v1/studio/workspaces/${saved.id}/validate`, { scenario: saved.scenario, revision: saved.revision });
+    const next = await api.request<Workspace>(`/v1/studio/workspaces/${saved.id}`);
+    if (captured !== editVersion.current) throw Error(t('Draft changed while saving. Save the latest edits before continuing.'));
+    apply(next);
     notify({ kind: result.valid ? 'success' : 'error', message: result.valid ? t('Scenario valid. Ready to run.') : t('Validation found authoring errors.') });
     if (!result.valid) chooseStep('validate');
   };
   const run = async () => {
-    if (!workspace?.validation?.valid || !buffersValid || dirty) throw Error(t('Validate this draft before starting a run'));
-    const receipt = await api.request<{ id: string }>('/v1/runs', { scenario: workspace.scenario, studio_workspace: workspace.id });
+    if (!workspace?.validation?.valid || workspace.validation.revision !== workspace.revision || !buffersValid || dirty) throw Error(t('Validate this draft before starting a run'));
+    const receipt = await api.request<{ id: string }>('/v1/runs', { scenario: workspace.scenario, studio_workspace: workspace.id, studio_revision: workspace.revision });
     notify({ kind: 'success', message: t('Run started.') }); navigate(`/runs/${encodeURIComponent(receipt.id)}?api=${encodeURIComponent(base)}&mode=live`);
   };
   const switchWorkspace = (id: string) => {
@@ -140,7 +160,7 @@ export default function StudioPage() {
     else open();
   };
   const selectedExtract = catalog?.extracts.find(item => item.id === extract);
-  const bindingsValid = workspace?.validation?.valid === true && !dirty && buffersValid;
+  const bindingsValid = workspace?.validation?.valid === true && workspace.validation.revision === workspace.revision && !dirty && buffersValid;
   const runHint = !buffersValid ? t('Correct invalid editor content first') : dirty ? t('Validate your changes first') : t('Validate first');
   const issueCount = (count: number) => count === 1 ? t('1 authoring issue') : t('{count} authoring issues', { count });
   const issueList = (group: StudioStep) => <div className="guided-issues">{issues.filter(issue => issueStep(issue) === group).map((issue, index) => <button key={index} className="guided-issue" onClick={() => openIssue(issue)}><strong>{issue.message}</strong><span>{t('Edit {step}', { step: labels[group] })}</span></button>)}</div>;
@@ -155,7 +175,7 @@ export default function StudioPage() {
     <PageHeader eyebrow={t('Studio · configuration')} title={scenario ? (localized(scenario, 'title', locale) ?? (scenario.id === 'traffic-accident' ? t('Traffic accident') : readableName(String(scenario.id ?? '')))) : t('Build a scenario')} description={t('Choose the actors, their controllers and the rules that make things happen.')} />
     {error && <Alert type="error" showIcon message={t('Studio could not complete the request')} description={error} closable onClose={() => setError('')} />}
     <div className="guided-workspace-header">
-      <div className="guided-workspace-name"><span className="guided-label">{t('Workspace')}</span>{workspace ? <Input aria-label={t('Workspace name')} value={workspace.name} onChange={event => { setWorkspace({ ...workspace, name: event.target.value }); setDirty(true); }} /> : <strong>{t('Select or create a workspace')}</strong>}<span className="guided-muted">{workspace ? `${workspaceUpdated(workspace, locale)}${dirty ? t(' · Unsaved changes') : ''}` : t('A saved draft holds the complete scenario.')}</span></div>
+      <div className="guided-workspace-name"><span className="guided-label">{t('Workspace')}</span>{workspace ? <Input aria-label={t('Workspace name')} value={workspace.name} onChange={event => { editVersion.current++; setWorkspace({ ...workspace, name: event.target.value }); setDirty(true); }} /> : <strong>{t('Select or create a workspace')}</strong>}<span className="guided-muted">{workspace ? `r${workspace.revision ?? 0} · ${workspaceUpdated(workspace, locale)}${dirty ? t(' · Unsaved changes') : ''}` : t('A saved draft holds the complete scenario.')}</span></div>
       <Space wrap>
         <Dropdown trigger={['click']} menu={{ items: recentWorkspaces(workspaces).map(item => ({ key: item.id, label: <span className="guided-picker-item"><strong>{item.name}</strong><small>{workspaceUpdated(item, locale)}</small></span> })), onClick: ({ key }) => switchWorkspace(key) }}><Button disabled={!workspaces.length || busy} data-testid="workspace-picker">{t('Switch workspace ▾')}</Button></Dropdown>
         {!workspace && <Button disabled={busy} onClick={() => void action(openDemo)}>{t('Open traffic demo')}</Button>}
@@ -181,7 +201,7 @@ export default function StudioPage() {
               <Space wrap><Button disabled={busy || !buffersValid} onClick={() => void action(async () => { const saved = await save(); setYaml(await api.export(saved.id)); })}>{t('Export YAML')}</Button><Button disabled={!yaml || busy} onClick={() => void action(async () => { apply(await api.request<Workspace>(`/v1/studio/workspaces/${workspace.id}/import`, { yaml })); })}>{t('Import YAML')}</Button></Space>
               <Input.TextArea aria-label={t('Scenario YAML')} rows={18} value={yaml} onChange={event => setYaml(event.target.value)} />
               <h3>{t('Scenario JSON')}</h3><Input.TextArea aria-label={t('Scenario editor')} rows={16} value={raw} onChange={event => {
-                setRaw(event.target.value); setDirty(true); setWorkspace({ ...workspace, validation: undefined });
+                editVersion.current++; setRaw(event.target.value); setDirty(true); setWorkspace({ ...workspace, validation: undefined });
                 try { const value = parseAuthoringJson(event.target.value); if (!value || Array.isArray(value) || typeof value !== 'object') throw Error(t('Scenario must be an object')); setWorkspace({ ...workspace, scenario: value as Record<string, any>, validation: undefined }); setRawError(''); }
                 catch { setRawError(t('Invalid JSON. Check commas, quotes and brackets.')); }
               }} />{rawError && <Alert type="error" message={rawError} />}
@@ -197,7 +217,7 @@ export default function StudioPage() {
               <Card title={t('Scene preview')}>{step === 'scene' && <ScenePreview workspace={workspace} api={base} layers={layers} />}<Checkbox.Group aria-label={t('Visible scene layers')} value={layers} options={['ground', 'buildings', 'roads', 'entities', 'airspace'].map(value => ({ value, label: registryLabel(value, locale) }))} onChange={values => setLayers(values as string[])} /><p className="guided-muted">{workspace.scene ? t('Selected geographic region') : workspace.demo_console?.city_available ? t('Demo scene · original city geometry') : t('Draft scene · local east / north / up coordinates')}</p></Card>
               <Card title={t('Place an entity')}><div className="guided-form">
                 <label>{t('Entity name')}<Input aria-label={t('Entity ID')} value={placeId} onChange={event => setPlaceId(event.target.value)} placeholder={t('e.g. survey-uav')} /></label>
-                <label>{t('AeroGraph type')}<Select aria-label={t('Placement type')} showSearch optionFilterProp="label" value={placeType} onChange={setPlaceType} options={allTypes.map(row => ({ value: row.id, label: displayType(row), disabled: row.abstract }))} /></label>
+                <label>{t('AeroGraph type')}<Select aria-label={t('Placement type')} showSearch optionFilterProp="label" value={placeType} onChange={setPlaceType} options={placementTypes.map(row => ({ value: row.id, label: displayType(row), disabled: row.abstract }))} /></label>
                 <div className="guided-coordinate-row">{coordinates.map((label, index) => <label key={index}>{t('{direction} (m)', { direction: label })}<InputNumber aria-label={label} value={position[index]} onChange={value => { if (value !== null) setPosition(position.map((old, i) => i === index ? value : old)); }} /></label>)}</div>
                 <Button disabled={!placeId.trim() || !placeType || duplicatePlaceId || busy || !buffersValid} onClick={() => void action(async () => { await save(); apply(await api.request<Workspace>(`/v1/studio/workspaces/${workspace.id}/place`, { id: placeId.trim(), type: placeType, kind: 'entity', engine: effectivePlacement, position, facts: {} })); setPlaceId(''); })}>{t('Place entity')}</Button>
                 {duplicatePlaceId && <p role="alert">{t('This entity ID already exists. Choose a different name.')}</p>}
@@ -210,7 +230,7 @@ export default function StudioPage() {
               {workspace.region && <><p className="guided-muted">{t('For road traffic, generate a SUMO road network from the selected region before running.')}</p><Button disabled={busy || !buffersValid} onClick={() => void action(async () => { await save(); await api.request(`/v1/studio/workspaces/${workspace.id}/network`, {}); apply(await api.request<Workspace>(`/v1/studio/workspaces/${workspace.id}`)); })}>{t('Generate SUMO road network')}</Button></>}
             </Card>
           </section>}
-          {visited.has('entities') && <section hidden={step !== 'entities'} data-testid="studio-panel-entities"><EntitiesStep key={`${workspace.id}/${new URLSearchParams(location.search).get('entity') ?? ''}`} initialEntityId={new URLSearchParams(location.search).get('entity') ?? undefined} scenario={scenario} onChange={onChange} api={api} types={allTypes} fields={allFields} schemas={workspace.registry_catalog?.schemas} onValidityChange={entityValidity} /></section>}
+          {visited.has('entities') && <section hidden={step !== 'entities'} data-testid="studio-panel-entities"><EntitiesStep key={`${workspace.id}/${new URLSearchParams(location.search).get('entity') ?? ''}`} initialEntityId={new URLSearchParams(location.search).get('entity') ?? undefined} scenario={scenario} onChange={onChange} api={api} types={allTypes} fields={allFields} schemas={schemas} onValidityChange={entityValidity} /></section>}
           {visited.has('plugins') && <section hidden={step !== 'plugins'} data-testid="studio-panel-plugins"><Card title={t('Algorithms')} data-testid="studio-algorithms-card"><p className="guided-muted">{t('Choose how drones share tasks, find routes, avoid conflicts and decide when to recharge.')}</p><AlgorithmsPanel base={base} applicable={scenarioUsesLowaltPack(scenario)} algorithms={(scenario.algorithms ?? {}) as Partial<Record<AlgorithmSlot, string>>} onChange={next => onChange({ ...scenario, algorithms: { ...next } })} /></Card><DomainPluginsStep key={workspace.id} scenario={scenario} onChange={onChange} engines={catalog.engines} onValidityChange={pluginValidity} /></section>}
           {visited.has('predicates') && <section hidden={step !== 'predicates'} data-testid="studio-panel-predicates"><PredicatesStep {...common} scenario={scenario} types={allTypes} fields={allFields} relations={allRelations} onValidityChange={predicateValidity} /></section>}
           {visited.has('rules') && <section hidden={step !== 'rules'} data-testid="studio-panel-rules"><RulesStep {...common} scenario={scenario} types={allTypes} fields={allFields} relations={allRelations} onValidityChange={behaviourValidity} /></section>}

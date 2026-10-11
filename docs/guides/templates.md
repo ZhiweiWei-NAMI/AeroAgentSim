@@ -73,7 +73,7 @@ values still pass typed validation.
 
 The English fields above stay required. Chinese siblings are optional, so
 existing `aeroagentsim.template/v1` manifests and English clients still work.
-All eight shipped templates include Chinese titles, summaries, observation and
+All nine shipped templates include Chinese titles, summaries, observation and
 experiment bullets, and knob labels.
 
 | Optional field | Shape and validation |

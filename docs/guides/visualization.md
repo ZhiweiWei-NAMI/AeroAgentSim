@@ -9,7 +9,7 @@ any static host proxying the API). Routes are defined in
 
 | Route | Page | What it does |
 | --- | --- | --- |
-| `/` | [HomePage](../../frontend/src/console/HomePage.tsx) | Landing page and demo gallery |
+| `/` | [HomePage](../../frontend/src/console/HomePage.tsx) | Workspace launcher, saved drafts, recent runs and reusable scenarios |
 | `/studio` | [StudioPage](../../frontend/src/studio/StudioPage.tsx) | Guided scenario authoring; `/studio?guide=...` opens embedded guide content |
 | `/runs` | [RunsPage](../../frontend/src/pages/RunsPage.tsx) | Start a configured scenario, list runs, operate one |
 | `/runs/{id}` | RunsPage (`mode=live` or `mode=replay`) | Synchronized AeroGraph + 3D view, timeline, controls, receipts |
@@ -47,16 +47,21 @@ simulates behaviour — the server does.
 
 ## Operating a run
 
-- **Start**: `/runs` → scenario path → **Start scenario** (creates a run via
-  `POST /v1/runs`). `mode=live` follows the live feed; `mode=replay` plays a
-  recorded run from the same journal.
+- **Start**: Home → create/open a workspace, or choose **Run now** on a
+  reusable scenario. Studio saves and validates a concrete revision before
+  starting it. The run bar names that source workspace and revision.
+  `mode=live` follows the live feed; `mode=replay` reads the same journal.
 - **One timeline**: the graph view and 3D city view share the selected
   identity `{runId, epoch, id, generation}`, live-follow and a bitemporal
   cursor. A seek (timeline scrub, decision record cut, photo source cut)
   freezes both views at the same journal prefix, including same-nanosecond
   microsteps. **Follow live** seeks the latest committed cut. Display
   interpolation never changes recorded facts.
-- **Run controls**: pause/resume/stop with operational receipts showing
+- **Layout**: search entities, relations, behaviours and plugins in the left
+  explorer. Select an object for its recorded properties. Drag the graph/city
+  divider, focus either view, or clear selection; all views retain one cursor.
+- **Run controls**: the top bar exposes pause/resume/stop and intervention, with
+  operational receipts showing
   requested action versus observed effective status; in replay, operational
   controls are disabled. Timeline play/pause controls playback independently.
 - **Injection**: the ingress form selects a registered command or a declared
@@ -90,8 +95,10 @@ header/commit fields and are absent in older runs.
 - The demo's camera captures render committed poses with the selected city geometry
   in headless Chromium — simulation-camera output, not licensed city imagery.
 - The optional high-detail city pack is a separate download, keeping clones small.
-- Feed requests use `AbortController`; transport failures stay visible and
-  never become empty successful data.
+- Feed requests use `AbortController`. Temporary network and server failures
+  reconnect with bounded backoff from the last received journal index; they
+  never resubmit commands or become empty successful data. Leaving the view
+  cancels pending reads.
 
 See also: [HTTP API reference](../reference/http-api.md),
 [viewer feed reference](../reference/viewer-feed.md).

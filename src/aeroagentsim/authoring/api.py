@@ -10,12 +10,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, TypeVar
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 from .catalog import engines
 from .inputs import configured_extracts, configured_ontology
-from .workspace import WorkspaceStore
+from .workspace import WorkspaceConflict, WorkspaceStore
 
 T = TypeVar("T")
 
@@ -23,6 +23,8 @@ T = TypeVar("T")
 def checked(action: Callable[[], T]) -> T:
     try:
         return action()
+    except WorkspaceConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
     except FileNotFoundError as exc:
         raise HTTPException(404, str(exc)) from exc
     except (ValueError, TypeError, KeyError, OSError) as exc:
@@ -86,11 +88,11 @@ def create_router(
     @router.get("/types")
     def types(q: str = "", workspace: str | None = None) -> dict[str, Any]:
         def read() -> dict[str, Any]:
-            from .catalog import SnapshotCatalog
+            from .catalog import ScenarioCatalog
 
             selected = store.catalog_for(workspace)
             result = selected.search(q)
-            if isinstance(selected, SnapshotCatalog):
+            if isinstance(selected, ScenarioCatalog):
                 result["relations"] = selected.relations(q)
                 return result
             result["relations"] = [
@@ -154,10 +156,34 @@ def create_router(
         )
 
     @router.get("/demo-assets/{name:path}")
-    def demo_asset(name: str) -> FileResponse:
+    def demo_asset(name: str, request: Request) -> Response:
         from .demo import city_file
 
-        return checked(lambda: FileResponse(city_file(name)))
+        def read() -> Response:
+            path = city_file(name)
+            response = FileResponse(
+                path,
+                stat_result=path.stat(),
+                headers={"Cache-Control": "public, max-age=0, must-revalidate"},
+            )
+            # FileResponse supplies validators but does not handle conditional
+            # requests itself. Reuse cached bytes only when the installed asset
+            # still matches, including after a pack update at the same URL.
+            tags = request.headers.get("if-none-match", "").split(",")
+            if any(
+                tag.strip().removeprefix("W/") in {response.headers["etag"], "*"}
+                for tag in tags
+            ):
+                return Response(
+                    status_code=304,
+                    headers={
+                        key: response.headers[key]
+                        for key in ("cache-control", "etag", "last-modified")
+                    },
+                )
+            return response
+
+        return checked(read)
 
     @router.get("/demo-capture-assets")
     def demo_capture_assets() -> Response:
@@ -263,11 +289,11 @@ def create_router(
 
     @router.post("/workspaces/{identifier}/validate")
     def validate(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
-        if set(body) - {"scenario"} or (
+        if set(body) - {"scenario", "revision"} or (
             "scenario" in body and not isinstance(body["scenario"], dict)
         ):
-            raise HTTPException(422, "validation: only scenario may be supplied")
-        return checked(lambda: store.validate(identifier, body.get("scenario")))
+            raise HTTPException(422, "validation: only scenario and revision may be supplied")
+        return checked(lambda: store.validate(identifier, body.get("scenario"), revision=body.get("revision")))
 
     @router.get("/workspaces/{identifier}/export", response_class=PlainTextResponse)
     def export(identifier: str) -> str:

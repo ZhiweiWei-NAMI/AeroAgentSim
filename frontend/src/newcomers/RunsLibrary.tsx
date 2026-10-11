@@ -20,7 +20,7 @@ export function RunsLibrary({runs,loaded,error,base,inspect=false,onRefresh,comp
  useEffect(()=>{setAlgorithms([]);if(locale!=='zh-CN'||!hasAlgorithms)return;const abort=new AbortController();void api.algorithms(abort.signal).then(rows=>{if(!abort.signal.aborted)setAlgorithms(rows);}).catch(()=>{/* Saved algorithm ids remain readable if metadata is unavailable. */});return()=>abort.abort();},[api,locale,hasAlgorithms]);
  const home=`/?api=${encodeURIComponent(base)}`,suffix=`?api=${encodeURIComponent(base)}`;
  if(compare)return <div className="console-page" data-testid="runs-compare"><CompareRuns api={api} ids={compare} onBack={()=>navigate(`/runs${suffix}`)}/></div>;
- const open=(run:RunInfo,live:boolean)=>`/${inspect?'inspect':'runs'}/${encodeURIComponent(run.id)}${suffix}&mode=${live?'live':'replay'}&view=simple${run.template_id?`&template=${encodeURIComponent(run.template_id)}`:''}`;
+ const open=(run:RunInfo,live:boolean)=>`/${inspect?'inspect':'runs'}/${encodeURIComponent(run.id)}${suffix}&mode=${live?'live':'replay'}&view=expert${run.template_id?`&template=${encodeURIComponent(run.template_id)}`:''}`;
  const runTitle=(run:RunInfo)=>localized(run,'template_title',locale)??readableLabel(run.scenario,locale);
  const algorithmLabel=(id:string)=>{const row=algorithms.find(row=>row.id===id);return locale==='zh-CN'&&row?localized(row,'label',locale):readableLabel(id,locale);};
  return <div className="console-page" data-testid={inspect?'inspect-page':'runs-page'}>

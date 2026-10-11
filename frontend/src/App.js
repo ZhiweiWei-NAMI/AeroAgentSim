@@ -9,6 +9,7 @@ import HomePage from './console/HomePage';
 import { ConsoleNotifications } from './console/Notifications';
 import { PageState } from './console/PageState';
 import { ShortcutsHelp } from './console/shortcuts';
+import Welcome from './newcomers/Welcome';
 
 const RunsPage = lazy(() => import('./pages/RunsPage'));
 const AgentConsole = lazy(() => import('./pages/AgentConsole'));
@@ -29,6 +30,7 @@ function RoutedContent() {
   if (new URLSearchParams(search).has('capture')) return <Suspense fallback={loading}><RunsPage /></Suspense>;
   return <ConsoleShell activeRun={activeRun}>
     <ShortcutsHelp />
+    <Welcome />
     <Suspense fallback={loading}>
       {/* Keep the operator source and shared temporal store alive across navigation. */}
       {activeRun && <div hidden={!selectedRun}><RunsPage route={activeRun} interactive={selectedRun} /></div>}
@@ -47,7 +49,7 @@ function RoutedContent() {
 
 function LocalizedConsole() {
   const { locale } = useI18n();
-  return <ConfigProvider locale={locale === 'zh-CN' ? zhCN : enUS} button={{ autoInsertSpace: false }} theme={{ token: { colorPrimary: '#0d7f74', colorText: '#17222e', colorBorder: '#cdd7e0', borderRadius: 6, fontFamily: "'Segoe UI', system-ui, 'Microsoft YaHei', sans-serif" } }}>
+  return <ConfigProvider locale={locale === 'zh-CN' ? zhCN : enUS} button={{ autoInsertSpace: false }} theme={{ token: { colorPrimary: '#356b9e', colorText: '#233044', colorBorder: '#d8dee6', borderRadius: 6, fontFamily: "'Segoe UI', system-ui, 'Microsoft YaHei', sans-serif" } }}>
     <ConsoleNotifications><RoutedContent /></ConsoleNotifications>
   </ConfigProvider>;
 }

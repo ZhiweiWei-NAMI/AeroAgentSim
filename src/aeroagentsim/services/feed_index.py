@@ -82,9 +82,22 @@ def _decode(value: bytes) -> Any:
     return json.loads(zlib.decompress(value))
 
 
-def update(path: Path) -> None:
-    """Append only newly indexed committed cuts; restore the last checkpoint."""
+def update(path: Path, *, through_index: int | None = None) -> None:
+    """Build bounded batches so first-page readers need only their requested cuts.
+
+    Release the per-run lock between batches. A background tail or metrics read
+    must not hold the interactive first page behind a whole journal rebuild.
+    """
     path = path.resolve()
+    storage = RunStorage(path)
+    available = storage.entries[-1]["index"] + 1 if storage.entries else 1
+    target = min(available, through_index) if through_index is not None else available
+    while not _update_batch(path, target):
+        pass
+
+
+def _update_batch(path: Path, requested_target: int) -> bool:
+    """Publish one complete checkpoint, at most 256 new journal records."""
     with _path_lock(path), closing(_connect(path)) as database, database:
         storage = RunStorage(path)
         target = storage.entries[-1]["index"] + 1 if storage.entries else 1
@@ -103,8 +116,8 @@ def update(path: Path) -> None:
         valid = (
             bool(state) and state["signature"] == signature and state["next"] <= target
         )
-        if valid and state["next"] == target:
-            return
+        if valid and state["next"] >= min(target, requested_target):
+            return True
         registry = MemoryRegistry.from_data(
             json.loads((path / "runtime.registry.json").read_text())
         )
@@ -121,6 +134,7 @@ def update(path: Path) -> None:
             cursor = 1
             database.execute("DELETE FROM cuts")
             database.execute("DELETE FROM checkpoint")
+        target = min(target, requested_target, cursor + 256)
         while cursor < target:
             records = storage.records(cursor, min(256, target - cursor))
             if not records:
@@ -160,11 +174,12 @@ def update(path: Path) -> None:
                 ),
             ),
         )
+        return cursor >= requested_target
 
 
 def page(path: Path, start: int = 1, limit: int = 256) -> list[dict[str, Any]]:
     """Random-access projected cuts, including reconnects in a fresh process."""
-    update(path)
+    update(path, through_index=max(1, start) + limit)
     with closing(_connect(path)) as database, database:
         return [
             _decode(row[0])

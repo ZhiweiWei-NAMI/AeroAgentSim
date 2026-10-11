@@ -12,9 +12,10 @@ import { entityLabel } from '../pages/inspection-format';
 export interface TransportFields extends Record<string,string> { schema:string;target:string;stream_id:string;at_ns:string;clock_id:string;mapping_id:string;numerator:string;denominator:string;idempotency_key:string }
 export const emptyTransport = (schema = ''):TransportFields => ({schema,target:'',stream_id:'',at_ns:'',clock_id:'',mapping_id:'',numerator:'',denominator:'',idempotency_key:''});
 
-export function transportForPoint(point:Draft, options:{operator:boolean;operatorNs:bigint}):TransportFields {
+export function transportForPoint(point:Draft, options:{operator:boolean;operatorNs?:bigint}):TransportFields {
   const base:TransportFields = {...emptyTransport(String(point.command)),target:String(point.target),stream_id:String(point.stream_id)};
-  if(!options.operator)return base;
+  if(!options.operator||point.stream_id!=='operator')return base;
+  if(options.operatorNs===undefined)throw Error('Operator source progress is not loaded');
   // Canonical source stamp at the next unclosed operator instant, from the
   // actual acknowledged watermark progress (never from wall-clock guessing).
   const at=(options.operatorNs+1n).toString();

@@ -1,0 +1,48 @@
+format: aeroagentsim.template/v1
+city: huangpu
+id: food-delivery
+title: Restaurant meal delivery
+title_zh: 餐厅外卖配送
+summary: Kitchens prepare meal orders before drones collect them and deliver to customers against a committed deadline.
+summary_zh: 餐厅按厨房容量制作餐食，无人机取餐后送往收货点，并按订单承诺时间统计准时送达率。
+category: logistics
+difficulty: beginner
+duration_s: 360
+scenario: scenario.yaml
+thumbnail: thumbnail.png
+observe:
+  - Restaurant kitchen capacity limits concurrent preparation; meals become eligible for assignment only when ready.
+  - Drones fly to the restaurant, collect prepared meals, then complete delivery on a physical arrival receipt.
+  - The journal records preparation, pickup, delivery and the promised deadline for every completed order.
+observe_zh:
+  - 厨房容量限制同时备餐数，出餐后订单才进入无人机分配队列。
+  - 无人机飞往餐厅取餐，再以实际到达回执完成送餐。
+  - 日志记录备餐、取餐、送达和承诺时间，可回放核对。
+try:
+  - Choose interactive mode, advance to 10 s, then inject restaurant_delay at the east kitchen and inspect the affected orders.
+  - Change preparation duration or kitchen capacity to compare queueing and on-time delivery.
+  - Change the fleet, allocation algorithm or wind to compare measured delivery times.
+try_zh:
+  - 选择实时交互模式，推进至 10 秒，向东侧厨房注入出餐延迟并查看受影响订单。
+  - 修改备餐时长或厨房容量，对比排队和准时送达率。
+  - 修改机队规模、分配算法或风速，对比实际配送耗时。
+knobs:
+  - id: run_mode
+    label: Run mode
+    label_zh: 运行方式
+    type: choice
+    default: scheduled
+    options: [scheduled, interactive]
+    options_zh: [自动运行（无需人工推进）, 实时交互（控制台推进与注入）]
+    description: Scheduled runs finish automatically. Interactive runs wait without a time limit for console time advances and live restaurant-delay events; you can stop them at any time.
+    description_zh: 自动运行无需人工推进，可直接完成。实时交互会持续等待控制台推进时间或注入出餐延迟，不因等待超时结束；你可以随时停止。
+    apply: lowalt.operator_mode
+  - {id: fleet_size, label: Delivery drones, label_zh: 送餐无人机数量, type: integer, default: 2, min: 1, max: 12, pointer: /generators/fleet/count}
+  - {id: order_rate, label: Orders per second, label_zh: 每秒订单数, type: number, default: 0.075, min: 0.01, max: 0.5, pointer: /engines/tasks/config/generators/0/arrivals/rate_per_s}
+  - {id: preparation_west_s, label: West kitchen preparation (s), label_zh: 西侧厨房备餐时长（秒）, type: number, default: 25, min: 1, max: 120, pointer: /entities/0/facts/lowalt.food_preparation_s}
+  - {id: preparation_east_s, label: East kitchen preparation (s), label_zh: 东侧厨房备餐时长（秒）, type: number, default: 35, min: 1, max: 120, pointer: /entities/1/facts/lowalt.food_preparation_s}
+  - {id: kitchen_capacity, label: West kitchen simultaneous meals, label_zh: 西侧厨房同时备餐数, type: integer, default: 1, min: 1, max: 6, pointer: /entities/0/facts/lowalt.site_capacity}
+  - {id: delivery_window_s, label: Promised delivery window (s), label_zh: 承诺送达时限（秒）, type: number, default: 240, min: 30, max: 300, pointer: /engines/tasks/config/generators/0/delivery_window_s}
+  - {id: allocator, label: Task allocation, label_zh: 订单分配算法, type: choice, default: nearest, options: [nearest, auction, hungarian], pointer: /algorithms/allocation}
+  - {id: wind_speed, label: Wind speed (m/s), label_zh: 风速（米/秒）, type: number, default: 2, min: 0, max: 20, pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0}
+kpis: [tasks_created, tasks_completed, mean_task_latency_s, on_time_rate, energy_used_kj, weather_holds]

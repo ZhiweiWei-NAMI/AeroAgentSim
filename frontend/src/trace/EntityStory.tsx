@@ -11,8 +11,8 @@ const LIMIT = 8;
 /** Notable moments for one entity, each opening the cause-to-effect story. */
 export function MomentsList({ store, entity, onOpen }: { store: TemporalFeedStore; entity: EntityKey; onOpen: (ref: CauseRef, cut: number) => void }) {
   const { t, locale } = useI18n();
-  const count = store.commits.length, id = entityId(entity);
-  const moments = useMemo(() => momentsFor(store, entity,locale), [store, count, id, locale]); // eslint-disable-line react-hooks/exhaustive-deps
+  const count = store.commits.length, id = entityId(entity), cursor = store.viewCursor;
+  const moments = useMemo(() => momentsFor(store, entity,locale).filter(moment => !cursor || moment.cut <= cursor.knownAt && (BigInt(moment.at.ns) < BigInt(cursor.validAt.ns) || moment.at.ns === cursor.validAt.ns && moment.at.microstep <= cursor.validAt.microstep)), [store, count, id, locale, cursor?.knownAt, cursor?.validAt.ns, cursor?.validAt.microstep]); // eslint-disable-line react-hooks/exhaustive-deps
   const [all, setAll] = useState(false);
   useEffect(() => setAll(false), [store,id]);
   if (!moments.length) return <p className="inspection-empty">{t('Nothing notable involved this entity (yet). Move the timeline forward.')}</p>;

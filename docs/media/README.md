@@ -1,3 +1,11 @@
+# Current workbench screenshots
+
+[Graph and city](workbench-city.png) · [Food delivery](workbench-food.png).
+These capture the current built console with the installed detailed city pack.
+See [delivery evidence](../project/workbench-delivery.md).
+
+The recordings below document the earlier console layout and packaged lite city.
+
 # Console product recordings
 
 These GIFs show the real console and backend at 1280 × 800, exported at

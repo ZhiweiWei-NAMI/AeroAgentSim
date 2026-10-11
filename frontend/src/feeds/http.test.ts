@@ -39,6 +39,15 @@ describe('HTTP viewer transport', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('offline', { status: 503 })));
     await expect(new RunsApi('http://api').runs()).rejects.toThrow('HTTP 503');
   });
+  it('preserves exact numeric payloads when a live stream resumes after pause', async () => {
+    const row = {...commit(1), messages: [{id:'injected',schemaId:'input',source:'operator',kind:'event',at:commit(1).at,payload:{value:'EXACT_INTEGER'}}]};
+    const text = `event: status\ndata: {"status":"paused"}\n\nevent: commit\ndata: ${JSON.stringify(row).replace('"EXACT_INTEGER"','9223372036854775815')}\n\nevent: status\ndata: {"status":"running"}\n\nevent: end\ndata: {"status":"stopped","finalCursor":2}\n\n`;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(page([],1,'paused')).mockResolvedValueOnce(new Response(text)));
+    const received: FeedCommit[] = [], statuses: string[] = [];
+    await new HttpViewerFeed(new RunsApi('http://api'), 'live', 'live', status => statuses.push(status)).subscribe(0, row => received.push(row));
+    expect(received[0].messages[0].payload).toEqual({value:{$integer:'9223372036854775815'}});
+    expect(statuses).toEqual(['paused','paused','running','stopped']);
+  });
   it('fails malformed header units and number-encoded timestamps', () => {
     const value = { contract: 'aeroagentsim.viewer-feed/v1', runId: 'x', registryDigest: 'digest', types: [], fields: [], presentation: [], start: { ns: 42, microstep: 0 } };
     expect(() => validateHeader(value)).toThrow('string');
@@ -53,8 +62,8 @@ describe('HTTP viewer transport', () => {
       .mockResolvedValue(new Response('', { status: 503 }));
     vi.stubGlobal('fetch', fetcher);
     const controller = new AbortController();
-    const feed = new HttpViewerFeed(new RunsApi('http://api'), 'live', 'live', (status, context) => seen.push([status, context]));
-    await expect(feed.subscribe(0, () => {}, controller.signal)).rejects.toThrow();
+    const feed = new HttpViewerFeed(new RunsApi('http://api'), 'live', 'live', (status, context) => seen.push([status, context]), error => { if (error?.includes('SSE HTTP 503')) controller.abort(); });
+    await expect(feed.subscribe(0, () => {}, controller.signal)).resolves.toBeUndefined();
     expect(seen.map(([status]) => status)).toEqual(['waiting_for_input', 'waiting_for_input', 'waiting_for_input', 'running']);
     expect(seen[0][1]).toEqual(waiting); expect(seen[1][1]).toEqual(waiting); expect(seen[2][1]).toEqual(waiting); expect(seen[3][1]).toBeUndefined();
     controller.abort();

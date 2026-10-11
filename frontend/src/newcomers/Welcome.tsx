@@ -18,7 +18,7 @@ export const WELCOME_STEPS=welcomeSteps('en-US');
 export function openWelcome(){document.dispatchEvent(new CustomEvent(WELCOME_EVENT));}
 export function Welcome({open,onClose}:{open?:boolean;onClose?:()=>void}){
  const {t,locale}=useI18n();
- const location=useLocation(),[selfOpen,setSelfOpen]=useState(()=>{try{return localStorage.getItem(KEY)!=='1';}catch{return true;}});
+ const location=useLocation(),[selfOpen,setSelfOpen]=useState(false);
  useEffect(()=>{const show=()=>setSelfOpen(true);document.addEventListener(WELCOME_EVENT,show);return()=>document.removeEventListener(WELCOME_EVENT,show);},[]);
  useEffect(()=>{if(new URLSearchParams(location.search).has('welcome'))setSelfOpen(true);},[location.search]);
  const close=()=>{try{localStorage.setItem(KEY,'1');}catch{/* Walkthrough still closes for this visit. */}setSelfOpen(false);onClose?.();};

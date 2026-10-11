@@ -102,6 +102,8 @@ export interface RunHeader {
   entities?: Array<{ id: string; type: string; label?: string; label_zh?: string; business?: string; vehicle_class?: string }>;
   /** Display models of the installed asset pack (v1.1+); absent without a pack. Parsed by viewport/model-catalog. */
   modelCatalog?: unknown;
+  /** Engines (partitions) of the run and the plugin each one runs. */
+  engines?: Array<{ id: string; plugin: string }>;
   start: Instant;
   end?: Instant;
   runtimeRegistry?: unknown;

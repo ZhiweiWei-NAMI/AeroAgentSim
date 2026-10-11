@@ -1,6 +1,10 @@
 // Newcomer presentation messages. English keys and recorded technical values
 // stay stable; additive catalog fields supply authored Chinese descriptions.
 export default {
+  'Installed': '已安装',
+
+  'Draft changed while saving. Save the latest edits before continuing.': '保存期间草稿又有修改，请先保存最新内容再继续。',
+
   'Pick a scenario': '选择一个场景',
   'Choose a card and press Run now. The settings are ready to use.': '选择一张场景卡片，点击“立即运行”。各项设置已准备好，可以直接使用。',
   'Watch it run': '观看场景运行',
@@ -268,6 +272,11 @@ export default {
   'Re-routing around {zone}': '改道绕过{zone}',
   'Re-routing — no-fly rule active': '改道 — 禁飞规则已触发',
   'Delivering parcel to {stop}': '正在向{stop}配送包裹',
+  'Waiting for kitchen capacity at {stop}': '等待{stop}的空闲备餐位',
+  'Preparing meal at {stop}': '{stop}正在备餐',
+  'Meal ready — waiting for a courier': '餐食已备好，等待送餐无人机',
+  'Delivering meal to {stop}': '正在向{stop}配送餐食',
+  'Heading to {stop} — collecting a prepared meal': '前往{stop}取餐',
   'Performing {business} mission to {stop}': '正在前往{stop}执行{business}任务',
   'Heading to {stop} — collecting assigned task': '正在前往{stop} — 领取已分配的任务',
   'Task paused — awaiting resumption': '任务已暂停 — 等待恢复',

@@ -3,7 +3,7 @@ import type {TemporalFeedStore} from '../feeds/temporal-store';
 import type {EntityState} from '../viewport/feed-store';
 import {entityId} from '../viewport/bindings';
 import {chargingPadAssignments} from '../viewport/operational-loads';
-import {businessStyle,displayName,semanticVehicle,taskByVehicle} from '../viewport/semantic';
+import {businessStyle,displayName,isLowaltTask,semanticVehicle,taskByVehicle} from '../viewport/semantic';
 import {displayLabel} from '../pages/inspection-format';
 import {translate} from '../i18n/translate';
 import type {CauseRef} from '../trace/cause-trace';
@@ -35,14 +35,14 @@ export interface EntityStory {
 /** Read-only explanation of the shared committed cut; no engine or future-state guesses. */
 export function entityStory(store:TemporalFeedStore,entity:EntityState,events:RecordedBusinessEvent[],locale='en-US'):EntityStory {
  const t=(key:string,vars:Record<string,unknown>={})=>translate(locale,key,vars);
- const task=entity.typeId==='lowalt:Task'?entity:taskByVehicle(store).get(entityId(entity.key));
+ const task=isLowaltTask(entity,store.header)?entity:taskByVehicle(store).get(entityId(entity.key));
  const known=store.viewCursor?.knownAt??-1,ns=BigInt(store.viewCursor?.validAt.ns??store.header.start.ns);
  const journey=events.filter(event=>event.cut<=known&&BigInt(event.at_ns)<=ns&&(event.entities.includes(entity.key.id)||!!task&&event.entities.includes(task.key.id))).slice(-6);
  const latestEvent=journey.at(-1);
  const names=new Map([...store.entities.values()].map(row=>[row.key.id,displayName(row,store.header,locale)]));
  const lookup=(id:string|undefined)=>id?names.get(id)??id:undefined;
  const phase=text(task&&field(task,'task_state'));
- const nextId=text(task&&field(task,['assigned','started'].includes(phase??'')?'task_origin':'task_destination'));
+ const nextId=text(task&&field(task,['awaiting_preparation','preparing','queued','assigned','started'].includes(phase??'')?'task_origin':'task_destination'));
  const control=[...store.messages].reverse().find(row=>row.kind==='event'&&row.schemaId==='lowalt.control'&&row.subjects?.some(key=>same(key,entity.key)));
  const controlPayload=control?.payload as {action?:unknown;reason?:unknown;target?:unknown;until_ns?:unknown}|undefined;
  let nextStop=lookup(nextId);
@@ -105,6 +105,13 @@ export function entityStory(store:TemporalFeedStore,entity:EntityState,events:Re
  }
  if(task){
   const ref=fieldCause(task,'task_state');
+  if(field(task,'task_kind')==='food'){
+   if(nextStop&&phase==='awaiting_preparation')return set(t('Waiting for kitchen capacity at {stop}',{stop:nextStop}),ref);
+   if(nextStop&&phase==='preparing')return set(t('Preparing meal at {stop}',{stop:nextStop}),ref);
+   if(phase==='queued')return set(t('Meal ready — waiting for a courier'),ref);
+   if(nextStop&&phase==='picked_up')return set(t('Delivering meal to {stop}',{stop:nextStop}),ref);
+   if(nextStop&&(phase==='assigned'||phase==='started'))return set(t('Heading to {stop} — collecting a prepared meal',{stop:nextStop}),ref);
+  }
   if(phase==='paused')return set(t('Task paused — awaiting resumption'),ref);
   if(nextStop&&phase==='picked_up')return set(field(task,'task_kind')==='parcel'?t('Delivering parcel to {stop}',{stop:nextStop}):t('Performing {business} mission to {stop}',{business:style.label||t('Assigned'),stop:nextStop}),ref);
   if(nextStop&&(phase==='assigned'||phase==='started'))return set(t('Heading to {stop} — collecting assigned task',{stop:nextStop}),ref);

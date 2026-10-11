@@ -132,7 +132,10 @@ def create_app(
                 ):
                     from aeroagentsim.authoring.wire import normalize_wire
 
-                    app.state.studio.get(body["studio_workspace"])
+                    draft = app.state.studio.get(body["studio_workspace"])
+                    revision = body.get("studio_revision")
+                    if revision is not None and (type(revision) is not int or revision != draft["revision"]):
+                        raise HTTPException(409, "Workspace changed; reopen and validate the current revision before running")
                     document_base = app.state.studio._base(
                         document, body["studio_workspace"]
                     )
@@ -142,12 +145,25 @@ def create_app(
                         app.state.studio.catalog,
                         base=document_base,
                     )
+                    saved = await asyncio.to_thread(
+                        normalize_wire, draft["scenario"],
+                        app.state.studio.catalog,
+                        base=document_base,
+                    )
+                    if document != saved:
+                        raise HTTPException(409, "Save and validate the current scenario before running its workspace revision")
                 scenario = await asyncio.to_thread(
                     load_scenario, document, base=document_base
                 )
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(422, str(exc)) from exc
-        return await launch(scenario, workspace_id=body.get("studio_workspace"))
+        return await launch(
+            scenario,
+            workspace_id=body.get("studio_workspace"),
+            workspace_revision=body.get("studio_revision"),
+        )
 
     async def warm_feed(path: Path, process: Any) -> None:
         from .feed_index import update
@@ -168,6 +184,7 @@ def create_app(
         scenario: Scenario,
         *,
         workspace_id: str | None = None,
+        workspace_revision: int | None = None,
         template: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         run_id = f"run-{uuid.uuid4().hex}"
@@ -182,8 +199,28 @@ def create_app(
             validation.close()
         except Exception as exc:
             raise HTTPException(422, str(exc)) from exc
+        workspace_metadata: dict[str, Any] = {}
+        if workspace_id is not None and hasattr(app.state, "studio"):
+            draft = app.state.studio.get(workspace_id)
+            revision = draft["revision"]
+            if workspace_revision is not None and (
+                type(workspace_revision) is not int or workspace_revision != revision
+            ):
+                raise HTTPException(
+                    409,
+                    "Workspace changed; reopen and validate the current revision before running",
+                )
+            workspace_metadata = {
+                "studio_workspace": workspace_id,
+                "studio_revision": revision,
+                "workspace_name": draft["name"],
+            }
         storage = RunStorage(path)
         storage.prepare(scenario)
+        if workspace_metadata:
+            storage._atomic(
+                "manifest.json", {**storage.metadata(), **workspace_metadata}
+            )
         if template is not None:
             metadata = storage.metadata()
             metadata["template"] = template
@@ -226,7 +263,7 @@ def create_app(
             await asyncio.sleep(0.01)
         return storage.metadata()
 
-    def run_summary(path: Path) -> dict[str, Any]:
+    def run_summary(path: Path, *, include_kpis: bool = True) -> dict[str, Any]:
         from .feed_index import kpi_result as project_run
 
         metadata = RunStorage(path).metadata()
@@ -245,7 +282,11 @@ def create_app(
             ),
             "knobs": template["knobs"] if template else {},
             "algorithms": document.get("algorithms", {}),
-            "kpis": project_run(path, include_series=False)["final"],
+            **(
+                {"kpis": project_run(path, include_series=False)["final"]}
+                if include_kpis
+                else {}
+            ),
             **(
                 {"template_id": template["id"], "template_title": template["title"]}
                 if template
@@ -254,11 +295,16 @@ def create_app(
         }
 
     @app.get("/v1/runs")
-    def runs() -> list[dict[str, Any]]:
+    def runs(include_kpis: bool = True) -> list[dict[str, Any]]:
         return [
-            run_summary(path)
-            for path in sorted(root.iterdir())
-            if (path / "manifest.json").exists()
+            run_summary(path, include_kpis=include_kpis)
+            for path in sorted(
+                (path for path in root.iterdir() if (path / "manifest.json").exists()),
+                key=lambda path: (
+                    (path / "scenario.json").stat().st_mtime_ns,
+                    path.name,
+                ),
+            )
         ]
 
     @app.get("/v1/runs/compare")
@@ -452,7 +498,9 @@ def create_app(
             for binding in result["presentation"]:
                 visual = binding.get("visual", {})
                 if str(visual.get("asset", "")).startswith("/v1/studio/demo-assets/"):
-                    visual["asset"] = str(request.base_url).rstrip("/") + visual["asset"]
+                    visual["asset"] = (
+                        str(request.base_url).rstrip("/") + visual["asset"]
+                    )
             for model in result.get("modelCatalog", {}).values():
                 for key in ("url", "lodUrl"):
                     if key in model:
@@ -559,6 +607,11 @@ def create_app(
             raise HTTPException(422, reply["error"])
         return dict(reply["result"])
 
+    @app.get("/v1/runs/{run_id}/inputs")
+    async def input_progress(run_id: str) -> dict[str, Any]:
+        """Read the active kernel source frontier, including progress without events."""
+        return await asyncio.to_thread(worker_input_call, run_id, "progress", {})
+
     @app.post("/v1/runs/{run_id}/ingress")
     async def live_ingress(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
         """Admit typed input after worker-side injection-manifest validation."""
@@ -613,6 +666,19 @@ def create_app(
             raise ValueError(f"Frontend build missing: {frontend}; run npm run build")
         app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")
 
+        @app.get("/logo192.png", include_in_schema=False)
+        @app.get("/manifest.json", include_in_schema=False)
+        @app.get("/favicon.ico", include_in_schema=False)
+        def public_asset(request: Request) -> FileResponse:
+            asset = frontend / request.url.path.lstrip("/")
+            if not asset.is_file():
+                raise HTTPException(404, "Console asset not found")
+            return FileResponse(
+                asset, headers={"Cache-Control": "public, max-age=3600"}
+            )
+
+        @app.get("/viewer-demo")
+        @app.get("/docs/platform/{path:path}")
         @app.get("/inspect/{path:path}")
         @app.get("/inspect")
         @app.get("/aerograph")

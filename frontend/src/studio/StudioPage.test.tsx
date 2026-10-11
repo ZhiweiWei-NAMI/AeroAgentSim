@@ -36,7 +36,7 @@ function mount({ region = false, locale = 'en-US' } = {}) {
   const second: Workspace = { id: 'second', name: 'Second', scenario: { id: 'other-demo', entities: [], engines: {} } };
   const request = vi.spyOn(StudioApi.prototype, 'request').mockImplementation(async (path, body) => {
     if (path === '/v1/studio/catalog') return { extracts: [{ id: 'map', name: 'Local map', bounds: [0, 0, 1, 1] }], engines: [] } as any;
-    if (path === '/v1/studio/types?q=') return { types, fields: [], relations: [] } as any;
+    if (path.startsWith('/v1/studio/types?')) return { types, fields: [], relations: [] } as any;
     if (path === '/v1/studio/workspaces') return [first, second] as any;
     if (path === '/v1/studio/workspaces/first/validate') { first = { ...first, scenario: (body as any).scenario, validation: { valid: true, errors: [] } }; return first.validation as any; }
     if (path === '/v1/studio/workspaces/first') { if (body) first = { ...first, ...(body as any), validation: undefined }; return first as any; }

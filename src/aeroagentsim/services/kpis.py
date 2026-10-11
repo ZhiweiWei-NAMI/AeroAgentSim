@@ -306,6 +306,13 @@ class KPIProjector:
             if task not in self.failed:
                 self.failed.add(task)
                 self.counts["tasks_failed"] += 1
+        elif schema == "lowalt.food.delivered":
+            order = "lowalt:" + identity(payload["task"])
+            deadline = payload["deadline_ns"]
+            if type(deadline) is not int or deadline < 0:
+                raise ValueError("KPI food deadline: nonnegative committed timestamp required")
+            self.deadlines[order] = deadline
+            self.delivered.setdefault(order, (at_ns, at_ns <= deadline))
         elif schema in {
             "lowalt.airspace.conflict",
             "lowalt.airspace.geofence_entered",

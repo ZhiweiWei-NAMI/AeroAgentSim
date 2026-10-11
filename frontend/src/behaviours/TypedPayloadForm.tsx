@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useId, useRef, useSt
 import { Details } from '../console/Details';
 import { useI18n } from '../i18n/I18nProvider';
 import { localized } from '../i18n/translate';
+import { localizedLabel, readableLabel } from '../pages/inspection-format';
 import { parseLosslessJson } from '../feeds/lossless-json';
 import { mapping, type Draft } from './model';
 interface EntityChoice { label: string; value: unknown; typeId: string; ancestors: string[] }
@@ -53,7 +54,7 @@ function PayloadFields({ schema, value, onChange, definitions = {}, path = 'Payl
   const displayPath = path === 'Payload' ? t('Payload') : path.startsWith('Payload.') ? `${t('Payload')}${path.slice('Payload'.length)}` : path;
   const title = localized(descriptor, 'title', locale) ?? localized(descriptor, 'label', locale);
   const description = localized(descriptor, 'description', locale);
-  const label = typeof title === 'string' ? title : path === 'Payload' ? t('Payload') : path.split('.').at(-1)?.replace(/_/g, ' ').replace(/^./, letter => letter.toUpperCase());
+  const label = typeof title === 'string' ? title : path === 'Payload' ? t('Payload') : readableLabel(path.split('.').at(-1) ?? path, locale);
   const help = typeof description === 'string' && description ? <small>{description}</small> : null;
   const errorMessage = error === 'integer' ? t('Enter an exact integer') : error === 'number' ? t('Enter a finite number using JSON syntax') : error === 'record' ? t('Record payload must be an object') : error ? t('Invalid JSON: {error}', { error }) : '';
   const jsonChange = (source: string, record = false) => {
@@ -87,7 +88,7 @@ function PayloadFields({ schema, value, onChange, definitions = {}, path = 'Payl
         if (event.target.value === 'current') return;
         const next = event.target.value === '' ? undefined : enumValues[Number(event.target.value)];
         commit(typeof next === 'number' && kind === 'integer' ? { $integer: String(next) } : typeof next === 'number' && kind === 'number' ? { $number: String(next) } : next);
-      }}><option value="">{t('Unset')}</option>{hasCurrent && <option value="current">{value === null ? t('Explicit null') : t('Current value: {value}', { value: JSON.stringify(value) })}</option>}{enumValues.map((item, index) => <option key={index} value={String(index)}>{item === true ? t('true') : item === false ? t('false') : item === null ? t('Explicit null') : String(item)}</option>)}</select>{help}</label>;
+      }}><option value="">{t('Unset')}</option>{hasCurrent && <option value="current">{value === null ? t('Explicit null') : t('Current value: {value}', { value: JSON.stringify(value) })}</option>}{enumValues.map((item, index) => <option key={index} value={String(index)}>{item === true ? t('true') : item === false ? t('false') : item === null ? t('Explicit null') : localizedLabel(String(item), locale)}</option>)}</select>{help}</label>;
     }
     const booleanValue = value === undefined ? '' : typeof value === 'boolean' ? String(value) : 'current';
     return <div><label>{label}{kind === 'boolean' ? <select aria-label={displayPath} value={booleanValue} onChange={event => { if (event.target.value !== 'current') commit(event.target.value === '' ? undefined : event.target.value === 'true'); }}><option value="">{t('Unset')}</option>{booleanValue === 'current' && <option value="current">{value === null ? t('Explicit null') : t('Current value: {value}', { value: JSON.stringify(value) })}</option>}<option value="true">{t('true')}</option><option value="false">{t('false')}</option></select> : <input aria-label={displayPath} aria-invalid={!!error || undefined} inputMode={kind === 'integer' ? 'numeric' : kind === 'number' ? 'decimal' : undefined} value={text} onChange={event => {

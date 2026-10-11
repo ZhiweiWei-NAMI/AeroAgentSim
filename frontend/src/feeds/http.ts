@@ -3,7 +3,7 @@ import { validateBusinessEvents, validateKpiValues } from '../newcomers/validati
 import type { FeedCommit, RunHeader, ViewerFeed } from '../contracts/viewer-feed';
 
 export interface WaitingContext { stream_ids: string[]; at_ns: string }
-export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string; waiting?: WaitingContext; template_id?:string; template_title?:string; template_title_zh?:string; knobs?:Record<string,string|number|boolean>; algorithms?:Record<string,string>; kpis?:import('../newcomers/api').KpiValues }
+export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string; studio_workspace?: string; studio_revision?: number; workspace_name?: string; configuration_digest?: string; waiting?: WaitingContext; template_id?:string; template_title?:string; template_title_zh?:string; knobs?:Record<string,string|number|boolean>; algorithms?:Record<string,string>; kpis?:import('../newcomers/api').KpiValues }
 export interface CommitPage { commits: FeedCommit[]; next: number; status: string; waiting?: WaitingContext }
 type ObjectValue = Record<string, unknown>;
 // Waiting on live operator watermark progress is a normal live-run state, not a failure.
@@ -152,8 +152,8 @@ export class RunsApi {
     if (!response.ok) throw Error(`HTTP ${response.status}: ${await response.text()}`);
     return parseLosslessJson(await response.text());
   }
-  async runs(signal?: AbortSignal): Promise<RunInfo[]> {
-    const rows = array(await this.request('/v1/runs', { signal }));
+  async runs(signal?: AbortSignal, includeKpis = true): Promise<RunInfo[]> {
+    const rows = array(await this.request(includeKpis ? '/v1/runs' : '/v1/runs?include_kpis=false', { signal }));
     for (const item of rows) { const row = object(item); string(row.id); string(row.scenario); string(row.status); string(row.until_ns); row.waiting = pageWaiting(row); if(row.kpis!==undefined)row.kpis=validateKpiValues(row.kpis); }
     return rows as RunInfo[];
   }
@@ -189,7 +189,7 @@ export async function awaitRunConfiguration(api: RunsApi, runId: string, signal?
 
 export class HttpViewerFeed implements ViewerFeed {
   private readonly path: string;
-  constructor(private api: RunsApi, id: string, private mode: 'live' | 'replay' = 'replay', private status?: (status: string, waiting?: WaitingContext) => void, private transportError?: (error: string) => void) {
+  constructor(private api: RunsApi, id: string, private mode: 'live' | 'replay' = 'replay', private status?: (status: string, waiting?: WaitingContext) => void, private transportError?: (error: string | undefined) => void) {
     this.path = `/v1/runs/${encodeURIComponent(id)}`;
   }
   async header(): Promise<RunHeader> { return validateHeader(await this.api.request(`${this.path}/header`)); }
@@ -202,8 +202,27 @@ export class HttpViewerFeed implements ViewerFeed {
       if (commit.commitIndex !== cursor) throw Error(`Journal gap: expected ${cursor}, got ${commit.commitIndex}`);
       onCommit(commit); cursor = commit.commitIndex + 1;
     };
+    const reconnectDelay = (attempt: number) => new Promise<void>(resolve => {
+      const finish = () => { clearTimeout(timer); signal?.removeEventListener('abort', finish); resolve(); };
+      const timer = setTimeout(finish, Math.min(5000, 250 * 2 ** Math.min(attempt, 5)));
+      signal?.addEventListener('abort', finish, { once: true });
+      if (signal?.aborted) finish();
+    });
+    let pageRetries = 0;
     while (!signal?.aborted) {
-      const page = object(await this.api.request(`${this.path}/commits?from=${cursor}&limit=256`, { signal }));
+      let response: unknown;
+      try {
+        response = await this.api.request(`${this.path}/commits?from=${cursor}&limit=256`, { signal });
+        if (pageRetries) this.transportError?.(undefined);
+        pageRetries = 0;
+      } catch (error) {
+        if (signal?.aborted) return;
+        if (!(error instanceof TypeError) && !/^Error: HTTP 5\d\d:/.test(String(error))) throw error;
+        this.transportError?.(`Connection interrupted; reconnecting from journal ${cursor}: ${String(error)}`);
+        await reconnectDelay(pageRetries++);
+        continue;
+      }
+      const page = object(response);
       const commits = array(page.commits); counter(page.next); string(page.status);
       this.status?.(page.status, pageWaiting(page));
       commits.forEach(deliver);
@@ -223,7 +242,9 @@ export class HttpViewerFeed implements ViewerFeed {
       let response: Response;
       try {response = await fetch(`${this.api.base}${this.path}/stream?from=${cursor}`, { signal, headers: { 'Last-Event-ID': String(cursor - 1) } });}
       catch(error) {if(signal?.aborted)return;throw new TransportError(String(error));}
+      if (response.status >= 500) throw new TransportError(`SSE HTTP ${response.status}`);
       if (!response.ok || !response.body) throw Error(`SSE HTTP ${response.status}`);
+      this.transportError?.(undefined);
       reader = response.body.getReader();const decoder = new TextDecoder();
       let buffer = '', ended = false;
         while (!signal?.aborted) {
@@ -239,20 +260,16 @@ export class HttpViewerFeed implements ViewerFeed {
               if (line.startsWith('event:')) event = line.slice(6).trim();
               if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
             }
-            if (event === 'commit') { deliver(JSON.parse(data.join('\n'))); retries = 0; }
-            if (event === 'status') { const status = object(JSON.parse(data.join('\n'))); string(status.status); this.status?.(status.status, pageWaiting(status)); }
-            if (event === 'end') { const end = object(JSON.parse(data.join('\n'))); string(end.status);counter(end.finalCursor);if(end.finalCursor!==cursor)throw Error('Stream ended before final cursor');this.status?.(end.status, pageWaiting(end)); ended = true; return; }
+            if (event === 'commit') { deliver(parseLosslessJson(data.join('\n'))); retries = 0; }
+            if (event === 'status') { const status = object(parseLosslessJson(data.join('\n'))); string(status.status); this.status?.(status.status, pageWaiting(status)); }
+            if (event === 'end') { const end = object(parseLosslessJson(data.join('\n'))); string(end.status);counter(end.finalCursor);if(end.finalCursor!==cursor)throw Error('Stream ended before final cursor');this.status?.(end.status, pageWaiting(end)); ended = true; return; }
           }
         }
       if (signal?.aborted || ended) return;
+      throw new TransportError('Connection interrupted; reconnecting to the recorded journal');
       } catch(error) {if(signal?.aborted)return;if(!(error instanceof TransportError))throw error;this.transportError?.(error.message);}
       finally {if(reader) {try {await reader.cancel();}catch { /* A failed read already retains its transport error. */ }reader.releaseLock();}}
-      if (++retries > 3) throw Error('SSE disconnected before end; reconnect to the recorded prefix');
-      await new Promise<void>(resolve => {
-        const finish = () => { clearTimeout(timer); signal?.removeEventListener('abort', finish); resolve(); };
-        const timer = setTimeout(finish, retries * 250);
-        signal?.addEventListener('abort', finish, { once: true });
-      });
+      await reconnectDelay(retries++);
     }
   }
 }

@@ -6,6 +6,7 @@ from typing import Any
 
 TASK_KINDS = (
     "parcel",
+    "food",
     "medical",
     "inspection",
     "survey",
@@ -18,6 +19,7 @@ TASK_CATEGORIES = dict(
     zip(
         TASK_KINDS,
         (
+            "logistics",
             "logistics",
             "emergency",
             "inspection",
@@ -48,6 +50,38 @@ def record(members: dict[str, Any], optional: tuple[str, ...] = ()) -> dict[str,
 
 
 EVENT_NARRATIVES: dict[str, dict[str, Any]] = {
+    "lowalt.food.preparation_started": {
+        "text": "{restaurant} started preparing {task}",
+        "text_zh": "{restaurant}开始制作{task}",
+        "entities": ["restaurant", "task"],
+        "position": "restaurant",
+        "category": "logistics",
+        "severity": "info",
+    },
+    "lowalt.food.ready": {
+        "text": "{task} is ready at {restaurant} after {preparation_s} seconds of preparation",
+        "text_zh": "{restaurant}完成{task}，备餐耗时 {preparation_s} 秒",
+        "entities": ["restaurant", "task"],
+        "position": "restaurant",
+        "category": "logistics",
+        "severity": "info",
+    },
+    "lowalt.food.preparation_delayed": {
+        "text": "{restaurant} preparation delay: {delay_s} seconds; affected orders: {tasks}",
+        "text_zh": "{restaurant}出餐延迟 {delay_s} 秒；受影响订单：{tasks}",
+        "entities": ["restaurant"],
+        "position": "restaurant",
+        "category": "logistics",
+        "severity": "warning",
+    },
+    "lowalt.food.delivered": {
+        "text": "{vehicle} delivered {task} to {destination}, {ready_to_delivery_s} seconds after preparation",
+        "text_zh": "{vehicle}已将{task}送达{destination}，出餐后耗时 {ready_to_delivery_s} 秒",
+        "entities": ["task", "vehicle", "destination"],
+        "position": "vehicle",
+        "category": "logistics",
+        "severity": "info",
+    },
     "lowalt.task.created": {
         "text": "New {noun} for {destination}",
         "text_zh": "新增前往{destination}的{noun}",
@@ -241,12 +275,14 @@ def overlay() -> dict[str, Any]:
             ("UAV", ["oo:UAV"]),
             ("Site", ["oo:ModelObject"]),
             ("Customer", ["lowalt:Site"]),
+            ("Restaurant", ["lowalt:Site"]),
             ("Field", ["lowalt:Site"]),
             ("Vertiport", ["lowalt:Site", "oo:Facility"]),
             ("Depot", ["lowalt:Vertiport"]),
             ("ChargingPad", ["lowalt:Site"]),
             ("AirspaceZone", ["oo:ModelObject"]),
             ("Task", ["oo:Task"]),
+            ("FoodOrder", ["lowalt:Task"]),
             ("Environment", ["oo:ModelObject"]),
         )
     ]
@@ -294,6 +330,16 @@ def overlay() -> dict[str, Any]:
     add("site_position", "Site", VECTOR, "m")
     add("site_open", "Site", BOOL)
     add("site_capacity", "Site", INT)
+    add("food_preparation_s", "Restaurant", NUMBER, "s")
+    for name in (
+        "food_preparation_started_ns",
+        "food_expected_ready_ns",
+        "food_ready_ns",
+        "food_picked_up_ns",
+        "food_delivered_ns",
+        "food_deadline_ns",
+    ):
+        add(name, "FoodOrder", INT, "ns")
     add("pad_power_w", "ChargingPad", NUMBER, "W")
     add("wind", "Environment", VECTOR, "m/s")
     add("zone_id", "AirspaceZone", STRING)
@@ -318,6 +364,33 @@ def overlay() -> dict[str, Any]:
     add("task_priority", "Task", INT)
     add("task_created_ns", "Task", INT, "ns")
     members: dict[str, tuple[dict[str, Any], tuple[str, ...]]] = {
+        "food.preparation_started": (
+            {"task": STRING, "restaurant": STRING, "ready_ns": INT},
+            (),
+        ),
+        "food.ready": (
+            {"task": STRING, "restaurant": STRING, "preparation_s": NUMBER},
+            (),
+        ),
+        "food.preparation_delayed": (
+            {"restaurant": STRING, "delay_s": NUMBER, "tasks": STRINGS},
+            (),
+        ),
+        "food.delivered": (
+            {
+                "task": STRING,
+                "vehicle": STRING,
+                "destination": STRING,
+                "deadline_ns": INT,
+                "ready_to_delivery_s": NUMBER,
+                "on_time": BOOL,
+            },
+            (),
+        ),
+        "operator.restaurant_delay": (
+            {"restaurant": STRING, "delay_s": {"type": "number", "minimum": 0.001}},
+            (),
+        ),
         "task.created": (
             {
                 "task": STRING,

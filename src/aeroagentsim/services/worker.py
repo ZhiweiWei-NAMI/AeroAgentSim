@@ -55,13 +55,22 @@ def execute(
             except EOFError:
                 return
             try:
-                if operation == "ingress":
+                if operation == "progress":
+                    result = {
+                        "contract": "aeroagentsim.input-progress/v1",
+                        "watermarks": dict(active.simulation.kernel.ingress_watermarks),
+                        "status": storage.metadata()["status"],
+                        "pause_requested": paused.is_set(),
+                    }
+                elif operation == "ingress":
                     validate_injection(active, body)
                     engine, command, stamp, stream_id = submission(body)
                     result = receipt_data(
                         active.submit_live(engine, command, stamp, stream_id=stream_id)
                     )
                 elif operation == "watermark":
+                    if paused.is_set():
+                        raise ValueError("Run is paused; resume before advancing source progress")
                     spec = contract(
                         body,
                         "watermark",

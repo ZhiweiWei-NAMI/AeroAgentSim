@@ -21,7 +21,7 @@ from aeroagentsim.scenario import load_scenario
 from aeroagentsim.scenario.loader import UniqueLoader
 from aeroagentsim.scenario.paths import source_path
 
-from .catalog import Catalog, SnapshotCatalog
+from .catalog import Catalog, ScenarioCatalog, SnapshotCatalog
 from .templates import (
     ENERGY,
     POS,
@@ -61,6 +61,10 @@ def _simple_polygon(points: list[list[float]]) -> bool:
     return True
 
 
+class WorkspaceConflict(ValueError):
+    """An edit targets an older saved revision."""
+
+
 class WorkspaceStore:
     """Draft edits are reversible; validation compiles real registry and engine contracts."""
 
@@ -87,9 +91,9 @@ class WorkspaceStore:
         ] = {}
 
     def catalog_for(self, identifier: str | None = None) -> Catalog:
-        if self.ontology_root is not None:
-            return self.catalog
         if identifier is None:
+            if self.ontology_root is not None:
+                return self.catalog
             workspaces = self.list()
             if len(workspaces) == 1:
                 identifier = workspaces[0]["id"]
@@ -100,9 +104,11 @@ class WorkspaceStore:
         # Entity and engine edits do not change the ontology. Cache the actual
         # compiled registry by its declaration, not by every workspace save.
         base = self._base(document, identifier)
+        if "snapshot" not in document["registry"]:
+            return ScenarioCatalog(document, base=base)
         snapshot_stat = source_path(document["registry"]["snapshot"], base).stat()
         registry_key = (
-            json.dumps(document["registry"], sort_keys=True),
+            json.dumps({"registry": document["registry"], "behaviour": "behaviours" in document or any(isinstance(e, dict) and e.get("plugin") == "behaviour" for e in document.get("engines", {}).values())}, sort_keys=True),
             snapshot_stat.st_size,
             snapshot_stat.st_mtime_ns,
         )
@@ -127,6 +133,18 @@ class WorkspaceStore:
     def _write(self, draft: dict[str, Any]) -> dict[str, Any]:
         directory = self.directory(draft["id"])
         directory.mkdir(exist_ok=True)
+        path = directory / "draft.json"
+        stored = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+        metadata = {"revision", "updated_at", "validation", "behaviour_validation"}
+
+        def contents(value: dict[str, Any]) -> str:
+            return json.dumps({key: item for key, item in value.items() if key not in metadata}, sort_keys=True, ensure_ascii=False, allow_nan=False)
+
+        changed = stored is None or contents(stored) != contents(draft)
+        draft["revision"] = (stored.get("revision", 0) if stored else 0) + int(changed)
+        if changed:
+            draft.pop("validation", None)
+            draft.pop("behaviour_validation", None)
         now = datetime.now(timezone.utc).isoformat()
         draft["updated_at"] = now
         payload = json.dumps(draft, ensure_ascii=False, allow_nan=False, indent=2)
@@ -174,6 +192,7 @@ class WorkspaceStore:
         if not path.is_file():
             raise FileNotFoundError("workspace: not found")
         draft: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        draft.setdefault("revision", 0)  # Legacy drafts precede revision tracking.
         # Older drafts have no edit metadata; the stored file's modification time
         # is the actual last write, without inventing a creation date.
         draft.setdefault(
@@ -182,18 +201,28 @@ class WorkspaceStore:
         )
         return draft
 
+    @staticmethod
+    def check_revision(draft: dict[str, Any], expected: int | None) -> None:
+        if expected is None:
+            return
+        if type(expected) is not int or expected < 0:
+            raise ValueError("workspace.revision: nonnegative integer required")
+        if expected != draft["revision"]:
+            raise WorkspaceConflict(f"Workspace changed from revision {expected} to {draft['revision']}; reload the saved draft before applying your changes")
+
     def save(self, identifier: str, changes: dict[str, Any]) -> dict[str, Any]:
-        if not isinstance(changes, dict) or set(changes) - {"name", "scenario"}:
-            raise ValueError("workspace: only name and scenario may be edited")
+        if not isinstance(changes, dict) or set(changes) - {"name", "scenario", "revision"}:
+            raise ValueError("workspace: only name, scenario and expected revision may be supplied")
         with self.lock:
             draft = self.get(identifier)
+            self.check_revision(draft, changes.get("revision"))
             if "name" in changes and (
                 not isinstance(changes["name"], str) or not changes["name"].strip()
             ):
                 raise ValueError("name: nonempty string required")
             if "scenario" in changes and not isinstance(changes["scenario"], dict):
                 raise TypeError("scenario: mapping required")
-            draft.update(copy.deepcopy(changes))
+            draft.update(copy.deepcopy({key: value for key, value in changes.items() if key != "revision"}))
             if "scenario" in changes:
                 from .wire import normalize_wire
 
@@ -202,8 +231,6 @@ class WorkspaceStore:
                     self.catalog,
                     base=self._base(draft["scenario"], identifier),
                 )
-            draft.pop("validation", None)
-            draft.pop("behaviour_validation", None)
             return self._write(draft)
 
     def import_demo(
@@ -566,9 +593,10 @@ class WorkspaceStore:
         return self.directory(identifier)
 
     def validate(
-        self, identifier: str, scenario: dict[str, Any] | None = None
+        self, identifier: str, scenario: dict[str, Any] | None = None, *, revision: int | None = None
     ) -> dict[str, Any]:
         with self.lock:
+            self.check_revision(self.get(identifier), revision)
             draft = (
                 self.save(identifier, {"scenario": scenario})
                 if scenario is not None
@@ -582,15 +610,14 @@ class WorkspaceStore:
                     prefix="validation-", dir=self.directory(identifier)
                 ) as scratch:
                     simulation = Simulation(loaded, run_directory=Path(scratch))
-                    try:
-                        # Bootstrap checks real registry, owners, capabilities and compiler.
-                        simulation.start()
-                    finally:
-                        simulation.close()
+                    # Construction compiles registry, owners and capabilities.
+                    # Plugin bootstrap and external resets belong to the run worker.
+                    simulation.close()
                 result: dict[str, Any] = {
                     "valid": True,
                     "errors": [],
                     "scenario_id": loaded.run_id,
+                    "scope": "configuration",
                 }
             except Exception as exc:  # noqa: BLE001 - validation returns the real diagnostic
                 authored: BaseException = exc
@@ -607,6 +634,7 @@ class WorkspaceStore:
                         }
                     ],
                 }
+            result["revision"] = draft["revision"]
             draft["validation"] = result
             self._write(draft)
             return result
@@ -682,19 +710,23 @@ class WorkspaceStore:
                         "placement.type: abstract types cannot be instantiated"
                     )
             else:
-                detail = self.catalog_for(identifier).type_detail(type_id)
+                selection = document["registry"].get("compile")
+                selected_catalog = self.catalog if selection is not None else self.catalog_for(identifier)
+                detail = selected_catalog.type_detail(type_id)
                 if detail["abstract"]:
                     raise ValueError(
                         "placement.type: abstract types cannot be instantiated; choose a concrete type or explicitly author a subtype"
                     )
-                selection = document["registry"].get("compile")
                 if selection is not None and type_id not in selection["types"]:
                     selection["types"].append(type_id)
+                declared = {f["id"] for f in document["registry"].get("fields", [])}
+                applicable = {field["id"] for field in detail["fields"]}
                 for field in facts:
-                    if (
-                        field not in {f["id"] for f in document["registry"]["fields"]}
-                        and field not in selection["fields"]
-                    ):
+                    if field in declared:
+                        continue
+                    if field not in applicable:
+                        raise ValueError(f"placement.facts.{field}: not declared for {type_id}")
+                    if selection is not None and "fields" in selection and field not in selection["fields"]:
                         selection["fields"].append(field)
             if POS in facts and facts[POS] != position:
                 raise ValueError(

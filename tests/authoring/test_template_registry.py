@@ -137,7 +137,7 @@ def test_number_knob_accepts_whole_json_number_as_kernel_number() -> None:
 
 
 @pytest.mark.parametrize("identifier", [
-    "air-taxi", "city-day", "crop-spraying", "medical-delivery",
+    "air-taxi", "city-day", "crop-spraying", "medical-delivery", "food-delivery",
     "parcel-delivery", "powerline-inspection", "security-patrol",
 ])
 def test_fleet_expands_both_authored_labels_without_changing_template(
@@ -163,7 +163,7 @@ def test_all_shipped_template_metadata_is_bilingual_and_copied() -> None:
     registry = TemplateRegistry(Path(__file__).resolve().parents[2] / "scenarios/templates")
     templates = registry.list()
     assert {item["id"] for item in templates} == {
-        "traffic-accident", "parcel-delivery", "medical-delivery",
+        "traffic-accident", "parcel-delivery", "medical-delivery", "food-delivery",
         "powerline-inspection", "crop-spraying", "air-taxi", "security-patrol", "city-day",
     }
     translated_bullets = translated_labels = 0
@@ -182,7 +182,17 @@ def test_all_shipped_template_metadata_is_bilingual_and_copied() -> None:
             assert any("\u4e00" <= char <= "\u9fff" for char in knob["label_zh"])
             assert knob["label_zh"] != knob["label"]
             translated_labels += 1
-    assert (translated_bullets, translated_labels) == (40, 46)
+    assert (translated_bullets, translated_labels) == (46, 55)
+    scheduled = registry.apply("food-delivery")
+    interactive = registry.apply("food-delivery", {"run_mode": "interactive"})
+    assert scheduled.knobs["run_mode"] == "scheduled"
+    assert scheduled.document["ingress_streams"][0]["initial_watermark_ns"] == scheduled.document["run"]["until_ns"]
+    assert interactive.document["ingress_streams"][0]["initial_watermark_ns"] == 0
+    assert "timeout_s" not in interactive.document["ingress_streams"][0]
+    assert scheduled.document["ingress_streams"][0]["timeout_s"] == 10.0
+    interactive.document["ingress_streams"][0]["initial_watermark_ns"] = scheduled.document["run"]["until_ns"]
+    interactive.document["ingress_streams"][0]["timeout_s"] = 10.0
+    assert interactive.document == scheduled.document
     traffic = registry.get("traffic-accident")
     choice = next(knob for knob in traffic["knobs"] if knob["id"] == "decision_mode")
     assert choice["options"] == ["scripted", "live"]

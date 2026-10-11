@@ -62,7 +62,7 @@ it('renders real templates from the API, filters by category and starts a run wi
 
   // Primary Run: a real request shaped like POST /v1/templates/{id}/runs with defaults.
   fireEvent.click(screen.getByTestId('run-template-parcel-delivery'));
-  await waitFor(()=>expect(screen.getByTestId('destination')).toHaveTextContent('/runs/run-123?mode=live&view=simple&template=parcel-delivery'));
+  await waitFor(()=>expect(screen.getByTestId('destination')).toHaveTextContent('/runs/run-123?mode=live&view=expert&template=parcel-delivery'));
   const call = (fetchSpy.mock.calls as unknown as Array<[RequestInfo | URL, RequestInit | undefined]>).find(([, i]) => String(i?.method) === 'POST');
   const url = String(call?.[0]);
   const init = (call?.[1] ?? {}) as RequestInit;
@@ -88,8 +88,10 @@ it('posts edited settings with their declared numeric type',async()=>{
  const post=fetchSpy.mock.calls.find(([,init])=>init?.method==='POST');expect(JSON.parse(String(post?.[1]?.body))).toEqual({knobs:{fleet_size:10,allocator:'nearest'}});
 });
 
-it('shows the welcome once, dismisses to localStorage and reopens on the exported event', async () => {
+it('opens the welcome only on request, dismisses it and reopens on the exported event', async () => {
   render(<MemoryRouter><Welcome /></MemoryRouter>);
+  expect(screen.queryByRole('dialog')).toBeNull();
+  fireEvent(document,new CustomEvent(WELCOME_EVENT));
   expect(await screen.findByTestId('welcome-panel')).toBeInTheDocument();
   expect(window.localStorage.getItem('aas:welcome-dismissed')).toBeNull();
   fireEvent.click(screen.getByTestId('welcome-close'));

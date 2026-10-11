@@ -22,7 +22,7 @@ interface Batch { meshes: T.InstancedMesh[]; transforms: T.Matrix4[]; keys: Enti
 /** One catalogued display model, optionally the LOD1 mesh and/or a business tint. */
 interface CatalogSpec { id: string; model: CatalogModel; lod: boolean; tint?: string }
 /** UAV LOD1 mesh beyond this distance (m) or once this many full-detail copies are drawn. */
-const UAV_LOD_DISTANCE = 45, UAV_LOD_COUNT = 10;
+const UAV_LOD_DISTANCE = 80, UAV_LOD_COUNT = 10;
 // Candidate horizontal-velocity fields (ENU) used to face catalogued aircraft along their motion.
 const VELOCITY_FIELDS = ['lowalt.velocity', 'traffic.uav.velocity_enu_mps'];
 // Generic accent for uncoloured bound glyphs: a warm coral complementary to the
@@ -174,7 +174,7 @@ export class EntityLayer {
   }
   private loadCatalogModel(binding: PresentationBinding, batch: Batch, spec: CatalogSpec) {
     const url = spec.lod ? spec.model.lodUrl! : spec.model.url;
-    batch.farDistance = Math.max(100, spec.model.sizeM[0] * 35);
+    batch.farDistance = spec.model.kind === 'uav' ? 700 : 350;
     this.status(`Loading model: ${spec.id}${spec.lod ? ' (LOD1)' : ''} · stand-ins active`);
     void this.assets.model(url).then(model => {
       if (this.disposed) return;
@@ -225,7 +225,8 @@ export class EntityLayer {
     const used = this.catalogUsage.get(pick.id) ?? 0;
     this.catalogUsage.set(pick.id, used + 1);
     const wantLod = !!model.lodUrl && (distance > UAV_LOD_DISTANCE || used >= UAV_LOD_COUNT) && kind === 'uav';
-    for (const lod of wantLod ? [true, false] : [false]) {
+    for (const lod of wantLod ? [true, false] : [false, true]) {
+      if(lod&&!model.lodUrl)continue;
       const key = `${pick.id}|${lod ? 1 : 0}|${tint ?? ''}`;
       let variants = this.catalogVariants.get(binding);
       if (!variants) { variants = new Map(); this.catalogVariants.set(binding, variants); }
@@ -235,8 +236,10 @@ export class EntityLayer {
         variants.set(key, variant);
         this.catalogSpecs.set(variant, { id: pick.id, model, lod, tint });
       }
-      const batch = this.batches.get(variant) ?? this.createBatch(variant, Math.max(64, store.entities.size));
-      if (batch.loaded) return variant;
+      // Request only the tier needed at this distance. The already loaded other
+      // tier can stay visible while the requested tier decodes.
+      const batch = this.batches.get(variant) ?? (lod===wantLod ? this.createBatch(variant, Math.max(64, store.entities.size)) : undefined);
+      if (batch?.loaded) return variant;
     }
     return undefined;
   }
@@ -259,7 +262,7 @@ export class EntityLayer {
     if(changed){mesh.setMatrixAt(index,matrix);mesh.userData.viewportChanged=true;}
   }
   update(store: FeedStore, ns: string, camera: T.Camera, selected?: EntityKey, showTrails = true,
-    renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion) {
+    renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion, aimCamera?: () => void) {
     this.transformsChanged=false;this.catalogUsage.clear();
     if(this.semantic){
       const stamp=`${store.revision}/${ns}`;
@@ -319,6 +322,9 @@ export class EntityLayer {
       const isSelected=!!selected && entityId(selected)===id;
       candidates.push({id,key:entity.key,position,selected:isSelected,forced:binding.visual.kind==='label'||this.highlighted.has(id)});
     }
+    // Camera follow uses these exact sampled poses; labels must project through
+    // that same final camera transform, rather than the previous frame's view.
+    aimCamera?.();
     this.loads.root.visible=this.semantic;if(this.semantic)this.loads.update(store,this.positions);
     // Semantic label policy (newcomer mode): selected / task-active /
     // recently event-involved entities always label; others only on real

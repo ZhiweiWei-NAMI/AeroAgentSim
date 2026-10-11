@@ -32,4 +32,4 @@ export class TemplateApi {
  async algorithms(signal?:AbortSignal){return decodeAlgorithms(await this.request<unknown>('/v1/algorithms',undefined,signal));}
 }
 export function consoleApiBase(search:string){return new URLSearchParams(search).get('api')??window.location.origin;}
-export function templateRunUrl(receipt:TemplateRunReceipt,base:string,templateId:string){return `/runs/${encodeURIComponent(receipt.run_id)}?mode=live&view=simple&template=${encodeURIComponent(templateId)}&api=${encodeURIComponent(base)}`;}
+export function templateRunUrl(receipt:TemplateRunReceipt,base:string,templateId:string){return `/runs/${encodeURIComponent(receipt.run_id)}?mode=live&view=expert&template=${encodeURIComponent(templateId)}&api=${encodeURIComponent(base)}`;}

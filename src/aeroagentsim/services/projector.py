@@ -416,6 +416,15 @@ def header(directory: Path) -> dict[str, Any]:
     ]
     if entities:
         result["entities"] = entities
+    # Which engine (partition) runs which plugin; the console's system map
+    # explains each one and derives what it controls from fact producers.
+    engines = scenario.get("engines")
+    if isinstance(engines, dict):
+        result["engines"] = [
+            {"id": name, "plugin": spec["plugin"]}
+            for name, spec in engines.items()
+            if isinstance(spec, dict) and isinstance(spec.get("plugin"), str)
+        ]
     if "epoch" in metadata:
         result["epoch"] = metadata["epoch"]
     ir_path = directory / "behaviour.ir.json"

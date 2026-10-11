@@ -48,10 +48,10 @@ describe('viewer presentation routing', () => {
     expect(screen.getByTestId('exact-panel')).toHaveTextContent('state');
   });
 
-  it('retains the spatial renderer while either exact panel is open on a mixed run', () => {
+  it('retains the spatial renderer while either exact panel is open on a mixed run', async () => {
     const { store, clock, key } = session(true);
     render(<ViewerPresentation store={store} clock={clock} selected={key} mode="orbit" quality="med" trails={true} {...handlers()} />);
-    expect(screen.getByTestId('spatial-renderer')).toBeInTheDocument();
+    expect(await screen.findByTestId('spatial-renderer')).toBeInTheDocument();
     expect(screen.queryByTestId('exact-panel')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Relations / topology' }));
     expect(screen.getByTestId('exact-panel')).toHaveTextContent('graph');
@@ -62,9 +62,10 @@ describe('viewer presentation routing', () => {
     expect(screen.queryByTestId('exact-panel')).not.toBeInTheDocument();
   });
 
-  it('switches bilingual presentation labels without losing the active exact panel', () => {
+  it('switches bilingual presentation labels without losing the active exact panel', async () => {
     const { store, clock, key } = session(true);
     render(<I18nProvider><LocaleButton /><ViewerPresentation store={store} clock={clock} selected={key} mode="orbit" quality="med" trails={true} {...handlers()} /></I18nProvider>);
+    await screen.findByTestId('spatial-renderer');
     fireEvent.click(screen.getByRole('button', { name: 'Queue / state' }));
     fireEvent.click(screen.getByRole('button', { name: 'locale' }));
     expect(screen.getByLabelText('展示视图')).toBeInTheDocument();

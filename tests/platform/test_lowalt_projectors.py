@@ -238,6 +238,19 @@ def expected_schemas() -> dict[str, dict[str, object]]:
             "pad": "pad-1",
             "soc": 1.0,
         },
+        "lowalt.food.preparation_started": {
+            "task": "meal-1", "restaurant": "restaurant-east", "ready_ns": 38_000_000_000,
+        },
+        "lowalt.food.ready": {
+            "task": "meal-1", "restaurant": "restaurant-east", "preparation_s": 35.0,
+        },
+        "lowalt.food.preparation_delayed": {
+            "restaurant": "restaurant-east", "delay_s": 60.0, "tasks": ["meal-1"],
+        },
+        "lowalt.food.delivered": {
+            "task": "meal-1", "vehicle": "drone-2", "destination": "customer-1",
+            "deadline_ns": 142_000_000_000, "ready_to_delivery_s": 51.0, "on_time": True,
+        },
     }
 
 

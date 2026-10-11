@@ -95,14 +95,19 @@ def demo_document(
         )
     configure_console(document, source, primitive=standalone)
     if standalone:
-        # Standalone capture uses shipped OSM footprints, without a console server.
+        # The standalone camera loads the selected real city assets itself.
         capture = document["engines"]["capture"]["config"]
         from aeroagentsim.authoring.demo import CITY_ASSET_ID, detailed_city
 
-        city_id = CITY_ASSET_ID if detailed_city() else "traffic-lite-city/v1"
+        detailed = detailed_city()
+        city_id = CITY_ASSET_ID if detailed else "traffic-lite-city/v1"
         capture["renderer"]["asset_digest"] = city_id
-        document["engines"]["capture_bridge"]["config"]["asset_digest"] = (
-            city_id
+        bridge = document["engines"]["capture_bridge"]["config"]
+        bridge["asset_digest"] = city_id
+        bridge["camera"]["provenance"] = (
+            "simulation camera; detailed city models; committed poses"
+            if detailed
+            else "simulation camera; OSM footprints and procedural geometry; committed poses"
         )
     renderer = document["engines"]["capture"]["config"]["renderer"]
     renderer["browser_executable"] = browser_path(Path(renderer["node_modules"]))
@@ -110,7 +115,6 @@ def demo_document(
         names = (
             "AEROAGENTSIM_LLM_BASE_URL",
             "AEROAGENTSIM_LLM_MODEL",
-            "AEROAGENTSIM_LLM_API_KEY_ENV",
         )
         missing = [name for name in names if not os.environ.get(name)]
         if missing:

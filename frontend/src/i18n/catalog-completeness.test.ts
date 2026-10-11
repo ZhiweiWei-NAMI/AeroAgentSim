@@ -50,7 +50,7 @@ function sourceKeys(input = sources) {
 
 describe('whole-console bilingual catalog', () => {
   it('translates every shipped entity and fleet label, not just static JSX copy', () => {
-    expect(Object.keys(scenarios)).toHaveLength(7);
+    expect(Object.keys(scenarios)).toHaveLength(8);
     const missing = Object.entries(scenarios).flatMap(([path, source]) => [...source.matchAll(/^\s+label: (.+)$/gm)].flatMap(match => {
       const label = match[1].trim().replace(/\{index\}/g, '7');
       return /[\u3400-\u9fff]/.test(localizedLabel(label, 'zh-CN')) ? [] : [`${path} → ${label}`];

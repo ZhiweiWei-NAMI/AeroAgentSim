@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 from typing import Any, cast
 
@@ -80,29 +81,57 @@ class Catalog:
         return result
 
 
-class SnapshotCatalog(Catalog):
-    """Read-only browse of an already committed registry snapshot plus overlay.
+class ScenarioCatalog(Catalog):
+    """The selected scenario registry, including its authored local declarations.
 
-    It serves the same HTTP shape as the source-based :class:`Catalog` but is
-    derived from a scenario document whose ``registry`` section carries a
-    committed snapshot: loading it goes through the real
-    ``load_scenario`` compiler path with no AeroGraph source dependency.
+    Compile only the registry through the scenario loader. Unfinished entities,
+    engines and rules must not prevent the editor from reading the types needed
+    to repair them. This envelope contains no entities and is never executed.
     """
 
     def __init__(self, document: dict[str, Any], *, base: Path) -> None:
         from aeroagentsim.scenario import load_scenario
 
         registry = document.get("registry")
-        if not isinstance(registry, dict) or "snapshot" not in registry:
-            raise ValueError(
-                "snapshot catalog: scenario must pin a committed registry snapshot"
-            )
-        self.snapshot = resolve_source_path(str(registry["snapshot"]), base)
+        if not isinstance(registry, dict):
+            raise ValueError("scenario catalog: registry declaration required")
+        self.snapshot = (
+            resolve_source_path(str(registry["snapshot"]), base)
+            if "snapshot" in registry
+            else None
+        )
         self.base = base
-        # Compiling once through the actual loader applies the snapshot, the
-        # scenario-local overlay types/fields/relations and every kernel
-        # schema constraint; nothing is invented beyond those declarations.
-        loaded = load_scenario(document, base=base)
+        declarations = copy.deepcopy(registry)
+        if "behaviours" in document or any(
+            isinstance(engine, dict) and engine.get("plugin") == "behaviour"
+            for engine in document.get("engines", {}).values()
+        ):
+            from aeroagentsim.behaviours.records import overlay
+
+            for category, rows in overlay().items():
+                selected = declarations.setdefault(category, [])
+                existing = {row["id"]: row for row in selected}
+                for row in rows:
+                    if row["id"] in existing:
+                        if existing[row["id"]] != row:
+                            raise ValueError(
+                                f"registry.{category}.{row['id']}: conflicts with behaviour overlay"
+                            )
+                    else:
+                        selected.append(row)
+        loaded = load_scenario(
+            {
+                "format": "aeroagentsim.scenario/v1",
+                "id": "authoring-registry",
+                "registry": declarations,
+                "entities": [],
+                "bindings": {"lifecycle": []},
+                "engines": {},
+                "run": {"pacing": "fast", "seed": 0, "until_ns": 0, "advance_ns": 1},
+                "outputs": {"durability": "flush"},
+            },
+            base=base,
+        )
         self._compiled = loaded.compiled
         self._registry = loaded.registry
         self.root = base.resolve()
@@ -111,7 +140,7 @@ class SnapshotCatalog(Catalog):
 
     def sources(self) -> Sources:
         raise ValueError(
-            "Type catalog limited to this scenario's snapshot; no AeroGraph source configured"
+            "This catalog contains the scenario registry; use the global catalog for AeroGraph sources"
         )
 
     def relations(self, query: str = "") -> list[dict[str, Any]]:
@@ -153,6 +182,10 @@ class SnapshotCatalog(Catalog):
                 "id": field_descriptor.id,
                 "declaringClass": field_descriptor.declaring_type,
                 "valueSchema": thaw(field_descriptor.schema),
+                "type": field_descriptor.declaring_type,
+                "declaring_type": field_descriptor.declaring_type,
+                "schema": thaw(field_descriptor.schema),
+                "metadata": metadata,
             }
             if q not in str(haystack).casefold():
                 continue
@@ -160,18 +193,23 @@ class SnapshotCatalog(Catalog):
                 {
                     **haystack,
                     "source": {
-                        "snapshot": self.snapshot.name,
-                        "kind": "snapshot_overlay"
+                        **({"snapshot": self.snapshot.name} if self.snapshot else {}),
+                        "kind": "scenario_overlay"
                         if field_descriptor.declaring_type not in raw_types
-                        else "snapshot",
+                        else "snapshot" if self.snapshot else "aerograph-source",
                     },
                 }
             )
         return {
             "types": types,
             "fields": fields,
-            "catalog_scope": "scenario-snapshot",
-            "catalog_notice": "Type catalog limited to this scenario's snapshot",
+            "schemas": registry.to_data()["schemas"],
+            "catalog_scope": "scenario-snapshot" if self.snapshot else "scenario-selection",
+            "catalog_notice": (
+                "Type catalog limited to this scenario's snapshot"
+                if self.snapshot
+                else "Types and fields selected by this scenario, including local declarations"
+            ),
         }
 
     def type_detail(self, type_id: str) -> dict[str, Any]:
@@ -206,6 +244,15 @@ class SnapshotCatalog(Catalog):
         }
 
 
+class SnapshotCatalog(ScenarioCatalog):
+    """Scenario catalog backed by an explicitly pinned portable snapshot."""
+
+    def __init__(self, document: dict[str, Any], *, base: Path) -> None:
+        if "snapshot" not in document.get("registry", {}):
+            raise ValueError("snapshot catalog: scenario must pin a registry snapshot")
+        super().__init__(document, base=base)
+
+
 def engines() -> list[dict[str, Any]]:
     """Report plugin availability without starting an external simulator."""
     catalog = EngineCatalog()
@@ -214,6 +261,8 @@ def engines() -> list[dict[str, Any]]:
         item: dict[str, Any] = {
             "id": name,
             "available": True,
+            "installed": True,
+            "availability_scope": "plugin-code",
             "description": "installed plugin",
         }
         try:

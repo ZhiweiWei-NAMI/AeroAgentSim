@@ -54,6 +54,15 @@ CONSTANT_FIELDS = (
     "lowalt.zone_end_ns",
     "lowalt.zone_dynamic",
 )
+FOOD_FIELDS = (
+    "lowalt.food_preparation_s",
+    "lowalt.food_preparation_started_ns",
+    "lowalt.food_expected_ready_ns",
+    "lowalt.food_ready_ns",
+    "lowalt.food_picked_up_ns",
+    "lowalt.food_delivered_ns",
+    "lowalt.food_deadline_ns",
+)
 
 
 @dataclass
@@ -66,6 +75,9 @@ class Job:
     # None means unplanned; () means every original work waypoint has a real
     # success receipt. Job ownership also preserves work across preemption.
     work_obligations: tuple[Point, ...] | None = None
+    food_window_ns: int | None = None
+    preparation_started_ns: int | None = None
+    ready_ns: int | None = None
 
 
 class _WorkPlanRecorder:
@@ -150,6 +162,7 @@ class LowaltTasks(ContextEngine):
         self.flights = {r.id: Flight(r) for r in refs(build, "lowalt:UAV")}
         self.jobs: dict[str, Job] = {}
         self.by_id = {r.id: r for r in build.entities}
+        self.generators = self._configured_generators()
         self.pending: deque[Flight] = deque()
         self.moves: dict[str, Flight] = {}
         self.llm_pending = False
@@ -162,12 +175,15 @@ class LowaltTasks(ContextEngine):
         # Cost-model constants handed to allocators (speed, energy per metre).
         self.vehicle_model = self.cfg.get("vehicle_model", {})
         self.motion = self.cfg["motion"]
+        self.food_enabled = any(g["kind"] == "food" for g in self.cfg["generators"])
         self.radius = finite(self.cfg["arrival_radius_m"], "arrival radius", 0)
         # Reuse only the committed base snapshot within ONE engine callback.
         # Lazy reads preserve the causal scope of earlier receipts/releases.
         self.snapshot_ctx: EngineContext | None = None
         self.snapshot_state: Snapshot | None = None
         produced = TASK_FIELDS + CONSTANT_FIELDS + ("lowalt.payload_kg",)
+        if self.food_enabled:
+            produced += FOOD_FIELDS
         super().__init__(
             Partition(
                 build.id,
@@ -186,6 +202,7 @@ class LowaltTasks(ContextEngine):
                             "lowalt.zone_end_ns",
                             "lowalt.zone_dynamic",
                         )
+                        + (FOOD_FIELDS if self.food_enabled else ())
                     )
                 ),
                 emits=tuple(
@@ -211,6 +228,19 @@ class LowaltTasks(ContextEngine):
                     "lowalt.patrol.visited",
                     "lowalt.site.closed",
                     "lowalt.mobility.pad_wait",
+                )
+                + (
+                    tuple(
+                        "lowalt.food." + name
+                        for name in (
+                            "preparation_started",
+                            "ready",
+                            "preparation_delayed",
+                            "delivered",
+                        )
+                    )
+                    if self.food_enabled
+                    else ()
                 ),
                 subscribes=("lowalt.events", "lowalt.allocations")
                 + (
@@ -229,32 +259,73 @@ class LowaltTasks(ContextEngine):
             policies=policies(produced),
         )
 
-    def bootstrap(self, ctx: EngineContext) -> None:
-        initial = copy.deepcopy(self.build.initial)
+    def _configured_generators(
+        self,
+    ) -> list[tuple[dict[str, Any], tuple[EntityRef, ...], float, int | None]]:
+        """Validate authored inputs without starting the runtime or drawing RNG."""
+        configured = []
+        tasks: set[str] = set()
         for group in self.cfg["generators"]:
             kind = group["kind"]
             if kind not in TASK_KINDS:
                 raise ValueError(f"unsupported task kind {kind}")
             payload_kg = finite(group["payload_kg"], "task payload", 0)
-            pool = [self.by_id[identity] for identity in group["tasks"]]
+            pool = tuple(self.by_id[identity] for identity in group["tasks"])
+            ns(group["priority"], "task priority")
+            for ref in pool:
+                if ref.id in tasks:
+                    raise ValueError("task belongs to two generators")
+                tasks.add(ref.id)
+            if not group["origins"]:
+                raise ValueError("task generator needs an origin")
+            for origin in group["origins"]:
+                if not any(site != origin for site in group["destinations"]):
+                    raise ValueError("task generator needs distinct endpoints")
+            for site in (*group["origins"], *group["destinations"]):
+                if not self.build.registry.is_a(
+                    self.by_id[site].type_id, "lowalt:Site"
+                ):
+                    raise ValueError("task endpoints must be sites")
+            food_window_ns = None
+            if kind == "food":
+                if any(
+                    not self.build.registry.is_a(ref.type_id, "lowalt:FoodOrder")
+                    for ref in pool
+                ):
+                    raise ValueError("food tasks must be authored FoodOrder entities")
+                for origin in group["origins"]:
+                    if not self.build.registry.is_a(
+                        self.by_id[origin].type_id, "lowalt:Restaurant"
+                    ):
+                        raise ValueError("food order origins must be restaurants")
+                    facts = self.build.initial[origin]
+                    finite(
+                        facts["lowalt.food_preparation_s"], "food preparation", 0.001
+                    )
+                    ns(facts["lowalt.site_capacity"], "kitchen capacity", 1)
+                food_window_ns = round(
+                    finite(group["delivery_window_s"], "food delivery window", 0.001)
+                    * 1e9
+                )
+            configured.append((group, pool, payload_kg, food_window_ns))
+        if tasks != {r.id for r in refs(self.build, "lowalt:Task")}:
+            raise ValueError("every authored task must belong to a generator")
+        return configured
+
+    def bootstrap(self, ctx: EngineContext) -> None:
+        initial = copy.deepcopy(self.build.initial)
+        for group, pool, payload_kg, food_window_ns in self.generators:
+            kind = group["kind"]
             releases = arrival_times(group["arrivals"], len(pool), ctx.rng("arrivals"))
             for index, ref in enumerate(pool):
                 # Authored slots beyond an explicit arrival cutoff never become
                 # orders. None is a missing arrival, not an invented timestamp.
                 release = releases[index] if index < len(releases) else None
-                if ref.id in self.jobs:
-                    raise ValueError("task belongs to two generators")
                 origin = ctx.rng("sites").choice(group["origins"])
                 destinations = [s for s in group["destinations"] if s != origin]
-                if not destinations:
-                    raise ValueError("task generator needs distinct endpoints")
                 destination = ctx.rng("sites").choice(destinations)
-                for site in (origin, destination):
-                    if not self.build.registry.is_a(
-                        self.by_id[site].type_id, "lowalt:Site"
-                    ):
-                        raise ValueError("task endpoints must be sites")
-                self.jobs[ref.id] = Job(ref, release)
+                job = self.jobs[ref.id] = Job(ref, release)
+                job.food_window_ns = food_window_ns
                 for key, value in (
                     ("kind", kind),
                     ("priority", group["priority"]),
@@ -263,8 +334,6 @@ class LowaltTasks(ContextEngine):
                     ("payload_kg", payload_kg),
                 ):
                     initial[ref.id]["lowalt.task_" + key] = value
-        if set(self.jobs) != {r.id for r in refs(self.build, "lowalt:Task")}:
-            raise ValueError("every authored task must belong to a generator")
         bootstrap_owned(ctx, replace(self.build, initial=initial))
         for release in sorted(
             {j.release_ns for j in self.jobs.values() if j.release_ns is not None}
@@ -780,7 +849,31 @@ class LowaltTasks(ContextEngine):
     def _operator(
         self, ctx: EngineContext, schema: str, payload: dict[str, Any]
     ) -> None:
-        if schema == "lowalt.operator.close_vertiport":
+        if schema == "lowalt.operator.restaurant_delay":
+            restaurant = self.by_id[payload["restaurant"]]
+            if not self.food_enabled or not self.build.registry.is_a(
+                restaurant.type_id, "lowalt:Restaurant"
+            ):
+                raise ValueError(
+                    "restaurant delay requires an authored food restaurant"
+                )
+            delay_s = finite(payload["delay_s"], "restaurant delay", 0.001)
+            affected = []
+            for job in self.jobs.values():
+                if (
+                    job.phase == "preparing"
+                    and read(ctx, job.ref, "lowalt.task_origin") == restaurant.id
+                ):
+                    assert job.ready_ns is not None
+                    job.ready_ns += round(delay_s * 1e9)
+                    ctx.set(job.ref, "lowalt.food_expected_ready_ns", job.ready_ns)
+                    affected.append(job.ref.id)
+            ctx.emit(
+                "lowalt.food.preparation_delayed",
+                {"restaurant": restaurant.id, "delay_s": delay_s, "tasks": affected},
+                topic="lowalt.events",
+            )
+        elif schema == "lowalt.operator.close_vertiport":
             identity = payload["site"]
             site = self.by_id[identity]
             if not self.build.registry.is_a(site.type_id, "lowalt:Vertiport"):
@@ -810,7 +903,10 @@ class LowaltTasks(ContextEngine):
                         reason="vertiport closed",
                     )
                     self._brake(ctx, flight)
-        else:
+        elif schema in {
+            "lowalt.operator.add_urgent_order",
+            "lowalt.operator.investigate",
+        }:
             job = self.jobs[payload["task"]]
             if job.phase != "unreleased":
                 raise ValueError("injection requires an unused authored task")
@@ -828,6 +924,66 @@ class LowaltTasks(ContextEngine):
             ctx.set(job.ref, "lowalt.task_priority", 100)
             job.release_ns = ctx.now.ns
             # Release next tick, after endpoint/kind facts commit.
+        else:
+            raise ValueError(f"unsupported lowalt operator event: {schema}")
+
+    def _prepare_food(self, ctx: EngineContext) -> None:
+        """Kitchen slots prepare actual food orders before allocation is eligible."""
+        for job in self.jobs.values():
+            if job.phase != "preparing":
+                continue
+            assert job.ready_ns is not None and job.preparation_started_ns is not None
+            if ctx.now.ns >= job.ready_ns:
+                self._state(ctx, job, "queued")
+                ctx.set(job.ref, "lowalt.food_ready_ns", ctx.now.ns)
+                ctx.emit(
+                    "lowalt.food.ready",
+                    {
+                        "task": job.ref.id,
+                        "restaurant": read(ctx, job.ref, "lowalt.task_origin"),
+                        "preparation_s": (ctx.now.ns - job.preparation_started_ns)
+                        / 1e9,
+                    },
+                    topic="lowalt.events",
+                )
+        busy: dict[str, int] = {}
+        for job in self.jobs.values():
+            if job.phase == "preparing":
+                restaurant = read(ctx, job.ref, "lowalt.task_origin")
+                busy[restaurant] = busy.get(restaurant, 0) + 1
+        for job in sorted(self.jobs.values(), key=lambda j: (j.created_ns, j.ref.id)):
+            if job.phase != "awaiting_preparation":
+                continue
+            # A newly released order must commit before its kitchen transition.
+            if read(ctx, job.ref, "lowalt.task_state") != "awaiting_preparation":
+                continue
+            restaurant = self.by_id[read(ctx, job.ref, "lowalt.task_origin")]
+            if not read(ctx, restaurant, "lowalt.site_open"):
+                continue
+            if busy.get(restaurant.id, 0) >= read(
+                ctx, restaurant, "lowalt.site_capacity"
+            ):
+                continue
+            preparation_s = finite(
+                read(ctx, restaurant, "lowalt.food_preparation_s"),
+                "food preparation",
+                0.001,
+            )
+            job.preparation_started_ns = ctx.now.ns
+            job.ready_ns = ctx.now.ns + round(preparation_s * 1e9)
+            self._state(ctx, job, "preparing")
+            ctx.set(job.ref, "lowalt.food_preparation_started_ns", ctx.now.ns)
+            ctx.set(job.ref, "lowalt.food_expected_ready_ns", job.ready_ns)
+            busy[restaurant.id] = busy.get(restaurant.id, 0) + 1
+            ctx.emit(
+                "lowalt.food.preparation_started",
+                {
+                    "task": job.ref.id,
+                    "restaurant": restaurant.id,
+                    "ready_ns": job.ready_ns,
+                },
+                topic="lowalt.events",
+            )
 
     def _poll(self, ctx: EngineContext) -> None:
         for job in self.jobs.values():
@@ -838,7 +994,15 @@ class LowaltTasks(ContextEngine):
             ):
                 job.created_ns = job.release_ns
                 ctx.set(job.ref, "lowalt.task_created_ns", job.created_ns)
-                self._state(ctx, job, "queued")
+                self._state(
+                    ctx, job, "awaiting_preparation" if job.food_window_ns else "queued"
+                )
+                if job.food_window_ns is not None:
+                    ctx.set(
+                        job.ref,
+                        "lowalt.food_deadline_ns",
+                        job.created_ns + job.food_window_ns,
+                    )
                 self._event(
                     ctx,
                     "created",
@@ -848,6 +1012,8 @@ class LowaltTasks(ContextEngine):
                     origin=read(ctx, job.ref, "lowalt.task_origin"),
                     destination=read(ctx, job.ref, "lowalt.task_destination"),
                 )
+        if self.food_enabled:
+            self._prepare_food(ctx)
         self._preempt(ctx)
         for flight in self.flights.values():
             if flight.pending or flight.command_id is not None:
@@ -939,6 +1105,8 @@ class LowaltTasks(ContextEngine):
                 ):
                     if job.phase == "started":
                         self._state(ctx, job, "picked_up")
+                        if job.food_window_ns is not None:
+                            ctx.set(job.ref, "lowalt.food_picked_up_ns", ctx.now.ns)
                         payload = read(ctx, job.ref, "lowalt.task_payload_kg")
                         if (
                             flight.suspended is not None
@@ -981,6 +1149,24 @@ class LowaltTasks(ContextEngine):
                             latency_s=(ctx.now.ns - job.created_ns) / 1e9,
                         )
                         kind = read(ctx, job.ref, "lowalt.task_kind")
+                        if kind == "food":
+                            deadline = read(ctx, job.ref, "lowalt.food_deadline_ns")
+                            ready = read(ctx, job.ref, "lowalt.food_ready_ns")
+                            ctx.set(job.ref, "lowalt.food_delivered_ns", ctx.now.ns)
+                            ctx.emit(
+                                "lowalt.food.delivered",
+                                {
+                                    "task": job.ref.id,
+                                    "vehicle": flight.vehicle.id,
+                                    "destination": read(
+                                        ctx, job.ref, "lowalt.task_destination"
+                                    ),
+                                    "deadline_ns": deadline,
+                                    "ready_to_delivery_s": (ctx.now.ns - ready) / 1e9,
+                                    "on_time": ctx.now.ns <= deadline,
+                                },
+                                topic="lowalt.events",
+                            )
                         if kind == "passenger":
                             site = read(ctx, job.ref, "lowalt.task_destination")
                             self.site_busy.setdefault(site, []).append(

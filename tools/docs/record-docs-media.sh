@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build → isolated real backend → completed replay → eight paced recordings → GIFs.
 set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORK_DIR="${AEROAGENTSIM_DOCS_WORK_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/aeroagentsim-docs-media.XXXXXX")}"
 PYTHON="${AEROAGENTSIM_DOCS_PYTHON:-python}"
 FFMPEG="${FFMPEG:-}"

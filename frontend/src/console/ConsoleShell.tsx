@@ -46,7 +46,7 @@ export default function ConsoleShell({ children, actions, activeRun }: ConsoleSh
   return <div className="console-shell" data-testid="console-shell">
     <aside className="console-sidebar">
       <Link to={destination('/')} className="console-brand"><LogoIcon size={22} /><span>AeroAgentSim<span className="console-brand-sub">{t('research console')}</span></span></Link>
-      <nav className="console-nav" aria-label={t('Console sections')}><div className="console-nav-section">{t('Navigate')}</div>{navItems.map(item => <Link key={item.to} to={destination(item.to)} className={`console-nav-link${item.match(pathname) ? ' is-active' : ''}`} data-testid={item.testid} aria-current={item.match(pathname) ? 'page' : undefined}>{item.icon}{t(item.label)}</Link>)}</nav>
+      <nav className="console-nav" aria-label={t('Console sections')}><div className="console-nav-section">{t('Navigate')}</div>{navItems.map(item => <Link key={item.to} to={destination(item.to)} className={`console-nav-link${item.match(pathname) ? ' is-active' : ''}`} data-testid={item.testid} aria-current={item.match(pathname) ? 'page' : undefined}>{item.icon}<span>{t(item.label)}</span></Link>)}</nav>
       <div className="console-sidebar-foot"><div>{t('Open-source research console')}</div><div>{t('Explore, experiment, compare')}</div></div>
     </aside>
     <div className="console-main">
@@ -55,7 +55,7 @@ export default function ConsoleShell({ children, actions, activeRun }: ConsoleSh
         {actions}
         <Select className="console-language" data-testid="language-switch" aria-label={t('Language')} value={locale} onChange={setLocale} options={[{ value: 'en-US', label: 'English' }, { value: 'zh-CN', label: '中文' }]} />
         <Dropdown menu={{ items: [
-          { key: 'welcome', label: <Link to={`${destination('/')}${apiSuffix ? '&' : '?'}welcome=1`} onClick={() => document.dispatchEvent(new CustomEvent('aas:welcome-help'))}>{t('Getting started')}</Link> },
+          { key: 'welcome', label: t('Getting started'), onClick: () => document.dispatchEvent(new CustomEvent('aas:welcome-help')) },
           { key: 'shortcuts', label: t('Keyboard shortcuts'), onClick: help },
           { key: 'guide', label: <Link to={`/docs/platform/console.md${apiSuffix}`}>{t('Read the guide')}</Link> },
         ] }} trigger={['click']}><button type="button" className="console-help-btn" aria-label={t('Help')}><HelpIcon size={14} />{t('Help')}<kbd>?</kbd></button></Dropdown>

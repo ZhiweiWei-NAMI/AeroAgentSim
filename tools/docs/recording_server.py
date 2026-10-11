@@ -11,6 +11,6 @@ ROOT = Path(os.environ["AEROAGENTSIM_DOCS_ROOT"]).resolve()
 app = create_app(
     ROOT / "runs",
     scenario_root=WORKTREE,
-    frontend=WORKTREE / "frontend/dist",
+    frontend=Path(os.environ.get("AEROAGENTSIM_DOCS_FRONTEND", str(WORKTREE / "frontend/dist"))),
     studio_root=ROOT / "workspaces",
 )

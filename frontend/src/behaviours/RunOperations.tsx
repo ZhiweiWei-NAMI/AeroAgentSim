@@ -51,16 +51,16 @@ export function ingressBody(fields:Record<string,string>,payload:unknown,t:Trans
   if(BigInt(fields.at_ns)<0n||BigInt(fields.denominator)<1n)throw Error(t('Occurrence must be nonnegative; source denominator must be positive'));
   return {schema:fields.schema,target:fields.target,stream_id:fields.stream_id,at_ns:{$integer:fields.at_ns},payload,source_stamp:{clock_id:fields.clock_id,mapping_id:fields.mapping_id,numerator:{$integer:fields.numerator},denominator:{$integer:fields.denominator}},...(fields.idempotency_key?{idempotency_key:fields.idempotency_key}:{})};
 }
+function exactNanos(value:unknown,label:string,t:Translator=english):bigint {
+  const text=typeof value==='number'&&Number.isSafeInteger(value)?String(value):typeof value==='string'?value:mapping(value)?value.$integer:undefined;
+  if(typeof text!=='string'||!/^(0|[1-9]\d*)$/.test(text))throw Error(t('{field}: declared exact nonnegative integer required', { field: label }));
+  return BigInt(text);
+}
 export function operatorTiming(scenario:Draft,t:Translator=english):{step:bigint;initial:bigint} {
-  const exact=(value:unknown,label:string)=>{
-    const text=typeof value==='number'&&Number.isSafeInteger(value)?String(value):mapping(value)?value.$integer:undefined;
-    if(typeof text!=='string'||!/^(0|[1-9]\d*)$/.test(text))throw Error(t('{field}: declared exact nonnegative integer required', { field: label }));
-    return BigInt(text);
-  };
   const stream=Array.isArray(scenario.ingress_streams)?scenario.ingress_streams.find(row=>mapping(row)&&row.id==='operator'):undefined;
   if(!mapping(scenario.run)||!mapping(stream))throw Error(t('Operator timing requires the authored run and ingress source'));
-  const step=exact(scenario.run.advance_ns,t('Run advance'));if(step===0n)throw Error(t('Run advance must be positive'));
-  return {step,initial:exact(stream.initial_watermark_ns,t('Operator initial watermark'))};
+  const step=exactNanos(scenario.run.advance_ns,t('Run advance'),t);if(step===0n)throw Error(t('Run advance must be positive'));
+  return {step,initial:exactNanos(stream.initial_watermark_ns,t('Operator initial watermark'),t)};
 }
 export function recordedAccidentPayload(store:TemporalFeedStore):Draft|undefined {
   if(!store.header.kernelRunId||store.header.epoch===undefined)return undefined;
@@ -70,11 +70,13 @@ export function recordedAccidentPayload(store:TemporalFeedStore):Draft|undefined
 }
 export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,interactive=true,onInjections,onRequestInject}:Props) {
   const { t, locale } = useI18n();
+  const copy=(en:string,zh:string)=>locale==='zh-CN'?zh:en;
   const notify=useConsoleNotice();
   const cardRef=useRef<HTMLDivElement>(null),injectionRef=useRef<HTMLSelectElement>(null),pointInitialized=useRef(false);
   const [fields,setFields]=useState(emptyTransport()),[payload,setPayload]=useState<unknown>({}),[point,setPoint]=useState(''),[points,setPoints]=useState<Draft[]>([]),[error,setError]=useState(''),[admissions,setAdmissions]=useState<unknown[]>([]),[busy,setBusy]=useState(false),[operation,setOperation]=useState<Draft>(),[effective,setEffective]=useState<string>();
-  const [operator,setOperator]=useState(false),[horizon,setHorizon]=useState('0'),[scheduledOnly,setScheduledOnly]=useState(false);
-  const operatorNs=useRef(0n), operatorStep=useRef(1000000000n), operatorEnd=useRef<bigint>(), operations=useRef<Promise<unknown>>(Promise.resolve());
+  const [operator,setOperator]=useState(false),[horizon,setHorizon]=useState<string>(),[scheduledOnly,setScheduledOnly]=useState(false);
+  const [progressError,setProgressError]=useState('');
+  const operatorNs=useRef<bigint>(), operatorStep=useRef<bigint>(), operatorEnd=useRef<bigint>(), operations=useRef<Promise<unknown>>(Promise.resolve());
   const serialized=(action:()=>Promise<unknown>)=>{const result=operations.current.then(action,action);operations.current=result;return result;};
   const busyRef = useRef(false);
   const canOperate = interactive && mode === 'live' && ['running','waiting_for_input','paused'].includes(effective ?? '');
@@ -85,6 +87,24 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
     if (!mapping(reply) || typeof reply.status !== 'string') throw Error(t('Operational run status unavailable'));
     return reply.status;
   };
+  const readOperatorProgress = async (signal?:AbortSignal):Promise<{status:string;pauseRequested:boolean}> => {
+    let reply:unknown;
+    try { reply=await api.request(`/v1/runs/${encodeURIComponent(runId)}/inputs`,{signal}); }
+    catch(problem) {
+      if(String(problem).includes('HTTP 409')) {
+        const status=await readStatus(signal);
+        if(isTerminalStatus(status))return {status,pauseRequested:false};
+      }
+      throw problem;
+    }
+    if(!mapping(reply)||typeof reply.status!=='string'||typeof reply.pause_requested!=='boolean'||!mapping(reply.watermarks))throw Error(copy('Input source progress is malformed.','输入源进度格式不正确。'));
+    const progress=exactNanos(reply.watermarks.operator,copy('Operator source watermark','操作员输入源水位'),t);
+    operatorNs.current=progress;setHorizon(progress.toString());
+    if(operatorEnd.current!==undefined)setScheduledOnly(progress>=operatorEnd.current);
+    return {status:reply.status,pauseRequested:reply.pause_requested};
+  };
+  const operatorReady=operator&&operatorNs.current!==undefined;
+  const injectionSourceReady=fields.stream_id!=='operator'||!operator||operatorReady;
   // Lock immediately, before React renders, so double clicks and shortcuts cannot queue duplicates.
   const execute = (action: (status: string) => Promise<unknown>) => {
     if (!canOperate || busyRef.current) return;
@@ -99,7 +119,7 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
   };
   const [payloadValid,setPayloadValid]=useState(true);
   const [showInternal,setShowInternal]=useState(false),[recordPage,setRecordPage]=useState(0);
-  const records=useMemo(()=>store.messages.filter(message=>showInternal||message.schemaId.startsWith('traffic.')||['aas.langgraph.record','aas.runtime.inject_event'].includes(message.schemaId)),[store,store.messages.length,store.viewCursor?.knownAt,showInternal]);
+  const records=useMemo(()=>store.messages.filter(message=>showInternal||message.schemaId==='aas.runtime.inject_event'||!['aas.runtime.','aas.behaviour.','aas.predicate.'].some(prefix=>message.schemaId.startsWith(prefix))),[store,store.messages.length,store.viewCursor?.knownAt,showInternal]);
   const recordPages=Math.max(1,Math.ceil(records.length/50)),shownPage=Math.min(recordPage,recordPages-1);
   const recordCuts=useMemo(()=>new Map(store.commits.flatMap(commit=>commit.messages.map(message=>[message.id,commit.commitIndex] as const))),[store,store.commits.length]);
 
@@ -122,51 +142,65 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
     const defaults=schemaDefaults(event?.schema,definitions);
     setPayload(mapping(defaults)?{...defaults,...(point==='accident'?recordedAccidentPayload(store):{})}:point==='accident'?(recordedAccidentPayload(store)??{}):{});
   },[point,event?.schema]);
-  useEffect(()=>{onInjections?.(points.length>0&&!scheduledOnly&&canOperate);},[points,scheduledOnly,canOperate,onInjections]);
+  useEffect(()=>{onInjections?.(canOperate&&points.some(row=>row.stream_id!=='operator'||!scheduledOnly&&(!operator||operatorReady)));},[points,scheduledOnly,canOperate,operator,operatorReady,onInjections]);
   const friendly=()=>{if(!canOperate||busyRef.current)return;onRequestInject?.();requestAnimationFrame(()=>{const card=cardRef.current;card?.scrollIntoView?.({block:'center'});const button=card?.querySelector<HTMLButtonElement>('[data-injection-submit]');if(button&&!button.disabled)button.focus();else card?.querySelector<HTMLElement>('input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')?.focus();});};
-  useEffect(()=>{const declared=store.header.behaviour?.injectionPoints??store.header.behaviour?.injection_points;if(declared)setPoints(declared);
+  useEffect(()=>{
+    setOperator(false);setScheduledOnly(false);setHorizon(undefined);operatorNs.current=undefined;operatorStep.current=undefined;operatorEnd.current=undefined;
+    const declared=store.header.behaviour?.injectionPoints??store.header.behaviour?.injection_points;if(declared)setPoints(declared);
     const abort=new AbortController();void awaitRunConfiguration(api, runId, abort.signal).then(value=>{
       if(!mapping(value)||!mapping(value.scenario))throw Error(t('Run configuration is malformed'));
-      if(!abort.signal.aborted){setPoints(injectionPointsFromScenario(value.scenario,t));if(value.scenario.id==='traffic-accident'){const timing=operatorTiming(value.scenario,t);operatorStep.current=timing.step;const until=mapping(value.scenario.run)?value.scenario.run.until_ns:undefined;const end=typeof until==='number'&&Number.isSafeInteger(until)?String(until):mapping(until)?until.$integer:undefined;if(typeof end!=='string'||!/^(0|[1-9]\d*)$/.test(end))throw Error(t('Operator run limit must be a declared exact nonnegative integer'));operatorEnd.current=BigInt(end);const recorded=store.commits.at(-1);operatorNs.current=recorded&&BigInt(recorded.at.ns)>timing.initial?BigInt(recorded.at.ns):timing.initial;setHorizon(operatorNs.current.toString());setScheduledOnly(timing.initial>=BigInt(end));setOperator(timing.initial<BigInt(end));}}
+      if(abort.signal.aborted)return;
+      setPoints(injectionPointsFromScenario(value.scenario,t));
+      const stream=Array.isArray(value.scenario.ingress_streams)?value.scenario.ingress_streams.find(row=>mapping(row)&&row.id==='operator'):undefined;
+      if(!stream)return;
+      const timing=operatorTiming(value.scenario,t),end=exactNanos(mapping(value.scenario.run)?value.scenario.run.until_ns:undefined,copy('Run limit','运行时限'),t);
+      operatorStep.current=timing.step;operatorEnd.current=end;
+      setScheduledOnly(timing.initial>=end);setOperator(timing.initial<end);
     }).catch(problem=>{if(!abort.signal.aborted)setError(problemMessage(problem));});return()=>abort.abort();
   },[api,runId,store]);
   // Select the single authored point by default and prefill its transport from
   // the authored declaration; missing operator timing stays empty (no invention).
   useEffect(()=>{if(pointInitialized.current||!points.length)return;pointInitialized.current=true;const only=points.length===1?points[0]:points.find(row=>row.id==='accident');if(only)setPoint(String(only.id));},[points]);
-  useEffect(()=>{if(!injection)return;setFields(transportForPoint(injection,{operator,operatorNs:operatorNs.current}));},[injection,operator]);
+  useEffect(()=>{if(!injection)return;setFields(transportForPoint(injection,{operator:operatorReady,operatorNs:operatorNs.current}));},[injection,operatorReady]);
   useEffect(()=>{
     if(point!=='accident'||!mapping(payload)||'incident' in payload)return;
     const recorded=recordedAccidentPayload(store);if(recorded)setPayload((previous:unknown)=>({...(mapping(previous)?previous:{}),...recorded}));
   },[point,payload,store,store.viewCursor?.knownAt]);
+  useEffect(()=>{setEffective(undefined);setProgressError('');},[api,runId,store,mode]);
   useEffect(()=>{
-    if(!operator||!canOperate)return;
-    let active=true;
-    // Source progress is acknowledged independently of event production: an idle
-    // closed prefix need not have a journal event at its right boundary.
-    const timer=setInterval(()=>{if(!store.commits.length)return;
-      void serialized(async()=>{if(!active||operatorEnd.current===undefined||operatorNs.current>=operatorEnd.current)return;const next=operatorNs.current+operatorStep.current>operatorEnd.current?operatorEnd.current:operatorNs.current+operatorStep.current;const reply=await api.request(`/v1/runs/${encodeURIComponent(runId)}/watermark`,{method:'POST',headers:{'Content-Type':'application/json'},body:stringifyLossless({stream_id:'operator',watermark_ns:{$integer:next.toString()}})});if(!mapping(reply)||String(reply.watermark_ns)!==next.toString())throw Error(t('Operator watermark receipt mismatch'));operatorNs.current=next;setHorizon(next.toString());}).catch(problem=>{if(active){setError(problemMessage(problem));setOperator(false);}});
-    },1000);
-    return()=>{active=false;clearInterval(timer);};
-  },[operator,canOperate,api,runId,store]);
-  useEffect(()=>{
-    setEffective(undefined);
     if(mode!=='live')return;
     const abort=new AbortController();let timer:ReturnType<typeof setTimeout>;
-    const poll=async()=>{
+    const poll=async(advance=false)=>{
       let terminal=false;
-      try{const status=await readStatus(abort.signal);if(abort.signal.aborted)return;setEffective(status);terminal=isTerminalStatus(status);}
-      catch(problem){if(!abort.signal.aborted){setEffective(undefined);setError(problemMessage(problem));}}
-      if(!abort.signal.aborted&&!terminal)timer=setTimeout(()=>void poll(),1000);
+      try {
+        await serialized(async()=>{
+          if(abort.signal.aborted)return;
+          const progress=operator?await readOperatorProgress(abort.signal):{status:await readStatus(abort.signal),pauseRequested:false};
+          if(abort.signal.aborted)return;
+          setEffective(progress.status);terminal=isTerminalStatus(progress.status);
+          if(!advance||!interactive||!operator||progress.pauseRequested||!['running','waiting_for_input'].includes(progress.status))return;
+          const current=operatorNs.current,step=operatorStep.current,end=operatorEnd.current;
+          if(current===undefined||step===undefined||end===undefined||current>=end)return;
+          const next=current+step>end?end:current+step;
+          const reply=await api.request(`/v1/runs/${encodeURIComponent(runId)}/watermark`,{method:'POST',headers:{'Content-Type':'application/json'},body:stringifyLossless({stream_id:'operator',watermark_ns:{$integer:next.toString()}}),signal:abort.signal});
+          if(!mapping(reply)||exactNanos(reply.watermark_ns,t('Operator source progress'),t)!==next)throw Error(t('Operator watermark receipt mismatch'));
+          operatorNs.current=next;setHorizon(next.toString());setScheduledOnly(next>=end);
+        });
+        if(!abort.signal.aborted)setProgressError('');
+      } catch(problem) {if(!abort.signal.aborted){setEffective(undefined);setHorizon(undefined);operatorNs.current=undefined;setProgressError(problemMessage(problem));}}
+      if(!abort.signal.aborted&&!terminal)timer=setTimeout(()=>void poll(true),1000);
     };
     void poll();return()=>{abort.abort();clearTimeout(timer);};
-  },[api,runId,store,mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  },[api,runId,store,mode,interactive,operator]); // eslint-disable-line react-hooks/exhaustive-deps
   const requestKey=()=>{try{return newIdempotencyKey();}catch{throw Error(t('Idempotency keys require a UUID-capable crypto runtime'));}};
   const submit=async()=>{
     if(!payloadValid){setError(t('Correct the payload before submitting'));return;}
     setError('');
     try{
       if(!chosen)throw Error(t('Select a registered command'));
-      const effective=operator?{...fields,at_ns:(operatorNs.current+1n).toString(),clock_id:'canonical',mapping_id:'canonical',numerator:(operatorNs.current+1n).toString(),denominator:'1'}:{...fields};
+      if(operator&&fields.stream_id==='operator'){const progress=await readOperatorProgress();setEffective(progress.status);if(!['running','waiting_for_input','paused'].includes(progress.status))throw Error(t('This run is {status}; controls are unavailable.',{status:statusLabel(progress.status)}));if(operatorNs.current===undefined||operatorEnd.current===undefined||operatorNs.current>=operatorEnd.current)throw Error(copy('The operator input interval is already closed.','操作员输入区间已经关闭。'));}
+      const automaticNs=operator&&fields.stream_id==='operator'&&operatorNs.current!==undefined?(operatorNs.current+1n).toString():undefined;
+      const effective=automaticNs!==undefined?{...fields,at_ns:automaticNs,clock_id:'canonical',mapping_id:'canonical',numerator:automaticNs,denominator:'1'}:{...fields};
       if(!effective.idempotency_key)effective.idempotency_key=requestKey();
       const descriptor=typeof event?.schema==='string'?definitions[event.schema]:event?.schema;
       const members=mapping(descriptor)&&mapping(descriptor.members)?descriptor.members:{};
@@ -199,7 +233,7 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
   };
   const control=async(action:ControlAction)=>{setError('');try{const reply=await api.request(`/v1/runs/${encodeURIComponent(runId)}/${action}`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(!mapping(reply)||reply.requested!==action)throw Error(t('Malformed run control receipt'));setOperation(reply);setEffective(typeof reply.status==='string'?reply.status:undefined);notify({kind:'info',message:action==='pause'?t('Simulation pause requested.'):action==='resume'?t('Simulation resume requested.'):t('Simulation stop requested.')});}catch(problem){setError(problemMessage(problem));notify({kind:'error',message:problemMessage(problem)});}};
   const toggle=async(status:string)=>{try{if(status==='running'||status==='waiting_for_input')await control('pause');else if(status==='paused')await control('resume');else notify({kind:'info',message:t('Run is {status}; pause/resume is unavailable.',{status:statusLabel(status)})});}catch(problem){setError(problemMessage(problem));notify({kind:'error',message:problemMessage(problem)});}};
-  const setPoint_=(id:string)=>{const next=points.find(row=>row.id===id);setPoint(id);setPayload(id==='accident'?(recordedAccidentPayload(store)??{}):{});setFields(next?transportForPoint(next,{operator,operatorNs:operatorNs.current}):emptyTransport());};
+  const setPoint_=(id:string)=>{const next=points.find(row=>row.id===id);setPoint(id);setPayload(id==='accident'?(recordedAccidentPayload(store)??{}):{});setFields(next?transportForPoint(next,{operator:operatorReady,operatorNs:operatorNs.current}):emptyTransport());};
   const ready=point!=='accident'||mapping(payload)&&mapping(payload.incident);
   const descriptor=typeof event?.schema==='string'?definitions[event.schema]:event?.schema;
   const payloadSchema=mapping(descriptor)&&mapping(descriptor.members)?{...descriptor,members:Object.fromEntries(Object.entries(descriptor.members).filter(([key])=>!['request_id','source_cut'].includes(key)))}:descriptor;
@@ -227,25 +261,27 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
       {(['pause','resume','stop'] as const).map(action=><button type="button" key={action} disabled={!canOperate||busy||action==='pause'&&effective==='paused'||action==='resume'&&['running','waiting_for_input'].includes(effective??'')} onClick={()=>execute(()=>control(action))}>{action==='pause'?t('Pause simulation'):action==='resume'?t('Resume simulation'):t('Stop simulation')}</button>)}
     </div>
     {operation&&<p role="status">{t('Requested: {action} · last observed effective status: {status}',{action:actionLabel(String(operation.requested)),status:effective?statusLabel(effective):t('not received')})}{effective!==({pause:'paused',resume:'running',stop:'stopped'} as Record<string,string>)[String(operation.requested)]&&!(operation.requested==='resume'&&effective==='waiting_for_input')?t(' · pending at safe boundary'):''}</p>}
-    {operator&&mode==='live'&&<Details title={t('Operator source progress')} buttonLabel={t('Source timing')}><p>{t('Operator source progress is closed through {time}. Events enter at the next unclosed simulation instant.',{time:displayTime(horizon)})}</p></Details>}
+    {operator&&horizon!==undefined&&mode==='live'&&<Details title={t('Operator source progress')} buttonLabel={t('Source timing')}><p>{t('Operator source progress is closed through {time}. Events enter at the next unclosed simulation instant.',{time:displayTime(horizon)})}</p></Details>}
     <div className="injection-options" role="group" aria-label={t('Authored events')}>{points.map(row=><button type="button" className="console-btn" disabled={busy} aria-pressed={row.id===point} key={String(row.id)} onClick={()=>setPoint_(String(row.id))}>{t('Inject {event}',{event:eventLabel(row)})}</button>)}</div>
     {injection?<div className="injection-card" data-testid="injection-card" ref={cardRef}>
       <h3>{t('Inject {event}',{event:eventLabel(injection)})}</h3>
       <p>{targetSummary(injection)}</p>
       <TypedPayloadForm schema={payloadSchema} value={payload} onChange={setPayload} definitions={definitions} onValidityChange={setPayloadValid} entityChoices={choices}/>
-      <button type="button" className="console-btn console-btn-primary" data-injection-submit data-testid={`inject-${point}`} aria-label={t('Submit typed ingress')} disabled={busy||!payloadValid||!canOperate||!ready||scheduledOnly||!chosen} onClick={()=>execute(submit)}>{t('Inject {event}',{event:eventLabel(injection)})}</button>
-      <p className="injection-hint">{scheduledOnly?t('This run uses a scheduled accident. Change Accident time in Customize to try a different moment.'):point==='accident'?t('You can introduce an accident at any time. Detection follows when the reporter is nearby and the vehicles have stopped.'):operator?t('Timing and request information are filled in automatically.'):t('Complete the required timing fields in Advanced before submitting.')}</p>
+      <button type="button" className="console-btn console-btn-primary" data-injection-submit data-testid={`inject-${point}`} aria-label={t('Submit typed ingress')} disabled={busy||!payloadValid||!canOperate||!ready||fields.stream_id==='operator'&&scheduledOnly||!injectionSourceReady||!chosen} onClick={()=>execute(submit)}>{t('Inject {event}',{event:eventLabel(injection)})}</button>
+      <p className="injection-hint">{scheduledOnly&&fields.stream_id==='operator'?copy('This run’s operator input interval is closed. Start a run with live inputs to add events.','本次运行的操作员输入区间已经关闭。请启动实时输入运行以添加事件。'):operatorReady?t('Timing and request information are filled in automatically.'):t('Complete the required timing fields in Advanced before submitting.')}</p>
       <Details title={t('Injection transport')} buttonLabel={t('Advanced')}><div className="run-transport-fields">{Object.entries(fields).map(([key,value])=><label key={key}>{key}<input aria-label={t('Ingress {field}',{field:key})} disabled={busy} value={value} onChange={event=>setFields({...fields,[key]:event.target.value})}/></label>)}</div><pre>{exactValue({request_id:'generated when sent',source_cut:store.viewCursor?.knownAt,point:injection})}</pre></Details>
     </div>:<div className="injection-card" ref={cardRef}><h3>{t('Issue command')}</h3>
       <p className="injection-hint">{t('No guided external event is selected. Pause, resume and stop work without an event. Advanced commands need a declared input source and the timing fields below.')}</p>
       <label>{t('Command')} <select aria-label={t('Command schema')} disabled={busy} value={fields.schema} onChange={event=>{setFields({...fields,schema:event.target.value});setPayload({});}}><option value="">{t('Select registered command')}</option>{commands.filter(row=>row.id!=='aas.runtime.inject_event').map(row=><option key={String(row.id)} value={String(row.id)}>{readableLabel(String(row.id),locale)}</option>)}</select></label>
       {!commands.length&&<p>{t('No registered commands are available for this run.')}</p>}
       <TypedPayloadForm schema={chosen?.schema} value={payload} onChange={setPayload} definitions={definitions} onValidityChange={setPayloadValid} entityChoices={choices}/>
-      <button type="button" className="console-btn" data-injection-submit disabled={busy||!payloadValid||!canOperate||!chosen} onClick={()=>execute(submit)}>{t('Submit typed ingress')}</button>
+      <button type="button" className="console-btn" data-injection-submit disabled={busy||!payloadValid||!canOperate||!injectionSourceReady||!chosen} onClick={()=>execute(submit)}>{t('Submit typed ingress')}</button>
       <Details title={t('Command transport')} buttonLabel={t('Advanced')}><div className="run-transport-fields">{Object.entries(fields).filter(([key])=>key!=='schema').map(([key,value])=><label key={key}>{key}<input aria-label={t('Ingress {field}',{field:key})} disabled={busy} value={value} onChange={event=>setFields({...fields,[key]:event.target.value})}/></label>)}</div></Details>
     </div>}
     <Details title={t('Other commands')} buttonLabel={t('Direct typed command')}><label>{t('Injection point')} <select ref={injectionRef} aria-label={t('Injection point')} disabled={busy} value={point} onChange={event=>setPoint_(event.target.value)}><option value="">{t('Direct typed command')}</option>{points.map(row=><option key={String(row.id)} value={String(row.id)}>{readableLabel(String(row.id),locale)}</option>)}</select></label><button type="button" disabled={busy} onClick={()=>setPoint_('')}>{t('Configure a direct command')}</button><p>{chosen?.cancel_support===true?t('This command supports cancellation.'):t('Send an authored cancellation event where available.')}</p></Details>
     {error&&<p role="alert">{error}</p>}
+    {progressError&&<p role="alert">{progressError}</p>}
+    <h3>{copy('Recorded input and execution','已记录的输入与执行')}</h3>
     <details open={admissions.length>0}><summary>{t('Admission receipts · {count}',{count:admissions.length})}</summary>{!admissions.length&&<p>{t('No admission receipts yet.')}</p>}{admissions.map((receipt,index)=><article key={index}>{t('Admission #{number}',{number:index+1})}{mapping(receipt)&&typeof receipt.status==='string'&&` · ${statusLabel(receipt.status)}`}<p className="receipt-help">{admissionSummary(receipt)}</p><Details title={t('Admission receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
     <details><summary>{t('Execution receipts at this cut · {count}',{count:store.receipts.length})}</summary>{!store.receipts.length&&<p>{t('No execution receipts at this cut.')}</p>}{store.receipts.length>100&&<p>{t('Latest 100 of {count} execution receipts. All records are retained in the journal.',{count:store.receipts.length})}</p>}{store.receipts.slice(-100).map((receipt,index)=><article key={index}>{t('Execution #{number}',{number:Math.max(0,store.receipts.length-100)+index+1})} <Details title={t('Execution receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
     <details><summary>{t('Decision / LangGraph and typed event records at this cut')}</summary>

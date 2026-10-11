@@ -56,13 +56,19 @@ Continue with the [quickstart](quickstart.md).
 
 ## Optional detailed Huangpu city
 
-The lightweight city works offline from a public clone. For the detailed buildings,
-textures, car and X500 model, download the separate pack (about 103 MB):
+The lightweight city works offline from a public clone. For detailed buildings,
+textures and the vehicle, UAV, bicycle, pedestrian and street-furniture model
+catalog, download Huangpu city pack 1.1:
 
 ```bash
 aeroagentsim assets fetch
 aeroagentsim assets list
 ```
+
+The default download is `huangpu-city-v1.1.zip` from release tag
+[`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1).
+Models appear for entities the scenario actually simulates; installing the pack
+does not add traffic or change the simulated physics.
 
 The console and simulation camera automatically use the installed city on their
 next load. The ZIP is kept outside the repository. Offline installation is supported:

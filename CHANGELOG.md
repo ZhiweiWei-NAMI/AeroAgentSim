@@ -1,13 +1,21 @@
 # Changelog
 
-## 2.1.0 — everyday low-altitude experiments
+## 2.1.0 — 2026-10-11
 
-- Seven everyday low-altitude templates plus the traffic-accident showcase: parcel and medical delivery, powerline inspection, crop spraying, air taxi, security patrol and a mixed city day.
-- A newcomer scenario gallery, typed controls, Simple / Expert views, readable event feed, run KPIs and matched-seed algorithm experiments.
-- Shared `lowalt.rules` predicates and event chains for battery reserve, no-fly zones, separation and wind limits; threshold controls author the real predicates.
-- Cause → effect explanations connect recorded values, predicate evaluations, chain actions, shared-state changes and execution receipts.
-- Template workspaces carry the shared city; layer toggles retain loaded geometry; background traffic labels are decluttered. Optional city-pack models use class-aware selection, LOD and procedural fallbacks.
-- Deterministic replay and single-writer ownership remain the execution contract. Native simulators, detailed asset packs and live model providers remain optional and separately configured.
+- **Operational workbench.** Saved workspaces first, revision-bound authoring, top-level runtime controls, searchable explorer, resizable graph/city views and contextual inspection.
+- **Food delivery.** Real preparation queues, physical pickup/delivery, deadline KPIs and typed kitchen disruptions; scheduled and interactive modes share the same runtime.
+- **Progressive detailed scenes.** Incremental Huangpu loading, shared image decoding, building batching and camera transitions. Read transport reconnects without resubmitting commands.
+- [Verified delivery and access instructions](docs/project/workbench-delivery.md).
+
+- **Nine scenarios to start from.** A thumbnail gallery offers parcel delivery, medical delivery, powerline inspection, crop spraying, air taxi, security patrol and traffic-accident response, plus **city-day**, where several businesses and road-incident responders share one clock and airspace. List them with `aeroagentsim templates`; open an editable workspace or run headlessly with `aeroagentsim run-template`.
+- **Algorithms and measured experiments.** Swap allocation, route planning, conflict resolution and charging algorithms, or supply a Python class. Batch allocation exposes the differences between nearest-pickup dispatch, energy-aware auction bids and Hungarian matching by completion time. `aeroagentsim experiment` runs knob grids with matched seeds and parallel workers, exporting per-KPI means, sample standard deviations and observation counts to CSV and Markdown.
+- **Results you can follow.** Run comparison and KPIs expose completed tasks, latency, energy and operational alerts. A plain-language Chinese/English event feed explains business activity and links each event to **Why did this happen?** Indexed viewer feeds support seeking and reconnecting to recorded runs.
+- **Huangpu city pack 1.1.** All nine templates use the shared city frame. `aeroagentsim assets fetch` installs the optional detailed city from `assets-huangpu-city-v1.1`, including a catalog of vehicle, UAV, bicycle, pedestrian and street-furniture models, class-aware selection and levels of detail. The bundled OSM city remains usable without the pack.
+- **Editable operational rules.** Battery reserve, no-fly zones, separation and wind limits are shared predicates and event chains. Template knobs edit their real parameters; charging and separation chains retain physical execution receipts, and active flights can leave newly activated no-fly zones through a bounded emergency route.
+- **Cause → effect inspection.** Trace recorded inputs through predicate evaluations and chain actions to before/after state and command receipts. Per-entity change timelines, grouped graphs and linked 3D highlights keep the explanation in context.
+- **Watch like a control tower.** Director camera follows activity; cinema mode keeps the city and event ticker in view. Replay supports 0.5–8× speed and keyboard shortcuts. Entity cards show the current task, next stop, battery, recent journey and the recorded reason for holding, rerouting or returning to charge; cargo and charging markers make activity visible.
+- **Studio and language fixes.** Template workspaces retain their city, scene layers toggle without rebuilding geometry, generators preserve fractional values, late accident injection works, and background labels are less crowded. Chinese/English controls, templates, help and narratives now cover the console's main workflows.
+- **A clearer entry point.** Rewritten English and Chinese READMEs, template quickstart and a [repo map](docs/repo-map.md) connect runnable examples to the code that owns them.
 
 ## 2.0.0 — first public release of the consolidated platform
 

@@ -1,17 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { ComponentProps } from 'react';
-import { ViewportView } from './ViewportView';
+import type { ViewportView as ViewportComponent } from './ViewportView';
 import { NonspatialViews } from './NonspatialViews';
 import { MissionTimeline } from './MissionTimeline';
 import { resolveBinding } from './bindings';
 import { useI18n } from '../i18n/I18nProvider';
 import './nonspatial.css';
 
-type Props = ComponentProps<typeof ViewportView>;
+const ViewportView = lazy(() => import('./ViewportView').then(module => ({default:module.ViewportView})));
+type Props = ComponentProps<typeof ViewportComponent>;
 
 /** A display choice only: both panels read the same exact replay cut as the inspector. */
 export function ViewerPresentation(props: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const spatial = props.store.entities.size
     ? [...props.store.entities.values()].some(entity => resolveBinding(props.store.header, entity.typeId))
     : props.store.header.presentation.length > 0;
@@ -43,7 +44,7 @@ export function ViewerPresentation(props: Props) {
       {!spatial && <span>{t('Inspector first · recorded facts')}</span>}
     </nav>
     <div className="presentation-content">
-      {spatial && <div className="spatial-pane"><ViewportView {...props} /></div>}
+      {spatial && <div className="spatial-pane"><Suspense fallback={<div className="viewport-module-loading" role="status">{locale.startsWith('zh')?'正在准备三维视图 · 运行控制可用':'Preparing 3D view · run controls are available'}</div>}><ViewportView {...props} /></Suspense></div>}
       {(!spatial || panel) && <div className="nonspatial-pane">
         <NonspatialViews store={props.store} selected={props.selected} onSelect={props.onSelect} view={view} />
         {!spatial && <MissionTimeline store={props.store} selected={props.selected} />}

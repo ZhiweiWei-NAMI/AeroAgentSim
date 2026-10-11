@@ -18,6 +18,9 @@ export function localizedLabel(value: string, locale = 'en-US'): string {
   if ((match = value.match(/^Route uav (Alpha|Bravo|Bg \d+)$/i))) return translate(locale,'Route UAV {name}',{name:readableLabel(match[1],locale)});
   if ((match = value.match(/^(Background|District) patrol (\d+)$/i))) return match[1].toLowerCase()==='background' ? translate(locale,'Background patrol {number}',{number:match[2]}) : translate(locale,'District patrol {number}',{number:match[2]});
   if ((match = value.match(/^Medical delivery (\d+)$/i))) return translate(locale,'Medical delivery {number}',{number:match[1]});
+  if ((match = value.match(/^Meal courier (\d+)$/i))) return translate(locale,'Meal courier {number}',{number:match[1]});
+  if ((match = value.match(/^Meal customer (\d+)$/i))) return translate(locale,'Meal customer {number}',{number:match[1]});
+  if ((match = value.match(/^Meal order (\d+)$/i))) return translate(locale,'Meal order {number}',{number:match[1]});
   if ((match = value.match(/^Incident capture (\d+)$/i))) return translate(locale,'Incident capture {number}',{number:match[1]});
   if ((match = value.match(/^Incident (\d+)$/i))) return translate(locale,'Incident {number}',{number:match[1]});
   if ((match = value.match(/^Air taxi (\d+)$/i))) return translate(locale,'Air taxi {number}',{number:match[1]});

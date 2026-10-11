@@ -150,6 +150,7 @@ def _chinese_label(label: str) -> str:
 
 TASK_KIND_CATEGORY = {
     "parcel": "logistics",
+    "food": "logistics",
     "medical": "emergency",
     "inspection": "inspection",
     "survey": "inspection",
@@ -162,6 +163,7 @@ TASK_KIND_CATEGORY = {
 # Plain nouns and completion phrases per task kind, used by task narratives.
 TASK_NOUN = {
     "parcel": "parcel order",
+    "food": "meal order",
     "medical": "urgent medical order",
     "inspection": "inspection job",
     "survey": "survey job",
@@ -172,6 +174,7 @@ TASK_NOUN = {
 }
 TASK_DONE = {
     "parcel": "delivered the parcel to",
+    "food": "delivered the meal to",
     "medical": "delivered urgent supplies to",
     "inspection": "finished inspecting",
     "survey": "finished surveying",
@@ -183,6 +186,7 @@ TASK_DONE = {
 
 TASK_NOUN_ZH = {
     "parcel": "包裹配送任务",
+    "food": "外卖订单",
     "medical": "紧急医疗配送任务",
     "inspection": "巡检任务",
     "survey": "测绘任务",
@@ -193,6 +197,7 @@ TASK_NOUN_ZH = {
 }
 TASK_DONE_ZH = {
     "parcel": "完成包裹投递",
+    "food": "送达餐食",
     "medical": "送达紧急医疗物资",
     "inspection": "完成巡检",
     "survey": "完成测绘",

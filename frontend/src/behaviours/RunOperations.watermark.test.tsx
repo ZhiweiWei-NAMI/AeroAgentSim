@@ -39,16 +39,18 @@ it('pauses a waiting run by keyboard and recognizes resume back into the wait', 
 it('advances an idle operator source from acknowledged watermarks, capped at the authored end', async () => {
   vi.useFakeTimers();
   const api = new RunsApi('http://api'), watermarks: number[] = [];
+  let acknowledged = 0;
   const request = vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
     if (path.endsWith('/configuration')) return { scenario: {
-      id: 'traffic-accident', run: { advance_ns: 1_000_000_000, until_ns: 2_500_000_000 },
+      id: 'food-delivery', run: { advance_ns: 1_000_000_000, until_ns: 2_500_000_000 },
       ingress_streams: [{ id: 'operator', initial_watermark_ns: 0 }], behaviours: [],
     } };
     if (path.includes('/commits?')) return { status: 'running', commits: [], next: 2 };
+    if (path.endsWith('/inputs')) return {status:'running',watermarks:{operator:acknowledged},pause_requested:false};
     if (!path.endsWith('/watermark')) throw Error(`Unexpected API request: ${path}`);
     const body = JSON.parse(String(options?.body)) as {stream_id: string; watermark_ns: number};
     expect(body.stream_id).toBe('operator');
-    watermarks.push(body.watermark_ns);
+    watermarks.push(body.watermark_ns); acknowledged=body.watermark_ns;
     return {contract: 'aeroagentsim.watermark-receipt/v2', stream_id: 'operator', watermark_ns: body.watermark_ns};
   });
   try {
@@ -74,6 +76,7 @@ it('injects the authored accident in one click with real identity and automatic 
  const request=vi.spyOn(api,'request').mockImplementation(async(path,options)=>{
   if(path.endsWith('/configuration'))return {scenario:{id:'traffic-accident',run:{advance_ns:1_000_000_000,until_ns:90_000_000_000},ingress_streams:[{id:'operator',initial_watermark_ns:0}],behaviours:[{document:{injection_points:[point]}}]}};
   if(path.includes('/commits?'))return {status:'running',commits:[],next:8};
+  if(path.endsWith('/inputs'))return {status:'running',watermarks:{operator:0},pause_requested:false};
    if(path.endsWith('/ingress')){bodies.push(JSON.parse(String(options?.body)));return {disposition:'accepted'};}
   throw Error(`Unexpected request: ${path}`);
  });
@@ -86,4 +89,59 @@ it('injects the authored accident in one click with real identity and automatic 
   await waitFor(()=>expect(bodies).toHaveLength(1));
   expect(bodies[0]).toMatchObject({schema:point.command,target:point.target,stream_id:'operator',at_ns:1,source_stamp:{clock_id:'canonical',mapping_id:'canonical',numerator:1,denominator:1},payload:{injection_point:'accident',payload:{incident:{$ref:{run_id:'actual-kernel',epoch:fixtureHeader.epoch,id:'incident.real',generation:0,type_id:'aas:TrafficIncident'}},source_cut:7,request_id:expect.any(String),reason:'Operator report'}},idempotency_key:expect.any(String)});
  }finally{cleanup();request.mockRestore();}
+});
+
+
+it('restores food input progress across reloads and never advances during a requested or effective pause', async () => {
+  vi.useFakeTimers();
+  const api=new RunsApi('http://api'),watermarks:number[]=[];
+  let acknowledged=4_000_000_000,status='running',pauseRequested=true;
+  const request=vi.spyOn(api,'request').mockImplementation(async(path,options)=>{
+    if(path.endsWith('/configuration'))return {scenario:{id:'food-delivery',run:{advance_ns:500_000_000,until_ns:10_000_000_000},ingress_streams:[{id:'operator',initial_watermark_ns:0}],behaviours:[]}};
+    if(path.includes('/commits?'))return {status,commits:[],next:2};
+    if(path.endsWith('/inputs'))return {status,watermarks:{operator:acknowledged},pause_requested:pauseRequested};
+    if(path.endsWith('/watermark')){acknowledged=JSON.parse(String(options?.body)).watermark_ns;watermarks.push(acknowledged);return {watermark_ns:acknowledged};}
+    throw Error(`Unexpected request: ${path}`);
+  });
+  const store=new TemporalFeedStore(fixtureHeader);store.ingest(emptyCommit(1));store.seek('0',1);
+  const mount=()=>render(<ConsoleNotifications><RunOperations api={api} runId="food" store={store} onSelect={()=>{}} onSeek={()=>{}} mode="live"/></ConsoleNotifications>);
+  try {
+    let view:ReturnType<typeof render>;
+    await act(async()=>{view=mount();});
+    await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
+    expect(watermarks).toEqual([]);
+    status='paused';pauseRequested=false;
+    await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
+    expect(watermarks).toEqual([]);
+    status='running';
+    await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});
+    expect(watermarks).toEqual([4_500_000_000]);
+    await act(async()=>{view!.unmount();});
+    await act(async()=>{mount();});
+    await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});
+    expect(watermarks).toEqual([4_500_000_000,5_000_000_000]);
+    expect(store.commits.at(-1)?.at.ns).toBe('0');
+  } finally {cleanup();request.mockRestore();vi.useRealTimers();}
+});
+
+it('clears a recovered source read error while retaining a failed control error',async()=>{
+  vi.useFakeTimers();
+  const api=new RunsApi('http://api');let offline=false;
+  const request=vi.spyOn(api,'request').mockImplementation(async(path)=>{
+    if(path.endsWith('/configuration'))return {scenario:{id:'external',behaviours:[]}};
+    if(path.includes('/commits?')){if(offline)throw new TypeError('source offline');return {status:'running',commits:[],next:2};}
+    if(path.endsWith('/pause'))throw Error('pause rejected');
+    throw Error(`Unexpected request: ${path}`);
+  });
+  try{
+    const store=new TemporalFeedStore(fixtureHeader);store.ingest(emptyCommit(1));store.seek('0',1);
+    await act(async()=>{render(<ConsoleNotifications><RunOperations api={api} runId="reconnect" store={store} onSelect={()=>{}} onSeek={()=>{}} mode="live"/></ConsoleNotifications>);});
+    await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Pause simulation'}));});
+    expect(screen.getAllByText('pause rejected').length).toBeGreaterThan(0);
+    offline=true;await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});
+    expect(screen.getByText('source offline')).toBeVisible();
+    offline=false;await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});
+    expect(screen.queryByText('source offline')).toBeNull();
+    expect(screen.getAllByText('pause rejected').length).toBeGreaterThan(0);
+  }finally{cleanup();request.mockRestore();vi.useRealTimers();}
 });

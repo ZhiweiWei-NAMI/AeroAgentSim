@@ -97,8 +97,41 @@ function merge(parts: T.BufferGeometry[]): T.BufferGeometry {
   return merged;
 }
 
-const cityCache = new Map<string, Promise<T.Group>>();
+/** Pack buildings have small static meshes but repeat their facade/roof materials.
+ * Merge matching source materials after streaming, preserving recorded transforms. */
+function batchBuildings(buildings: T.Object3D[]) {
+  const batches = new Map<string, { material: T.MeshStandardMaterial; parts: T.BufferGeometry[] }>();
+  for (const building of buildings) {
+    building.updateMatrixWorld(true);
+    building.traverse(node => {
+      if (!(node instanceof T.Mesh)) return;
+      if (!(node.material instanceof T.MeshStandardMaterial) || node instanceof T.SkinnedMesh) throw Error('Traffic building requires a static standard material');
+      const material = node.material;
+      const textureKey = (texture: T.Texture | null) => texture ? [texture.source.uuid,texture.colorSpace,texture.wrapS,texture.wrapT,texture.flipY,texture.channel,...texture.repeat.toArray(),...texture.offset.toArray(),texture.rotation] : null;
+      const key = JSON.stringify([material.type,material.color.toArray(),material.emissive.toArray(),material.emissiveIntensity,material.roughness,material.metalness,material.opacity,material.transparent,material.side,material.alphaTest,material.normalScale.toArray(),textureKey(material.map),textureKey(material.normalMap),textureKey(material.emissiveMap)]);
+      let batch = batches.get(key);
+      if (!batch) { batch={material,parts:[]};batches.set(key,batch); }
+      batch.parts.push(node.geometry.clone().applyMatrix4(node.matrixWorld));
+    });
+  }
+  return [...batches.values()].map(({material,parts}) => {
+    const mesh = new T.Mesh(merge(parts),material);mesh.castShadow=true;mesh.receiveShadow=true;
+    mesh.name='city-buildings';mesh.geometry.computeBoundingSphere();
+    for (const geometry of parts) geometry.dispose();
+    return mesh;
+  });
+}
+
+export interface CityProgress { phase: 'roads' | 'buildings' | 'complete'; loaded: number; total: number }
+interface CityEntry { group: T.Group; task: Promise<T.Group>; listeners: Set<() => void>; progress: CityProgress }
+export interface CityLoadOptions {
+  /** Receives the same instance as each source chunk becomes available. */
+  onUpdate?: (group: T.Group, progress: CityProgress) => void;
+  priority?: [number, number, number];
+}
+const cityCache = new Map<string, CityEntry>();
 export function clearTrafficCityCache() { cityCache.clear(); }
+const yieldToBrowser = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 function markShared(root: T.Object3D) {
   root.traverse(node => {
     if (!(node instanceof T.Mesh || node instanceof T.Line)) return;
@@ -112,56 +145,92 @@ function markShared(root: T.Object3D) {
  * clone sharing geometry/materials (never disposed per view). The shared build is not tied
  * to one caller's signal; an aborted caller simply drops its clone.
  */
-export function loadTrafficCity(url: string, assets: Assets, signal: AbortSignal): Promise<T.Group> {
-  let task = cityCache.get(url);
-  if (!task) {
-    task = buildTrafficCity(url, assets, new AbortController().signal).then(group => { markShared(group); return group; });
-    cityCache.set(url, task);
-    task.catch(() => { if (cityCache.get(url) === task) cityCache.delete(url); });
+export function loadTrafficCity(url: string, assets: Assets, signal: AbortSignal, options: CityLoadOptions = {}): Promise<T.Group> {
+  let entry = cityCache.get(url);
+  if (!entry) {
+    const group = new T.Group(); group.name = 'traffic-city';
+    const listeners = new Set<() => void>();
+    const release = assets.retain?.();
+    entry = { group, listeners, progress: {phase:'roads',loaded:0,total:0}, task: undefined! };
+    const current = entry;
+    current.task = buildTrafficCity(url, assets, group, progress => {
+      current.progress = progress;
+      markShared(group);
+      for (const update of listeners) update();
+    }, options.priority).finally(() => release?.());
+    cityCache.set(url, current);
+    void current.task.catch(() => { if (cityCache.get(url) === current) cityCache.delete(url); });
   }
-  return task.then(group => {
+  const instance = new T.Group(); instance.name = 'traffic-city';
+  let copied = 0, generation = 0;
+  const current = entry;
+  const update = () => {
+    if (signal.aborted) return;
+    if (generation !== (current.group.userData.geometryRevision ?? 0)) { instance.clear();copied=0;generation=current.group.userData.geometryRevision; }
+    for (; copied < current.group.children.length; copied++) instance.add(current.group.children[copied].clone(true));
+    Object.assign(instance.userData, current.group.userData, {loading:current.progress.phase !== 'complete', progress:{...current.progress}});
+    if (instance.children.length) options.onUpdate?.(instance, current.progress);
+  };
+  current.listeners.add(update); update();
+  const unsubscribe = () => current.listeners.delete(update);
+  signal.addEventListener('abort', unsubscribe, {once:true});
+  return current.task.then(() => {
     if (signal.aborted) throw Error('Traffic city loading aborted');
-    return group.clone(true);
-  });
+    update(); return instance;
+  }).finally(() => { unsubscribe(); signal.removeEventListener('abort', unsubscribe); });
 }
 
-async function buildTrafficCity(url: string, assets: Assets, signal: AbortSignal): Promise<T.Group> {
-  const response = await fetch(url, { signal });
+async function buildTrafficCity(url: string, assets: Assets, group: T.Group, publish: (progress: CityProgress) => void, priority?: [number, number, number]): Promise<T.Group> {
+  const response = await fetch(url);
   if (!response.ok) throw Error(`Traffic scene HTTP ${response.status}: ${url}`);
   const scene = await response.json() as TrafficScene;
-  const group = new T.Group();
-  group.name = 'traffic-city';
   try {
     // Lite bundle (public clone, no GLBs): recorded footprints/heights only,
     // rendered with existing procedural viewport materials.
     if (isLiteCityScene(scene)) {
+      await yieldToBrowser();
       buildLiteCity(scene, group);
+      publish({phase:'complete',loaded:scene.buildings.length,total:scene.buildings.length});
       return group;
     }
     if(!scene.roads||!Array.isArray(scene.buildings))throw Error('Traffic city requires roads and buildings');
     const roads = scene.roads;
+    const total = scene.buildings.length;
+    group.userData.displayStyle = 'huangpu-source-models';
+    group.userData.buildingCount = total;
+    const polygons = async (items: ScenePolygon[], label: string) => {
+      const parts: T.BufferGeometry[] = [];
+      for (let index = 0; index < items.length; index++) {
+        parts.push(polygonShape(items[index], label));
+        if (index % 80 === 79) await yieldToBrowser();
+      }
+      return parts;
+    };
     for (const [layer, elevation] of ROAD_LAYERS) {
-      const parts = (roads[layer] ?? []).map(item => polygonShape(item, layer));
+      const parts = await polygons(roads[layer] ?? [], layer);
       if (!parts.length) continue;
       const mesh = new T.Mesh(merge(parts), new T.MeshStandardMaterial({ color: ROAD_COLORS[layer], side: T.DoubleSide, roughness: 0.92, metalness: 0 }));
       for (const part of parts) part.dispose();
       mesh.position.y = elevation;
       mesh.receiveShadow = true;
-      group.add(mesh);
+      group.add(mesh); publish({phase:'roads',loaded:0,total});
+      await yieldToBrowser();
     }
     if (roads.arrows?.length) {
-      const parts = roads.arrows.map(item => polygonShape(item, 'arrow'));
+      const parts = await polygons(roads.arrows, 'arrow');
       const mesh = new T.Mesh(merge(parts), new T.MeshBasicMaterial({ color: 0xf1f0d9, side: T.DoubleSide }));
       for (const part of parts) part.dispose();
       mesh.position.y = 0.08;
       group.add(mesh);
     }
     const markingParts = new Map<string, T.BufferGeometry[]>();
+    let markingCount = 0;
     for (const marking of roads.markings ?? []) {
       const key = marking.color === 'yellow' ? 'yellow' : 'white';
       const parts = markingParts.get(key) ?? [];
       parts.push(markingGeometry(marking));
       markingParts.set(key, parts);
+      if (++markingCount % 150 === 0) await yieldToBrowser();
     }
     for (const [key, parts] of markingParts) {
       const mesh = new T.Mesh(merge(parts), new T.MeshBasicMaterial({ color: MARK_COLORS[key], side: T.DoubleSide }));
@@ -172,21 +241,28 @@ async function buildTrafficCity(url: string, assets: Assets, signal: AbortSignal
     // Building URLs in the scene are service-relative (e.g. /assets/buildings/…);
     // resolve them against the scene service root, the directory of scene.json.
     const base = url.startsWith('blob:') ? location.href : new URL('.', new URL(url, location.href)).href;
-    const buildings = scene.buildings!;
-    let cursor = 0;
+    publish({phase:'buildings',loaded:0,total});
+    await yieldToBrowser();
+    const [focusX, , focusZ] = priority ?? [0,0,0];
+    const buildings = [...scene.buildings!].sort((a,b) => Math.hypot(a.x-focusX,a.z-focusZ)-Math.hypot(b.x-focusX,b.z-focusZ));
+    const models: T.Object3D[] = [];
+    let cursor = 0, loaded = 0;
     const worker = async () => {
       while (cursor < buildings.length) {
-        if (signal.aborted) throw Error('Traffic city loading aborted');
         const building = buildings[cursor++];
-        // In-flight GLTF loads cannot be cancelled through Assets; abort is
-        // enforced at each step boundary and by disposing the group on failure.
         const model = await assets.model(new URL(building.url.replace(/^\/assets\//,''), base).href);
-        if (signal.aborted) throw Error('Traffic city loading aborted');
         model.position.set(building.x, building.y, building.z);
-        group.add(model);
+        group.add(model);models.push(model);
+        loaded++;
+        if (loaded % 8 === 0 || loaded === total) publish({phase:'buildings',loaded,total});
+        await yieldToBrowser();
       }
     };
-    await Promise.all(Array.from({ length: Math.min(8, buildings.length) }, worker));
+    await Promise.all(Array.from({ length: Math.min(3, buildings.length) }, worker));
+    const batches=batchBuildings(models);
+    if(batches.length){for(const model of models)group.remove(model);group.add(...batches);group.userData.geometryRevision=1;}
+    group.userData.buildingDrawCalls=batches.length;
+    publish({phase:'complete',loaded,total});
     return group;
   } catch (error) {
     disposeObject(group);

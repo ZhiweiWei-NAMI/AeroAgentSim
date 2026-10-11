@@ -196,11 +196,15 @@ export function humanizeId(id: string, typeName: string, locale = 'en-US'): stri
  * `lowalt.task_vehicle` reference, or a `current_task`/`assigned_task` graph
  * edge when the scenario authors one. Only real references are used.
  */
-export function taskByVehicle(store: { entities: Map<string, EntityState>; edges: Map<string, { relationId: string; source: EntityKey; target: EntityKey; op: string }> }): Map<string, EntityState> {
+export function isLowaltTask(entity: EntityState, header: Pick<RunHeader, 'types'>): boolean {
+  return entity.typeId === 'lowalt:Task' || header.types.some(type => type.typeId === entity.typeId && type.ancestors.includes('lowalt:Task'));
+}
+
+export function taskByVehicle(store: { header: RunHeader; entities: Map<string, EntityState>; edges: Map<string, { relationId: string; source: EntityKey; target: EntityKey; op: string }> }): Map<string, EntityState> {
   const map = new Map<string, EntityState>();
   for (const task of store.entities.values()) {
-    if (task.typeId !== 'lowalt:Task') continue;
-    if(['completed','failed','canceled','unreleased','queued'].includes(String(task.fields.get('lowalt.task_state')?.value)))continue;
+    if (!isLowaltTask(task, store.header)) continue;
+    if(['completed','failed','canceled','unreleased','queued','awaiting_preparation','preparing'].includes(String(task.fields.get('lowalt.task_state')?.value)))continue;
     const vehicle = scalar(task.fields.get('lowalt.task_vehicle')?.value);
     if (typeof vehicle !== 'string' || !vehicle) continue;
     const entity = store.entities.get(`${vehicle}:0`);
@@ -214,7 +218,7 @@ export function taskByVehicle(store: { entities: Map<string, EntityState>; edges
     if (relation !== 'current_task' && relation !== 'assigned_task') continue;
     const vehicle = store.entities.get(`${edge.source.id}:${edge.source.generation}`);
     const task = store.entities.get(`${edge.target.id}:${edge.target.generation}`);
-    if (vehicle && task && task.typeId === 'lowalt:Task') map.set(`${edge.source.id}:${edge.source.generation}`, task);
+    if (vehicle && task && isLowaltTask(task, store.header)) map.set(`${edge.source.id}:${edge.source.generation}`, task);
   }
   return map;
 }
@@ -243,6 +247,7 @@ export function businessStyle(vehicle: SemanticVehicle, locale = 'en-US'): Busin
   const kind = vehicle.taskKind ?? vehicle.vehicleClass;
   switch (kind) {
     case 'parcel': return { glyph: 'package', color: '#e69f00', label: translate(locale, 'Parcel') };
+    case 'food': return { glyph: 'package', color: '#d55e00', label: translate(locale, 'Food') };
     case 'medical': return { glyph: 'cross', color: '#cc79a7', label: translate(locale, 'Medical') };
     case 'inspection':
     case 'survey': return { glyph: 'eye', color: '#56b4e9', label: translate(locale, 'Inspection') };

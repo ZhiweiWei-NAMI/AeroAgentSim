@@ -11,6 +11,7 @@ interface Occluder { geometry: GeometryIndex; matrix: T.Matrix4; inverse: T.Matr
  */
 export class StaticOcclusion {
   private objects: Occluder[] = [];
+  private indexed = new WeakSet<T.Object3D>();
   private tree?: Node;
   private worldRay = new T.Ray();
   private localRay = new T.Ray();
@@ -24,10 +25,18 @@ export class StaticOcclusion {
 
   setObjects(objects: T.Object3D[]) {
     this.dispose();
+    this.addObjects(objects);
+  }
+
+  /** Progressive city attachment only indexes newly arrived static meshes. */
+  addObjects(objects: T.Object3D[]) {
+    const previous = this.objects.length;
     for (const root of objects) {
       root.updateWorldMatrix(true, true);
       root.traverseVisible(object => {
         if (!(object instanceof T.Mesh) || object.userData.displayDecoration) return;
+        if (this.indexed.has(object)) return;
+        this.indexed.add(object);
         const geometry = this.index(object);
         if (!geometry) return;
         const count = object instanceof T.InstancedMesh ? object.count : 1;
@@ -39,7 +48,7 @@ export class StaticOcclusion {
         }
       });
     }
-    if(this.objects.length)this.tree=build(this.objects.map(o=>o.box));
+    if(this.objects.length!==previous)this.tree=build(this.objects.map(o=>o.box));
   }
 
   private index(mesh: T.Mesh): GeometryIndex | undefined {
@@ -108,7 +117,7 @@ export class StaticOcclusion {
     const move=(node:Node)=>{node.box.translate(offset);if(node.left)move(node.left);if(node.right)move(node.right);};
     if(this.tree)move(this.tree);
   }
-  dispose(){this.objects.length=0;this.tree=undefined;}
+  dispose(){this.objects.length=0;this.tree=undefined;this.indexed=new WeakSet();}
 }
 
 function build(boxes:T.Box3[]):Node {

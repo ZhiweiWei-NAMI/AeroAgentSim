@@ -1,8 +1,11 @@
-"""Render real pinned template poses with the existing Chromium capture/lite city.
+"""Capture 640x360 template thumbnails with the real console Viewport and Huangpu 1.1.
 
-Run with PYTHONPATH=aerokernel:src. --run reuses a journal; otherwise the template
-runs headlessly into a normal run directory. Pillow is only needed for PNGs over
-120 KB (palette quantization changes color precision, not simulation poses).
+Run with PYTHONPATH=aerokernel:src and AEROAGENTSIM_CHROMIUM set. --run reuses
+committed journals; otherwise templates run headlessly. Runs, bundles and optional
+review captures go under --out-run-root (outside the checkout by default).
+Requires frontend npm dependencies and Pillow for palette PNGs. Only camera,
+cut, selection and the console day/dusk switch change; simulation poses and
+models come from the normal console feed and installed city pack.
 """
 
 from __future__ import annotations
@@ -12,33 +15,89 @@ import hashlib
 import io
 import json
 import math
+import mimetypes
 import struct
+import subprocess
 import threading
 import uuid
-from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from aerokernel import Cut, Fact
+from aerokernel import Cut, EntityRef, Stamp
 from aerokernel.codec import decode_record
-from aerokernel.journal import replay
-from aerokernel.registry import MemoryRegistry
 from aerokernel.time import cut_data
-from aerokernel.values import thaw
 
-from aeroagentsim.authoring.templates import TemplateRegistry, demo_source
+from aeroagentsim.assets import selected
+from aeroagentsim.authoring.demo import city_file, detailed_city
+from aeroagentsim.authoring.templates import TemplateRegistry
 from aeroagentsim.observations.contracts import CaptureRequest
 from aeroagentsim.observations.renderer import BrowserRenderer, browser_executable_path
 from aeroagentsim.platform.simulation import RunSession
 from aeroagentsim.scenario import load_scenario
 from aeroagentsim.services.artifacts import scope_capture_storage
 from aeroagentsim.services.node_deps import node_modules_root
+from aeroagentsim.services.projector import header, project
 from aeroagentsim.services.storage import RunStorage
 from aeroagentsim.services.template_execution import execution_document
 
-WIDTH, HEIGHT, MAX_BYTES = 640, 360, 120 * 1024
+WIDTH, HEIGHT, MAX_BYTES = 640, 360, 150_000
 REPOSITORY = Path(__file__).resolve().parents[2]
+
+# Authored camera offsets use render coordinates (east, up, south), relative to
+# the selected actor at the committed cut. Targets may include a nearby site.
+PRESETS = {
+    "parcel-delivery": {
+        "seconds": 77,
+        "subject": "drone-6",
+        "eye": [6, 5, 7],
+        "target": [0, -3, 0],
+    },
+    "medical-delivery": {
+        "seconds": 53,
+        "subject": "drone-2",
+        "eye": [-5, 1.8, 6],
+        "target": [0, -0.2, 0],
+    },
+    "powerline-inspection": {
+        "seconds": 110,
+        "subject": "drone-1",
+        "eye": [-5, 3, -6],
+        "target": [0, -0.5, 0],
+    },
+    "crop-spraying": {
+        "seconds": 65,
+        "subject": "drone-1",
+        "eye": [5, 3, 6],
+        "target": [0, -0.6, 0],
+    },
+    "air-taxi": {
+        "seconds": 90,
+        "subject": "drone-1",
+        "eye": [7, 4, -10],
+        "target": [0, -1.5, 0],
+    },
+    "security-patrol": {
+        "seconds": 98,
+        "subject": "drone-1",
+        "eye": [6, 3, 7],
+        "target": [0, -0.5, 0],
+        "dusk": True,
+    },
+    "city-day": {
+        "seconds": 40,
+        "subject": "drone-1",
+        "eye": [8, 4, 7],
+        "target": [-1, -1, 0],
+    },
+    "traffic-accident": {
+        "seconds": 45,
+        "subject": "vehicle.incident.a",
+        "eye": [-10, 3, -15],
+        "target": [0, 2, 5],
+        "fov": 35,
+    },
+}
 
 
 def run_template(registry: TemplateRegistry, identifier: str, root: Path) -> Path:
@@ -85,105 +144,70 @@ def source_cut(path: Path, seconds: float) -> Cut:
     return selected
 
 
-def capture_request(path: Path, cut: Cut) -> CaptureRequest:
-    document = json.loads((path / "scenario.json").read_text())
-    registry = MemoryRegistry.from_data(
-        json.loads((path / "runtime.registry.json").read_text())
+def capture_request(
+    path: Path, cut: Cut, preset: dict[str, Any], feed: dict[str, Any]
+) -> CaptureRequest:
+    # Fold the already projected committed feed instead of replaying the whole
+    # simulation a second time merely to position an observer's camera.
+    entities: dict[tuple[str, int], dict[str, Any]] = {}
+    for commit in feed["commits"]:
+        for entity in commit["created"]:
+            entities[(entity["id"], entity["generation"])] = {**entity, "facts": {}}
+        for fact in commit["retracted"]:
+            key = fact["entity"]
+            entities[(key["id"], key["generation"])]["facts"].pop(fact["fieldId"], None)
+        for fact in commit["facts"]:
+            key = fact["entity"]
+            entities[(key["id"], key["generation"])]["facts"][fact["fieldId"]] = fact
+        for entity in commit["removed"]:
+            del entities[(entity["id"], entity["generation"])]
+    subject = next(
+        entity for entity in entities.values() if entity["id"] == preset["subject"]
     )
-    view = replay(path / "journal.jsonl").view(cut)
-    rows: list[dict[str, Any]] = []
-    actor = acquired = None
-    for ref in sorted(
-        view._store.lives, key=lambda value: (value.id, value.generation)
-    ):
-        if view._store.lives[ref].created.index > cut.index:
-            continue
-        if not view._store.alive(ref, cut, cut.instant):
-            continue
-        binding = next(
-            (
-                item
-                for item in document.get("presentation", [])
-                if registry.is_a(ref.type_id, item["typeId"])
-            ),
-            None,
-        )
-        if binding is None:
-            continue  # Nonspatial entities have no presentation in this observer.
-        field = registry.field(binding["positionField"])
-        unit = field.metadata["unit"]
-        unit = unit.get("symbol") if hasattr(unit, "get") else unit
-        frame = field.metadata["frame"]
-        if (
-            binding["frame"] != "enu"
-            or (isinstance(frame, str) and frame != "enu")
-            or unit != "m"
-        ):
-            raise ValueError(f"{ref.id}: capture requires declared ENU poses in metres")
-        fact = view.field((ref, field.id), cut.instant)
-        if not isinstance(fact, Fact):
-            raise ValueError(f"{ref.id}: no measured pose at cut {cut.index}")
-        position = thaw(fact.value)
-        if (
-            not isinstance(position, list)
-            or len(position) != 3
-            or any(
-                type(value) not in (int, float) or not math.isfinite(value)
-                for value in position
-            )
-        ):
-            raise ValueError(f"{ref.id}: invalid committed position triple")
-        aircraft = registry.is_a(ref.type_id, "oo:UAV")
-        visual = binding["visual"]
-        rows.append(
-            {
-                "id": ref.id,
-                "generation": ref.generation,
-                "position": position,
-                "aircraft": aircraft,
-                "color": visual["color"],
-                "scale": visual["scale"],
-                "field": field.id,
-                "version": asdict(fact.version),
-                "acquired": asdict(fact.acquired),
-            }
-        )
-        if actor is None or aircraft:
-            actor, acquired = ref, fact.acquired
-    if actor is None or acquired is None:
-        raise ValueError("No live entity has a declared, measured spatial presentation")
-    east = [row["position"][0] for row in rows]
-    north = [row["position"][1] for row in rows]
-    up = [row["position"][2] for row in rows]
-    center_e, center_n = (min(east) + max(east)) / 2, (min(north) + max(north)) / 2
-    # Frame the shipped city when it overlaps the measured scene. Entities stay
-    # at their actual poses; this observer may crop distant traffic, like a camera.
-    city = json.loads(
-        (demo_source("traffic-accident") / "inputs/lite-city/scene.json").read_text()
+    types = {row["typeId"]: row for row in feed["header"]["types"]}
+    binding = next(
+        row
+        for row in feed["header"]["presentation"]
+        if row["typeId"] in [subject["typeId"], *types[subject["typeId"]]["ancestors"]]
     )
-    footprints = [
-        point for building in city["buildings"] for point in building["footprint"]
-    ]
-    city_e = [point[0] for point in footprints]
-    city_n = [point[1] for point in footprints]
-    if (
-        max(east) >= min(city_e)
-        and min(east) <= max(city_e)
-        and max(north) >= min(city_n)
-        and min(north) <= max(city_n)
+    if binding["frame"] != "enu":
+        raise ValueError("Thumbnail subject must have a measured ENU pose")
+    pose = subject["facts"][binding["positionField"]]
+    e, n, u = pose["value"]
+    position = [e, u, -n]
+    if not all(
+        type(value) in (int, float) and math.isfinite(value) for value in position
     ):
-        east, north = city_e, city_n
-        center_e, center_n = (min(east) + max(east)) / 2, (min(north) + max(north)) / 2
-    span = max(max(east) - min(east), (max(north) - min(north)) * WIDTH / HEIGHT, 100)
-    elevation = span / (2 * math.tan(math.radians(55 / 2))) * 1.25 + max(up)
+        raise ValueError("Thumbnail subject has no finite committed pose")
+    metadata = RunStorage(path).metadata()
+    actor = EntityRef(
+        metadata["kernel_run_id"],
+        metadata["epoch"],
+        subject["id"],
+        subject["generation"],
+        subject["typeId"],
+    )
+    stamp = pose["acquired"]
+    acquired = Stamp(
+        stamp["clockId"],
+        int(stamp["numerator"]),
+        int(stamp["denominator"]),
+        stamp["mappingId"],
+    )
     camera = {
-        "revision": "template-overview/v1",
-        "fov": 55,
+        "revision": "template-console/v2",
+        "fov": preset.get("fov", 48),
+        "dusk": preset.get("dusk", False),
         "overview": {
-            "eye": [center_e, elevation, -center_n + elevation * 0.35],
-            "target": [center_e, 0, -center_n],
+            "eye": [a + b for a, b in zip(position, preset["eye"])],
+            "target": [a + b for a, b in zip(position, preset["target"])],
         },
-        "snapshot": {"cut": cut_data(cut), "entities": rows},
+        "subject": {"id": subject["id"], "generation": subject["generation"]},
+        "snapshot": {
+            "cut": cut_data(cut),
+            "position": pose["value"],
+            "version": pose["version"],
+        },
     }
     return CaptureRequest(
         f"thumbnail-{uuid.uuid4().hex}",
@@ -191,57 +215,65 @@ def capture_request(path: Path, cut: Cut) -> CaptureRequest:
         actor,
         cut,
         camera,
-        "traffic-lite-city/v1",
+        "huangpu-city/1.1.0",
         acquired,
         WIDTH,
         HEIGHT,
-        90,
+        180,
     )
 
 
-def capture_png(request: CaptureRequest, browser: Path | None) -> bytes:
-    from aeroagentsim.packs.traffic_accident import camera as traffic_camera
+def viewer_feed(path: Path, cut: Cut) -> dict[str, Any]:
+    """The console's own WAL projection, ending at the exact requested cut."""
+    run_header = header(path)
+    if run_header.get("cityDetail") != "detailed" or not run_header.get("modelCatalog"):
+        raise ValueError(
+            "Thumbnails require the installed detailed Huangpu 1.1 model pack"
+        )
+    commits = []
+    start = 1
+    storage = RunStorage(path)
+    while start <= cut.index:
+        records = storage.records(start, min(512, cut.index - start + 1))
+        if not records:
+            raise ValueError(f"Journal ends before thumbnail cut {cut.index}")
+        commits.extend(project(record) for record in records)
+        start = records[-1]["index"] + 1
+    return {"header": run_header, "commits": commits}
 
+
+def build_viewer(destination: Path) -> Path:
+    """Bundle the shared console renderer, keeping build products outside git."""
+    destination.mkdir(parents=True, exist_ok=True)
+    bundle = destination / "thumbnail-viewer.js"
+    subprocess.run(
+        [
+            str(REPOSITORY / "frontend/node_modules/.bin/esbuild"),
+            str(Path(__file__).with_name("thumbnail-viewer.ts")),
+            "--bundle",
+            "--format=esm",
+            "--platform=browser",
+            "--target=es2022",
+            f"--outfile={bundle}",
+        ],
+        cwd=REPOSITORY / "frontend",
+        check=True,
+    )
+    return bundle
+
+
+def capture_png(
+    request: CaptureRequest, browser: Path | None, *, feed: dict[str, Any], bundle: Path
+) -> bytes:
     modules = node_modules_root()
-    html = Path(traffic_camera.__file__).with_name("camera.html").read_text()
-    original = """  const p = actor.position;
-  const camera = new THREE.PerspectiveCamera(request.camera.fov, request.width / request.height, 0.1, 2000);
-  camera.position.set(p[0], p[2], -p[1]);
-  camera.up.set(0, 0, -1);
-  camera.lookAt(p[0], 0, -p[1]);"""
-    if original not in html:
-        raise ValueError("Existing capture viewer camera contract changed")
-    html = html.replace(
-        original,
-        """  const camera = new THREE.PerspectiveCamera(request.camera.fov, request.width / request.height, 0.1, 16000);
-  camera.position.set(...request.camera.overview.eye);
-  camera.lookAt(...request.camera.overview.target);""",
-    )
-    html = html.replace(
-        "    if (entity.id === actor.id && entity.generation === actor.generation) continue;",
-        "",
-    )
-    html = html.replace(
-        "const air = entity.position[2] > 10;", "const air = entity.aircraft;"
-    )
-    html = html.replace("color: air ? 0x50c9ff : 0xe8a444", "color: entity.color")
-    html = html.replace(
-        "    scene.add(mesh);\n    if (air && city)",
-        "    mesh.scale.setScalar(Math.max(3, entity.scale));\n    scene.add(mesh);\n    if (air && city)",
-    )
+    html = b"""<!doctype html><html><head><meta charset="utf-8">
+<style>html,body,#viewport{margin:0;width:100%;height:100%;overflow:hidden}
+canvas{display:block}.viewport-labels{display:none}</style></head>
+<body><div id="viewport"></div><script type="module" src="/viewer.js"></script></body></html>"""
     assets = {
-        "/": (html.encode(), "text/html"),
-        "/three.js": (
-            (modules / "three/build/three.module.js").read_bytes(),
-            "text/javascript",
-        ),
-        "/camera-config.json": (b'{"city":true}', "application/json"),
-        "/city.json": (
-            (
-                demo_source("traffic-accident") / "inputs/lite-city/scene.json"
-            ).read_bytes(),
-            "application/json",
-        ),
+        "/": (html, "text/html"),
+        "/viewer.js": (bundle.read_bytes(), "text/javascript"),
+        "/feed.json": (json.dumps(feed, allow_nan=False).encode(), "application/json"),
     }
 
     class Handler(BaseHTTPRequestHandler):
@@ -251,16 +283,31 @@ def capture_png(request: CaptureRequest, browser: Path | None) -> bytes:
             name = unquote(urlsplit(self.path).path)
             if name in assets:
                 data, mime = assets[name]
-            elif name.startswith("/addons/"):
-                # The shared camera imports GLTFLoader even for the lite scene.
-                # Serve its relative addon imports, with the same boundary as
-                # the production camera server; never expose arbitrary files.
-                root = (modules / "three/examples/jsm").resolve()
-                path = (root / name[8:]).resolve()
+            elif name.startswith("/v1/studio/demo-assets/"):
+                try:
+                    path = city_file(name.removeprefix("/v1/studio/demo-assets/"))
+                except (ValueError, FileNotFoundError):
+                    self.send_error(404)
+                    return
+                data = path.read_bytes()
+                mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+            elif name.startswith("/addons/") or name.startswith("/decoders/"):
+                prefix = "/addons/" if name.startswith("/addons/") else "/decoders/"
+                root = (
+                    modules / "three/examples/jsm"
+                    if prefix == "/addons/"
+                    else REPOSITORY / "frontend/public/decoders"
+                ).resolve()
+                path = (root / name[len(prefix) :]).resolve()
                 if not path.is_relative_to(root) or not path.is_file():
                     self.send_error(404)
                     return
-                data, mime = path.read_bytes(), "text/javascript"
+                data = path.read_bytes()
+                mime = (
+                    "text/javascript"
+                    if path.suffix == ".js"
+                    else "application/octet-stream"
+                )
             else:
                 self.send_error(404)
                 return
@@ -280,7 +327,7 @@ def capture_png(request: CaptureRequest, browser: Path | None) -> bytes:
         with BrowserRenderer(
             f"http://127.0.0.1:{server.server_port}/",
             node_modules=modules,
-            timeout_s=90,
+            timeout_s=180,
             browser_executable=browser_executable_path(browser),
         ) as renderer:
             return renderer.render(request).png
@@ -302,14 +349,14 @@ def bounded_png(png: bytes) -> bytes:
         from PIL import Image
     except ImportError as exc:
         raise RuntimeError(
-            "Frame exceeds 120 KB; install Pillow to quantize it"
+            "Frame exceeds 150 KB; install Pillow to quantize it"
         ) from exc
-    image = Image.open(io.BytesIO(png)).convert("RGB").quantize(colors=128)
+    image = Image.open(io.BytesIO(png)).convert("RGB").quantize(colors=256)
     output = io.BytesIO()
     image.save(output, format="PNG", optimize=True)
     result = output.getvalue()
     if len(result) > MAX_BYTES:
-        raise ValueError("Captured thumbnail exceeds 120 KB after quantization")
+        raise ValueError("Captured thumbnail exceeds 150 KB after quantization")
     return result
 
 
@@ -323,15 +370,33 @@ def main() -> None:
         default=[],
         help="One pinned run per template, in order",
     )
-    parser.add_argument("--out-run-root", type=Path, default=Path("runs"))
+    parser.add_argument(
+        "--out-run-root", type=Path, default=Path("/tmp/aas-q/thumbs/runs")
+    )
     parser.add_argument(
         "--templates-root", type=Path, default=REPOSITORY / "scenarios/templates"
     )
-    parser.add_argument("--at-seconds", type=float, default=45)
+    parser.add_argument(
+        "--at-seconds", type=float, help="Override the per-template action cut"
+    )
+    parser.add_argument(
+        "--preset-file", type=Path, help="JSON camera overrides keyed by template id"
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Review captures here before replacing shipped assets",
+    )
     parser.add_argument("--browser", type=Path)
     args = parser.parse_args()
     if args.run and len(args.run) != len(args.templates):
         parser.error("Provide one --run per template, or omit all --run options")
+    if not detailed_city() or not (pack := selected()) or pack["version"] != "1.1.0":
+        parser.error(
+            "Install the detailed Huangpu city pack 1.1 before capturing thumbnails"
+        )
+    overrides = json.loads(args.preset_file.read_text()) if args.preset_file else {}
+    bundle = build_viewer(args.out_run_root.parent / "viewer")
     registry = TemplateRegistry(args.templates_root)
     for index, identifier in enumerate(args.templates):
         registry.get(identifier)
@@ -340,14 +405,26 @@ def main() -> None:
             if args.run
             else run_template(registry, identifier, args.out_run_root)
         )
-        cut = source_cut(run, args.at_seconds)
-        png = bounded_png(capture_png(capture_request(run, cut), args.browser))
-        destination = args.templates_root / identifier / "thumbnail.png"
+        preset = {**PRESETS[identifier], **overrides.get(identifier, {})}
+        cut = source_cut(
+            run, args.at_seconds if args.at_seconds is not None else preset["seconds"]
+        )
+        feed = viewer_feed(run, cut)
+        png = bounded_png(
+            capture_png(
+                capture_request(run, cut, preset, feed),
+                args.browser,
+                feed=feed,
+                bundle=bundle,
+            )
+        )
+        destination = (
+            args.output_dir / f"{identifier}.png"
+            if args.output_dir
+            else args.templates_root / identifier / "thumbnail.png"
+        )
+        destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(png)
-        manifest = destination.with_name("template.yaml")
-        text = manifest.read_text()
-        if "thumbnail:" not in text:
-            manifest.write_text(text.rstrip() + "\nthumbnail: thumbnail.png\n")
         print(
             json.dumps(
                 {
