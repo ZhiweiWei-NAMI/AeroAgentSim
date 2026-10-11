@@ -10,6 +10,7 @@ Start with **Home → Choose your scenario**: run or customize parcel / medical 
 - [Run the demo and tour the console](getting-started/quickstart.md)
 - [Create your first scenario](getting-started/first-scenario.md)
 - [Traffic-accident walkthrough](examples/traffic-accident.md)
+- [Repo map — where things live](repo-map.md)
 
 ## Concepts
 

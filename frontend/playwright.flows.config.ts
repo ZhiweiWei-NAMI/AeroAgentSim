@@ -2,7 +2,7 @@ import {defineConfig} from '@playwright/test';
 import {join} from 'node:path';
 process.env.NO_PROXY='127.0.0.1,localhost';process.env.no_proxy=process.env.NO_PROXY;
 // Browser executable: only the AEROAGENTSIM_CHROMIUM environment variable may
-// select it. The record-docs-media script resolves Playwright's own Chromium
+// select it. The record-docs-media script (tools/docs) resolves Playwright's own Chromium
 // before falling back to a scratch browsers path; no home-directory or pinned
 // revision default is baked in here.
 const executablePath=process.env.AEROAGENTSIM_CHROMIUM;

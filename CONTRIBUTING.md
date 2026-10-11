@@ -11,7 +11,7 @@ python -m pip install -e ./aerokernel -e '.[server,agents,dev]' -c constraints/d
 (cd frontend && npm ci)
 ```
 
-See [Install](docs/getting-started/install.md) for console builds and Chromium dependencies. Simulator containers and live model endpoints are optional.
+See [Install](docs/getting-started/install.md) for console builds and Chromium dependencies. Simulator containers and live model endpoints are optional. To find where a module lives, see the [repo map](docs/repo-map.md).
 
 ## Checks
 

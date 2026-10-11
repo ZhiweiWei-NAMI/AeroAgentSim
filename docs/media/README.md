@@ -18,7 +18,7 @@ public clone’s lite OSM bundle and packaged registry snapshot.
 | [06-simulate.gif](06-simulate.gif) | Validate, start, inject accident, award and city capture |
 | [07-visualize.gif](07-visualize.gif) | Cameras, event timeline, shared selection and photo |
 
-Reproduce from the repository root with `scripts/record-docs-media.sh`.
+Reproduce from the repository root with `tools/docs/record-docs-media.sh`.
 See [recording setup and options](../../tools/docs/README.md).
 Native plugin settings are authored drafts; the live-agent story configures a
 future provider without making a paid model call. The completed agent replay

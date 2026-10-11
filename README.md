@@ -88,7 +88,7 @@ Use **Compare changes · Experiment** in the gallery for the same matched-seed e
 
 The seven everyday templates share four editable policies: **battery reserve, no-fly zones, separation and wind limits**. In Studio, change a predicate parameter; in Inspect, click an event's **Why?** to follow **the values read → predicate → event chain → shared-state change → command receipt**. One field still has one writer. [Edit the rules](docs/guides/lowalt-rules.md) · [Compare algorithms](docs/guides/experiments.md) · [Make a template](docs/guides/templates.md)
 
-➡️ Full instructions: [Install](docs/getting-started/install.md) · [Quickstart](docs/getting-started/quickstart.md) · [Your first scenario](docs/getting-started/first-scenario.md)
+➡️ Full instructions: [Install](docs/getting-started/install.md) · [Quickstart](docs/getting-started/quickstart.md) · [Your first scenario](docs/getting-started/first-scenario.md) · [Repo map — where things live](docs/repo-map.md)
 
 ## A tour of the console
 

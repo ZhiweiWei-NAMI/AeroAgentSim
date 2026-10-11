@@ -3,7 +3,7 @@
 From the repository root:
 
 ```sh
-scripts/record-docs-media.sh --gates
+tools/docs/record-docs-media.sh --gates
 ```
 
 The script uses the installed Python and Playwright only: `--python PATH` (or
@@ -57,7 +57,7 @@ Slow backend waits remain in the original videos but are omitted using each
 flow's marked productive segments. For explicit post-processing adjustments:
 
 ```sh
-scripts/record-docs-media.sh --speed 07-visualize=2 --trim 00-overview=0:26
+tools/docs/record-docs-media.sh --speed 07-visualize=2 --trim 00-overview=0:26
 ```
 
 `make_gifs.py` also accepts these options directly. It uses separate palettegen
