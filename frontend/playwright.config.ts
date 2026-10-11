@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 // artifacts and browser profiles live outside the worktree.
 const scratch = process.env.AEROAGENTSIM_E2E_ROOT ?? '/tmp/aas-q/s2/e2e';
 mkdirSync(join(scratch, 'config'), { recursive: true });
+process.env.AEROAGENTSIM_E2E_ROOT = scratch;
 process.env.TMPDIR = scratch;
 process.env.XDG_CONFIG_HOME = join(scratch, 'config');
 const bypass = [process.env.no_proxy, process.env.NO_PROXY, '127.0.0.1', 'localhost'].filter(Boolean).join(',');
@@ -27,7 +28,8 @@ export default defineConfig({
   use: { baseURL, viewport: { width: 1440, height: 900 },
     launchOptions: { executablePath, args: ['--no-sandbox', '--enable-unsafe-swiftshader', '--use-angle=swiftshader'] } },
   webServer: {
-    command: `${process.env.AEROAGENTSIM_E2E_SKIP_BUILD === '1' ? '' : 'npm run build && '}cd .. && PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=${quote(pythonPath)} AEROAGENTSIM_CHROMIUM=${quote(executablePath ?? '')} AEROAGENTSIM_CONSOLE_URL=${quote(baseURL)} ${quote(python)} -m aeroagentsim.services.cli serve --out ${quote(join(scratch, 'runs'))} --frontend frontend/dist --port ${port}`,
+    // Builds into the scratch directory: frontend/dist may be serving someone's console.
+    command: `${process.env.AEROAGENTSIM_E2E_SKIP_BUILD === '1' ? '' : `npx vite build --outDir ${quote(join(scratch, 'dist'))} --emptyOutDir && `}cd .. && PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=${quote(pythonPath)} AEROAGENTSIM_CHROMIUM=${quote(executablePath ?? '')} AEROAGENTSIM_CONSOLE_URL=${quote(baseURL)} ${quote(python)} -m aeroagentsim.services.cli serve --out ${quote(join(scratch, 'runs'))} --frontend ${quote(join(scratch, 'dist'))} --port ${port}`,
     url: `${baseURL}/v1/templates`, reuseExistingServer: false, timeout: 180_000,
   },
 });

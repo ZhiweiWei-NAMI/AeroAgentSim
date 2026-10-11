@@ -4,7 +4,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider, useI18n } from '../i18n/I18nProvider';
 import { EntityGraph } from './EntityGraph';
 import { BehaviourRunGraph } from './BehaviourRunGraph';
-import { DualRunViews } from './DualRunViews';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { PlaybackClock } from '../viewport/clock';
 import { emptyCommit, fixtureCommits, fixtureHeader, task } from './extension-fixture';
@@ -16,6 +15,7 @@ class ResizeObserverStub { observe() {} disconnect() {} }
 beforeEach(() => {
   window.localStorage.setItem('aeroagentsim.locale', 'zh-CN');
   vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+  Object.defineProperty(SVGElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() });
   vi.spyOn(SVGElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 600, height: 400, x: 0, y: 0, top: 0, left: 0, right: 600, bottom: 400, toJSON: () => ({}) } as DOMRect);
 });
 afterEach(() => { cleanup(); window.localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -115,31 +115,3 @@ it('shows bilingual graph empty states and preserves selected runtime entities t
   expect(screen.getByText('No recorded predicate/chain data in this feed.')).toBeVisible();
 });
 
-it('localizes synchronized headings and predicate/chain navigation while retaining exact journal cuts', () => {
-  const store = new TemporalFeedStore(fixtureHeader);
-  fixtureCommits.forEach(commit => store.ingest(commit));
-  store.seek('10', 2);
-  const select = vi.fn(), seek = vi.fn();
-  const viewer = { clock: new PlaybackClock('0', '10'), mode: 'orbit' as const, quality: 'med' as const, trails: true, onError: vi.fn(), onQuality: vi.fn(), onTick: vi.fn() };
-  const view = render(<Bilingual><DualRunViews {...viewer} store={store} selected={task} onSelect={select} onSeek={seek} /></Bilingual>);
-  expect(screen.getByRole('heading', { name: '城市视图' })).toBeVisible();
-  expect(screen.getByText('同一时间轴时刻')).toBeVisible();
-  fireEvent.click(screen.getByText('条件与事件链 · 1 个条件 · 1 条事件链'));
-  expect(screen.getByText('未知 · 缺少所需输入')).toBeVisible();
-  expect(screen.getByText('缺少所需的来源历史记录')).toBeVisible();
-  expect(within(screen.getByLabelText('关系图目录')).getByRole('option', { name: '环境' })).toHaveValue('environment');
-  expect(within(screen.getByLabelText('关系图目录')).getByRole('option', { name: '任务' })).toHaveValue('tasks');
-  fireEvent.click(screen.getByRole('button', { name: /跳(?:转)?到求值时刻/ }));
-  expect(seek).toHaveBeenCalledWith(1);
-  store.seek('10', 3);
-  view.rerender(<Bilingual><DualRunViews {...viewer} store={store} selected={task} onSelect={select} onSeek={seek} /></Bilingual>);
-  fireEvent.click(screen.getByRole('button', { name: /跳(?:转|到)? launch →/ }));
-  expect(select).toHaveBeenCalledWith(task);
-  expect(seek).toHaveBeenCalledWith(3);
-  expect(screen.getByTestId('synchronized-city')).toHaveAttribute('data-cut', '3');
-  expect(screen.getByTestId('dual-run-views')).toHaveAttribute('data-cut', '3');
-  fireEvent.click(screen.getByRole('button', { name: 'Change locale' }));
-  expect(screen.getByRole('heading', { name: 'City view' })).toBeVisible();
-  expect(screen.getByText('Same timeline moment')).toBeVisible();
-  expect(screen.getByRole('button', { name: /Seek launch → moving/ })).toBeVisible();
-});

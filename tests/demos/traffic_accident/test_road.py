@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import random
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +13,13 @@ from aerokernel import Journal
 from aerokernel.state import Fact
 from aerokernel.values import thaw
 
-from aeroagentsim.packs.traffic_accident.geometry import Polyline, Pose, overlap
+from aeroagentsim.packs.traffic_accident.geometry import (
+    Polyline,
+    Pose,
+    PoseIndex,
+    blockers,
+    overlap,
+)
 from aeroagentsim.platform import Simulation
 from aeroagentsim.scenario import load_scenario
 from tests.demos.conftest import SCENARIO, domain_document
@@ -27,6 +34,70 @@ def test_polyline_rectangle_and_invalid_geometry() -> None:
         Polyline([[0, 0, 0], [0, 0, 0]])
     with pytest.raises(ValueError, match="exceeds"):
         line.at(21)
+
+
+def test_indexed_occupancy_matches_complete_queries_after_each_move() -> None:
+    rng = random.Random(42)
+    poses = {
+        str(i): Pose(
+            (rng.uniform(-100, 100), rng.uniform(-100, 100), 0),
+            rng.uniform(-math.pi, math.pi),
+        )
+        for i in range(1000)
+    }
+    indexed = PoseIndex(poses)
+    for i in range(120):
+        identity = str(i)
+        # Include cell boundaries, coincident footprints and negative coordinates.
+        pose = Pose((8.0 * (i % 7 - 3), 8.0 * (i % 5 - 2), 0), i / 7)
+        for clearance in (0, 0.55, 0.8, 9):
+            assert blockers(identity, pose, indexed, clearance) == blockers(
+                identity, pose, poses, clearance
+            )
+        poses[identity] = pose
+        indexed[identity] = pose
+        assert dict(indexed) == poses
+
+
+def test_indexed_route_matches_linear_lookup_at_degenerate_and_tolerant_boundaries() -> (
+    None
+):
+    points = [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0.0000005, 0, 0],
+        [8, 0, 0],
+        [8, 0, 0],
+        [8, 9, 0],
+        [8, 9.0000005, 0],
+    ]
+    line = Polyline(points)
+
+    def linear(s: float) -> Pose:
+        for i, (a, b) in enumerate(zip(line.points, line.points[1:])):
+            length = line.distances[i + 1] - line.distances[i]
+            if length > 1e-6 and s <= line.distances[i + 1] + 1e-9:
+                ratio = min(1.0, (s - line.distances[i]) / length)
+                return Pose(
+                    tuple(a[j] + (b[j] - a[j]) * ratio for j in range(3)),
+                    math.atan2(b[1] - a[1], b[0] - a[0]),
+                )
+        raise ValueError("terminal segment")
+
+    samples = [i * line.length / 100 for i in range(101)]
+    samples += [
+        max(0, at + delta)
+        for at in line.distances
+        for delta in (-1e-9, 0, 0.5e-9, 1e-9)
+    ]
+    for s in samples:
+        try:
+            expected = linear(s)
+        except ValueError:
+            with pytest.raises(ValueError, match="terminal segment"):
+                line.at(s)
+        else:
+            assert line.at(s) == expected
 
 
 def test_road_kernel_trace_and_deterministic_journal(tmp_path: Path) -> None:

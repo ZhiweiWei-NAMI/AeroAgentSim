@@ -1,24 +1,25 @@
 /** Preserve integer wire tokens before JSON.parse can round them. */
 export function parseLosslessJson(source: string, preserveFloatKind = false): unknown {
-  let result = '', index = 0;
-  while (index < source.length) {
-    const char = source[index];
-    if (char === '"') {
-      const start = index++;
-      while (index < source.length) { const next = source[index++]; if (next === '\\') index++; else if (next === '"') break; }
-      result += source.slice(start, index); continue;
-    }
-    if (char === '-' || char >= '0' && char <= '9') {
-      const match = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/.exec(source.slice(index));
-      if (match) {
-        const token = match[0]; index += token.length;
-        result += preserveFloatKind && /[.eE]/.test(token) ? JSON.stringify({$number:token}) : /^-?\d+$/.test(token) && (BigInt(token) > BigInt(Number.MAX_SAFE_INTEGER) || BigInt(token) < BigInt(Number.MIN_SAFE_INTEGER)) ? JSON.stringify({ $integer: token }) : token;
-        continue;
-      }
-    }
-    result += char; index++;
+  // Skip complete strings, including escaped quotes, in the native scanner.
+  // Most feed numbers are small counters: leave the original source intact
+  // unless a token actually needs a lossless tag. JSON.parse still validates
+  // the complete JSON grammar (including malformed strings/numeric tokens).
+  const tokens = /"(?:[^"\\]|\\[\s\S])*"|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
+  const parts: string[] = [];
+  let copied = 0, match: RegExpExecArray | null;
+  while ((match = tokens.exec(source))) {
+    const token = match[0];
+    if (token[0] === '"') continue;
+    const floating = /[.eE]/.test(token);
+    const digits = token[0] === '-' ? token.slice(1) : token;
+    const unsafe = !floating && (digits.length > 16 || digits.length === 16 && digits > '9007199254740991');
+    if (!unsafe && !(preserveFloatKind && floating)) continue;
+    parts.push(source.slice(copied, match.index), JSON.stringify(unsafe ? { $integer: token } : { $number: token }));
+    copied = tokens.lastIndex;
   }
-  return JSON.parse(result) as unknown;
+  if (!parts.length) return JSON.parse(source) as unknown;
+  parts.push(source.slice(copied));
+  return JSON.parse(parts.join('')) as unknown;
 }
 
 /** Send tagged viewer/draft quantities as real JSON numeric tokens to Python. */

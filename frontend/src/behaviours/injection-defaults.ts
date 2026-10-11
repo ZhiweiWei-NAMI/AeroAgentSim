@@ -68,6 +68,51 @@ export function schemaDefaults(schema:unknown, definitions:Draft={}, seen=new Se
   return undefined;
 }
 
+/** Check the actual event contract before enabling submission; never supply missing values. */
+export function payloadProblem(schema:unknown, value:unknown, definitions:Draft={}, path='Payload', required=true, seen=new Set<string>()):string|undefined {
+  if(value===undefined)return required?`${path}: required`:undefined;
+  const reference=typeof schema==='string'?schema:mapping(schema)&&typeof schema.schema_ref==='string'?schema.schema_ref:undefined;
+  if(reference){
+    if(seen.has(reference)||!definitions[reference])return `${path}: schema unavailable (${reference})`;
+    return payloadProblem(definitions[reference],value,definitions,path,required,new Set([...seen,reference]));
+  }
+  if(!mapping(schema))return `${path}: schema unavailable`;
+  if(value===null)return schema.nullable===true?undefined:`${path}: null is not allowed`;
+  if(schema.type==='record'){
+    if(!mapping(value)||!mapping(schema.members))return `${path}: record required`;
+    const members=schema.members;
+    const requiredFields=Array.isArray(schema.required)?schema.required:[];
+    for(const [key,child] of Object.entries(schema.members)){
+      const problem=payloadProblem(child,value[key],definitions,`${path}.${key}`,requiredFields.includes(key),seen);
+      if(problem)return problem;
+    }
+    if(schema.extra===false&&Object.keys(value).some(key=>!(key in members)))return `${path}: undeclared field`;
+    return undefined;
+  }
+  if(schema.type==='array'){
+    if(!Array.isArray(value))return `${path}: array required`;
+    for(let index=0;index<value.length;index++){
+      const problem=payloadProblem(schema.items,value[index],definitions,`${path}[${index}]`,true,seen);
+      if(problem)return problem;
+    }
+    return undefined;
+  }
+  if(schema.type==='ref')return mapping(value)&&mapping(value.$ref)?undefined:`${path}: entity required`;
+  if(schema.type==='string')return typeof value==='string'&&(!required||value.trim().length>0)?undefined:`${path}: text required`;
+  if(schema.type==='boolean')return typeof value==='boolean'?undefined:`${path}: boolean required`;
+  if(schema.type==='integer'||schema.type==='number'){
+    const tagged=mapping(value)&&Object.keys(value).length===1;
+    const integer=tagged&&typeof value.$integer==='string'&&/^-?(0|[1-9]\d*)$/.test(value.$integer)&&value.$integer!=='-0'?value.$integer:undefined;
+    const decimal=tagged&&typeof value.$number==='string'&&/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(value.$number)?value.$number:undefined;
+    const number=typeof value==='number'?value:integer!==undefined?Number(integer):decimal!==undefined?Number(decimal):NaN;
+    if(!Number.isFinite(number)||schema.type==='integer'&&(!Number.isInteger(number)||decimal!==undefined))return `${path}: ${schema.type} required`;
+    if(typeof schema.minimum==='number'&&number<schema.minimum)return `${path}: minimum ${schema.minimum}`;
+    if(typeof schema.maximum==='number'&&number>schema.maximum)return `${path}: maximum ${schema.maximum}`;
+    return undefined;
+  }
+  return `${path}: unsupported schema (${String(schema.type)})`;
+}
+
 /** The waiting banner fires the prepared authored event through its typed form. */
 export function activateInjectionShortcut(controls: HTMLElement): void {
   const button=controls.querySelector<HTMLButtonElement>('[data-injection-submit]');

@@ -33,7 +33,7 @@ aeroagentsim run-template traffic-accident --set accident_time_s=5 --set physics
 `templates` lists the shipped registry. Both commands accept
 `--templates-root DIR` for an operator registry. `run-template` accepts
 `--out` (default `runs/templates`) and `--port` (default `0`, a free port).
-Without `--headless`, it opens an editable Studio workspace and requires
+Without `--headless`, it opens the project in the workbench (`/w/<workspace>`) and requires
 a built `frontend/dist`. Headless output includes the run id, directory,
 status and measured KPI values. Applied knobs are pinned in the run manifest.
  `run-template` applies typed defaults

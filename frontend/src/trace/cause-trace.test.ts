@@ -2,8 +2,22 @@ import { describe, expect, it } from 'vitest';
 import type { TraceModel } from './cause-trace';
 import { changesFor, describeExpression, explain, momentsFor, showValue } from './cause-trace';
 import { car, incident, traceStore as store } from './trace-fixture';
+import { TemporalFeedStore } from '../feeds/temporal-store';
+import { emptyCommit, fixtureHeader, vehicle } from '../behaviours/extension-fixture';
 
 describe('cause trace', () => {
+  it('shows an actual business event without inventing a chain or denying that it was recorded', () => {
+    const value = new TemporalFeedStore(fixtureHeader);
+    value.ingest({ ...emptyCommit(1), created: [{ ...vehicle, typeId: 'vehicle' }] });
+    value.ingest({ ...emptyCommit(2, '10'), events: [{ at_ns: '10', category: 'logistics', severity: 'notice', text: 'Courier delayed', text_zh: '配送员延迟', entities: [vehicle.id] }] });
+    value.seek('10');
+    const ref = { kind: 'event' as const, atNs: '10', text: 'Courier delayed' };
+    const model = explain(value, ref)!;
+    expect(model).toMatchObject({ heading: 'Courier delayed', cut: 2, at: { ns: '10', microstep: 0 }, involved: [vehicle], eventEntities: [vehicle.id], effects: [], followUps: [] });
+    expect(model.step).toBeUndefined(); expect(model.trigger).toBeUndefined();
+    expect(model.notes[0]).toContain('no linked chain step');
+    expect(explain(value, ref, 'zh-CN')).toMatchObject({ heading: '配送员延迟' });
+  });
   it('shows the precision needed to understand a strict battery threshold', () => {
     expect(showValue(store(), 0.849659614252597)).toBe('0.8496596');
   });

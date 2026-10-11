@@ -128,8 +128,9 @@ export function activeZones(header: RunHeader, store: { entities: Map<string, En
 /** Pads and vertiports/customers from committed `lowalt.site_position` facts. */
 export function semanticSites(header: RunHeader, store: { entities: Map<string, EntityState> }): SemanticSite[] {
   const sites: SemanticSite[] = [];
+  const siteTypes = new Set(['lowalt:Site', ...header.types.filter(type => type.ancestors.includes('lowalt:Site') || type.ancestors.some(a => header.types.some(parent => parent.typeId === a && parent.ancestors.includes('lowalt:Site')))).map(type => type.typeId)]);
   for (const entity of store.entities.values()) {
-    if (entity.typeId !== 'lowalt:Site' && !header.types.some(type => type.typeId === entity.typeId && (type.ancestors.includes('lowalt:Site') || type.ancestors.some(a => header.types.some(p => p.typeId === a && p.ancestors.includes('lowalt:Site')))))) continue;
+    if (!siteTypes.has(entity.typeId)) continue;
     const raw = entity.fields.get('lowalt.site_position')?.value;
     if (raw === undefined) continue;
     const position = vector3(raw, `site ${entity.key.id} position`);
@@ -202,8 +203,9 @@ export function isLowaltTask(entity: EntityState, header: Pick<RunHeader, 'types
 
 export function taskByVehicle(store: { header: RunHeader; entities: Map<string, EntityState>; edges: Map<string, { relationId: string; source: EntityKey; target: EntityKey; op: string }> }): Map<string, EntityState> {
   const map = new Map<string, EntityState>();
+  const taskTypes = new Set(['lowalt:Task', ...store.header.types.filter(type => type.ancestors.includes('lowalt:Task')).map(type => type.typeId)]);
   for (const task of store.entities.values()) {
-    if (!isLowaltTask(task, store.header)) continue;
+    if (!taskTypes.has(task.typeId)) continue;
     if(['completed','failed','canceled','unreleased','queued','awaiting_preparation','preparing'].includes(String(task.fields.get('lowalt.task_state')?.value)))continue;
     const vehicle = scalar(task.fields.get('lowalt.task_vehicle')?.value);
     if (typeof vehicle !== 'string' || !vehicle) continue;
@@ -218,7 +220,7 @@ export function taskByVehicle(store: { header: RunHeader; entities: Map<string, 
     if (relation !== 'current_task' && relation !== 'assigned_task') continue;
     const vehicle = store.entities.get(`${edge.source.id}:${edge.source.generation}`);
     const task = store.entities.get(`${edge.target.id}:${edge.target.generation}`);
-    if (vehicle && task && isLowaltTask(task, store.header)) map.set(`${edge.source.id}:${edge.source.generation}`, task);
+    if (vehicle && task && taskTypes.has(task.typeId)) map.set(`${edge.source.id}:${edge.source.generation}`, task);
   }
   return map;
 }

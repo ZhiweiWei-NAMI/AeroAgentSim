@@ -206,7 +206,7 @@ def run_demo(
     if provenance is not None:
         draft["scenario"]["provenance"] = provenance
     store.save(draft["id"], {"scenario": draft["scenario"]})
-    url = console + "/studio?workspace=" + draft["id"]
+    url = console + "/w/" + draft["id"] + "?panel=controls"
     print(
         json.dumps({"url": url, "workspace": draft["id"], "profile": profile}),
         flush=True,

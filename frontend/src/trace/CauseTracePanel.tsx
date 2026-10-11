@@ -99,7 +99,7 @@ export function CauseTracePanel({ store, model, canGoBack, onOpen, onBack, onClo
         {(model.step || model.focus === 'change') && <Effects store={store} effects={model.effects} onSeek={onSeek} />}
         <FollowUps items={model.followUps} onOpen={onOpen} store={store} />
       </ol>
-      {model.involved.length > 0 && <p className="ct-involved">{t('Highlighted in the city and the graph:')} {model.involved.map(key => <EntityChip key={entityId(key)} store={store} entity={key} onSelectEntity={onSelectEntity} />)}</p>}
+      {model.involved.length > 0 && <p className="ct-involved">{locale === 'zh-CN' ? '涉及对象：' : 'Involved objects:'} {model.involved.map(key => <EntityChip key={entityId(key)} store={store} entity={key} onSelectEntity={onSelectEntity} />)}</p>}
       <div className="ct-foot">{model.notes.map((note, index) => <p key={index} className="ct-note">{note}</p>)}</div>
       <Details title={t('Technical details')} buttonLabel={t('Technical details')}><pre>{exactValue({ focus: model.focus, cut: model.cut, step: model.step?.technical, predicate: model.predicate?.technical ?? model.trigger?.predicate?.technical })}</pre></Details>
     </>}

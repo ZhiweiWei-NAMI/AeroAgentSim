@@ -80,6 +80,7 @@ export class Viewport {
   private attribution = '';
   private hoverMarkerId?: string;
   private cameraTransition?: { position: T.Vector3; target: T.Vector3 };
+  private home?: { position: T.Vector3; target: T.Vector3 };
   private lastLegend = '';
   private cityGeometryRevision = 0;
   constructor(private container: HTMLElement, private header: RunHeader, private options: ViewportOptions = {}) {
@@ -110,6 +111,8 @@ export class Viewport {
     if(options.semantic){this.semanticLayer=new SemanticLayer(header,{locale:options.locale,onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
     this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.applyPreset();
     this.observer = new ResizeObserver(this.resize); this.observer.observe(container);
+    const sceneFrame = container.closest('.wb')?.querySelector('.wb-scene-frame');
+    if (sceneFrame) this.observer.observe(sceneFrame);
     // Capture before OrbitControls receives the gesture, so a drag can take
     // over an automatic shot immediately (not one React/render frame later).
     canvas.addEventListener('pointerdown', this.cameraInteraction, true);
@@ -214,13 +217,28 @@ export class Viewport {
   /** Event coordinates are ENU; camera positions are local east/up/south. */
   focusPosition(position: [number,number,number], radius?: number, immediate = false) {
     const target=new T.Vector3(position[0],position[2],-position[1]).sub(this.origin);
-    const offset=new T.Vector3(65,65,80);
+    const offset=new T.Vector3(65,100,80);
     if(radius!==undefined){const vertical=this.camera.fov*Math.PI/360,horizontal=Math.atan(Math.tan(vertical)*this.camera.aspect);offset.setLength(radius/Math.sin(Math.min(vertical,horizontal))*1.12);}
-    const destination=target.clone().add(offset);
+    const destination=this.occlusion.liftCamera(target.clone().add(offset));
     this.setCameraMode('orbit');
     if(immediate){this.controls.target.copy(target);this.camera.position.copy(destination);this.camera.lookAt(target);this.cameraTransition=undefined;}
     else this.cameraTransition={position:destination,target};
     this.authoredCamera=true;this.revision++;
+  }
+  /** Display-only camera pad: these never change simulation state. */
+  zoom(factor: number) {
+    const target=(this.cameraTransition?.target??this.controls.target).clone(),from=this.cameraTransition?.position??this.camera.position;
+    const offset=from.clone().sub(target),length=Math.min(6000,Math.max(6,offset.length()*factor));
+    this.setCameraMode('orbit');this.cameraTransition={position:target.clone().add(offset.setLength(length)),target};this.authoredCamera=true;this.revision++;
+  }
+  orbitBy(radians: number) {
+    const target=(this.cameraTransition?.target??this.controls.target).clone(),from=this.cameraTransition?.position??this.camera.position;
+    const offset=from.clone().sub(target).applyAxisAngle(new T.Vector3(0,1,0),radians);
+    this.setCameraMode('orbit');this.cameraTransition={position:target.clone().add(offset),target};this.authoredCamera=true;this.revision++;
+  }
+  resetView() {
+    if(!this.home)return;
+    this.setCameraMode('orbit');this.cameraTransition={position:this.home.position.clone().sub(this.origin),target:this.home.target.clone().sub(this.origin)};this.revision++;
   }
   setQuality(quality: Quality, manual = false) {
     if(manual)this.manualQuality=true;
@@ -251,7 +269,7 @@ export class Viewport {
       if(!this.framed && this.layer.positions.size){
         const bounds=this.district?.bounds?.clone().translate(this.origin.clone().negate())??new T.Box3().setFromPoints([...this.layer.positions.values()]),center=bounds.getCenter(new T.Vector3());
         if(!this.authoredCamera){const span=Math.max(100,bounds.getSize(new T.Vector3()).length());this.controls.target.copy(center);this.camera.position.copy(center).add(new T.Vector3(0.7,0.55,0.9).multiplyScalar(span));}
-        this.framed=true;
+        this.framed=true;this.home={position:this.camera.position.clone().add(this.origin),target:this.controls.target.clone().add(this.origin)};
       }
       const eventPosition=this.businessShot?.position;
       const focus=(chosen?this.layer.positions.get(entityId(chosen)):undefined)??(eventPosition?new T.Vector3(eventPosition[0],eventPosition[2],-eventPosition[1]).sub(this.origin):undefined);
@@ -261,7 +279,10 @@ export class Viewport {
           const orientation=this.layer.orientations.get(entityId(chosen!));offset=new T.Vector3(-4,2.4,5.5);if(orientation)offset.applyQuaternion(orientation);
         }else if(this.mode==='cinematic'&&!this.options.semantic)offset=this.director.offset();
         const delta=Math.min(0.1,Math.max(0,deltaSeconds));
-        this.camera.position.lerp(focus.clone().add(offset),1-Math.exp(-(this.mode==='cinematic'?1.8:5)*delta));
+        const destination=this.occlusion.liftCamera(focus.clone().add(offset));
+        this.camera.position.lerp(destination,1-Math.exp(-(this.mode==='cinematic'?1.8:5)*delta));
+        // The transition itself must stay clear when crossing a building, not just its endpoint.
+        this.camera.position.copy(this.occlusion.liftCamera(this.camera.position));
         this.controls.target.lerp(focus,1-Math.exp(-(this.mode==='cinematic'?2.4:8)*delta));this.camera.lookAt(this.controls.target);
       }
     };
@@ -352,7 +373,10 @@ export class Viewport {
   private resize = () => {
     this.revision++;
     const width=Math.max(1,this.container.clientWidth),height=Math.max(1,this.container.clientHeight);
-    this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.renderer.setSize(width,height);this.composer.setSize(width,height);
+    const rect=this.container.getBoundingClientRect(),frame=this.container.closest('.wb')?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
+    if(frame&&frame.width>0&&frame.height>0)this.camera.setViewOffset(frame.width,frame.height,rect.left-frame.left,rect.top-frame.top,width,height);
+    else {this.camera.clearViewOffset();this.camera.aspect=width/height;}
+    this.camera.updateProjectionMatrix();this.renderer.setSize(width,height);this.composer.setSize(width,height);
   };
   private press?: {x:number;y:number};
   private pointerMove=(event:PointerEvent)=>{

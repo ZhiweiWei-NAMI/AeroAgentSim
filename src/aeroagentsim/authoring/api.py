@@ -132,7 +132,26 @@ def create_router(
 
     @router.get("/workspaces/{identifier}")
     def get(identifier: str) -> dict[str, Any]:
-        return checked(lambda: store.get(identifier))
+        return checked(lambda: store.summary(identifier))
+
+    @router.post("/workspaces/{identifier}/knobs")
+    def apply_knobs(identifier: str, body: dict[str, Any], request: Request) -> dict[str, Any]:
+        from .templates import TemplateRegistry
+
+        registry = getattr(request.app.state, "templates", None) or TemplateRegistry(None)
+        return checked(lambda: store.apply_knobs(identifier, body, registry=registry))
+
+    @router.get("/workspaces/{identifier}/versions")
+    def versions(identifier: str) -> list[dict[str, Any]]:
+        return checked(lambda: store.versions(identifier))
+
+    @router.post("/workspaces/{identifier}/versions", status_code=201)
+    def save_version(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return checked(lambda: store.save_version(identifier, body))
+
+    @router.get("/workspaces/{identifier}/versions/{version}")
+    def version(identifier: str, version: int) -> dict[str, Any]:
+        return checked(lambda: store.version(identifier, version))
 
     @router.post("/workspaces/{identifier}")
     def save(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
@@ -301,9 +320,9 @@ def create_router(
 
     @router.post("/workspaces/{identifier}/import")
     def import_yaml(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
-        if set(body) != {"yaml"} or not isinstance(body["yaml"], str):
-            raise HTTPException(422, "import: yaml string required")
-        return checked(lambda: store.import_yaml(identifier, body["yaml"]))
+        if "yaml" not in body or set(body) - {"yaml", "revision"} or not isinstance(body["yaml"], str):
+            raise HTTPException(422, "import: yaml string required; optional expected revision")
+        return checked(lambda: store.import_yaml(identifier, body["yaml"], revision=body.get("revision")))
 
     @router.get("/workspaces/{identifier}/buildings.geojson")
     def buildings(identifier: str) -> dict[str, Any]:

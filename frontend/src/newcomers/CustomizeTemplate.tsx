@@ -13,8 +13,12 @@ export function knobAlgorithmSlot(knob:TemplateKnob):AlgorithmSlot|undefined{
  return slot&&['allocation','path_planning','conflict_resolution','charging'].includes(slot)?slot as AlgorithmSlot:undefined;
 }
 
-export function TemplateKnobControl({knob,value,onChange,algorithms}:{knob:TemplateKnob;value:KnobValue;onChange:(value:KnobValue)=>void;algorithms?:AlgorithmDescriptor[]}){
+export function TemplateKnobControl({knob,value,onChange,algorithms,onValidityChange}:{knob:TemplateKnob;value:KnobValue;onChange:(value:KnobValue)=>void;algorithms?:AlgorithmDescriptor[];onValidityChange?:(valid:boolean)=>void}){
  const {t,locale}=useI18n();
+ const [invalid,setInvalid]=useState(false);
+ useEffect(()=>()=>onValidityChange?.(true),[knob.id]);
+ const report=(valid:boolean)=>{setInvalid(!valid);onValidityChange?.(valid);};
+ const numberValid=(next:number|null)=>next!==null&&Number.isFinite(next)&&(knob.type!=='integer'||Number.isSafeInteger(next))&&(knob.min===undefined||next>=knob.min)&&(knob.max===undefined||next<=knob.max);
  const id=`knob-${knob.id}`;
  const names=new Map(algorithms?.map(row=>[row.id,row]));
  const selectedAlgorithm=typeof value==='string'?names.get(value):undefined;
@@ -22,9 +26,10 @@ export function TemplateKnobControl({knob,value,onChange,algorithms}:{knob:Templ
  return <div className="template-knob-row"><label id={`${id}-label`}>{localized(knob,'label',locale)}</label>
   {knob.type==='choice'?<Select aria-labelledby={`${id}-label`} data-testid={id} value={String(knob.options!.indexOf(value))} options={knob.options!.map((option,index)=>({value:String(index),label:knobOptionLabel(knob,option,locale,algorithms),title:typeof option==='string'?localized(names.get(option),'description',locale):undefined}))} onChange={index=>onChange(knob.options![Number(index)])}/>
    :knob.type==='boolean'?<Switch aria-labelledby={`${id}-label`} data-testid={id} checked={value as boolean} checkedChildren={t('yes')} unCheckedChildren={t('no')} onChange={onChange}/>
-   :<div className="template-number-control">{knob.min!==undefined&&knob.max!==undefined&&<Slider ariaLabelledByForHandle={`${id}-label`} data-testid={`${id}-slider`} min={knob.min} max={knob.max} step={knob.type==='integer'?1:0.1} value={value as number} onChange={onChange}/>}
-     <InputNumber aria-labelledby={`${id}-label`} data-testid={id} min={knob.min} max={knob.max} precision={knob.type==='integer'?0:undefined} step={knob.type==='integer'?1:0.1} value={value as number} onChange={next=>{if(next!==null)onChange(next);}}/>
+   :<div className="template-number-control">{knob.min!==undefined&&knob.max!==undefined&&<Slider ariaLabelledByForHandle={`${id}-label`} data-testid={`${id}-slider`} min={knob.min} max={knob.max} step={knob.type==='integer'?1:0.1} value={value as number} onChange={next=>{report(true);onChange(next);}}/>}
+     <InputNumber aria-labelledby={`${id}-label`} aria-invalid={invalid} data-testid={id} min={knob.min} max={knob.max} precision={knob.type==='integer'?0:undefined} step={knob.type==='integer'?1:0.1} value={value as number} onInput={raw=>report(raw.trim()!==''&&numberValid(Number(raw)))} onChange={next=>{const valid=numberValid(next);report(valid);if(valid)onChange(next!);}}/>
     </div>}
+  {invalid&&<span className="wb-field-error" role="alert">{locale==='zh-CN'?'请输入范围内的有效数值。':'Enter a valid number within the bounds.'}</span>}
   {hint&&<span className="template-knob-hint">{hint}</span>}
  </div>;
 }

@@ -7,6 +7,7 @@ import { fixtureHeader, fixtureCommits, vehicle } from './extension-fixture';
 // jsdom has no ResizeObserver; the graph observes its svg for refits.
 class ResizeObserverStub { observe() {} unobserve() {} disconnect() {} }
 vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+Object.defineProperty(SVGElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() });
 // jsdom getBoundingClientRect is all zeros; give the svg a real box so Fit works.
 vi.spyOn(SVGElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 600, height: 400, x: 0, y: 0, top: 0, left: 0, right: 600, bottom: 400, toJSON: () => ({}) } as DOMRect);
 

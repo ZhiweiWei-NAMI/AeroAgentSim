@@ -12,9 +12,6 @@
 .inspection-city-header>span {font-size:11px;color:var(--csl-text-muted)}
 .console-shell .inspection-page .inspection-sidebar {width:254px;flex:0 0 254px;padding:16px;min-width:0;border-color:var(--csl-border)}
 .inspection-entity-select {width:100%;margin-bottom:18px}
-.inspection-entity h2 {font-size:19px;letter-spacing:-.3px;margin:4px 0;overflow-wrap:anywhere;color:var(--csl-navy-900)}
-.inspection-entity .inspection-eyebrow {font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--csl-teal-600);margin:0}
-.inspection-entity .inspection-type {font-size:12px;color:var(--csl-text-muted);margin:4px 0 18px}
 .inspection-entity section {padding:16px 0;border-top:1px solid var(--csl-border)}
 .inspection-entity h3 {display:flex;justify-content:space-between;font-size:12px;margin:0 0 12px;font-weight:650}
 .inspection-entity h3>span {font-weight:400;color:var(--csl-text-muted)}

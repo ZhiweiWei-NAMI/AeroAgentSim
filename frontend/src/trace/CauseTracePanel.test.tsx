@@ -18,6 +18,7 @@ it('tells the story in plain words and lets each follow-up continue the walk', (
   fireEvent.click(screen.getByText(/Demo Watch: Wait → Seen/));
   expect(open).toHaveBeenCalledWith({ kind: 'step', instanceId: 'chain:b', revision: '1' });
   expect(screen.queryByText(/receipt|invocation/i)).toBeNull();
+  expect(screen.getByText('Involved objects:')).toBeTruthy();
 });
 
 it('lets other pages open a trace through the bus and the entity panel opens moments and changes', () => {
@@ -42,6 +43,7 @@ it('localizes the complete cause walk while Back, close, entity focus and seek r
   for(const heading of ['是什么触发了它','执行了什么','共享状态发生了哪些变化','接下来发生了什么']) expect(screen.getByText(heading)).toBeTruthy();
   expect(screen.getByText('车辆 1的速度 = 0')).toBeTruthy();
   expect(screen.getByText(/此字段仅允许事件链写入/)).toBeTruthy();
+  expect(screen.getByText('涉及对象：')).toBeTruthy();
   fireEvent.click(screen.getByRole('button',{name:'← 返回'})); expect(back).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole('button',{name:'查看此步骤之后的场景'})); expect(seek).toHaveBeenCalledWith(4);
   fireEvent.click(screen.getByRole('button',{name:/Demo Watch: 等待 → 已观察/})); expect(open).toHaveBeenCalledWith({kind:'step',instanceId:'chain:b',revision:'1'});

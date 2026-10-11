@@ -22,7 +22,7 @@ python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./
 (cd frontend && npm ci && npm run build) && aeroagentsim run-template parcel-delivery
 ```
 
-最后一条命令打开可编辑的 Studio 工作区，依次选择 **验证并运行 → 验证 → 立即运行** 即可启动。加上 `--headless` 可直接在终端运行。`aeroagentsim templates` 列出全部九个场景。[安装指南](docs/getting-started/install.md) 包含 Windows 设置，以及交通事故和城市综合场景拍摄所需的 Chromium 配置。[English](README.md)
+最后一条命令在工作台中打开该项目，依次选择 **验证 → 保存版本 → 初始化 → 开始** 即可启动。加上 `--headless` 可直接在终端运行。`aeroagentsim templates` 列出全部九个场景。[安装指南](docs/getting-started/install.md) 包含 Windows 设置，以及交通事故和城市综合场景拍摄所需的 Chromium 配置。[English](README.md)
 
 ## 选择一个场景
 
@@ -49,7 +49,7 @@ python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./
 
 ## 改一条规则，看世界如何变化
 
-*当无人机电量低于预留阈值时，让它返回充电。* 电量预留、禁飞区、安全间隔和风速限制都由可编辑的谓词与事件链表达。用 `--set battery_reserve=35` 将预留电量从 20% 改为 35%，或在 Studio 中编辑谓词，再运行一次。在 **检查（Inspect）** 中，沿着记录的条件 → 事件链 → 命令 → 状态变化追查原因，同时观察三维城市中的无人机。通过回放，可以反复查看同一时刻。
+*当无人机电量低于预留阈值时，让它返回充电。* 电量预留、禁飞区、安全间隔和风速限制都由可编辑的谓词与事件链表达。用 `--set battery_reserve=35` 将预留电量从 20% 改为 35%，或在配置的“任务”部分编辑谓词，再运行一次。通过 **为什么？**，沿着记录的条件 → 事件链 → 命令 → 状态变化追查原因，同时观察三维城市中的无人机。通过回放，可以反复查看同一时刻。
 
 
 [修改低空运行规则](docs/guides/lowalt-rules.md) · [编写谓词](docs/guides/predicates.md) · [编写事件链](docs/guides/behaviours.md)

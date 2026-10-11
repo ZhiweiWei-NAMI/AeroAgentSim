@@ -11,7 +11,9 @@ import json
 import sqlite3
 import threading
 import zlib
+from collections import OrderedDict
 from contextlib import closing
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +29,29 @@ FORMAT = "aeroagentsim.viewer-index/v1"
 FILENAME = "viewer-index.sqlite3"
 _LOCK = threading.RLock()
 _PATH_LOCKS: dict[Path, threading.RLock] = {}
+
+
+@dataclass
+class _Projection:
+    checkpoint: bytes
+    signature: list[Any]
+    next: int
+    subjects: SubjectProjection
+    kpis: KPIProjector
+    narratives: NarrativeProjector
+
+
+# A bounded working set, never the source of truth. The committed SQLite blob
+# must match before reusing a cursor, including after another process updates it.
+_PROJECTIONS: OrderedDict[Path, _Projection] = OrderedDict()
+
+
+def _retain(path: Path, projection: _Projection) -> None:
+    with _LOCK:
+        _PROJECTIONS[path] = projection
+        _PROJECTIONS.move_to_end(path)
+        while len(_PROJECTIONS) > 4:
+            _PROJECTIONS.popitem(last=False)
 
 
 def _path_lock(path: Path) -> threading.RLock:
@@ -112,24 +137,42 @@ def _update_batch(path: Path, requested_target: int) -> bool:
                 )
         database.execute("BEGIN IMMEDIATE")
         row = database.execute("SELECT data FROM checkpoint WHERE id=1").fetchone()
-        state: dict[str, Any] = _decode(row[0]) if row else {}
+        # Remove the working cursor before mutation. A projection/SQLite failure
+        # cannot leave an advanced in-memory cursor attached to the old prefix.
+        with _LOCK:
+            cached = _PROJECTIONS.pop(path, None)
+        if cached is not None and (row is None or cached.checkpoint != row[0]):
+            cached = None
+        state: dict[str, Any] = (
+            {"signature": cached.signature, "next": cached.next}
+            if cached is not None
+            else _decode(row[0])
+            if row
+            else {}
+        )
         valid = (
             bool(state) and state["signature"] == signature and state["next"] <= target
         )
         if valid and state["next"] >= min(target, requested_target):
+            if cached is not None:
+                _retain(path, cached)
             return True
-        registry = MemoryRegistry.from_data(
-            json.loads((path / "runtime.registry.json").read_text())
-        )
-        document = json.loads((path / "scenario.json").read_text())
-        subjects = SubjectProjection(registry, document)
-        kpis = KPIProjector(registry, document.get("presentation", []))
-        narratives = NarrativeProjector.from_directory(path)
+        if valid and cached is not None:
+            subjects, kpis, narratives = cached.subjects, cached.kpis, cached.narratives
+        else:
+            registry = MemoryRegistry.from_data(
+                json.loads((path / "runtime.registry.json").read_text())
+            )
+            document = json.loads((path / "scenario.json").read_text())
+            subjects = SubjectProjection(registry, document)
+            kpis = KPIProjector(registry, document.get("presentation", []))
+            narratives = NarrativeProjector.from_directory(path)
         if valid:
             cursor = state["next"]
-            subjects.restore_cursor(state["subjects"])
-            kpis.restore_cursor(state["kpis"])
-            narratives.restore_cursor(state["narratives"])
+            if cached is None:
+                subjects.restore_cursor(state["subjects"])
+                kpis.restore_cursor(state["kpis"])
+                narratives.restore_cursor(state["narratives"])
         else:
             cursor = 1
             database.execute("DELETE FROM cuts")
@@ -159,20 +202,22 @@ def _update_batch(path: Path, requested_target: int) -> bool:
                     ),
                 )
                 cursor += 1
+        checkpoint = _encode(
+            {
+                "signature": signature,
+                "next": cursor,
+                "subjects": subjects.cursor(),
+                "kpis": kpis.cursor(),
+                "narratives": narratives.cursor(),
+                "final": kpis.snapshot(),
+            }
+        )
         database.execute(
-            "INSERT OR REPLACE INTO checkpoint VALUES (1, ?)",
-            (
-                _encode(
-                    {
-                        "signature": signature,
-                        "next": cursor,
-                        "subjects": subjects.cursor(),
-                        "kpis": kpis.cursor(),
-                        "narratives": narratives.cursor(),
-                        "final": kpis.snapshot(),
-                    }
-                ),
-            ),
+            "INSERT OR REPLACE INTO checkpoint VALUES (1, ?)", (checkpoint,)
+        )
+        database.commit()
+        _retain(
+            path, _Projection(checkpoint, signature, cursor, subjects, kpis, narratives)
         )
         return cursor >= requested_target
 

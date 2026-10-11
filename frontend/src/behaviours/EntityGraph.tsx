@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { EntityKey } from '../contracts/viewer-feed';
 import type { EntityState, FeedStore } from '../viewport/feed-store';
 import { entityId } from '../viewport/bindings';
+import { displayName } from '../viewport/semantic';
 import './run-graph.css';
-import { readableLabel, displayLabel, localizedLabel } from '../pages/inspection-format';
+import { readableLabel, displayLabel } from '../pages/inspection-format';
 import { useI18n } from '../i18n/I18nProvider';
 import { translate } from '../i18n/translate';
 
@@ -34,19 +35,6 @@ function typeColor(store: FeedStore, typeId: string): string {
   return PALETTE[hash % PALETTE.length];
 }
 
-const NAME_FIELDS = ['name', 'label', 'title', 'displayName', 'display_name'];
-/** Human label from an actual recorded entity field, else a humanized entity id. Never a fabricated value. */
-function humanLabel(entity: EntityState, locale = 'en-US'): string {
-  for (const [fieldId, fact] of entity.fields) {
-    if (typeof fact.value !== 'string' || !fact.value.trim()) continue;
-    if (fieldId.endsWith('_zh') && !locale.startsWith('zh')) continue;
-    if (NAME_FIELDS.includes(fieldId) || /name|label|title/i.test(fieldId)) {
-      const chinese = locale.startsWith('zh') ? entity.fields.get(`${fieldId}_zh`)?.value : undefined;
-      return localizedLabel(typeof chinese === 'string' && chinese.trim() ? chinese.trim() : fact.value.trim(), locale);
-    }
-  }
-  return readableLabel(entity.key.id, locale);
-}
 const plural = (word: string, count: number) => count === 1 || /s$/i.test(word) ? word : /[^aeiou]y$/i.test(word) ? `${word.slice(0, -1)}ies` : `${word}s`;
 const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
 
@@ -56,7 +44,7 @@ const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeri
  * member is pinned visible (selected, highlighted or searched).
  */
 export function computeLayout(store: FeedStore, expanded: ReadonlySet<string>, pinned: ReadonlySet<string>, maxRowWidth = MAX_ROW_W, locale = 'en-US', t = (key: string, vars: Record<string, string | number> = {}) => translate(locale, key, vars)): GraphLayout {
-  const nodes: GraphNode[] = [...store.entities.values()].map(entity => ({ id: entityId(entity.key), entity, label: humanLabel(entity, locale), color: typeColor(store, entity.typeId), x: 0, y: 0 }));
+  const nodes: GraphNode[] = [...store.entities.values()].map(entity => ({ id: entityId(entity.key), entity, label: displayName(entity, store.header, locale), color: typeColor(store, entity.typeId), x: 0, y: 0 }));
   const byId = new Map(nodes.map(node => [node.id, node]));
   const byType = new Map<string, GraphNode[]>();
   for (const node of nodes) { const rows = byType.get(node.entity.typeId); if (rows) rows.push(node); else byType.set(node.entity.typeId, [node]); }
@@ -138,12 +126,12 @@ export function EntityGraph({ store, selected, onSelect, highlights = [] }: Enti
   const selectedId = selected && entityId(selected);
   const highlightIds = useMemo(() => new Set(highlights.map(entityId)), [highlights.map(entityId).join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
   const needle = query.trim().toLowerCase();
-  const topology = [...store.entities].map(([id, entity]) => `${id}/${entity.typeId}/${humanLabel(entity, locale)}`).join('|') + [...store.edges.values()].map(edge => `${edge.edgeId}/${entityId(edge.source)}/${entityId(edge.target)}`).join('|');
+  const topology = [...store.entities].map(([id, entity]) => `${id}/${entity.typeId}/${displayName(entity, store.header, locale)}`).join('|') + [...store.edges.values()].map(edge => `${edge.edgeId}/${entityId(edge.source)}/${entityId(edge.target)}`).join('|');
   const pinnedKey = [selectedId ?? '', ...highlightIds, needle].join('\u0000');
   const layout = useMemo(() => {
     const pinned = new Set<string>(highlightIds);
     if (selectedId) pinned.add(selectedId);
-    if (needle) for (const [id, entity] of store.entities) if (humanLabel(entity, locale).toLowerCase().includes(needle) || id.toLowerCase().includes(needle)) pinned.add(id);
+    if (needle) for (const [id, entity] of store.entities) if (displayName(entity, store.header, locale).toLowerCase().includes(needle) || id.toLowerCase().includes(needle)) pinned.add(id);
     // Pack groups to the pane width so labels stay at a readable size instead of shrinking to fit one wide sheet.
     return computeLayout(store, expanded, pinned, boxWidth ? Math.max(400, Math.min(900, boxWidth / .9)) : MAX_ROW_W, locale, t);
   }, [topology, expanded, pinnedKey, Math.round(boxWidth / 40), locale]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -174,6 +162,11 @@ export function EntityGraph({ store, selected, onSelect, highlights = [] }: Enti
     if (svg.current) observer.observe(svg.current);
     return () => observer.disconnect();
   }, [layout.width, layout.height]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Selection may be in a group below the scrollable graph window.
+  // Reveal the actual SVG node after fitting, without disturbing manual panning.
+  useEffect(() => {
+    svg.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [selectedId, canvasHeight, boxWidth]);
   const zoom = (factor: number, px: number, py: number) => setTransform(previous => {
     const scale = Math.max(.1, Math.min(4, previous.scale * factor)), ratio = scale / previous.scale;
     return { scale, x: px - (px - previous.x) * ratio, y: py - (py - previous.y) * ratio };

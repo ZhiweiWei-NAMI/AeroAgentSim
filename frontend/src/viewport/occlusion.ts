@@ -75,6 +75,26 @@ export class StaticOcclusion {
     this.worldRay.set(from,this.direction.divideScalar(this.far));
     return this.visitObjects(this.tree,to);
   }
+  /** Raise display cameras above the actual static geometry in their footprint.
+   * Uses the same progressive/rebased bounds as label occlusion, without a per-frame raycast.
+   */
+  liftCamera(position: T.Vector3, clearance = 4): T.Vector3 {
+    const result = position.clone();
+    const visit = (node: Node) => {
+      const box = node.box;
+      if (position.x < box.min.x - clearance || position.x > box.max.x + clearance ||
+          position.z < box.min.z - clearance || position.z > box.max.z + clearance || box.max.y + clearance <= result.y) return;
+      if (node.items) {
+        for (const index of node.items) {
+          const bounds = this.objects[index].box;
+          if (position.x >= bounds.min.x - clearance && position.x <= bounds.max.x + clearance &&
+              position.z >= bounds.min.z - clearance && position.z <= bounds.max.z + clearance) result.y = Math.max(result.y, bounds.max.y + clearance);
+        }
+      } else { if (node.left) visit(node.left); if (node.right) visit(node.right); }
+    };
+    if (this.tree) visit(this.tree);
+    return result;
+  }
   private intersects(ray:T.Ray,box:T.Box3,far:number) {
     if(box.containsPoint(ray.origin))return true;
     return ray.intersectBox(box,this.boxHit)!==null&&this.boxHit.distanceToSquared(ray.origin)<=far*far;

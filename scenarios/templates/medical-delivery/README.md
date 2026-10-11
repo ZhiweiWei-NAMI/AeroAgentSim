@@ -1,3 +1,5 @@
+<!-- guide-language: en-US -->
+
 # Urgent medical delivery
 
 A beginner template: six drones carry routine parcels, and when an
@@ -60,3 +62,50 @@ created orders by 300 s. Keeping four aircraft and changing only the resolver
 improves 11/18 to 14/18; the extra two aircraft complete one further order.
 Preemption and congestion still leave a backlog. These are unfinished orders,
 not task failures, and adding aircraft is not guaranteed to improve every seed.
+
+<!-- guide-language: zh-CN -->
+
+# 紧急医疗配送
+
+六架无人机配送普通包裹。紧急医疗请求出现时，符合条件的无人机先暂停普通包裹任务、优先运送药品，再恢复包裹配送。整个场景共享同一世界与时钟，运行 300 仿真秒。
+
+## 场景过程
+
+- 普通订单在两个起降站小批量到达。每 10 秒对所有待分配订单进行分配，`nearest`、`auction` 和 `hungarian` 的选择可能不同。
+- 优先级为 100 的医疗任务在 8、90 和 150 秒释放。
+- 开启 `medical_preemption` 后，可中断的包裹航段会暂停，医疗航段完成后再恢复。
+- 环境引擎发布 `lowalt.wind`；各类飞行器按自己的风速上限决定是否等待。
+
+## 控制项
+
+| 控制项 | 含义 | 默认值 |
+| --- | --- | --- |
+| `fleet_size` | 飞行器数量（1–12） | 6 |
+| `order_rate` | 普通包裹订单到达速率，单/秒 | 0.06 |
+| `wind_speed` | 常态风速，米/秒（0–15） | 2.0 |
+| `allocator` | 分配算法：`nearest`、`auction`、`hungarian`、`llm` | nearest |
+
+控制项先写入场景草稿，再进行真实校验。
+
+## 衡量指标
+
+`tasks_completed`、`mean_task_latency_s`、`energy_used_kj`、`weather_holds`、`separation_conflicts`，以及 `medical_mean_task_latency_s` 和 `medical_p95_task_latency_s`。
+
+## 运行与查看
+
+创建项目、配置、校验、保存版本、初始化，再按“启动”。命令行入口：
+
+```bash
+aeroagentsim run scenarios/templates/medical-delivery/scenario.yaml
+aeroagentsim metrics runs/<run-directory>
+aeroagentsim replay runs/<run-directory>
+```
+
+各引擎共享运行时，每个字段只有一个写入者，已完成的运行可确定性回放。
+## 黄浦城区布置
+
+坐标来自仓库中的 lite-city 建筑轮廓、屋顶高度和道路，由 `tools/templates/place.py` 生成。屋顶起降点使用实际屋顶高度；站点间飞行先垂直起降，再在 105 米屋顶高度上限之上巡航。名称和业务元数据会随运行固定保存。参见[共享布置指南](../../../docs/examples/city-day.md#huangpu-placements-la3)。
+
+普通订单在 180 秒停止到达，晚到的普通配送可在医疗抢占后恢复。电池、间隔和风速策略可在[共享规则](../../../docs/guides/lowalt-rules.md)中编辑。
+
+种子 42、默认六架飞行器和 `hold_and_go` 下，300 秒内完成 18 个已创建订单中的 15 个。四架飞行器只改变冲突处理器，完成数可由 11/18 提升至 14/18；增加两架再多完成一个。抢占和拥堵仍会留下积压：未完成订单并不等于失败，增加飞行器也不保证每个种子都改善。

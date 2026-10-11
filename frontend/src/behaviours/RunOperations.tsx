@@ -14,7 +14,7 @@ import { translate } from '../i18n/translate';
 import { exactValue } from '../feeds/format';
 import { mapping, type Draft } from './model';
 import { TypedPayloadForm } from './TypedPayloadForm';
-import { emptyTransport, newIdempotencyKey, schemaDefaults, transportForPoint } from './injection-defaults';
+import { emptyTransport, newIdempotencyKey, payloadProblem, schemaDefaults, transportForPoint } from './injection-defaults';
 import './run-operations.css';
 interface Props { api:RunsApi;runId:string;store:TemporalFeedStore;selected?:EntityKey;commitCut?:number;onSelect:(key:EntityKey)=>void;onSeek:(index:number)=>void;mode:'live'|'replay';interactive?:boolean;onInjections?:(available:boolean)=>void;onRequestInject?:()=>void }
 type Translator = (key: string, vars?: Record<string, string | number>) => string;
@@ -68,7 +68,7 @@ export function recordedAccidentPayload(store:TemporalFeedStore):Draft|undefined
   if(!incident)return undefined;
   return {incident:{$ref:{run_id:store.header.kernelRunId,epoch:store.header.epoch,id:incident.key.id,generation:{$integer:String(incident.key.generation)},type_id:incident.typeId}}};
 }
-export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,interactive=true,onInjections,onRequestInject}:Props) {
+export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSeek,mode,interactive=true,onInjections,onRequestInject}:Props) {
   const { t, locale } = useI18n();
   const copy=(en:string,zh:string)=>locale==='zh-CN'?zh:en;
   const notify=useConsoleNotice();
@@ -79,7 +79,8 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
   const operatorNs=useRef<bigint>(), operatorStep=useRef<bigint>(), operatorEnd=useRef<bigint>(), operations=useRef<Promise<unknown>>(Promise.resolve());
   const serialized=(action:()=>Promise<unknown>)=>{const result=operations.current.then(action,action);operations.current=result;return result;};
   const busyRef = useRef(false);
-  const canOperate = interactive && mode === 'live' && ['running','waiting_for_input','paused'].includes(effective ?? '');
+  const viewingHistory = commitCut !== undefined || !store.liveFollow && !!store.viewCursor && store.viewCursor.knownAt < (store.commits.at(-1)?.commitIndex ?? -1);
+  const canOperate = interactive && mode === 'live' && !viewingHistory && ['running','waiting_for_input','paused'].includes(effective ?? '');
   // Read the lightweight per-run feed status, not the expensive all-runs/KPI listing.
   const readStatus = async (signal?: AbortSignal) => {
     const next = (store.commits.at(-1)?.commitIndex ?? 0) + 1;
@@ -178,7 +179,10 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
           const progress=operator?await readOperatorProgress(abort.signal):{status:await readStatus(abort.signal),pauseRequested:false};
           if(abort.signal.aborted)return;
           setEffective(progress.status);terminal=isTerminalStatus(progress.status);
-          if(!advance||!interactive||!operator||progress.pauseRequested||!['running','waiting_for_input'].includes(progress.status))return;
+          // Close the next input interval only when the kernel needs it.
+          // A wall-clock timer must not race ahead of a paced simulation and
+          // schedule the user's next event far beyond the world they see.
+          if(!advance||!interactive||!operator||progress.pauseRequested||progress.status!=='waiting_for_input')return;
           const current=operatorNs.current,step=operatorStep.current,end=operatorEnd.current;
           if(current===undefined||step===undefined||end===undefined||current>=end)return;
           const next=current+step>end?end:current+step;
@@ -194,7 +198,7 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
   },[api,runId,store,mode,interactive,operator]); // eslint-disable-line react-hooks/exhaustive-deps
   const requestKey=()=>{try{return newIdempotencyKey();}catch{throw Error(t('Idempotency keys require a UUID-capable crypto runtime'));}};
   const submit=async()=>{
-    if(!payloadValid){setError(t('Correct the payload before submitting'));return;}
+    if(!payloadValid||payloadProblem(injection?payloadSchema:chosen?.schema,payload,definitions)){setError(t('Correct the payload before submitting'));return;}
     setError('');
     try{
       if(!chosen)throw Error(t('Select a registered command'));
@@ -236,7 +240,8 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
   const setPoint_=(id:string)=>{const next=points.find(row=>row.id===id);setPoint(id);setPayload(id==='accident'?(recordedAccidentPayload(store)??{}):{});setFields(next?transportForPoint(next,{operator:operatorReady,operatorNs:operatorNs.current}):emptyTransport());};
   const ready=point!=='accident'||mapping(payload)&&mapping(payload.incident);
   const descriptor=typeof event?.schema==='string'?definitions[event.schema]:event?.schema;
-  const payloadSchema=mapping(descriptor)&&mapping(descriptor.members)?{...descriptor,members:Object.fromEntries(Object.entries(descriptor.members).filter(([key])=>!['request_id','source_cut'].includes(key)))}:descriptor;
+  const payloadSchema=mapping(descriptor)&&mapping(descriptor.members)?{...descriptor,members:Object.fromEntries(Object.entries(descriptor.members).filter(([key])=>!['request_id','source_cut'].includes(key))),required:Array.isArray(descriptor.required)?descriptor.required.filter(key=>!['request_id','source_cut'].includes(String(key))):descriptor.required}:descriptor;
+  const payloadReady=payloadValid&&!payloadProblem(injection?payloadSchema:chosen?.schema,payload,definitions);
   const choices=[...store.entities.values()].map(entity=>({label:entityLabel(entity,locale),value:{$ref:{run_id:store.header.kernelRunId,epoch:store.header.epoch,id:entity.key.id,generation:{$integer:String(entity.key.generation)},type_id:entity.typeId}},typeId:entity.typeId,ancestors:store.header.types.find(row=>row.typeId===entity.typeId)?.ancestors??[]}));
   const eventLabel=(row:Draft)=>readableLabel(String(row.name??row.id),locale).toLocaleLowerCase(locale);
   const targetSummary=(row:Draft)=>{
@@ -256,7 +261,7 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
   return <section className="run-operations" aria-label={t('Run operations')} aria-busy={busy}>
     <RunShortcuts enabled={canOperate&&!busy&&store.commits.length>0} onToggle={()=>execute(toggle)} onInject={friendly} />
     <h2>{t('Run operations')}<ConceptHelp topic={t('Run operations')} description={t('Pause, resume or stop the runtime, and submit typed external events while it runs.')} guide="console.md" /></h2>
-    <p>{mode==='replay'?t('Replay is read-only; switch to live mode to operate an active run.'):!interactive?t('Run controls are unavailable in this view.'):!effective?t('Checking run status…'):!canOperate?t('This run is {status}; controls are unavailable.',{status:statusLabel(effective)}):t('Inject an event and follow the simulation’s response.')}</p>
+    <p>{mode==='replay'?t('Replay is read-only; switch to live mode to operate an active run.'):viewingHistory?copy('Viewing history. Return to live before submitting an operation.','正在查看历史时刻。请返回实时后再提交操作。'):!interactive?t('Run controls are unavailable in this view.'):!effective?t('Checking run status…'):!canOperate?t('This run is {status}; controls are unavailable.',{status:statusLabel(effective)}):t('Inject an event and follow the simulation’s response.')}</p>
     <div className="run-control-buttons" role="group" aria-label={t('Simulation controls')}>
       {(['pause','resume','stop'] as const).map(action=><button type="button" key={action} disabled={!canOperate||busy||action==='pause'&&effective==='paused'||action==='resume'&&['running','waiting_for_input'].includes(effective??'')} onClick={()=>execute(()=>control(action))}>{action==='pause'?t('Pause simulation'):action==='resume'?t('Resume simulation'):t('Stop simulation')}</button>)}
     </div>
@@ -267,15 +272,15 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
       <h3>{t('Inject {event}',{event:eventLabel(injection)})}</h3>
       <p>{targetSummary(injection)}</p>
       <TypedPayloadForm schema={payloadSchema} value={payload} onChange={setPayload} definitions={definitions} onValidityChange={setPayloadValid} entityChoices={choices}/>
-      <button type="button" className="console-btn console-btn-primary" data-injection-submit data-testid={`inject-${point}`} aria-label={t('Submit typed ingress')} disabled={busy||!payloadValid||!canOperate||!ready||fields.stream_id==='operator'&&scheduledOnly||!injectionSourceReady||!chosen} onClick={()=>execute(submit)}>{t('Inject {event}',{event:eventLabel(injection)})}</button>
-      <p className="injection-hint">{scheduledOnly&&fields.stream_id==='operator'?copy('This run’s operator input interval is closed. Start a run with live inputs to add events.','本次运行的操作员输入区间已经关闭。请启动实时输入运行以添加事件。'):operatorReady?t('Timing and request information are filled in automatically.'):t('Complete the required timing fields in Advanced before submitting.')}</p>
+      <button type="button" className="console-btn console-btn-primary" data-injection-submit data-testid={`inject-${point}`} aria-label={t('Submit typed ingress')} disabled={busy||!payloadReady||!canOperate||!ready||fields.stream_id==='operator'&&scheduledOnly||!injectionSourceReady||!chosen} onClick={()=>execute(submit)}>{t('Inject {event}',{event:eventLabel(injection)})}</button>
+      <p className="injection-hint">{scheduledOnly&&fields.stream_id==='operator'?copy('This run’s operator input interval is closed. Start a run with live inputs to add events.','本次运行的操作员输入区间已经关闭。请启动实时输入运行以添加事件。'):!payloadReady?copy('Complete the required event details with values allowed by the event contract.','请填写事件契约要求的必填信息及允许的数值。'):operatorReady?t('Timing and request information are filled in automatically.'):t('Complete the required timing fields in Advanced before submitting.')}</p>
       <Details title={t('Injection transport')} buttonLabel={t('Advanced')}><div className="run-transport-fields">{Object.entries(fields).map(([key,value])=><label key={key}>{key}<input aria-label={t('Ingress {field}',{field:key})} disabled={busy} value={value} onChange={event=>setFields({...fields,[key]:event.target.value})}/></label>)}</div><pre>{exactValue({request_id:'generated when sent',source_cut:store.viewCursor?.knownAt,point:injection})}</pre></Details>
     </div>:<div className="injection-card" ref={cardRef}><h3>{t('Issue command')}</h3>
       <p className="injection-hint">{t('No guided external event is selected. Pause, resume and stop work without an event. Advanced commands need a declared input source and the timing fields below.')}</p>
       <label>{t('Command')} <select aria-label={t('Command schema')} disabled={busy} value={fields.schema} onChange={event=>{setFields({...fields,schema:event.target.value});setPayload({});}}><option value="">{t('Select registered command')}</option>{commands.filter(row=>row.id!=='aas.runtime.inject_event').map(row=><option key={String(row.id)} value={String(row.id)}>{readableLabel(String(row.id),locale)}</option>)}</select></label>
       {!commands.length&&<p>{t('No registered commands are available for this run.')}</p>}
       <TypedPayloadForm schema={chosen?.schema} value={payload} onChange={setPayload} definitions={definitions} onValidityChange={setPayloadValid} entityChoices={choices}/>
-      <button type="button" className="console-btn" data-injection-submit disabled={busy||!payloadValid||!canOperate||!injectionSourceReady||!chosen} onClick={()=>execute(submit)}>{t('Submit typed ingress')}</button>
+      <button type="button" className="console-btn" data-injection-submit disabled={busy||!payloadReady||!canOperate||!injectionSourceReady||!chosen} onClick={()=>execute(submit)}>{t('Submit typed ingress')}</button>
       <Details title={t('Command transport')} buttonLabel={t('Advanced')}><div className="run-transport-fields">{Object.entries(fields).filter(([key])=>key!=='schema').map(([key,value])=><label key={key}>{key}<input aria-label={t('Ingress {field}',{field:key})} disabled={busy} value={value} onChange={event=>setFields({...fields,[key]:event.target.value})}/></label>)}</div></Details>
     </div>}
     <Details title={t('Other commands')} buttonLabel={t('Direct typed command')}><label>{t('Injection point')} <select ref={injectionRef} aria-label={t('Injection point')} disabled={busy} value={point} onChange={event=>setPoint_(event.target.value)}><option value="">{t('Direct typed command')}</option>{points.map(row=><option key={String(row.id)} value={String(row.id)}>{readableLabel(String(row.id),locale)}</option>)}</select></label><button type="button" disabled={busy} onClick={()=>setPoint_('')}>{t('Configure a direct command')}</button><p>{chosen?.cancel_support===true?t('This command supports cancellation.'):t('Send an authored cancellation event where available.')}</p></Details>

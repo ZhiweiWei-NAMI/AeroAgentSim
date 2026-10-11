@@ -8,7 +8,7 @@ Run it after [installation](../getting-started/install.md):
 aeroagentsim demo traffic-accident
 ```
 
-The command imports an editable Studio workspace and opens the console. Validate and run it in Studio. For a file-based run without the console, use `aeroagentsim demo traffic-accident --headless`.
+The command imports an editable project and opens it in the workbench. Validate, save a version, initialize and start it there. For a file-based run without the console, use `aeroagentsim demo traffic-accident --headless`.
 
 ## What is included
 
@@ -53,7 +53,7 @@ All engines share one runtime. Field bindings in the scenario assign one writer 
 
 ## Change the experiment
 
-In Studio, use the seven steps to change one factor at a time, validate and create a new run. For file-based experiments, copy the complete scenario directory to keep relative snapshot, behaviour and input references together.
+In the workbench, use **Records → Modify & retry** (or the configuration sections) to change one factor at a time, validate, save a version and run again. For file-based experiments, copy the complete scenario directory to keep relative snapshot, behaviour and input references together.
 
 - **Accident timing:** the [behaviour package](../../scenarios/demos/traffic-accident/behaviours.yaml) declares the accident timer and the named `accident` injection point. Change the timer for a scheduled experiment, or use [external ingress](../guides/external-events.md) for operator-controlled timing.
 - **Motion resolution:** change both motion engines' `step_ns` deliberately. Check sampled dwell conditions and message lag when changing publication cadence.

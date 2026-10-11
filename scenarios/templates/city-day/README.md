@@ -1,3 +1,5 @@
+<!-- guide-language: en-US -->
+
 # City day
 
 A busy but beginner-friendly template: several low-altitude businesses plus
@@ -78,3 +80,62 @@ ground plane; the standalone swap pad is at the field edge.
 
 The four operational rules are editable predicates and event chains; see
 [the rules guide](../../../docs/guides/lowalt-rules.md).
+
+<!-- guide-language: zh-CN -->
+
+# 城市的一天
+
+多个低空业务与交通事故事件链在同一个城区共享空域，运行 300 仿真秒。另有[完整场景说明](../../../docs/examples/city-day.md)。
+
+## 场景过程
+
+- 包裹、巡检、载客出租飞行和紧急医疗配送在相同空域、相同起降站同时进行。
+- 交通事故也在同一个世界发生：道路事件形成后，报告者选择绕行，响应无人机被派出、拍摄现场并上传。响应者保留自己的唯一运动写入者 `air_motion` 和 `road_motion`；低空空域引擎只观察其已发布位置，并调整低空机队避让。
+- 编写的时间线为：8 秒激活事故，65–105 秒阵风，120 秒关闭 `east-port`，160 秒注入紧急医疗订单。检测到事故后激活动态禁飞区，110 秒失效，响应者获得豁免。响应者实际何时到达属于运行结果，必须从日志读取。
+
+## 控制项
+
+| 控制项 | 含义 | 默认值 |
+| --- | --- | --- |
+| `fleet_size` | 包裹无人机数量（1–12），另加三架专业飞行器 | 3 |
+| `wind_speed` | 风锋速度，米/秒（0–15） | 9.0 |
+| `allocator` | 分配算法：`nearest`、`auction`、`hungarian`、`llm` | nearest |
+
+## 衡量指标
+
+`tasks_completed`、`mean_task_latency_s`、`energy_used_kj`、`weather_holds`、`separation_conflicts`、`geofence_violations`。
+
+## 运行与查看
+
+创建项目、配置、校验、保存版本、初始化，再按“启动”。命令行入口：
+
+```bash
+aeroagentsim run scenarios/templates/city-day/scenario.yaml
+aeroagentsim metrics runs/<run-directory>
+aeroagentsim replay runs/<run-directory>
+```
+
+## 字段与动作的唯一写入者
+
+| 字段或动作 | 唯一写入者 |
+| --- | --- |
+| `lowalt.position`、`lowalt.velocity` | `motion` |
+| 交通无人机位姿、速度和能量 | `air_motion` |
+| 道路位置、速度和占用 | `road_motion` |
+| 低空任务状态、载荷、站点配置与开放状态、静态区域几何 | `tasks` |
+| 区域 ID、事故区域几何与激活、区域归属、冲突距离、实测风 | `airspace` |
+| 低空电量、充电、能耗、距离和可用运动能量 | `energy` |
+| 共享 `lowalt.wind` | `environment` |
+| 交通事故、任务、竞价、报告状态，操作员事件准入，天气等待、返航充电和风速上限 | `behaviour` |
+| 交通航路输入 | `route_inputs` |
+| 竞价可行性测量 | `traffic_assessment` |
+| 真实 PNG 文件与拍摄元数据 | `capture` |
+| 拍摄与事故关联、回执转发 | `capture_bridge` |
+| 脚本决策提案，不写状态字段 | `decisions` |
+
+离线默认配置安排两次操作员决策。实时 SDK 控制使用从水位线零开始的操作员流，并在准入下一条命令后推进进度。交通相机使用现有的无头 Chromium/Playwright 渲染器，相机存储绑定到实际 RunSession 目录；渲染失败不会被图片样例替代。
+## 黄浦城区布置
+
+坐标来自仓库中的 lite-city 建筑轮廓、屋顶高度和道路，由 `tools/templates/place.py` 生成。屋顶起降点使用实际屋顶高度；站点间飞行先垂直起降，再在 105 米屋顶高度上限之上巡航。名称和业务元数据会随运行固定保存。参见[共享布置指南](../../../docs/examples/city-day.md#huangpu-placements-la3)。
+
+绿色地块是在密集城区以北明确编写的演示多边形，并非 OSM 农田。喷洒行位于地面上方 5 米，独立换电平台位于田边。四个运行规则是可编辑的谓词与事件链，参见[规则指南](../../../docs/guides/lowalt-rules.md)。

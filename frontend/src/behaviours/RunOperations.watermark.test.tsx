@@ -36,17 +36,17 @@ it('pauses a waiting run by keyboard and recognizes resume back into the wait', 
   } finally { cleanup(); request.mockRestore(); runs.mockRestore(); }
 });
 
-it('advances an idle operator source from acknowledged watermarks, capped at the authored end', async () => {
+it('waits for the kernel before advancing acknowledged operator watermarks, capped at the authored end', async () => {
   vi.useFakeTimers();
   const api = new RunsApi('http://api'), watermarks: number[] = [];
-  let acknowledged = 0;
+  let acknowledged = 0, status = 'running';
   const request = vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
     if (path.endsWith('/configuration')) return { scenario: {
       id: 'food-delivery', run: { advance_ns: 1_000_000_000, until_ns: 2_500_000_000 },
       ingress_streams: [{ id: 'operator', initial_watermark_ns: 0 }], behaviours: [],
     } };
-    if (path.includes('/commits?')) return { status: 'running', commits: [], next: 2 };
-    if (path.endsWith('/inputs')) return {status:'running',watermarks:{operator:acknowledged},pause_requested:false};
+    if (path.includes('/commits?')) return { status, commits: [], next: 2 };
+    if (path.endsWith('/inputs')) return {status,watermarks:{operator:acknowledged},pause_requested:false};
     if (!path.endsWith('/watermark')) throw Error(`Unexpected API request: ${path}`);
     const body = JSON.parse(String(options?.body)) as {stream_id: string; watermark_ns: number};
     expect(body.stream_id).toBe('operator');
@@ -57,6 +57,9 @@ it('advances an idle operator source from acknowledged watermarks, capped at the
     const store = new TemporalFeedStore(fixtureHeader);
     store.ingest(emptyCommit(1)); store.seek('0', 1);
     await act(async () => { render(<ConsoleNotifications><RunOperations api={api} runId="idle" store={store} onSelect={() => {}} onSeek={() => {}} mode="live" /></ConsoleNotifications>); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(watermarks).toEqual([]);
+    status = 'waiting_for_input';
     await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
     expect(store.commits.at(-1)?.at.ns).toBe('0');
     expect(watermarks).toEqual([1_000_000_000, 2_000_000_000, 2_500_000_000]);
@@ -113,7 +116,7 @@ it('restores food input progress across reloads and never advances during a requ
     status='paused';pauseRequested=false;
     await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
     expect(watermarks).toEqual([]);
-    status='running';
+    status='waiting_for_input';
     await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});
     expect(watermarks).toEqual([4_500_000_000]);
     await act(async()=>{view!.unmount();});
@@ -144,4 +147,44 @@ it('clears a recovered source read error while retaining a failed control error'
     expect(screen.queryByText('source offline')).toBeNull();
     expect(screen.getAllByText('pause rejected').length).toBeGreaterThan(0);
   }finally{cleanup();request.mockRestore();vi.useRealTimers();}
+});
+
+it('requires a complete authored payload and blocks historical commands without changing the recorded selection', async () => {
+  const api = new RunsApi('http://api');
+  const point = {id:'restaurant_delay',stream_id:'operator',command:'aas.runtime.inject_event',target:'behaviour',emits:'lowalt.operator.restaurant_delay'};
+  const header = {...fixtureHeader, messages:[
+    {id:point.command,kind:'command',schema:{type:'record',members:{},required:[]}},
+    {id:point.emits,kind:'event',schema:{type:'record',members:{restaurant:{type:'string'},delay_s:{type:'number',minimum:0.001}},required:['restaurant','delay_s']}},
+  ]};
+  const store = new TemporalFeedStore(header);store.ingest(emptyCommit(1));store.seek('0',1);
+  const request = vi.spyOn(api,'request').mockImplementation(async(path) => {
+    if(path.endsWith('/configuration'))return {scenario:{run:{advance_ns:1_000_000_000,until_ns:90_000_000_000},ingress_streams:[{id:'operator',initial_watermark_ns:0}],behaviours:[{document:{injection_points:[point]}}]}};
+    if(path.includes('/commits?'))return {status:'paused'};
+    if(path.endsWith('/inputs'))return {status:'paused',watermarks:{operator:0},pause_requested:true};
+    if(path.endsWith('/ingress'))return {disposition:'accepted'};
+    throw Error(`Unexpected request: ${path}`);
+  });
+  try {
+    const props={api,runId:'food',store,onSelect:()=>{},onSeek:()=>{},mode:'live' as const};
+    const view=render(<ConsoleNotifications><RunOperations {...props}/></ConsoleNotifications>);
+    await screen.findByTestId('inject-restaurant_delay');
+    expect(screen.getByTestId('inject-restaurant_delay')).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Payload.restaurant'),{target:{value:'restaurant-east'}});
+    fireEvent.change(screen.getByLabelText('Payload.delay_s'),{target:{value:'0'}});
+    expect(screen.getByTestId('inject-restaurant_delay')).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Payload.delay_s'),{target:{value:'45'}});
+    await waitFor(()=>expect(screen.getByTestId('inject-restaurant_delay')).toBeEnabled());
+    // Live batches can arrive before their next paint. This is not a seek.
+    store.liveFollow=true;store.ingest(emptyCommit(2));
+    view.rerender(<ConsoleNotifications><RunOperations {...props}/></ConsoleNotifications>);
+    expect(screen.getByTestId('inject-restaurant_delay')).toBeEnabled();
+    expect(screen.getByRole('button',{name:'Stop simulation'})).toBeEnabled();
+    view.rerender(<ConsoleNotifications><RunOperations {...props} commitCut={1}/></ConsoleNotifications>);
+    expect(screen.getByTestId('inject-restaurant_delay')).toBeDisabled();
+    expect(screen.getByText(/Return to live before submitting/)).toBeVisible();
+    expect(screen.getByRole('button',{name:'Stop simulation'})).toBeDisabled();
+    expect(request.mock.calls.some(([path])=>path.endsWith('/ingress'))).toBe(false);
+    view.rerender(<ConsoleNotifications><RunOperations {...props}/></ConsoleNotifications>);
+    await waitFor(()=>expect(screen.getByTestId('inject-restaurant_delay')).toBeEnabled());
+  } finally {cleanup();request.mockRestore();}
 });

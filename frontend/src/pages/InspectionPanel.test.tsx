@@ -3,7 +3,8 @@ import { expect, it } from 'vitest';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { fixtureHeader, fixtureCommits, task } from '../behaviours/extension-fixture';
 import { InspectionPanel } from './InspectionPanel';
-import { timelineEvents } from './RunTimeline';
+import { entityId } from '../viewport/bindings';
+import { I18nProvider } from '../i18n/I18nProvider';
 it('shows only the selected generation at the current cut, preserving missing truth and chain state',()=>{
  const store=new TemporalFeedStore(fixtureHeader);fixtureCommits.forEach(row=>store.ingest(row));store.seek('10',2);
  const view=render(<InspectionPanel store={store} selected={task} onSeek={()=>{}}/>);
@@ -13,8 +14,18 @@ it('shows only the selected generation at the current cut, preserving missing tr
  view.rerender(<InspectionPanel store={store} selected={{...task,generation:2}} onSeek={()=>{}}/>);
  expect(screen.getByText('Entity absent at this moment')).toBeTruthy();
 });
-it('marks committed event emissions and retains their exact microstep cut',()=>{
- const base=fixtureCommits[2];
- const message={id:'recorded',kind:'event' as const,schemaId:'traffic.capture.stored',source:'capture',at:base.at,payload:{}};
- expect(timelineEvents([{...base,messages:[message,{...message,id:'command',kind:'command'}]}])).toEqual([{label:'Capture',kind:'capture',offset:0,cut:3,ns:'10'}]);
+it('distinguishes recorded empty collections and empty text from missing or null state',()=>{
+ const store=new TemporalFeedStore(fixtureHeader);fixtureCommits.forEach(row=>store.ingest(row));store.seek('10',2);
+ const entity=store.entities.get(entityId(task))!, fact=entity.fields.values().next().value!;
+ entity.fields.set('members',{...fact,fieldId:'members',value:[]});
+ entity.fields.set('note',{...fact,fieldId:'note',value:''});
+ entity.fields.set('nullable',{...fact,fieldId:'nullable',value:null});
+ const view=render(<InspectionPanel store={store} selected={task} onSeek={()=>{}}/>);
+ expect(screen.getByText('None')).toBeTruthy();
+ expect(screen.getByText('Empty text')).toBeTruthy();
+ expect(screen.getByText('Null (recorded)')).toBeTruthy();
+ localStorage.setItem('aeroagentsim.locale','zh-CN');
+ view.rerender(<I18nProvider><InspectionPanel store={store} selected={task} onSeek={()=>{}}/></I18nProvider>);
+ expect(screen.getByText('无')).toBeTruthy(); expect(screen.getByText('空文本')).toBeTruthy(); expect(screen.getByText('空值（已记录）')).toBeTruthy();
+ localStorage.removeItem('aeroagentsim.locale');
 });

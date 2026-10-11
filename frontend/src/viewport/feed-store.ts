@@ -21,6 +21,8 @@ export class FeedStore {
   private cursor = -1;
   private cutNs?: bigint;
   private cutIndex?: number;
+  /** Temporal subclasses materialize their own valid-time fields and edges. */
+  protected temporalState = false;
   constructor(readonly header: RunHeader) { nanos(header.start.ns); }
   ingest(commit: FeedCommit) {
     const previous = this.commits[this.commits.length - 1];
@@ -28,7 +30,7 @@ export class FeedStore {
     nanos(commit.at.ns);
     if (previous && (commit.commitIndex <= previous.commitIndex || compareInstant(commit.at, previous.at) < 0)) throw Error('Feed commits must arrive in journal order');
     // Validate the complete lifecycle projection before mutating retained indexes.
-    const active = new Set(this.ingestedEntities);
+    const active = commit.created.length || commit.removed.length ? new Set(this.ingestedEntities) : this.ingestedEntities;
     for (const key of commit.created) {
       const id = entityId(key);
       if (active.has(id) || this.lifetimes.has(id)) throw Error(`Duplicate entity generation: ${id}`);
@@ -78,14 +80,16 @@ export class FeedStore {
   }
   private apply(commit: FeedCommit) {
     for (const key of commit.created) this.entities.set(entityId(key), { key: { id: key.id, generation: key.generation }, typeId: key.typeId, fields: new Map() });
-    for (const fact of commit.retracted) this.entities.get(entityId(fact.entity))!.fields.delete(fact.fieldId);
-    for (const fact of commit.facts) this.entities.get(entityId(fact.entity))!.fields.set(fact.fieldId, fact);
-    for (const edge of commit.edges) {
-      if (edge.op === 'assert') this.edges.set(edge.edgeId, edge); else this.edges.delete(edge.edgeId);
+    if (!this.temporalState) {
+      for (const fact of commit.retracted) this.entities.get(entityId(fact.entity))!.fields.delete(fact.fieldId);
+      for (const fact of commit.facts) this.entities.get(entityId(fact.entity))!.fields.set(fact.fieldId, fact);
+      for (const edge of commit.edges) {
+        if (edge.op === 'assert') this.edges.set(edge.edgeId, edge); else this.edges.delete(edge.edgeId);
+      }
     }
     for (const key of commit.removed) {
       const id = entityId(key); this.entities.delete(id);
-      for (const [edgeId, edge] of this.edges) if (entityId(edge.source) === id || entityId(edge.target) === id) this.edges.delete(edgeId);
+      if (!this.temporalState) for (const [edgeId, edge] of this.edges) if (entityId(edge.source) === id || entityId(edge.target) === id) this.edges.delete(edgeId);
     }
     this.messages.push(...commit.messages); this.receipts.push(...commit.receipts);
   }

@@ -306,7 +306,7 @@ def test_all_shipped_template_translations_pass_through_http(tmp_path: Path) -> 
     ) as client:
         response = client.get("/v1/templates")
         assert response.status_code == 200, response.text
-        assert len(response.json()) == 8
+        assert len(response.json()) == 9
         for metadata in registry.list():
             detail = client.get(f"/v1/templates/{metadata['id']}")
             assert detail.status_code == 200, detail.text

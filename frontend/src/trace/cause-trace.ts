@@ -3,7 +3,9 @@ import type { TemporalFeedStore } from '../feeds/temporal-store';
 import { exactValue } from '../feeds/format';
 import { entityId } from '../viewport/bindings';
 import { displayTime } from '../pages/display-time';
-import { entityLabel, readableLabel, stateValue } from '../pages/inspection-format';
+import { readableLabel, stateValue } from '../pages/inspection-format';
+import { displayName } from '../viewport/semantic';
+import { eventNarrative } from '../newcomers/presentation';
 import { translate } from '../i18n/translate';
 
 const translator = (locale: string) => (key: string, vars: Record<string, unknown> = {}) => translate(locale, key, vars);
@@ -119,7 +121,7 @@ function build(store: TemporalFeedStore, locale = 'en-US'): Index {
 
 export const idLabel = (store: TemporalFeedStore, id: string, locale = 'en-US') => {
   const entity = store.entities.get(id);
-  return entity ? entityLabel(entity, locale) : readableLabel(id.replace(/:\d+$/, ''), locale);
+  return entity ? displayName(entity, store.header, locale) : readableLabel(id.replace(/:\d+$/, ''), locale);
 };
 const keyLabel = (store: TemporalFeedStore, key: EntityKey, locale = 'en-US') => idLabel(store, entityId(key), locale);
 /** Short plain name for a field: last path segment without its unit suffix. */
@@ -516,6 +518,16 @@ export function explain(store: TemporalFeedStore, ref: CauseRef, locale = 'en-US
         const model = named(explainMessage(store, index, messages[0].id)!);
         model.choices = messages.slice(1, 8).map(message => ({ label: readableLabel(message.schemaId,locale), ref: { kind: 'message', messageId: message.id, cut } as CauseRef, at: message.at }));
         return model;
+      }
+      const event = (commit.events ?? []).find(row => ref.kind === 'cut' || ((!ref.atNs || row.at_ns === ref.atNs) && (!ref.text || row.text === ref.text)));
+      if (event) {
+        const namedIds = new Set(event.entities), names = new Map([...store.entities.values()].map(entity => [entity.key.id, displayName(entity, store.header, locale)]));
+        return {
+          focus: 'moment', heading: eventNarrative(event, locale, names), subtitle: t('at {at}', { at: displayTime(event.at_ns, store.header.start.ns) }),
+          at: commit.at, cut, effects: [], followUps: [], choices: [],
+          involved: [...store.entities.values()].filter(entity => namedIds.has(entity.key.id)).map(entity => entity.key), eventEntities: event.entities,
+          notes: [locale === 'zh-CN' ? '此业务事件已记录；这条日志没有关联的事件链步骤或类型化消息。可在对象的“经历”页查看记录的状态变化。' : 'This business event is recorded. Its journal entry has no linked chain step or typed message. Open the object’s Story tab to inspect its recorded state changes.'],
+        };
       }
       return {
         focus: 'moment', heading: t('Nothing recorded as a cause here'), subtitle: t('at {at}', {at:at(store, commit.at)}), at: commit.at, cut, effects: [], followUps: [], involved: [], choices: [],

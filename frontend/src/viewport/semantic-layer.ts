@@ -2,7 +2,7 @@ import * as T from 'three';
 import type { EntityKey, RunHeader } from '../contracts/viewer-feed';
 import type { FeedStore } from './feed-store';
 import { worldPosition } from './coordinates';
-import { activeZones, humanizeId, semanticSites, type SemanticZone } from './semantic';
+import { activeZones, humanizeId, semanticSites, type SemanticZone, type SemanticSite } from './semantic';
 import { translate } from '../i18n/translate';
 import {chargingPadAssignments} from './operational-loads';
 
@@ -41,6 +41,8 @@ export class SemanticLayer {
   private origin = new T.Vector3();
   private disposed = false;
   private lastStamp = '';
+  private zoneStamp = '';
+  private markerStamp = '';
 
   constructor(private header: RunHeader, private options: SemanticLayerOptions = {}) {
     this.root.add(this.zones, this.markers);
@@ -50,6 +52,7 @@ export class SemanticLayer {
     if (this.options.locale === locale) return;
     this.options.locale = locale;
     this.lastStamp = '';
+    this.markerStamp = '';
   }
 
   /** Rebuild zone/site visuals when the committed cut actually changed. */
@@ -58,17 +61,29 @@ export class SemanticLayer {
     const stamp = `${store.revision}/${renderOrigin.toArray().join(',')}`;
     const originChanged = !this.origin.equals(renderOrigin);
     if (stamp === this.lastStamp && !originChanged) return;
-    this.lastStamp = stamp;
     this.origin.copy(renderOrigin);
-    this.rebuildZones(store, renderOrigin);
-    this.rebuildMarkers(store, renderOrigin);
+    // A new cut usually changes aircraft poses, not these static visuals.
+    // Keep their GPU buffers/materials until their actual inputs change.
+    const zones = activeZones(this.header, store);
+    const zoneStamp = JSON.stringify(zones.map(zone => [zone.key, zone.kind, zone.lower, zone.upper]));
+    if (originChanged || zoneStamp !== this.zoneStamp) {
+      this.rebuildZones(zones, renderOrigin);
+      this.zoneStamp = zoneStamp;
+    }
+    const sites = semanticSites(this.header, store).filter(site => site.isVertiport || site.isPad);
+    const chargingPads = new Set(chargingPadAssignments(store).values());
+    const markerStamp = JSON.stringify(sites.map(site => [site.key, site.position, site.isVertiport, site.isPad && chargingPads.has(site.id)]));
+    if (originChanged || markerStamp !== this.markerStamp) {
+      this.rebuildMarkers(sites, chargingPads, renderOrigin);
+      this.markerStamp = markerStamp;
+    }
+    this.lastStamp = stamp;
   }
 
-  private rebuildZones(store: FeedStore, renderOrigin: T.Vector3) {
+  private rebuildZones(zones: SemanticZone[], renderOrigin: T.Vector3) {
     for (const mesh of this.zoneBoxes) { mesh.removeFromParent(); mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); }
     for (const line of this.zoneLines) { line.removeFromParent(); line.geometry.dispose(); (line.material as T.Material).dispose(); }
     this.zoneBoxes = []; this.zoneLines = [];
-    const zones = activeZones(this.header, store);
     for (const zone of zones) {
       const style = ZONE_STYLE[zone.kind];
       const toWorld = (value: [number, number, number]) => worldPosition(value, 'enu', this.header.origin).sub(renderOrigin);
@@ -87,22 +102,24 @@ export class SemanticLayer {
         this.zones.add(box); this.zoneBoxes.push(box);
       }
       // Restriction edges: a wire outline of the volume, or corridor centerline.
-      const edges = zone.kind === 'corridor'
-        ? centerlineGeometry(min, max)
-        : new T.EdgesGeometry(new T.BoxGeometry(size.x, size.y, size.z));
+      let edges: T.BufferGeometry;
+      if (zone.kind === 'corridor') edges = centerlineGeometry(min, max);
+      else {
+        const box = new T.BoxGeometry(size.x, size.y, size.z);
+        edges = new T.EdgesGeometry(box);
+        box.dispose();
+      }
       const line = new T.LineSegments(edges, new T.LineBasicMaterial({ color: style.color, transparent: true, opacity: 0.75 }));
       if (zone.kind !== 'corridor') line.position.copy(center);
       this.zones.add(line); this.zoneLines.push(line);
     }
   }
 
-  private rebuildMarkers(store: FeedStore, renderOrigin: T.Vector3) {
+  private rebuildMarkers(sites: SemanticSite[], chargingPads: Set<string>, renderOrigin: T.Vector3) {
     for (const mesh of this.markerGlyphs.values()) { mesh.removeFromParent(); mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); }
     for(const glow of this.padGlows){glow.removeFromParent();glow.geometry.dispose();(glow.material as T.Material).dispose();}this.padGlows=[];
     this.markerGlyphs.clear(); this.markerPositions.clear(); this.markerKeys.clear(); this.pickables.length = 0;
-    const chargingPads=new Set(chargingPadAssignments(store).values());
-    for (const site of semanticSites(this.header, store)) {
-      if (!site.isVertiport && !site.isPad) continue;
+    for (const site of sites) {
       const world = worldPosition(site.position, 'enu', this.header.origin).sub(renderOrigin);
       const charging=site.isPad&&chargingPads.has(site.id);
       const color = site.isVertiport ? 0x009e73 : charging?0x35ffd1:0xe69f00;

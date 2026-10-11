@@ -28,6 +28,10 @@ interface Props {
   onSeekCommit?: (ns: string, commitIndex: number) => void;
   onCameraMode?: (mode: CameraMode) => void;
   onQuality: (quality: Quality, fps?: number) => void;
+  /** The owner's handle for display-only camera controls. */
+  onViewport?: (viewport: Viewport | undefined) => void;
+  /** Hide built-in toolbars and overlays; the owner provides its own panels. */
+  bare?: boolean;
 }
 interface LegendEntry { label: string; color: string }
 export function ViewportView(props: Props) {
@@ -65,10 +69,12 @@ export function ViewportView(props: Props) {
         onCameraInteraction:()=>{
           interacted=true;director.pauseOnInteraction();autoActive=false;
           setMode('orbit');activeMode.current='orbit';current.current.onDirectorPause?.();
+          current.current.onCameraMode?.('orbit');
         },
         semantic:props.simple===true,showAllLabels:showAllLabels,
         onLegend:(entries,zones)=>{setLegend(entries);setZoneCount(zones);},
       });
+      props.onViewport?.(viewport.current);
       viewport.current.setDusk(dusk);viewport.current.setCameraMode(mode ?? props.mode);viewport.current.setSelection(props.selected);viewport.current.setHighlights(props.highlights??[]);
       const animate=(now:number)=>{
         try{
@@ -104,14 +110,14 @@ export function ViewportView(props: Props) {
             if(!director.current)shot=undefined;
             if(cue){shot=directorTarget(p.store,cue);if(shot?.entity)p.onDirectorSubject?.(shot.entity);}
             viewport.current!.setDirectorTarget(enabled?shot:undefined);
-            if(enabled!==autoActive){viewport.current!.setCameraMode(enabled?'cinematic':config.enabled?'orbit':activeMode.current);autoActive=enabled;}
+            if(enabled!==autoActive){viewport.current!.setCameraMode(enabled?'cinematic':activeMode.current);autoActive=enabled;}
           }
           viewport.current!.render(p.store,liveNs??p.clock.ns,delta,p.trails);
           if(now-notify>100&&seekKey!==lastNotified){p.onTick();notify=now;lastNotified=seekKey;}frame=requestAnimationFrame(animate);
         }catch(error){current.current.onError(error);}
       };frame=requestAnimationFrame(animate);
     }catch(error){props.onError(error);}
-    return()=>{container?.removeEventListener('pointerdown',preserveCamera);cancelAnimationFrame(frame);viewport.current?.dispose();viewport.current=undefined;eventCut.current=undefined;container?.closest('.viewer-main')?.removeAttribute('data-inspector-collapsed');};
+    return()=>{container?.removeEventListener('pointerdown',preserveCamera);cancelAnimationFrame(frame);current.current.onViewport?.(undefined);viewport.current?.dispose();viewport.current=undefined;eventCut.current=undefined;container?.closest('.viewer-main')?.removeAttribute('data-inspector-collapsed');};
   },[props.store,props.clock]);
   useEffect(()=>{viewport.current?.setSelection(props.selected);},[props.selected]);
   const highlightKey=(props.highlights??[]).map(key=>`${key.id}:${key.generation}`).join('|');
@@ -135,7 +141,7 @@ export function ViewportView(props: Props) {
       <progress aria-label={locale.startsWith('zh')?'城市资源加载进度':'City asset loading progress'} max={cityProgress.total||1} value={cityProgress.total?cityProgress.loaded:undefined}/>
       <small>{locale.startsWith('zh')?'场景逐步加载，运行控制可用':'Scene loads progressively; run controls are available'}</small>
     </div>}
-    {!props.simple&&<div className="director-toolbar">
+    {!props.simple&&!props.bare&&<div className="director-toolbar">
       <select aria-label={t('View camera')} value={mode ?? props.mode} onChange={event=>{const next=event.target.value as CameraMode;setMode(next);props.onCameraMode?.(next);}}>
         <option value="orbit">{t('Orbit')}</option><option value="follow">{t('Follow unit')}</option><option value="chase">{t('Chase')}</option><option value="cinematic">{t('Event director')}</option>
       </select>
@@ -145,8 +151,8 @@ export function ViewportView(props: Props) {
       <select aria-label={t('Display lighting')} value={dusk?'dusk':'day'} onChange={event=>{const value=event.target.value==='dusk';setDusk(value);viewport.current?.setDusk(value);}}><option value="day">{t('Day · display')}</option><option value="dusk">{t('Dusk · display')}</option></select>
       <button aria-label={t('Toggle inspector')} aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>{t('Inspector')} {collapsed?'＋':'−'}</button>
     </div>}
-    {!props.simple&&<div className="scene-status"><span>{t('Buildings, lighting and symbols are display effects.')}</span>{status&&<details><summary>{t('Display details')}</summary><div>{status}</div></details>}</div>}
-    {props.simple&&<div className="semantic-legend" data-testid="semantic-legend" aria-label={t('Map legend')}>
+    {!props.simple&&!props.bare&&<div className="scene-status"><span>{t('Buildings, lighting and symbols are display effects.')}</span>{status&&<details><summary>{t('Display details')}</summary><div>{status}</div></details>}</div>}
+    {props.simple&&!props.bare&&<div className="semantic-legend" data-testid="semantic-legend" aria-label={t('Map legend')}>
       <div className="semantic-legend-title">{t('Airspace & operations')}</div>
       <div className="semantic-legend-entries">
         {legend.map(entry=><span key={entry.label} className="semantic-legend-entry"><i style={{background:entry.color}}/>{entry.label}</span>)}
@@ -157,7 +163,7 @@ export function ViewportView(props: Props) {
     </div>}
     {!props.simple&&catalogNotice&&<div className="scene-attribution" style={{bottom:24}} data-testid="catalog-notice">{catalogNotice}</div>}
     <div className="scene-attribution">{root.current?.dataset.attribution}</div>
-    {!props.simple&&<div className="mission-overlay"><MissionTimeline store={props.store} selected={props.selected} />
+    {!props.simple&&!props.bare&&<div className="mission-overlay"><MissionTimeline store={props.store} selected={props.selected} />
       <div className="event-strip" aria-label={t('Recorded event markers')}>{duration>0n&&events.slice(-200).map(event=>
         <button key={event.id} title={t('{schema} · {ns} ns', {schema:event.schemaId,ns:event.at.ns})} style={{left:`${Math.max(0,Math.min(100,Number((BigInt(event.at.ns)-BigInt(props.store.header.start.ns))*10000n/duration)/100))}%`}}
           onClick={()=>{props.clock.pause();props.clock.seek(event.at.ns);eventCut.current={ns:props.clock.ns,index:event.commitIndex,parentCut:props.commitCut};props.store.seek(props.clock.ns,event.commitIndex);props.onSeekCommit?.(props.clock.ns,event.commitIndex);props.onTick();}} aria-label={t('Seek {schema}', {schema:event.schemaId})} />)}</div>

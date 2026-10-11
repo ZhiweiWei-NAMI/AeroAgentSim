@@ -28,4 +28,18 @@ describe('visible committed operations',()=>{
   const store=session();store.messages.length=0;expect(chargingPadAssignments(store).size).toBe(0);
   const entity=store.entities.get('drone:0')!;entity.fields.delete('lowalt.payload_kg');expect(carryingPayload(entity)).toBe(false);
  });
+ it('retains pad geometry across unrelated cuts, and updates pose, charging and origin from their actual inputs',()=>{
+  const store=session(),layer=new SemanticLayer(store.header),origin=new Vector3();
+  layer.update(store,'0',origin);const marker=layer.pickables[0];
+  let disposed=0;(marker as import('three').Mesh).geometry.addEventListener('dispose',()=>disposed++);
+  store.ingest({...emptyCommit(2,'1000000000'),facts:[{entity:drone,fieldId:'lowalt.payload_kg',value:2,producer:'tasks',validFrom:at('1000000000')}]});
+  store.seek('1000000000');layer.update(store,'1000000000',origin);
+  expect(layer.pickables[0]).toBe(marker);expect(disposed).toBe(0);expect(layer.chargingPadCount).toBe(1);
+  store.seek('1500000000');layer.update(store,'1500000000',origin);expect(layer.pickables[0]).toBe(marker);
+  store.ingest({...emptyCommit(3,'2000000000'),facts:[{entity:pad,fieldId:'lowalt.site_position',value:[9,8,0],producer:'sites',validFrom:at('2000000000')}]});
+  store.seek('2000000000');layer.update(store,'2000000000',origin);
+  expect(disposed).toBe(1);expect(layer.pickables[0].position.toArray()).toEqual([9,.6,-8]);
+  layer.update(store,'2000000000',new Vector3(2,0,3));expect(layer.pickables[0].position.toArray()).toEqual([7,.6,-11]);
+  store.seek('0',1);layer.update(store,'0',origin);expect(layer.pickables[0].position.toArray()).toEqual([5,.6,-6]);layer.dispose();
+ });
 });

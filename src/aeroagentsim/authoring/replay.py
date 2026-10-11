@@ -18,8 +18,12 @@ def snapshot_scene(
     scenario: Scenario,
     run: Path,
     workspace_id: str | None = None,
+    version: dict[str, Any] | None = None,
 ) -> None:
     """Only an exact authored scenario can attach its city's source geometry."""
+    if version is not None and workspace_id is not None:
+        attach(run, version, store.version_directory(workspace_id, version["version"]))
+        return
     identifier = workspace_id if workspace_id is not None else scenario.document["id"]
     if not isinstance(identifier, str) or not identifier.startswith("studio-"):
         return
@@ -45,23 +49,28 @@ def snapshot_scene(
             raise ValueError(
                 "Scene cannot attach to a scenario that differs from its saved draft"
             )
-        if draft.get("demo_console", {}).get("capture_mode") == "city":
-            (run / "console-scene.json").write_text(
-                json.dumps(draft["demo_console"]["scene"], allow_nan=False),
-                encoding="utf-8",
-            )
-            return
-        if "scene" not in draft:
-            return
-        (run / "studio-scene.json").write_text(
-            json.dumps(draft["scene"], allow_nan=False), encoding="utf-8"
+        attach(run, draft, store.directory(identifier))
+
+
+def attach(run: Path, draft: dict[str, Any], directory: Path) -> None:
+    """Copy the draft's (or frozen version's) display geometry into the run."""
+    if draft.get("demo_console", {}).get("capture_mode") == "city":
+        (run / "console-scene.json").write_text(
+            json.dumps(draft["demo_console"]["scene"], allow_nan=False),
+            encoding="utf-8",
         )
-        (run / "studio-buildings.geojson").write_text(
-            json.dumps(draft["scene"]["geojson"], allow_nan=False), encoding="utf-8"
-        )
-        source = store.directory(identifier) / "network.net.xml"
-        if "network" in draft and source.is_file():
-            shutil.copyfile(source, run / "studio-network.net.xml")
+        return
+    if "scene" not in draft:
+        return
+    (run / "studio-scene.json").write_text(
+        json.dumps(draft["scene"], allow_nan=False), encoding="utf-8"
+    )
+    (run / "studio-buildings.geojson").write_text(
+        json.dumps(draft["scene"]["geojson"], allow_nan=False), encoding="utf-8"
+    )
+    source = directory / "network.net.xml"
+    if "network" in draft and source.is_file():
+        shutil.copyfile(source, run / "studio-network.net.xml")
 
 
 def scene_header(run: Path, base_url: str) -> dict[str, Any]:

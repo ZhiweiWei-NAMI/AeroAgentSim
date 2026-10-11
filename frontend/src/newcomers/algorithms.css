@@ -1,6 +1,0 @@
-.guided-algorithm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-.guided-algorithm-slot{display:flex;flex-direction:column;gap:8px;min-width:0}
-.guided-algorithm-description{white-space:normal;color:var(--csl-text-muted);font-size:12px}
-.guided-algorithm-default-tag{margin-left:8px;font-weight:normal}
-.guided-algorithm-reset{align-self:flex-start;padding:0;height:auto}
-@media(max-width:1150px){.guided-algorithm-grid{grid-template-columns:1fr}}

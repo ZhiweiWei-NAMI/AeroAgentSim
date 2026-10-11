@@ -9,73 +9,49 @@ any static host proxying the API). Routes are defined in
 
 | Route | Page | What it does |
 | --- | --- | --- |
-| `/` | [HomePage](../../frontend/src/console/HomePage.tsx) | Workspace launcher, saved drafts, recent runs and reusable scenarios |
-| `/studio` | [StudioPage](../../frontend/src/studio/StudioPage.tsx) | Guided scenario authoring; `/studio?guide=...` opens embedded guide content |
-| `/runs` | [RunsPage](../../frontend/src/pages/RunsPage.tsx) | Start a configured scenario, list runs, operate one |
-| `/runs/{id}` | RunsPage (`mode=live` or `mode=replay`) | Synchronized AeroGraph + 3D view, timeline, controls, receipts |
-| `/inspect` | RunsPage with `inspectList` | Recorded-state exploration list |
-| `/inspect/{id}` | same synchronized view, replay-oriented | One timeline shared by graph and city views |
-| `/aerograph` | [AeroGraphPage](../../frontend/src/pages/AeroGraphPage.tsx) | Graph-focused inspection |
+| `/`, `/w/{workspace}` | [Workbench](../../frontend/src/workbench/Workbench.tsx) | Gallery, configuration, versions, live runs, replay, records and comparison — one 3D scene with hovering panels |
 | `/agents/{id}` | [AgentConsole](../../frontend/src/pages/AgentConsole.tsx) | Agent decisions, records and receipt history for one run |
-| `/viewer-demo` | [ViewerDemoPage](../../frontend/src/viewport/ViewerDemoPage.tsx) | Authored in-memory viewer example, independent of the backend |
+| any route with `?capture=1` | [CaptureConsole](../../frontend/src/observations/CaptureConsole.tsx) | Headless renderer used by the in-simulation camera |
 
 Attach a console to a service origin with the `api` query parameter, for
-example `/runs/<run-id>?api=http://127.0.0.1:8002&mode=live`. A run id matches
-`/^(runs|inspect)\/[^/]+$/`; `mode=live|replay` selects the feed mode.
+example `/?run=<run-id>&mode=live&api=http://127.0.0.1:8002`. Earlier
+addresses (`/studio`, `/runs/<id>`, `/inspect/<id>`, `/aerograph`) redirect
+into the workbench with their context.
 
-## Studio authoring steps
+## Configuring a project
 
-Studio walks seven steps (defined in
-[../../frontend/src/studio/guided-model.ts](../../frontend/src/studio/guided-model.ts)):
+Click a thumbnail in the gallery to read the scenario guide, then **Create a
+project**. The configuration panel opens next to the 3D draft preview:
 
-1. **Scene** — region map, geographic extract, entity placement with a chosen
-   writer partition and ENU coordinates.
-2. **Entities** — typed entities, initial fields, relations.
-3. **Domain plugins** — pick engines; one writer per field.
-4. **Predicates** — predicate AST authoring.
-5. **Event chains & rules** — connect states into transitions with triggers,
-   guards, priorities and ordered actions; bindings, conflicts and injection
-   points.
-6. **Agents** — recorded (stub/fixture) decisions or a live LangGraph model.
-7. **Validate & run** — full-scenario validation through the real server
-   compiler; **Validate** unlocks **Run now**.
+- **Controls** — the template's knobs (written into the draft).
+- **Space, Objects, Resources, Tasks, Algorithms, Components, Run** — the
+  seven sections of the draft. Tasks includes a structured editor for
+  predicates, triggers and event chains.
+- **File** — the same draft as YAML (export/import).
 
-Every model edit invalidates validation; validation issues link back to their
-step. **Open the traffic accident demo** from the landing state to copy the
-shipped scenario into a workspace. The browser never evaluates predicates or
-simulates behaviour — the server does.
+**Validate** lists every issue and jumps to its section and field. **Save
+version** freezes the validated draft. **Initialize** creates a run from that
+version: the world is loaded at t=0 and does not move until **Start**. The
+browser never evaluates predicates or simulates behaviour — the server does.
 
 ## Operating a run
 
-- **Start**: Home → create/open a workspace, or choose **Run now** on a
-  reusable scenario. Studio saves and validates a concrete revision before
-  starting it. The run bar names that source workspace and revision.
-  `mode=live` follows the live feed; `mode=replay` reads the same journal.
-- **One timeline**: the graph view and 3D city view share the selected
-  identity `{runId, epoch, id, generation}`, live-follow and a bitemporal
-  cursor. A seek (timeline scrub, decision record cut, photo source cut)
-  freezes both views at the same journal prefix, including same-nanosecond
-  microsteps. **Follow live** seeks the latest committed cut. Display
-  interpolation never changes recorded facts.
-- **Layout**: search entities, relations, behaviours and plugins in the left
-  explorer. Select an object for its recorded properties. Drag the graph/city
-  divider, focus either view, or clear selection; all views retain one cursor.
-- **Run controls**: the top bar exposes pause/resume/stop and intervention, with
-  operational receipts showing
-  requested action versus observed effective status; in replay, operational
-  controls are disabled. Timeline play/pause controls playback independently.
-- **Injection**: the ingress form selects a registered command or a declared
-  injection point, renders its typed payload schema, and requires an explicit
-  occurrence, stream, source clock/mapping and acquisition numerator/
-  denominator. When a run reports `waiting_for_input`, the run list shows a
-  banner with an injection shortcut; advancing the stream watermark stays a
-  separate action.
-- **Inspection**: predicate context cards and chain instance cards link to
-  entity identities; unknown/invalid truth values stay distinct from true and
-  false, with diagnostics, read cut and source stamps. **Agent decisions**
-  opens the same run/identity/prefix in AgentConsole. Artifacts (for example
-  PNG captures) open stored bytes with correlation shown separately from
-  business acceptance.
+- **Simulation control** (top bar): start, pause, resume, stop and simulation
+  speed (0.5× to max). Refreshing the page never starts, stops or resubmits.
+- **Playback** (dock): play, seek and playback speed browse the record and
+  never affect the simulation. Seeking a past cut shows a "viewing history"
+  banner with **Back to live**.
+- **One selection**: selecting in the 3D scene, the object list, the graph or
+  an event selects the same identity `{runId, epoch, id, generation}`
+  everywhere. **Focus**/**Follow** fly the camera; the camera pad zooms,
+  rotates and resets.
+- **Operate**: the inspector's Operate tab selects a registered command or a
+  declared injection point with its typed payload and shows the receipt. When a
+  run reports `waiting_for_input`, a banner explains what it needs.
+- **Why?**: an event's cause trace on the timeline. **Photos**: camera
+  captures (traffic accident) open at their source cut.
+- **Records**: replay, compare 2–4 runs, **Modify & retry** to derive a new
+  draft from a run.
 
 ## Feed contract
 

@@ -8,6 +8,17 @@ from functools import lru_cache
 from typing import Any, cast
 
 
+@lru_cache(maxsize=256)
+def _field_names(cls: type[Any]) -> tuple[str, ...]:
+    """Dataclass declarations are fixed; reuse their ordered wire shape."""
+    return tuple(field.name for field in dataclasses.fields(cls))
+
+
+@lru_cache(maxsize=256)
+def _field_set(cls: type[Any]) -> frozenset[str]:
+    return frozenset(_field_names(cls))
+
+
 def encode(value: object) -> Any:
     """Encode an internal record while keeping portable payload trees distinct."""
     if value is None or type(value) in (bool, int, float, str):
@@ -18,8 +29,7 @@ def encode(value: object) -> Any:
         return {
             "$type": type(value).__name__,
             "fields": {
-                field.name: encode(getattr(value, field.name))
-                for field in dataclasses.fields(value)
+                name: encode(getattr(value, name)) for name in _field_names(type(value))
             },
         }
     if isinstance(value, Mapping):
@@ -118,7 +128,7 @@ def decode_record(value: Any) -> Any:
         raise ValueError("RECORD_TYPE: unsupported record")
     cls = classes[value["$type"]]
     fields = value["fields"]
-    expected = {f.name for f in dataclasses.fields(cls)}
+    expected = _field_set(cls)
     historical = _HISTORICAL_DECLARATION_FIELDS.get(value["$type"])
     if set(fields) != expected and (historical is None or set(fields) != historical):
         raise ValueError("RECORD_FIELDS: unexpected record fields")

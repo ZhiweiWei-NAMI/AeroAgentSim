@@ -5,7 +5,6 @@ import { MemoryRouter,useLocation } from 'react-router-dom';
 import { stringifyLossless } from '../feeds/lossless-json';
 import TemplateGallery from './TemplateGallery';
 import CustomizeTemplate from './CustomizeTemplate';
-import Welcome, { WELCOME_EVENT } from './Welcome';
 import { CATEGORY_STYLE, CategoryIcon, categoryMetadata } from './categories';
 import type { ScenarioTemplate } from './api';
 
@@ -86,20 +85,6 @@ it('posts edited settings with their declared numeric type',async()=>{
  fireEvent.click(screen.getByTestId('custom-run-parcel-delivery'));
  await waitFor(()=>expect(screen.getByTestId('destination')).toHaveTextContent('/runs/run-2'));
  const post=fetchSpy.mock.calls.find(([,init])=>init?.method==='POST');expect(JSON.parse(String(post?.[1]?.body))).toEqual({knobs:{fleet_size:10,allocator:'nearest'}});
-});
-
-it('opens the welcome only on request, dismisses it and reopens on the exported event', async () => {
-  render(<MemoryRouter><Welcome /></MemoryRouter>);
-  expect(screen.queryByRole('dialog')).toBeNull();
-  fireEvent(document,new CustomEvent(WELCOME_EVENT));
-  expect(await screen.findByTestId('welcome-panel')).toBeInTheDocument();
-  expect(window.localStorage.getItem('aas:welcome-dismissed')).toBeNull();
-  fireEvent.click(screen.getByTestId('welcome-close'));
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  expect(window.localStorage.getItem('aas:welcome-dismissed')).toBe('1');
-
-  fireEvent(document,new CustomEvent(WELCOME_EVENT));
-  expect(await screen.findByTestId('welcome-panel')).toBeInTheDocument();
 });
 
 it('exposes a stable colourblind-safe category palette shared with the event feed', () => {

@@ -6,6 +6,7 @@ import { emptyCommit, fixtureHeader } from './extension-fixture';
 
 class ResizeObserverStub { observe() {} unobserve() {} disconnect() {} }
 vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+Object.defineProperty(SVGElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() });
 vi.spyOn(SVGElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 600, height: 400, x: 0, y: 0, top: 0, left: 0, right: 600, bottom: 400, toJSON: () => ({}) } as DOMRect);
 
 const tasks = Array.from({ length: 25 }, (_, i) => ({ id: `task-${i + 1}`, generation: 1 }));
@@ -36,6 +37,13 @@ it('collapses groups larger than the threshold, keeps pinned members visible and
   const spots = new Set(open.clusters.flatMap(cluster => cluster.visible).map(node => `${node.x}/${node.y}`));
   expect(spots.size).toBe(28);
   for (const a of open.clusters) for (const b of open.clusters) if (a !== b) expect(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y).toBe(true);
+});
+
+it('uses the authoritative authored name shared with the 3D labels and object inspector', () => {
+  const store = manyStore();
+  store.header.entities = [{ id: 'vehicle-1', type: 'vehicle', label: 'Meal courier 1', label_zh: '外卖配送机 1' }];
+  expect(computeLayout(store, new Set(), new Set()).byId.get('vehicle-1:1')?.label).toBe('Meal courier 1');
+  expect(computeLayout(store, new Set(), new Set(), 760, 'zh-CN').byId.get('vehicle-1:1')?.label).toBe('外卖配送机 1');
 });
 
 it('expands a collapsed group on click and always shows highlighted entities', () => {

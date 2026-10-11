@@ -28,6 +28,37 @@ from .storage import RunStorage
 from .worker import execute
 
 TERMINAL = {"completed", "stopped", "faulted", "interrupted", "input_timeout"}
+CONTROLS = {"start", "pause", "resume", "stop"}
+
+
+def configuration_differences(documents: dict[str, Any]) -> list[dict[str, Any]]:
+    """Compare pinned JSON values, preserving missing versus explicit null."""
+    missing = object()
+    differences: list[dict[str, Any]] = []
+
+    def visit(values: dict[str, Any], path: str) -> None:
+        first = next(iter(values.values()))
+        if all(isinstance(value, dict) for value in values.values()):
+            for key in sorted({key for value in values.values() for key in value}):
+                escaped = key.replace("~", "~0").replace("/", "~1")
+                visit({run: value.get(key, missing) for run, value in values.items()}, path + "/" + escaped)
+        elif all(isinstance(value, list) for value in values.values()):
+            for index in range(max(len(value) for value in values.values())):
+                visit({run: value[index] if index < len(value) else missing for run, value in values.items()}, path + "/" + str(index))
+        elif first is not missing and all(value is not missing and value == first and (
+                type(value) is type(first) or
+                (type(value) in (int, float) and type(first) in (int, float)))
+                for value in values.values()):
+            return
+        else:
+            differences.append({
+                "path": path,
+                "values": {run: value for run, value in values.items() if value is not missing},
+                "present": {run: value is not missing for run, value in values.items()},
+            })
+
+    visit(documents, "")
+    return differences
 
 
 def create_app(
@@ -51,7 +82,7 @@ def create_app(
     # Linux local worker: fork preserves the compiled immutable registry without
     # pickling MappingProxyType or re-reading a concurrently changing source tree.
     context = multiprocessing.get_context("fork")
-    workers: dict[str, tuple[Any, Any, Any]] = {}
+    workers: dict[str, tuple[Any, Any, Any, Any, Any]] = {}
     inputs: dict[str, tuple[Any, threading.Lock]] = {}
     index_tasks: list[asyncio.Task[None]] = []
     for path in root.iterdir():
@@ -69,10 +100,10 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         yield
-        for process, paused, stopped in workers.values():
+        for process, paused, stopped, _, _ in workers.values():
             stopped.set()
             paused.clear()
-        for process, _, _ in workers.values():
+        for process, _, _, _, _ in workers.values():
             await asyncio.to_thread(process.join, 10)
             if process.is_alive():
                 # Preserve an explicitly interrupted prefix rather than invent cleanup.
@@ -88,6 +119,7 @@ def create_app(
             await asyncio.gather(*index_tasks)
 
     app = FastAPI(title="AeroAgentSim", lifespan=lifespan)
+    app.state.templates = templates
     from .algorithm_catalog import mount_algorithm_catalog
 
     mount_algorithm_catalog(app)
@@ -115,6 +147,11 @@ def create_app(
             body = await request.json()
             if not isinstance(body, dict):
                 raise TypeError("request body must be a scenario or scenario mapping")
+            autostart = body.pop("autostart", None)
+            if autostart is not None and type(autostart) is not bool:
+                raise ValueError("autostart must be boolean")
+            if "version" in body:
+                return await launch_version(body, autostart=bool(autostart))
             if "scenario_path" in body:
                 scenario_file = (scenario_root / body["scenario_path"]).resolve()
                 if not scenario_file.is_relative_to(scenario_root):
@@ -163,6 +200,45 @@ def create_app(
             scenario,
             workspace_id=body.get("studio_workspace"),
             workspace_revision=body.get("studio_revision"),
+            autostart=True if autostart is None else autostart,
+        )
+
+    def template_pin(source: dict[str, Any]) -> dict[str, Any]:
+        """Display titles of the template a version came from, beside its knobs."""
+        try:
+            metadata = templates.get(source["id"])
+        except KeyError:
+            return {"id": source["id"], "title": source["id"], "knobs": source.get("knobs", {})}
+        return {
+            "id": source["id"],
+            "title": metadata["title"],
+            **({"title_zh": metadata["title_zh"]} if "title_zh" in metadata else {}),
+            "knobs": source.get("knobs", {}),
+        }
+
+    async def launch_version(body: dict[str, Any], *, autostart: bool) -> dict[str, Any]:
+        """Run one immutable saved workspace version; initialized unless autostart."""
+        if not hasattr(app.state, "studio"):
+            raise HTTPException(501, "Studio workspaces are not mounted on this server")
+        if set(body) - {"studio_workspace", "version"}:
+            raise HTTPException(422, "A version run accepts studio_workspace, version and autostart only")
+        workspace_id, version = body.get("studio_workspace"), body.get("version")
+        if not isinstance(workspace_id, str) or type(version) is not int:
+            raise HTTPException(422, "studio_workspace (string) and version (integer) are required")
+        try:
+            frozen = await asyncio.to_thread(app.state.studio.version, workspace_id, version)
+            scenario = await asyncio.to_thread(
+                load_scenario, frozen["scenario"], base=app.state.studio.version_directory(workspace_id, version)
+            )
+        except FileNotFoundError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return await launch(
+            scenario,
+            workspace_id=workspace_id,
+            workspace_version=frozen,
+            autostart=autostart,
         )
 
     async def warm_feed(path: Path, process: Any) -> None:
@@ -185,7 +261,9 @@ def create_app(
         *,
         workspace_id: str | None = None,
         workspace_revision: int | None = None,
+        workspace_version: dict[str, Any] | None = None,
         template: dict[str, Any] | None = None,
+        autostart: bool = True,
     ) -> dict[str, Any]:
         run_id = f"run-{uuid.uuid4().hex}"
         path = (root / run_id).resolve()
@@ -200,7 +278,18 @@ def create_app(
         except Exception as exc:
             raise HTTPException(422, str(exc)) from exc
         workspace_metadata: dict[str, Any] = {}
-        if workspace_id is not None and hasattr(app.state, "studio"):
+        if workspace_version is not None:
+            draft = app.state.studio.get(workspace_id)
+            workspace_metadata = {
+                "studio_workspace": workspace_id,
+                "studio_revision": workspace_version["revision"],
+                "workspace_version": workspace_version["version"],
+                "workspace_digest": workspace_version["digest"],
+                "workspace_name": draft["name"],
+                **({"template": template_pin(workspace_version["template"])} if workspace_version.get("template") else {}),
+                **({"derived_from": workspace_version["derived_from"]} if workspace_version.get("derived_from") else {}),
+            }
+        elif workspace_id is not None and hasattr(app.state, "studio"):
             draft = app.state.studio.get(workspace_id)
             revision = draft["revision"]
             if workspace_revision is not None and (
@@ -231,16 +320,20 @@ def create_app(
         if workspace_id is not None and hasattr(app.state, "studio"):
             from aeroagentsim.authoring.replay import snapshot_scene
 
-            snapshot_scene(app.state.studio, scenario, path, workspace_id)
-        paused, stopped = context.Event(), context.Event()
+            snapshot_scene(app.state.studio, scenario, path, workspace_id, workspace_version)
+        paused, stopped, started = context.Event(), context.Event(), context.Event()
+        # Host pacing factor: simulated seconds per wall second; 0 = as fast as possible.
+        speed = context.Value("d", 1.0 if scenario.pacing == "realtime" else 0.0)
+        if autostart:
+            started.set()
         host_input, worker_input = context.Pipe()
         process = context.Process(
             target=execute,
-            args=(scenario, path, paused, stopped, worker_input),
+            args=(scenario, path, paused, stopped, worker_input, started, speed),
             name=run_id,
         )
         process.start()
-        workers[run_id] = (process, paused, stopped)
+        workers[run_id] = (process, paused, stopped, started, speed)
         inputs[run_id] = (host_input, threading.Lock())
         if template is not None:
             index_tasks.append(asyncio.create_task(warm_feed(path, process)))
@@ -260,6 +353,11 @@ def create_app(
                         "error": "Worker exited before committing its WAL header",
                     },
                 )
+            await asyncio.sleep(0.01)
+        # An initialized run is handed out only after it reports that state.
+        while not autostart and storage.metadata()["status"] not in {"initialized", *TERMINAL}:
+            if not process.is_alive():
+                break
             await asyncio.sleep(0.01)
         return storage.metadata()
 
@@ -308,7 +406,8 @@ def create_app(
         ]
 
     @app.get("/v1/runs/compare")
-    def compare(ids: str = Query(...)) -> dict[str, Any]:
+    def compare(ids: str = Query(...), include_kpis: bool = True) -> dict[str, Any]:
+        from aerokernel.codec import decode_record
         from .comparison import compare_runs
 
         identifiers = ids.split(",")
@@ -316,11 +415,56 @@ def create_app(
             raise HTTPException(
                 422, "Provide 2–20 distinct run ids separated by commas"
             )
-        rows = [run_summary(directory(run_id)) for run_id in identifiers]
+        paths = {run_id: directory(run_id) for run_id in identifiers}
+        rows = [run_summary(path, include_kpis=include_kpis) for path in paths.values()]
+        recorded_ends = {}
+        for run_id, path in paths.items():
+            storage = RunStorage(path)
+            if not storage.entries or storage.entries[-1]["index"] == 0:
+                raise HTTPException(409, f"Run {run_id} has not committed a world state yet")
+            record = storage.records(storage.entries[-1]["index"], 1)[0]
+            instant = decode_record(record["instant"])
+            recorded_ends[run_id] = {"at_ns": str(instant.ns), "commit_index": record["index"],
+                                     "status": storage.metadata()["status"]}
+        configuration = {
+            # compare_runs reports each run's own final measurements; it does
+            # not truncate unequal runs to a common simulated-time horizon.
+            "alignment": "recorded_run_end",
+            "recorded_ends": recorded_ends,
+            "config_diff": configuration_differences({
+                run_id: json.loads((path / "scenario.json").read_text())
+                for run_id, path in paths.items()
+            }),
+        }
+        if not include_kpis:
+            return {"runs": rows, **configuration}
         try:
-            return compare_runs(rows)
+            return {**compare_runs(rows), **configuration}
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
+
+    @app.post("/v1/runs/{run_id}/derive-workspace", status_code=201)
+    async def derive_workspace(run_id: str, request: Request) -> dict[str, Any]:
+        """Modify and retry: a new draft from this run's configuration."""
+        path = directory(run_id)
+        body = await request.json() if await request.body() else {}
+        if not isinstance(body, dict) or set(body) - {"name"}:
+            raise HTTPException(422, "derive-workspace accepts an optional name only")
+        if not hasattr(app.state, "studio"):
+            from aeroagentsim.authoring.api import mount_studio
+
+            mount_studio(app, root / "workspaces", run_root=root)
+        try:
+            draft = await asyncio.to_thread(
+                app.state.studio.derive, path, body.get("name"), registry=templates
+            )
+        except NotImplementedError as exc:
+            raise HTTPException(501, str(exc)) from exc
+        except FileNotFoundError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except (ValueError, TypeError, OSError, KeyError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return {"workspace_id": draft["id"], "derived_from": draft["derived_from"]}
 
     @app.get("/v1/runs/{run_id}/kpis")
     def run_kpis(run_id: str) -> dict[str, Any]:
@@ -354,6 +498,16 @@ def create_app(
         if not image.is_file():
             raise HTTPException(404, "Declared template thumbnail is missing")
         return FileResponse(image, media_type="image/png")
+
+    @app.get("/v1/templates/{template_id}/guide")
+    def template_guide(template_id: str) -> dict[str, Any]:
+        """The template's own README, for the scenario guide in the console."""
+        template_detail(template_id)
+        directory = (templates.root / template_id).resolve()
+        guide = directory / "README.md"
+        if not guide.is_file():
+            raise HTTPException(404, "Template has no guide")
+        return {"id": template_id, "markdown": guide.read_text(encoding="utf-8")}
 
     async def template_input(template_id: str, request: Request) -> Any:
         template_detail(template_id)
@@ -610,6 +764,20 @@ def create_app(
     @app.get("/v1/runs/{run_id}/inputs")
     async def input_progress(run_id: str) -> dict[str, Any]:
         """Read the active kernel source frontier, including progress without events."""
+        path = directory(run_id)
+        status = RunStorage(path).metadata()["status"]
+        if status in TERMINAL:
+            retained = path / "input-progress.json"
+            if retained.is_file():
+                watermarks = json.loads(retained.read_text())["watermarks"]
+            else:
+                # Older runs have no sidecar: recover their actual journal
+                # frontier without loading engines or resubmitting input.
+                from aerokernel.journal import replay
+                kernel = await asyncio.to_thread(replay, path / "journal.jsonl")
+                watermarks = dict(kernel.ingress_watermarks)
+            return {"contract": "aeroagentsim.input-progress/v1", "watermarks": watermarks,
+                    "status": status, "pause_requested": False}
         return await asyncio.to_thread(worker_input_call, run_id, "progress", {})
 
     @app.post("/v1/runs/{run_id}/ingress")
@@ -625,16 +793,45 @@ def create_app(
 
     mount_artifacts(app, directory, worker_input_call)
 
+    @app.get("/v1/runs/{run_id}/speed")
+    def get_speed(run_id: str) -> dict[str, Any]:
+        directory(run_id)
+        if run_id not in workers:
+            raise HTTPException(409, "Run has no active worker")
+        value = workers[run_id][4].value
+        return {"id": run_id, "factor": value if value > 0 else None}
+
+    @app.post("/v1/runs/{run_id}/speed")
+    def set_speed(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Host pacing only: how fast simulated time advances against the wall clock."""
+        path = directory(run_id)
+        if run_id not in workers or RunStorage(path).metadata()["status"] in TERMINAL:
+            raise HTTPException(409, "Run has no active worker")
+        if set(body) != {"factor"}:
+            raise HTTPException(422, "speed: factor required (positive number, or null for as fast as possible)")
+        factor = body["factor"]
+        if factor is not None and (type(factor) not in (int, float) or not math.isfinite(factor) or not 0.05 <= factor <= 1000):
+            raise HTTPException(422, "speed.factor: number between 0.05 and 1000, or null")
+        workers[run_id][4].value = 0.0 if factor is None else float(factor)
+        return {"id": run_id, "factor": factor}
+
     @app.post("/v1/runs/{run_id}/{operation}")
     def control(run_id: str, operation: str) -> dict[str, Any]:
         path = directory(run_id)
-        if operation not in {"pause", "resume", "stop"}:
+        if operation not in CONTROLS:
             raise HTTPException(404, "Unknown control operation")
         storage = RunStorage(path)
-        if run_id not in workers or storage.metadata()["status"] in TERMINAL:
+        status = storage.metadata()["status"]
+        if run_id not in workers or status in TERMINAL:
             raise HTTPException(409, "Run has no active worker")
-        _, paused, stopped = workers[run_id]
-        if operation == "pause":
+        _, paused, stopped, started, _ = workers[run_id]
+        if operation == "start":
+            if status != "initialized" or started.is_set():
+                raise HTTPException(409, f"Only an initialized run can be started; this run is {status}")
+            started.set()
+        elif operation in {"pause", "resume"} and status == "initialized":
+            raise HTTPException(409, "Start the initialized run before pausing or resuming it")
+        elif operation == "pause":
             paused.set()
         elif operation == "resume":
             paused.clear()
@@ -677,7 +874,7 @@ def create_app(
                 asset, headers={"Cache-Control": "public, max-age=3600"}
             )
 
-        @app.get("/viewer-demo")
+        @app.get("/w/{path:path}")
         @app.get("/docs/platform/{path:path}")
         @app.get("/inspect/{path:path}")
         @app.get("/inspect")

@@ -17,15 +17,19 @@ from aeroagentsim.services.storage import RunStorage
 
 
 @pytest.mark.parametrize("codec", ["json", "positional-deflate"])
+@pytest.mark.parametrize("provenance", ["lean", "full"])
 def test_paged_storage_and_replay_preserve_projected_evidence(
-    tmp_path: Path, codec: str
+    tmp_path: Path, codec: str, provenance: str
 ) -> None:
     base = Path("scenarios/behaviours").resolve()
     doc = yaml.load((base / "minimal.yaml").read_text(), Loader=UniqueLoader)
     doc["bindings"]["commands"] = []
     directory = tmp_path / codec
     with RunSession(
-        load_scenario(doc, base=base), directory, journal_codec=codec
+        load_scenario(doc, base=base),
+        directory,
+        journal_codec=codec,
+        provenance=provenance,
     ) as session:
         session.start()
         session.run_until(20)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import math
 import re
@@ -59,6 +60,63 @@ def _simple_polygon(points: list[list[float]]) -> bool:
             ):
                 return False
     return True
+
+
+# Configuration sections of the product logic, keyed by scenario top-level key.
+SECTIONS = {
+    "city": "space", "presentation": "space", "region": "space", "airspace": "space",
+    "registry": "objects", "entities": "objects",
+    "relations": "relations", "resources": "relations",
+    "behaviours": "tasks", "generators": "tasks", "tasks": "tasks",
+    "engines": "components", "bindings": "components",
+    "algorithms": "algorithms", "agents": "algorithms", "decisions": "algorithms",
+    "run": "run", "outputs": "run", "ingress_streams": "run", "format": "run", "id": "run",
+}
+
+
+def issue_location(scenario: dict[str, Any], path: str, message: str) -> dict[str, Any]:
+    """Locate real loader diagnostics, retaining dotted fact IDs as single pointer tokens."""
+    if path.startswith("/"):
+        parts = [part.replace("~1", "/").replace("~0", "~") for part in path[1:].split("/")]
+    else:
+        authored = path
+        if authored in {"", "$"}:
+            # ScenarioError labels identify the failing input even without a .path attribute.
+            head = re.match(r"([A-Za-z_][A-Za-z0-9_.\-]*(?:\[\d+\][A-Za-z0-9_.\-]*)*):", message)
+            if not head or head.group(1).split(".")[0].split("[")[0] not in SECTIONS:
+                return {}
+            authored = head.group(1)
+        tokens = re.sub(r"\[(\d+)\]", r".\1", authored.lstrip("$.")).split(".")
+        # A package compiler path is relative to its source file, not to the scenario.
+        # Keep that diagnostic intact instead of inventing a scenario pointer for it.
+        if not tokens or tokens[0] not in SECTIONS:
+            return {}
+        parts: list[str] = []
+        node: Any = scenario
+        while tokens:
+            # Match keys in the actual draft: lowalt.site_capacity is one field, not two.
+            length = next((size for size in range(len(tokens), 0, -1) if isinstance(node, dict) and ".".join(tokens[:size]) in node), 1)
+            part = ".".join(tokens[:length]); del tokens[:length]; parts.append(part)
+            if isinstance(node, dict):
+                node = node.get(part)
+            elif isinstance(node, list) and part.isdigit() and int(part) < len(node):
+                node = node[int(part)]
+            else:
+                node = None
+    location: dict[str, Any] = {"path": "".join("/" + part.replace("~", "~0").replace("/", "~1") for part in parts)}
+    if parts and parts[0] in SECTIONS:
+        location["section"] = SECTIONS[parts[0]]
+    if parts and parts[0] == "entities" and len(parts) > 1 and parts[1].isdigit():
+        index = int(parts[1])
+        entities = scenario.get("entities", [])
+        if isinstance(entities, list) and index < len(entities) and isinstance(entities[index], dict):
+            if "id" in entities[index]:
+                location["entity_id"] = entities[index]["id"]
+        if len(parts) > 2:
+            location["field"] = parts[3] if parts[2] == "facts" and len(parts) > 3 else parts[2]
+    elif parts[0] in {"engines", "algorithms"} and len(parts) > 1:
+        location["binding"] = parts[1]
+    return location
 
 
 class WorkspaceConflict(ValueError):
@@ -181,7 +239,7 @@ class WorkspaceStore:
 
     def list(self) -> list[dict[str, Any]]:
         drafts = [
-            self.get(p.name)
+            self.summary(p.name)
             for p in sorted(self.root.glob("studio-*"))
             if (p / "draft.json").is_file()
         ]
@@ -623,14 +681,16 @@ class WorkspaceStore:
                 authored: BaseException = exc
                 while authored.__cause__ is not None and not hasattr(authored, "path"):
                     authored = authored.__cause__
+                path = getattr(authored, "path", "$")
                 result = {
                     "valid": False,
                     "errors": [f"{type(exc).__name__}: {exc}"],
                     "issues": [
                         {
                             "source": getattr(authored, "source", "scenario"),
-                            "path": getattr(authored, "path", "$"),
+                            "path": path,
                             "message": str(authored),
+                            **issue_location(draft["scenario"], path, str(authored)),
                         }
                     ],
                 }
@@ -638,6 +698,182 @@ class WorkspaceStore:
             draft["validation"] = result
             self._write(draft)
             return result
+
+    def apply_knobs(self, identifier: str, body: dict[str, Any], *, registry: Any) -> dict[str, Any]:
+        """Change template controls on the draft itself, keeping other edits."""
+        from .templates import _knob_value, _pointer
+
+        if not isinstance(body, dict) or set(body) - {"knobs", "revision"} or not isinstance(body.get("knobs"), dict):
+            raise ValueError("knobs: a knobs mapping and the expected revision are required")
+        with self.lock:
+            draft = self.get(identifier)
+            self.check_revision(draft, body.get("revision"))
+            source = draft.get("template")
+            if not source:
+                raise ValueError("This draft was not created from a template and has no template controls")
+            declared = {knob["id"]: knob for knob in registry.get(source["id"])["knobs"]}
+            if extra := body["knobs"].keys() - declared.keys():
+                raise ValueError(f"Unknown knobs: {', '.join(sorted(extra))}")
+            document = copy.deepcopy(draft["scenario"])
+            values = dict(source.get("knobs", {}))
+            for name, value in body["knobs"].items():
+                knob = declared[name]
+                _knob_value(knob, value)
+                if knob["type"] == "number":
+                    value = float(value)
+                if "pointer" in knob:
+                    _pointer(document, knob["pointer"], value)
+                else:
+                    registry.hooks[knob["apply"]](document, self.directory(identifier), value)
+                values[name] = value
+            saved = self.save(identifier, {"scenario": document})
+            saved["template"] = {**source, "knobs": values}
+            return self._write(saved)
+
+    # --- Immutable versions -------------------------------------------------
+    # A version freezes a validated draft revision together with every file in
+    # the workspace, so a run of that version never observes later draft edits.
+    _VERSION_EXCLUDE = {"draft.json", "draft.pending.json", "versions"}
+
+    def version_directory(self, identifier: str, version: int) -> Path:
+        if type(version) is not int or version < 1:
+            raise ValueError("version: positive integer required")
+        return self.directory(identifier) / "versions" / str(version) / "files"
+
+    def _version_record(self, identifier: str, version: int) -> Path:
+        return self.directory(identifier) / "versions" / str(version) / "version.json"
+
+    def versions(self, identifier: str) -> list[dict[str, Any]]:
+        self.get(identifier)
+        root = self.directory(identifier) / "versions"
+        rows = []
+        if root.is_dir():
+            for path in root.iterdir():
+                record = path / "version.json"
+                if path.name.isdigit() and record.is_file():
+                    row = json.loads(record.read_text(encoding="utf-8"))
+                    row.pop("scenario", None)
+                    rows.append(row)
+        return sorted(rows, key=lambda row: row["version"], reverse=True)
+
+    def version(self, identifier: str, version: int) -> dict[str, Any]:
+        record = self._version_record(identifier, version)
+        if not record.is_file():
+            raise FileNotFoundError(f"workspace version {version}: not found")
+        return json.loads(record.read_text(encoding="utf-8"))
+
+    def save_version(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(body, dict) or set(body) - {"revision", "note"}:
+            raise ValueError("version: only revision and an optional note may be supplied")
+        revision, note = body.get("revision"), body.get("note")
+        if type(revision) is not int:
+            raise ValueError("version.revision: integer required")
+        if note is not None and not isinstance(note, str):
+            raise ValueError("version.note: string required")
+        with self.lock:
+            draft = self.get(identifier)
+            self.check_revision(draft, revision)
+            validation = draft.get("validation")
+            if not validation or validation.get("revision") != revision:
+                raise ValueError("Validate this revision before saving it as a version")
+            if not validation.get("valid"):
+                raise ValueError("This revision failed validation; fix the reported issues first")
+            directory = self.directory(identifier)
+            existing = self.versions(identifier)
+            latest = existing[0] if existing else None
+            if latest is not None and latest["revision"] == revision:
+                return self.version(identifier, latest["version"])
+            number = (latest["version"] if latest else 0) + 1
+            files = self.version_directory(identifier, number)
+            pending = files.parent.with_name(f".{number}.pending")
+            if pending.exists():
+                shutil.rmtree(pending)
+            (pending / "files").mkdir(parents=True)
+            for path in sorted(directory.iterdir()):
+                if path.name in self._VERSION_EXCLUDE or path.name.startswith("validation-"):
+                    continue
+                target = pending / "files" / path.name
+                if path.is_dir():
+                    shutil.copytree(path, target, ignore=shutil.ignore_patterns("__pycache__"))
+                else:
+                    shutil.copyfile(path, target)
+            # Absolute paths into the live draft directory would read later edits.
+            text = json.dumps(draft["scenario"], ensure_ascii=False, allow_nan=False)
+            text = text.replace(json.dumps(str(directory))[1:-1], json.dumps(str(files))[1:-1])
+            scenario = json.loads(text)
+            digest = hashlib.sha256()
+            digest.update(json.dumps(scenario, sort_keys=True, ensure_ascii=False).encode())
+            for path in sorted(p for p in (pending / "files").rglob("*") if p.is_file()):
+                digest.update(str(path.relative_to(pending / "files")).encode())
+                digest.update(path.read_bytes())
+            record = {
+                "version": number,
+                "revision": revision,
+                "digest": "sha256:" + digest.hexdigest(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "validation": validation,
+                "scenario": scenario,
+                **({"note": note.strip()} if note and note.strip() else {}),
+                **({"template": draft["template"]} if draft.get("template") else {}),
+                **({"derived_from": draft["derived_from"]} if draft.get("derived_from") else {}),
+                # Display geometry the run attaches; frozen with the version.
+                **{key: draft[key] for key in ("demo_console", "scene", "network") if key in draft},
+            }
+            (pending / "version.json").write_text(
+                json.dumps(record, ensure_ascii=False, allow_nan=False, indent=2), encoding="utf-8"
+            )
+            pending.replace(files.parent)
+            return record
+
+    def summary(self, identifier: str) -> dict[str, Any]:
+        """The draft plus its version state, as the console shows it."""
+        draft = self.get(identifier)
+        versions = self.versions(identifier)
+        latest = versions[0] if versions else None
+        draft["latest_version"] = latest
+        draft["dirty"] = latest is None or latest["revision"] != draft["revision"]
+        return draft
+
+    def derive(self, run: Path, name: str | None, *, registry: Any = None) -> dict[str, Any]:
+        """A new draft from a run's own configuration; the run is not changed."""
+        manifest = json.loads((run / "manifest.json").read_text())
+        source: dict[str, Any] = {"run_id": run.name}
+        workspace_id, number = manifest.get("studio_workspace"), manifest.get("workspace_version")
+        if workspace_id and type(number) is int:
+            frozen = self.version(workspace_id, number)
+            source.update(workspace_id=workspace_id, version=number)
+            with self.lock:
+                draft = self.create(name or f"{self.get(workspace_id)['name']} · variant")
+                directory = self.directory(draft["id"])
+                files = self.version_directory(workspace_id, number)
+                for path in files.iterdir():
+                    target = directory / path.name
+                    if path.is_dir():
+                        shutil.copytree(path, target)
+                    else:
+                        shutil.copyfile(path, target)
+                text = json.dumps(frozen["scenario"], ensure_ascii=False)
+                text = text.replace(json.dumps(str(files))[1:-1], json.dumps(str(directory))[1:-1])
+                draft["scenario"] = json.loads(text)
+                for key in ("template", "demo_console"):
+                    original = self.get(workspace_id).get(key)
+                    if original is not None:
+                        draft[key] = original
+                draft["derived_from"] = source
+                return self._write(draft)
+        template = manifest.get("template")
+        if template and registry is not None:
+            draft = self.import_template(template["id"], template.get("knobs", {}), registry=registry)
+            with self.lock:
+                draft = self.get(draft["id"])
+                if name:
+                    draft["name"] = name
+                draft["derived_from"] = source
+                return self._write(draft)
+        raise NotImplementedError(
+            "This run was not created from a saved workspace version or a template; "
+            "its configuration cannot be reopened as an editable draft"
+        )
 
     def export(self, identifier: str) -> str:
         result = self.validate(identifier)
@@ -647,7 +883,8 @@ class WorkspaceStore:
             self.get(identifier)["scenario"], allow_unicode=True, sort_keys=False
         )
 
-    def import_yaml(self, identifier: str, text: str) -> dict[str, Any]:
+    def import_yaml(self, identifier: str, text: str, *, revision: int | None = None) -> dict[str, Any]:
+        self.check_revision(self.get(identifier), revision)
         try:
             document = yaml.load(text, Loader=UniqueLoader)
         except yaml.YAMLError as exc:
@@ -656,7 +893,7 @@ class WorkspaceStore:
             raise TypeError("import: scenario YAML mapping required")
         # Compile before replacing an existing draft. Failed imports preserve the draft.
         load_scenario(document, base=self._base(document, identifier))
-        return self.save(identifier, {"scenario": document})
+        return self.save(identifier, {"scenario": document, "revision": revision})
 
     def place(self, identifier: str, payload: dict[str, Any]) -> dict[str, Any]:
         required = {"id", "type", "kind", "position", "engine"}

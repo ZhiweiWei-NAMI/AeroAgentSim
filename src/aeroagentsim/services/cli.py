@@ -139,7 +139,7 @@ def run_template_command(
         template_id, draft["scenario"], store._base(draft["scenario"], draft["id"])
     )
     store._write(draft)
-    url = console + "/studio?workspace=" + draft["id"]
+    url = console + "/w/" + draft["id"] + "?panel=controls"
     print(
         json.dumps({"url": url, "workspace": draft["id"], "template": template_id}),
         flush=True,

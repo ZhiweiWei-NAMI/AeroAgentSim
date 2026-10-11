@@ -53,6 +53,19 @@ function View({ props }: { props: ComponentProps<typeof ViewportView> }) {
 }
 
 describe('viewport bilingual controls', () => {
+  it('keeps a manual follow choice when the event director pauses, and reports an orbit gesture to the owner', () => {
+    const { store, clock } = session();
+    const props = { store, clock, ...handlers(), simple: true, mode: 'orbit' as const, quality: 'med' as const, trails: true,
+      director: { enabled: true, active: true, paused: false, events: [] }, onCameraMode: vi.fn() };
+    const view = renderComponent(<View props={props} />), instance = renderer.instances[0], now = performance.now();
+    act(() => nextFrame(now));
+    expect(instance.setCameraMode).toHaveBeenLastCalledWith('cinematic');
+    view.rerender(<View props={{ ...props, mode: 'follow', director: { ...props.director, paused: true } }} />);
+    act(() => nextFrame(now + 100));
+    expect(instance.setCameraMode).toHaveBeenLastCalledWith('follow');
+    act(() => instance.options.onCameraInteraction());
+    expect(props.onCameraMode).toHaveBeenCalledWith('orbit');
+  });
   it('routes notable cues to smooth Director targets and hands control to camera interaction until resumed',()=>{
     const {store,clock}=session();
     const cue={key:'2/0',cut:2,offset:1,at_ns:'1000000000',category:'energy' as const,severity:'notice' as const,text:'Low battery',entities:[],position:[1,2,3] as [number,number,number]};

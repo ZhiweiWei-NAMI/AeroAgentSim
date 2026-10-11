@@ -31,12 +31,8 @@
   "include": [
     "src",
     "vite.config.ts",
-    "e2e/bilingual-console.spec.ts",
-    "e2e/student-controls.spec.ts",
-    "e2e/traffic-console.spec.ts",
-    "e2e/experiment-console.spec.ts",
-    "e2e/ux-fixtures.ts",
-    "playwright.console.config.ts",
+    "e2e/*.spec.ts",
+    "playwright.config.ts",
     "e2e/flows",
     "playwright.flows.config.ts"
   ]

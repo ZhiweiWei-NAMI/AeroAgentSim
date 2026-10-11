@@ -34,9 +34,9 @@ so a cached download is reused without hiding a pack update.
 
 ## Reusable workflows
 
-**Food delivery:** Home → Restaurant meal delivery → Customize → Interactive →
-Open in Studio. Configure the kitchens, order generators and couriers; save,
-validate and run. Inject `restaurant_delay` with `restaurant-east` and `60`
+**Food delivery:** Gallery → Restaurant meal delivery → Create a project →
+Controls: Interactive. Configure the kitchens, order generators and couriers;
+validate, save a version, initialize and start. Inject `restaurant_delay` with `restaurant-east` and `60`
 seconds while that kitchen is preparing. The typed admission and execution
 records identify the affected orders. Scheduled mode completes unattended;
 interactive mode waits indefinitely when the operator disconnects.

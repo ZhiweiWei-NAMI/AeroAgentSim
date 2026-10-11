@@ -4,7 +4,8 @@ import { TemplateApi, type AlgorithmDescriptor, type AlgorithmSlot, type Compari
 import { metricHelp, metricLabel } from './metric-help';
 import { useI18n } from '../i18n/I18nProvider';
 import { localized, translate } from '../i18n/translate';
-import { knobOptionLabel } from './presentation';
+import { knobOptionLabel, runStatusLabel } from './presentation';
+import { displayTime } from '../pages/display-time';
 import './results.css';
 
 export interface CompareRunsProps {
@@ -12,6 +13,24 @@ export interface CompareRunsProps {
   /** Two to four run ids; fewer/more shows an honest message (the API refuses too). */
   ids: string[];
   onBack?: () => void;
+}
+
+interface ConfigurationDifference { path: string; values: Record<string, unknown>; present: Record<string, boolean> }
+interface RecordedEnd { at_ns: string; commit_index: number; status: string }
+interface ComparisonConfiguration { alignment: 'recorded_run_end'; recorded_ends: Record<string, RecordedEnd>; config_diff: ConfigurationDifference[] }
+export function comparisonConfiguration(value: unknown, ids?: string[]): ComparisonConfiguration {
+  const data = value as Partial<ComparisonConfiguration> | null;
+  if (!data || data.alignment !== 'recorded_run_end' || !data.recorded_ends || !Object.values(data.recorded_ends).every(end =>
+    end && typeof end.at_ns === 'string' && /^\d+$/.test(end.at_ns) && Number.isSafeInteger(end.commit_index) && end.commit_index >= 1 && typeof end.status === 'string') ||
+    (ids && !ids.every(id => Object.prototype.hasOwnProperty.call(data.recorded_ends, id))) ||
+    !Array.isArray(data.config_diff) || !data.config_diff.every(row =>
+    row && typeof row.path === 'string' && row.values && typeof row.values === 'object' && !Array.isArray(row.values) &&
+    row.present && typeof row.present === 'object' && !Array.isArray(row.present) &&
+    Object.entries(row.present).every(([id, present]) => typeof present === 'boolean' && (present ? Object.prototype.hasOwnProperty.call(row.values, id) : !Object.prototype.hasOwnProperty.call(row.values, id))) &&
+    (!ids || ids.every(id => Object.prototype.hasOwnProperty.call(row.present, id))))) {
+    throw Error('Pinned configuration comparison is unavailable or malformed.');
+  }
+  return data as ComparisonConfiguration;
 }
 
 /** Plain labels for known metric directions; anything unknown is treated as neutral. */
@@ -200,6 +219,20 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
+  const [configuration, setConfiguration] = useState<ComparisonConfiguration>();
+  const [configurationError, setConfigurationError] = useState<string>();
+
+  useEffect(() => {
+    setConfiguration(undefined); setConfigurationError(undefined);
+    if (ids.length < 2 || ids.length > 4) return;
+    const control = new AbortController();
+    // The catalog decoder retains KPI/settings columns. Fetch pinned configuration
+    // metadata without recomputing the KPIs for a second time.
+    void Promise.resolve().then(() => api.request<unknown>(`/v1/runs/compare?ids=${ids.map(encodeURIComponent).join(',')}&include_kpis=false`, undefined, control.signal))
+      .then(value => comparisonConfiguration(value, ids)).then(value => { if (!control.signal.aborted) setConfiguration(value); })
+      .catch(problem => { if (!control.signal.aborted) setConfigurationError(String(problem)); });
+    return () => control.abort();
+  }, [api, ids.join(','), attempt]);
 
   useEffect(() => {
     if (ids.length < 2 || ids.length > 4) {
@@ -279,6 +312,20 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
         {onBack && <button type="button" className="newc-button" onClick={onBack}>{t('Go back')}</button>}
       </header>
       {catalogNote && <p className="newc-catalog-note" role="note">{t('Metric names and settings come from machine ids — template details are unavailable ({error}).', { error: catalogNote })}</p>}
+      <section className="newc-compare-section" data-testid="comparison-configuration">
+        <h4>{locale === 'zh-CN' ? '固定配置差异' : 'Pinned configuration differences'}</h4>
+        {configurationError ? <p role="status">{locale === 'zh-CN' ? '无法读取固定配置差异：' : 'Could not read pinned configuration differences: '}{configurationError}</p>
+          : !configuration ? <p role="status">{locale === 'zh-CN' ? '正在读取运行的固定配置…' : 'Loading the runs’ pinned configurations…'}</p>
+          : <>
+            <p>{locale === 'zh-CN' ? '各列使用该次运行最后记录的结果，仿真时长可能不同；回放读取已有日志。' : 'Each column uses its run’s last recorded results; simulation durations may differ. Playback reads existing journals.'}</p>
+            {runs.map((run, index) => { const end=configuration.recorded_ends[run.id];return <p key={run.id} style={{margin:'4px 0',fontSize:12}}>{t('Run {number} · {title}', {number:index+1,title:localized(run,'title',locale)||run.id})} · {displayTime(end.at_ns,'0')} · {runStatusLabel(end.status,locale)} · #{end.commit_index}</p>; })}
+            {!configuration.config_diff.length ? <p>{locale === 'zh-CN' ? '两次运行的固定配置相同。注入事件与执行结果保留在各自日志中。' : 'The pinned configurations are identical. Injected events and results remain in each run’s journal.'}</p>
+              : <div style={{ maxHeight: 280, overflow: 'auto' }}><table className="newc-compare-table" style={{ tableLayout: 'fixed', overflowWrap: 'anywhere' }}>
+                <thead><tr><th style={{ width: '34%' }}>{locale === 'zh-CN' ? '配置字段' : 'Configuration field'}</th>{runs.map((run, index) => <th key={run.id} title={run.id}>{t('Run {number} · {title}', { number: index + 1, title: localized(run, 'title', locale) || run.id })}</th>)}</tr></thead>
+                <tbody>{[...configuration.config_diff].sort((a, b) => Number(a.path.endsWith('/source')) - Number(b.path.endsWith('/source')) || a.path.localeCompare(b.path)).map(row => <tr key={row.path}><th scope="row"><code>{row.path}</code></th>{runs.map(run => <td key={run.id}>{row.present[run.id] ? JSON.stringify(row.values[run.id]) : locale === 'zh-CN' ? '未设置' : 'Not set'}</td>)}</tr>)}</tbody>
+              </table></div>}
+          </>}
+      </section>
       {columns.length > 0 && (
         <section className="newc-compare-section">
           <h4>{t('Settings that differ')}</h4>

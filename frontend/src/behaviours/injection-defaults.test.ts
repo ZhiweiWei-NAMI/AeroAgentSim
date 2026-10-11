@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actualTargetSummary, emptyTransport, newIdempotencyKey, receiptSummary, transportForPoint } from './injection-defaults';
+import { actualTargetSummary, emptyTransport, newIdempotencyKey, payloadProblem, receiptSummary, transportForPoint } from './injection-defaults';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { fixtureHeader } from './extension-fixture';
 
@@ -31,4 +31,19 @@ describe('injection defaults', () => {
     expect(receiptSummary({ stream_id: 'operator' })).toContain('without an admission disposition');
     expect(store.header.kernelRunId).toBeUndefined();
   });
+});
+
+it('requires authored restaurant fields and bounds before admitting a delay, without filling them', () => {
+  const schema={type:'record',extra:false,required:['restaurant','delay_s'],members:{restaurant:{type:'string'},delay_s:{type:'number',minimum:0.001}}};
+  expect(payloadProblem(schema,{})).toContain('restaurant: required');
+  expect(payloadProblem(schema,{restaurant:'restaurant-east'})).toContain('delay_s: required');
+  expect(payloadProblem(schema,{restaurant:'',delay_s:45})).toContain('text required');
+  expect(payloadProblem(schema,{restaurant:'restaurant-east',delay_s:0})).toContain('minimum');
+  expect(payloadProblem(schema,{restaurant:'restaurant-east',delay_s:{$number:'45'}})).toBeUndefined();
+  for(const delay_s of ['45',null,{$number:' '},{$number:'0x10'},{$integer:'-0'},{$number:'45',extra:true}]) {
+    expect(payloadProblem(schema,{restaurant:'restaurant-east',delay_s})).toBeDefined();
+  }
+  expect(payloadProblem({type:'number',minimum:0},{$number:' '})).toContain('number required');
+  expect(payloadProblem({type:'integer'},{$number:'45.0'})).toContain('integer required');
+  expect(payloadProblem('missing',{restaurant:'restaurant-east'})).toContain('schema unavailable');
 });

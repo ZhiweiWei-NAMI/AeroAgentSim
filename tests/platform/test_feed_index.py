@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -119,3 +121,65 @@ def test_persistent_page_resume_and_source_invalidation(
         for event in cut["events"]:
             if event["text"].startswith("Parcel "):
                 assert "text_zh" not in event  # Never reuse the overwritten pack wording.
+
+
+def test_live_cache_recovers_after_failed_projection_and_external_writer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from aeroagentsim.services import feed_index
+
+    prepared = TemplateRegistry().apply("parcel-delivery", {"fleet_size": 2})
+    prepared.document["run"]["until_ns"] = 10_000_000_000
+    directory = tmp_path / "live"
+    with RunSession(
+        load_scenario(prepared.document, base=prepared.base), directory
+    ) as run:
+        run.run()
+    storage = RunStorage(directory)
+    entries = storage.entries
+    # Compute the oracle from the actual complete journal, then rebuild its
+    # derived index as a growing live prefix.
+    expected = page(directory, 1, len(entries))
+    storage._atomic("index.json", entries[:9])
+    assert page(directory, 1, 8) == expected[:8]
+    storage._atomic("index.json", entries[:17])
+    original = feed_index.project
+
+    def fail_after_consuming(record: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+        cut = original(record, **kwargs)
+        if record["index"] == 11:
+            raise RuntimeError("projection interrupted after consuming KPI state")
+        return cut
+
+    monkeypatch.setattr(feed_index, "project", fail_after_consuming)
+    with pytest.raises(RuntimeError, match="projection interrupted"):
+        page(directory, 9, 8)
+    monkeypatch.setattr(feed_index, "project", original)
+    assert page(directory, 9, 8) == expected[8:16]
+
+    # Another process can publish while this reader retains its previous live
+    # cursor. The persisted checkpoint must win over that stale cached cursor.
+    storage._atomic("index.json", entries)
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; from aeroagentsim.services.feed_index import update; import sys; update(Path(sys.argv[1]))",
+            str(directory),
+        ],
+        check=True,
+    )
+    assert page(directory, 1, len(entries)) == expected
+    assert kpi_result(directory)["final"] == expected[-1]["kpis"]
+    assert RunStorage(directory).entries == entries
+
+
+def test_cached_offset_rows_remain_private_to_each_storage(tmp_path: Path) -> None:
+    storage = RunStorage(tmp_path)
+    expected = [{"index": 0, "offset": 0, "length": 10}]
+    storage._atomic("index.json", expected)
+    first, second = RunStorage(tmp_path), RunStorage(tmp_path)
+    first.entries[0]["length"] = 99
+    first.entries.append({"index": 1, "offset": 99, "length": 5})
+    assert second.entries == expected
+    assert RunStorage(tmp_path).entries == expected

@@ -154,8 +154,9 @@ state conflicts.
 
 ## Frontend pages
 
-When `--frontend` points at a built console, the server serves the SPA at `/`,
-`/runs`, `/inspect`, `/aerograph`, `/agents` and `/studio`. The console sends
+When `--frontend` points at a built console, the server serves the workbench at
+`/` and `/w/<workspace>`, the agent console at `/agents/<run>`, and redirects the
+earlier addresses `/runs`, `/inspect`, `/aerograph` and `/studio` into the workbench. The console sends
 JSON for submissions and controls; configure its origin using
 `AEROAGENTSIM_CONSOLE_URL` when it is hosted outside localhost.
 

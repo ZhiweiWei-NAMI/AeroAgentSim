@@ -29,12 +29,12 @@ def _read_index(
 @lru_cache(maxsize=16)
 def _journal_format(
     path: Path, identity: tuple[int, int, int]
-) -> tuple[int, ResourceBudget]:
+) -> tuple[int, ResourceBudget, bool]:
     """Cache the immutable header's format/budget, not its full scenario payload."""
     with RecordReader(path) as reader:
         header = next(reader)
         assert reader.budget is not None
-        return header["major"], reader.budget
+        return header["major"], reader.budget, header.get("provenance") == "lean"
 
 
 class RunStorage:
@@ -44,7 +44,15 @@ class RunStorage:
         self.entries: list[dict[str, int]] = []
         index = directory / "index.json"
         if index.exists():
-            self.entries = json.loads(index.read_text())
+            info = index.stat()
+            # Readers share the decoded atomic version, while a writer owns its
+            # list and rows: appending/rebuilding cannot mutate another reader.
+            self.entries = [
+                dict(entry)
+                for entry in _read_index(
+                    index, (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
+                )
+            ]
             if self.entries:
                 last = self.entries[-1]
                 self.offset = last["offset"] + last["length"]
@@ -154,20 +162,29 @@ class RunStorage:
         offset = bisect_left(entries, start, key=lambda entry: entry["index"])
         journal = self.directory / "journal.jsonl"
         info = journal.stat()
-        major, budget = _journal_format(
+        major, budget, lean = _journal_format(
             journal, (info.st_dev, info.st_ino, entries[0]["length"])
+        )
+        # Match RecordReader's admitted format. Lean records are canonical JSON,
+        # not positional trees, and need only their one strict parsing pass.
+        frame_budget = (
+            ResourceBudget(
+                budget.integer_digits, budget.frame_bytes, budget.nesting_depth * 2 + 2
+            )
+            if lean
+            else budget
         )
         with journal.open("rb") as stream:
             for entry in entries[offset : offset + limit]:
                 stream.seek(entry["offset"])
-                record = parse_json(stream.read(entry["length"]), budget)
+                record = parse_json(stream.read(entry["length"]), frame_budget)
                 if (
                     not isinstance(record, dict)
                     or record.get("index") != entry["index"]
                 ):
                     raise ValueError("WAL record differs from its indexed coordinate")
                 if major == 2 and entry["index"] != 0:
-                    record = decode_frame(record, budget)
+                    record = decode_frame(record, budget, lean=lean)
                 result.append(expand_record(record))
                 if len(result) >= limit:
                     break

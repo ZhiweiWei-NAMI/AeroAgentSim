@@ -9,8 +9,9 @@ import type { StaticOcclusion } from './occlusion';
 import { worldOrientation, worldPosition } from './coordinates';
 import type { EntityState } from './feed-store';
 import { selectCatalogModel, fitModel, yawFromVelocity, type CatalogModel, type EntityClassInfo, type ModelCatalog } from './model-catalog';
-import { semanticVehicle, businessStyle, semanticLabel, labelInterest, recentlyInvolved, taskByVehicle, activeZones } from './semantic';
+import { semanticVehicle, businessStyle, semanticLabel, labelInterest, taskByVehicle, activeZones } from './semantic';
 import {PayloadLayer} from './operational-loads';
+import { RecentActivity } from './recent-activity';
 
 /** A task counts as active unless its committed state says it is finished. */
 function isFinishedTask(task: { fields: Map<string, { value: unknown }> }): boolean {
@@ -55,6 +56,7 @@ export class EntityLayer {
   private semanticInvolved = new Set<string>();
   private semanticAlerts = new Set<string>();
   private semanticStamp = '';
+  private recentActivity = new RecentActivity();
   private batches = new Map<PresentationBinding, Batch>();
   private semanticBindings=new Map<PresentationBinding,Map<string,PresentationBinding>>();
   private glyphs=new WeakMap<PresentationBinding,string>();
@@ -266,9 +268,10 @@ export class EntityLayer {
     this.transformsChanged=false;this.catalogUsage.clear();
     if(this.semantic){
       const stamp=`${store.revision}/${ns}`;
-      if(stamp!==this.semanticStamp){this.semanticStamp=stamp;this.semanticTasks=taskByVehicle(store);this.semanticInvolved=recentlyInvolved(store.messages,10_000_000_000,ns);this.semanticAlerts.clear();
+      if(stamp!==this.semanticStamp){this.semanticStamp=stamp;this.semanticTasks=taskByVehicle(store);
         const known=(store as FeedStore & {viewCursor?:{knownAt:number}}).viewCursor?.knownAt;
-        for(const commit of store.commits){if(known!==undefined&&commit.commitIndex>known)break;for(const event of commit.events??[]){const age=BigInt(ns)-BigInt(event.at_ns);if(age<0n||age>10_000_000_000n)continue;for(const entityId of event.entities)for(const [key,entity] of store.entities)if(entity.key.id===entityId){this.semanticInvolved.add(key);if(event.category==='emergency'||event.severity==='warning'||event.severity==='critical')this.semanticAlerts.add(key);}}}}
+        const activity=this.recentActivity.collect(store,ns,10_000_000_000n,known);
+        this.semanticInvolved=activity.involved;this.semanticAlerts=activity.alerts;}
     }
     for(const batch of this.batches.values())for(const mesh of [...batch.meshes,...(batch.far?[batch.far.mesh]:[])]){mesh.userData.viewportCount=mesh.count;mesh.userData.viewportChanged=false;}
     this.positions.clear(); this.orientations.clear();this.selection.length=0;for(const batch of this.batches.values())for(const mesh of batch.outline ?? [])mesh.visible=false;
@@ -345,7 +348,7 @@ export class EntityLayer {
     }
     const labelsStarted = performance.now();
     camera.updateMatrixWorld();
-    const occupied: Array<[number,number]>=[];let labelAttempts=0;
+    const occupied: Array<{ left: number; right: number; top: number; bottom: number }>=[];let labelAttempts=0;
     candidates.sort((a,b)=>Number(b.selected)-Number(a.selected)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
     for(const item of candidates) {
       if(this.semantic&&!item.interest)continue;
@@ -354,7 +357,6 @@ export class EntityLayer {
       const projected=this.labelProjected.copy(world).project(camera);
       if(projected.z<-1||projected.z>1||Math.abs(projected.x)>0.96||Math.abs(projected.y)>0.96)continue;
       const x=(projected.x+1)*width/2,y=(1-projected.y)*height/2;
-      if(!item.interest&&!item.selected&&occupied.some(([px,py])=>Math.abs(px-x)<110&&Math.abs(py-y)<32))continue;
       // Selected labels remain readable; nonselected labels do not shine through buildings.
       if(!item.selected&&!item.interest&&occlusion) {
         labelAttempts++;
@@ -363,16 +365,20 @@ export class EntityLayer {
         if(world.distanceToSquared(camera.position)>0.04&&occlusion.blocked(camera.position,endpoint))continue;
       }
       let label=this.labels.get(item.id);
-      if(!label){label=document.createElement('button');label.className='entity-label';label.onclick=()=>this.onSelect(item.key);this.overlay.append(label);this.labels.set(item.id,label);}
+      if(!label){label=document.createElement('button');label.className='entity-label';label.dataset.entityId=item.key.id;label.onclick=()=>this.onSelect(item.key);this.overlay.append(label);this.labels.set(item.id,label);}
       const semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header,this.locale):item.key.id;
       if(this.semantic){const style=businessStyle(semanticVehicle(store.entities.get(item.id)!,this.semanticTasks.get(item.id)));label.dataset.glyph=style.glyph;label.style.borderColor=style.color;}
       else {delete label.dataset.glyph;label.style.borderColor='';}
       if(label.textContent!==semanticText)label.textContent=semanticText;
-      visibleLabels.add(item.id);
       if(label.hidden)label.hidden=false;
+      // Business-interest labels used to bypass collision avoidance entirely;
+      // colocated task-active UAVs obscured each other. Measure the actual label.
+      const bounds={left:x-label.offsetWidth/2,right:x+label.offsetWidth/2,top:y-label.offsetHeight,bottom:y};
+      if(!item.selected&&occupied.some(box=>bounds.left<box.right+6&&bounds.right+6>box.left&&bounds.top<box.bottom+4&&bounds.bottom+4>box.top))continue;
+      visibleLabels.add(item.id);
       const left=`${x}px`,top=`${y}px`;
       if(label.style.left!==left)label.style.left=left;if(label.style.top!==top)label.style.top=top;
-      label.classList.toggle('selected',item.selected);occupied.push([x,y]);
+      label.classList.toggle('selected',item.selected);occupied.push(bounds);
     }
     for(const [id,label] of this.labels)if(!visibleLabels.has(id)&&!label.hidden)label.hidden=true;
     // Keep a small reusable label pool; retired generations cannot accumulate DOM.

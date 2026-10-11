@@ -22,7 +22,7 @@ python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./
 (cd frontend && npm ci && npm run build) && aeroagentsim run-template parcel-delivery
 ```
 
-The last command opens an editable Studio workspace: choose **Validate & run → Validate → Run now**. Add `--headless` to run directly in the terminal. `aeroagentsim templates` lists all nine scenarios. [Install](docs/getting-started/install.md) covers Windows and Chromium setup for traffic-accident and city-day camera capture. [中文](README_CN.md)
+The last command opens the project in the workbench: choose **Validate → Save version → Initialize → Start**. Add `--headless` to run directly in the terminal. `aeroagentsim templates` lists all nine scenarios. [Install](docs/getting-started/install.md) covers Windows and Chromium setup for traffic-accident and city-day camera capture. [中文](README_CN.md)
 
 ## Pick a scenario
 
@@ -49,7 +49,7 @@ Open any scenario with `aeroagentsim run-template <id>`. Each declares its own k
 
 ## Change a rule, watch the world change
 
-*When a drone's battery drops below its reserve, send it to charge.* Battery reserve, no-fly zones, separation and wind limits are editable predicates and event chains. Change `battery_reserve` from 20 to 35 with `--set battery_reserve=35`, or edit the predicate in Studio, then run again. In **Inspect**, follow the recorded condition → chain → command → state change, alongside the drone in the 3D city. Replay lets you revisit the same moment.
+*When a drone's battery drops below its reserve, send it to charge.* Battery reserve, no-fly zones, separation and wind limits are editable predicates and event chains. Change `battery_reserve` from 20 to 35 with `--set battery_reserve=35`, or edit the predicate in the configuration's Tasks section, then run again. With **Why?**, follow the recorded condition → chain → command → state change, alongside the drone in the 3D city. Replay lets you revisit the same moment.
 
 
 [Edit the low-altitude rules](docs/guides/lowalt-rules.md) · [Write a predicate](docs/guides/predicates.md) · [Author an event chain](docs/guides/behaviours.md)

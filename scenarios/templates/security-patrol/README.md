@@ -1,3 +1,5 @@
+<!-- guide-language: en-US -->
+
 # Security patrol
 
 A beginner template: a drone patrols a fixed loop of waypoints while an
@@ -46,3 +48,41 @@ heights and roads by `tools/templates/place.py`. Roof pads use their actual roof
 height; inter-site flights depart/arrive vertically and cruise above the 105 m
 roof ceiling. Names and business metadata are pinned with each run. See
 [the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).
+
+<!-- guide-language: zh-CN -->
+
+# 安防巡逻
+
+无人机沿固定航点环路巡逻。操作员可报告事件，触发优先级更高的调查任务。
+
+## 场景过程
+
+- 0、100 和 200 秒的巡逻任务沿配置环路飞行，每个航点记录 `lowalt.patrol.visited`。
+- 55 秒由操作员输入流注入事件报告，任务引擎生成优先级为 100 的 `incident_response` 任务，目标为 `incident-site`。
+- 无人机暂停巡逻、先调查事件，再返回巡逻环路。
+
+## 控制项
+
+| 控制项 | 含义 | 默认值 |
+| --- | --- | --- |
+| `fleet_size` | 飞行器数量（1–12） | 1 |
+| `wind_speed` | 常态风速，米/秒（0–15） | 2.0 |
+
+## 衡量指标
+
+`tasks_completed`、`mean_task_latency_s`、`energy_used_kj`、`weather_holds`、`separation_conflicts` 和 `patrol_visits`。
+
+## 运行与查看
+
+创建项目、配置、校验、保存版本、初始化，再按“启动”。命令行入口：
+
+```bash
+aeroagentsim run scenarios/templates/security-patrol/scenario.yaml
+aeroagentsim metrics runs/<run-directory>
+aeroagentsim replay runs/<run-directory>
+```
+
+操作员事件从声明的输入流进入共享运行时；行为引擎写入任务状态，运动引擎写入位姿，每个字段只有一个写入者。
+## 黄浦城区布置
+
+坐标来自仓库中的 lite-city 建筑轮廓、屋顶高度和道路，由 `tools/templates/place.py` 生成。屋顶起降点使用实际屋顶高度；站点间飞行先垂直起降，再在 105 米屋顶高度上限之上巡航。名称和业务元数据会随运行固定保存。参见[共享布置指南](../../../docs/examples/city-day.md#huangpu-placements-la3)。

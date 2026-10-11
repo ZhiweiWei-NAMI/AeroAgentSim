@@ -4,7 +4,7 @@ import { exactValue } from '../feeds/format';
 import { entityId } from '../viewport/bindings';
 import { Details } from '../console/Details';
 import { PageState } from '../console/PageState';
-import { entityLabel, readableLabel, stateValue, displayLabel, displayUnit } from './inspection-format';
+import { readableLabel, stateValue, displayLabel, displayUnit } from './inspection-format';
 import { ConceptHelp } from '../console/ConceptHelp';
 import { MomentsList, ChangeList } from '../trace/EntityStory';
 import type { CauseRef } from '../trace/cause-trace';
@@ -18,13 +18,12 @@ export function InspectionPanel({ store, selected, onSeek, onOpenTrace }: { stor
   const chains = [...store.chainInstances.values()].filter(row => includes(row.roles));
   const predicates = [...store.predicateTruth.values()].filter(row => includes(row.roles));
   const fields = [...entity.fields].filter(([id]) => !/(?:digest|hash)/i.test(id));
-  const descriptor = store.header.types.find(row => row.typeId === entity.typeId);
   return <div className="inspection-entity" data-testid="selected-entity-panel">
-    <p className="inspection-eyebrow">{t('Selected entity')}</p>
-    <h2>{entityLabel(entity, locale)}</h2><p className="inspection-type">{displayLabel(descriptor?.displayName, entity.typeId, locale)}</p>
     <section aria-label={t('Selected entity state')}><h3>{t('State')}<ConceptHelp topic={t('Entity state')} description={t('State fields show values recorded at the shared timeline cursor, with their declared units.')} guide="observations.md"/><span>{fields.length}</span></h3>
       {fields.length ? <dl className="inspection-fields">{fields.map(([id, fact]) => {
-        const field = store.header.fields.find(row => row.fieldId === id), value = stateValue(fact.value, locale), unit = displayUnit(field);
+        const field = store.header.fields.find(row => row.fieldId === id), unit = displayUnit(field);
+        const value = Array.isArray(fact.value) && fact.value.length === 0 ? (locale === 'zh-CN' ? '无' : 'None')
+          : fact.value === '' ? (locale === 'zh-CN' ? '空文本' : 'Empty text') : stateValue(fact.value, locale);
         return <div key={id}><dt>{displayLabel(field?.displayName,id,locale)}{unit && <small>{unit}</small>}</dt><dd>{value === undefined ? <Details title={displayLabel(field?.displayName,id,locale)} buttonLabel={t('View value')}><pre>{exactValue(fact.value)}</pre></Details> : <span>{value}</span>}</dd></div>;
       })}</dl> : <p className="inspection-empty">{t('No fields recorded at this moment.')}</p>}
     </section>

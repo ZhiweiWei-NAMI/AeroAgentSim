@@ -15,7 +15,7 @@ from aeroagentsim.engines.common import policies
 from aeroagentsim.packs.common import finite, ns, vec
 from aeroagentsim.platform.plugins import EngineBuild
 
-from .geometry import Polyline, Pose, blockers
+from .geometry import Polyline, Pose, PoseIndex, blockers
 
 FIELDS = tuple(
     "traffic.road." + slot
@@ -150,7 +150,7 @@ class RoadMotion(ContextEngine):
         )
 
     def bootstrap(self, ctx: EngineContext) -> None:
-        poses = {identity: v.pose for identity, v in self.fleet.items()}
+        poses = PoseIndex({identity: v.pose for identity, v in self.fleet.items()})
         for identity, v in sorted(self.fleet.items()):
             if (
                 self.build.manifest.controller(
@@ -169,7 +169,7 @@ class RoadMotion(ContextEngine):
             self.publish(ctx, v)
 
     def corridor(self, identity: str, line: Polyline) -> tuple[str, ...]:
-        poses = {key: v.pose for key, v in self.fleet.items()}
+        poses = PoseIndex({key: v.pose for key, v in self.fleet.items()})
         result: set[str] = set()
         count = math.ceil(line.length / 0.5)
         for i in range(count + 1):
@@ -273,7 +273,7 @@ class RoadMotion(ContextEngine):
     def step(self, ctx: EngineContext) -> None:
         dt = (ctx.now.ns - self.integrated_ns) / 1e9
         self.integrated_ns = ctx.now.ns
-        poses = {key: v.pose for key, v in self.fleet.items()}
+        poses = PoseIndex({key: v.pose for key, v in self.fleet.items()})
         # Retain the committed physical evidence used by the complete fleet query.
         for v in self.fleet.values():
             ctx.get(v.ref, FIELDS[0])

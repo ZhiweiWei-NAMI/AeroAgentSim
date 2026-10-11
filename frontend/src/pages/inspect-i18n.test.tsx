@@ -7,32 +7,12 @@ import { TemporalFeedStore } from '../feeds/temporal-store';
 import { fixtureCommits, fixtureHeader, task } from '../behaviours/extension-fixture';
 import { PlaybackClock } from '../viewport/clock';
 import { InspectionPanel } from './InspectionPanel';
-import { RunTimeline, timelineEvents } from './RunTimeline';
 import { WaitingBanner } from './WaitingBanner';
 import { displayLabel, localizedLabel, entityLabel, stateValue } from './inspection-format';
 
 beforeEach(() => { localStorage.clear(); window.history.replaceState(null, '', '/'); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
 function SwitchLocale() { const { setLocale } = useI18n(); return <button onClick={() => setLocale('zh-CN')}>switch-zh</button>; }
-
-it('updates entity state, conditions, help and exact timeline marker controls without remounting', () => {
-  const store = new TemporalFeedStore(fixtureHeader);
-  fixtureCommits.forEach(commit => store.ingest({...commit,messages:[...commit.messages]}));
-  store.seek('10', 2);
-  const clock = new PlaybackClock('0','10'), seek = vi.fn();
-  const event = { id:'photo-event',kind:'event' as const,schemaId:'traffic.capture.stored',source:'capture',at:fixtureCommits[2].at,payload:{} };
-  store.commits[2].messages.push(event);
-  render(<MemoryRouter><I18nProvider><SwitchLocale/><InspectionPanel store={store} selected={task} onSeek={seek}/><RunTimeline store={store} clock={clock} cut={2} mode="replay" onSeek={seek} onPlay={()=>{}} onLive={()=>{}} onTick={()=>{}}/></I18nProvider></MemoryRouter>);
-  expect(screen.getByText('Missing input')).toBeTruthy();
-  fireEvent.click(screen.getByText('switch-zh'));
-  expect(screen.getByText('缺少输入')).toBeTruthy();
-  expect(screen.getByText('状态')).toBeTruthy();
-  expect(screen.getByRole('region', {name:'选中实体的条件'})).toBeTruthy();
-  expect(screen.getByRole('button', {name:'帮助：实体状态'})).toBeTruthy();
-  expect(screen.queryByText('Missing input')).toBeNull();
-  fireEvent.click(screen.getByRole('button', {name:'跳到 00:00.0 的拍摄'}));
-  expect(seek).toHaveBeenCalledWith(2);
-});
 
 it('uses Chinese descriptor parts and localizes compact values without changing IDs or precision', () => {
   expect(displayLabel('计算节点 / Compute node', 'oo:ComputeNode', 'zh-CN')).toBe('计算节点');
@@ -65,12 +45,3 @@ it('interpolates waiting guidance and uses a drawer callback instead of changing
   expect(screen.queryByRole('button', {name:translate('zh-CN','Introduce an event')})).toBeNull();
 });
 
-it('deduplicates equivalent accident emissions at one exact commit and disables empty playback', () => {
-  const commit = fixtureCommits[2];
-  const event = {id:'a',kind:'event' as const,schemaId:'traffic.accident',source:'ingress',at:commit.at,payload:{}};
-  expect(timelineEvents([{...commit,messages:[event,{...event,id:'b',schemaId:'traffic.inject.accident'}]}])).toHaveLength(1);
-  const store = new TemporalFeedStore(fixtureHeader);
-  render(<MemoryRouter><RunTimeline store={store} clock={new PlaybackClock('0','0')} mode="live" onSeek={()=>{}} onPlay={()=>{}} onLive={()=>{}} onTick={()=>{}}/></MemoryRouter>);
-  expect(screen.getByRole('button', {name:'Play'})).toBeDisabled();
-  expect(screen.getByRole('button', {name:'Follow live'})).toBeDisabled();
-});

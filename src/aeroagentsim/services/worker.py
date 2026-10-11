@@ -19,13 +19,39 @@ from aeroagentsim.scenario.loader import contract, integer, text
 from .storage import RunStorage
 
 
+def close_inherited_network_sockets() -> None:
+    """A forked simulation owns its IPC, never the parent's HTTP transports.
+
+    Keeping a duplicate accepted socket alive after Uvicorn closes it lets a
+    browser reuse that connection and send requests no server will ever read.
+    Close the Python socket objects, so later GC cannot close a reused fd.
+    Multiprocessing's Unix-domain input channel remains owned by this worker.
+    """
+    import gc
+    import socket
+
+    for value in gc.get_objects():
+        if isinstance(value, socket.socket) and value.family in (socket.AF_INET, socket.AF_INET6):
+            value.close()
+
+
 def execute(
     scenario: Scenario,
     directory: Path,
     paused: Any,
     stopped: Any,
     ingress: Connection | None = None,
+    started: Any | None = None,
+    speed: Any | None = None,
 ) -> None:
+    """Run a prepared scenario.
+
+    With ``started``, the worker commits the header and t=0 state, reports
+    ``initialized`` and advances simulated time only after ``started`` is set.
+    ``speed`` (shared double) is the host pacing factor: simulated seconds per
+    wall second, or 0 for as fast as possible. Pacing never changes results.
+    """
+    close_inherited_network_sockets()
     session: RunSession | None = None
     storage = RunStorage(directory)
     wait = threading.Event()
@@ -35,6 +61,11 @@ def execute(
     ingress_done = threading.Event()
     ingress_thread: threading.Thread | None = None
     reported_wait: IngressWait | None = None
+
+    def pace_factor() -> float:
+        if speed is not None:
+            return float(speed.value)
+        return 1.0 if scenario.pacing == "realtime" else 0.0
 
     def on_wait(state: IngressWait | None) -> bool:
         nonlocal reported_wait
@@ -127,6 +158,15 @@ def execute(
                 target=accept_ingress, args=(session, ingress), daemon=True
             )
             ingress_thread.start()
+        if started is not None and not started.is_set():
+            storage.status("initialized")
+            while not started.is_set() and not stopped.is_set():
+                wait.wait(0.02)
+            if not stopped.is_set():
+                storage.status("running")
+        # Initialization time is not simulated time: pace from now.
+        factor = pace_factor()
+        anchor_wall, anchor_ns = time.perf_counter(), session.now_ns
         while session.now_ns < scenario.until_ns and not stopped.is_set():
             if paused.is_set():
                 storage.status("paused")
@@ -137,17 +177,21 @@ def execute(
                     break
                 storage.status("running")
                 # A resume changes only host pacing; physical integration is frozen.
-                session.started_wall = time.perf_counter() - session.now_ns / 1e9
+                anchor_wall, anchor_ns = time.perf_counter(), session.now_ns
             session.run_until(
                 min(session.now_ns + scenario.advance_ns, scenario.until_ns),
                 on_wait=on_wait,
             )
-            if scenario.pacing == "realtime":
-                deadline = session.started_wall + session.now_ns / 1e9
+            if pace_factor() != factor:
+                factor = pace_factor()
+                anchor_wall, anchor_ns = time.perf_counter(), session.now_ns
+            if factor > 0:
+                deadline = anchor_wall + (session.now_ns - anchor_ns) / 1e9 / factor
                 while (
                     time.perf_counter() < deadline
                     and not stopped.is_set()
                     and not paused.is_set()
+                    and pace_factor() == factor
                 ):
                     wait.wait(min(0.02, max(0.0, deadline - time.perf_counter())))
         outcome = "stopped" if stopped.is_set() else "completed"
@@ -170,6 +214,11 @@ def execute(
         if ingress is not None:
             ingress.close()
         if session is not None:
+            # Retain the real source frontier for read-only inspection after
+            # the worker exits. This sidecar never participates in execution.
+            storage._atomic("input-progress.json", {
+                "watermarks": dict(session.simulation.kernel.ingress_watermarks),
+            })
             try:
                 session.close()
             except Exception as exc:  # noqa: BLE001 - retain actual cleanup failure

@@ -5,41 +5,47 @@ HTTP service or any static host pointed at it. It renders only the
 **committed feed** projected from the journal — viewer refresh never
 advances simulation time, and inspector values come from recorded state. Pose animation may interpolate between known samples; it does not write new facts.
 
-## Pages
+## One workbench
 
-| Route | Page | Purpose |
-| --- | --- | --- |
-| `/` | Home (`frontend/src/console/HomePage.tsx`) | Entry page with run gallery and shortcuts. |
-| `/studio` | Studio (`frontend/src/studio/StudioPage.tsx`) | Author scenario, entities, engines and behaviour packages; validate; launch runs. |
-| `/aerograph` | AeroGraph (`frontend/src/pages/AeroGraphPage.tsx`) | Browse the pinned registry: types, effective fields, relations. |
-| `/runs` | Runs (`frontend/src/pages/RunsPage.tsx`) | Live and replay run views: graph + 3D side by side, operate, inspect. |
-| `/inspect` | Inspect (`RunsPage` in inspect-list mode) | Run list and recorded-feed inspection. |
+| Route | Purpose |
+| --- | --- |
+| `/` | The workbench with the scenario gallery: nine ready-made worlds; a thumbnail opens its guide, "Create a project" makes an editable draft. |
+| `/w/<workspace>` | The workbench for one project: configuration, versions, runs, replay, records and comparison in place. |
+| `/agents/<run>` | Agent console: recorded decisions of one run. |
 
-`/studio?guide=1` shows the guided console walkthrough
-(`frontend/src/console/ConsoleGuide.tsx`).
+Earlier addresses (`/studio`, `/runs`, `/runs/<id>`, `/inspect/<id>`, `/aerograph`)
+redirect into the workbench and keep their context (run, mode, cut, selection).
+The URL query carries the context: `run`, `mode=live|replay`, `cut`, `sel`,
+`panel`, `records`, `compare`, `graph`, `contract`. The code is in
+`frontend/src/workbench/`.
 
-## One run, two synchronized views
+## One scene, hovering panels
 
-A run view (`/runs/<id>?mode=live|replay&api=<service-origin>`) shows:
+The 3D stage fills the screen; panels hover over it:
 
-- the **AeroGraph graph**: entities grouped by directory/type with actual
-  committed relations. Nonspatial entities — tasks, coordinators, records —
-  are graph nodes without poses; selecting one opens the inspector and
-  preserves the 3D camera.
-- the **3D viewer**: spatial placement from `RunHeader.presentation` only.
-  The shared selection key is `(runId, epoch, id, generation)`, so a spatial
-  selection highlights the same entity generation in both panes.
+- **top bar**: project, version, run status, simulation time and simulation
+  control (initialize, start, pause, resume, stop, simulation speed);
+- **KPI cards** of the template;
+- **objects** (left): every concrete object grouped by type; non-spatial objects
+  are marked;
+- **inspector** (right): state at the cut, story (moments and changes) and
+  operate (admissible commands with receipts);
+- **dock** (bottom): playback of the record, the timeline with event markers,
+  events, results, photos and "why?" (cause trace);
+- **relation graph** (floating, expandable): entities and committed relations;
+  selecting a node selects the entity everywhere and flies the camera to it.
 
-A single temporal store owns `valid_at`, `known_at`, selection and
-follow/cursor state. Seeking a chain transition selects its actual journal
-cut in both panes; a frozen historical cut stays frozen while the live tail
-grows.
+The shared selection key is `(runId, epoch, id, generation)`, so a selection
+in the graph, list, 3D and inspector is the same entity generation. One
+temporal store owns `valid_at`, `known_at`, selection and follow/cursor
+state; a frozen historical cut shows a "viewing history" banner with "back to
+live" while the live tail grows.
 
 ## Simulation pause vs playback pause
 
 - **Playback pause** stops only the display clock. The live run keeps
   committing; you can keep seeking recorded cuts.
-- **Simulation pause** is a run-control action from the Runs page (see
+- **Simulation pause** is a run-control action in the top bar (see
   [Runs](runs.md)). It freezes host execution at the current committed cut.
 
 Transport errors preserve the last received cut and show the error — never
@@ -61,12 +67,15 @@ simulated progress.
 
 ## Configuration surfaces
 
-- Studio edits scenario YAML, engine configuration (forms from plugin
-  `config_schema`, plus raw JSON) and behaviour packages (structured forms +
-  state-machine graph + raw editors) as one model. Every edit invalidates
-  validation; profile/writer changes create a new run.
-- The demo import copies the shipped scenario and its pinned closure into a
-  workspace draft; it never modifies a running run.
+- Configuration opens as a panel inside the workbench while the 3D draft
+  preview stays visible: template controls, the seven sections (space,
+  objects, resources, tasks, algorithms, components, run) and the file (YAML)
+  edit the same draft. Every edit invalidates validation; issues jump to their
+  section and field.
+- Validate → save version (immutable) → initialize (the world is loaded at
+  t=0 and nothing moves) → start. A run always uses one saved version.
+- Records: replay a run, compare 2–4 runs, or "modify & retry" (a new draft
+  derived from the run's version).
 
 ## Where to go next
 

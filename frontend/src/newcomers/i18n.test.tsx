@@ -7,10 +7,6 @@ import TemplateGallery from './TemplateGallery';
 import CustomizeTemplate from './CustomizeTemplate';
 import {EventFeed} from './EventFeed';
 import {KpiPanel} from './KpiPanel';
-import {SimpleRunView} from './SimpleRunView';
-import {Welcome} from './Welcome';
-import {AlgorithmsPanel} from './AlgorithmsPanel';
-import {RunsLibrary} from './RunsLibrary';
 import {CompareRuns} from './CompareRuns';
 import ExperimentPanel from './ExperimentPanel';
 import {TemporalFeedStore} from '../feeds/temporal-store';
@@ -85,15 +81,6 @@ it('localizes customized knob labels, descriptions and choices while posting ori
   expect(JSON.parse(String(posted?.[1]?.body))).toEqual({knobs: {count: 4, mode: 'rush', enabled: false}});
 });
 
-it('renders the newcomer welcome in Chinese and retains its dismiss behavior', async () => {
-  renderLocalized(<Welcome open />);
-  expect(await screen.findByRole('heading', {name: '开始你的第一次仿真'})).toBeInTheDocument();
-  expect(screen.getByRole('heading', {name: '调整一项设置，再比较结果'})).toBeInTheDocument();
-  expect(screen.getByRole('button', {name: '关闭'})).toBeInTheDocument();
-  fireEvent.click(screen.getByTestId('welcome-close'));
-  expect(localStorage.getItem('aas:welcome-dismissed')).toBe('1');
-});
-
 it('localizes metric labels and explanations without changing metric ids, measurements or units', () => {
   renderLocalized(<KpiPanel values={{tasks_completed: {value: 4, unit: 'count', label: 'Tasks completed'}, mean_task_latency_s: {value: 3, unit: 's', label: 'Mean task latency'}, custom_metric: {value: null, unit: 'kJ', label: 'Special measurement', label_zh: '特殊测量'}}} ids={['tasks_completed', 'mean_task_latency_s', 'custom_metric']} series={[]} />);
   expect(screen.getByText('已完成任务')).toBeInTheDocument();
@@ -135,51 +122,6 @@ it('uses Chinese feed narratives and enum labels, with safe identity replacement
   expect(categoryMetadata('airspace', 'zh-CN').label).toBe('空域');
   expect(severityLabel('critical', 'zh-CN')).toBe('紧急');
   expect(metricHelp('not_a_metric', 'zh-CN')).toBeUndefined();
-});
-
-it('gives timeline markers the same Chinese narrative as the feed and preserves the selected recorded event', () => {
-  const store = new TemporalFeedStore(fixtureHeader);
-  const event: BusinessEvent = {at_ns: '0', category: 'logistics', severity: 'notice', text: 'A parcel arrived.', text_zh: '包裹已送达。', entities: []};
-  store.ingest({...emptyCommit(1), events: [event]}); store.seek('0'); store.liveFollow = false;
-  const onEvent = vi.fn(), onControl = vi.fn(async () => {}), noop = () => {};
-  renderLocalized(<SimpleRunView api={new TemplateApi('http://api.test')} runId={fixtureHeader.runId} store={store} clock={new PlaybackClock('0', '1000000000')} status="paused" mode="live" camera="orbit" onSelect={noop} onEvent={onEvent} onTick={noop} onError={noop} onSeek={noop} onPlay={noop} onLive={noop} onControl={onControl} onInject={noop} hasInjection followingLive onExpert={noop} />);
-  expect(screen.getByText('包裹已送达。')).toBeInTheDocument();
-  const marker = screen.getByRole('button', {name: '跳转到事件：包裹已送达。'});
-  expect(marker).toHaveAttribute('title', '00:00.0｜包裹已送达。');
-  fireEvent.click(marker);
-  expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({text: 'A parcel arrived.', text_zh: '包裹已送达。', cut: 1}));
-  fireEvent.click(screen.getByRole('button', {name: '继续仿真'}));
-  expect(onControl).toHaveBeenCalledWith('resume');
-  expect(screen.getByRole('combobox', {name: '回放速度'})).toBeDisabled();
-  expect(screen.getByRole('button', {name: '输入一个事件'})).toBeInTheDocument();
-});
-
-it('localizes catalog algorithm labels and descriptions while reset removes only the override', async () => {
-  mockFetch({'/v1/algorithms': catalog});
-  const onChange = vi.fn();
-  renderLocalized(<AlgorithmsPanel base="http://api.test" algorithms={{allocation: 'auction'}} onChange={onChange} />);
-  await screen.findByText('载具参与竞价。');
-  expect(screen.getByText('竞价分配')).toBeInTheDocument();
-  expect(screen.getByRole('combobox', {name: '任务分配'})).toBeEnabled();
-  fireEvent.click(screen.getByTestId('algorithm-reset-allocation'));
-  expect(onChange).toHaveBeenLastCalledWith({});
-  fireEvent.mouseDown(screen.getByRole('combobox', {name: '任务分配'}));
-  fireEvent.click(screen.getByTitle('选择最近的空闲无人机。'));
-  expect(onChange).toHaveBeenLastCalledWith({allocation: 'nearest'});
-});
-
-it('localizes run titles, status and results and never offers Live for terminal runs', async () => {
-  mockFetch({'/v1/algorithms': catalog});
-  const runs = [{id: 'done', scenario: 'delivery.yaml', template_title: 'Delivery scenario', template_title_zh: '配送场景', status: 'input_timeout', until_ns: '100', algorithms: {allocation: 'nearest'}, kpis: {tasks_completed: {value: 4, label: 'Tasks completed', unit: 'count'}}}];
-  renderLocalized(<RunsLibrary runs={runs} loaded base="http://api.test" onRefresh={() => {}} />);
-  expect(screen.getByRole('heading', {name: '运行记录'})).toBeInTheDocument();
-  expect(screen.getByRole('link', {name: '配送场景'})).toHaveAttribute('href', expect.stringContaining('mode=replay'));
-  expect(screen.getByText('等待输入超时')).toBeInTheDocument();
-  expect(screen.getByText('已完成任务:')).toBeInTheDocument();
-  expect(await screen.findByText('最近的无人机')).toBeInTheDocument();
-  expect(screen.queryByRole('link', {name: '实时'})).toBeNull();
-  fireEvent.click(screen.getByRole('checkbox', {name: '比较“配送场景”'}));
-  expect(screen.getByText('已选择 1 次运行')).toBeInTheDocument();
 });
 
 it('uses additive titles and choice labels throughout a comparison without altering compared settings', async () => {

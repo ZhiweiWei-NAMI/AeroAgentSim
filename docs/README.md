@@ -2,9 +2,9 @@
 
 AeroAgentSim is a general-purpose simulation platform for experiments involving physical systems, networks, environmental conditions and decision-making agents. AeroGraph types describe the world; replaceable domain plugins evolve it through one shared discrete-event runtime. The console configures experiments and shows their graph and 3D views on the same timeline.
 
-Start with **Home → Choose your scenario**: run or customize parcel / medical delivery, inspection, spraying, air taxi, patrol, traffic-accident response or the mixed city day. The committed registry snapshots and procedural city work without the AeroGraph repository or a separate mesh pack.
+Start in the workbench gallery: open the guide of parcel / medical delivery, inspection, spraying, air taxi, patrol, traffic-accident response, food delivery or the mixed city day, then create a project. The committed registry snapshots and procedural city work without the AeroGraph repository or a separate mesh pack.
 
-After [installation](getting-started/install.md), `aeroagentsim templates` lists all eight templates. `aeroagentsim run-template parcel-delivery` opens an editable Studio workspace; choose **Validate & run → Validate → Run now**, or add `--headless` to run directly in the terminal. `aeroagentsim assets fetch` installs the optional Huangpu city pack 1.1 from release tag `assets-huangpu-city-v1.1`; reload the viewer to use it.
+After [installation](getting-started/install.md), `aeroagentsim templates` lists all nine templates. `aeroagentsim run-template parcel-delivery` opens the project in the workbench; choose **Validate → Save version → Initialize → Start**, or add `--headless` to run directly in the terminal. `aeroagentsim assets fetch` installs the optional Huangpu city pack 1.1 from release tag `assets-huangpu-city-v1.1`; reload the viewer to use it.
 
 ## Get started
 

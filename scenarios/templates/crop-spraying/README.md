@@ -1,3 +1,5 @@
+<!-- guide-language: en-US -->
+
 # Crop spraying
 
 A beginner template: a drone treats a rectangular field in alternating rows,
@@ -50,3 +52,44 @@ roof ceiling. Names and business metadata are pinned with each run. See
 The green field is an explicitly authored demonstration polygon beyond the
 northern dense core, not source OSM cropland. Spraying rows are 5 m above its
 ground plane; the standalone swap pad is at the field edge.
+
+<!-- guide-language: zh-CN -->
+
+# 农田喷洒作业
+
+无人机沿矩形地块逐行往返喷洒，电量不足时到田边换电，风速过大时暂停喷洒。
+
+## 场景过程
+
+- 一个喷洒任务使用 `coverage` 航路，以往返行覆盖地块。
+- 电池容量只支持部分作业；电量低于阈值时，无人机返回 `home-pad`，由能量引擎换入新电池。
+- 90–125 秒安排 8 米/秒阵风，超过 5 米/秒喷洒风速上限，喷洒暂停至阵风结束。
+
+## 控制项
+
+| 控制项 | 含义 | 默认值 |
+| --- | --- | --- |
+| `fleet_size` | 飞行器数量（1–12） | 1 |
+| `wind_speed` | 常态风速，米/秒（0–15） | 2.0 |
+| `row_spacing` | 喷洒行间距，米（10–80） | 30 |
+
+## 衡量指标
+
+`tasks_completed`、`mean_task_latency_s`、`energy_used_kj`、`weather_holds`、`separation_conflicts`，以及 `spraying_distance_m` 和 `battery_swaps`。
+
+## 运行与查看
+
+创建项目、配置、校验、保存版本、初始化，再按“启动”。命令行入口：
+
+```bash
+aeroagentsim run scenarios/templates/crop-spraying/scenario.yaml
+aeroagentsim metrics runs/<run-directory>
+aeroagentsim replay runs/<run-directory>
+```
+
+运动、能量、天气、空域和任务状态各自只有一个写入引擎，共享离散事件时钟，结果可回放。
+## 黄浦城区布置
+
+坐标来自仓库中的 lite-city 建筑轮廓、屋顶高度和道路，由 `tools/templates/place.py` 生成。屋顶起降点使用实际屋顶高度；站点间飞行先垂直起降，再在 105 米屋顶高度上限之上巡航。名称和业务元数据会随运行固定保存。参见[共享布置指南](../../../docs/examples/city-day.md#huangpu-placements-la3)。
+
+绿色地块是在密集城区以北明确编写的演示多边形，并非来自 OSM 的真实农田。喷洒航行高度为地面上方 5 米，独立换电平台位于田边。

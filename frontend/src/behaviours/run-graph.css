@@ -38,6 +38,7 @@
 .eg-edge-group{stroke-dasharray:5 3;stroke-opacity:.8}
 .eg-edge-label{font:10px var(--csl-font,system-ui);fill:#9a5a12;paint-order:stroke;stroke:#fff;stroke-width:3px;pointer-events:none}
 .eg-node-highlight .eg-node-dot{stroke:#e78123;stroke-width:2}
+.eg-node{scroll-margin:12px}
 .eg-canvas{flex:none}
 .eg-canvas,.eg-svg{min-height:300px}
 .dual-graph-pane{min-width:0}
