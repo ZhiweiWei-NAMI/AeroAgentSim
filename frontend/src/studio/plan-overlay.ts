@@ -416,7 +416,7 @@ export class PlanOverlayView {
 
   private thinLine(points: THREE.Vector3[], color: string, dashed = false) {
     const geometry = new THREE.BufferGeometry().setFromPoints(points); this.geometries.add(geometry);
-    const options = { color, transparent: true, depthTest: false, depthWrite: false, toneMapped: false, blending: this.overlay?.tone === 'proposed' ? THREE.AdditiveBlending : THREE.NormalBlending };
+    const options: THREE.LineBasicMaterialParameters = { color, transparent: true, depthTest: false, depthWrite: false, toneMapped: false, blending: this.overlay?.tone === 'proposed' ? THREE.AdditiveBlending : THREE.NormalBlending };
     const material = dashed ? new THREE.LineDashedMaterial({ ...options, dashSize: 0.2, gapSize: 0.16 }) : new THREE.LineBasicMaterial(options);
     this.materials.add(material);
     const line = new THREE.Line(geometry, material); line.computeLineDistances(); line.renderOrder = 102; line.frustumCulled = false;
