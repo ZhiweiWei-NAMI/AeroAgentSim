@@ -85,3 +85,26 @@ def test_headless_camera_requires_the_built_console(tmp_path: Path) -> None:
     # a missing build is reported, never replaced by another renderer.
     with pytest.raises(FileNotFoundError, match="npm run build"):
         private_console(tmp_path / "dist")
+
+
+def test_headless_camera_replaces_a_stopped_private_console(tmp_path: Path) -> None:
+    import threading
+    import urllib.request
+
+    from aeroagentsim.observations import committed
+
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<!doctype html><title>console</title>")
+    first = committed.private_console(dist)
+    # A console whose server thread stopped (e.g. its loop crashed) must not
+    # be handed to later captures; they would see connection refused.
+    stopped = threading.Thread(target=lambda: None)
+    stopped.start()
+    stopped.join()
+    committed._PRIVATE_CONSOLE[dist.resolve()] = (first, stopped)
+    second = committed.private_console(dist)
+    assert second != first
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(second + "/", timeout=30) as response:
+        assert response.status == 200

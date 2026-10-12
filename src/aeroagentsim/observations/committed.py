@@ -19,7 +19,7 @@ from .renderer import BrowserRenderer, RenderedFrame
 
 
 FRONTEND_DIST = Path(__file__).resolve().parents[3] / 'frontend' / 'dist'
-_PRIVATE_CONSOLE: dict[Path, str] = {}
+_PRIVATE_CONSOLE: dict[Path, tuple[str, threading.Thread]] = {}
 
 
 def capture_url(console: str) -> str:
@@ -38,8 +38,10 @@ def private_console(frontend: Path) -> str:
     """
     frontend = frontend.resolve()
     with _PRIVATE_LOCK:
-        if frontend in _PRIVATE_CONSOLE:
-            return _PRIVATE_CONSOLE[frontend]
+        cached = _PRIVATE_CONSOLE.get(frontend)
+        # A console whose server thread has stopped is replaced, never reused.
+        if cached is not None and cached[1].is_alive():
+            return cached[0]
         if not (frontend / 'index.html').is_file():
             raise FileNotFoundError(
                 f'camera needs the built console at {frontend} (cd frontend && npm run build)')
@@ -54,14 +56,15 @@ def private_console(frontend: Path) -> str:
         server = uvicorn.Server(uvicorn.Config(
             create_app(root / 'runs', frontend=frontend, studio_root=root / 'workspaces'),
             host='127.0.0.1', port=port, log_level='warning'))
-        threading.Thread(target=server.run, name='camera-console', daemon=True).start()
+        thread = threading.Thread(target=server.run, name='camera-console', daemon=True)
+        thread.start()
         deadline = time.monotonic() + 30
         while not server.started:
-            if time.monotonic() > deadline or not threading.main_thread().is_alive():
+            if time.monotonic() > deadline or not thread.is_alive() or not threading.main_thread().is_alive():
                 raise TimeoutError('private camera console did not start')
             time.sleep(0.05)
-        _PRIVATE_CONSOLE[frontend] = f'http://127.0.0.1:{port}'
-        return _PRIVATE_CONSOLE[frontend]
+        _PRIVATE_CONSOLE[frontend] = (f'http://127.0.0.1:{port}', thread)
+        return _PRIVATE_CONSOLE[frontend][0]
 
 
 def committed_scene(source: Store, request: CaptureRequest, header: dict[str, Any]) -> dict[str, Any]:
