@@ -29,3 +29,18 @@ def test_places_are_shipped_and_distance_is_horizontal() -> None:
     assert all(r["position"][2] == 0 for r in rows if r["level"] == "street")
     rows[0]["position"][0] = 999
     assert place_catalogue()[0]["position"][0] != 999
+
+
+def test_capability_index_is_compact_and_topics_have_strict_schemas() -> None:
+    import json
+    from aeroagentsim.assistant.capabilities import capabilities
+    from aeroagentsim.authoring.templates import TemplateRegistry
+    from aeroagentsim.services.algorithm_catalog import discover_algorithm_catalog
+    templates = TemplateRegistry()
+    installed = discover_algorithm_catalog()
+    overview = capabilities(None, templates=templates, algorithms=installed)
+    assert len(json.dumps(overview, ensure_ascii=False, separators=(",", ":")).encode()) < 6144
+    assert "set_cooperation" in overview["operations"]["responsibilities"]
+    details = capabilities("participants", templates=templates, algorithms=installed)
+    assert "meal_courier" in details["roles"]
+    assert all(s["parameters"]["additionalProperties"] is False for s in details["operations"])
