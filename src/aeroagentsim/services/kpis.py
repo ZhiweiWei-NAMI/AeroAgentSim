@@ -38,6 +38,11 @@ METRICS = {
     "award_committed": ("count", "Awards committed"),
     "captures_stored": ("count", "Captures stored"),
     "uploads_accepted": ("count", "Uploads accepted"),
+    "incidents_occurred": ("count", "Incidents occurred / 已发生事件"),
+    "incidents_noticed": ("count", "Incidents noticed / 已发现事件"),
+    "incidents_photographed": ("count", "Incidents photographed / 已拍摄事件"),
+    "incident_response_s": ("s", "Mean incident response / 平均事件响应时间"),
+    "handoffs_completed": ("count", "Handoffs completed / 已完成交接"),
 }
 
 
@@ -88,6 +93,11 @@ class KPIProjector:
         self.position_observed = False
         self.capture_incidents: dict[str, str] = {}
         self.actor_incidents: dict[str, str] = {}
+        self.coop_occurrences: dict[str, int] = {}
+        self.coop_noticed: set[str] = set()
+        self.coop_photographed: set[str] = set()
+        self.coop_handoffs: set[str] = set()
+        self.coop_response_s: list[float] = []
         # On-time measurement uses only deadlines committed in the journal
         # (e.g. logistics transition events carrying deadline_ns). Tasks whose
         # deadline was never committed stay unmeasured instead of being inferred.
@@ -132,6 +142,11 @@ class KPIProjector:
             "position_observed": self.position_observed,
             "capture_incidents": dict(self.capture_incidents),
             "actor_incidents": dict(self.actor_incidents),
+            "coop_occurrences": dict(self.coop_occurrences),
+            "coop_noticed": sorted(self.coop_noticed),
+            "coop_photographed": sorted(self.coop_photographed),
+            "coop_handoffs": sorted(self.coop_handoffs),
+            "coop_response_s": list(self.coop_response_s),
             "deadlines": dict(self.deadlines),
             "delivered": {
                 order: [at_ns, on_time]
@@ -144,7 +159,14 @@ class KPIProjector:
         """Restore state produced by :meth:`cursor`; unknown versions raise."""
         if not isinstance(cursor, dict) or cursor.get("version") != 1:
             raise ValueError("KPI cursor: unsupported checkpoint version")
-        self.counts = {name: int(cursor["counts"][name]) for name in self.counts}
+        self.counts = {
+            name: int(cursor["counts"][name]) for name in self.counts
+            if name in cursor["counts"]
+        }
+        # Older checkpoints predate cooperation and have no such events.
+        for name in ("incidents_occurred", "incidents_noticed", "incidents_photographed", "handoffs_completed"):
+            if name not in self.counts:
+                self.counts[name] = 0
         self.created = {str(k): int(v) for k, v in cursor["created"].items()}
         self.assigned = set(cursor["assigned"])
         self.completed = set(cursor["completed"])
@@ -172,6 +194,12 @@ class KPIProjector:
         self.actor_incidents = {
             str(k): str(v) for k, v in cursor["actor_incidents"].items()
         }
+        if "coop_occurrences" in cursor:
+            self.coop_occurrences = {str(k): int(v) for k, v in cursor["coop_occurrences"].items()}
+            self.coop_noticed = set(cursor["coop_noticed"])
+            self.coop_photographed = set(cursor["coop_photographed"])
+            self.coop_handoffs = set(cursor["coop_handoffs"])
+            self.coop_response_s = [float(v) for v in cursor["coop_response_s"]]
         self.deadlines = {str(k): int(v) for k, v in cursor["deadlines"].items()}
         self.delivered = {
             str(order): (int(at_ns), on_time)
@@ -289,7 +317,32 @@ class KPIProjector:
         )
 
     def _event(self, schema: str, payload: dict[str, Any], at_ns: int) -> None:
-        if schema == "lowalt.task.created":
+        if schema == "lowalt.incident.occurred":
+            incident = identity(payload["incident"])
+            if incident not in self.coop_occurrences:
+                self.coop_occurrences[incident] = at_ns
+                self.counts["incidents_occurred"] += 1
+        elif schema == "lowalt.incident.noticed":
+            incident = identity(payload["incident"])
+            if incident not in self.coop_noticed:
+                self.coop_noticed.add(incident)
+                self.counts["incidents_noticed"] += 1
+        elif schema == "lowalt.incident.photographed":
+            incident = identity(payload["incident"])
+            if incident not in self.coop_photographed:
+                self.coop_photographed.add(incident)
+                self.counts["incidents_photographed"] += 1
+                if incident in self.coop_occurrences:
+                    response = (at_ns - self.coop_occurrences[incident]) / 1e9
+                    if response < 0:
+                        raise ValueError("KPI incident response: photograph precedes occurrence")
+                    self.coop_response_s.append(response)
+        elif schema == "lowalt.handoff.transferred":
+            handoff = identity(payload["handoff"])
+            if handoff not in self.coop_handoffs:
+                self.coop_handoffs.add(handoff)
+                self.counts["handoffs_completed"] += 1
+        elif schema == "lowalt.task.created":
             self._created("lowalt:" + identity(payload["task"]), at_ns)
         elif schema == "lowalt.task.assigned":
             task = "lowalt:" + identity(payload["task"])
@@ -405,6 +458,7 @@ class KPIProjector:
 
     def snapshot(self) -> dict[str, Any]:
         values: dict[str, Any] = dict(self.counts)
+        values["incident_response_s"] = sum(self.coop_response_s) / len(self.coop_response_s) if self.coop_response_s else None
         values["completion_rate"] = (
             self.counts["tasks_completed"] / self.counts["tasks_created"]
             if self.counts["tasks_created"]

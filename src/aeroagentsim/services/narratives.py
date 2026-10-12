@@ -104,6 +104,12 @@ _NUMBERED_LABEL = re.compile(
     "(" + "|".join(re.escape(name) for name in _NUMBERED_LABELS_ZH) + r") ([A-Z]?\d+)\Z"
 )
 _ENUMS_ZH = {
+    "choice": {
+        "respond_now": "立即响应", "request_handoff": "请求交接",
+        "finish_then_respond": "完成任务后响应", "report_only": "仅上报",
+        "accept": "接受", "decline": "拒绝",
+    },
+    "mode": {"prescribed": "预设规则", "agent": "智能体决策"},
     "algorithm": {
         "nearest": "就近分配", "auction": "竞价分配", "hungarian": "批量最优匹配",
         "llm": "语言模型智能体", "straight": "直线航线", "corridor_astar": "安全走廊航线",

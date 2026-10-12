@@ -168,7 +168,9 @@ def merge_contract_snapshot(snapshot: dict) -> dict:
     """Union compiled snapshots, retaining the fragment's source provenance."""
     fragment = json.loads(FRAGMENT_PATH.read_text())
     result = copy.deepcopy(snapshot)
-    for group in ("types", "fields", "messages", "relations"):
+    for group in ("types", "fields", "messages", "schemas"):
+        if group not in fragment["registry"]:
+            continue
         rows = result["registry"].setdefault(group, [])
         existing = {row["id"]: row for row in rows}
         for row in fragment["registry"].get(group, []):
@@ -244,7 +246,7 @@ def expand(document: dict) -> None:
                 entities[row["id"]] = row
         bindings = document["bindings"]
         for name, fields in (("Incident", INCIDENT_FIELDS), ("Handoff", HANDOFF_FIELDS)):
-            rule = {"writer": engine_id, "type": "lowalt:" + name, "ids": "|".join([]), "fields": list(fields)}
+            rule = {"writer": engine_id, "type": "lowalt:" + name, "fields": list(fields)}
             # Exact IDs allow separate task engines to own separate incidents.
             for incident in coop["incidents"]:
                 row = {**rule, "ids": incident["id"] if name == "Incident" else "handoff-" + incident["id"]}
@@ -266,6 +268,10 @@ def expand(document: dict) -> None:
             declarations.setdefault(schema, copy.deepcopy(value))
         if "provider" in coop:
             providers.append(coop["provider"])
+    if any("cooperation" in cfg for _, cfg in task_engines):
+        from .incident_capture import expand as expand_capture
+
+        expand_capture(document)
     if providers:
         if any(provider != providers[0] for provider in providers):
             raise ValueError("cooperation.provider: all task engines must use the same provider / 所有任务引擎须使用同一模型配置")

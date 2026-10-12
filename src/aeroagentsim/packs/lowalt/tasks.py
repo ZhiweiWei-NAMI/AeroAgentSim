@@ -27,7 +27,7 @@ from aeroagentsim.packs.common import distance, finite, ns, read, vec
 from aeroagentsim.platform.plugins import EngineBuild
 
 from .core import SNAPSHOT_FIELDS, SnapshotIndex, refs, snapshot
-from .overlay import TASK_KINDS
+from .overlay import COOP_OPTIONS, HANDOFF_FIELDS, INCIDENT_FIELDS, TASK_KINDS
 
 TASK_FIELDS = (
     "lowalt.task_state",
@@ -132,8 +132,27 @@ class Flight:
     cruise_altitude_m: float | None = None
     avoidance_resume_goal: tuple[float, float, float] | None = None
     avoidance_resume_purpose: str = "task"
+    control_resume_purpose: str = "task"
     egress_waypoint: tuple[float, float, float] | None = None
     route_blocked_reason: str | None = None
+
+
+@dataclass
+class Incident:
+    ref: EntityRef
+    config: dict[str, Any]
+    phase: str = "pending"
+    responder: str | None = None
+    choice: str | None = None
+    dwell_until_ns: int | None = None
+    job: Job | None = None
+    helper: str | None = None
+    point: str | None = None
+    handoff_phase: str = "idle"
+    candidates: tuple[str, ...] = ()
+    offers: dict[str, bool] | None = None
+    sources: tuple[str, ...] = ()
+    last_event_key: str | None = None
 
 
 class LowaltTasks(ContextEngine):
@@ -173,6 +192,19 @@ class LowaltTasks(ContextEngine):
         self.flights = {r.id: Flight(r) for r in refs(build, "lowalt:UAV")}
         self.jobs: dict[str, Job] = {}
         self.by_id = {r.id: r for r in build.entities}
+        from .cooperation import EVENTS, validate_config, validate_vehicle_task_kinds
+
+        validate_vehicle_task_kinds(self.cfg, vehicles=set(self.flights))
+        self.cooperation = self.cfg.get("cooperation")
+        self.incidents: dict[str, Incident] = {}
+        self.coop_pending: set[tuple[str, str, str]] = set()
+        self.coop_decisions: dict[str, tuple[str, str, str]] = {}
+        if self.cooperation is not None:
+            validate_config(self.cooperation, vehicles=set(self.flights))
+            self.incidents = {
+                row["id"]: Incident(self.by_id[row["id"]], row)
+                for row in self.cooperation["incidents"]
+            }
         self.generators = self._configured_generators()
         self.pending: deque[Flight] = deque()
         self.moves: dict[str, Flight] = {}
@@ -193,6 +225,8 @@ class LowaltTasks(ContextEngine):
         self.snapshot_ctx: EngineContext | None = None
         self.snapshot_state: Snapshot | None = None
         produced = TASK_FIELDS + CONSTANT_FIELDS + ("lowalt.payload_kg",)
+        if self.cooperation is not None:
+            produced += INCIDENT_FIELDS + HANDOFF_FIELDS
         if self.food_enabled:
             produced += FOOD_FIELDS
         super().__init__(
@@ -214,6 +248,7 @@ class LowaltTasks(ContextEngine):
                             "lowalt.zone_dynamic",
                         )
                         + (FOOD_FIELDS if self.food_enabled else ())
+                        + (INCIDENT_FIELDS + HANDOFF_FIELDS if self.cooperation is not None else ())
                     )
                 ),
                 emits=tuple(
@@ -258,18 +293,22 @@ class LowaltTasks(ContextEngine):
                     )
                     if self.food_enabled
                     else ()
+                ) + (
+                    tuple(EVENTS)
+                    + ("lowalt.coop.decision_request",)
+                    if self.cooperation is not None else ()
                 ),
                 subscribes=("lowalt.events", "lowalt.allocations")
                 + (
                     ("langgraph-records",)
-                    if self.algorithms["allocation"] == "llm"
+                    if self.algorithms["allocation"] == "llm" or (self.cooperation is not None and "provider" in self.cooperation)
                     else ()
-                ),
+                ) + (("lowalt.cooperation",) if self.cooperation is not None else ()),
                 message_targets=(
                     "lowalt.events",
                     "lowalt.allocations",
                     self.motion["target"],
-                ),
+                ) + (("lowalt.cooperation",) if self.cooperation is not None else ()),
                 lifecycle=True,
                 rng_streams=("arrivals", "sites"),
             ),
@@ -367,6 +406,16 @@ class LowaltTasks(ContextEngine):
             else:
                 ctx.wake_at(release, {"lowalt_tasks": "release"})
         ctx.wake_at(self.tick, {"lowalt_tasks": "tick"})
+        for incident in self.incidents.values():
+            at = round(incident.config["at_s"] * 1e9)
+            if at == ctx.now.ns:
+                ctx.ops.append(ScheduleTimer(
+                    "lowalt/cooperation/" + incident.ref.id,
+                    Instant(at, ctx.now.microstep + 1),
+                    {"lowalt_cooperation": incident.ref.id}, tuple(ctx.inputs),
+                ))
+            else:
+                ctx.wake_at(at, {"lowalt_cooperation": incident.ref.id})
 
     def _event(self, ctx: EngineContext, phase: str, **payload: Any) -> None:
         self._business_event(ctx, "lowalt.task." + phase, payload)
@@ -376,7 +425,10 @@ class LowaltTasks(ContextEngine):
         *, sources: tuple[str, ...] = (),
     ) -> str | None:
         job = self.jobs.get(payload.get("task", ""))
+        incident = self.incidents.get(payload.get("incident", ""))
         links = list(sources)
+        if incident is not None:
+            links.extend(incident.sources)
         if job is not None and job.operator_messages:
             links.extend(job.operator_messages)
             if job.last_message is not None:
@@ -391,9 +443,13 @@ class LowaltTasks(ContextEngine):
             provenance = {"message_ids": list(dict.fromkeys(links)), "event_key": event_key}
             if job is not None and job.last_event_key is not None:
                 provenance["parent_event_keys"] = [job.last_event_key]
+            if incident is not None and incident.last_event_key is not None:
+                provenance.setdefault("parent_event_keys", []).append(incident.last_event_key)
             payload = {**payload, "provenance": provenance}
             if job is not None:
                 job.last_event_key = event_key
+            if incident is not None:
+                incident.last_event_key = event_key
         else:
             event_key = None
         ctx.emit(schema, payload, topic="lowalt.events")
@@ -596,7 +652,8 @@ class LowaltTasks(ContextEngine):
                 # the aircraft idle and leave the reserve recall open forever.
                 flight.avoidance_resume_purpose = "charge"
                 flight.avoidance_resume_goal = flight.goal
-            if flight.purpose == "task":
+            if flight.purpose in {"task", "incident_response", "handoff_drop", "handoff_pickup"}:
+                flight.control_resume_purpose = flight.purpose
                 if flight.work_active:
                     flight.saved_route = (
                         flight.paused_route
@@ -673,7 +730,10 @@ class LowaltTasks(ContextEngine):
                         flight.waypoint = None
                         flight.command_id = None
                         if status != "succeeded" and not flight.replan:
-                            if flight.job is not None:
+                            if flight.purpose in {"incident_response", "handoff_drop", "handoff_pickup"}:
+                                flight.replan = True
+                                flight.route = ()
+                            elif flight.job is not None:
                                 job = flight.job
                                 self._state(ctx, job, "failed")
                                 self._event(
@@ -684,7 +744,8 @@ class LowaltTasks(ContextEngine):
                                     reason=str(data.get("result", status)),
                                 )
                                 flight.job = None
-                            flight.route, flight.goal = (), None
+                            if not flight.replan:
+                                flight.route, flight.goal = (), None
                 if status in {"succeeded", "failed", "rejected", "canceled"}:
                     self.moves.pop(cid)
         for flight in self.flights.values():
@@ -694,6 +755,12 @@ class LowaltTasks(ContextEngine):
                 self._submit(ctx, flight, None)
         for delivery in ctx.inbox:
             payload = cast(dict[str, Any], thaw(delivery.message.payload))
+            if self.cooperation is not None:
+                if delivery.message.source == self.build.id and payload.get("incident") in self.incidents:
+                    incident = self.incidents[payload["incident"]]
+                    incident.sources = (delivery.message.id,)
+                if self._coop_input(ctx, delivery.message.schema_id, payload, delivery.message.id):
+                    continue
             if delivery.message.source == self.build.id and "task" in payload:
                 job = self.jobs.get(payload["task"])
                 if job is not None and job.operator_messages:
@@ -739,6 +806,15 @@ class LowaltTasks(ContextEngine):
                     ctx, tuple(Assignment(row["task"], row["vehicle"]) for row in rows)
                 )
         timers = [thaw(d.payload) for d in ctx.dirty if d.kind == "timer"]
+        for payload in timers:
+            if "lowalt_cooperation" in payload:
+                incident = self.incidents[payload["lowalt_cooperation"]]
+                if incident.phase == "pending":
+                    self._coop_state(ctx, incident, "occurred")
+                    self._business_event(ctx, "lowalt.incident.occurred", {
+                        "incident": incident.ref.id, "kind": incident.config["kind"],
+                        "position": incident.config["position"],
+                    })
         if any(
             payload in ({"lowalt_tasks": "tick"}, {"lowalt_tasks": "release"})
             for payload in timers
@@ -748,11 +824,437 @@ class LowaltTasks(ContextEngine):
             ctx.wake_at(ctx.now.ns + self.tick, {"lowalt_tasks": "tick"})
 
     def _eligible(self, ctx: EngineContext, job: Job, flight: Flight) -> bool:
+        overrides = self.cfg.get("vehicle_task_kinds", {})
+        if flight.vehicle.id in overrides:
+            return read(ctx, job.ref, "lowalt.task_kind") in overrides[flight.vehicle.id]
         if "vehicle_kinds" not in self.cfg:
             return True
         kind = read(ctx, job.ref, "lowalt.task_kind")
         vehicle_class = read(ctx, flight.vehicle, "lowalt.vehicle_class")
         return kind in self.cfg["vehicle_kinds"][vehicle_class]
+
+    def _coop_state(self, ctx: EngineContext, incident: Incident, phase: str) -> None:
+        incident.phase = phase
+        ctx.set(incident.ref, "lowalt.incident_state", phase)
+
+    def _handoff_state(self, ctx: EngineContext, incident: Incident, phase: str) -> None:
+        incident.handoff_phase = phase
+        ctx.set(self.by_id["handoff-" + incident.ref.id], "lowalt.handoff_state", phase)
+
+    def _handoff_payload(self, incident: Incident) -> dict[str, Any]:
+        assert incident.job is not None and incident.responder is not None
+        return {"incident": incident.ref.id, "handoff": "handoff-" + incident.ref.id,
+                "task": incident.job.ref.id, "requester": incident.responder}
+
+    def _coop_reserved(self, vehicle: str) -> bool:
+        return any(
+            (incident.responder == vehicle and incident.phase not in {"photographed", "reported"})
+            or (incident.helper == vehicle and incident.handoff_phase == "accepted")
+            or (incident.helper == vehicle and incident.handoff_phase == "dropped")
+            or (vehicle in incident.candidates and incident.handoff_phase == "requested")
+            for incident in self.incidents.values()
+        )
+
+    def _coop_distance(self, ctx: EngineContext, vehicle: str, position: Any) -> float:
+        point = vec(read(ctx, self.by_id[vehicle], "lowalt.position"))
+        return ((point[0] - position[0]) ** 2 + (point[1] - position[1]) ** 2) ** 0.5
+
+    def _coop_options(self, ctx: EngineContext, incident: Incident) -> tuple[list[str], dict[str, str]]:
+        assert self.cooperation is not None and incident.responder is not None
+        flight = self.flights[incident.responder]
+        rules = self.cooperation["responder"]["rules"]
+        job = flight.job
+        blocked: dict[str, str] = {}
+        if job is not None:
+            kind = read(ctx, job.ref, "lowalt.task_kind")
+            if kind in rules["protected_task_kinds"]:
+                for option in ("respond_now", "request_handoff"):
+                    blocked[option] = f"Protected task kind {kind} / 受保护的任务类别 {kind}"
+            elif flight.suspended is not None:
+                for option in ("respond_now", "request_handoff"):
+                    blocked[option] = "A suspended task is already carried / 已有暂停任务"
+            elif rules["require_replacement"]:
+                blocked["respond_now"] = "Replacement required before interrupting this task / 中断任务前需要接替者"
+            if job.phase not in {"assigned", "started", "picked_up"}:
+                blocked["request_handoff"] = "Task is not transferable in its current state / 当前任务状态不允许交接"
+        else:
+            blocked["request_handoff"] = "No current task to transfer / 当前没有可交接任务"
+            blocked["finish_then_respond"] = "No current task to finish / 当前没有待完成任务"
+        if not self.cooperation["handoff_points"] and job is not None and job.phase == "picked_up":
+            blocked["request_handoff"] = "No handoff point is configured / 未配置交接点"
+        if flight.purpose != "task" or read(ctx, flight.vehicle, "lowalt.charging") or read(ctx, flight.vehicle, "lowalt.weather_held") or read(ctx, flight.vehicle, "lowalt.returning_to_charge"):
+            for option in COOP_OPTIONS[:-1]:
+                blocked.setdefault(option, "Vehicle is under flight or charging control / 无人机正在接受飞行或充电控制")
+        battery = read(ctx, flight.vehicle, "lowalt.soc") * 100
+        reason = None
+        if battery < rules["min_battery_pct"]:
+            reason = f"Battery {battery:.1f}% below minimum {rules['min_battery_pct']}% / 电量低于最低要求"
+        elif self._coop_distance(ctx, flight.vehicle.id, incident.config["position"]) > rules["max_response_distance_m"]:
+            reason = "Incident beyond maximum response distance / 事件超出最大响应距离"
+        if reason is not None:
+            for option in COOP_OPTIONS[:-1]:
+                blocked[option] = reason + ("; " + blocked[option] if option in blocked else "")
+        return [option for option in COOP_OPTIONS if option not in blocked], blocked
+
+    def _coop_ordered(self, allowed: list[str], *, after_handoff: bool = False) -> str:
+        assert self.cooperation is not None
+        order = self.cooperation["responder"]["order"]
+        if after_handoff:
+            order = order[order.index("request_handoff") + 1:] if "request_handoff" in order else order
+            order = [option for option in order if option != "request_handoff"]
+        return next((option for option in order if option in allowed), "report_only")
+
+    def _coop_request(self, ctx: EngineContext, incident: Incident, vehicle: str, role: str, allowed: list[str], constraints: list[str]) -> None:
+        assert self.cooperation is not None
+        flight = self.flights[vehicle]
+        job = flight.job
+        state = {
+            "vehicle": vehicle,
+            "current_task": job.ref.id if job is not None else None,
+            "task_kind": read(ctx, job.ref, "lowalt.task_kind") if job is not None else None,
+            "task_state": job.phase if job is not None else None,
+            "payload_kg": read(ctx, flight.vehicle, "lowalt.payload_kg"),
+            "payload_capacity_kg": read(ctx, flight.vehicle, "lowalt.payload_capacity_kg"),
+            "battery_pct": read(ctx, flight.vehicle, "lowalt.soc") * 100,
+            "charging": read(ctx, flight.vehicle, "lowalt.charging"),
+            "distance_to_incident_m": self._coop_distance(ctx, vehicle, incident.config["position"]),
+            "distance_to_requester_m": self._coop_distance(ctx, vehicle, vec(read(ctx, self.by_id[incident.responder], "lowalt.position"))),
+        }
+        if incident.job is not None:
+            state["requested_task"] = incident.job.ref.id
+            state["requested_payload_kg"] = read(ctx, incident.job.ref, "lowalt.task_payload_kg")
+        self.coop_pending.add((incident.ref.id, vehicle, role))
+        ctx.emit("lowalt.coop.decision_request", {
+            "incident": incident.ref.id, "vehicle": vehicle, "role": role,
+            "goal": self.cooperation["responder" if role == "responder" else "helpers"]["goal"],
+            "state_json": json.dumps(state, ensure_ascii=False, allow_nan=False),
+            "allowed": allowed, "constraints": constraints,
+        }, topic="lowalt.cooperation")
+
+    def _coop_input(self, ctx: EngineContext, schema: str, payload: dict[str, Any], source: str) -> bool:
+        if schema == "lowalt.coop.decision_result":
+            key = (payload["incident"], payload["vehicle"], payload["role"])
+            if key not in self.coop_pending:
+                return True
+            self.coop_pending.remove(key)
+            incident = self.incidents[key[0]]
+            incident.sources = (source,)
+            if key[2] == "responder":
+                self._coop_decide(ctx, incident, payload["choice"], payload["reason"])
+            else:
+                self._coop_offer(ctx, incident, key[1], payload["choice"], payload["reason"])
+            return True
+        if schema == "aas.langgraph.record" and payload["decision_id"].startswith("lowalt_cooperation/"):
+            if payload["phase"] == "observation":
+                request = json.loads(payload["data_json"])["initial"]["trigger"]["payload"]
+                key = (request["incident"], request["vehicle"], request["role"])
+                if key in self.coop_pending:
+                    self.coop_decisions[payload["decision_id"]] = key
+            elif payload["phase"] == "failure":
+                key = self.coop_decisions.pop(payload["decision_id"], None)
+                if key is not None and key in self.coop_pending:
+                    failure = json.loads(payload["data_json"])
+                    self._coop_input(ctx, "lowalt.coop.decision_result", {
+                        "incident": key[0], "vehicle": key[1], "role": key[2], "choice": "",
+                        "reason": f"Model failure / 模型失败: {failure['code']}: {failure['message']}",
+                    }, source)
+            return True
+        return False
+
+    def _coop_tick(self, ctx: EngineContext) -> None:
+        assert self.cooperation is not None
+        for flight in self.flights.values():
+            self._coop_followup(ctx, flight)
+        for incident in self.incidents.values():
+            if incident.phase != "occurred" or incident.responder is not None or read(ctx, incident.ref, "lowalt.incident_state") != "occurred":
+                continue
+            for vehicle in self.cooperation["watchers"]["vehicles"]:
+                if self._coop_reserved(vehicle):
+                    continue
+                gap = self._coop_distance(ctx, vehicle, incident.config["position"])
+                if gap > self.cooperation["watchers"]["notice_radius_m"]:
+                    continue
+                incident.responder = vehicle
+                self._coop_state(ctx, incident, "noticed")
+                ctx.set(incident.ref, "lowalt.incident_noticed_by", vehicle)
+                ctx.set(incident.ref, "lowalt.incident_responder", vehicle)
+                self._business_event(ctx, "lowalt.incident.noticed", {"incident": incident.ref.id, "vehicle": vehicle, "distance_m": gap})
+                allowed, blocked = self._coop_options(ctx, incident)
+                if self.cooperation["responder"]["mode"] == "agent":
+                    descriptions = {
+                        "respond_now": "Respond now; suspend and later resume any interruptible task / 立即响应；暂停并随后恢复可中断任务",
+                        "request_handoff": "Ask eligible helpers to take over the current task / 请求合格协助者接管当前任务",
+                        "finish_then_respond": "Complete the current task before responding / 完成当前任务后响应",
+                        "report_only": "Report this incident without flying to it / 仅上报事件",
+                    }
+                    self._coop_request(ctx, incident, vehicle, "responder", allowed, [descriptions[v] for v in allowed] + [f"{v}: {reason}" for v, reason in blocked.items()])
+                else:
+                    self._coop_decide(ctx, incident)
+                break
+
+    def _coop_decide(self, ctx: EngineContext, incident: Incident, choice: str | None = None, reason: str | None = None, *, after_handoff: bool = False) -> None:
+        assert self.cooperation is not None and incident.responder is not None
+        allowed, blocked = self._coop_options(ctx, incident)
+        mode = self.cooperation["responder"]["mode"]
+        if after_handoff:
+            choice = self._coop_ordered(allowed, after_handoff=True)
+            reason = "No helper accepted; taking the next allowed action / 无协助者接受；采用下一允许选项"
+        elif choice is None:
+            choice = self._coop_ordered(allowed)
+            reason = "First allowed action in the prescribed order / 按预设顺序采用首个允许选项"
+        elif choice not in allowed:
+            rejected = blocked.get(choice, "Invalid model choice / 无效模型选项")
+            choice = self._coop_ordered(allowed)
+            reason = f"Recorded fallback / 已记录回退: {reason}; {rejected}"
+        incident.choice = choice
+        self._business_event(ctx, "lowalt.incident.decision", {
+            "incident": incident.ref.id, "vehicle": incident.responder, "mode": mode,
+            "choice": choice, "reason": reason, "allowed": allowed, "blocked": blocked,
+        })
+        if choice == "report_only":
+            self._coop_report(ctx, incident)
+        elif choice == "respond_now":
+            self._coop_begin_response(ctx, incident)
+        elif choice == "request_handoff":
+            self._coop_handoff(ctx, incident)
+
+    def _coop_report(self, ctx: EngineContext, incident: Incident) -> None:
+        self._coop_state(ctx, incident, "reported")
+        self._business_event(ctx, "lowalt.incident.reported", {"incident": incident.ref.id, "vehicle": incident.responder})
+
+    def _coop_begin_response(self, ctx: EngineContext, incident: Incident) -> None:
+        assert incident.responder is not None
+        flight = self.flights[incident.responder]
+        if flight.job is not None:
+            if flight.suspended is not None:
+                raise ValueError("cooperation: cannot suspend a second task / 不能暂停第二个任务")
+            flight.suspended, flight.suspended_phase = flight.job, flight.job.phase
+            self._state(ctx, flight.job, "paused")
+            self._event(ctx, "preempted", task=flight.job.ref.id, vehicle=flight.vehicle.id, urgent_task=incident.ref.id)
+            flight.job = None
+        flight.purpose, flight.route, flight.goal = "incident_response", (), None
+        flight.paused_route = None
+        flight.replan, flight.work_active = True, False
+        self._brake(ctx, flight)
+
+    def _coop_candidate(self, ctx: EngineContext, incident: Incident, identity: str) -> str | None:
+        assert self.cooperation is not None and incident.job is not None and incident.responder is not None
+        flight = self.flights[identity]
+        if identity == incident.responder:
+            return "Requester cannot take its own handoff / 请求者不能接替自身"
+        if any(other is not incident and (
+            other.responder == identity and other.phase not in {"photographed", "reported"}
+            or other.helper == identity and other.handoff_phase in {"accepted", "dropped"}
+            or identity in other.candidates and other.handoff_phase == "requested"
+        ) for other in self.incidents.values()):
+            return "Vehicle already reserved for cooperation / 无人机已被其他协作占用"
+        gap = self._coop_distance(ctx, identity, vec(read(ctx, self.by_id[incident.responder], "lowalt.position")))
+        if gap > self.cooperation["helpers"]["ask_radius_m"]:
+            return "Outside helper request radius / 超出协助请求范围"
+        if read(ctx, flight.vehicle, "lowalt.soc") * 100 < self.cooperation["helpers"]["rules"]["min_battery_pct"]:
+            return "Helper battery below minimum / 协助者电量低于最低要求"
+        if read(ctx, incident.job.ref, "lowalt.task_payload_kg") > read(ctx, flight.vehicle, "lowalt.payload_capacity_kg"):
+            return "Helper payload capacity insufficient / 协助者载荷能力不足"
+        if flight.suspended is not None:
+            return "Helper has a suspended task / 协助者已有暂停任务"
+        return None
+
+    def _coop_handoff(self, ctx: EngineContext, incident: Incident) -> None:
+        assert self.cooperation is not None and incident.responder is not None
+        incident.job = self.flights[incident.responder].job
+        assert incident.job is not None
+        incident.candidates = tuple(identity for identity in self.cooperation["helpers"]["vehicles"] if self._coop_candidate(ctx, incident, identity) is None)
+        incident.offers = {}
+        self._handoff_state(ctx, incident, "requested")
+        ref = self.by_id["handoff-" + incident.ref.id]
+        ctx.set(ref, "lowalt.handoff_task", incident.job.ref.id)
+        ctx.set(ref, "lowalt.handoff_from", incident.responder)
+        self._business_event(ctx, "lowalt.handoff.requested", {**self._handoff_payload(incident), "candidates": list(incident.candidates)})
+        if not incident.candidates:
+            self._coop_select(ctx, incident)
+        for helper in incident.candidates:
+            if self.cooperation["helpers"]["mode"] == "agent":
+                self._coop_request(ctx, incident, helper, "helper", ["accept", "decline"], [
+                    "accept: commit to taking over this task after your current task / 接受：承诺完成当前任务后接管请求任务",
+                    "decline: keep your current schedule / 拒绝：保持当前安排",
+                    "Payload capacity and minimum battery are enforced; task-kind restrictions do not block explicitly listed helpers / 引擎强制执行载荷和最低电量约束；名单中的协助者不受任务类别限制",
+                ])
+            else:
+                self._coop_offer(ctx, incident, helper)
+
+    def _coop_offer(self, ctx: EngineContext, incident: Incident, helper: str, choice: str | None = None, reason: str | None = None) -> None:
+        assert self.cooperation is not None and incident.offers is not None
+        if helper in incident.offers or incident.handoff_phase != "requested":
+            return
+        flight = self.flights[helper]
+        idle = flight.job is None and flight.purpose == "task" and not read(ctx, flight.vehicle, "lowalt.charging") and not read(ctx, flight.vehicle, "lowalt.returning_to_charge")
+        prescribed = self.cooperation["helpers"]["rules"]["accept_when"] == "always" or idle
+        if choice is None:
+            accepted = prescribed
+            reason = "Prescribed helper accepts / 预设规则接受" if accepted else "Helper busy or charging / 协助者忙碌或正在充电"
+        elif choice not in {"accept", "decline"}:
+            accepted = prescribed
+            reason = f"Recorded fallback / 已记录回退: {reason}; " + ("prescribed acceptance / 预设接受" if accepted else "helper busy or charging / 协助者忙碌或充电")
+        else:
+            accepted = choice == "accept"
+        blocked = self._coop_candidate(ctx, incident, helper)
+        if accepted and blocked is not None:
+            accepted, reason = False, "Offer re-check / 接受条件复核: " + blocked
+        incident.offers[helper] = accepted
+        self._business_event(ctx, "lowalt.handoff.offer", {**self._handoff_payload(incident), "helper": helper, "accepted": accepted, "reason": reason, "mode": self.cooperation["helpers"]["mode"]})
+        if len(incident.offers) == len(incident.candidates):
+            self._coop_select(ctx, incident)
+
+    def _coop_select(self, ctx: EngineContext, incident: Incident) -> None:
+        assert self.cooperation is not None and incident.offers is not None and incident.responder is not None and incident.job is not None
+        requester = self.flights[incident.responder]
+        allowed, blocked = self._coop_options(ctx, incident)
+        accepted = [identity for identity in incident.candidates if incident.offers[identity] and self._coop_candidate(ctx, incident, identity) is None]
+        reason = None
+        if requester.job is not incident.job or "request_handoff" not in allowed:
+            reason = "Requester state changed before handoff acceptance / 接受交接前请求者状态已改变: " + blocked.get("request_handoff", "task changed / 任务已改变")
+        elif not accepted:
+            reason = "No eligible helper accepted / 没有合格协助者接受"
+        points = [point for point in self.cooperation["handoff_points"] if read(ctx, self.by_id[point["id"]], "lowalt.site_open") and read(ctx, self.by_id[point["id"]], "lowalt.site_capacity") > 0]
+        if incident.job.phase == "picked_up" and not points:
+            reason = "No open handoff point / 没有开放交接点"
+        if reason is not None:
+            self._handoff_state(ctx, incident, "declined")
+            self._business_event(ctx, "lowalt.handoff.declined", {**self._handoff_payload(incident), "reason": reason})
+            self._coop_decide(ctx, incident, after_handoff=True)
+            return
+        requester_position = vec(read(ctx, requester.vehicle, "lowalt.position"))
+        helper = accepted[0] if self.cooperation["helpers"]["selection"] == "first" else min(accepted, key=lambda identity: (self._coop_distance(ctx, identity, requester_position), identity))
+        incident.helper = helper
+        incident.point = min(points, key=lambda point: (distance(requester_position, vec(point["position"])), point["id"]))["id"] if incident.job.phase == "picked_up" else None
+        ref = self.by_id["handoff-" + incident.ref.id]
+        ctx.set(ref, "lowalt.handoff_to", helper)
+        ctx.set(ref, "lowalt.handoff_point", incident.point or "")
+        self._handoff_state(ctx, incident, "accepted")
+        self._business_event(ctx, "lowalt.handoff.accepted", {**self._handoff_payload(incident), "helper": helper, "point": incident.point, "others": [identity for identity in accepted if identity != helper]})
+        requester.paused_route = None
+        requester.route, requester.goal, requester.replan = (), None, True
+        if incident.point is None:
+            requester.job = None
+            self._state(ctx, incident.job, "paused")
+            incident.job.vehicle = helper
+            ctx.set(incident.job.ref, "lowalt.task_vehicle", helper)
+            self._coop_begin_response(ctx, incident)
+        else:
+            requester.purpose, requester.work_active = "handoff_drop", False
+            self._brake(ctx, requester)
+        self._coop_start_helper(ctx, incident)
+
+    def _coop_start_helper(self, ctx: EngineContext, incident: Incident) -> None:
+        assert incident.helper is not None and incident.job is not None
+        flight = self.flights[incident.helper]
+        if flight.job is not None or flight.purpose != "task" or flight.pending or flight.command_id is not None or read(ctx, flight.vehicle, "lowalt.charging") or read(ctx, flight.vehicle, "lowalt.returning_to_charge"):
+            return
+        if incident.point is None:
+            job = incident.job
+            flight.job, job.vehicle = job, flight.vehicle.id
+            self._state(ctx, job, "assigned")
+            ctx.set(job.ref, "lowalt.task_vehicle", flight.vehicle.id)
+            self._event(ctx, "assigned", task=job.ref.id, vehicle=flight.vehicle.id, algorithm="cooperation")
+            self._handoff_state(ctx, incident, "transferred")
+            self._business_event(ctx, "lowalt.handoff.transferred", {**self._handoff_payload(incident), "helper": flight.vehicle.id, "point": None})
+            origin = self.by_id[read(ctx, job.ref, "lowalt.task_origin")]
+            self._route(ctx, flight, vec(read(ctx, origin, "lowalt.site_position")))
+        else:
+            flight.purpose, flight.route, flight.goal = "handoff_pickup", (), None
+            flight.replan = True
+
+    def _coop_followup(self, ctx: EngineContext, flight: Flight) -> None:
+        if flight.job is not None or flight.purpose != "task":
+            return
+        for incident in self.incidents.values():
+            if incident.helper == flight.vehicle.id and incident.handoff_phase in {"accepted", "dropped"}:
+                self._coop_start_helper(ctx, incident)
+                return
+            if incident.responder == flight.vehicle.id and incident.phase == "noticed" and incident.choice == "finish_then_respond":
+                assert self.cooperation is not None
+                rules = self.cooperation["responder"]["rules"]
+                if read(ctx, flight.vehicle, "lowalt.soc") * 100 < rules["min_battery_pct"] or self._coop_distance(ctx, flight.vehicle.id, incident.config["position"]) > rules["max_response_distance_m"]:
+                    self._coop_decide(ctx, incident, "report_only", "Response constraints no longer permit flight / 当前约束已不允许响应飞行")
+                elif not read(ctx, flight.vehicle, "lowalt.charging") and not read(ctx, flight.vehicle, "lowalt.returning_to_charge"):
+                    self._coop_begin_response(ctx, incident)
+                return
+
+    def _coop_flight(self, ctx: EngineContext, flight: Flight) -> bool:
+        if flight.purpose not in {"incident_response", "handoff_drop", "handoff_pickup"}:
+            return False
+        incident = next(item for item in self.incidents.values() if (
+            item.helper == flight.vehicle.id if flight.purpose == "handoff_pickup" else item.responder == flight.vehicle.id
+        ) and (item.handoff_phase in {"accepted", "dropped"} if flight.purpose.startswith("handoff_") else item.phase in {"noticed", "responding"}))
+        assert self.cooperation is not None
+        if flight.purpose == "incident_response":
+            position = incident.config["position"]
+            goal = (float(position[0]), float(position[1]), float(self.cooperation["photograph"]["altitude_m"]))
+        else:
+            assert incident.point is not None
+            goal = vec(read(ctx, self.by_id[incident.point], "lowalt.site_position"))
+        current = vec(read(ctx, flight.vehicle, "lowalt.position"))
+        arrived = not flight.route and flight.goal == goal and flight.status == "succeeded" and distance(current, goal) <= self.radius
+        if arrived:
+            if flight.purpose == "incident_response":
+                if incident.dwell_until_ns is None:
+                    incident.dwell_until_ns = ctx.now.ns + round(self.cooperation["photograph"]["dwell_s"] * 1e9)
+                    self._coop_state(ctx, incident, "responding")
+                    self._business_event(ctx, "lowalt.incident.responding", {"incident": incident.ref.id, "vehicle": flight.vehicle.id, "position": list(current)})
+                if ctx.now.ns >= incident.dwell_until_ns:
+                    self._coop_state(ctx, incident, "photographed")
+                    self._business_event(ctx, "lowalt.incident.photographed", {"incident": incident.ref.id, "vehicle": flight.vehicle.id, "position": list(incident.config["position"])})
+                    flight.purpose, flight.goal, flight.replan = "task", None, False
+                    if flight.suspended is not None:
+                        job = flight.suspended
+                        assert flight.suspended_phase is not None
+                        self._state(ctx, job, flight.suspended_phase)
+                        flight.job = job
+                        flight.suspended, flight.suspended_phase = None, None
+                        flight.replan = True
+                        self._event(ctx, "resumed", task=job.ref.id, vehicle=flight.vehicle.id)
+                return True
+            assert incident.job is not None and incident.helper is not None
+            job = incident.job
+            amount = read(ctx, job.ref, "lowalt.task_payload_kg")
+            if flight.purpose == "handoff_drop":
+                self._state(ctx, job, "awaiting_transfer")
+                ctx.set(job.ref, "lowalt.task_origin", incident.point)
+                ctx.set(flight.vehicle, "lowalt.payload_kg", read(ctx, flight.vehicle, "lowalt.payload_kg") - amount)
+                self._handoff_state(ctx, incident, "dropped")
+                self._business_event(ctx, "lowalt.handoff.dropped", {**self._handoff_payload(incident), "helper": incident.helper, "point": incident.point})
+                flight.job = None
+                self._coop_begin_response(ctx, incident)
+                return True
+            if incident.handoff_phase != "dropped" or read(ctx, job.ref, "lowalt.task_state") != "awaiting_transfer":
+                return True
+            job.vehicle, flight.job = flight.vehicle.id, job
+            self._state(ctx, job, "picked_up")
+            ctx.set(job.ref, "lowalt.task_vehicle", flight.vehicle.id)
+            ctx.set(flight.vehicle, "lowalt.payload_kg", read(ctx, flight.vehicle, "lowalt.payload_kg") + amount)
+            self._event(ctx, "assigned", task=job.ref.id, vehicle=flight.vehicle.id, algorithm="cooperation")
+            self._event(ctx, "picked_up", task=job.ref.id, vehicle=flight.vehicle.id)
+            self._handoff_state(ctx, incident, "transferred")
+            self._business_event(ctx, "lowalt.handoff.transferred", {**self._handoff_payload(incident), "helper": flight.vehicle.id, "point": incident.point})
+            flight.purpose, flight.route, flight.goal, flight.replan = "task", (), None, True
+            return True
+        if incident.dwell_until_ns is not None:
+            incident.dwell_until_ns = None
+        if flight.replan or flight.goal != goal:
+            if not self._route(ctx, flight, goal):
+                return True
+        if flight.route:
+            target = flight.route[0]
+            from aeroagentsim.algorithms.routes import route_avoids_no_fly
+            state = self._snapshot(ctx)
+            state = replace(state, zones=tuple(z for z in state.zones if flight.vehicle.id not in self.cfg.get("zone_exemptions", {}).get(z.id, ())))
+            if not route_avoids_no_fly(state, current, (target,), initial_exit=target == flight.egress_waypoint):
+                if not self._route(ctx, flight, goal):
+                    return True
+                target = flight.route[0]
+            flight.route = flight.route[1:]
+            self._submit(ctx, flight, target)
+        return True
 
     def _preempt(self, ctx: EngineContext) -> None:
         if not self.cfg.get("medical_preemption", False):
@@ -770,6 +1272,7 @@ class LowaltTasks(ContextEngine):
                 if f.job is not None
                 and f.suspended is None
                 and f.purpose == "task"
+                and not self._coop_reserved(f.vehicle.id)
                 and self._eligible(ctx, urgent, f)
                 and read(ctx, f.job.ref, "lowalt.task_kind") == "parcel"
                 and read(ctx, f.job.ref, "lowalt.task_priority")
@@ -1142,6 +1645,8 @@ class LowaltTasks(ContextEngine):
                 )
         if self.food_enabled:
             self._prepare_food(ctx)
+        if self.cooperation is not None:
+            self._coop_tick(ctx)
         self._preempt(ctx)
         for flight in self.flights.values():
             if flight.pending or flight.command_id is not None:
@@ -1164,6 +1669,8 @@ class LowaltTasks(ContextEngine):
                 > 1e-6
             ):
                 self._submit(ctx, flight, None)
+                continue
+            if self.cooperation is not None and self._coop_flight(ctx, flight):
                 continue
             if flight.purpose in {"charge", "avoidance"}:
                 if flight.goal is None:
@@ -1191,7 +1698,8 @@ class LowaltTasks(ContextEngine):
                         flight.avoidance_resume_purpose = "task"
                         flight.replan = True
                     else:
-                        flight.purpose = "task"
+                        flight.purpose = flight.control_resume_purpose
+                        flight.control_resume_purpose = "task"
                         flight.transit_resume = bool(flight.saved_route)
                         flight.goal, flight.route = (
                             flight.saved_goal,
@@ -1199,6 +1707,8 @@ class LowaltTasks(ContextEngine):
                         )
                         flight.saved_goal, flight.saved_route = None, ()
                         flight.replan = not bool(flight.route)
+            if self.cooperation is not None and self._coop_flight(ctx, flight):
+                continue
             if flight.job is None and flight.purpose == "task":
                 continue
             if flight.paused_route is not None:
@@ -1320,6 +1830,8 @@ class LowaltTasks(ContextEngine):
                                 task=paused.ref.id,
                                 vehicle=flight.vehicle.id,
                             )
+                        if self.cooperation is not None:
+                            self._coop_followup(ctx, flight)
                         continue
             if flight.replan and flight.goal is not None:
                 if not self._route(ctx, flight, flight.goal):
@@ -1412,16 +1924,17 @@ class LowaltTasks(ContextEngine):
                 replace(
                     v,
                     task_kinds=tuple(
-                        self.cfg["vehicle_kinds"][
+                        self.cfg.get("vehicle_task_kinds", {}).get(v.id, self.cfg["vehicle_kinds"][
                             read(ctx, self.by_id[v.id], "lowalt.vehicle_class")
-                        ]
+                        ])
                     )
                     if "vehicle_kinds" in self.cfg
-                    else (),
+                    else tuple(self.cfg.get("vehicle_task_kinds", {}).get(v.id, ())),
                     available=v.available
                     and not read(ctx, self.by_id[v.id], "lowalt.returning_to_charge")
                     and self.flights[v.id].job is None
                     and self.flights[v.id].purpose == "task"
+                    and not self._coop_reserved(v.id)
                     and not self.flights[v.id].pending
                     and self.flights[v.id].command_id is None
                     and v.soc > self.cfg["dispatch_min_soc"],
