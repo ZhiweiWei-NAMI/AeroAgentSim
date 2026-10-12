@@ -5,6 +5,7 @@ category and severity. Rendering never fabricates data: a placeholder whose
 payload member is absent raises ``ValueError``, optional entity links are simply
 omitted when genuinely absent, and a position is only attached when the actual
 payload carries an ENU vector or a linked entity has a stored ENU position.
+Task facility names follow committed origin and destination writes.
 """
 
 from __future__ import annotations
@@ -621,6 +622,13 @@ class NarrativeProjector:
                 elif isinstance(op, Remove):
                     self._positions.pop(self._key(op.ref), None)
                 elif isinstance(op, FactWrite):
+                    if op.key[1] in {"lowalt.task_origin", "lowalt.task_destination"}:
+                        endpoint = _entity_id(thaw(op.value))
+                        if endpoint is None:
+                            raise ValueError(f"{op.key[1]}: facility identity required")
+                        self._task_info.setdefault(op.key[0].id, {})[
+                            op.key[1].removeprefix("lowalt.task_")
+                        ] = endpoint
                     self._track_position(op)
                 elif isinstance(op, RetractFact) and op.key[1] in self._position_fields:
                     self._positions.pop(self._key(op.key[0]), None)
@@ -699,6 +707,24 @@ class NarrativeProjector:
             raise ValueError(
                 f"narratives.{message.schema_id}: payload mapping required"
             )
+
+        if (
+            message.schema_id in {"traffic.road.blocked", "traffic.road.cleared"}
+            and _entity_id(payload.get("incident")) is None
+            and payload.get("reason") not in {"accident", "traffic incident"}
+        ):
+            blocked = message.schema_id == "traffic.road.blocked"
+            declaration = {
+                **declaration,
+                "template": (
+                    "Road traffic conflict detected"
+                    if blocked else "Road traffic conflict cleared"
+                ),
+                "template_zh": "道路交通冲突出现" if blocked else "道路交通冲突解除",
+                "category": "mobility",
+                "severity": "info",
+                "position": "actor",
+            }
 
         category = declaration["category"]
         if message.schema_id.startswith("lowalt.task."):

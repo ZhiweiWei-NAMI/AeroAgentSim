@@ -158,6 +158,16 @@ class Incident:
 class LowaltTasks(ContextEngine):
     def __init__(self, build: EngineBuild) -> None:
         self.build, self.cfg = build, build.config
+        preemption = self.cfg.get("priority_preemption", {})
+        if not isinstance(preemption, dict) or any(
+            kind not in TASK_KINDS
+            or not isinstance(interruptible, list)
+            or any(target not in TASK_KINDS for target in interruptible)
+            for kind, interruptible in preemption.items()
+        ):
+            raise ValueError(
+                "priority_preemption: map task kinds to interruptible kind lists"
+            )
         self.snapshot_index = SnapshotIndex(build)
         self.tick = ns(self.cfg["tick_ns"], "task tick", 1)
         self.algorithms = self.cfg["algorithms"]
@@ -1327,14 +1337,19 @@ class LowaltTasks(ContextEngine):
         return True
 
     def _preempt(self, ctx: EngineContext) -> None:
-        if not self.cfg.get("medical_preemption", False):
+        rules = self.cfg.get("priority_preemption", {})
+        if self.cfg.get("medical_preemption", False):
+            rules = {**rules, "medical": [*rules.get("medical", ()), "parcel"]}
+        if not rules:
             return
         for urgent in sorted(self.jobs.values(), key=lambda j: j.ref.id):
             if (
                 urgent.phase != "queued"
                 or read(ctx, urgent.ref, "lowalt.task_state") != "queued"
-                or read(ctx, urgent.ref, "lowalt.task_kind") != "medical"
             ):
+                continue
+            interruptible = rules.get(read(ctx, urgent.ref, "lowalt.task_kind"), ())
+            if not interruptible:
                 continue
             candidates = [
                 f
@@ -1344,7 +1359,7 @@ class LowaltTasks(ContextEngine):
                 and f.purpose == "task"
                 and not self._coop_reserved(f.vehicle.id)
                 and self._eligible(ctx, urgent, f)
-                and read(ctx, f.job.ref, "lowalt.task_kind") == "parcel"
+                and read(ctx, f.job.ref, "lowalt.task_kind") in interruptible
                 and read(ctx, f.job.ref, "lowalt.task_priority")
                 < read(ctx, urgent.ref, "lowalt.task_priority")
                 and read(ctx, f.vehicle, "lowalt.payload_kg")

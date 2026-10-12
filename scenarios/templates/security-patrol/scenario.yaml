@@ -1388,6 +1388,9 @@ engines:
       arrival_radius_m: 0.5
       dispatch_min_soc: 0.2
       charging_resume_soc: 0.9
+      priority_preemption:
+        incident_response:
+        - patrol
       generators:
       - kind: patrol
         tasks:
