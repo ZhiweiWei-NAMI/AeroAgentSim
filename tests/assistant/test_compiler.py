@@ -176,3 +176,61 @@ def test_agent_cooperation_requires_connection(context: CompileContext, tmp_path
     assert not result.ok
     assert result.errors[0]["op_id"] == "op-1"
     assert "Agent decisions need a connected model" in result.errors[0]["message"]
+
+
+def test_resizing_base_fleet_updates_eligibility(context: CompileContext, tmp_path: Path) -> None:
+    result = compile_ops(context, tmp_path, [op("add_fleet", id="logistics", role="parcel_drone", count=1, start="plaza"), op("set_fleet", fleet="fleet", count=1)])
+    assert result.ok, result.errors
+    eligibility = result.document["engines"]["tasks"]["config"]["vehicle_task_kinds"]
+    assert "drone-1" in eligibility and "drone-2" not in eligibility
+    assert eligibility["logistics-1"] == ["parcel"]
+
+
+def test_plan_directory_cannot_replace_base_files(context: CompileContext, tmp_path: Path) -> None:
+    draft = context.store.import_template("food-delivery", {}, registry=context.templates)
+    directory = context.store.directory(draft["id"])
+    before = (directory / "draft.json").read_bytes()
+    result = compile_plan(context, {"workspace": draft["id"]}, [], directory)
+    assert not result.ok and result.errors[0]["field"] == "out_dir"
+    assert (directory / "draft.json").read_bytes() == before
+
+
+def test_disconnected_allocator_does_not_compile_scripted_success(context: CompileContext, tmp_path: Path) -> None:
+    result = compile_ops(context, tmp_path, [op("set_control", control="allocator", value="llm")])
+    assert not result.ok
+    assert result.errors[0]["op_id"] == "op-1"
+    assert "Agent decisions need a connected model" in result.errors[0]["message"]
+
+
+def test_workload_edits_keep_authored_task_labels(context: CompileContext, tmp_path: Path) -> None:
+    draft = context.store.import_template("food-delivery", {}, registry=context.templates)
+    entity = next(e for e in draft["scenario"]["entities"] if e["id"] == "meal-1")
+    entity["label"] = "Lunch for the clinic"
+    entity["label_zh"] = "诊所午餐"
+    draft = context.store.save(draft["id"], {"scenario": draft["scenario"]})
+    result = compile_plan(context, {"workspace": draft["id"]}, [{"id": "op-1", **op("set_orders", id="meal", priority=10)}], tmp_path / "plan")
+    assert result.ok, result.errors
+    changed = next(e for e in result.document["entities"] if e["id"] == "meal-1")
+    assert changed["label"] == "Lunch for the clinic"
+    assert changed["label_zh"] == "诊所午餐"
+    assert changed["facts"]["lowalt.task_priority"] == 10
+
+
+def test_generic_edits_refresh_actual_template_controls(context: CompileContext, tmp_path: Path) -> None:
+    result = compile_ops(context, tmp_path, [op("set_wind", speed_mps=4), op("set_fleet", fleet="fleet", count=3)])
+    assert result.ok, result.errors
+    assert result.summary["controls"]["wind_speed"] == 4.0
+    assert result.summary["controls"]["fleet_size"] == 3
+
+
+def test_scheduled_operator_targets_are_real_typed_references(context: CompileContext, tmp_path: Path) -> None:
+    result = compile_ops(context, tmp_path, [op("schedule_event", event="change_dropoff", at_s=10, params={"task": "task-1", "destination": "customer-2"})], "parcel-delivery")
+    assert result.ok, result.errors
+    payload = result.document["bindings"]["commands"][-1]["payload"]["payload"]
+    assert payload["task"]["$ref"]["id"] == "task-1"
+    assert payload["task"]["$ref"]["generation"] == 0
+    assert payload["destination"]["$ref"]["type_id"] == "lowalt:Customer"
+    loaded = load_scenario(result.document, base=result.files_dir)
+    loaded.registry.validate(loaded.registry.message("lowalt.operator.change_dropoff").schema, payload)
+    expected = next(e for e in result.expectations if e["match"]["schema"] == "lowalt.operator.change_dropoff")
+    assert expected["match"]["where"] == {"task": "task-1", "destination": "customer-2"}

@@ -129,9 +129,10 @@ def _rebase(value: Any, source: Path, target: Path) -> Any:
     return value
 
 
-def _digest(document: dict, directory: Path) -> str:
+def _digest(document: dict, directory: Path | None) -> str:
     digest = hashlib.sha256(json.dumps(document, sort_keys=True, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode())
-    for path in sorted(p for p in directory.rglob("*") if p.is_file()):
+    paths = sorted(p for p in directory.rglob("*") if p.is_file()) if directory is not None else []
+    for path in paths:
         relative = path.relative_to(directory).as_posix().encode()
         data = path.read_bytes()
         digest.update(len(relative).to_bytes(8, "big")); digest.update(relative)
@@ -167,6 +168,11 @@ def _position(document: dict, value: Any, field_name: str) -> list[float]:
             if key in entity["facts"]:
                 return list(entity["facts"][key])
         _fail(field_name, f"{value} has no lowalt position", "此对象没有低空空间坐标")
+    for engine in document.get("engines", {}).values():
+        cooperation = engine.get("config", {}).get("cooperation", {})
+        point = next((p for p in cooperation.get("handoff_points", []) + cooperation.get("incidents", []) if p["id"] == value), None)
+        if point is not None:
+            return list(point["position"])
     place = next((p for p in place_catalogue() if p["key"] == value), None)
     if place is None:
         _fail(field_name, f"Unknown place {value!r}; use find_places", "地点不存在，请使用 find_places 查找")
@@ -178,6 +184,11 @@ def _unique(document: dict, identity: str, field_name: str = "id") -> None:
         _fail(field_name, "Use a stable alphanumeric identifier", "请使用稳定的字母数字标识")
     if any(e["id"] == identity for e in document["entities"]):
         _fail(field_name, f"Identifier {identity!r} is already used", "此标识已被使用")
+    if _fleet_entities(document, identity):
+        _fail(field_name, "Identifier is already used by a fleet", "此标识已被机群使用")
+    cooperation = next((e["config"].get("cooperation") for e in document.get("engines", {}).values() if e["plugin"] == "lowalt_tasks"), None)
+    if cooperation and any(p["id"] == identity for p in cooperation.get("handoff_points", []) + cooperation.get("incidents", [])):
+        _fail(field_name, "Identifier is already used by cooperation", "此标识已被协同配置使用")
     fleet = document.get("generators", {}).get("fleet")
     if fleet and identity.startswith(fleet["prefix"]):
         _fail(field_name, "Identifier overlaps the generated base fleet prefix", "此标识与基础机群生成前缀冲突")
@@ -331,11 +342,68 @@ def _add_orders(document: dict, p: dict) -> None:
     for i, identity in enumerate(group["tasks"]):
         _unique(document, identity)
         document["entities"].append({"id": identity, "type": "lowalt:FoodOrder" if kind == "food" else "lowalt:Task",
-            "label": f"{kind.title()} order {i + 1}", "label_zh": f"{kind} 任务 {i + 1}",
+            "label": f"{kind.title()} order {i + 1}", "label_zh": f"{_task_label_zh(kind)} {i + 1}",
             "facts": {"lowalt.task_state": "unreleased", "lowalt.task_kind": kind, "lowalt.task_priority": group["priority"],
                       "lowalt.task_origin": p["from"][0], "lowalt.task_destination": p["to"][0], "lowalt.task_created_ns": 0,
                       "lowalt.task_vehicle": "", "lowalt.task_payload_kg": group["payload_kg"]}})
     tasks["generators"].append(group)
+
+
+def _task_label_zh(kind: str) -> str:
+    from aeroagentsim.services.narratives import TASK_NOUN_ZH
+    return TASK_NOUN_ZH[kind]
+
+
+def _allocation_provider(ctx: CompileContext, document: dict) -> None:
+    if document.get("algorithms", {}).get("allocation") != "llm":
+        return
+    if ctx.agent_profile is None:
+        _fail("value", "Agent decisions need a connected model", "智能体决策需要已连接模型")
+    from aeroagentsim.algorithms.llm import engine_config
+    _, tasks = _engine(document, "lowalt_tasks")
+    configuration = {"provider": {"profile": ctx.agent_profile}}
+    tasks.setdefault("algorithm_config", {})["allocation"] = configuration
+    document["engines"]["lowalt_allocation"] = {"plugin": "langgraph", "config": engine_config(configuration)}
+
+
+def _sync_base_fleet(document: dict) -> None:
+    fleet = document.get("generators", {}).get("fleet")
+    if fleet is None:
+        return
+    _, tasks = _engine(document, "lowalt_tasks")
+    overrides = tasks.get("vehicle_task_kinds", {})
+    ids = {fleet["prefix"] + str(i + 1) for i in range(fleet["count"])}
+    removed = {identity for identity in overrides if identity.startswith(fleet["prefix"]) and identity not in ids}
+    cooperation = tasks.get("cooperation", {})
+    referenced = set(cooperation.get("watchers", {}).get("vehicles", []) + cooperation.get("helpers", {}).get("vehicles", []))
+    if any(identity.startswith(fleet["prefix"]) and identity not in ids for identity in referenced):
+        _fail("count", "Removed base-fleet members are referenced by cooperation; revise responsibilities first", "待删除的基础机群成员被协同配置引用，请先修改责任")
+    for identity in removed:
+        overrides.pop(identity)
+    kinds = tasks.get("vehicle_kinds", {}).get(fleet["facts"]["lowalt.vehicle_class"])
+    if "vehicle_task_kinds" in tasks and kinds is not None:
+        for identity in ids:
+            overrides.setdefault(identity, list(kinds))
+
+
+def _refresh_controls(ctx: CompileContext, scene: BaseScene, document: dict, warnings: list[dict]) -> None:
+    if scene.template_id is None:
+        return
+    for knob in ctx.templates.get(scene.template_id)["knobs"]:
+        if "pointer" in knob:
+            node: Any = document
+            try:
+                for part in knob["pointer"][1:].split("/"):
+                    part = part.replace("~1", "/").replace("~0", "~")
+                    node = node[int(part)] if isinstance(node, list) else node[part]
+                scene.controls[knob["id"]] = copy.deepcopy(node)
+            except (KeyError, IndexError, ValueError, TypeError):
+                scene.controls.pop(knob["id"], None)
+                warnings.append({"op_id": None, "field": "control", "message": f"Control {knob['id']} has no remaining target after these edits / 修改后控件 {knob['id']} 已无对应目标"})
+        elif knob.get("apply") == "lowalt.operator_mode":
+            streams = [s for s in document.get("ingress_streams", []) if s["id"] == "operator"]
+            if streams:
+                scene.controls[knob["id"]] = "interactive" if streams[0]["initial_watermark_ns"] == 0 else "scheduled"
 
 
 def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name: str, p: dict,
@@ -357,6 +425,8 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         except (KeyError, ValueError, TypeError) as exc:
             raise OperationError("value", f"{exc} / 模板控件校验失败") from exc
         scene.controls[p["control"]] = value
+        if knob.get("pointer") == "/algorithms/allocation":
+            _allocation_provider(ctx, document)
         return
     if name == "set_duration":
         document["run"]["until_ns"] = round(p["seconds"] * SECOND)
@@ -368,7 +438,7 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         return
     if name == "set_run_mode":
         streams = document.get("ingress_streams", [])
-        if not streams:
+        if not any(stream["id"] == "operator" for stream in streams):
             _fail("mode", "Starting scene has no interactive ingress stream", "起点场景没有交互输入流")
         for stream in streams:
             if stream["id"] == "operator":
@@ -382,10 +452,14 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             _fail("speed_mps", "Starting scene has no lowalt wind profile", "起点场景没有低空风场配置")
         if name == "add_gust" and p["end_s"] <= p["start_s"]:
             _fail("end_s", "Gust end must follow start", "阵风结束必须晚于开始")
+        if name == "add_gust" and round(p["end_s"] * SECOND) <= round(p["start_s"] * SECOND):
+            _fail("end_s", "Gust interval must span at least one nanosecond", "阵风间隔必须至少一纳秒")
         for profile in profiles:
             if name == "set_wind":
                 profile["value"] = [float(p["speed_mps"]), 0.0, 0.0]
             else:
+                if any(p["start_s"] * SECOND < g["end_ns"] and p["end_s"] * SECOND > g["start_ns"] for g in profile.get("gusts", [])):
+                    _fail("start_s", "Gust overlaps an existing interval; choose a separate interval", "阵风与已有时段重叠，请选择独立时段")
                 profile["mode"] = "gust"
                 profile.setdefault("gusts", []).append({"start_ns": round(p["start_s"] * SECOND), "end_ns": round(p["end_s"] * SECOND), "value": [float(p["speed_mps"]), 0.0, 0.0]})
         return
@@ -400,8 +474,7 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             _fail("value", "Agent decisions need a connected model", "智能体决策需要已连接模型")
         document["algorithms"][p["slot"]] = p["value"]
         if p["value"] == "llm":
-            _, tasks = _engine(document, "lowalt_tasks")
-            tasks.setdefault("algorithm_config", {}).setdefault("allocation", {})["provider"] = {"profile": ctx.agent_profile}
+            _allocation_provider(ctx, document)
         return
     if name == "set_rule":
         value, rule = p["value"], p["rule"]
@@ -426,13 +499,22 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         if name == "add_place":
             _engine(document, "lowalt_tasks")
             _unique(document, p["id"])
+            if "preparation_s" in p and p["role"] != "kitchen":
+                _fail("preparation_s", "Preparation time applies only to kitchens", "准备时间只适用于厨房")
+            if "power_w" in p and p["role"] != "charging_pad":
+                _fail("power_w", "Charging power applies only to charging pads", "充电功率只适用于充电位")
             if p["role"] == "handoff_point":
+                if "capacity" in p:
+                    _fail("capacity", "Handoff storage capacity is not modeled", "交接储物容量尚未建模")
                 coop = _cooperation(document)
                 coop["handoff_points"].append({"id": p["id"], "position": _position(document, p["at"], "at"),
                     "label": p.get("label", p["id"]), "label_zh": p.get("label_zh", "交接点 " + p["id"])})
                 return
             _overlay(document)
-            facts = {"lowalt.site_position": _position(document, p["at"], "at"), "lowalt.site_open": True, "lowalt.site_capacity": p.get("capacity", 1)}
+            fields = document["registry"]["fields"]
+            if not any(f["id"] == "assistant.place_role" for f in fields):
+                fields.append({"id": "assistant.place_role", "type": "lowalt:Site", "schema": {"type": "string"}, "metadata": {"role": "config"}})
+            facts = {"lowalt.site_position": _position(document, p["at"], "at"), "lowalt.site_open": True, "lowalt.site_capacity": p.get("capacity", 1), "assistant.place_role": p["role"]}
             if p["role"] == "kitchen":
                 facts["lowalt.food_preparation_s"] = float(p.get("preparation_s", 30))
             if p["role"] == "charging_pad":
@@ -444,6 +526,9 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         handoffs = tasks.get("cooperation", {}).get("handoff_points", [])
         point = next((r for r in handoffs if r["id"] == p["id"]), None)
         if point is not None:
+            for key in ("capacity", "preparation_s", "power_w"):
+                if key in p:
+                    _fail(key, "This setting is not modeled on handoff points", "交接点不模拟此设置")
             if name == "remove_place":
                 if tasks["cooperation"].get("incidents"):
                     _fail("id", "Handoff point is used by cooperation; revise cooperation first", "交接点正被协同配置使用，请先修改协同配置")
@@ -577,12 +662,15 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         _, tasks = _engine(document, "lowalt_tasks")
         group = _group(tasks, p["id"])
         if name == "remove_orders":
+            from aeroagentsim.services.narratives import _entity_id
             task_ids = set(group["tasks"])
-            if any(c.get("payload", {}).get("payload", {}).get("task") in task_ids for c in document["bindings"].get("commands", [])):
+            if any(_entity_id(c.get("payload", {}).get("payload", {}).get("task")) in task_ids for c in document["bindings"].get("commands", [])):
                 _fail("id", "Workload is referenced by a scheduled operator event", "工作量被预设操作事件引用")
             document["entities"] = [e for e in document["entities"] if e["id"] not in task_ids]
             tasks["generators"].remove(group)
             return
+        if "delivery_window_s" in p and group["kind"] != "food":
+            _fail("delivery_window_s", "Delivery windows apply only to meal workloads", "配送时间窗只适用于餐食工作量")
         release = p.get("release")
         if release is None:
             arrivals = group["arrivals"]
@@ -601,9 +689,18 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         if group["kind"] == "food":
             new["delivery_window_s"] = p.get("delivery_window_s", group["delivery_window_s"])
         old_ids = set(group["tasks"])
+        old_entities = {e["id"]: copy.deepcopy(e) for e in document["entities"] if e["id"] in old_ids}
         document["entities"] = [e for e in document["entities"] if e["id"] not in old_ids]
         tasks["generators"].remove(group)
         _add_orders(document, new)
+        for i, entity in enumerate(document["entities"]):
+            if entity["id"] in old_entities:
+                original = old_entities[entity["id"]]
+                for parameter, fact in (("priority", "lowalt.task_priority"), ("payload_kg", "lowalt.task_payload_kg"),
+                                        ("from", "lowalt.task_origin"), ("to", "lowalt.task_destination")):
+                    if parameter in p:
+                        original["facts"][fact] = entity["facts"][fact]
+                document["entities"][i] = original
         return
     if name == "set_task":
         _, tasks = _engine(document, "lowalt_tasks")
@@ -625,6 +722,8 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             single["arrivals"] = {"mode": "scheduled", "times_ns": [round(p["release_s"] * SECOND)]}
         if "destination" in p:
             _endpoints(document, [p["destination"]], "destination")
+            if p["destination"] in single["origins"]:
+                _fail("destination", "Destination must differ from every possible origin", "目的地必须不同于所有可能起点")
             single["destinations"] = [p["destination"]]
             entity["facts"]["lowalt.task_destination"] = p["destination"]
         if "priority" in p:
@@ -670,8 +769,14 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                     existing = next((r for r in coop["handoff_points"] if r["id"] == point), None)
                     if existing:
                         points.append(copy.deepcopy(existing)); continue
-                    point = {"id": point, "at": point}
+                    existing_site = next((e for e in document["entities"] if e["id"] == point), None)
+                    point_id = "handoff-" + point if existing_site is not None and existing_site["type"] != "lowalt:HandoffPoint" else point
+                    if point_id != point:
+                        warnings.append({"op_id": op_id, "field": "handoff_points", "message": f"Handoff at {point} uses a separate point entity {point_id} at the same position / 在 {point} 交接使用同位置的独立交接点实体 {point_id}"})
+                    point = {"id": point_id, "at": point}
                 point = copy.deepcopy(point)
+                if "at" in point and "position" in point:
+                    _fail("handoff_points", "Supply at or position, not both", "仅提供 at 或 position 其中一个")
                 if "at" in point:
                     point["position"] = _position(document, point.pop("at"), "handoff_points.at")
                 elif "position" not in point:
@@ -686,7 +791,19 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             coop["provider"] = {"profile": ctx.agent_profile}
         return
     if name == "remove_cooperation":
+        _cooperation_module()
         _engine(document, "lowalt_tasks")[1].pop("cooperation", None)
+        removed_types = {"lowalt:Incident", "lowalt:Handoff", "lowalt:HandoffPoint"}
+        document["entities"] = [e for e in document["entities"] if e["type"] not in removed_types]
+        bindings = document["bindings"]
+        bindings["rules"] = [r for r in bindings.get("rules", []) if r["type"] not in removed_types]
+        bindings["lifecycle"] = [r for r in bindings.get("lifecycle", []) if r["type"] not in removed_types]
+        for rule in bindings["rules"]:
+            rule["fields"] = [f for f in rule["fields"] if not f.startswith(("lowalt.incident_", "lowalt.handoff_"))]
+        removed_engines = {identity for identity, engine in document["engines"].items()
+                           if engine["plugin"] == "langgraph" and engine["config"].get("factory", "").startswith("aeroagentsim.packs.lowalt.cooperation:")}
+        for identity in removed_engines:
+            del document["engines"][identity]
         return
     if name == "schedule_event":
         _schedule_event(document, p, directory)
@@ -695,8 +812,10 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
 
 
 def _schedule_event(document: dict, p: dict, directory: Path) -> None:
+    from aerokernel.ids import EntityRef
     from aeroagentsim.packs.lowalt.everyday import _operators
     from .operations import validate_parameters
+    from .scene import _registry_types
     points: dict[str, str] = {}
     specs = document.get("behaviours", [])
     for spec in specs:
@@ -731,26 +850,51 @@ def _schedule_event(document: dict, p: dict, directory: Path) -> None:
     for key in ("site", "task", "origin", "destination", "restaurant"):
         if key in p["params"]:
             _entity(document, p["params"][key], f"params.{key}")
-    document["bindings"].setdefault("commands", []).append({"schema": "aas.runtime.inject_event", "target": "behaviour", "at_ns": round(p["at_s"] * SECOND), "payload": {"injection_point": point_id, "payload": p["params"]}})
+    types = _registry_types(document, directory)
+    def typed_payload(value: Any, schema: dict, field_name: str) -> Any:
+        kind = schema["type"]
+        if kind == "ref":
+            entity = _entity(document, value, field_name)
+            remaining = [entity["type"]]
+            seen = set()
+            while remaining:
+                current = remaining.pop()
+                if current == schema["target_type"]:
+                    return {"$ref": EntityRef(document["id"], "0", entity["id"], 0, entity["type"]).to_data()}
+                if current not in seen:
+                    seen.add(current); remaining.extend(types.get(current, {}).get("parents", []))
+            _fail(field_name, f"Select an entity of type {schema['target_type']}", "请选择符合目标契约类型的实体")
+        if kind == "number":
+            return float(value)
+        if kind == "record":
+            return {k: typed_payload(v, schema["members"][k], field_name + "." + k) for k, v in value.items()}
+        if kind in {"array", "vector"}:
+            return [typed_payload(v, schema["items"], field_name + "[]") for v in value]
+        return value
+    payload = typed_payload(p["params"], descriptor["schema"], "params")
+    document["bindings"].setdefault("commands", []).append({"schema": "aas.runtime.inject_event", "target": "behaviour", "at_ns": round(p["at_s"] * SECOND), "payload": {"injection_point": point_id, "payload": payload}})
 
 
 def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_dir: Path) -> CompileResult:
     from .scene import diff, expectations, interactions, summarize
     out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
     files = out_dir / "files"
     errors: list[dict] = []
     warnings: list[dict] = []
     document: dict = {}
     scene: BaseScene | None = None
     base_summary: dict = {}
+    try:
+        scene = resolve_base(ctx, base)
+        if out_dir.resolve().is_relative_to(scene.directory.resolve()) or scene.directory.resolve().is_relative_to(files.resolve()):
+            _fail("out_dir", "Plan directory must be outside the base scene", "计划目录必须位于起点场景之外")
+    except Exception as exc:  # noqa: BLE001 - no output may replace the source scene
+        return CompileResult(False, [{"op_id": None, "field": getattr(exc, "field", "base"), "message": str(exc)}], [], {}, files, _digest({}, None))
+    out_dir.mkdir(parents=True, exist_ok=True)
     if files.exists():
         shutil.rmtree(files)
     files.mkdir()
     try:
-        scene = resolve_base(ctx, base)
-        if out_dir.resolve().is_relative_to(scene.directory.resolve()):
-            _fail("out_dir", "Plan directory must be outside the base scene", "计划目录必须位于起点场景之外")
         _copy_files(scene.directory, files)
         document = _rebase(scene.document, scene.directory, files)
         baseline = load_scenario(document, base=files)
@@ -765,6 +909,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         for i, operation in enumerate(operations):
             op_id = operation.get("id", f"op-{i + 1}") if isinstance(operation, dict) else f"op-{i + 1}"
             candidate, candidate_controls = copy.deepcopy(document), copy.deepcopy(scene.controls)
+            warning_count = len(warnings)
             try:
                 if op_id in seen:
                     _fail("id", "Operation ids must be unique", "操作标识必须唯一")
@@ -772,10 +917,12 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
                 name, params = validate_operation(operation)
                 _apply_operation(ctx, scene, candidate, name, params, files, warnings, op_id)
                 if "generators" in candidate:
+                    _sync_base_fleet(candidate)
                     expand(candidate)
                 document = candidate
             except (OperationError, ValueError, TypeError, KeyError) as exc:
                 scene.controls = candidate_controls
+                del warnings[warning_count:]
                 errors.append({"op_id": op_id, "field": getattr(exc, "field", "params"), "message": str(exc)})
         coop = next((e["config"].get("cooperation") for e in document["engines"].values() if e["plugin"] == "lowalt_tasks"), None)
         if coop is not None and not errors:
@@ -799,6 +946,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
             loaded = load_scenario(document, base=files)
             document = loaded.document
             _editable_packages(document)
+            _refresh_controls(ctx, scene, document, warnings)
     except Exception as exc:  # noqa: BLE001 - return real compiler/loader diagnostics
         errors.append({"op_id": operations[-1].get("id", f"op-{len(operations)}") if isinstance(operations, list) and operations and isinstance(operations[-1], dict) else None,
                        "field": getattr(exc, "field", getattr(exc, "path", "base")), "message": f"{type(exc).__name__}: {exc}"})
@@ -844,8 +992,10 @@ def apply_plan(ctx: CompileContext, out_dir: Path, *, base: dict, workspace_id: 
     if base != record["base"] or not record["ok"] or _digest(document, out_dir / "files") != record["digest"]:
         raise PlanConflict("Plan or files changed; compile it again / 计划或文件已改变，请重新编译")
     validation_path = out_dir / "validation.json"
-    validation = json.loads(validation_path.read_text()) if validation_path.exists() else validate_compiled(ctx, out_dir)
-    if not validation["valid"] or validation.get("digest", record["digest"]) != record["digest"]:
+    if not validation_path.exists():
+        validate_compiled(ctx, out_dir)
+    validation = json.loads(validation_path.read_text())
+    if not validation["valid"] or validation["digest"] != record["digest"]:
         raise ValueError("Plan failed validation / 计划校验失败: " + "; ".join(validation["errors"]))
     with ctx.store.lock:
         if "workspace" in base:

@@ -109,7 +109,6 @@ def run_story(run_dir: Path, expectations: list[dict], *, locale: str = "en") ->
     events: list[dict] = []
     seen: set[str] = set()
     approaches: dict[str, dict] = {}
-    positions: dict[str, list] = {}
     last_ns: int | None = None
     cursor = 0
     while True:
@@ -132,7 +131,6 @@ def run_story(run_dir: Path, expectations: list[dict], *, locale: str = "en") ->
                         position = thaw(proposal.value)
                         if not isinstance(position, list) or len(position) != 3:
                             raise ValueError("Recorded lowalt position is not an ENU vector / 记录的低空位置不是 ENU 向量")
-                        positions[proposal.key[0].id] = position
                         for coop in coop_configs:
                             if proposal.key[0].id not in coop["watchers"]["vehicles"]:
                                 continue

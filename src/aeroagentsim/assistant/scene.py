@@ -42,6 +42,16 @@ def _position(entity: dict) -> list | None:
     return None
 
 
+def _plain_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        if "$ref" in value:
+            return value["$ref"]["id"]
+        return {k: _plain_payload(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_plain_payload(v) for v in value]
+    return value
+
+
 def _common(values: list[Any]) -> Any:
     return values[0] if values and all(v == values[0] for v in values) else None
 
@@ -104,7 +114,7 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
     for e in entities.values():
         if "lowalt.site_position" not in e["facts"]:
             continue
-        places.append({"id": e["id"], "role": inverse.get(e["type"], "incident_site"), "label": e.get("label", e["id"]),
+        places.append({"id": e["id"], "role": e["facts"].get("assistant.place_role", inverse.get(e["type"], "incident_site")), "label": e.get("label", e["id"]),
                        "label_zh": e.get("label_zh", _chinese_label(e.get("label", e["id"]))), "position": e["facts"]["lowalt.site_position"],
                        "type": e["type"], "contract": contract(e["type"]), "details": copy.deepcopy(e["facts"])})
     groups: dict[str, list[dict]] = {}
@@ -154,6 +164,10 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
             cooperation[key]["labels"] = {v: label(v) for v in cooperation[key].get("vehicles", [])}
         for point in cooperation.get("handoff_points", []):
             point.setdefault("label", label(point["id"])); point.setdefault("label_zh", _chinese_label(point["label"]))
+        for incident in cooperation.get("incidents", []):
+            labels = EVENT_LABELS.get(incident["kind"], (incident["id"], incident["id"]))
+            incident.setdefault("label", label(incident["id"]) or labels[0])
+            incident.setdefault("label_zh", entities.get(incident["id"], {}).get("label_zh", labels[1]))
     protected = tasks.get("cooperation", {}).get("responder", {}).get("rules", {}).get("protected_task_kinds", [])
     workloads = []
     for group in tasks.get("generators", []):
@@ -181,7 +195,7 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
             continue
         point = command["payload"]["injection_point"]
         kind = point.replace("-", "_")
-        params = command["payload"].get("payload", {})
+        params = _plain_payload(command["payload"].get("payload", {}))
         place = next((params[k] for k in ("site", "destination", "restaurant", "origin") if k in params), None)
         en, zh = EVENT_LABELS.get(kind, ("Scheduled event " + point, "预设事件 " + point))
         events.append({"id": f"scheduled-{i + 1}", "kind": kind, "label": en, "label_zh": zh,
@@ -293,6 +307,19 @@ def _helper_estimate(summary: dict) -> dict | None:
                      f"最近协助机初始距离 {closest:.1f} 米；请求半径 {radius:g} 米，最低电量 {minimum:g}%。运行中电量和位置会变化，容量和空闲状态仍限制接受。")
 
 
+def _response_estimate(summary: dict, incident: dict) -> dict | None:
+    coop = summary["cooperation"]
+    states = [v for f in summary["fleets"] for v in f.get("member_states", [])
+              if v["id"] in coop["watchers"]["vehicles"] and v["position"] is not None and v["battery_pct"] is not None]
+    if not states:
+        return None
+    minimum = coop["responder"]["rules"]["min_battery_pct"]
+    radius = coop["responder"]["rules"]["max_response_distance_m"]
+    eligible = [v for v in states if v["battery_pct"] >= minimum and math.dist(v["position"][:2], incident["position"][:2]) <= radius]
+    return _precheck(bool(eligible), f"{len(eligible)} of {len(states)} watchers initially meet battery ≥ {minimum:g}% and distance ≤ {radius:g} m. Actual decisions use state at notice time and task protection.",
+                     f"{len(states)} 架观察机中 {len(eligible)} 架初始满足电量 ≥ {minimum:g}%、距离 ≤ {radius:g} 米。真实决策使用发现时状态和任务保护规则。")
+
+
 def expectations(document: dict, summary: dict) -> list[dict]:
     result = []
     def add(identity: str, schema: str, where: dict, en: str, zh: str, *, layer: str = "behaviour", at=None, precheck=None, depends=()) -> str:
@@ -314,7 +341,7 @@ def expectations(document: dict, summary: dict) -> list[dict]:
             identity = incident["id"]
             occurred = add(f"incident:{identity}:occurred", "lowalt.incident.occurred", {"incident": identity}, incident["label"], incident["label_zh"], layer="setup", at=incident["at_s"])
             noticed = add(f"incident:{identity}:noticed", "lowalt.incident.noticed", {"incident": identity}, "A watcher may notice the incident", "观察机可能发现事件", precheck=_notice_estimate(summary, incident), depends=[occurred])
-            decision = add(f"incident:{identity}:decision", "lowalt.incident.decision", {"incident": identity}, "The responder chooses an allowed response", "响应机选择允许的响应方式", depends=[noticed])
+            decision = add(f"incident:{identity}:decision", "lowalt.incident.decision", {"incident": identity}, "The responder chooses an allowed response", "响应机选择允许的响应方式", precheck=_response_estimate(summary, incident), depends=[noticed])
             if "request_handoff" in order and coop["helpers"]["vehicles"]:
                 requested = add(f"incident:{identity}:requested", "lowalt.handoff.requested", {"incident": identity}, "If carrying an eligible task, the responder may ask helpers", "若携带可转交任务，响应机可能请求协助", precheck=_helper_estimate(summary), depends=[decision])
                 offered = add(f"incident:{identity}:offer", "lowalt.handoff.offer", {"incident": identity}, "A candidate replies to the handoff request", "候选协助机回复交接请求", depends=[requested])
