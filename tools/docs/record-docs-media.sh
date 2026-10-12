@@ -2,7 +2,7 @@
 # Build → isolated real backend → six workbench recordings → GIFs.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-WORK_DIR="${AEROAGENTSIM_DOCS_WORK_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/aeroagentsim-docs-media.XXXXXX")}"
+WORK_DIR="${AEROAGENTSIM_DOCS_WORK_DIR:-}"
 PYTHON="${AEROAGENTSIM_DOCS_PYTHON:-python}"
 FFMPEG="${FFMPEG:-}"
 GATES=0
@@ -28,6 +28,8 @@ while [ "$#" -gt 0 ]; do
  esac
  shift
 done
+# Create a scratch directory only when none was chosen.
+[ -n "$WORK_DIR" ] || WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/aeroagentsim-docs-media.XXXXXX")"
 # Resolve a basename default (e.g. "python") via command -v; --python wins.
 if command -v "$PYTHON" >/dev/null 2>&1; then
  PYTHON="$(command -v "$PYTHON")"
