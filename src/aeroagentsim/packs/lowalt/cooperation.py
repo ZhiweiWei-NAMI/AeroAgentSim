@@ -40,7 +40,7 @@ for _name, _en, _zh, _entities, _position, _severity in (
     }
 
 
-def _object(value: Any, path: str, required: set[str], optional: set[str] = frozenset()) -> dict:
+def _object(value: Any, path: str, required: set[str], optional: set[str] | frozenset[str] = frozenset()) -> dict:
     if not isinstance(value, dict):
         raise ValueError(f"{path}: object required / 必须为对象")
     if extra := set(value) - required - optional:
@@ -116,15 +116,15 @@ def validate_config(config: dict, *, vehicles: set[str]) -> None:
     _number(watchers["notice_radius_m"], "cooperation.watchers.notice_radius_m")
     _number(helpers["ask_radius_m"], "cooperation.helpers.ask_radius_m")
     for name, row in (("responder", responder), ("helpers", helpers)):
-        if row["mode"] not in {"prescribed", "agent"}:
+        if type(row["mode"]) is not str or row["mode"] not in {"prescribed", "agent"}:
             raise ValueError(f"cooperation.{name}.mode: prescribed or agent required / 必须为 prescribed 或 agent")
         if "goal" in row:
             _text(row["goal"], f"cooperation.{name}.goal")
         elif row["mode"] == "agent":
             raise ValueError(f"cooperation.{name}.goal: required in agent mode / 智能体模式需要目标")
     order = _list(responder["order"], "cooperation.responder.order")
-    if not order or any(type(v) is not str or v not in COOP_OPTIONS for v in order) or len(set(order)) != len(order) or "report_only" not in order:
-        raise ValueError("cooperation.responder.order: unique response options including report_only required / 必须为不重复的响应选项且包含 report_only")
+    if not order or any(type(v) is not str or v not in COOP_OPTIONS for v in order) or len(set(order)) != len(order):
+        raise ValueError("cooperation.responder.order: unique supported response options required / 必须为不重复的受支持响应选项")
     rules = _object(responder["rules"], "cooperation.responder.rules", {"protected_task_kinds", "require_replacement", "min_battery_pct", "max_response_distance_m"})
     protected = _list(rules["protected_task_kinds"], "cooperation.responder.rules.protected_task_kinds")
     if any(type(v) is not str or v not in TASK_KINDS for v in protected) or len(set(protected)) != len(protected):
@@ -134,10 +134,10 @@ def validate_config(config: dict, *, vehicles: set[str]) -> None:
     _number(rules["min_battery_pct"], "cooperation.responder.rules.min_battery_pct", 100)
     _number(rules["max_response_distance_m"], "cooperation.responder.rules.max_response_distance_m")
     rules = _object(helpers["rules"], "cooperation.helpers.rules", {"accept_when", "min_battery_pct"})
-    if rules["accept_when"] not in {"idle", "always"}:
+    if type(rules["accept_when"]) is not str or rules["accept_when"] not in {"idle", "always"}:
         raise ValueError("cooperation.helpers.rules.accept_when: idle or always required / 必须为 idle 或 always")
     _number(rules["min_battery_pct"], "cooperation.helpers.rules.min_battery_pct", 100)
-    if helpers["selection"] not in {"nearest", "first"}:
+    if type(helpers["selection"]) is not str or helpers["selection"] not in {"nearest", "first"}:
         raise ValueError("cooperation.helpers.selection: nearest or first required / 必须为 nearest 或 first")
     photo = _object(cfg["photograph"], "cooperation.photograph", {"dwell_s", "altitude_m"})
     for name in photo:
@@ -168,7 +168,7 @@ def merge_contract_snapshot(snapshot: dict) -> dict:
     """Union compiled snapshots, retaining the fragment's source provenance."""
     fragment = json.loads(FRAGMENT_PATH.read_text())
     result = copy.deepcopy(snapshot)
-    for group in ("types", "fields", "messages", "schemas"):
+    for group in ("types", "fields", "messages"):
         if group not in fragment["registry"]:
             continue
         rows = result["registry"].setdefault(group, [])
@@ -179,6 +179,11 @@ def merge_contract_snapshot(snapshot: dict) -> dict:
                     raise ValueError(f"cooperation: conflicting registry {group} id {row['id']} / 契约内容冲突")
             else:
                 rows.append(copy.deepcopy(row))
+    schemas = result["registry"].setdefault("schemas", {})
+    for identity, schema in fragment["registry"].get("schemas", {}).items():
+        if identity in schemas and schemas[identity] != schema:
+            raise ValueError(f"cooperation: conflicting registry schema {identity} / 模式冲突")
+        schemas.setdefault(identity, copy.deepcopy(schema))
     def union(left: dict, right: dict, path: str) -> None:
         for key, value in right.items():
             if key not in left:

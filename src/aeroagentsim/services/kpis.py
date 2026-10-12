@@ -159,14 +159,11 @@ class KPIProjector:
         """Restore state produced by :meth:`cursor`; unknown versions raise."""
         if not isinstance(cursor, dict) or cursor.get("version") != 1:
             raise ValueError("KPI cursor: unsupported checkpoint version")
-        self.counts = {
-            name: int(cursor["counts"][name]) for name in self.counts
-            if name in cursor["counts"]
-        }
+        cooperation_counts = {"incidents_occurred", "incidents_noticed", "incidents_photographed", "handoffs_completed"}
+        self.counts = {name: int(cursor["counts"][name]) for name in self.counts if name not in cooperation_counts}
         # Older checkpoints predate cooperation and have no such events.
-        for name in ("incidents_occurred", "incidents_noticed", "incidents_photographed", "handoffs_completed"):
-            if name not in self.counts:
-                self.counts[name] = 0
+        for name in cooperation_counts:
+            self.counts[name] = int(cursor["counts"][name]) if "coop_occurrences" in cursor else 0
         self.created = {str(k): int(v) for k, v in cursor["created"].items()}
         self.assigned = set(cursor["assigned"])
         self.completed = set(cursor["completed"])

@@ -981,13 +981,19 @@ class LowaltTasks(ContextEngine):
                 self._business_event(ctx, "lowalt.incident.noticed", {"incident": incident.ref.id, "vehicle": vehicle, "distance_m": gap})
                 allowed, blocked = self._coop_options(ctx, incident)
                 if self.cooperation["responder"]["mode"] == "agent":
+                    rules = self.cooperation["responder"]["rules"]
                     descriptions = {
                         "respond_now": "Respond now; suspend and later resume any interruptible task / 立即响应；暂停并随后恢复可中断任务",
                         "request_handoff": "Ask eligible helpers to take over the current task / 请求合格协助者接管当前任务",
                         "finish_then_respond": "Complete the current task before responding / 完成当前任务后响应",
                         "report_only": "Report this incident without flying to it / 仅上报事件",
                     }
-                    self._coop_request(ctx, incident, vehicle, "responder", allowed, [descriptions[v] for v in allowed] + [f"{v}: {reason}" for v, reason in blocked.items()])
+                    constraints = [
+                        f"Responding requires at least {rules['min_battery_pct']}% battery and distance at most {rules['max_response_distance_m']} m / 响应要求达到最低电量且不超过最大距离",
+                        f"Protected task kinds cannot be interrupted or transferred: {rules['protected_task_kinds']} / 受保护任务类别不能中断或交接",
+                        "A helper must accept before you leave your delivery / 离开配送前必须有协助者接受" if rules["require_replacement"] else "An interruptible delivery may be suspended and resumed after responding / 可中断配送允许在响应后恢复",
+                    ]
+                    self._coop_request(ctx, incident, vehicle, "responder", allowed, [descriptions[v] for v in allowed] + constraints + [f"{v}: {reason}" for v, reason in blocked.items()])
                 else:
                     self._coop_decide(ctx, incident)
                 break
@@ -1078,6 +1084,7 @@ class LowaltTasks(ContextEngine):
                     "accept: commit to taking over this task after your current task / 接受：承诺完成当前任务后接管请求任务",
                     "decline: keep your current schedule / 拒绝：保持当前安排",
                     "Payload capacity and minimum battery are enforced; task-kind restrictions do not block explicitly listed helpers / 引擎强制执行载荷和最低电量约束；名单中的协助者不受任务类别限制",
+                    f"Minimum helper battery is {self.cooperation['helpers']['rules']['min_battery_pct']}% / 协助者最低电量要求",
                 ])
             else:
                 self._coop_offer(ctx, incident, helper)
