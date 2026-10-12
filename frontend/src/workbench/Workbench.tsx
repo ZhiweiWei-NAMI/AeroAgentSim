@@ -353,7 +353,8 @@ export default function Workbench() {
 
   const spatial = !!store && (store.entities.size ? [...store.entities.values()].some(entity => resolveBinding(store.header, entity.typeId)) : store.header.presentation.length > 0);
   const live = mode === 'live' && !!status && !TERMINAL.has(status);
-  const history = !!session && mode === 'live' && !session.followingLive;
+  // Only an active run has a live moment to return to.
+  const history = !!session && mode === 'live' && !session.followingLive && !TERMINAL.has(status ?? '');
   const canOperate = !!session && session.followingLive && mode === 'live' && ['running', 'paused', 'waiting_for_input'].includes(status ?? '');
   const showGallery = (!projectId && !runId && !query.has('contract') && !query.has('records')) || query.get('gallery') === '1';
   const title = (project ? project.name === template?.title ? localized(template, 'title', locale) : project.name : undefined) ?? (record ? localized(record, 'template_title', locale) ?? record.workspace_name ?? record.scenario : undefined);

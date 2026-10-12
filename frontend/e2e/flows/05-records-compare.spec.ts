@@ -19,7 +19,7 @@ test('live history and back to live, then completed replay, comparison and modif
   await expect.poll(()=>status(page)).toBe('running');await evidence(page,'records-back-live');
  } finally {
   // Single-page recording, with no live worker left behind on failure.
-  const response=await page.request.post(`/v1/runs/${live.runId}/stop`);expect(response.ok(),await response.text()).toBe(true);
+  const response=await page.request.post(`/v1/runs/${live.runId}/stop`,{data:{}});expect(response.ok(),await response.text()).toBe(true);
  }
  await expect.poll(()=>status(page),{timeout:120_000}).toBe('stopped');
  const records=page.getByTestId('wb-records'),record=()=>records.locator('.wb-record').filter({hasText:food.runId});

@@ -167,14 +167,13 @@ test('traffic-accident: the operator accident walks through recorded dispatch to
   await page.getByRole('button', { name: 'Open photo', exact: true }).first().click();
   const photo = page.getByRole('img', { name: 'Stored capture photo', exact: true });
   await photo.scrollIntoViewIfNeeded(); await expect(photo).toBeInViewport();
-  await expect(page.getByTestId('wb-history')).toContainText('Viewing history');
+  // The accident run has completed: there is no live moment to return to.
+  await expect(page.getByTestId('workbench')).toHaveAttribute('data-status','completed');
+  await expect(page.getByTestId('wb-history')).toHaveCount(0);
   await shot(page, info, 'traffic-photo');
   await page.getByRole('button',{name:'Switch to Chinese',exact:true}).click();
-  await expect(page.getByTestId('wb-history')).toContainText('正在查看历史时刻');
-  await expect(page.getByTestId('wb-back-live')).toHaveText(/返回实时/);
-  await shot(page,info,'traffic-photo-history-zh');
-  await page.getByTestId('wb-back-live').click();await expect(page.getByTestId('wb-history')).toBeHidden();
-  await expect(page.getByTestId('workbench')).toHaveAttribute('data-status','completed');
+  await expect(page.getByTestId('wb-history')).toHaveCount(0);
+  await shot(page,info,'traffic-photo-zh');
   expect(errors.get(page)).toEqual([]);
 });
 
