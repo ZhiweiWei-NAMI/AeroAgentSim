@@ -61,7 +61,7 @@ test('operator source follows a concurrent closure without an invalid-prefix err
     release();
     await page.unrouteAll({ behavior: 'wait' });
     const progress = await (await page.request.get(`/v1/runs/${run}/inputs`)).json();
-    if (!['completed', 'stopped'].includes(progress.status)) await page.request.post(`/v1/runs/${run}/stop`);
+    if (!['completed', 'stopped'].includes(progress.status)) await page.request.post(`/v1/runs/${run}/stop`, { data: {} });
   }
 });
 

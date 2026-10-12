@@ -45,6 +45,14 @@ type Camera = 'orbit' | 'follow' | 'chase';
  * The one scene. A fixed 3D world fills the screen; every tool hovers over it.
  * URL query carries context: run, mode, cut, sel, panel, records, compare, graph, gallery, contract.
  */
+/** The run record is authoritative, but the live stream may already be further
+ *  along the lifecycle (e.g. running right after Start) than the last poll. */
+export function runStatus(recorded?: string, streamed?: string): string | undefined {
+  const stage = (value?: string) => value === undefined || value === 'loading' ? -1 : value === 'initialized' ? 0 : TERMINAL.has(value) ? 2 : 1;
+  if (recorded === undefined) return streamed;
+  return stage(streamed) > stage(recorded) ? streamed : recorded;
+}
+
 export default function Workbench() {
   const { locale, setLocale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
@@ -111,7 +119,7 @@ export default function Workbench() {
   const initialCut = query.get('cut') ? Number(query.get('cut')) : undefined;
   const session = useRunSession(apiBase, runId && mode ? runId : undefined, mode ?? 'replay', Number.isSafeInteger(initialCut) ? initialCut : undefined);
   // Runtime metadata drives simulation controls; the journal can arrive later.
-  const status = !recordsError && record ? record.status : session?.status;
+  const status = runStatus(!recordsError ? record?.status : undefined, session?.status);
   useEffect(() => { setRecordsKey(value => value + 1); }, [session?.status]);
   const waiting = !recordsError && record ? record.waiting : session?.waiting;
   const [metadataBoundary, setMetadataBoundary] = useState<{ runId: string; ns: string }>();
@@ -324,7 +332,7 @@ export default function Workbench() {
       if (event.repeat || event.defaultPrevented) return;
       const target = event.target as HTMLElement | null;
       // A photo or technical-details dialog owns its keyboard and focus.
-      if (target?.closest('[role="dialog"], [role="alertdialog"]')) return;
+      if (target?.closest('[role="dialog"], [role="alertdialog"]') || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       const editing = target && (target.isContentEditable || /^(TEXTAREA|SELECT)$/.test(target.tagName) ||
         target.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes((target as HTMLInputElement).type));
       if (editing && event.key !== 'Escape' && !((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k')) return;
@@ -473,7 +481,7 @@ export default function Workbench() {
     {/* Bottom dock */}
     {session && <Dock session={session} events={projected?.events ?? []} kpiIds={kpiIds} kpis={kpis} series={series} entityNames={entityNames} selected={selected}
       tab={dockTab} onTab={setDockTab} open={dockOpen} onToggle={() => setDockOpen(value => !value)} onEvent={selectEvent} untilNs={record?.until_ns}
-      photos={runId && store ? <Suspense fallback={null}><ArtifactsPanel api={runsApi} runId={runId} store={store} commitCut={session.cut} live={mode === 'live' && !TERMINAL.has(status ?? '')} onSeek={session.seekCut} /></Suspense> : undefined}
+      photos={runId && store ? <Suspense fallback={null}><ArtifactsPanel api={runsApi} runId={runId} store={store} commitCut={session.cut} live={mode === 'live' && !TERMINAL.has(status ?? '')} onSeek={session.seekCut} onInspect={() => setDirectorPaused(true)} /></Suspense> : undefined}
       why={traceRef && store ? <CauseTracePanel store={store} model={traceModel} canGoBack={traceStack.length > 1} onOpen={ref => openTrace(ref, false)} onBack={() => setTraceStack(stack => stack.slice(0, -1))} onClose={() => { setTraceStack([]); setDockTab('events'); }} onSelectEntity={key => select(key, true)} onSeek={session.seekCut} /> : undefined} />}
     {!session && project && !panel && <div className="wb-dock wb-glass" style={{ height: 'auto' }}><div className="wb-dock-bar">
       <span className="wb-label">{L('Next step', '下一步')}</span>

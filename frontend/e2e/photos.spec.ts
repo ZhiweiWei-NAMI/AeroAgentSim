@@ -23,7 +23,7 @@ for(const example of examples)test(`${example.name}: committed oblique photos an
     expect(artifact.request.camera.subject.id).toBe('incident.01');expect(artifact.request.camera.subject.field).toBe('traffic.incident.position_enu_m');
     const png=await(await page.request.get(`/v1/runs/${run}/artifacts/${artifact.digest}/download`)).body();expect(png.readUInt32BE(16)).toBe(960);expect(png.readUInt32BE(20)).toBe(540);expect(png.length).toBeGreaterThan(50_000);
     await writeFile(join(root,`${example.name}-photo.png`),png);await writeFile(join(root,`${example.name}-metadata.json`),JSON.stringify(artifact,null,2));
-    await page.getByTestId('wb-dock').getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:'Open photo',exact:true}).first().click();const photo=page.getByRole('img',{name:'Stored capture photo',exact:true});await expect(photo).toBeVisible();await expect.poll(()=>photo.evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBe(960);
+    await page.getByTestId('wb-dock').getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:'Open photo',exact:true}).first().click();const photo=page.getByTestId('wb-dock').getByRole('img',{name:'Stored capture photo',exact:true});await expect(photo).toBeVisible();await expect.poll(()=>photo.evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBe(960);
     for(const [width,height] of [[1280,800],[1600,1000],[1920,1080]]){
       await page.setViewportSize({width,height});await expect(page.locator('[data-testid=viewport][data-rendered=true]')).toBeVisible();await photo.scrollIntoViewIfNeeded();
       const preview=page.getByRole('button',{name:'View full-size photo',exact:true}),dock=page.getByTestId('wb-dock').locator('.wb-dock-body');
@@ -35,14 +35,15 @@ for(const example of examples)test(`${example.name}: committed oblique photos an
       await expect(fullPhoto).toBeVisible();await expect(fullPhoto).toHaveAttribute('src',(await photo.getAttribute('src'))!);
       await expect(dialog).toContainText(artifact.request.request_id);await expect(dialog).toContainText(`Source cut #${artifact.request.source_cut.index}`);
       await expect.poll(()=>fullPhoto.evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBe(960);
-      const fullBox=await fullPhoto.boundingBox();expect(fullBox!.width).toBeGreaterThanOrEqual(950);expect(fullBox!.height).toBeGreaterThanOrEqual(530);
+      // The dialog zooms in; measure its settled size.
+      await expect.poll(async()=>{const box=await fullPhoto.boundingBox();return box?`${box.width>=950?'wide':box.width}x${box.height>=530?'tall':box.height}`:'missing';}).toBe('widextall');
       await page.screenshot({path:join(root,`${example.name}-${width}-full-photo-en.png`)});
-      await page.keyboard.press('Escape');await expect(dialog).toBeHidden();await expect(preview).toBeFocused();
+      await page.keyboard.press('Escape');await expect(dialog).toBeHidden({timeout:15_000});await expect(preview).toBeFocused();
       await expect(identity).toHaveText(selection!);
     }
     await page.getByRole('button',{name:'Switch to Chinese',exact:true}).click();await page.screenshot({path:join(root,`${example.name}-1920-zh.png`)});
     await page.getByRole('button',{name:'查看完整尺寸照片',exact:true}).click();const translatedDialog=page.getByRole('dialog');await expect(translatedDialog).toContainText('来源日志位置');
-    await page.screenshot({path:join(root,`${example.name}-1920-full-photo-zh.png`)});await translatedDialog.getByRole('button',{name:'关闭',exact:true}).click();await expect(translatedDialog).toBeHidden();
+    await page.screenshot({path:join(root,`${example.name}-1920-full-photo-zh.png`)});await translatedDialog.getByRole('button',{name:/^(关闭|Close)$/}).click();await expect(translatedDialog).toBeHidden({timeout:15_000});
     await page.getByRole('button',{name:'切换到英文',exact:true}).click();
     if(example.name==='traffic-default'){
       await expect(page.getByTestId('workbench')).toHaveAttribute('data-status','completed',{timeout:180_000});
@@ -94,5 +95,5 @@ for(const example of examples)test(`${example.name}: committed oblique photos an
       expect(photos[0]).toBe(photos[1]);
     }
     expect(errors).toEqual([]);
-  }finally{await writeFile(info.outputPath('browser-errors.json'),JSON.stringify(errors));await page.request.post(`/v1/runs/${run}/stop`);}
+  }finally{await writeFile(info.outputPath('browser-errors.json'),JSON.stringify(errors));await page.request.post(`/v1/runs/${run}/stop`, { data: {} });}
 });

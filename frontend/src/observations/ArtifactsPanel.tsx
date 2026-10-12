@@ -10,13 +10,17 @@ import { stateValue } from '../pages/inspection-format';
 import { displayTime } from '../pages/display-time';
 import { useI18n } from '../i18n/I18nProvider';
 import './observations.css';
-interface Props { api:RunsApi;runId:string;store:TemporalFeedStore;commitCut?:number;live?:boolean;onSeek:(index:number)=>void }
+interface Props { api:RunsApi;runId:string;store:TemporalFeedStore;commitCut?:number;live?:boolean;onSeek:(index:number)=>void;
+  /** The user is looking at a photo: automatic camera/selection cues should hold. */
+  onInspect?:()=>void }
 /** Disk storage is independent of publication and business acceptance in the journal. */
-export function ArtifactsPanel({api,runId,store,live,onSeek}:Props) {
+export function ArtifactsPanel({api,runId,store,live,onSeek,onInspect}:Props) {
   const { t, locale } = useI18n();
   const [owners,setOwners]=useState<Array<{id:string;fields:Draft}>>(),[ownershipError,setOwnershipError]=useState('');
   const [records,setRecords]=useState<Draft[]>(),[error,setError]=useState(''),[image,setImage]=useState<{digest:string;url:string;record:Draft}>(),[opening,setOpening]=useState<string>();
   const [fullSize,setFullSize]=useState(false);
+  // The dialog only hears Escape while focus is inside it; close it wherever focus is.
+  useEffect(()=>{if(!fullSize)return;const key=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.stopPropagation();setFullSize(false);}};addEventListener('keydown',key,true);return()=>removeEventListener('keydown',key,true);},[fullSize]);
   const openRequest = useRef<AbortController>();
   const listSequence = useRef(0), photo = useRef<HTMLElement>(null);
   const observing = useRef(live);observing.current=live;
@@ -35,6 +39,7 @@ export function ArtifactsPanel({api,runId,store,live,onSeek}:Props) {
   useEffect(()=>()=>{if(image)URL.revokeObjectURL(image.url);},[image]);
   useEffect(()=>{if(image)photo.current?.scrollIntoView({block:'start'});},[image]);
   const open=async(row:Draft)=>{
+    onInspect?.();
     openRequest.current?.abort();const abort=new AbortController();openRequest.current=abort;setOpening(String(row.digest));
     try {
       if(typeof row.digest!=='string'||!row.digest)throw Error(t('Recorded artifact ID is missing'));
@@ -58,7 +63,7 @@ export function ArtifactsPanel({api,runId,store,live,onSeek}:Props) {
   </>;
   return <><section className={`capture-artifacts${image?' has-photo':''}`} aria-label={t('Stored capture artifacts')}>
     {image&&<figure ref={photo} tabIndex={-1} className="capture-photo">
-      <button type="button" className="capture-photo-open" aria-label={t('View full-size photo')} title={t('View full-size photo')} aria-haspopup="dialog" onClick={()=>setFullSize(true)}>
+      <button type="button" className="capture-photo-open" aria-label={t('View full-size photo')} title={t('View full-size photo')} aria-haspopup="dialog" onClick={()=>{onInspect?.();setFullSize(true);}}>
         <img src={image.url} alt={t('Stored capture photo')} onLoad={()=>photo.current?.scrollIntoView({block:'start'})}/>
       </button>
       <figcaption>{request&&typeof request.request_id==='string'&&<strong>{request.request_id}</strong>}<span>{t('Click the photo to view full size.')}</span></figcaption>
@@ -70,7 +75,7 @@ export function ArtifactsPanel({api,runId,store,live,onSeek}:Props) {
       const publication=published===undefined?t('owner metadata unavailable'):published.length?t('recorded metadata: {statuses}', {statuses:published.join(', ')}):t('not recorded at this cut');
       return <article key={`${row.digest}/${index}`}><strong>{request?String(request.request_id):t('Malformed request metadata')}</strong>
         <p>{t('Storage: actual bytes listed · renderer: {renderer} · publication at selected cut: {publication}. Task acceptance is determined by its recorded chain/receipts.', {renderer:rendererLabel(row.renderer_mode),publication})}</p>
-        {source&&typeof source.index==='number'&&Number.isSafeInteger(source.index)&&source.index>=1&&<button type="button" className="console-btn" onClick={()=>onSeek(source.index as number)}>{t('Seek photo moment')}</button>}
+        {source&&typeof source.index==='number'&&Number.isSafeInteger(source.index)&&source.index>=1&&<button type="button" className="console-btn" onClick={()=>{onInspect?.();onSeek(source.index as number);}}>{t('Seek photo moment')}</button>}
         <button type="button" className="console-btn" disabled={opening===row.digest} onClick={()=>void open(row)}>{opening===row.digest?t('Opening photo…'):t('Open photo')}</button>
         <Details title={request?String(request.request_id):t('Artifact metadata')} buttonLabel={t('Camera / actor / acquisition / source cut')}>
           <pre>{exactValue(row)}</pre>

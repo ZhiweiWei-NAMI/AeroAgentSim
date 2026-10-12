@@ -107,3 +107,9 @@ it('localizes all shipped dimensional units while retaining exact English symbol
  expect(displayUnit({ ...schemaUnit, schema: { unit: '1' } }, 'zh-CN')).toBeUndefined();
  expect(displayUnit({ ...schemaUnit, unit: 'custom/unit' }, 'zh-CN')).toBe('custom/unit');
 });
+
+it('spells out abbreviated field names in English and keeps the Chinese dictionary', () => {
+  expect(readableLabel('lowalt.soc')).toBe('State of charge');
+  expect(readableLabel('lowalt.soc', 'zh-CN')).toBe('电量比例');
+  expect(readableLabel('traffic.coordinator_candidate', 'zh-CN')).toBe('协调候选对象');
+});

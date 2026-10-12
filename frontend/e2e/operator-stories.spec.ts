@@ -32,7 +32,7 @@ test.afterEach(async ({ page }, info) => {
   await info.attach('http-errors', { body: JSON.stringify(httpErrors.get(page)), contentType: 'application/json' });
   if (info.status !== info.expectedStatus && !page.isClosed()) await shot(page, info, 'failure');
   const id = runId(page);
-  if (id && !['completed','stopped'].includes(await status(page) ?? '')) await page.request.post(`/v1/runs/${id}/stop`);
+  if (id && !['completed','stopped'].includes(await status(page) ?? '')) await page.request.post(`/v1/runs/${id}/stop`, { data: {} });
 });
 async function shot(page: Page, info: TestInfo, name: string) {
   const path = info.outputPath(name + '.png'); await page.screenshot({ path }); await info.attach(name, { path, contentType: 'image/png' });

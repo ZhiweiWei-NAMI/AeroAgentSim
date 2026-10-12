@@ -76,7 +76,7 @@ test('relation graph keeps filters and controls visible while revealing selected
       }
     }
     expect(errors).toEqual([]);
-  } finally { const stopped = await request.post(`/v1/runs/${world.run}/stop`); expect(stopped.ok()).toBe(true); }
+  } finally { const stopped = await request.post(`/v1/runs/${world.run}/stop`, { data: {} }); expect(stopped.ok() || stopped.status() === 409, "stop, or the run already finished").toBe(true); }
 });
 
 test('clearing object search reveals selection, grounded cameras retain context and inspector tabs retain separate scroll', async ({ page, request }, info) => {
@@ -131,5 +131,5 @@ test('clearing object search reveals selection, grounded cameras retain context 
     for (const label of labels) expect(label).toMatch(/[\u3400-\u9fff]/);
     await screenshot(page, info, 'inspector-fields-zh-1280');
     expect(errors).toEqual([]);
-  } finally { const stopped = await request.post(`/v1/runs/${world.run}/stop`); expect(stopped.ok()).toBe(true); }
+  } finally { const stopped = await request.post(`/v1/runs/${world.run}/stop`, { data: {} }); expect(stopped.ok() || stopped.status() === 409, "stop, or the run already finished").toBe(true); }
 });

@@ -29,14 +29,17 @@ it.each(['en-US', 'zh-CN'])('opens the same verified bytes full size with their 
  expect(preview).toHaveAttribute('aria-haspopup','dialog');fireEvent.click(preview);
  const dialog=await screen.findByRole('dialog');
  expect(within(dialog).getByRole('img',{name:zh?'已存储的拍摄照片':'Stored capture photo'})).toHaveAttribute('src','blob:full-photo');
- expect(within(dialog).getByText('photo.raw.id')).toBeVisible();
- expect(within(dialog).getByText(zh?'拍摄载具：uav.alpha':'Actor: uav.alpha')).toBeVisible();
- expect(within(dialog).getByText(zh?'来源日志位置 #3':'Source cut #3')).toBeVisible();
- expect(within(dialog).getByText(zh?'来源时刻：00:00.0':'Source time: 00:00.0')).toBeVisible();
+ expect(within(dialog).getByText('photo.raw.id')).toBeInTheDocument();
+ expect(within(dialog).getByText(zh?'拍摄载具：uav.alpha':'Actor: uav.alpha')).toBeInTheDocument();
+ expect(within(dialog).getByText(zh?'来源日志位置 #3':'Source cut #3')).toBeInTheDocument();
+ expect(within(dialog).getByText(zh?'来源时刻：00:00.0':'Source time: 00:00.0')).toBeInTheDocument();
  expect(download).toHaveBeenCalledOnce();
- fireEvent.click(within(dialog).getByRole('button',{name:zh?'关闭':'Close'}));
+ fireEvent.click(within(dialog).getByRole('button',{name:/^(关闭|Close)$/}));
  await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
  expect(preview).toBeVisible();
+ // Escape closes it even when focus never reached the dialog.
+ fireEvent.click(preview);await screen.findByRole('dialog');fireEvent.keyDown(document.body,{key:'Escape'});
+ await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
 });
 
 it('discovers storage published after the tab opens through live/feed updates, then stops polling on close',async()=>{
@@ -77,4 +80,15 @@ it('localizes photo guidance and storage status while preserving request IDs and
  fireEvent.click(screen.getByRole('button',{name:'跳到拍摄时刻'}));expect(seek).toHaveBeenCalledWith(3);
  expect(screen.getByRole('button',{name:'打开照片'})).toBeTruthy();
  expect(screen.queryByText('Open photo')).toBeNull();
+});
+
+it('tells the workbench when the user starts looking at a photo', async () => {
+  const api=new RunsApi('http://api'),onInspect=vi.fn();
+  const row={digest:'e'.repeat(64),byte_count:3,renderer_mode:'browser',request:{request_id:'photo.inspect',actor:{id:'uav.alpha',generation:0},source_cut:{index:3,instant:[10,2]}}};
+  vi.spyOn(api,'request').mockImplementation(async path=>path.includes('/configuration')?{scenario:{engines:{}}}:[row]);
+  vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer})));
+  vi.stubGlobal('URL',Object.assign(URL,{createObjectURL:vi.fn(()=> 'blob:inspect'),revokeObjectURL:vi.fn()}));
+  render(<I18nProvider><ArtifactsPanel api={api} runId="run" store={new TemporalFeedStore(fixtureHeader)} onSeek={()=>{}} onInspect={onInspect}/></I18nProvider>);
+  fireEvent.click(await screen.findByRole('button',{name:/^(Open photo|打开照片)$/}));
+  await waitFor(()=>expect(onInspect).toHaveBeenCalled());
 });

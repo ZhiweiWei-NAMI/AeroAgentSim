@@ -48,5 +48,5 @@ for (const template of ['traffic-accident','city-day']) test(`${template} stores
   await page.getByRole('button',{name:'Switch to Chinese',exact:true}).click();
   await page.screenshot({path:join(root,`${template}-1920-zh.png`)});
   expect(errors).toEqual([]);
-  await page.request.post(`/v1/runs/${run}/stop`);
+  await page.request.post(`/v1/runs/${run}/stop`, { data: {} });
 });

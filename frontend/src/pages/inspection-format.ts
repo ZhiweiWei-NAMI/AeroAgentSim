@@ -44,8 +44,10 @@ export function localizedLabel(value: string, locale = 'en-US'): string {
 export function readableLabel(value: string, locale = 'en-US'): string {
   const words = value.slice(value.lastIndexOf(':')+1).replace(/^traffic\.p\./, '').replace(/^traffic\./, '').replace(/^lowalt\.(?:p\.)?/, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._/-]+/g, ' ').trim();
   const label = words ? words.replace(/\b\w/g, letter => letter.toUpperCase()).replace(/\bUav\b/g, 'UAV').replace(/\bLlm\b/g, 'LLM').replace(/\bPx4\b/g, 'PX4') : value;
-  return localizedLabel(label, locale);
+  // Abbreviated field names read better spelled out in English.
+  return locale.startsWith('zh') ? localizedLabel(label, locale) : ENGLISH_LABELS[label] ?? localizedLabel(label, locale);
 }
+const ENGLISH_LABELS: Record<string, string> = { Soc: 'State of charge' };
 export function displayLabel(label: string | undefined, id: string, locale = 'en-US'): string {
   // Slashes inside an English unit/axis label are not bilingual separators.
   const parts = label ? /[\u3400-\u9fff]/.test(label) ? label.split('/').map(part => part.trim()) : [label.trim()] : undefined;
