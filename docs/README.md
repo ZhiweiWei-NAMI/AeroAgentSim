@@ -31,6 +31,7 @@ After [installation](getting-started/install.md), `aeroagentsim templates` lists
 
 | Task | Guide |
 | --- | --- |
+| Build a scenario by describing it | [Build a scenario in conversation](guides/assistant.md) |
 | Connect a flight simulator | [PX4/Gazebo](guides/px4-gazebo.md) |
 | Connect road traffic | [SUMO](guides/sumo.md) |
 | Configure environmental forcing | [Weather](guides/weather.md) |
