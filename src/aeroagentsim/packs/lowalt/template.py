@@ -93,6 +93,9 @@ def expand(document: dict[str, Any]) -> None:
             if not any(m["id"] == descriptor["id"] for m in messages):
                 messages.append(descriptor)
     if "generators" not in document:
+        from .cooperation import expand as expand_cooperation
+
+        expand_cooperation(document)
         return
     generators = document["generators"]
     if not isinstance(generators, dict) or set(generators) != {"fleet"}:
@@ -167,6 +170,10 @@ def expand(document: dict[str, Any]) -> None:
                 value = value.format(index=index + 1)
             generated[name] = value
         document["entities"].append(generated)
+
+    from .cooperation import expand as expand_cooperation
+
+    expand_cooperation(document)
 
 
 def parcel_document(
