@@ -193,9 +193,10 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       const context: Context = { scene, abort, groups, fitView, invalidate, setOverlay: value => {
         if (!value) { overlayView?.dispose(); overlayView = undefined; hologram?.dispose(); hologram = context.hologram = undefined; host.dataset.overlayLabels = '[]'; invalidate(); return; }
         try {
+          const fresh = !hologram;
           hologram ??= new PreviewHologram(scene, invalidate); context.hologram = hologram;
           hologram.update(value, bounds);
-          hologram.sync(groups.ground, 'ground'); hologram.sync(groups.buildings, 'building'); hologram.sync(groups.roads, 'road');
+          if (fresh) { hologram.sync(groups.ground, 'ground'); hologram.sync(groups.buildings, 'building'); hologram.sync(groups.roads, 'road'); }
           overlayView ??= new PlanOverlayView({ scene, camera, target: controls!.target, host, invalidate, frameBounds: (box, destination, target) => {
             userMoved = true;
             framePreview(destination, box, target, visibleFrame());

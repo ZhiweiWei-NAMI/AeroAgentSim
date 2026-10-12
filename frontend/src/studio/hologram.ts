@@ -136,6 +136,7 @@ export class PreviewHologram {
 
   update(overlay: PreviewOverlay, bounds: THREE.Box3) {
     this.overlay = overlay;
+    const wasReal = this.mode === 'real';
     const mode = hologramMode(overlay, playedKeys), key = mode === 'sweep' ? overlay.reveal!.key : undefined;
     if (key !== this.revealKey) this.sweep = key === undefined ? undefined : sweeps.get(key);
     this.revealKey = key; this.mode = mode;
@@ -147,7 +148,7 @@ export class PreviewHologram {
       this.uniforms.uSweepGlow.value = 0;
       this.stage.copy(this.uniforms.uHologramNavy.value);
       this.scene.background = mode === 'real' ? this.background : this.stage;
-      for (const [root, record] of this.roots) this.sync(root, record.surface);
+      if (wasReal !== (mode === 'real')) for (const [root, record] of this.roots) this.sync(root, record.surface);
     }
     this.invalidate();
   }
