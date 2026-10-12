@@ -241,10 +241,10 @@ def expand(document: dict) -> None:
         entities = {row["id"]: row for row in document["entities"]}
         generated = []
         for point in coop["handoff_points"]:
-            generated.append({"id": point["id"], "type": "lowalt:HandoffPoint", "label": point["label"], "label_zh": point["label_zh"], "facts": {"lowalt.site_position": point["position"], "lowalt.site_open": True, "lowalt.site_capacity": 1}})
+            generated.append({"id": point["id"], "type": "lowalt:HandoffPoint", "label": point["label"], "label_zh": point["label_zh"], "facts": {"lowalt.site_position": [float(v) for v in point["position"]], "lowalt.site_open": True, "lowalt.site_capacity": 1}})
         for incident in coop["incidents"]:
             labels = {key: incident[key] for key in ("label", "label_zh")}
-            generated.append({"id": incident["id"], "type": "lowalt:Incident", **labels, "business": "emergency", "facts": {"lowalt.incident_kind": incident["kind"], "lowalt.incident_position": incident["position"], "lowalt.incident_state": "pending", "lowalt.incident_time_ns": round(incident["at_s"] * 1e9), "lowalt.incident_noticed_by": "", "lowalt.incident_responder": ""}})
+            generated.append({"id": incident["id"], "type": "lowalt:Incident", **labels, "business": "emergency", "facts": {"lowalt.incident_kind": incident["kind"], "lowalt.incident_position": [float(v) for v in incident["position"]], "lowalt.incident_state": "pending", "lowalt.incident_time_ns": round(incident["at_s"] * 1e9), "lowalt.incident_noticed_by": "", "lowalt.incident_responder": ""}})
             generated.append({"id": "handoff-" + incident["id"], "type": "lowalt:Handoff", **labels, "business": "emergency", "facts": {field: "idle" if field.endswith("_state") else "" for field in HANDOFF_FIELDS}})
         for row in generated:
             if row["id"] in entities:

@@ -16,7 +16,7 @@ from .sessions import SessionStore
 
 STRING = {"type": "string", "minLength": 1}
 STRINGS = {"type": "array", "items": STRING}
-QUESTIONS = {"type": "array", "maxItems": 2, "items": {"anyOf": [STRING, {"type": "object", "properties": {"question": STRING, "options": STRINGS}, "required": ["question"], "additionalProperties": False}]}}
+QUESTIONS = {"type": "array", "maxItems": 2, "items": {"anyOf": [STRING, {"type": "object", "properties": {"question": STRING, "options": STRINGS, "default": STRING}, "required": ["question"], "additionalProperties": False}]}}
 BASE = {"anyOf": [
     {"type": "object", "properties": {"workspace": STRING}, "required": ["workspace"], "additionalProperties": False},
     {"type": "object", "properties": {"template": STRING, "controls": {"type": "object"}}, "required": ["template"], "additionalProperties": False},
@@ -27,9 +27,27 @@ def object_schema(properties: dict[str, Any], required: tuple[str, ...] = ()) ->
     return {"type": "object", "properties": properties, "required": list(required), "additionalProperties": False}
 
 
+def _discriminated(branches: list[dict[str, Any]], value: Any, path: str) -> dict[str, Any] | None:
+    """For unions tagged by a one-value enum (operations by "op"), the branch whose error is worth reporting."""
+    if not isinstance(value, dict):
+        return None
+    for key in ("op",):
+        tags = {b["properties"][key]["enum"][0]: b for b in branches if len(b.get("properties", {}).get(key, {}).get("enum", [])) == 1}
+        if tags:
+            if value.get(key) not in tags:
+                raise ValueError(f"{path}.{key}: choose from {sorted(tags)} / 请使用列出的操作")
+            return tags[value[key]]
+    return None
+
+
 def validate_arguments(schema: dict[str, Any], value: Any, path: str = "arguments") -> None:
     if "anyOf" in schema or "oneOf" in schema:
-        for branch in schema.get("anyOf", schema.get("oneOf", [])):
+        branches = schema.get("anyOf", schema.get("oneOf", []))
+        tagged = _discriminated(branches, value, path)
+        if tagged is not None:
+            validate_arguments(tagged, value, path)
+            return
+        for branch in branches:
             try:
                 validate_arguments(branch, value, path)
                 return
@@ -88,7 +106,7 @@ def tool_schemas() -> list[dict[str, Any]]:
         "note": STRING, "add": operations, "update": operations, "remove": STRINGS,
         "assumptions": STRINGS, "resolve_questions": STRINGS, "add_questions": QUESTIONS,
         "title": STRING, "summary": STRING,
-    }, ("note",))
+    })
     specs = [
         ("get_current_scene", "Read the bound project's real draft scene; returns no scene when unbound.", object_schema({})),
         ("list_starting_points", "List available scenario templates and their defaults.", object_schema({})),
@@ -96,10 +114,10 @@ def tool_schemas() -> list[dict[str, Any]]:
         ("list_capabilities", "Read supported operations, parameter limits and installed algorithms.", object_schema({"topic": STRING})),
         ("find_places", "Find named catalogue places; use their keys in add_place.at or add_incident.at.", object_schema({"query": STRING, "near": {"anyOf": [STRING, {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 3}]}, "role": STRING})),
         ("lookup_contract", "Search real AeroGraph types, fields, relations and ancestry.", object_schema({"term": STRING}, ("term",))),
-        ("draft_plan", "Compile a proposed plan now. Operations use {id?, op, params}; ids are assigned by the server. Never applies.\n" + catalogue, object_schema({"base": BASE, "title": STRING, "summary": STRING, "operations": operations, "assumptions": STRINGS, "open_questions": QUESTIONS, "note": STRING}, ("base", "title", "summary", "operations", "assumptions", "open_questions", "note"))),
+        ("draft_plan", "Compile a proposed plan now. Operations use {id?, op, params}; ids are assigned by the server. Never applies.\n" + catalogue, object_schema({"base": BASE, "title": STRING, "summary": STRING, "operations": operations, "assumptions": STRINGS, "open_questions": QUESTIONS, "note": STRING}, ("base", "title", "summary", "operations", "assumptions", "open_questions"))),
         ("revise_plan", "Compile a minimal revision. update contains full operations with existing ids; remove lists ids. Leave all other operations intact.\n" + catalogue, revision),
         ("restore_operations", "Restore all or selected operation ids from an earlier version; keep unrelated operations.", object_schema({"from_version": {"type": "integer", "minimum": 1}, "op_ids": STRINGS, "note": STRING}, ("from_version", "note"))),
-        ("propose_alternatives", "Compile two or three labelled variants of the current plan. Supply complete operations or minimal changes, never both.", object_schema({"variants": {"type": "array", "minItems": 2, "maxItems": 3, "items": object_schema({"label": STRING, "title": STRING, "summary": STRING, "operations": operations, "changes": revision, "assumptions": STRINGS}, ("label", "title", "summary", "assumptions"))}}, ("variants",))),
+        ("propose_alternatives", "Compile two or three labelled variants of the current plan. Supply complete operations or minimal changes, never both.", object_schema({"variants": {"type": "array", "minItems": 2, "maxItems": 3, "items": object_schema({"label": STRING, "title": STRING, "summary": STRING, "note": STRING, "operations": operations, "changes": revision, "assumptions": STRINGS}, ("label", "title", "summary", "assumptions"))}}, ("variants",))),
         ("explain_participant", "Explain one real participant's responsibilities, tasks and decision rules.", object_schema({"id": STRING}, ("id",))),
         ("explain_relation", "Explain recorded or configured links between two real entities.", object_schema({"a": STRING, "b": STRING}, ("a", "b"))),
         ("list_runs", "List recorded runs of this session's bound project.", object_schema({})),
@@ -340,6 +358,7 @@ class ToolRunner:
                 "prechecks": result.expectations, "note": note, "variant": variant}
 
     def draft_plan(self, identifier: str, **arguments: Any) -> dict[str, Any]:
+        arguments.setdefault("note", "First proposal / 初版方案")
         return self._compile(identifier, **arguments)
 
     @staticmethod
@@ -350,11 +369,13 @@ class ToolRunner:
         updates = changes.get("update", [])
         if len(remove) != len(set(remove)) or len({op.get("id") for op in updates}) != len(updates):
             raise ValueError("Duplicate revision ids / 修改标识重复")
+        current = ", ".join(op["id"] for op in result["operations"])
         for op in updates:
             if op.get("id") not in known or op["id"] in remove:
-                raise ValueError("Update must name an existing, retained operation / 修改必须指定保留的已有操作")
+                raise ValueError(f"Update must name an existing, retained operation; {op.get('id')!r} is not one. Current ids: {current} / 修改必须指定保留的已有操作；当前标识：{current}")
         if set(remove) - known:
-            raise ValueError("Cannot remove unknown operations / 无法移除不存在的操作")
+            unknown = ", ".join(sorted(set(remove) - known))
+            raise ValueError(f"Cannot remove unknown operations {unknown}. Current ids: {current} / 无法移除不存在的操作 {unknown}；当前标识：{current}")
         by_id = {op["id"]: op for op in updates}
         result["operations"] = [copy.deepcopy(by_id.get(op["id"], op)) for op in result["operations"] if op["id"] not in remove]
         for op in changes.get("add", []):
@@ -372,7 +393,7 @@ class ToolRunner:
         result["open_questions"] = [q for q in questions if (q if isinstance(q, str) else q["question"]) not in resolved] + changes.get("add_questions", [])
         if len(result["open_questions"]) > 2:
             raise ValueError("Keep at most two material open questions / 最多保留两个实质性问题")
-        result["note"] = changes["note"]
+        result["note"] = changes.get("note") or changes.get("title") or "Revision / 修改"
         return result
 
     def revise_plan(self, identifier: str, **changes: Any) -> dict[str, Any]:
@@ -412,7 +433,7 @@ class ToolRunner:
             else:
                 arguments = {k: copy.deepcopy(plan[k]) for k in ("base", "title", "summary", "operations", "assumptions", "open_questions")}
                 arguments["operations"] = variant["operations"]
-            arguments.update(title=variant["title"], summary=variant["summary"], assumptions=variant["assumptions"], note=f"Alternative {variant['label']} / 备选方案 {variant['label']}")
+            arguments.update(title=variant["title"], summary=variant["summary"], assumptions=variant["assumptions"], note=variant.get("note") or f"Alternative {variant['label']}: {variant['title']} / 备选方案 {variant['label']}：{variant['title']}")
             results.append(self._compile(identifier, **arguments, variant=variant["label"], parent=plan["version"], current=False, retained={op["id"] for op in plan["operations"]}))
         with self.sessions.edit(identifier) as session:
             session["alternatives"] = [r["version"] for r in results]

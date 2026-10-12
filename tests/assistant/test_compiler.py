@@ -171,6 +171,24 @@ def test_flagship_food_parcel_incident_handoff(context: CompileContext, tmp_path
 
 
 @pytest.mark.skipif(not COOP_INSTALLED, reason="Cooperation module is built in the parallel area")
+def test_cooperation_revisions_rebuild_handoff_points(context: CompileContext, tmp_path: Path) -> None:
+    # Integer coordinates are ordinary model output; a later revision may move the same point.
+    cooperation = {"watchers": {"vehicles": ["logistics"], "notice_radius_m": 150},
+                   "responder": {"mode": "prescribed", "order": ["request_handoff", "report_only"]},
+                   "helpers": {"vehicles": ["couriers"], "mode": "prescribed", "rules": {"accept_when": "always"}}}
+    operations = [op("add_fleet", id="couriers", role="meal_courier", count=1, start="plaza"),
+        op("add_fleet", id="logistics", role="parcel_drone", count=1, start="plaza"),
+        op("add_incident", id="fall", kind="person_fall", at="street-east", time_s=60),
+        op("set_cooperation", handoff_points=[{"id": "street", "position": [20, -60, 0]}], **cooperation),
+        op("set_cooperation", handoff_points=[{"id": "street", "position": [30, -60, 0]}])]
+    result = compile_ops(context, tmp_path, operations)
+    assert result.ok, result.errors
+    points = [e for e in result.document["entities"] if e["type"] == "lowalt:HandoffPoint"]
+    assert [(e["id"], e["facts"]["lowalt.site_position"]) for e in points] == [("street", [30.0, -60.0, 0.0])]
+    assert validate_compiled(context, tmp_path / "plan")["valid"]
+
+
+@pytest.mark.skipif(not COOP_INSTALLED, reason="Cooperation module is built in the parallel area")
 def test_agent_cooperation_requires_connection(context: CompileContext, tmp_path: Path) -> None:
     result = compile_ops(context, tmp_path, [op("set_cooperation", responder={"mode": "agent"})])
     assert not result.ok

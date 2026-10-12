@@ -277,6 +277,17 @@ def _cooperation(document: dict) -> dict:
     return tasks["cooperation"]
 
 
+def _drop_generated(document: dict, coop: dict) -> None:
+    ids = {("lowalt:HandoffPoint", point["id"]) for point in coop.get("handoff_points", [])}
+    for incident in coop.get("incidents", []):
+        ids |= {("lowalt:Incident", incident["id"]), ("lowalt:Handoff", "handoff-" + incident["id"])}
+    document["entities"] = [e for e in document["entities"] if (e["type"], e["id"]) not in ids]
+    bindings = document.get("bindings", {})
+    for key in ("rules", "lifecycle"):
+        if key in bindings:
+            bindings[key] = [row for row in bindings[key] if (row.get("type"), row.get("ids")) not in ids]
+
+
 def _merge(target: dict, changes: dict) -> None:
     for key, value in changes.items():
         if isinstance(value, dict) and isinstance(target.get(key), dict):
@@ -803,9 +814,13 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                     point["position"] = _position(document, point.pop("at"), "handoff_points.at")
                 elif "position" not in point:
                     _fail("handoff_points", "Provide at or position for each handoff point", "每个交接点需要 at 或 position")
+                else:
+                    point["position"] = _position(document, point["position"], "handoff_points.position")
                 point.setdefault("label", point["id"]); point.setdefault("label_zh", "交接点 " + point["id"])
                 points.append(point)
             p["handoff_points"] = points
+        # Generated points and incidents follow the configuration: drop the old ones so expansion rebuilds them.
+        _drop_generated(document, coop)
         _merge(coop, p)
         if any(coop.get(k, {}).get("mode") == "agent" for k in ("responder", "helpers")):
             if ctx.agent_profile is None:
