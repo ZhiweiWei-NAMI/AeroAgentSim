@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { layoutOverlayLabels, overlayArc, overlayEase, overlayFocus, overlayLabelOrder, overlayPosition, overlayRevealTimes, OverlayTimeline, type OverlayMarker, type OverlayRoute, type PreviewOverlay } from './plan-overlay';
+import { layoutOverlayLabels, overlayArc, overlayEase, overlayFocus, overlayLabelAnchor, overlayLabelOrder, overlayPosition, overlayRevealTimes, OverlayCameraMotion, OverlayTimeline, type OverlayMarker, type OverlayRoute, type PreviewOverlay } from './plan-overlay';
 import { framePreview, visiblePreviewFrame } from './ScenePreview';
 
 const marker = (id: string, state: OverlayMarker['state'] = 'existing', kind: OverlayMarker['kind'] = 'place'): OverlayMarker => ({ id, state, kind, label: id, position: [0, 0, 0] });
@@ -11,8 +11,8 @@ describe('plan overlay geometry', () => {
   it('maps ENU without inventing elevation and preserves both route endpoints', () => {
     expect(overlayPosition([10, 20, 30]).toArray()).toEqual([10, 30, -20]);
     const arc = overlayArc(route);
-    expect(arc.getPoint(0).toArray()).toEqual([0, 0, 0]);
-    expect(arc.getPoint(1).toArray()).toEqual([100, 40, 0]);
+    expect(arc.getPoint(0).toArray()).toEqual(overlayPosition(route.from).toArray());
+    expect(arc.getPoint(1).toArray()).toEqual(overlayPosition(route.to).toArray());
   });
 
   it('raises the actual apex by a quarter of horizontal distance, capped at 120 metres', () => {
@@ -64,6 +64,15 @@ describe('overlay ordering', () => {
     expect(boxes.map(box => [box.id, box.y])).toEqual([['focus', 100], ['new', 76]]);
     const many = Array.from({ length: 30 }, (_, index) => ({ id: String(index), x: index * 20, y: 50, width: 10, height: 10 }));
     expect(layoutOverlayLabels(many, 1000, 200)).toHaveLength(24);
+  });
+
+  it('projects label anchors only inside the camera frustum', () => {
+    const camera = new THREE.PerspectiveCamera(45, 800 / 600, 1, 1000);
+    camera.position.set(0, 0, 10); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
+    expect(overlayLabelAnchor(new THREE.Vector3(), camera, 800, 600)).toEqual({ x: 400, y: 300 });
+    for (const point of [new THREE.Vector3(0, 0, 20), new THREE.Vector3(1000, 0, 0), new THREE.Vector3(0, 0, 9.5), new THREE.Vector3(0, 0, -2000)]) {
+      expect(overlayLabelAnchor(point, camera, 800, 600)).toBeUndefined();
+    }
   });
 });
 
@@ -152,5 +161,40 @@ describe('preview framing between panels', () => {
   it('can frame with only a plan board and keeps a positive frame when panels overlap', () => {
     expect(visiblePreviewFrame(full, [], [rect(100, 150, 300, 700)])?.x).toBe(320);
     expect(visiblePreviewFrame(full, [rect(700, 150, 800, 700)], [rect(100, 150, 900, 700)])?.width).toBe(1);
+  });
+});
+
+describe('camera motion', () => {
+  it('eases camera, target and projection together for exactly 600 milliseconds', () => {
+    const camera = new THREE.PerspectiveCamera(45, 1.5), target = new THREE.Vector3(); camera.position.set(0, 100, 100);
+    const destination = camera.clone(); destination.position.set(200, 300, 400); destination.setViewOffset(1200, 800, 200, -40, 1200, 800);
+    const motion = new OverlayCameraMotion(camera, target);
+    motion.start(destination, new THREE.Vector3(100, 20, 40), 1000);
+    motion.advance(1300, false);
+    expect(camera.position.toArray()).toEqual([100, 200, 250]);
+    expect(target.toArray()).toEqual([50, 10, 20]);
+    expect(camera.view?.offsetX).toBe(100); expect(camera.view?.offsetY).toBe(-20);
+    expect(motion.active).toBe(true);
+    motion.advance(1600, false);
+    expect(camera.position.toArray()).toEqual(destination.position.toArray());
+    expect(camera.view?.offsetX).toBe(200); expect(motion.active).toBe(false);
+  });
+
+  it('keeps the user camera position after a drag cancels framing', () => {
+    const camera = new THREE.PerspectiveCamera(), target = new THREE.Vector3();
+    const destination = camera.clone(); destination.position.set(100, 100, 100);
+    const motion = new OverlayCameraMotion(camera, target); motion.start(destination, new THREE.Vector3(10, 10, 10), 0);
+    motion.advance(150, false); motion.cancel(); camera.position.set(300, 20, 60);
+    const stoppedTarget = target.clone(); motion.advance(600, false);
+    expect(camera.position.toArray()).toEqual([300, 20, 60]); expect(target.equals(stoppedTarget)).toBe(true);
+    expect(motion.active).toBe(false);
+  });
+
+  it('frames instantly under reduced motion and clears an obsolete view offset', () => {
+    const camera = new THREE.PerspectiveCamera(), target = new THREE.Vector3(); camera.setViewOffset(1000, 800, 100, 0, 1000, 800);
+    const destination = camera.clone(); destination.clearViewOffset(); destination.position.set(100, 200, 300);
+    const motion = new OverlayCameraMotion(camera, target); motion.start(destination, new THREE.Vector3(10, 20, 30), 0); motion.advance(0, true);
+    expect(camera.position.toArray()).toEqual([100, 200, 300]); expect(target.toArray()).toEqual([10, 20, 30]);
+    expect(camera.view?.enabled).toBe(false); expect(motion.active).toBe(false);
   });
 });

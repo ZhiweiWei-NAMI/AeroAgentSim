@@ -64,6 +64,13 @@ export function overlayLabelOrder(markers: OverlayMarker[], focus: Set<string>):
 }
 
 export interface OverlayLabelBox { id: string; x: number; y: number; width: number; height: number }
+export function overlayLabelAnchor(position: THREE.Vector3, camera: THREE.PerspectiveCamera, width: number, height: number): { x: number; y: number } | undefined {
+  if (position.clone().applyMatrix4(camera.matrixWorldInverse).z >= 0) return;
+  const point = position.clone().project(camera);
+  if (point.z < -1 || point.z > 1 || Math.abs(point.x) > 1 || Math.abs(point.y) > 1) return;
+  return { x: (point.x + 1) * width / 2, y: (1 - point.y) * height / 2 };
+}
+
 export function layoutOverlayLabels(candidates: OverlayLabelBox[], width: number, height: number, limit = 24): OverlayLabelBox[] {
   const placed: OverlayLabelBox[] = [];
   for (const candidate of candidates) {
@@ -149,7 +156,7 @@ interface OverlayViewOptions {
 }
 interface MarkerView {
   data: OverlayMarker; head: THREE.Sprite; halo: THREE.Line; stem: THREE.Line; ripple: THREE.Line;
-  label: HTMLSpanElement; color: THREE.Color;
+  label: HTMLSpanElement; labelSize: THREE.Vector2; color: THREE.Color;
 }
 interface RouteView {
   data: OverlayRoute; arc: THREE.QuadraticBezierCurve3; line: Line2; dot: THREE.Sprite;
@@ -158,6 +165,34 @@ interface RouteView {
 interface CameraTween {
   at: number; from: THREE.PerspectiveCamera; to: THREE.PerspectiveCamera;
   fromTarget: THREE.Vector3; toTarget: THREE.Vector3;
+}
+
+export class OverlayCameraMotion {
+  private tween?: CameraTween;
+
+  constructor(private readonly camera: THREE.PerspectiveCamera, private readonly target: THREE.Vector3) {}
+
+  get active() { return this.tween !== undefined; }
+
+  start(to: THREE.PerspectiveCamera, toTarget: THREE.Vector3, now: number) {
+    this.tween = { at: now, from: this.camera.clone(), to: to.clone(), fromTarget: this.target.clone(), toTarget: toTarget.clone() };
+  }
+
+  cancel() { this.tween = undefined; }
+
+  advance(now: number, reduced: boolean) {
+    const tween = this.tween; if (!tween) return;
+    const p = reduced ? 1 : overlayEase((now - tween.at) / 600), { camera, target } = this;
+    camera.position.lerpVectors(tween.from.position, tween.to.position, p);
+    target.lerpVectors(tween.fromTarget, tween.toTarget, p);
+    camera.near = THREE.MathUtils.lerp(tween.from.near, tween.to.near, p);
+    camera.far = Math.max(camera.far, tween.from.far, tween.to.far);
+    const from = tween.from.view, to = tween.to.view;
+    const view = to?.enabled ? to : from?.enabled ? from : undefined;
+    if (view) camera.setViewOffset(view.fullWidth, view.fullHeight, THREE.MathUtils.lerp(from?.enabled ? from.offsetX : 0, to?.enabled ? to.offsetX : 0, p), THREE.MathUtils.lerp(from?.enabled ? from.offsetY : 0, to?.enabled ? to.offsetY : 0, p), view.fullWidth, view.fullHeight);
+    if (p === 1) { if (!to?.enabled) camera.clearViewOffset(); this.cancel(); }
+    camera.updateProjectionMatrix();
+  }
 }
 
 const ROUTE_COLORS = { task: '#38c6f4', handoff: '#8a7dff', response: '#ff6b5e', notice: '#f4b740' };
@@ -218,13 +253,14 @@ export class PlanOverlayView {
   private routes: RouteView[] = [];
   private overlay?: PreviewOverlay;
   private focus = new Set<string>();
-  private tween?: CameraTween;
+  private readonly motion: OverlayCameraMotion;
   private lastTime?: number;
   private disposed = false;
   private wake = () => this.interact();
   private motionChange = () => { this.reduced = this.media?.matches ?? false; this.options.invalidate(); };
 
   constructor(private readonly options: OverlayViewOptions) {
+    this.motion = new OverlayCameraMotion(options.camera, options.target);
     this.group.name = 'plan-overlay'; options.scene.add(this.group);
     this.labels.className = 'pv-labels'; options.host.append(this.labels);
     this.media?.addEventListener('change', this.motionChange);
@@ -241,15 +277,20 @@ export class PlanOverlayView {
         this.routes = overlay.routes.map(route => this.createRoute(route, overlay.tone));
       } catch (error) { this.clear(); throw error; }
     }
+    this.labels.style.visibility = 'hidden';
     for (const view of this.markers) {
       view.label.className = ['pv-label', `is-${view.data.state}`, `is-${view.data.kind}`, this.focus.has(view.data.id) ? 'is-focus' : ''].join(' ');
+      view.label.hidden = false;
     }
+    for (const view of this.markers) view.labelSize.set(view.label.offsetWidth, view.label.offsetHeight);
+    for (const view of this.markers) view.label.hidden = true;
+    this.labels.style.visibility = '';
     if (change.frame) {
       const bounds = this.bounds(overlay.frame!.ids);
       if (!bounds.isEmpty()) {
         const to = this.options.camera.clone(), toTarget = this.options.target.clone();
         this.options.frameBounds(bounds, to, toTarget);
-        this.tween = { at: now, from: this.options.camera.clone(), to, fromTarget: this.options.target.clone(), toTarget };
+        this.motion.start(to, toTarget, now);
       }
     }
     this.options.invalidate();
@@ -271,23 +312,9 @@ export class PlanOverlayView {
     this.timeline.interact(performance.now()); this.options.invalidate();
   }
 
-  cancelFrame() { this.tween = undefined; }
+  cancelFrame() { this.motion.cancel(); }
 
-  advanceCamera(now: number) {
-    const tween = this.tween; if (!tween) return;
-    const p = this.reduced ? 1 : overlayEase((now - tween.at) / 600), { camera, target } = this.options;
-    camera.position.lerpVectors(tween.from.position, tween.to.position, p);
-    target.lerpVectors(tween.fromTarget, tween.toTarget, p);
-    camera.near = THREE.MathUtils.lerp(tween.from.near, tween.to.near, p);
-    camera.far = Math.max(camera.far, tween.from.far, tween.to.far);
-    const from = tween.from.view, to = tween.to.view;
-    if (to?.enabled || from?.enabled) {
-      const width = to?.enabled ? to.fullWidth : this.options.host.clientWidth, height = to?.enabled ? to.fullHeight : this.options.host.clientHeight;
-      camera.setViewOffset(Math.max(1, width), Math.max(1, height), THREE.MathUtils.lerp(from?.enabled ? from.offsetX : 0, to?.enabled ? to.offsetX : 0, p), THREE.MathUtils.lerp(from?.enabled ? from.offsetY : 0, to?.enabled ? to.offsetY : 0, p), Math.max(1, width), Math.max(1, height));
-    }
-    if (p === 1) { if (!to?.enabled) camera.clearViewOffset(); this.tween = undefined; }
-    camera.updateProjectionMatrix();
-  }
+  advanceCamera(now: number) { this.motion.advance(now, this.reduced); }
 
   render(now: number): boolean {
     if (!this.overlay || this.disposed) return false;
@@ -297,7 +324,7 @@ export class PlanOverlayView {
     const faded = (id: string) => this.focus.size && !this.focus.has(id) ? 0.35 : 1;
     const worldPerPixel = (point: THREE.Vector3) => 2 * Math.max(camera.near, -point.clone().applyMatrix4(camera.matrixWorldInverse).z) / (camera.projectionMatrix.elements[5] * height);
     const spriteScale = (pixels: number) => pixels * 2 / (height * camera.projectionMatrix.elements[5]);
-    let active = this.tween !== undefined;
+    let active = this.motion.active;
     const candidates: OverlayLabelBox[] = [], views = new Map(this.markers.map(view => [view.data.id, view]));
     for (const view of this.markers) {
       const state = this.timeline.marker(view.data, now, this.reduced), focused = this.focus.has(view.data.id);
@@ -323,13 +350,10 @@ export class PlanOverlayView {
       const view = views.get(marker.id)!;
       const state = this.timeline.marker(marker, now, this.reduced);
       if (!state.visible || state.labelOpacity === 0) continue;
-      const point = view.head.position.clone(), depth = point.clone().applyMatrix4(camera.matrixWorldInverse).z;
-      point.project(camera);
-      if (depth >= 0 || point.z < -1 || point.z > 1 || Math.abs(point.x) > 1 || Math.abs(point.y) > 1) continue;
-      view.label.hidden = false;
-      const boxWidth = view.label.offsetWidth, boxHeight = view.label.offsetHeight;
-      candidates.push({ id: marker.id, x: (point.x + 1) * width / 2 - boxWidth / 2, y: (1 - point.y) * height / 2 - boxHeight - 16 + state.labelOffset, width: boxWidth, height: boxHeight });
-      view.label.hidden = true;
+      const point = overlayLabelAnchor(view.head.position, camera, width, height);
+      if (!point) continue;
+      const { x: boxWidth, y: boxHeight } = view.labelSize;
+      candidates.push({ id: marker.id, x: point.x - boxWidth / 2, y: point.y - boxHeight - 16 + state.labelOffset, width: boxWidth, height: boxHeight });
     }
     const placed = layoutOverlayLabels(candidates, width, height);
     for (const box of placed) {
@@ -403,9 +427,10 @@ export class PlanOverlayView {
     const halo = this.thinLine(ring, color, tone === 'proposed' || data.state === 'removed'); halo.position.set(data.position[0], 0.12, -data.position[1]);
     const stem = this.thinLine([new THREE.Vector3(data.position[0], 0, -data.position[1]), head.position.clone()], color);
     const ripple = this.thinLine(ring, color); ripple.position.copy(halo.position);
-    const label = document.createElement('span'); label.textContent = data.label; label.hidden = true;
+    const label = document.createElement('span'), text = document.createElement('span');
+    text.className = 'pv-label-text'; text.textContent = data.label; label.append(text); label.hidden = true;
     label.dataset.overlayId = data.id; label.style.setProperty('--pv-color', color); this.labels.append(label);
-    return { data, head, halo, stem, ripple, label, color: new THREE.Color(color) };
+    return { data, head, halo, stem, ripple, label, labelSize: new THREE.Vector2(), color: new THREE.Color(color) };
   }
 
   private routeGeometry(arc: THREE.QuadraticBezierCurve3, progress = 1): LineGeometry {
