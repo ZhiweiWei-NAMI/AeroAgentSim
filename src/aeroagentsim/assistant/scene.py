@@ -59,7 +59,7 @@ MISSION_STEPS = {
 ROUTINE_TEXT = {
     "food": ("Take the next ready meal order, fly to the customer, deliver it, and recharge when needed.", "接取下一份已备好的餐食订单，飞至客户处送达，并在需要时充电。"),
     "parcel": ("Take the next parcel, fly to its destination, deliver it, and recharge when needed.", "接取下一件包裹，飞至目的地送达，并在需要时充电。"),
-    "medical": ("Take a priority medical task, fly the supplies to the clinic, and recharge when needed.", "接取高优先级医疗任务，将物资飞送至诊所，并在需要时充电。"),
+    "medical": ("Take a priority medical task, fly the supplies to their destination, and recharge when needed.", "接取高优先级医疗任务，将物资飞送至目的地，并在需要时充电。"),
     "inspection": ("Take an inspection route, observe its segments, pause in strong wind, and recharge when needed.", "接取巡检路线，观测各区段，强风时暂停，并在需要时充电。"),
     "spraying": ("Take a field, spray it in passes, pause in strong wind, and recharge when needed.", "接取一块农田，逐趟喷洒，强风时暂停，并在需要时充电。"),
     "patrol": ("Take a patrol route, visit its checkpoints in order, and recharge when needed.", "接取巡逻路线，按顺序巡访检查点，并在需要时充电。"),
@@ -78,6 +78,40 @@ def _mission_steps(workload: dict) -> list[tuple]:
         ("finish", "lowalt.task.completed", "to", "Complete the configured route", "完成已配置路线"),
     ])
     return [s for s in steps if s[1] not in {"lowalt.spraying.applied", "lowalt.inspection.observed", "lowalt.patrol.visited"} or workload.get("work_route") is not None]
+
+
+def _weather_steps(event: dict) -> list[tuple]:
+    steps = []
+    for effect in event.get("effects", []):
+        prefix = f"event:{event['id']}:{effect['fleet']}"
+        work, work_zh = ("spraying", "喷洒") if effect["spraying"] else ("flight", "飞行")
+        where = {"vehicle": {"$in": effect["vehicles"]}}
+        steps.append((prefix + ":paused", effect["fleet"], "lowalt.weather.hold", {**where, "wind_mps": event["speed_mps"]},
+                      f"Pause {work} when wind exceeds the limit", f"风速超限时暂停{work_zh}", event["at_s"], []))
+        if effect["resume"]:
+            steps.append((prefix + ":resumed", effect["fleet"], "lowalt.weather.release", {**where, "wind_mps": event["after_speed_mps"]},
+                          f"Resume {work} when wind drops within the limit", f"风速降至上限内后恢复{work_zh}", event["end_s"], [prefix + ":paused"]))
+    return steps
+
+
+def _operator_steps(event: dict, duration: float) -> list[tuple]:
+    params = event.get("params", {})
+    prefix = "event:" + event["id"]
+    schema = event.get("schema")
+    if schema == "lowalt.operator.report_defect":
+        return [(prefix + ":defect", "lowalt.inspection.defect_reported", {k: params[k] for k in ("task", "site")},
+                 "The defect report releases an inspection task for the asset", "缺陷报告释放该设施的巡检复查任务", event["at_s"], [prefix])]
+    if schema == "lowalt.operator.prioritize_medical":
+        return [(prefix + ":priority", "lowalt.medical.prioritized", {k: params[k] for k in ("task", "priority")},
+                 "Raise the medical task priority after the urgent request", "收到紧急请求后提高医疗任务优先级", event["at_s"], [prefix])]
+    if schema == "lowalt.operator.pause_spraying":
+        where = {"task": params["task"]}
+        steps = [(prefix + ":paused", "lowalt.spraying.paused", where, "Pause spraying for the requested duration", "按请求时长暂停喷洒", event["at_s"], [prefix])]
+        resume = event["at_s"] + params["duration_s"]
+        if resume < duration:
+            steps.append((prefix + ":resumed", "lowalt.spraying.resumed", where, "Resume spraying after the operator pause expires", "操作员停喷时段结束后恢复喷洒", resume, [prefix + ":paused"]))
+        return steps
+    return []
 
 
 def _tasks_config(document: dict) -> dict:
@@ -243,6 +277,7 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
         en, zh = ROUTINE_TEXT.get("inspection" if kind == "survey" else kind,
                                   ("Take the next task and complete its configured route.", "接取下一项任务并完成已配置路线。"))
         routine.append({"kind": kind, "text": en, "text_zh": zh})
+    packages = [p.get("document", p) for p in document.get("behaviours", [])]
     events = []
     for incident in (cooperation or {}).get("incidents", []):
         events.append({"id": incident["id"], "kind": incident["kind"], "label": incident.get("label", EVENT_LABELS[incident["kind"]][0]),
@@ -256,12 +291,12 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
         params = _plain_payload(command["payload"].get("payload", {}))
         place = next((params[k] for k in ("site", "destination", "restaurant", "origin") if k in params), None)
         en, zh = EVENT_LABELS.get(kind, ("Scheduled event " + point, "预设事件 " + point))
+        schema = next((p["emits"] for spec in packages for p in spec.get("injection_points", []) if p["id"] == point), None)
         events.append({"id": f"scheduled-{i + 1}", "kind": kind, "label": en, "label_zh": zh,
                        "at_s": command["at_ns"] / SECOND, "place": place,
                        "position": _position(entities[place]) if place in entities else None, "layer": "setup",
-                       "injection_point": point, "params": copy.deepcopy(params)})
+                       "injection_point": point, "params": copy.deepcopy(params), "schema": schema})
     rules = []
-    packages = [p.get("document", p) for p in document.get("behaviours", [])]
     package = next((p for p in packages if p.get("id") == "lowalt.rules"), None)
     if package is not None:
         predicates = package["predicates"]
@@ -273,6 +308,27 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
             rules.append({"id": identity, "label": en, "label_zh": zh, "value": value, "unit": unit})
     if "medical_preemption" in tasks:
         rules.append({"id": "medical_preemption", "label": RULE_LABELS["medical_preemption"][0], "label_zh": RULE_LABELS["medical_preemption"][1], "value": tasks["medical_preemption"], "unit": None})
+    wind_chain = (package or {}).get("chains", {}).get("wind_limit", {})
+    wind_schemas = {a["schema"] for t in wind_chain.get("transitions", []) for a in t.get("actions", []) if a["kind"] == "emit"}
+    wind_bound = any(b["chain"] == "wind_limit" for b in (package or {}).get("bindings", []))
+    plugins = {e["plugin"] for e in document.get("engines", {}).values()}
+    limits = (package or {}).get("predicates", {}).get("wind_above_limit", {}).get("parameters", {})
+    duration = document["run"]["until_ns"] / SECOND
+    for i, gust in enumerate(gusts):
+        before = next((g["speed_mps"] for g in gusts if g["end_s"] == gust["start_s"]), _common(speeds))
+        after = next((g["speed_mps"] for g in gusts if g["start_s"] == gust["end_s"]), _common(speeds))
+        effects = []
+        if wind_bound and {"behaviour", "lowalt_airspace"} <= plugins and "lowalt.weather.hold" in wind_schemas and gust["start_s"] < duration:
+            for fleet in fleets:
+                members = [v for v in fleet["members"] if (limit := limits.get(entities[v]["facts"].get("lowalt.vehicle_class", "") + "_limit_mps")) is not None
+                           and before is not None and before <= limit < gust["speed_mps"]]
+                if members:
+                    resume = "lowalt.weather.release" in wind_schemas and gust["end_s"] < duration and after is not None and all(
+                        after <= limits[entities[v]["facts"]["lowalt.vehicle_class"] + "_limit_mps"] for v in members)
+                    effects.append({"fleet": fleet["id"], "vehicles": members, "spraying": fleet["vehicle_class"] == "spraying", "resume": resume})
+        events.append({"id": f"wind-gust-{i + 1}", "kind": "wind_gust", "label": f"Wind gust: {gust['speed_mps']:g} m/s",
+                       "label_zh": f"阵风：风速 {gust['speed_mps']:g} 米/秒", "at_s": gust["start_s"], "end_s": gust["end_s"],
+                       "speed_mps": gust["speed_mps"], "after_speed_mps": after, "effects": effects, "place": None, "position": None, "layer": "setup"})
     streams = document.get("ingress_streams", [])
     run_mode = "interactive" if any(s["id"] == "operator" and s["initial_watermark_ns"] == 0 for s in streams) else "scheduled"
     return {"title": document.get("title", document.get("id")), "city": document.get("city"),
@@ -427,8 +483,13 @@ def expectations(document: dict, summary: dict) -> list[dict]:
             for _, schema, _, text, text_zh in _mission_steps(workload):
                 suffix = schema.rsplit(".", 1)[-1]
                 conditional = schema == "lowalt.mobility.pad_wait"
-                identity = add(prefix + ":" + suffix, schema, where, f"{en}: {text}", f"{zh}：{text_zh}",
-                               depends=[assigned if conditional else previous], **({} if conditional else counts))
+                text, text_zh = f"{en}: {text}", f"{zh}：{text_zh}"
+                if counted and schema == "lowalt.task.completed":
+                    text, text_zh = (f"Every released {en.rstrip('s')} is completed ({len(workload['tasks'])} configured)",
+                                     f"每个已发布的{zh}都完成（共配置 {len(workload['tasks'])} 个）")
+                step_counts = ({"count": 1, "released": "lowalt.task.created"} if counted else {}) if conditional else counts
+                identity = add(prefix + ":" + suffix, schema, where, text, text_zh, depends=[assigned if conditional else previous],
+                               **step_counts)
                 if not conditional:
                     previous = identity
     coop = summary.get("cooperation")
@@ -456,15 +517,15 @@ def expectations(document: dict, summary: dict) -> list[dict]:
     for event in summary["events"]:
         if event["kind"] == "person_fall":
             continue
-        point = event.get("injection_point")
-        if point is None:
+        if event["kind"] == "wind_gust":
+            for identity, _, schema, where, en, zh, at, depends in _weather_steps(event):
+                add(identity, schema, where, en, zh, at=at, depends=depends, count=len(where["vehicle"]["$in"]))
             continue
-        schema = None
-        for spec in document.get("behaviours", []):
-            spec = spec.get("document", spec)
-            schema = next((p["emits"] for p in spec.get("injection_points", []) if p["id"] == point), schema)
+        schema = event.get("schema")
         if schema is not None:
             add("event:" + event["id"], schema, event["params"], event["label"], event["label_zh"], layer="setup", at=event["at_s"])
+            for identity, emitted, where, en, zh, at, depends in _operator_steps(event, summary["duration_s"]):
+                add(identity, emitted, where, en, zh, at=at, depends=depends)
     return result
 
 
@@ -524,8 +585,28 @@ def interactions(summary: dict) -> dict:
             if "report_only" in coop["responder"]["order"]:
                 step(prefix + ":report", watcher, "system", "If report-only is chosen, report the incident", "若选择仅报告，则报告事件", mode=mode, expect=prefix + ":reported")
     for event in summary["events"]:
-        if event["kind"] != "person_fall":
-            step("event:" + event["id"], "system", event["place"] or "system", event["label"], event["label_zh"], layer="setup", at=event["at_s"], expect="event:" + event["id"])
+        if event["kind"] == "person_fall":
+            continue
+        if event["kind"] == "wind_gust":
+            step("event:" + event["id"], "system", "system", event["label"], event["label_zh"], layer="setup", at=event["at_s"])
+            weather = _weather_steps(event)
+            for identity, fleet, schema, _, en, zh, at, _ in weather:
+                if schema == "lowalt.weather.hold":
+                    step(identity, "system", fleet, en, zh, at=at, expect=identity)
+            after = event["after_speed_mps"]
+            if after is not None and event["end_s"] < summary["duration_s"]:
+                step("event:" + event["id"] + ":calm", "system", "system", f"Wind changes to {after:g} m/s", f"风速变为 {after:g} 米/秒", layer="setup", at=event["end_s"])
+            for identity, fleet, schema, _, en, zh, at, _ in weather:
+                if schema == "lowalt.weather.release":
+                    step(identity, "system", fleet, en, zh, at=at, expect=identity)
+            continue
+        step("event:" + event["id"], "system", event["place"] or "system", event["label"], event["label_zh"], layer="setup", at=event["at_s"],
+             expect="event:" + event["id"] if event.get("schema") else None)
+        for identity, _, where, en, zh, at, _ in _operator_steps(event, summary["duration_s"]):
+            work = next((w for w in summary["workloads"] if where["task"] in w["tasks"]), None)
+            fleet = next((f["id"] for f in summary["fleets"] if work and work["kind"] in f["task_kinds"]), "system")
+            step(identity, "system", event["place"] or fleet, en, zh, at=at, expect=identity,
+                 branch={"group": "event:" + event["id"] + ":accepted", "when": "the operator request is accepted / 操作请求被接受"})
     return {"lanes": lanes, "steps": steps}
 
 

@@ -90,6 +90,17 @@ def test_crop_spraying_uses_field_work_steps() -> None:
     assert all("pick up" not in s["text"].lower() for s in steps)
     rows = {r["id"]: r for r in expectations(document, summary)}
     assert rows[spray["expect"]]["match"] == {"schema": "lowalt.spraying.applied", "where": {"task": "field-1"}}
+    paused = next(s for s in steps if s["text"] == "Pause spraying when wind exceeds the limit")
+    resumed = next(s for s in steps if s["text"] == "Resume spraying when wind drops within the limit")
+    assert (paused["at_s"], resumed["at_s"]) == (90, 125)
+    assert (paused["text_zh"], resumed["text_zh"]) == ("风速超限时暂停喷洒", "风速降至上限内后恢复喷洒")
+    assert rows[paused["expect"]]["match"] == {"schema": "lowalt.weather.hold", "where": {"vehicle": {"$in": ["drone-1"]}, "wind_mps": 8.0}, "count": 1}
+    assert rows[resumed["expect"]]["match"] == {"schema": "lowalt.weather.release", "where": {"vehicle": {"$in": ["drone-1"]}, "wind_mps": 2.0}, "count": 1}
+    assert rows[resumed["expect"]]["depends_on"] == [paused["expect"]]
+    wind_setup = [s for s in steps if s["layer"] == "setup" and s["id"].startswith("event:wind-gust-")]
+    assert [s["at_s"] for s in wind_setup] == [90, 125]
+    assert all(s["expect"] is None for s in wind_setup)
+    assert not any(r["match"]["schema"] in {"lowalt.spraying.paused", "lowalt.spraying.resumed"} for r in rows.values())
     assert summary["routine"][0]["kind"] == "spraying"
     assert "spray it in passes" in summary["routine"][0]["text"]
 
@@ -132,3 +143,66 @@ def test_work_observations_require_a_configured_work_route() -> None:
     rows = expectations(document, summary)
     assert not any(r["match"]["schema"] == "lowalt.spraying.applied" for r in rows)
     assert not any("spray passes" in s["text"] for s in interactions(summary)["steps"])
+
+
+@pytest.mark.parametrize("change", ["within_limit", "unbound", "past_horizon"])
+def test_gust_expectations_require_a_weather_transition(change: str) -> None:
+    document, _ = _template_scene("crop-spraying")
+    gust = document["engines"]["environment"]["config"]["profiles"]["weather"]["lowalt.wind"]["gusts"][0]
+    if change == "within_limit":
+        gust["value"] = [4.0, 0.0, 0.0]
+    elif change == "unbound":
+        packages = [p.get("document", p) for p in document["behaviours"]]
+        package = next(p for p in packages if p["id"] == "lowalt.rules")
+        package["bindings"] = [b for b in package["bindings"] if b["chain"] != "wind_limit"]
+    else:
+        gust["end_ns"] = document["run"]["until_ns"] + 1_000_000_000
+    summary = summarize(document)
+    schemas = {r["match"]["schema"] for r in expectations(document, summary)}
+    assert ("lowalt.weather.hold" in schemas) == (change == "past_horizon")
+    assert "lowalt.weather.release" not in schemas
+
+
+def test_patrol_and_air_taxi_steps_match_real_mission_events() -> None:
+    document, summary = _template_scene("security-patrol")
+    rows = {r["id"]: r for r in expectations(document, summary)}
+    steps = interactions(summary)["steps"]
+    visit = next(s for s in steps if "checkpoints in order" in s["text"])
+    assert rows[visit["expect"]]["match"]["schema"] == "lowalt.patrol.visited"
+    assert rows[visit["expect"]]["match"]["where"] == {"task": {"$in": ["patrol-1", "patrol-2", "patrol-3"]}}
+    assert any("investigation flight" in s["text"] for s in steps)
+    assert all("pick up" not in s["text"].lower() for s in steps)
+
+    document, summary = _template_scene("air-taxi")
+    rows = {r["id"]: r for r in expectations(document, summary)}
+    steps = interactions(summary)["steps"]
+    board = next(s for s in steps if "Board passengers" in s["text"])
+    wait = next(s for s in steps if "Wait for a pad" in s["text"])
+    land = next(s for s in steps if "Land passengers" in s["text"])
+    assert [rows[s["expect"]]["match"]["schema"] for s in (board, wait, land)] == ["lowalt.task.picked_up", "lowalt.mobility.pad_wait", "lowalt.task.completed"]
+    assert wait["branch"] is not None
+    assert wait["expect"] not in rows[land["expect"]]["depends_on"]
+    assert not any(r["match"]["schema"].startswith("lowalt.weather.") for r in rows.values())
+
+
+@pytest.mark.parametrize("template,point,at_s,params,schemas", [
+    ("crop-spraying", "pause-spraying", 10, {"task": "field-1", "duration_s": 20.0}, ["lowalt.spraying.paused", "lowalt.spraying.resumed"]),
+    ("powerline-inspection", "report-defect", 210, {"task": "line-survey-3", "site": "line-end"}, ["lowalt.inspection.defect_reported"]),
+    ("medical-delivery", "prioritize-medical", 10, {"task": "urgent-3", "priority": 200}, ["lowalt.medical.prioritized"]),
+])
+def test_scheduled_operator_steps_match_business_payloads(template, point, at_s, params, schemas) -> None:
+    document, _ = _template_scene(template)
+    payload = dict(params)
+    for key in ("task", "site"):
+        if key in payload:
+            entity = next(e for e in document["entities"] if e["id"] == payload[key])
+            payload[key] = {"$ref": {"id": entity["id"], "type_id": entity["type"], "generation": 0}}
+    document["bindings"]["commands"].append({"schema": "aas.runtime.inject_event", "target": "behaviour", "at_ns": at_s * 1_000_000_000,
+                                             "payload": {"injection_point": point, "payload": payload}})
+    summary = summarize(document)
+    rows = {r["id"]: r for r in expectations(document, summary)}
+    for schema in schemas:
+        row = next(r for r in rows.values() if r["match"]["schema"] == schema)
+        assert row["match"]["where"] == {k: params[k] for k in ("task", "site", "priority") if k in params}
+        assert any(s["expect"] == row["id"] for s in interactions(summary)["steps"])
+    assert all(s["expect"] is None or s["expect"] in rows for s in interactions(summary)["steps"])
