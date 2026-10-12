@@ -40,7 +40,8 @@ class SessionStore:
                     for call in message.get("tool_calls", []):
                         if call["id"] not in answered:
                             session["transcript"].append({"role": "tool", "tool_call_id": call["id"], "content": '{"error":"Service restarted / 服务已重启"}'})
-                self._save(session)
+                with self.condition:
+                    self._save(session)
 
     def directory(self, identifier: str) -> Path:
         if not re.fullmatch(r"assist-[a-f0-9]{32}", identifier):
