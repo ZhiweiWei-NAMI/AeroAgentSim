@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import difflib
 import hashlib
 import importlib
 import json
@@ -151,10 +152,17 @@ def _engine(document: dict, plugin: str) -> tuple[str, dict]:
     return engines[0]
 
 
+def _closest(identity: Any, candidates: list[str]) -> tuple[str, str]:
+    # Models guess plausible ids ("vertiport-a", "meal-fleet"); naming the real ones lets them repair in one step.
+    close = difflib.get_close_matches(str(identity), candidates, n=5, cutoff=0.45)
+    return (f". Closest existing ids: {', '.join(close)}", "。相近的现有标识：" + "、".join(close)) if close else ("", "")
+
+
 def _entity(document: dict, identity: str, field_name: str) -> dict:
     found = next((e for e in document["entities"] if e["id"] == identity), None)
     if found is None:
-        _fail(field_name, f"Entity {identity!r} does not exist", "该实体不存在")
+        en, zh = _closest(identity, [e["id"] for e in document["entities"]])
+        _fail(field_name, f"Entity {identity!r} does not exist{en}", f"该实体不存在{zh}")
     return found
 
 
@@ -175,7 +183,8 @@ def _position(document: dict, value: Any, field_name: str) -> list[float]:
             return list(point["position"])
     place = next((p for p in place_catalogue() if p["key"] == value), None)
     if place is None:
-        _fail(field_name, f"Unknown place {value!r}; use find_places", "地点不存在，请使用 find_places 查找")
+        en, zh = _closest(value, [p["key"] for p in place_catalogue()] + [e["id"] for e in document["entities"]])
+        _fail(field_name, f"Unknown place {value!r}; use find_places{en}", f"地点不存在，请使用 find_places 查找{zh}")
     return list(place["position"])
 
 
@@ -636,7 +645,9 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         else:
             members = _fleet_entities(document, p["fleet"])
             if not members:
-                _fail("fleet", "Fleet does not exist; use its summary id", "机群不存在，请使用摘要中的标识")
+                prefixes = sorted({re.sub(r"-\d+$", "", e["id"]) for e in document["entities"] if e.get("type") == "lowalt:UAV"})
+                en, zh = _closest(p["fleet"], prefixes)
+                _fail("fleet", f"Fleet does not exist; use its summary id{en}", f"机群不存在，请使用摘要中的标识{zh}")
             count = p.get("count", len(members))
             if count > len(members):
                 prototype = members[0]

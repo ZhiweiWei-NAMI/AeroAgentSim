@@ -82,13 +82,13 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
       <h2>{plan.title}</h2>
       {plan.summary && <p>{plan.summary}</p>}
       {rows.length > 1 && <div className="as-versions" role="tablist" aria-label={L('Plan versions', '方案版本')}>
-        {rows.map(row => <button key={row.version} role="tab" aria-selected={row.version === plan.version} title={row.note} onClick={() => view(row.version)} data-testid={`as-version-${row.version}`}
+        {rows.map(row => <button key={row.version} role="tab" aria-selected={row.version === plan.version} title={bi(row.note, zh)} onClick={() => view(row.version)} data-testid={`as-version-${row.version}`}
           className={`${row.version === latest?.version ? 'is-latest' : ''} is-${row.validation_state}${alternatives.includes(row.version) ? ' is-alt' : ''}`}>
           {row.variant ? <b>{row.variant}</b> : null}v{row.version}
         </button>)}
       </div>}
       {isOld && <div className="as-old-note">
-        <span>{plan.note || L('An earlier version, shown for comparison.', '早期版本，仅供对比。')}</span>
+        <span>{bi(plan.note, zh) || L('An earlier version, shown for comparison.', '早期版本，仅供对比。')}</span>
         {isAlternative ? <button className="wb-btn small primary" onClick={() => void assistant.choose(plan.version)} data-testid="as-choose">{L('Choose this option', '选择此方案')}</button>
           : <button className="wb-btn small" onClick={() => ask(L(`Go back to version ${plan.version}, keeping everything else the same.`, `回到版本 ${plan.version}，其余保持不变。`))} disabled={busy}>{L('Go back to this version', '回到此版本')}</button>}
         <button className="wb-btn small ghost" onClick={() => view(undefined)}>{L('Show latest', '查看最新')}</button>

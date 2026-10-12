@@ -120,7 +120,7 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
       }
       case 'plan': return <button className="as-plan-chip" onClick={() => onShowPlan(item.version)} data-testid="as-plan-chip">
         <span className="as-plan-v">v{item.version}{item.variant ? ` · ${item.variant}` : ''}</span>
-        <span className="as-plan-note">{item.versions && item.versions.length > 1 ? L(`${item.versions.length} options to compare`, `${item.versions.length} 个方案可对比`) : item.note || L('Plan updated', '方案已更新')}</span>
+        <span className="as-plan-note">{item.versions && item.versions.length > 1 ? L(`${item.versions.length} options to compare`, `${item.versions.length} 个方案可对比`) : bi(item.note, zh) || L('Plan updated', '方案已更新')}</span>
         <span className="as-plan-go">{L('View', '查看')} →</span>
       </button>;
       case 'validated': return <div className="as-note bad" role="status"><Icon name="cross" size={13} /><span>{L(`Plan v${item.version} does not pass the simulator's checks yet`, `方案 v${item.version} 尚未通过仿真器校验`)}{item.errors?.[0] ? ` — ${item.errors[0]}` : ''}</span></div>;
