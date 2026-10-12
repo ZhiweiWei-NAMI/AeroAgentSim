@@ -104,6 +104,7 @@ _NUMBERED_LABEL = re.compile(
     "(" + "|".join(re.escape(name) for name in _NUMBERED_LABELS_ZH) + r") ([A-Z]?\d+)\Z"
 )
 _ENUMS_ZH = {
+    "kind": {"person_fall": "行人跌倒"},
     "choice": {
         "respond_now": "立即响应", "request_handoff": "请求交接",
         "finish_then_respond": "完成任务后响应", "report_only": "仅上报",

@@ -833,6 +833,14 @@ class LowaltTasks(ContextEngine):
         vehicle_class = read(ctx, flight.vehicle, "lowalt.vehicle_class")
         return kind in self.cfg["vehicle_kinds"][vehicle_class]
 
+    def _vehicle_task_kinds(self, ctx: EngineContext, flight: Flight) -> tuple[str, ...]:
+        overrides = self.cfg.get("vehicle_task_kinds", {})
+        if flight.vehicle.id in overrides:
+            return tuple(overrides[flight.vehicle.id])
+        if "vehicle_kinds" in self.cfg:
+            return tuple(self.cfg["vehicle_kinds"][read(ctx, flight.vehicle, "lowalt.vehicle_class")])
+        return ()
+
     def _coop_state(self, ctx: EngineContext, incident: Incident, phase: str) -> None:
         incident.phase = phase
         ctx.set(incident.ref, "lowalt.incident_state", phase)
@@ -937,6 +945,7 @@ class LowaltTasks(ContextEngine):
             if key not in self.coop_pending:
                 return True
             self.coop_pending.remove(key)
+            self.coop_decisions = {identity: request for identity, request in self.coop_decisions.items() if request != key}
             incident = self.incidents[key[0]]
             incident.sources = (source,)
             if key[2] == "responder":
@@ -1035,6 +1044,7 @@ class LowaltTasks(ContextEngine):
             if flight.suspended is not None:
                 raise ValueError("cooperation: cannot suspend a second task / 不能暂停第二个任务")
             flight.suspended, flight.suspended_phase = flight.job, flight.job.phase
+            flight.job.operator_messages += incident.sources
             self._state(ctx, flight.job, "paused")
             self._event(ctx, "preempted", task=flight.job.ref.id, vehicle=flight.vehicle.id, urgent_task=incident.ref.id)
             flight.job = None
@@ -1059,7 +1069,10 @@ class LowaltTasks(ContextEngine):
             return "Outside helper request radius / 超出协助请求范围"
         if read(ctx, flight.vehicle, "lowalt.soc") * 100 < self.cooperation["helpers"]["rules"]["min_battery_pct"]:
             return "Helper battery below minimum / 协助者电量低于最低要求"
-        if read(ctx, incident.job.ref, "lowalt.task_payload_kg") > read(ctx, flight.vehicle, "lowalt.payload_capacity_kg"):
+        payload = read(ctx, incident.job.ref, "lowalt.task_payload_kg")
+        if flight.job is None:
+            payload += read(ctx, flight.vehicle, "lowalt.payload_kg")
+        if payload > read(ctx, flight.vehicle, "lowalt.payload_capacity_kg"):
             return "Helper payload capacity insufficient / 协助者载荷能力不足"
         if flight.suspended is not None:
             return "Helper has a suspended task / 协助者已有暂停任务"
@@ -1069,6 +1082,7 @@ class LowaltTasks(ContextEngine):
         assert self.cooperation is not None and incident.responder is not None
         incident.job = self.flights[incident.responder].job
         assert incident.job is not None
+        incident.job.operator_messages += incident.sources
         incident.candidates = tuple(identity for identity in self.cooperation["helpers"]["vehicles"] if self._coop_candidate(ctx, incident, identity) is None)
         incident.offers = {}
         self._handoff_state(ctx, incident, "requested")
@@ -1245,7 +1259,7 @@ class LowaltTasks(ContextEngine):
             self._business_event(ctx, "lowalt.handoff.transferred", {**self._handoff_payload(incident), "helper": flight.vehicle.id, "point": incident.point})
             flight.purpose, flight.route, flight.goal, flight.replan = "task", (), None, True
             return True
-        if incident.dwell_until_ns is not None:
+        if flight.purpose == "incident_response" and incident.dwell_until_ns is not None:
             incident.dwell_until_ns = None
         if flight.replan or flight.goal != goal:
             if not self._route(ctx, flight, goal):
@@ -1930,13 +1944,7 @@ class LowaltTasks(ContextEngine):
             vehicles=tuple(
                 replace(
                     v,
-                    task_kinds=tuple(
-                        self.cfg.get("vehicle_task_kinds", {}).get(v.id, self.cfg["vehicle_kinds"][
-                            read(ctx, self.by_id[v.id], "lowalt.vehicle_class")
-                        ])
-                    )
-                    if "vehicle_kinds" in self.cfg
-                    else tuple(self.cfg.get("vehicle_task_kinds", {}).get(v.id, ())),
+                    task_kinds=self._vehicle_task_kinds(ctx, self.flights[v.id]),
                     available=v.available
                     and not read(ctx, self.by_id[v.id], "lowalt.returning_to_charge")
                     and self.flights[v.id].job is None

@@ -47,7 +47,8 @@ def expand(document: dict[str, Any]) -> None:
                 item["subjects"] = copy.deepcopy(descriptor["subjects"])
         known = {item["id"] for item in messages}
         messages.extend(copy.deepcopy(item) for key, item in wanted.items() if key not in known)
-    configure_detection(document)
+    if "generators" in document:
+        configure_detection(document)
     # In live operator mode the source supplies these events. Retaining the
     # scheduled demonstration as well would dispatch the same one-shot task
     # twice (e.g. investigate at 55 s after a live investigation).
