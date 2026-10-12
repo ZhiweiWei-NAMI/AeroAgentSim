@@ -320,6 +320,76 @@ def test_template_measurements_and_message_dedup_survive_cursor_restore() -> Non
     assert final["patrol_visits"]["value"] == 1
 
 
+def test_traffic_completion_survives_template_kpi_cursor_restore() -> None:
+    reg = registry()
+    projector = KPIProjector(reg)
+    incident = {"$ref": EntityRef(
+        "run", "0", "incident.01", 0, "aas:TrafficIncident"
+    ).to_data()}
+    actor = {"$ref": EntityRef(
+        "run", "0", "uav.bravo", 0, "oo:Aircraft"
+    ).to_data()}
+    # Traffic lifecycle events have their own schemas and carry no task kind.
+    prefix = record(1, 9, [
+        event("traffic.report.sent", {
+            "incident": incident, "report": "report", "actor": "reporter",
+        }, 8, "reported"),
+        event("traffic.award.committed", {
+            "incident": incident, "actor": actor,
+        }, 9, "awarded"),
+    ])
+    pending = projector.consume(prefix)
+    assert pending["tasks_created"]["value"] == 1
+    assert pending["tasks_assigned"]["value"] == 1
+    assert pending["tasks_completed"]["value"] == 0
+    restored = KPIProjector.from_cursor(reg, json.loads(json.dumps(projector.cursor())))
+    assert restored.snapshot() == pending
+    assert restored.consume(prefix) == pending
+
+    completion = record(2, 13, [
+        event("traffic.capture.stored", {
+            "incident": incident, "actor": actor, "capture": "capture",
+        }, 10, "stored"),
+        event("traffic.capture.accepted", {
+            "incident": incident, "actor": actor, "capture": "capture",
+        }, 13, "accepted"),
+    ])
+    final = restored.consume(completion)
+    assert final["tasks_created"]["value"] == 1
+    assert final["tasks_assigned"]["value"] == 1
+    assert final["tasks_completed"]["value"] == 1
+    assert final["captures_stored"]["value"] == 1
+    assert final["uploads_accepted"]["value"] == 1
+    assert final["completion_rate"]["value"] == 1
+    assert final["mean_task_latency_s"]["value"] == 5
+    assert final["p95_task_latency_s"]["value"] == 5
+    assert all(final[name]["value"] is None for name in NEW_METRICS)
+    assert restored.consume(completion) == final
+    assert KPIProjector.from_cursor(reg, restored.cursor()).snapshot() == final
+
+
+def test_failed_traffic_capture_does_not_complete_the_reported_task() -> None:
+    projector = KPIProjector(registry())
+    final = projector.consume(record(1, 13, [
+        event("traffic.report.sent", {
+            "incident": "accident", "report": "report", "actor": "reporter",
+        }, 8, "reported"),
+        event("traffic.award.committed", {
+            "incident": "accident", "actor": "uav",
+        }, 9, "awarded"),
+        event("traffic.capture.failed", {
+            "incident": "accident", "actor": "uav", "request_id": "request",
+            "source_cut": 1, "reason": "camera needs the built console",
+        }, 13, "failed"),
+    ]))
+    assert final["tasks_created"]["value"] == 1
+    assert final["tasks_assigned"]["value"] == 1
+    assert final["tasks_completed"]["value"] == 0
+    assert final["captures_stored"]["value"] == 0
+    assert final["uploads_accepted"]["value"] == 0
+    assert final["mean_task_latency_s"]["value"] is None
+
+
 def test_incident_labels_make_cooperation_scope_explicit() -> None:
     projector = KPIProjector(registry())
     final = projector.consume(record(1, 0, [
