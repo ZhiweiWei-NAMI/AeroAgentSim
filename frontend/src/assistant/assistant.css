@@ -12,6 +12,7 @@
 
 /* Shared bits */
 .as-quiet { color: var(--wb-muted); font-size: 12px; margin: 0; }
+.as-quiet > p { margin: 0 0 3px; }
 .as-indent { padding: 2px 4px 10px 30px; }
 .as-link { all: unset; cursor: pointer; color: var(--wb-accent); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
 .as-link:hover { text-decoration: underline; }

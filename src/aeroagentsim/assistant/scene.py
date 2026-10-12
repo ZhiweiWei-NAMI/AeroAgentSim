@@ -476,14 +476,18 @@ def expectations(document: dict, summary: dict) -> list[dict]:
                    workload["label"], workload["label_zh"], times[0] if times else None)] if counted else [
             (f"task:{task}", {"task": task}, *names.get(task, (task, task)), times[i] if times and i < len(times) else None)
             for i, task in enumerate(workload["tasks"])]
+        configured = len(workload["tasks"])
         for prefix, where, en, zh, at in scopes:
-            created = add(prefix + ":created", "lowalt.task.created", where, f"{en} is released", f"{zh}发布", layer="setup", at=at, **counts)
-            assigned = add(prefix + ":assigned", "lowalt.task.assigned", where, f"A UAV is assigned {en}", f"无人机获分配{zh}", depends=[created], **counts)
+            # A counted workload reads as stages of all its released work, not as one order.
+            released_en, released_zh = (f"{en[:1].upper()}{en[1:].rstrip('s')}s are released ({configured} configured)", f"{zh}按计划发布（共配置 {configured} 个）") if counted else (f"{en} is released", f"{zh}发布")
+            assigned_en, assigned_zh = (f"Each released {en.rstrip('s')} is assigned a UAV", f"每个已发布的{zh}都分配到无人机") if counted else (f"A UAV is assigned {en}", f"无人机获分配{zh}")
+            created = add(prefix + ":created", "lowalt.task.created", where, released_en, released_zh, layer="setup", at=at, **counts)
+            assigned = add(prefix + ":assigned", "lowalt.task.assigned", where, assigned_en, assigned_zh, depends=[created], **counts)
             previous = assigned
             for _, schema, _, text, text_zh in _mission_steps(workload):
                 suffix = schema.rsplit(".", 1)[-1]
                 conditional = schema == "lowalt.mobility.pad_wait"
-                text, text_zh = f"{en}: {text}", f"{zh}：{text_zh}"
+                text, text_zh = (f"{text} (each released {en.rstrip('s')})", f"{text_zh}（每个已发布的{zh}）") if counted else (f"{en}: {text}", f"{zh}：{text_zh}")
                 if counted and schema == "lowalt.task.completed":
                     text, text_zh = (f"Every released {en.rstrip('s')} is completed ({len(workload['tasks'])} configured)",
                                      f"每个已发布的{zh}都完成（共配置 {len(workload['tasks'])} 个）")
@@ -549,7 +553,7 @@ def interactions(summary: dict) -> dict:
         origin, destination = work["from"][0], work["to"][0]
         prefix = "workload:" + work["id"] if len(work["tasks"]) > 2 else "task:" + work["tasks"][0] if work["tasks"] else None
         times = work["release"].get("times_s")
-        step(work["id"] + ":appears", origin, "system", f"{work['count']} configured task slots appear according to their release schedule", f"{work['count']} 个已配置任务槽按释放计划出现", layer="setup", at=times[0] if times else None, expect=prefix + ":created" if prefix else None)
+        step(work["id"] + ":appears", origin, "system", f"{work['count']} configured task slot{'s appear' if work['count'] != 1 else ' appears'} according to {'their' if work['count'] != 1 else 'its'} release schedule", f"{work['count']} 个已配置任务槽按释放计划出现", layer="setup", at=times[0] if times else None, expect=prefix + ":created" if prefix else None)
         step(work["id"] + ":allocation", "system", to, "Allocate an eligible UAV", "分配符合条件的无人机", mode="agent" if summary["algorithms"].get("allocation") == "llm" else "prescribed", expect=prefix + ":assigned" if prefix else None)
         for suffix, schema, target, en, zh in _mission_steps(work):
             branch = {"group": work["id"] + ":pad", "when": "a vertiport pad is busy / 起降位繁忙"} if schema == "lowalt.mobility.pad_wait" else None

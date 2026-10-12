@@ -142,7 +142,7 @@ export function SceneCards({ scene, diff, onHover, onContract, onMode, busy }: {
     {duties.length > 0 ? <Section title={L('Responsibilities', '职责')} count={duties.length} layer="behaviour" testid="as-duties">
       {duties.map(duty => <Responsibility key={duty.kind} {...duty} L={L} busy={busy} testid={`as-duty-${duty.kind}`} onMode={mode => onMode?.(modeText(duty, mode))} />)}
       {coop?.handoff_points?.length ? <p className="as-quiet"><Icon name="handoff" size={11} /> {L('Handoffs happen at', '交接地点：')} {coop.handoff_points.map(point => pick(point, zh) || point.id).join(', ')}{coop.photograph?.dwell_s ? L(` · the responder photographs for ${coop.photograph.dwell_s} s`, ` · 响应者拍摄 ${coop.photograph.dwell_s} 秒`) : ''}</p> : null}
-    </Section> : <p className="as-quiet as-indent">{L('Agents follow their usual task rules: take the next order, fly, deliver, recharge.', '智能体按常规任务规则行动：接单、飞行、送达、充电。')}</p>}
+    </Section> : <div className="as-quiet as-indent">{scene.routine?.length ? scene.routine.map(row => <p key={row.kind}>{(zh ? row.text_zh : undefined) ?? row.text}</p>) : <p>{L('Agents follow their usual task rules.', '智能体按常规任务规则行动。')}</p>}</div>}
 
     {((scene.rules?.length ?? 0) > 0 || algorithms.length > 0) && <Section title={L('Rules and decision methods', '规则与决策方法')} layer="behaviour" testid="as-rules">
       <dl className="as-rules">

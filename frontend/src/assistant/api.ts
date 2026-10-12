@@ -42,6 +42,8 @@ export interface SceneSummary {
   title?: string; city?: string | null; duration_s?: number; run_mode?: string | null;
   environment?: { wind?: { speed_mps?: number; gusts?: Array<{ start_s: number; end_s: number; speed_mps: number }> }; zones?: Array<{ id: string; label: string; kind: string }> };
   fleets?: Fleet[]; places?: Place[]; workloads?: Workload[]; events?: SceneEvent[]; rules?: Rule[];
+  /** The usual rule agents follow for each kind of work (assistant/scene.py ROUTINE_TEXT). */
+  routine?: Array<{ kind: string; text: string; text_zh?: string }>;
   algorithms?: Record<string, string>; cooperation?: Cooperation | null; controls?: Record<string, unknown>;
 }
 export interface DiffItem { kind: string; id: string; label: string; label_zh?: string; fields?: Array<{ name: string; before: unknown; after: unknown }> }
