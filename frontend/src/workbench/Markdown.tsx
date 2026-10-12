@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 
+type LinkOpener = (href: string) => (() => void) | undefined;
+
 /** Inline markdown: code, bold, italics, links and images. No raw HTML is ever rendered. */
-function inline(text: string, imageBase?: string): ReactNode[] {
+function inline(text: string, imageBase?: string, openLink?: LinkOpener): ReactNode[] {
   const out: ReactNode[] = [];
   const pattern = /(`[^`]+`)|(\*\*[^*]+\*\*)|(!\[[^\]]*\]\([^)]+\))|(\[[^\]]+\]\([^)]+\))|(\*[^*]+\*)/g;
   let last = 0, match: RegExpExecArray | null, key = 0;
@@ -17,7 +19,11 @@ function inline(text: string, imageBase?: string): ReactNode[] {
       else out.push(<em key={key++}>{alt}</em>);
     } else if (token.startsWith('[')) {
       const [, label, href] = /\[([^\]]+)\]\(([^)\s]+)/.exec(token) ?? [];
-      out.push(/^https?:/.test(href ?? '') ? <a key={key++} href={href} target="_blank" rel="noreferrer">{label}</a> : <span key={key++} title={href}>{label}</span>);
+      // Relative references open in place when the host can show them; others stay readable text.
+      const open = href && !/^https?:/.test(href) ? openLink?.(href) : undefined;
+      out.push(/^https?:/.test(href ?? '') ? <a key={key++} href={href} target="_blank" rel="noreferrer">{label}</a>
+        : open ? <a key={key++} href={href} onClick={event => { event.preventDefault(); open(); }}>{label}</a>
+        : <span key={key++} title={href}>{label}</span>);
     } else out.push(<em key={key++}>{token.slice(1, -1)}</em>);
     last = match.index + token.length;
   }
@@ -25,7 +31,7 @@ function inline(text: string, imageBase?: string): ReactNode[] {
   return out;
 }
 
-export function Markdown({ source, imageBase }: { source: string; imageBase?: string }) {
+export function Markdown({ source, imageBase, openLink }: { source: string; imageBase?: string; openLink?: LinkOpener }) {
   const blocks: ReactNode[] = [];
   const lines = source.replace(/\r\n/g, '\n').split('\n');
   let i = 0, key = 0;
@@ -37,7 +43,7 @@ export function Markdown({ source, imageBase }: { source: string; imageBase?: st
       i++; blocks.push(<pre key={key++}><code>{body.join('\n')}</code></pre>); continue;
     }
     const heading = /^(#{1,3})\s+(.*)$/.exec(line);
-    if (heading) { const Tag = (`h${heading[1].length}`) as 'h1' | 'h2' | 'h3'; blocks.push(<Tag key={key++}>{inline(heading[2], imageBase)}</Tag>); i++; continue; }
+    if (heading) { const Tag = (`h${heading[1].length}`) as 'h1' | 'h2' | 'h3'; blocks.push(<Tag key={key++}>{inline(heading[2], imageBase, openLink)}</Tag>); i++; continue; }
     if (/^\s*([-*]|\d+\.)\s+/.test(line)) {
       const ordered = /^\s*\d+\./.test(line), items: string[] = [];
       const marker = ordered ? /^\s*\d+\.\s+/ : /^\s*[-*]\s+/;
@@ -53,17 +59,17 @@ export function Markdown({ source, imageBase }: { source: string; imageBase?: st
         items[items.length - 1] += ' ' + lines[i++].trim();
       }
       const List = ordered ? 'ol' : 'ul';
-      blocks.push(<List key={key++}>{items.map((item, index) => <li key={index}>{inline(item, imageBase)}</li>)}</List>); continue;
+      blocks.push(<List key={key++}>{items.map((item, index) => <li key={index}>{inline(item, imageBase, openLink)}</li>)}</List>); continue;
     }
     if (line.startsWith('|')) {
       const rows: string[][] = [];
       while (i < lines.length && lines[i].startsWith('|')) { const cells = lines[i++].split('|').slice(1, -1).map(cell => cell.trim()); if (!cells.every(cell => /^:?-+:?$/.test(cell))) rows.push(cells); }
-      blocks.push(<table key={key++} className="wb-table"><tbody>{rows.map((row, r) => <tr key={r}>{row.map((cell, c) => r === 0 ? <th key={c}>{inline(cell, imageBase)}</th> : <td key={c}>{inline(cell, imageBase)}</td>)}</tr>)}</tbody></table>); continue;
+      blocks.push(<table key={key++} className="wb-table"><tbody>{rows.map((row, r) => <tr key={r}>{row.map((cell, c) => r === 0 ? <th key={c}>{inline(cell, imageBase, openLink)}</th> : <td key={c}>{inline(cell, imageBase, openLink)}</td>)}</tr>)}</tbody></table>); continue;
     }
     if (!line.trim()) { i++; continue; }
     const paragraph: string[] = [];
     while (i < lines.length && lines[i].trim() && !/^(#{1,3}\s|```|\s*([-*]|\d+\.)\s|\|)/.test(lines[i])) paragraph.push(lines[i++]);
-    blocks.push(<p key={key++}>{inline(paragraph.join(' '), imageBase)}</p>);
+    blocks.push(<p key={key++}>{inline(paragraph.join(' '), imageBase, openLink)}</p>);
   }
   return <div className="wb-markdown">{blocks}</div>;
 }

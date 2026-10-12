@@ -19,3 +19,11 @@ it('preserves ordered steps, readable code and table cells without rendering raw
   expect(screen.getByText('{"count":2}').closest('pre')).not.toBeNull();
   expect(document.querySelector('script')).toBeNull();
 });
+it('opens relative references the host can show and keeps the rest as plain text', () => {
+  const opened: string[] = [];
+  render(<Markdown source={'See [placement](../../../docs/examples/city-day.md#huangpu) and [source](../../src/app.py).'} openLink={href => href.includes('docs/') ? () => opened.push(href) : undefined} />);
+  screen.getByRole('link', { name: 'placement' }).click();
+  expect(opened).toEqual(['../../../docs/examples/city-day.md#huangpu']);
+  expect(screen.queryByRole('link', { name: 'source' })).toBeNull();
+  expect(screen.getByText('source')).toHaveAttribute('title', '../../src/app.py');
+});

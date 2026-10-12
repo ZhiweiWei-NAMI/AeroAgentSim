@@ -7,6 +7,7 @@ import { localized } from '../i18n/translate';
 import { useI18n } from '../i18n/I18nProvider';
 import { ApiError, type Project, type WorkbenchApi } from './api';
 import { Markdown } from './Markdown';
+import { linkedGuide, loadGuideSource } from '../console/guides';
 import { DescribeCard } from '../assistant/motion/DescribeCard';
 
 const relative = (iso: string, zh: boolean) => {
@@ -97,6 +98,19 @@ function ScenarioGuide({ api, template, onBack, onCreate }: { api: WorkbenchApi;
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const [markdown, setMarkdown] = useState<string>(), [problem, setProblem] = useState<string>(), [busy, setBusy] = useState(false);
   useEffect(() => { const abort = new AbortController(); setMarkdown(undefined); setProblem(undefined); void api.guide(template.id, abort.signal).then(guide => setMarkdown(guide.markdown)).catch(error => { if (!abort.signal.aborted) setProblem(error instanceof ApiError && error.status === 404 ? L('This scenario has no written guide.', '该场景没有书面指南。') : String(error)); }); return () => abort.abort(); }, [api, template.id]);
+  // Referenced platform guides open in place; Back walks the trail to the scenario's own guide.
+  const [trail, setTrail] = useState<{ path: string; text?: string; problem?: string }[]>([]);
+  useEffect(() => setTrail([]), [template.id]);
+  const reading = trail.at(-1);
+  const opener = (from: string) => (href: string) => {
+    const path = linkedGuide(href, from);
+    if (!path) return undefined;
+    return () => {
+      setTrail(current => [...current, { path }]);
+      void loadGuideSource(path).then(text => setTrail(current => current.map(entry => entry.path === path && entry.text === undefined ? { ...entry, text: String(text) } : entry)))
+        .catch(error => setTrail(current => current.map(entry => entry.path === path ? { ...entry, problem: String(error) } : entry)));
+    };
+  };
   const observe = (zh ? template.observe_zh : undefined) ?? template.observe, attempt = (zh ? template.try_zh : undefined) ?? template.try;
   return <div data-testid="wb-guide">
     <div className="wb-hero">
@@ -106,7 +120,14 @@ function ScenarioGuide({ api, template, onBack, onCreate }: { api: WorkbenchApi;
       <button className="wb-btn primary" disabled={busy} data-testid="wb-create-project" onClick={() => { setBusy(true); void onCreate(template).catch(error => setProblem(String(error))).finally(() => setBusy(false)); }}>{busy ? L('Creating…', '正在创建…') : L('Create a project from this scenario', '以此场景创建项目')}</button>
     </div>
     <div className="wb-guide">
-      <div>{problem && <p className="hint" role="alert">{problem}</p>}{markdown ? <Markdown source={localizedGuide(markdown, locale)} /> : !problem && <p className="hint" role="status">{L('Loading the guide…', '正在加载指南…')}</p>}</div>
+      {reading ? <div key={`${trail.length}:${reading.path}`} data-testid="wb-guide-reference" ref={node => node?.scrollIntoView?.({ block: 'start' })}>
+        <button className="wb-btn" onClick={() => setTrail(current => current.slice(0, -1))}>← {trail.length > 1 ? L('Back', '返回') : L('Back to the scenario guide', '返回场景指南')}</button>
+        <p className="hint">{L(`Platform guide · docs/${reading.path}`, `平台文档（英文原文）· docs/${reading.path}`)}</p>
+        {reading.problem ? <p className="hint" role="alert">{reading.problem}</p>
+          : reading.text === undefined ? <p className="hint" role="status">{L('Loading the guide…', '正在加载指南…')}</p>
+          : <Markdown key={reading.path} source={reading.text} openLink={opener(`docs/${reading.path}`)} />}
+      </div>
+      : <div>{problem && <p className="hint" role="alert">{problem}</p>}{markdown ? <Markdown source={localizedGuide(markdown, locale)} openLink={opener(`scenarios/templates/${template.id}/README.md`)} /> : !problem && <p className="hint" role="status">{L('Loading the guide…', '正在加载指南…')}</p>}</div>}
       <aside>
         {template.thumbnail_url && <img className="hero" alt="" src={new URL(template.thumbnail_url, api.base + '/').href} />}
         <div className="wb-section-title">{L('What to watch', '观察要点')}</div><ul>{observe.map(item => <li key={item}>{item}</li>)}</ul>

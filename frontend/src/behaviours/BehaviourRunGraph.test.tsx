@@ -15,3 +15,11 @@ it('links recorded truth and chain transitions to exact entity generation and jo
  fireEvent.click(screen.getByText(/Seek launch → moving/));expect(seek).toHaveBeenCalledWith(3);
  fireEvent.change(screen.getByLabelText('Graph directory'),{target:{value:'tasks'}});expect(screen.getByTestId('topology-count').textContent).toBe('1');
 });
+it('names same-labelled types by vocabulary and lets a base type keep its specialisations',()=>{
+ const header={...fixtureHeader,types:[...fixtureHeader.types,{typeId:'oo:Task',displayName:'Task',ancestors:[],directory:'tasks'}].map(row=>row.typeId==='task'?{...row,ancestors:['oo:Task','model']}:row)};
+ const store=new TemporalFeedStore(header); fixtureCommits.forEach(commit=>store.ingest(commit));store.seek('10',2);
+ render(<BehaviourRunGraph store={store} selected={undefined} onSelect={vi.fn()} onSeek={vi.fn()}/>);
+ const labels=[...(screen.getByLabelText('Graph type') as HTMLSelectElement).options].map(option=>option.text);
+ expect(labels).toContain('Task · oo'); expect(labels).toContain('Task · task');
+ fireEvent.change(screen.getByLabelText('Graph type'),{target:{value:'oo:Task'}});expect(screen.getByTestId('topology-count').textContent).toBe('1');
+});

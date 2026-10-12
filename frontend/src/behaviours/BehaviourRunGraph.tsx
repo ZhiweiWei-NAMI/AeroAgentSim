@@ -55,7 +55,7 @@ export function BehaviourRunGraph({ store, selected, onSelect, onSeek, highlight
   const display = useMemo(() => {
     const display = new FeedStore(store.header);
     for (const [id, entity] of store.entities) {
-      if (pinned.has(id) || (showRuntimeEntities || entity.typeId !== 'aas:BehaviourInstance' || type === entity.typeId) && (!hideBackground || !background.has(id)) && (!type || entity.typeId === type) && (!directory || types.get(entity.typeId)?.directory === directory) && (!focus || !selectedId || neighbors.has(id))) display.entities.set(id, entity);
+      if (pinned.has(id) || (showRuntimeEntities || entity.typeId !== 'aas:BehaviourInstance' || type === entity.typeId) && (!hideBackground || !background.has(id)) && (!type || entity.typeId === type || !!types.get(entity.typeId)?.ancestors.includes(type)) && (!directory || types.get(entity.typeId)?.directory === directory) && (!focus || !selectedId || neighbors.has(id))) display.entities.set(id, entity);
     }
     for (const [id, edge] of store.edges) if (display.entities.has(entityId(edge.source)) && display.entities.has(entityId(edge.target))) display.edges.set(id, edge);
     display.commits.push(...store.commits);
@@ -96,11 +96,19 @@ export function BehaviourRunGraph({ store, selected, onSelect, onSeek, highlight
       default: return value;
     }
   };
+  const directories = [...new Set(store.header.types.flatMap(row => row.directory ? [row.directory] : []))].sort();
+  // Same-named types from different vocabularies (a base and its specialisation) keep their prefix visible.
+  const typeOptions = (() => {
+    const rows = store.header.types.map(row => ({ value: row.typeId, label: displayLabel(row.displayName, row.typeId, locale) }));
+    const seen = new Map<string, number>();
+    for (const row of rows) seen.set(row.label, (seen.get(row.label) ?? 0) + 1);
+    return rows.map(row => (seen.get(row.label) ?? 0) > 1 ? { ...row, label: `${row.label} · ${row.value.split(':')[0]}` } : row);
+  })();
   return <section className="behaviour-run-graph" aria-label={t('Synchronized AeroGraph view')} data-cut={store.viewCursor?.knownAt}>
     <div className="run-graph-heading"><h2>{t('Entity graph')}<ConceptHelp topic={t('Entity graph')} description={t('The graph includes spatial and nonspatial entities, their relationships, predicates and running chain instances.')} guide="console.md" /></h2><span>{t('{entities} visible · {relations} relations', { entities: display.entities.size, relations: display.edges.size })}</span></div>
     <div className="behaviour-filters">
-      <label>{t('Directory')} <select aria-label={t('Graph directory')} value={directory} onChange={event => setDirectory(event.target.value)}><option value="">{t('All')}</option>{[...new Set(store.header.types.flatMap(row => row.directory ? [row.directory] : []))].sort().map(value => <option key={value} value={value}>{directoryLabel(value)}</option>)}</select></label>
-      <label>{t('Type')} <select aria-label={t('Graph type')} value={type} onChange={event => setType(event.target.value)}><option value="">{t('All')}</option>{store.header.types.map(row => <option key={row.typeId} value={row.typeId}>{displayLabel(row.displayName, row.typeId, locale)}</option>)}</select></label>
+      {directories.length > 1 && <label>{t('Directory')} <select aria-label={t('Graph directory')} value={directory} onChange={event => setDirectory(event.target.value)}><option value="">{t('All')}</option>{directories.map(value => <option key={value} value={value}>{directoryLabel(value)}</option>)}</select></label>}
+      <label>{t('Type')} <select aria-label={t('Graph type')} value={type} onChange={event => setType(event.target.value)}><option value="">{t('All')}</option>{typeOptions.map(row => <option key={row.value} value={row.value}>{row.label}</option>)}</select></label>
       <label title={!selectedId ? t('Select an entity to focus on its neighbors.') : undefined}><input type="checkbox" disabled={!selectedId} checked={focus} onChange={event => setFocus(event.target.checked)} />{t('Focus + neighbors')}</label>
       <label><input aria-label={t('Hide background actors')} type="checkbox" checked={hideBackground} onChange={event => setHideBackground(event.target.checked)} />{t('Hide background')}</label>
       <label><input aria-label={t('Show runtime entities')} type="checkbox" checked={showRuntimeEntities} onChange={event => setShowRuntimeEntities(event.target.checked)} />{t('Runtime entities')}</label>
