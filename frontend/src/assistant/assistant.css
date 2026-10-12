@@ -238,6 +238,9 @@
 .as-confirm { position: relative; overflow: hidden; height: 34px; padding: 0 14px; font-weight: 650; background: linear-gradient(135deg, #8a7dff, #4e7cf0) !important; border: 0 !important; box-shadow: 0 4px 14px rgba(110, 120, 255, .35); }
 .as-confirm:not(:disabled)::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .35) 50%, transparent 70%); transform: translateX(-100%); animation: as-sheen 3.2s var(--as-ease) infinite 1s; }
 @keyframes as-sheen { 0%, 60% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.as-compile-notes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.as-compile-notes li { display: flex; gap: 6px; align-items: baseline; font-size: 11.5px; line-height: 1.4; color: #8a5a00; }
+.as-compile-notes svg { flex: none; color: var(--wb-warn); }
 .as-validation { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; padding: 7px 10px; border-radius: 9px; }
 .as-validation.is-pending { color: #5245d6; background: var(--as-proposal-soft); }
 .as-validation.is-valid { color: #127a4b; background: rgba(31, 174, 107, .1); animation: as-rise 260ms var(--as-ease) both; }

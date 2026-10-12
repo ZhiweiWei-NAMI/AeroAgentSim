@@ -1001,6 +1001,9 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
                 module.expand(document)
             finally:
                 document["registry"]["snapshot"] = snapshot
+            if not coop.get("incidents"):
+                # Valid but inert: without an incident nothing triggers noticing, handoff or photography.
+                warnings.append({"op_id": None, "field": "incidents", "message": "Cooperation is configured but no incident is scheduled, so nobody will notice, hand over or photograph anything; add one with add_incident / 已配置协作但没有安排事件，不会触发发现、交接或拍摄；请用 add_incident 添加事件"})
             if not any(e["plugin"] in {"lowalt_city_capture", "traffic_camera_capture"} for e in document["engines"].values()):
                 warnings.append({"op_id": None, "field": "photograph", "message": "Photograph events are recorded, but this scene has no city camera for an image artifact / 此场景可记录拍摄事件，但没有城市相机生成照片文件"})
         if not errors:

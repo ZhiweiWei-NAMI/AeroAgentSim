@@ -160,15 +160,17 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
 function Validation({ plan, onFix, busy }: { plan: PlanVersion; onFix: () => void; busy: boolean }) {
   const { locale } = useI18n(), L = (en: string, cn: string) => locale === 'zh-CN' ? cn : en;
   const errors = [...plan.compile.errors.map(error => `${error.op_id ? `${error.op_id}: ` : ''}${error.message}`), ...(plan.validation.errors ?? [])];
-  const state = !plan.compile.ok ? 'invalid' : plan.validation.state;
-  return <div className={`as-validation is-${state}`} data-testid="as-validation" data-state={state} role="status">
+  const state = !plan.compile.ok ? 'invalid' : plan.validation.state, zh = locale === 'zh-CN';
+  const notes = plan.compile.warnings.map(row => typeof row === 'string' ? row : row.message);
+  return <>{state !== 'invalid' && notes.length > 0 && <ul className="as-compile-notes" data-testid="as-compile-notes">{notes.slice(0, 3).map(note => <li key={note}><Icon name="dot" size={10} />{bi(note, zh)}</li>)}</ul>}
+  <div className={`as-validation is-${state}`} data-testid="as-validation" data-state={state} role="status">
     {state === 'pending' ? <><span className="as-spin" />{L('Checking with the simulator…', '正在用仿真器校验…')}</>
-      : state === 'valid' ? <><Icon name="check" size={12} />{L('Checked: the simulator loads this scene', '已校验：仿真器可以加载此场景')}{plan.compile.warnings.length ? L(` · ${plan.compile.warnings.length} note${plan.compile.warnings.length === 1 ? '' : 's'}`, ` · ${plan.compile.warnings.length} 条提示`) : ''}</>
+      : state === 'valid' ? <><Icon name="check" size={12} />{L('Checked: the simulator loads this scene', '已校验：仿真器可以加载此场景')}</>
       : <details><summary><Icon name="cross" size={12} />{L('The simulator rejected this version', '仿真器拒绝了此版本')}</summary>
         <ul>{errors.slice(0, 6).map(error => <li key={error} className="wb-mono">{bi(error, locale === 'zh-CN')}</li>)}</ul>
         <button className="wb-btn small" disabled={busy} onClick={onFix}>{L('Ask the assistant to fix it', '让助手修复')}</button>
       </details>}
-  </div>;
+  </div></>;
 }
 
 function ApplySummary({ record, onHover }: { record: ApplyRecord; onHover: (id: string | undefined) => void }) {
