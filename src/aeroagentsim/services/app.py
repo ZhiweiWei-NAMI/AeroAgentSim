@@ -463,6 +463,9 @@ def create_app(
             from aeroagentsim.authoring.api import mount_studio
 
             mount_studio(app, root / "workspaces", run_root=root)
+            from aeroagentsim.assistant.api import mount_assistant
+
+            mount_assistant(app, run_root=root)
         try:
             draft = await asyncio.to_thread(
                 app.state.studio.derive, path, body.get("name"), registry=templates
@@ -538,6 +541,9 @@ def create_app(
             from aeroagentsim.authoring.api import mount_studio
 
             mount_studio(app, root / "workspaces", run_root=root)
+            from aeroagentsim.assistant.api import mount_assistant
+
+            mount_assistant(app, run_root=root)
         return dict(
             app.state.studio.import_template(template_id, knobs, registry=templates)
         )
@@ -917,6 +923,9 @@ def create_app(
             else Path(os.environ["AEROAGENTSIM_STUDIO_ROOT"]),
             run_root=root,
         )
+        from aeroagentsim.assistant.api import mount_assistant
+
+        mount_assistant(app, run_root=root)
 
     if frontend is not None:
         from fastapi.staticfiles import StaticFiles
