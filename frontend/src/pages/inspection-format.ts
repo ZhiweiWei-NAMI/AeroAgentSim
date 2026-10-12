@@ -41,7 +41,10 @@ export function localizedLabel(value: string, locale = 'en-US'): string {
 }
 
 /** Display labels only; retained identities and recorded values stay intact. */
+// Type names whose plain English word means something else as a UI term (Field = a farm field, not a data field).
+const TYPE_LABELS_ZH: Record<string, string> = { 'lowalt:Field': '农田' };
 export function readableLabel(value: string, locale = 'en-US'): string {
+  if (locale.startsWith('zh') && TYPE_LABELS_ZH[value]) return TYPE_LABELS_ZH[value];
   const words = value.slice(value.lastIndexOf(':')+1).replace(/^traffic\.p\./, '').replace(/^traffic\./, '').replace(/^lowalt\.(?:p\.)?/, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._/-]+/g, ' ').trim();
   const label = words ? words.replace(/\b\w/g, letter => letter.toUpperCase()).replace(/\bUav\b/g, 'UAV').replace(/\bLlm\b/g, 'LLM').replace(/\bPx4\b/g, 'PX4') : value;
   // Abbreviated field names read better spelled out in English.

@@ -83,7 +83,7 @@ function PayloadFields({ schema, value, onChange, definitions = {}, path = 'Payl
       const choice = compatible.find(item => choiceKey(item) === event.target.value);
       commit(choice ? descriptor.type === 'string' ? choiceKey(choice) : choice.value : undefined);
     }}>
-      <option value="">{t('Choose an entity')}</option>{current && !compatible.some(choice => choiceKey(choice) === current) && <option value={current} disabled>{t('Current value: {value}', { value: current })}</option>}{compatible.map(choice => <option key={choiceKey(choice)} value={choiceKey(choice)}>{choice.label}</option>)}
+      <option value="">{t('Choose an entity')}</option>{current && !compatible.some(choice => choiceKey(choice) === current) && <option value={current} disabled>{t('Current value: {value}', { value: current })}</option>}{compatible.map(choice => <option key={choiceKey(choice)} value={choiceKey(choice)}>{choice.label}{compatible.filter(other => other.label === choice.label).length > 1 ? ` · ${choiceKey(choice).split(':')[0]}` : ''}</option>)}
     </select>{help}</label>;
   }
   if (mapping(descriptor) && ['string', 'boolean', 'number', 'integer'].includes(String(descriptor.type))) {

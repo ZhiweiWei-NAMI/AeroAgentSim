@@ -47,6 +47,11 @@ export function metricLabel(id: string, label: string, locale = 'en-US', labelZh
     weather_holds: t('Weather holds'), accident_reported: t('Accidents reported'),
     award_committed: t('Awards committed'), captures_stored: t('Captures stored'),
     uploads_accepted: t('Uploads accepted'),
+    medical_p95_task_latency_s: locale === 'zh-CN' ? '医疗任务 P95 用时' : 'Medical P95 task latency',
+    spraying_distance_m: locale === 'zh-CN' ? '喷洒距离' : 'Spraying distance',
+    battery_swaps: locale === 'zh-CN' ? '电池更换次数' : 'Battery swaps',
+    inspection_observations: locale === 'zh-CN' ? '巡检观测次数' : 'Inspection observations',
+    patrol_visits: locale === 'zh-CN' ? '巡逻到访次数' : 'Patrol visits',
   };
   return locale === 'zh-CN' || label === id || /[_:]/.test(label) ? labels[id] ?? label.replace(/_/g, ' ') : label;
 }

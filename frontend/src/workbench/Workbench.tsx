@@ -369,6 +369,8 @@ export default function Workbench() {
       const editing = target && (target.isContentEditable || /^(TEXTAREA|SELECT)$/.test(target.tagName) ||
         target.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes((target as HTMLInputElement).type));
       if (editing && event.key !== 'Escape' && !((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k')) return;
+      // Escape first leaves the field being edited; a second Escape closes the panel.
+      if (editing && event.key === 'Escape') { target.blur(); return; }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setPalette(value => !value); return; }
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === ' ' && session) { event.preventDefault(); event.stopPropagation(); session.togglePlayback(); }
@@ -379,7 +381,7 @@ export default function Workbench() {
       else if (event.key === 'r') update({ records: query.get('records') ? undefined : '1' });
       else if (event.key === 'f' && selected && store && resolveBinding(store.header, store.entities.get(entityId(selected))?.typeId ?? '')) { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }
       else if (event.key === 'l' && session) session.backToLive();
-      else if (event.key === 'Escape') { if (palette) setPalette(false); else if (query.get('compare')) update({ compare: undefined }); else if (query.get('contract')) update({ contract: undefined, type: undefined }); else if (query.get('graph')) update({ graph: undefined }); else if (selected) select(undefined); }
+      else if (event.key === 'Escape') { if (palette) setPalette(false); else if (query.get('compare')) update({ compare: undefined }); else if (query.get('contract')) update({ contract: undefined, type: undefined }); else if (query.get('graph')) update({ graph: undefined }); else if (query.get('records')) update({ records: undefined }); else if (query.get('panel')) update({ panel: undefined }); else if (selected) select(undefined); }
     };
     // Claim playback before nested operation components receive the same Space.
     addEventListener('keydown', key, true); return () => removeEventListener('keydown', key, true);
@@ -389,6 +391,8 @@ export default function Workbench() {
   const live = mode === 'live' && !!status && !TERMINAL.has(status);
   // Only an active run has a live moment to return to.
   const history = !!session && mode === 'live' && !session.followingLive && !TERMINAL.has(status ?? '');
+  // A finished run seeked before its last record shows earlier values; say so, as for live history.
+  const earlier = !!session && !!store && TERMINAL.has(status ?? '') && session.cut !== undefined && session.cut !== store.commits.at(-1)?.commitIndex;
   const canOperate = !!session && session.followingLive && mode === 'live' && ['running', 'paused', 'waiting_for_input'].includes(status ?? '');
   const showGallery = (!projectId && !runId && !query.has('contract') && !query.has('records') && !assistantOpen) || query.get('gallery') === '1';
   const title = (project ? project.name === template?.title ? localized(template, 'title', locale) : project.name : undefined) ?? (record ? localized(record, 'template_title', locale) ?? record.workspace_name ?? record.scenario : undefined);
@@ -471,6 +475,7 @@ export default function Workbench() {
       {kpiIds.slice(0, 5).map(id => { const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh); return <div key={id} className="wb-kpi wb-glass" title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, id].filter(Boolean).join(' · ')}><small>{label}</small><strong className="wb-mono">{kpi?.value == null ? '—' : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1)}</strong><em>{kpi?.unit === 'count' || kpi?.unit === 'ratio' ? '' : kpi?.unit}</em></div>; })}
     </div>}
 
+    {earlier && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing an earlier moment', '正在查看较早时刻')} · <span className="wb-mono">{store && clock ? displayTime(clock.ns, store.header.start.ns) : ''}</span><button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Jump to the end', '跳到结束时刻')} <span className="wb-kbd">L</span></button></div>}
     {history && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing history', '正在查看历史时刻')} · <span className="wb-mono">{store && clock ? displayTime(clock.ns, store.header.start.ns) : ''}</span><button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Back to live', '返回实时')} <span className="wb-kbd">L</span></button></div>}
     {session && (status === 'input_timeout' || canOperate && status === 'waiting_for_input') && <div className="wb-waiting wb-glass" data-testid="wb-waiting"><WaitingBanner waiting={waiting} terminal={status === 'input_timeout'} onInject={() => { session.backToLive(); update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }} /></div>}
     {session?.error && <div className="wb-history" role="alert" style={{ background: 'rgba(190,40,30,.92)' }}>{session.error}</div>}
@@ -530,7 +535,7 @@ export default function Workbench() {
 
     {/* Bottom dock */}
     {session && <Dock session={session} events={projected?.events ?? []} kpiIds={kpiIds} kpis={kpis} series={series} entityNames={entityNames} selected={selected}
-      tab={dockTab} onTab={setDockTab} open={dockOpen} onToggle={() => setDockOpen(value => !value)} onEvent={selectEvent} untilNs={record?.until_ns}
+      tab={dockTab} onTab={setDockTab} open={dockOpen} onToggle={() => setDockOpen(value => !value)} onEvent={selectEvent} untilNs={record?.until_ns} finished={TERMINAL.has(status ?? '')}
       photos={runId && store ? <Suspense fallback={null}><ArtifactsPanel api={runsApi} runId={runId} store={store} commitCut={session.cut} live={mode === 'live' && !TERMINAL.has(status ?? '')} onSeek={session.seekCut} onInspect={() => setDirectorPaused(true)} /></Suspense> : undefined}
       why={traceRef && store ? <CauseTracePanel store={store} model={traceModel} canGoBack={traceStack.length > 1} onOpen={ref => openTrace(ref, false)} onBack={() => setTraceStack(stack => stack.slice(0, -1))} onClose={() => { setTraceStack([]); setDockTab('events'); }} onSelectEntity={key => select(key, true)} onSeek={session.seekCut} /> : undefined} />}
     {!session && project && !panel && <div className="wb-dock wb-glass" style={{ height: 'auto' }}><div className="wb-dock-bar">

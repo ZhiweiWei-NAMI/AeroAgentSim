@@ -13,9 +13,9 @@ import type { RunSession } from './useRunSession';
 export type DockTab = 'events' | 'results' | 'photos' | 'why';
 
 /** Playback (browsing the record) — separate from simulation control in the top bar. */
-export function Dock({ session, events, kpiIds, kpis, series, entityNames, selected, tab, onTab, open, onToggle, onEvent, why, photos, untilNs }: {
+export function Dock({ session, events, kpiIds, kpis, series, entityNames, selected, tab, onTab, open, onToggle, onEvent, why, photos, untilNs, finished = false }: {
   session: RunSession; events: RecordedBusinessEvent[]; kpiIds?: string[]; kpis: KpiValues; series: KpiSample[]; entityNames: Map<string, string>;
-  selected?: EntityKey; tab: DockTab; onTab: (tab: DockTab) => void; open: boolean; onToggle: () => void; onEvent: (event: RecordedBusinessEvent) => void; why?: ReactNode; photos?: ReactNode; untilNs?: string;
+  selected?: EntityKey; tab: DockTab; onTab: (tab: DockTab) => void; open: boolean; onToggle: () => void; onEvent: (event: RecordedBusinessEvent) => void; why?: ReactNode; photos?: ReactNode; untilNs?: string; finished?: boolean;
 }) {
   const { locale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
@@ -36,7 +36,9 @@ export function Dock({ session, events, kpiIds, kpis, series, entityNames, selec
         <div className="wb-marks">{events.slice(-300).map(event => <button key={event.key} style={{ left: `${end ? event.offset / end * 100 : 0}%`, background: CATEGORY_STYLE[event.category].color }}
           title={`${displayTime(event.at_ns, startNs)} · ${eventNarrative(event, locale, entityNames)}`} aria-label={eventNarrative(event, locale, entityNames)} onClick={() => onEvent(event)} />)}</div>
       </div>
-      <span className="wb-time wb-mono">{displayTime(clock.ns, startNs)} / {untilNs ? displayTime(untilNs, startNs) : displayTime(clock.end, startNs)}</span>
+      {/* A finished run that stopped early recorded less than its planned horizon; show what exists. */}
+      <span className="wb-time wb-mono">{displayTime(clock.ns, startNs)} / {untilNs && !(finished && BigInt(clock.end) < BigInt(untilNs)) ? displayTime(untilNs, startNs) : displayTime(clock.end, startNs)}
+        {finished && untilNs && BigInt(clock.end) < BigInt(untilNs) ? <small className="wb-time-note">{L(` recorded · ${displayTime(untilNs, startNs)} planned`, ` 已记录 · 计划 ${displayTime(untilNs, startNs)}`)}</small> : null}</span>
     </div>
     <div className="wb-dock-tabs">
       <button aria-selected={tab === 'events' && open} onClick={() => { onTab('events'); if (!open) onToggle(); }}>{L('Events', '事件')} <span className="wb-tag">{events.length}</span></button>

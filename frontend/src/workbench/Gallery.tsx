@@ -1,3 +1,4 @@
+import { metricLabel } from '../newcomers/metric-help';
 import { useEffect, useState } from 'react';
 import type { ScenarioTemplate } from '../newcomers/api';
 import { categoryMetadata } from '../newcomers/categories';
@@ -113,7 +114,7 @@ function ScenarioGuide({ api, template, onBack, onCreate }: { api: WorkbenchApi;
         <div className="wb-section-title">{L('Controls you can change', '可调整的控制项')}</div>
         <div className="wb-card-meta">{template.knobs.map(knob => <span key={knob.id} className="wb-tag" title={knob.id}>{(zh ? knob.label_zh : undefined) ?? knob.label}</span>)}</div>
         <div className="wb-section-title">{L('KPIs measured', '衡量指标')}</div>
-        <div className="wb-card-meta">{template.kpis.map(kpi => <span key={kpi} className="wb-tag info wb-mono">{kpi}</span>)}</div>
+        <div className="wb-card-meta">{template.kpis.map(kpi => <span key={kpi} className="wb-tag info" title={kpi}>{metricLabel(kpi, kpi, locale)}</span>)}</div>
         <p className="hint" style={{ marginTop: 14 }}>{L('Creating a project copies this scenario into an editable draft. Nothing runs until you save a version, initialize it and press Start.', '创建项目会把此场景复制为可编辑的草稿。保存版本、初始化并按下“启动”之前，不会运行任何仿真。')}</p>
       </aside>
     </div>
