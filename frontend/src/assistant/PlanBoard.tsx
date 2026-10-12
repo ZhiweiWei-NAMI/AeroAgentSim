@@ -15,8 +15,8 @@ export type Stage = 'proposed' | 'configured' | 'running';
 type Tab = 'scene' | 'interactions' | 'changes' | 'story';
 
 /** The plan, the configured scene and the run, in one sheet whose state is never ambiguous. */
-export function PlanBoard({ api, assistant, stage, runId, story, storyError, startNs, terminal, initializing, canInitialize, onInitialize, onApplied, onHover, onStep, onContract, onSeek, viewing, onViewVersion, onClose }: {
-  api: AssistantApi; assistant: AssistantSession; stage: Stage; runId?: string;
+export function PlanBoard({ api, assistant, stage, waiting = false, runId, story, storyError, startNs, terminal, initializing, canInitialize, onInitialize, onApplied, onHover, onStep, onContract, onSeek, viewing, onViewVersion, onClose }: {
+  api: AssistantApi; assistant: AssistantSession; stage: Stage; waiting?: boolean; runId?: string;
   story?: Story; storyError?: string; startNs?: string; terminal: boolean;
   initializing: boolean; canInitialize: boolean; onInitialize: () => void; onApplied: (record: ApplyRecord) => void;
   onHover: (ids: string[]) => void; onStep: (ids: string[]) => void; onContract: (type: string) => void; onSeek: (cut: number) => void;
@@ -25,11 +25,13 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
   const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const { session, plan: latest, busy, applied } = assistant;
   const [older, setOlder] = useState<PlanVersion>();
+  const [answered, setAnswered] = useState<string[]>([]);
+  useEffect(() => { try { setAnswered(JSON.parse(sessionStorage.getItem(`aas-answered:${session?.id}`) ?? '[]')); } catch { setAnswered([]); } }, [session?.id]);
   const [tab, setTab] = useState<Tab>(stage === 'running' ? 'story' : 'scene');
   const [applying, setApplying] = useState(false), [applyError, setApplyError] = useState<string>();
   const scroller = useRef<HTMLDivElement>(null), tabsRef = useRef<HTMLElement>(null), openedAt = useRef(stage);
   // Choosing a tab brings its content up under the pinned tab bar.
-  const choose = (next: Tab) => { setTab(next); const box = scroller.current, bar = tabsRef.current; if (box && bar) requestAnimationFrame(() => box.scrollTo({ top: bar.offsetTop, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })); };
+  const choose = (next: Tab) => { setTab(next); const box = scroller.current, bar = tabsRef.current; if (box && bar) requestAnimationFrame(() => box.scrollTo({ top: box.scrollTop + (bar.nextElementSibling ?? bar).getBoundingClientRect().top - box.getBoundingClientRect().top - (bar.nextElementSibling ? bar.offsetHeight : 0), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })); };
   useEffect(() => { if (stage === 'running') setTab('story'); else if (tab === 'story') setTab('scene'); }, [stage]);
   useEffect(() => {
     if (viewing === undefined || viewing === latest?.version || !session) { setOlder(undefined); return; }
@@ -52,6 +54,9 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
     try { onApplied(await assistant.apply(plan.version)); } catch (problem) { setApplyError(problem instanceof Error ? problem.message : String(problem)); } finally { setApplying(false); }
   };
   const ask = (text: string) => void assistant.send(text).catch(() => undefined);
+  // A question the user answered here stays answered even if a revision repeats it.
+  const answer = (question: string, text: string) => { setAnswered(rows => { const next = [...rows, question]; try { sessionStorage.setItem(`aas-answered:${session.id}`, JSON.stringify(next)); } catch { /* storage unavailable */ } return next; }); ask(text); };
+  const questions = plan.open_questions.map(questionOf).filter(row => !answered.includes(row.question));
   const askWhy = (item: StoryItem) => void assistant.send(L(`Why didn't this happen: "${item.text}"?`, `为什么这一步没有发生：“${item.text_zh ?? item.text}”？`), { run_id: runId, locale }).catch(() => undefined);
   const shownStage: Stage = isOld ? 'proposed' : stage;
   const rows = session.plan_versions;
@@ -64,8 +69,10 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
       <ol className="as-rail" aria-label={L('Where you are', '当前阶段')}>
         {(['proposed', 'configured', 'running'] as Stage[]).map((step, index, all) => {
           const at = all.indexOf(shownStage);
-          return <li key={step} className={index === at ? 'is-on' : index < at ? 'is-past' : ''} aria-current={index === at ? 'step' : undefined}>
-            <i />{step === 'proposed' ? L('Proposed', '提议') : step === 'configured' ? L('Configured', '已配置') : L('Running', '运行')}
+          // An initialized run waits at t = 0 until Start; it is not running yet.
+          const ready = step === 'running' && waiting && index === at;
+          return <li key={step} className={index === at ? `is-on${ready ? ' is-waiting' : ''}` : index < at ? 'is-past' : ''} aria-current={index === at ? 'step' : undefined}>
+            <i />{step === 'proposed' ? L('Proposed', '提议') : step === 'configured' ? L('Configured', '已配置') : ready ? L('Ready · t = 0', '就绪 · t = 0') : L('Running', '运行')}
           </li>;
         })}
       </ol>
@@ -77,7 +84,7 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
       <span className={`as-badge is-${shownStage}`} data-testid="as-plan-state">
         {shownStage === 'proposed' ? <>{isOld ? L(`Earlier version · v${plan.version}`, `早期版本 · v${plan.version}`) : L(`Proposed plan · v${plan.version}`, `提议方案 · v${plan.version}`)}<em>{L('not applied', '未应用')}</em></>
           : shownStage === 'configured' ? <>{L(`Configured · version ${applied?.version ?? ''}`, `已配置 · 版本 ${applied?.version ?? ''}`)}<em>{L('not running', '未运行')}</em></>
-          : <>{terminal ? L('Run finished', '运行结束') : L('Running', '运行中')}<em className="wb-mono">{runId}</em></>}
+          : <>{terminal ? L('Run finished', '运行结束') : waiting ? L('Initialized · press Start', '已初始化 · 请按启动') : L('Running', '运行中')}<em className="wb-mono">{runId}</em></>}
       </span>
       <h2>{plan.title}</h2>
       {plan.summary && <p>{plan.summary}</p>}
@@ -95,17 +102,17 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
       </div>}
     </div>
 
-    {!isOld && stage === 'proposed' && (plan.open_questions.length > 0 || plan.assumptions.length > 0) && <div className="as-asks as-rise">
-      {plan.open_questions.map(questionOf).map(({ question, options }) => <div key={question} className="as-question" data-testid="as-question">
+    {!isOld && stage === 'proposed' && (questions.length > 0 || plan.assumptions.length > 0) && <div className="as-asks as-rise">
+      {questions.map(({ question, options }) => <div key={question} className="as-question" data-testid="as-question">
         <span className="as-question-mark">?</span>
         <div><p>{question}</p>
           <div className="as-question-options">
-            {options.map(option => <button key={option} className="wb-btn small" disabled={busy} onClick={() => ask(option)}>{option}</button>)}
-            <button className="wb-btn small ghost" disabled={busy} onClick={() => ask(L(`Use a sensible default for: ${question}`, `这个问题用合理的默认值：${question}`))}>{L('Use a sensible default', '用合理默认值')}</button>
+            {options.map(option => <button key={option} className="wb-btn small" disabled={busy} onClick={() => answer(question, L(`For "${question}": ${option}`, `关于“${question}”：${option}`))}>{option}</button>)}
+            <button className="wb-btn small ghost" disabled={busy} onClick={() => answer(question, L(`Use a sensible default for: ${question}`, `这个问题用合理的默认值：${question}`))}>{L('Use a sensible default', '用合理默认值')}</button>
           </div>
         </div>
       </div>)}
-      {plan.assumptions.length > 0 && <details className="as-assumptions" open={plan.version === 1 || plan.open_questions.length === 0}>
+      {plan.assumptions.length > 0 && <details className="as-assumptions" open={plan.version === 1 || questions.length === 0}>
         <summary>{L(`Assumptions (${plan.assumptions.length})`, `假设（${plan.assumptions.length}）`)}<small>{L('filled in for you — change any of them', '已为你补全，可随时修改')}</small></summary>
         <ul>{plan.assumptions.map(text => <li key={text}>
           <span>{text}</span>

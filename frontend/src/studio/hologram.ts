@@ -83,7 +83,8 @@ if (uMode > 0.5) {
     float scanAA = max(fwidth(scanY), 0.015);
     float scan = (1.0 - smoothstep(0.035, 0.035 + scanAA, abs(fract(scanY) - 0.5))) * (1.0 - smoothstep(0.4, 1.2, scanAA));
     vec3 rimColor = mix(uHologramViolet, uHologramCyan, height);
-    blueprint += rimColor * (0.035 + height * 0.065 + rim * 0.65 + scan * 0.13);
+    // The city is context for the plan: quiet edges, so mission markers carry the eye.
+    blueprint += rimColor * (0.03 + height * 0.05 + rim * 0.42 + scan * 0.09);
     blueprint += uHologramCyan * front * (0.7 + rim);
   } else if (uHologramSurface < 1.5) {
     float minor = hologramGrid(vHologramPosition.xz, uGridSpacing);

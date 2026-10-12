@@ -76,7 +76,10 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
 }) {
   const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const { events, busy, pending, error, plan } = assistant;
-  const [text, setText] = useState(''), [showConnect, setShowConnect] = useState(false);
+  // An unsent message survives Form ↔ Conversation switches and reloads of the same project.
+  const draftKey = `aas-composer:${project?.id ?? 'new'}`;
+  const [text, setText] = useState(() => { try { return sessionStorage.getItem(draftKey) ?? ''; } catch { return ''; } }), [showConnect, setShowConnect] = useState(false);
+  useEffect(() => { try { if (text) sessionStorage.setItem(draftKey, text); else sessionStorage.removeItem(draftKey); } catch { /* storage unavailable */ } }, [draftKey, text]);
   const [opened, setOpened] = useState<Set<string>>(() => new Set());
   const items = useMemo(() => transcript(events, pending, busy, zh), [events, pending, busy, zh]);
   // Messages already there when the conversation opened appear at once; new ones are revealed.
@@ -92,7 +95,7 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
   const submit = (value = text) => {
     if (!value.trim() || busy) return;
     pinned.current = true;
-    void assistant.send(value, context).then(() => setText('')).catch(() => undefined);
+    void assistant.send(value, context).catch(() => undefined);
     if (value === text) setText('');
   };
   const lastAnswer = [...events].reverse().find(event => event.kind === 'assistant') as Extract<AssistantEvent, { kind: 'assistant' }> | undefined;

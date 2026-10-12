@@ -29,7 +29,13 @@ const STEPS = {
 } as const;
 
 /** Gallery hero card: a dark console that types example scenarios on loop. Whole card is one button. */
-export function DescribeCard({ onStart, imageSrc }: { onStart: () => void; imageSrc: string }) {
+export function DescribeCard(props: { onStart: () => void; imageSrc: string }) {
+  // Switching language restarts the typing with that language's examples.
+  const { locale } = useI18n();
+  return <Console key={locale} {...props} />;
+}
+
+function Console({ onStart, imageSrc }: { onStart: () => void; imageSrc: string }) {
   const { locale } = useI18n();
   const zh = locale === 'zh-CN';
   const prompts = PROMPTS[zh ? 'zh-CN' : 'en-US'];
