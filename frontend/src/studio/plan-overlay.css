@@ -1,0 +1,19 @@
+.studio-preview[data-overlay-state='proposed'], .studio-preview[data-overlay-state='configured'] { position: relative; }
+.pv-labels { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+.pv-label {
+  position: absolute; display: flex; align-items: center; gap: 5px; width: max-content; max-width: 220px;
+  padding: 4px 8px; border: 1px solid rgba(20, 32, 46, .12); border-radius: 999px;
+  background: rgba(255, 255, 255, .88); color: #14202e; box-shadow: 0 2px 8px rgba(9, 20, 36, .18);
+  font: 11px/1.2 Inter, 'Segoe UI', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+.pv-label[hidden] { display: none; }
+.pv-label-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pv-label::before { content: ''; flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--pv-color); }
+.pv-label.is-new::after { content: '+'; color: var(--pv-color); font-size: 10px; font-weight: 700; }
+.pv-label.is-changed { border-color: var(--pv-color); }
+.pv-label.is-incident::before { box-shadow: 0 0 0 2px rgba(255, 107, 94, .15); }
+.pv-label.is-handoff::before { border-radius: 1px; transform: rotate(45deg); }
+.pv-label.is-focus { font-weight: 650; border-color: var(--pv-color); box-shadow: 0 2px 8px rgba(9, 20, 36, .18), 0 0 0 2px rgba(138, 125, 255, .16); }
+.pv-label.is-removed { text-decoration: line-through; color: #65717e; }
