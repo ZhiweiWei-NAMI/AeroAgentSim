@@ -21,6 +21,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 SCENE = ROOT / "scenarios/demos/traffic-accident/inputs/lite-city/scene.json"
+DETAILED_CITY_NORTH_M = 500.0
 TEMPLATES = (
     "parcel-delivery",
     "medical-delivery",
@@ -211,8 +212,12 @@ def placements(scene: dict[str, Any]) -> dict[str, Any]:
     end = max(range(len(source)), key=lambda i: source[i][1])
     north_points = simplify([[p[0], p[1], cruise] for p in source[: end + 1]])
     # The source has no agricultural land. This explicit polygon starts beyond
-    # the northernmost building, alongside the north road, outside the core.
-    north = max(p[1] for b in buildings for p in b["footprint"])
+    # the northernmost building. The detailed city pack (huangpu-city 1.1)
+    # draws buildings and roads up to N = 500 m, far past the lite outlines,
+    # so the field begins beyond that edge to stay on open ground in both.
+    north = max(
+        max(p[1] for b in buildings for p in b["footprint"]), DETAILED_CITY_NORTH_M
+    )
     west = min(p[0] for b in buildings for p in b["footprint"])
     lower = [round(west + 5, 3), round(north + 10, 3)]
     upper = [round(lower[0] + 160, 3), round(lower[1] + 120, 3)]

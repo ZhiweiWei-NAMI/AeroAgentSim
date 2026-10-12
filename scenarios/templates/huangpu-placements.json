@@ -310,11 +310,11 @@
   },
   "field_lower": [
     -140.366,
-    125.467
+    510.0
   ],
   "field_upper": [
     19.634,
-    245.467
+    630.0
   ],
   "source_sha256": "aa9871d8a38bb7c571009415d937f138c9565a5c128503150d9f4423faac5f5e",
   "field_role": "Explicit demonstration field outside dense OSM core; not source cropland"

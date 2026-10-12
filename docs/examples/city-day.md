@@ -134,7 +134,8 @@ coverage resumes its interrupted work segment. Passenger pad capacity is checked
 before both pickup and destination descent, with boarding/arrival dwell.
 
 There is no source cropland in the lite scene. The green field is an explicit
-160 × 120 m demonstration polygon just beyond the northernmost buildings,
+160 × 120 m demonstration polygon on open ground north of the city
+(N 510–630 m), beyond the last buildings and roads of the detailed city pack,
 not an OSM land-use claim. Its inline glTF plane is anchored in ENU and uses the
 existing model renderer; field work stays at 5 m, with the swap pad at ground
 level. City spraying transits above roofs before descending into the field.
