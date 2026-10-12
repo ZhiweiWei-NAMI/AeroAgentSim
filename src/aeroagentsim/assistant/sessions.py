@@ -162,7 +162,7 @@ class SessionStore:
         deadline = time.monotonic() + wait
         with self.condition:
             session = self._read(identifier)
-            while session["last_seq"] <= after and session["busy"] and time.monotonic() < deadline:
+            while session["last_seq"] <= after and time.monotonic() < deadline:
                 self.condition.wait(deadline - time.monotonic())
                 session = self._read(identifier)
             return {"events": copy.deepcopy([e for e in session["events"] if e["seq"] > after]),

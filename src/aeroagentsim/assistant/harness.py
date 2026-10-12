@@ -76,9 +76,9 @@ class Harness:
             self._validating.add(key)
 
         def validate() -> None:
-            from .compiler import validate_compiled
-
             try:
+                from .compiler import validate_compiled
+
                 result = validate_compiled(self.tools.context(identifier), self.sessions.plan_directory(identifier, version))
                 if type(result["valid"]) is not bool:
                     raise ValueError("Validator must return a boolean")

@@ -142,9 +142,71 @@ def compact_json(value: Any, budget: int = 6500) -> str:
 
 def operation_diff(before: list[dict[str, Any]], after: list[dict[str, Any]]) -> dict[str, Any]:
     old, new = ({op["id"]: op for op in ops} for ops in (before, after))
-    return {"added": [new[k] for k in new.keys() - old.keys()],
-            "removed": [old[k] for k in old.keys() - new.keys()],
-            "changed": [{"id": k, "before": old[k], "after": new[k]} for k in old.keys() & new.keys() if old[k] != new[k]]}
+    return {"added": [op for op in after if op["id"] not in old],
+            "removed": [op for op in before if op["id"] not in new],
+            "changed": [{"id": op["id"], "before": old[op["id"]], "after": op} for op in after if op["id"] in old and old[op["id"]] != op]}
+
+
+def short_scene(summary: Any) -> Any:
+    if not isinstance(summary, dict):
+        return summary
+    result = {}
+    for key, value in summary.items():
+        if isinstance(value, list):
+            result[key] = {"count": len(value), "items": [{k: row[k] for k in ("id", "label", "label_zh", "role", "count", "kind", "start", "at_s", "time_s") if k in row} if isinstance(row, dict) else row for row in value[:6]], "truncated": len(value) > 6}
+        elif key in {"environment", "cooperation", "rules", "algorithms", "counts"}:
+            result[key] = value
+        elif isinstance(value, (str, int, float, bool)) or value is None:
+            result[key] = value
+    return result
+
+
+def workspace_operations(operations: list[dict[str, Any]], baseline: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Apply only changed arrangements to an already-confirmed real workspace."""
+    from .operations import OPERATIONS
+
+    old = {op["id"]: op for op in baseline}
+    new = {op["id"]: op for op in operations}
+    result = []
+    replacements = {"add_place": ("update_place", "place"), "add_fleet": ("set_fleet", "fleet"), "add_orders": ("set_orders", "orders"), "add_incident": ("set_incident", "incident")}
+    removals = {"add_place": ("remove_place", "place"), "add_orders": ("remove_orders", "orders"), "add_incident": ("remove_incident", "incident"), "set_cooperation": ("remove_cooperation", None)}
+
+    def translate(op: dict[str, Any], target: str, subject: str | None, changes: dict[str, Any]) -> dict[str, Any]:
+        spec = OPERATIONS[target]
+        properties = spec["schema"].get("properties", {})
+        params = copy.deepcopy(changes)
+        if subject is not None:
+            key = subject if subject in properties else "id" if "id" in properties else None
+            if key is None:
+                raise ValueError(f"{op['id']}: {target} does not declare the entity selector / 操作未声明对象选择字段")
+            params[key] = op["params"]["id"]
+        validate_arguments(spec["schema"], params, op["id"])
+        return {"id": op["id"], "op": target, "params": params}
+
+    for op in operations:
+        previous = old.get(op["id"])
+        if previous == op:
+            continue
+        if previous is not None and op["op"] == previous["op"] and op["op"] in replacements:
+            if op["params"].get("id") != previous["params"].get("id"):
+                raise ValueError(f"{op['id']}: keep an applied entity's id when revising it / 修改已确认对象时须保留对象标识")
+            changed = {k: v for k, v in op["params"].items() if k != "id" and (k not in previous["params"] or previous["params"][k] != v)}
+            if previous["params"].keys() - op["params"].keys():
+                raise ValueError(f"{op['id']}: specify replacement values for removed parameters / 请明确提供被移除参数的替代值")
+            target, subject = replacements[op["op"]]
+            result.append(translate(op, target, subject, changed))
+        elif previous is not None and previous["op"].startswith("add_"):
+            raise ValueError(f"{op['id']}: revise an applied addition with the same operation kind / 请保留已确认新增对象的操作类型")
+        else:
+            result.append(copy.deepcopy(op))
+    for op in baseline:
+        if op["id"] in new:
+            continue
+        if op["op"] not in removals:
+            raise ValueError(f"{op['id']}: removing this already-applied arrangement needs an explicit supported replacement / 移除此已确认安排需要明确的受支持替代操作")
+        target, subject = removals[op["op"]]
+        result.insert(0, translate(op, target, subject, {}))
+    return result
 
 
 class ToolRunner:
@@ -179,12 +241,14 @@ class ToolRunner:
         return [{**{k: row[k] for k in keys if k in row}, "controls": [{k: knob[k] for k in ("id", "label", "label_zh", "default", "options", "min", "max") if k in knob} for knob in row["knobs"]]} for row in self.templates.list()]
 
     def describe_starting_point(self, identifier: str, template_id: str) -> dict[str, Any]:
+        from aeroagentsim.authoring.catalog import ScenarioCatalog
+
         from .compiler import resolve_base
         from .scene import summarize
 
         base = resolve_base(self.context(identifier), {"template": template_id})
         metadata = self.templates.get(template_id)
-        return {"template": {k: metadata[k] for k in ("id", "title", "title_zh", "summary", "summary_zh", "knobs", "observe", "observe_zh") if k in metadata}, "scene": summarize(base.document, directory=base.directory, catalog=self.store.catalog_for(None), controls=base.controls)}
+        return {"template": {k: metadata[k] for k in ("id", "title", "title_zh", "summary", "summary_zh", "knobs", "observe", "observe_zh") if k in metadata}, "scene": summarize(base.document, directory=base.directory, catalog=ScenarioCatalog(base.document, base=base.directory), controls=base.controls)}
 
     def list_capabilities(self, identifier: str, topic: str | None = None) -> Any:
         from aeroagentsim.services.algorithm_catalog import discover_algorithm_catalog
@@ -218,8 +282,8 @@ class ToolRunner:
                     ancestors.append(parent)
                     pending.extend(selected.type_detail(parent)["parents"])
             types.append({"id": row["id"], "name": row.get("name"), "parents": detail["parents"], "ancestry": ancestors, "explanation": f"Declared contract type; effective fields: {', '.join(f['id'] for f in detail['fields'][:8])}", "explanation_zh": f"已声明的契约类型；有效字段：{', '.join(f['id'] for f in detail['fields'][:8])}"})
-        fields = [{k: row[k] for k in ("id", "name", "declaringClass", "declaring_type", "schema", "valueSchema", "description", "description_zh") if k in row} for row in result["fields"][:10]]
-        links = [{k: row[k] for k in ("id", "name", "source_type", "target_type", "source", "target", "description", "description_zh") if k in row} for row in relations[:8]]
+        fields = [{**{k: row[k] for k in ("id", "name", "declaringClass", "declaring_type", "schema", "valueSchema", "description", "description_zh") if k in row}, "explanation": row.get("description") or f"Declared field {row['id']}; schema shown alongside", "explanation_zh": row.get("description_zh") or f"已声明字段 {row['id']}；参数结构见所列定义"} for row in result["fields"][:10]]
+        links = [{**{k: row[k] for k in ("id", "name", "source_type", "target_type", "source", "target", "description", "description_zh") if k in row}, "explanation": row.get("description") or f"Declared relation {row['id']}; endpoints shown alongside", "explanation_zh": row.get("description_zh") or f"已声明关系 {row['id']}；端点见所列定义"} for row in relations[:8]]
         return {"types": types, "fields": fields, "relations": links, "counts": {"types": len(result["types"]), "fields": len(result["fields"]), "relations": len(relations)}, "scope": result.get("catalog_scope", "aerograph-source")}
 
     def _compile(self, identifier: str, *, base: dict[str, Any], title: str, summary: str, operations: list[dict[str, Any]], assumptions: list[str], open_questions: list[Any], note: str, variant: str | None = None, parent: int | None = None, current: bool = True, retained: set[str] | None = None) -> dict[str, Any]:
@@ -237,9 +301,18 @@ class ToolRunner:
         if resolved.revision is not None:
             base["revision"] = resolved.revision
         version, operations = self.sessions.allocate(identifier, operations, retained=retained)
+        baseline: list[dict[str, Any]] = []
+        if session["applied"] and parent is not None:
+            applied_plan = session["plans"][str(session["applied"][-1]["plan_version"])]
+            parent_plan = session["plans"][str(parent)]
+            if parent == applied_plan["version"]:
+                baseline = applied_plan["operations"]
+            else:
+                baseline = parent_plan.get("_baseline_operations", [])
+        compile_operations = workspace_operations(operations, baseline) if baseline else operations
         directory = self.sessions.plan_directory(identifier, version)
         directory.parent.mkdir(parents=True, exist_ok=True)
-        result = compile_plan(ctx, base, operations, directory)
+        result = compile_plan(ctx, base, compile_operations, directory)
         changes = configuration_differences({"previous": previous["_document"], "current": result.document}) if previous and previous["compile"]["ok"] and result.ok else []
         diff_previous = {"changes": changes[:80], "total_changes": len(changes), "operations": operation_diff(previous["operations"] if previous else [], operations)}
         plan = {"version": version, "created_at": now(), "note": note, "variant": variant, "parent": parent,
@@ -249,14 +322,17 @@ class ToolRunner:
                 "validation": {"state": "pending" if result.ok else "invalid", "errors": [] if result.ok else result.errors},
                 "scene": result.summary, "diff_base": result.diff_base, "diff_previous": diff_previous,
                 "interactions": result.interactions, "expectations": result.expectations,
-                "_document": result.document, "_compile_data": result.to_data(), "_digest": result.digest}
+                "_document": result.document, "_compile_data": result.to_data(), "_digest": result.digest,
+                "_baseline_operations": baseline, "_compile_operations": compile_operations}
         self.sessions.put_plan(identifier, plan, current=current)
         if result.ok and self.on_plan is not None:
             self.on_plan(identifier, version)
         if not result.ok:
             return {"version": version, "ok": False, "errors": result.errors, "hint": "Fix the named operation ids and fields with revise_plan; this draft cannot be confirmed / 请用 revise_plan 修复指定操作和字段；该草稿不能确认"}
-        return {"version": version, "ok": True, "validation": "pending", "scene": result.summary,
-                "diff_previous": diff_previous, "warnings": result.warnings,
+        compact_diff = {"total_changes": len(changes), "changes": changes[:8], "operations": {key: [{"id": op["id"], "op": op.get("op", op.get("after", {}).get("op"))} for op in rows] for key, rows in diff_previous["operations"].items()}}
+        return {"version": version, "ok": True, "validation": "pending", "scene": short_scene(result.summary),
+                "operations": [{"id": op["id"], "op": op["op"]} for op in operations],
+                "diff_previous": compact_diff, "warnings": result.warnings,
                 "prechecks": result.expectations, "note": note, "variant": variant}
 
     def draft_plan(self, identifier: str, **arguments: Any) -> dict[str, Any]:
@@ -310,7 +386,12 @@ class ToolRunner:
                 raise ValueError("Restore ids must belong to the source version / 恢复标识必须来自指定版本")
             arguments["operations"] = [copy.deepcopy(old[op["id"]]) if op["id"] in op_ids else op for op in current["operations"]]
             existing = {op["id"] for op in current["operations"]}
-            arguments["operations"].extend(copy.deepcopy(op) for op in previous["operations"] if op["id"] in op_ids and op["id"] not in existing)
+            for index, op in enumerate(previous["operations"]):
+                if op["id"] not in op_ids or op["id"] in existing:
+                    continue
+                following = {later["id"] for later in previous["operations"][index + 1:]}
+                position = next((i for i, current_op in enumerate(arguments["operations"]) if current_op["id"] in following), len(arguments["operations"]))
+                arguments["operations"].insert(position, copy.deepcopy(op))
         arguments["note"] = note
         retained = {op["id"] for p in (previous, current) for op in p["operations"]}
         return self._compile(identifier, **arguments, parent=current["version"], retained=retained)
