@@ -63,7 +63,8 @@ export function InspectorPanel({ api, runId, store, revision, selected, cut, mod
     for (const child of element.children) observer.observe(child);
     return cancel;
   }, [tab, compact]);
-  useEffect(() => { onCompactChange?.(compact); }, [compact, onCompactChange]);
+  // Before paint, so floating controls never sit under a widened inspector.
+  useLayoutEffect(() => { onCompactChange?.(compact); }, [compact, onCompactChange]);
   const spatial = entity ? !!resolveBinding(store.header, entity.typeId) : false;
   return <aside className={`wb-panel wb-right wb-glass${compact ? ' is-compact' : ''}`} aria-label={L('Inspector', '检查器')} data-testid="wb-inspector" data-compact={compact}>
     <div className="wb-panel-head"><h3>{L('Inspector', '检查器')}</h3><button className="wb-x" aria-label={L('Hide inspector', '隐藏检查器')} onClick={onClose}>›</button></div>
