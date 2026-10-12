@@ -50,6 +50,71 @@ def target(type_id: str) -> dict[str, str]:
     return {"type": "ref", "target_type": "lowalt:" + type_id}
 
 
+INCIDENT_FIELDS = tuple("lowalt.incident_" + name for name in (
+    "kind", "position", "state", "time_ns", "noticed_by", "responder",
+))
+HANDOFF_FIELDS = tuple("lowalt.handoff_" + name for name in (
+    "state", "task", "from", "to", "point",
+))
+COOP_OPTIONS = ("respond_now", "request_handoff", "finish_then_respond", "report_only")
+
+
+def cooperation_overlay() -> dict[str, Any]:
+    """Optional descriptors; ordinary lowalt registries remain unchanged."""
+    types = [
+        {"id": "lowalt:" + name, "parents": [parent], "abstract": False}
+        for name, parent in (
+            ("Incident", "oo:Incident"), ("Handoff", "oo:CargoTransferReport"),
+            ("HandoffPoint", "lowalt:Site"),
+        )
+    ]
+    fields = []
+    for owner, specs in (
+        ("Incident", (
+            ("kind", STRING, "1"), ("position", VECTOR, "m"),
+            ("state", {"type": "string", "enum": ["pending", "occurred", "noticed", "responding", "photographed", "reported"]}, "1"),
+            ("time_ns", INT, "ns"), ("noticed_by", STRING, "1"), ("responder", STRING, "1"),
+        )),
+        ("Handoff", (
+            ("state", {"type": "string", "enum": ["idle", "requested", "accepted", "declined", "dropped", "transferred"]}, "1"),
+            ("task", STRING, "1"), ("from", STRING, "1"), ("to", STRING, "1"), ("point", STRING, "1"),
+        )),
+    ):
+        for name, schema, unit in specs:
+            metadata = {"role": "observation", "unit": unit, "time_semantics": "canonical computation; half-open validity"}
+            if schema is VECTOR:
+                metadata.update(frame="enu", transform_revision="lowalt.district/v1")
+            fields.append({"id": f"lowalt.{owner.lower()}_{name}", "type": "lowalt:" + owner, "schema": schema, "metadata": metadata})
+    blocked = record({name: STRING for name in COOP_OPTIONS}, COOP_OPTIONS)
+    base = {"incident": STRING, "handoff": STRING, "task": STRING, "requester": STRING}
+    handoff = {**base, "helper": STRING, "point": {"type": "string", "nullable": True}}
+    members = {
+        "incident.occurred": {"incident": STRING, "kind": STRING, "position": VECTOR},
+        "incident.noticed": {"incident": STRING, "vehicle": STRING, "distance_m": NUMBER},
+        "incident.decision": {"incident": STRING, "vehicle": STRING, "mode": STRING, "choice": STRING, "reason": STRING, "allowed": STRINGS, "blocked": blocked},
+        "incident.responding": {"incident": STRING, "vehicle": STRING, "position": VECTOR},
+        "incident.photographed": {"incident": STRING, "vehicle": STRING, "position": VECTOR},
+        "incident.reported": {"incident": STRING, "vehicle": STRING},
+        "handoff.requested": {**base, "candidates": STRINGS},
+        "handoff.offer": {**base, "helper": STRING, "accepted": BOOL, "reason": STRING, "mode": STRING},
+        "handoff.accepted": {**handoff, "others": STRINGS},
+        "handoff.declined": {**base, "reason": STRING},
+        "handoff.dropped": handoff,
+        "handoff.transferred": handoff,
+        "coop.decision_request": {"incident": STRING, "vehicle": STRING, "role": STRING, "goal": STRING, "state_json": STRING, "allowed": STRINGS, "constraints": STRINGS},
+        "coop.decision_result": {"incident": STRING, "vehicle": STRING, "role": STRING, "choice": STRING, "reason": STRING},
+    }
+    subjects = {"incident": "Incident", "handoff": "Handoff", "task": "Task", "requester": "UAV", "vehicle": "UAV", "helper": "UAV", "point": "HandoffPoint", "candidates": "UAV", "others": "UAV"}
+    messages = []
+    for name, members_for_event in members.items():
+        entries = [
+            {"path": [key, "*"] if key in {"candidates", "others"} else [key], "type_id": "lowalt:" + subjects[key]}
+            for key in members_for_event if key in subjects
+        ]
+        messages.append({"id": "lowalt." + name, "kind": "event", "schema": record({**members_for_event, "provenance": PROVENANCE}, ("provenance",)), "subjects": entries})
+    return {"types": types, "fields": fields, "messages": messages}
+
+
 def record(members: dict[str, Any], optional: tuple[str, ...] = ()) -> dict[str, Any]:
     return {
         "type": "record",

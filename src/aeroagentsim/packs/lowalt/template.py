@@ -47,7 +47,8 @@ def expand(document: dict[str, Any]) -> None:
                 item["subjects"] = copy.deepcopy(descriptor["subjects"])
         known = {item["id"] for item in messages}
         messages.extend(copy.deepcopy(item) for key, item in wanted.items() if key not in known)
-    configure_detection(document)
+    if "generators" in document:
+        configure_detection(document)
     # In live operator mode the source supplies these events. Retaining the
     # scheduled demonstration as well would dispatch the same one-shot task
     # twice (e.g. investigate at 55 s after a live investigation).
@@ -93,6 +94,9 @@ def expand(document: dict[str, Any]) -> None:
             if not any(m["id"] == descriptor["id"] for m in messages):
                 messages.append(descriptor)
     if "generators" not in document:
+        from .cooperation import expand as expand_cooperation
+
+        expand_cooperation(document)
         return
     generators = document["generators"]
     if not isinstance(generators, dict) or set(generators) != {"fleet"}:
@@ -167,6 +171,10 @@ def expand(document: dict[str, Any]) -> None:
                 value = value.format(index=index + 1)
             generated[name] = value
         document["entities"].append(generated)
+
+    from .cooperation import expand as expand_cooperation
+
+    expand_cooperation(document)
 
 
 def parcel_document(
