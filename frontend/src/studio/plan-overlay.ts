@@ -203,7 +203,7 @@ function markerColor(marker: OverlayMarker, tone: PreviewOverlay['tone']): strin
   return marker.kind === 'vehicle' || marker.kind === 'fleet' ? '#38c6f4' : '#1f7ae0';
 }
 
-function headTexture(kind: OverlayMarker['kind'] | 'dot', color: string, removed = false): THREE.CanvasTexture {
+function headTexture(kind: OverlayMarker['kind'] | 'dot', color: string, removed = false, blueprint = false): THREE.CanvasTexture {
   const canvas = document.createElement('canvas'); canvas.width = canvas.height = 96;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Plan overlay requires a 2D canvas / 方案叠加层需要二维画布');
@@ -213,8 +213,8 @@ function headTexture(kind: OverlayMarker['kind'] | 'dot', color: string, removed
     gradient.addColorStop(0, '#ffffff'); gradient.addColorStop(0.2, color); gradient.addColorStop(1, `${color}00`);
     ctx.fillStyle = gradient; ctx.fillRect(-48, -48, 96, 96);
   } else {
-    ctx.shadowColor = 'rgba(9,20,36,.3)'; ctx.shadowBlur = 7; ctx.shadowOffsetY = 3;
-    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(20,32,46,.4)'; ctx.lineWidth = 2;
+    ctx.shadowColor = blueprint ? color : 'rgba(9,20,36,.3)'; ctx.shadowBlur = blueprint ? 12 : 7; ctx.shadowOffsetY = blueprint ? 0 : 3;
+    ctx.fillStyle = blueprint ? '#0b1329' : '#ffffff'; ctx.strokeStyle = blueprint ? color : 'rgba(20,32,46,.4)'; ctx.lineWidth = 2;
     ctx.beginPath();
     if (kind === 'handoff') { ctx.moveTo(0, -35); ctx.lineTo(35, 0); ctx.lineTo(0, 35); ctx.lineTo(-35, 0); ctx.closePath(); }
     else ctx.arc(0, 0, 32, 0, Math.PI * 2);
@@ -368,7 +368,7 @@ export class PlanOverlayView {
       const material = view.line.material;
       material.resolution.set(width, height);
       material.uniforms.linewidth.value = focused ? 2.5 : 2;
-      material.opacity = (this.overlay.tone === 'proposed' ? 0.7 : 0.9) * faded(view.data.id);
+      material.opacity = (this.overlay.tone === 'proposed' ? 0.88 : 0.9) * faded(view.data.id);
       material.color.copy(view.color).lerp(new THREE.Color('#ffffff'), focused ? 0.18 : 0);
       material.dashScale = 1 / worldPerPixel(view.arc.getPoint(0.5));
       if (state.flow) view.dashOffset -= elapsed * 0.04;
@@ -405,8 +405,10 @@ export class PlanOverlayView {
   }
 
   private sprite(kind: OverlayMarker['kind'] | 'dot', color: string, removed = false) {
-    const texture = headTexture(kind, color, removed); this.textures.add(texture);
+    const blueprint = this.overlay?.tone === 'proposed';
+    const texture = headTexture(kind, color, removed, blueprint); this.textures.add(texture);
     const material = new THREE.SpriteMaterial({ map: texture, transparent: true, sizeAttenuation: false, depthTest: false, depthWrite: false, toneMapped: false });
+    if (blueprint && kind === 'dot') material.blending = THREE.AdditiveBlending;
     this.materials.add(material);
     const sprite = new THREE.Sprite(material); sprite.renderOrder = 104; sprite.frustumCulled = false;
     this.group.add(sprite); return sprite;
@@ -414,7 +416,7 @@ export class PlanOverlayView {
 
   private thinLine(points: THREE.Vector3[], color: string, dashed = false) {
     const geometry = new THREE.BufferGeometry().setFromPoints(points); this.geometries.add(geometry);
-    const options = { color, transparent: true, depthTest: false, depthWrite: false, toneMapped: false };
+    const options = { color, transparent: true, depthTest: false, depthWrite: false, toneMapped: false, blending: this.overlay?.tone === 'proposed' ? THREE.AdditiveBlending : THREE.NormalBlending };
     const material = dashed ? new THREE.LineDashedMaterial({ ...options, dashSize: 0.2, gapSize: 0.16 }) : new THREE.LineBasicMaterial(options);
     this.materials.add(material);
     const line = new THREE.Line(geometry, material); line.computeLineDistances(); line.renderOrder = 102; line.frustumCulled = false;
@@ -443,7 +445,7 @@ export class PlanOverlayView {
     const color = new THREE.Color(ROUTE_COLORS[data.kind]);
     if (tone === 'proposed') color.lerp(new THREE.Color('#8a7dff'), 0.3);
     const arc = overlayArc(data), geometry = this.routeGeometry(arc);
-    const material = new LineMaterial({ color, dashed: tone === 'proposed', dashSize: 10, gapSize: 7, transparent: true, depthTest: false, depthWrite: false, toneMapped: false });
+    const material = new LineMaterial({ color, dashed: tone === 'proposed', dashSize: 10, gapSize: 7, transparent: true, depthTest: false, depthWrite: false, toneMapped: false, blending: tone === 'proposed' ? THREE.AdditiveBlending : THREE.NormalBlending });
     material.uniforms.linewidth.value = 2; this.materials.add(material);
     const line = new Line2(geometry, material); line.computeLineDistances(); line.renderOrder = 101; line.frustumCulled = false; this.group.add(line);
     const dot = this.sprite('dot', ROUTE_COLORS[data.kind]);

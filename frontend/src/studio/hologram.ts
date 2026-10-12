@@ -145,6 +145,7 @@ export class PreviewHologram {
       this.uniforms.uMode.value = mode === 'blueprint' ? 1 : mode === 'sweep' ? 2 : 0;
       this.uniforms.uSweepRadius.value = mode === 'blueprint' ? -1 : this.sweep?.radius ?? -1;
       this.uniforms.uSweepGlow.value = 0;
+      this.stage.copy(this.uniforms.uHologramNavy.value);
       this.scene.background = mode === 'real' ? this.background : this.stage;
       for (const [root, record] of this.roots) this.sync(root, record.surface);
     }
@@ -213,7 +214,9 @@ export class PreviewHologram {
 
   dispose() {
     this.media?.removeEventListener('change', this.motionChange);
-    for (const root of this.roots.keys()) this.release(root);
+    for (const node of this.bindings.keys()) this.restore(node);
+    for (const cache of this.patches.values()) for (const patch of cache.values()) patch.material.dispose();
+    this.patches.clear(); this.roots.clear();
     this.scene.background = this.background;
   }
 
