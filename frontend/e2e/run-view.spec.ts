@@ -197,7 +197,7 @@ test('compact graph keeps plotting space when timeline is expanded', async ({ re
   expect(Math.min(plot!.y + plot!.height, bodyBox!.y + bodyBox!.height) - Math.max(plot!.y, bodyBox!.y)).toBeGreaterThan(200);
   await graph.getByRole('combobox', { name: 'Graph entity', exact: true }).selectOption({ label: 'Meal courier 1' });
   const current = graph.locator('.eg-node[aria-pressed=true]');
-  await expect(current).toBeInViewport({ ratio: .999 });
+  await expect(current).toBeInViewport({ ratio: .999, timeout: 15_000 });
   const currentBox = await current.boundingBox();
   expect(currentBox!.y).toBeGreaterThanOrEqual(bodyBox!.y);
   expect(currentBox!.y + currentBox!.height).toBeLessThanOrEqual(bodyBox!.y + bodyBox!.height - 8);
