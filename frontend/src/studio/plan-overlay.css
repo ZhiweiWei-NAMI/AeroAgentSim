@@ -17,3 +17,12 @@
 .pv-label.is-handoff::before { border-radius: 1px; transform: rotate(45deg); }
 .pv-label.is-focus { font-weight: 650; border-color: var(--pv-color); box-shadow: 0 2px 8px rgba(9, 20, 36, .18), 0 0 0 2px rgba(138, 125, 255, .16); }
 .pv-label.is-removed { text-decoration: line-through; color: #65717e; }
+[data-overlay-state='proposed'] .pv-label {
+  background: rgba(7, 13, 29, .88); color: #e4e7ff; border-color: rgba(138, 125, 255, .38);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .28), inset 0 0 10px rgba(138, 125, 255, .06);
+}
+[data-overlay-state='proposed'] .pv-label::before { box-shadow: 0 0 7px var(--pv-color); }
+[data-overlay-state='proposed'] .pv-label.is-changed,
+[data-overlay-state='proposed'] .pv-label.is-focus { border-color: var(--pv-color); }
+[data-overlay-state='proposed'] .pv-label.is-focus { box-shadow: 0 0 12px rgba(138, 125, 255, .3), 0 0 0 2px rgba(138, 125, 255, .16); }
+[data-overlay-state='proposed'] .pv-label.is-removed { color: #8994ab; }

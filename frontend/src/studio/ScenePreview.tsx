@@ -7,6 +7,7 @@ import { Assets, disposeObject } from '../viewport/assets';
 import { loadTrafficCity, type CityProgress } from '../scene/traffic-city';
 import type { Workspace } from './api';
 import { PlanOverlayView, type PreviewOverlay } from './plan-overlay';
+import { PreviewHologram } from './hologram';
 
 type LayerName = 'ground' | 'buildings' | 'roads' | 'entities' | 'airspace';
 const LAYER_NAMES: LayerName[] = ['ground', 'buildings', 'roads', 'entities', 'airspace'];
@@ -18,6 +19,7 @@ interface Context {
   refreshBounds: (scenario: Workspace['scenario']) => void;
   invalidate: () => void;
   setOverlay: (overlay?: PreviewOverlay) => void;
+  hologram?: PreviewHologram;
 }
 
 /** Remove and dispose every child of a layer group while keeping the group itself in the scene. */
@@ -106,8 +108,13 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
     const beginLoad = () => { pendingBuildings++; setLoading(true); };
     const finishLoad = () => { pendingBuildings--; if (!abort.signal.aborted) setLoading(pendingBuildings > 0); };
     let assets: Assets | undefined, renderer: THREE.WebGLRenderer | undefined, controls: OrbitControls | undefined, observer: ResizeObserver | undefined, layoutObserver: MutationObserver | undefined, frame = 0;
-    let cleaned = false, overlayView: PlanOverlayView | undefined;
-    const cleanup = () => { if (cleaned) return; cleaned = true; abort.abort(); cancelAnimationFrame(frame); observer?.disconnect(); layoutObserver?.disconnect(); overlayView?.dispose(); controls?.dispose(); disposePreview(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); ctx.current = undefined; };
+    let cleaned = false, overlayView: PlanOverlayView | undefined, hologram: PreviewHologram | undefined, driftTimer = 0;
+    const visibility = () => {
+      if (document.hidden) { cancelAnimationFrame(frame); frame = 0; window.clearTimeout(driftTimer); driftTimer = 0; }
+      else ctx.current?.invalidate();
+    };
+    document.addEventListener('visibilitychange', visibility);
+    const cleanup = () => { if (cleaned) return; cleaned = true; abort.abort(); cancelAnimationFrame(frame); window.clearTimeout(driftTimer); document.removeEventListener('visibilitychange', visibility); observer?.disconnect(); layoutObserver?.disconnect(); overlayView?.dispose(); hologram?.dispose(); controls?.dispose(); disposePreview(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); ctx.current = undefined; };
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.domElement.setAttribute('aria-hidden', 'true'); host.append(renderer.domElement);
@@ -124,16 +131,21 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       controls = new OrbitControls(camera, renderer.domElement); controls.target.set(center.x, 0, center.z); controls.update();
       let firstFrame = true;
       const draw = () => {
-        frame = 0; if (abort.signal.aborted) return;
+        frame = 0; if (abort.signal.aborted || document.hidden) return;
         const now = performance.now();
         overlayView?.advanceCamera(now);
         controls!.update();
         const animating = overlayView?.render(now);
+        const drifting = hologram?.advance(now);
         renderer!.render(scene, camera);
         if (firstFrame) { setRendered(true); firstFrame = false; }
         if (animating) invalidate();
+        else if (drifting) driftTimer = window.setTimeout(() => { driftTimer = 0; invalidate(); }, 1000 / 30);
       };
-      const invalidate = () => { if (!frame && !abort.signal.aborted) frame = requestAnimationFrame(draw); };
+      const invalidate = () => {
+        window.clearTimeout(driftTimer); driftTimer = 0;
+        if (!frame && !abort.signal.aborted && !document.hidden) frame = requestAnimationFrame(draw);
+      };
       controls.addEventListener('change', invalidate);
       const shownCity = cityScene(ws);
       let userMoved = false, framedCity = false;
@@ -152,6 +164,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(100, 200, 80); scene.add(sun);
       const groups = Object.fromEntries(LAYER_NAMES.map(name => { const group = new THREE.Group(); group.name = `layer-${name}`; scene.add(group); return [name, group]; })) as Record<LayerName, THREE.Group>;
       const fitGround = (box: THREE.Box3) => {
+        hologram?.release(groups.ground);
         clearGroup(groups.ground);
         const span = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
         const width = Math.max(span.x, 200) * 1.15, depth = Math.max(span.z, 200) * 1.15;
@@ -161,6 +174,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         const grid = new THREE.GridHelper(side, divisions, '#9da9ab', '#c6d0d1'); grid.position.set(mid.x, 0, mid.z);
         grid.scale.set(width / side, 1, depth / side);
         groups.ground.add(ground, grid);
+        hologram?.setBounds(box); hologram?.sync(groups.ground, 'ground');
       };
       fitGround(bounds);
       const acceptCity = (group: THREE.Group) => {
@@ -173,11 +187,16 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
           if (!framedCity && !userMoved && !latest.current.overlay) { fitView(); framedCity = true; }
           camera.far = Math.max(camera.far, bounds.getSize(new THREE.Vector3()).length() * 6); camera.updateProjectionMatrix();
         }
+        hologram?.sync(groups.buildings, 'building');
         invalidate();
       };
       const context: Context = { scene, abort, groups, fitView, invalidate, setOverlay: value => {
-        if (!value) { overlayView?.dispose(); overlayView = undefined; host.dataset.overlayLabels = '[]'; invalidate(); return; }
+        if (!value) { overlayView?.dispose(); overlayView = undefined; hologram?.dispose(); hologram = context.hologram = undefined; host.dataset.overlayLabels = '[]'; invalidate(); return; }
         try {
+          const fresh = !hologram;
+          hologram ??= new PreviewHologram(scene, invalidate); context.hologram = hologram;
+          hologram.update(value, bounds);
+          if (fresh) { hologram.sync(groups.ground, 'ground'); hologram.sync(groups.buildings, 'building'); hologram.sync(groups.roads, 'road'); }
           overlayView ??= new PlanOverlayView({ scene, camera, target: controls!.target, host, invalidate, frameBounds: (box, destination, target) => {
             userMoved = true;
             framePreview(destination, box, target, visibleFrame());
@@ -185,6 +204,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
           overlayView.update(value);
         } catch (problem) {
           overlayView?.dispose(); overlayView = undefined;
+          hologram?.dispose(); hologram = context.hologram = undefined;
           setError({ kind: 'runtime', detail: String(problem) }); invalidate();
         }
       }, refreshBounds: scenario => {
@@ -244,7 +264,8 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         });
         layoutObserver.observe(shell, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
       }
-      cancelAnimationFrame(frame); draw();
+      context.setOverlay(latest.current.overlay);
+      invalidate();
     } catch (e) { setError({ kind: 'runtime', detail: String(e) }); cleanup(); }
     return cleanup;
   }, [sceneKey]);
@@ -259,11 +280,13 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
 
   useEffect(() => {
     const current = ctx.current; if (!current) return;
+    current.hologram?.release(current.groups.roads);
     clearGroup(current.groups.roads);
     latest.current.workspace.scene?.roads?.forEach(road => {
       const geometry = new THREE.BufferGeometry().setFromPoints(road.points.map(([e, n, u]) => new THREE.Vector3(e, u + 0.08, -n)));
       current.groups.roads.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#6b737c' })));
     });
+    current.hologram?.sync(current.groups.roads, 'road');
     current.invalidate();
   }, [sceneKey, roadsKey]);
 
