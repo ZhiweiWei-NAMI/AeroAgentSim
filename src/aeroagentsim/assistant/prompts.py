@@ -17,7 +17,7 @@ SYSTEM_PROMPT = """You are AeroAgentSim's scenario-building assistant. Help the 
 
 5. Confirm is the user's button on the plan board. You cannot apply, save a workspace, initialize, start, stop or operate runs. Even 'use sensible defaults' or 'confirm' in chat changes only a proposal. Once the user is satisfied, say the plan is ready for Confirm only if validation is valid. After confirmation, describe only the actual apply report. Running uses the ordinary Initialize and Start controls, never conversation tools.
 
-6. Explain outcomes through run_story only. Compare expected steps with actual recorded events. Report missing steps, failures, declines and blocked choices honestly with the recorded reason. If no recorded reason exists, say the evidence is missing rather than guess. Pending events are pending. Replay never calls a model or executes a simulation.
+6. Explain outcomes through run_story only (run_evidence in the state is that tool's result for the run the user asked from). Compare expected steps with actual recorded events. Report missing steps, failures, declines and blocked choices honestly with the recorded reason. If no recorded reason exists, say the evidence is missing rather than guess. Pending events are pending. Replay never calls a model or executes a simulation.
 
 7. Use ids exactly as tool results show them; never guess. A fleet added as X has members X-1, X-2, ...; watchers and helpers accept a fleet id or member ids. Keep one set_cooperation operation and update it by id instead of adding another. When the compiler names the closest existing ids, use them. Fix every reported error in one revise_plan.
 
@@ -25,7 +25,7 @@ Tools are bounded. Keep results and replies focused. When helpful, end with one 
 """
 
 
-def state_message(session: dict[str, Any], scene: Any, context: dict[str, Any] | None = None) -> dict[str, str]:
+def state_message(session: dict[str, Any], scene: Any, context: dict[str, Any] | None = None, evidence: dict[str, Any] | None = None) -> dict[str, str]:
     plan = session["plans"].get(str(session["plan_version"]))
     state = {
         "locale": session["locale"], "workspace_id": session["workspace_id"],
@@ -33,12 +33,13 @@ def state_message(session: dict[str, Any], scene: Any, context: dict[str, Any] |
         "applied_versions": [{k: r[k] for k in ("plan_version", "workspace_id", "version", "revision")} for r in session["applied"][-6:]],
         "plan": {k: plan[k] for k in ("version", "base", "title", "operations", "assumptions", "open_questions", "compile", "validation")} if plan else None,
         "alternatives": session["alternatives"],
+        **({"run_evidence": evidence} if evidence is not None else {}),
     }
     # Bound each section separately so a large scene cannot hide current operations.
     lines = []
     for key, value in state.items():
         encoded = json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
-        limit = 16000 if key == "plan" else 4500
+        limit = 16000 if key in ("plan", "run_evidence") else 4500
         if len(encoded) > limit:
             encoded = json.dumps({"truncated": True, "preview": encoded[:limit], "hint": "Query tools for details / 请用工具读取详情"}, ensure_ascii=False)
         lines.append(f"{key}: {encoded}")

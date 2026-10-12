@@ -133,3 +133,17 @@ def test_compaction_keeps_tool_call_result_pairs() -> None:
     assert sum(m["role"] == "user" for m in compacted) == 2
     assert sum(m["role"] == "tool" for m in compacted) == 2
     assert all(len(m.get("content") or "") < 7000 for m in compacted)
+
+
+def test_questions_from_a_run_carry_its_recorded_story(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    agent, provider, tools, identifier = harness(tmp_path, monkeypatch, [{"role": "assistant", "content": "The watcher passed 210 m away."}])
+    story = {"status": "completed", "terminal": True, "events": [{"schema": "lowalt.task.completed", "text": "Meal 1 delivered", "at_ns": 5}],
+             "expectations": [{"id": "incident:fall:noticed", "text": "A watcher may notice", "status": "missed", "at_ns": None,
+                               "explanation": {"text": "Closest recorded watcher approach: 210 m"}}]}
+    tools.run_story = lambda session, run_id: {**story, "run_id": run_id}  # type: ignore[attr-defined]
+    turn = agent.sessions.begin_turn(identifier, "Why didn't this happen?", {"run_id": "run-1"})
+    agent.run_turn(identifier, turn["turn"], {"run_id": "run-1"})
+    state = provider.requests[0]["messages"][1]["content"]
+    evidence = json.loads(next(line for line in state.splitlines() if line.startswith("run_evidence: "))[len("run_evidence: "):])
+    assert evidence["expectations"][0]["status"] == "missed" and evidence["expectations"][0]["recorded"] == "Closest recorded watcher approach: 210 m"
+    assert evidence["events"] == [{"schema": "lowalt.task.completed", "text": "Meal 1 delivered", "at_ns": 5}]

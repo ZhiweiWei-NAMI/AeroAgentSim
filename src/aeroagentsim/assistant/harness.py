@@ -44,6 +44,20 @@ def split_suggestions(content: str) -> tuple[str, list[str]]:
     return content[:match.start()].strip(), suggestions
 
 
+def run_evidence(tools: ToolRunner, identifier: str, context: dict[str, Any] | None) -> dict[str, Any] | None:
+    """A question asked from a run carries that run's recorded story, so answers start from evidence, not recall."""
+    run_id = (context or {}).get("run_id")
+    if not isinstance(run_id, str):
+        return None
+    try:
+        story = tools.run_story(identifier, run_id)
+    except (OSError, ValueError, KeyError) as error:
+        return {"run_id": run_id, "unavailable": str(error)}
+    return {"run_id": run_id, "status": story.get("status"), "terminal": story.get("terminal"),
+            "expectations": [{k: row.get(k) for k in ("id", "text", "status", "at_ns", "progress")} | {"recorded": (row.get("explanation") or {}).get("text")} for row in story["expectations"]],
+            "events": [{k: e.get(k) for k in ("schema", "text", "at_ns")} for e in story["events"][-40:]]}
+
+
 class Harness:
     def __init__(self, sessions: SessionStore, connection: ConnectionStore, tools: ToolRunner, *, max_calls: int = 10) -> None:
         self.sessions, self.connection, self.tools, self.max_calls = sessions, connection, tools, max_calls
@@ -117,7 +131,7 @@ class Harness:
         try:
             session = self.sessions.get(identifier)
             scene = self.tools.get_current_scene(identifier)
-            messages = [{"role": "system", "content": SYSTEM_PROMPT}, state_message(session, scene, context)] + recent_history(session["transcript"])
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}, state_message(session, scene, context, run_evidence(self.tools, identifier, context))] + recent_history(session["transcript"])
             provider = self.connection.provider()
             schemas = tool_schemas()
             for step in range(self.max_calls + 1):
