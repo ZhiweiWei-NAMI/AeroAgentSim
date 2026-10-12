@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { EntityKey } from '../contracts/viewer-feed';
 import type { RunsApi } from '../feeds/http';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
@@ -25,12 +25,15 @@ export function InspectorPanel({ api, runId, store, revision, selected, cut, mod
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const [tab, setTab] = useState<Tab>('state');
   const body = useRef<HTMLDivElement>(null), handledRequest = useRef<number>();
+  const scrollPositions = useRef<Record<Tab, number>>({ state: 0, story: 0, operate: 0 });
+  const cancelScrollRestore = useRef<() => void>();
   useEffect(() => { if (operateRequest) setTab('operate'); }, [operateRequest]);
   useEffect(() => {
     if (!operateRequest || tab !== 'operate' || handledRequest.current === operateRequest || !body.current) return;
     const reveal = () => {
       const card = body.current?.querySelector<HTMLElement>('.injection-card');
       if (!card) return;
+      cancelScrollRestore.current?.();
       handledRequest.current = operateRequest; observer.disconnect();
       card.scrollIntoView({ block: 'start' });
       card.querySelector<HTMLElement>('input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')?.focus({ preventScroll: true });
@@ -41,6 +44,25 @@ export function InspectorPanel({ api, runId, store, revision, selected, cut, mod
   void revision;
   const entity = selected ? store.entities.get(entityId(selected)) : undefined;
   const compact = !entity && tab !== 'operate';
+  // Restore before painting the new content; scrolling an operation form must
+  // not hide the first State fields. An explicit event request still reveals
+  // its form with the effect above.
+  useLayoutEffect(() => {
+    const element = body.current, wanted = scrollPositions.current[tab];
+    if (!element) return;
+    element.scrollTop = wanted;
+    if (element.scrollTop === wanted) return;
+    // Operate loads its form asynchronously. Retain the saved position until
+    // the content can accommodate it; stop observing as soon as it is restored
+    // or the user takes over the scroll.
+    let pending = true;
+    const cancel = () => { pending = false; observer.disconnect(); cancelScrollRestore.current = undefined; };
+    const restore = () => { if (!pending) return; element.scrollTop = wanted; if (element.scrollTop === wanted) cancel(); };
+    const observer = new ResizeObserver(restore);
+    cancelScrollRestore.current = cancel;
+    for (const child of element.children) observer.observe(child);
+    return cancel;
+  }, [tab, compact]);
   useEffect(() => { onCompactChange?.(compact); }, [compact, onCompactChange]);
   const spatial = entity ? !!resolveBinding(store.header, entity.typeId) : false;
   return <aside className={`wb-panel wb-right wb-glass${compact ? ' is-compact' : ''}`} aria-label={L('Inspector', '检查器')} data-testid="wb-inspector" data-compact={compact}>
@@ -60,7 +82,9 @@ export function InspectorPanel({ api, runId, store, revision, selected, cut, mod
       <div className="wb-tabs" role="tablist">
         {(['state', 'story', 'operate'] as Tab[]).map(item => <button key={item} role="tab" disabled={!entity && item !== 'operate'} aria-selected={tab === item} onClick={() => setTab(item)}>{item === 'state' ? L('State', '状态') : item === 'story' ? L('Story', '经历') : L('Operate', '操作')}</button>)}
       </div>
-      <div ref={body} className="wb-panel-body" style={{ paddingTop: 10 }}>
+      <div ref={body} className="wb-panel-body" style={{ paddingTop: 10 }}
+        onWheel={() => cancelScrollRestore.current?.()} onPointerDown={() => cancelScrollRestore.current?.()} onKeyDown={() => cancelScrollRestore.current?.()}
+        onScroll={event => { if (!cancelScrollRestore.current) scrollPositions.current[tab] = event.currentTarget.scrollTop; }}>
         {tab === 'state' && <InspectionPanel store={store} selected={selected} onSeek={onSeekCut} onOpenTrace={ref => onTrace(ref)} />}
         {tab === 'story' && entity && <>
           <MomentsList store={store} entity={entity.key} onOpen={(ref, at) => { onSeekCut(at); onTrace(ref); }} />

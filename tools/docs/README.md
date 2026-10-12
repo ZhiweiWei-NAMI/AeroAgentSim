@@ -23,7 +23,11 @@ Each story uses the actual UI and backend. The overview demonstrates the full
 lifecycle, including an initialization held at t = 0. The operation story uses
 Interactive food delivery, an 80-second east-kitchen preparation setting and a
 20-second restaurant delay. Why and Records reuse the real runs created by those
-stories. The Photos story runs the shipped scheduled accident and its own capture configuration;
+stories. Records first creates a separate scheduled live run, seeks backward to
+show Viewing history and Back to live, then stops that run and replays the
+completed food-delay run. Completed replay has its own timeline, without a live
+history banner. Comparison and Modify & retry retain the completed source runs.
+The Photos story runs the shipped scheduled accident and its own capture configuration;
 it requires real stored browser-rendered pixels. No provider calls or invented
 journal records are prepared. Failures remain failures, with screenshots and
 browser error logs in the scratch directory.
@@ -71,5 +75,12 @@ The context records the owned server port, which must be free. `--flows` accepts
 Playwright's filename filter and preserves other successful videos. Record
 00-overview and 02-run-and-operate before dependent Why and Records reruns.
 Use `--skip-gifs` for browser verification without updating published GIFs.
+To re-record only the corrected Records story, keep the successful overview and
+food-delay runs in the context and use `--flows 05-records-compare`. After product
+code changes, omit `--skip-build` so the scratch frontend includes the fixes.
+Then run the converter on the retained six-story manifest, review the 05 frames,
+publish `docs/media/05-records-compare.gif`, and replace the pending source link in
+the media index. Keep the existing 25 MB aggregate budget; use explicit width,
+fps or per-story speed tuning if the additional recording would exceed it.
 `--gates` additionally runs the frontend typecheck and Vitest suite before
 recording. After replacing media or captions, run `python3 tools/docs/check_links.py`.

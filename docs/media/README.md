@@ -12,7 +12,7 @@ come from real runs. Captions and cursor highlights are recording overlays.
 | [02-run-and-operate.gif](02-run-and-operate.gif) | Simulation speed; linked drone selection in the list, 3D and graph; inspector; restaurant picker, delay and admission receipt |
 | [03-why.gif](03-why.gif) | Recorded timeline and Why? links from restaurant delay to preparation ready, task assignment and delivery |
 | [04-photos.gif](04-photos.gif) | Shipped scheduled accident, response trace through dispatch, and the real stored UAV oblique photograph |
-| [05-records-compare source](../../frontend/e2e/flows/05-records-compare.spec.ts) | Recording blocked: Records replay lacks the required history banner and Back to live. The failing browser assertion is retained; no substitute GIF is published. |
+| [05-records-compare source](../../frontend/e2e/flows/05-records-compare.spec.ts) | Updated story awaiting recording: seek into a live run → Viewing history → Back to live; Records → replay a completed run → compare two runs → Modify & retry. |
 
 The 1600 × 1000 screenshots show scheduled runs in the running workbench with the installed city:
 [food delivery with a selected drone (English)](workbench-food.png),
@@ -21,5 +21,8 @@ The 1600 × 1000 screenshots show scheduled runs in the running workbench with t
 The food operation story explicitly selects Interactive mode and 80-second
 preparation at the east kitchen; the baseline overview uses the shipped defaults.
 Comparison therefore reflects real configuration and runtime differences.
+The history banner and Back to live belong to a live run viewed at a past
+moment. Completed runs use the separate replay controls. Story 05 now checks
+both contexts; its GIF will be published after central recording and frame review.
 
 Reproduce with [the recording tool](../../tools/docs/README.md).

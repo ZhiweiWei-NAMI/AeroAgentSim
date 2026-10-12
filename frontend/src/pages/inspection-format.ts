@@ -59,13 +59,14 @@ export function displayLabel(label: string | undefined, id: string, locale = 'en
   const labels: Record<string, string> = {position_enu_m:'Position (east / north / up)', velocity_enu_mps:'Velocity (east / north / up)', energy_j:'Energy', reserve_j:'Energy reserve', max_speed_mps:'Max speed', max_accel_mps2:'Max acceleration'};
   return Object.prototype.hasOwnProperty.call(labels, field) ? translate(locale, labels[field]) : readableLabel(field, locale);
 }
-export function displayUnit(field: FieldInfo | undefined): string | undefined {
-  if (field?.unit) return field.unit === '1' ? undefined : field.unit;
+export function displayUnit(field: FieldInfo | undefined, locale = 'en-US'): string | undefined {
+  const label = (unit: string) => unit === '1' ? undefined : translate(locale, unit);
+  if (field?.unit) return label(field.unit);
   const schema = field?.schema;
   if (!schema || typeof schema !== 'object') return;
   const unit = (schema as {unit?:unknown}).unit;
-  if (typeof unit === 'string') return unit === '1' ? undefined : unit;
-  if (unit && typeof unit === 'object' && 'symbol' in unit && typeof unit.symbol === 'string') return unit.symbol === '1' ? undefined : unit.symbol;
+  if (typeof unit === 'string') return label(unit);
+  if (unit && typeof unit === 'object' && 'symbol' in unit && typeof unit.symbol === 'string') return label(unit.symbol);
 }
 export function entityLabel(entity: EntityState, locale = 'en-US'): string {
   for (const id of ['traffic.actor.label', 'oo:name', 'lowalt.label', 'name', 'label', 'display_name']) {

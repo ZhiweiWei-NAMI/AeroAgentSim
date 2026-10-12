@@ -73,3 +73,22 @@ it('does not move search results when a matching director selection or resize ar
   fireEvent.change(screen.getByLabelText('Search objects'), { target:{ value:'' } });
   expect(scroll).toHaveBeenCalledWith({ block:'nearest' });
 });
+
+it('reveals the same manual selection after clearing its search, including objects beyond the row limit', () => {
+ const store = world();
+ for (let index = 2; index <= 320; index++) store.entities.set(`drone-${index}:0`, { key: { id: `drone-${index}`, generation: 0 }, typeId: 'UAV', fields: new Map() });
+ const props = { store, revision: 1, selectionOrigin: 'manual' as const, onSelect: vi.fn(), onClose: vi.fn() };
+ const view = render(<I18nProvider><ObjectsPanel {...props}/></I18nProvider>);
+ fireEvent.change(screen.getByLabelText('Search objects'), { target: { value: 'drone-320' } });
+ fireEvent.click(screen.getByTitle('drone-320'));
+ view.rerender(<I18nProvider><ObjectsPanel {...props} selected={{ id: 'drone-320', generation: 0 }}/></I18nProvider>);
+ scroll.mockClear();
+ fireEvent.change(screen.getByLabelText('Search objects'), { target: { value: 'drone-' } });
+ expect(scroll).not.toHaveBeenCalled();
+ fireEvent.change(screen.getByLabelText('Search objects'), { target: { value: '' } });
+ const row = screen.getByTitle('drone-320');
+ expect(row).toHaveAttribute('aria-current', 'true');
+ expect(scroll).toHaveBeenCalledWith({ block: 'nearest' });
+ expect(scroll.mock.instances.at(-1)).toBe(row);
+ expect(screen.getByText('+19 more — search to narrow')).toBeVisible();
+});

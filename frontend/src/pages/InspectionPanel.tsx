@@ -25,7 +25,7 @@ export function InspectionPanel({ store, selected, onSeek, onOpenTrace }: { stor
   return <div className="inspection-entity" data-testid="selected-entity-panel">
     <section aria-label={t('Selected entity state')}><h3>{t('State')}<ConceptHelp topic={t('Entity state')} description={t('State fields show values recorded at the shared timeline cursor, with their declared units.')} guide="observations.md"/><span>{fields.length}</span></h3>
       {fields.length ? <dl className="inspection-fields">{fields.map(([id, fact]) => {
-        const field = store.header.fields.find(row => row.fieldId === id), unit = displayUnit(field);
+        const field = store.header.fields.find(row => row.fieldId === id), unit = displayUnit(field, locale);
         const value = id === identity ? displayName(entity, store.header, locale) : Array.isArray(fact.value) && fact.value.length === 0 ? (locale === 'zh-CN' ? '无' : 'None')
           : fact.value === '' ? (locale === 'zh-CN' ? '空文本' : 'Empty text') : stateValue(fact.value, locale);
         return <div key={id}><dt>{displayLabel(field?.displayName,id,locale)}{unit && <small>{unit}</small>}</dt><dd>{value === undefined ? <Details title={displayLabel(field?.displayName,id,locale)} buttonLabel={t('View value')}><pre>{exactValue(fact.value)}</pre></Details> : <span>{value}</span>}</dd></div>;

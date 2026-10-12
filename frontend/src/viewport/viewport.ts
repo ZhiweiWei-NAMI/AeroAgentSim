@@ -23,6 +23,11 @@ import { workbenchLayoutKey } from './label-placement';
 export type { CameraMode } from '../scene/camera-director';
 // Look down far enough to retain city context when following an airborne unit.
 export const FOLLOW_CAMERA_OFFSET = [22, 48, 24] as const;
+export const GROUND_CAMERA_OFFSET = [65, 100, 80] as const;
+/** Ease from a street-context view at ground level to the airborne framing. */
+export function followCameraOffset(altitude: number): T.Vector3 {
+  return new T.Vector3(...GROUND_CAMERA_OFFSET).lerp(new T.Vector3(...FOLLOW_CAMERA_OFFSET), Math.min(1, Math.max(0, altitude / 100)));
+}
 export interface ViewportOptions extends AssetOptions {
   quality?: Quality;
   locale?: string;
@@ -58,7 +63,6 @@ export class Viewport {
   private disposed = false;
   private qualityTime = 0;
   private qualityFrames = 0;
-  private followOffset = new T.Vector3(...FOLLOW_CAMERA_OFFSET);
   private environment?: T.WebGLRenderTarget;
   private staticRoot = new T.Group();
   private occlusion = new StaticOcclusion();
@@ -221,8 +225,8 @@ export class Viewport {
   /** Event coordinates are ENU; camera positions are local east/up/south. */
   focusPosition(position: [number,number,number], radius?: number, immediate = false) {
     const target=new T.Vector3(position[0],position[2],-position[1]).sub(this.origin);
-    const offset=new T.Vector3(65,100,80);
-    if(radius!==undefined){const vertical=this.camera.fov*Math.PI/360,horizontal=Math.atan(Math.tan(vertical)*this.camera.aspect);offset.setLength(radius/Math.sin(Math.min(vertical,horizontal))*1.12);}
+    const offset=new T.Vector3(...GROUND_CAMERA_OFFSET);
+    if(radius!==undefined){const vertical=this.camera.fov*Math.PI/360,horizontal=Math.atan(Math.tan(vertical)*this.camera.aspect),distance=radius/Math.sin(Math.min(vertical,horizontal))*1.12;if(distance>offset.length())offset.setLength(distance);}
     const destination=this.occlusion.liftCamera(target.clone().add(offset));
     this.setCameraMode('orbit');
     if(immediate){this.controls.target.copy(target);this.camera.position.copy(destination);this.camera.lookAt(target);this.cameraTransition=undefined;}
@@ -280,7 +284,7 @@ export class Viewport {
       const eventPosition=this.businessShot?.position;
       const focus=(chosen?this.layer.positions.get(entityId(chosen)):undefined)??(eventPosition?new T.Vector3(eventPosition[0],eventPosition[2],-eventPosition[1]).sub(this.origin):undefined);
       if(focus&&this.mode!=='orbit'){
-        let offset=this.followOffset;
+        let offset=followCameraOffset(focus.y + this.origin.y);
         if(this.mode==='chase'){
           const orientation=this.layer.orientations.get(entityId(chosen!));offset=new T.Vector3(-4,2.4,5.5);if(orientation)offset.applyQuaternion(orientation);
         }else if(this.mode==='cinematic'&&!this.options.semantic)offset=this.director.offset();

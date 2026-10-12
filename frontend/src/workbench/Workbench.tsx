@@ -323,6 +323,8 @@ export default function Workbench() {
     const key = (event: KeyboardEvent) => {
       if (event.repeat || event.defaultPrevented) return;
       const target = event.target as HTMLElement | null;
+      // A photo or technical-details dialog owns its keyboard and focus.
+      if (target?.closest('[role="dialog"], [role="alertdialog"]')) return;
       const editing = target && (target.isContentEditable || /^(TEXTAREA|SELECT)$/.test(target.tagName) ||
         target.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes((target as HTMLInputElement).type));
       if (editing && event.key !== 'Escape' && !((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k')) return;
@@ -354,7 +356,7 @@ export default function Workbench() {
   const layout = { '--wb-left-space': query.get('records') ? 'calc(var(--wb-left) + 60px)' : leftOpen ? 'var(--wb-left)' : '0px',
     '--wb-right-space': panel ? 'var(--wb-config-width)' : rightOpen && !inspectorCompact ? 'var(--wb-right)' : '0px',
     '--wb-overlay-right-space': !panel && rightOpen && inspectorCompact ? '250px' : 'var(--wb-right-space)',
-    '--wb-dock': dockOpen ? 'min(38vh, 360px)' : '92px', '--wb-kpi-height': `${kpiHeight}px`, '--wb-notice-height': history || session?.error || session?.transportError || session?.inputSource.error ? '58px' : '0px' } as CSSProperties;
+    '--wb-dock': dockOpen ? dockTab === 'photos' ? 'min(52vh, 560px)' : 'min(38vh, 360px)' : '92px', '--wb-kpi-height': `${kpiHeight}px`, '--wb-notice-height': history || session?.error || session?.transportError || session?.inputSource.error ? '58px' : '0px' } as CSSProperties;
 
   return <div className="wb" style={layout} data-testid="workbench" data-run={runId ?? ''} data-status={status ?? 'none'} data-mode={mode ?? ''} data-cut={session?.cut ?? ''}>
     {/* Stage: the one 3D world */}

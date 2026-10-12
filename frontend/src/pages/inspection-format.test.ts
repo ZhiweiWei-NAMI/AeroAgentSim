@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { entityLabel, stateValue, displayLabel, readableLabel } from './inspection-format';
+import { entityLabel, stateValue, displayLabel, displayUnit, readableLabel } from './inspection-format';
+import type { FieldInfo } from '../contracts/viewer-feed';
 import { displayTime } from './display-time';
 it('formats display precision and time without changing exact recorded values', () => {
   expect(displayLabel('he.aircraft.position_enu_m','he.aircraft.position_enu_m')).toBe('Position (east / north / up)');
@@ -30,26 +31,79 @@ it('localizes object groups and prominent state fields without changing identifi
  expect(displayLabel(undefined, 'traffic.actor.inside_zones', 'zh-CN')).toBe('所在区域');
 });
 
-it('localizes state labels from the shipped lowalt and traffic field declarations', () => {
- const ids = new Set<string>();
+// Read shipped declarations, including templates' additional snapshot fields.
+// The overlays use block enum lists and scalar metadata units. Schema aliases
+// do not declare additional enums or metadata units.
+function shippedFields() {
+ const fields: Array<{ id: string; unit?: string; enums: string[]; labels?: string[] }> = [];
  const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
  for (const path of ['../../../src/aeroagentsim/packs/lowalt/registry.overlay.yaml', '../../../scenarios/demos/traffic-accident/registry.overlay.yaml']) {
-  const sections = source(path).split(/^([a-z_]+):\s*$/m);
-  const position = sections.indexOf('fields');
-  expect(position).toBeGreaterThan(0);
-  const declarations = [...sections[position + 1].matchAll(/^- id: ([^\s]+)$/gm)].map(match => match[1]);
-  expect(declarations.length).toBeGreaterThan(0);
-  declarations.forEach(id => ids.add(id));
+  const sections = source(path).split(/^([a-z_]+):\s*$/m), position = sections.indexOf('fields');
+  if (position < 0) throw Error(`Missing fields in ${path}`);
+  for (const block of sections[position + 1].split(/(?=^- id: )/m)) {
+   const id = block.match(/^- id: ([^\s]+)$/m)?.[1];
+   if (!id) continue;
+   const unit = block.match(/^    unit: ['"]?([^'"\n]+)['"]?$/m)?.[1];
+   const enums = [...(block.match(/^    enum:\n((?:    - [^\n]+\n)+)/m)?.[1] ?? '').matchAll(/^    - (.+)$/gm)].map(match => match[1]);
+   fields.push({ id, unit, enums });
+  }
  }
- const snapshot = JSON.parse(source('../../../scenarios/demos/traffic-accident/registry.snapshot.json'));
- snapshot.registry.fields.forEach((field: { id: string }) => ids.add(field.id));
- for (const field of ['binding_id', 'children', 'revision', 'roles', 'state', 'status', 'template_id']) ids.add(`aas.behaviour.${field}`);
- expect(ids.size).toBeGreaterThan(130);
- for (const id of ids) {
-  expect(displayLabel(undefined, id, 'zh-CN'), id).toMatch(/[\u3400-\u9fff]/);
-  expect(displayLabel(undefined, id, 'en-US'), id).toMatch(/[a-z]/i);
+ const snapshots = import.meta.glob([
+  '../../../src/aeroagentsim/packs/lowalt/registry.snapshot.json',
+  '../../../scenarios/templates/*/registry.snapshot.json',
+  '../../../scenarios/demos/traffic-accident/registry.snapshot.json',
+ ], { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+ for (const text of Object.values(snapshots)) {
+  const snapshot = JSON.parse(text);
+  for (const field of snapshot.registry.fields) {
+   const unit = field.metadata?.unit, raw = field.metadata?.raw;
+   fields.push({ id: field.id, unit: typeof unit === 'string' ? unit : unit?.symbol, enums: field.schema.enum ?? [],
+    labels: [raw?.displayName, raw?.displayNameEn, raw?.sourceDisplayName].filter((label): label is string => typeof label === 'string') });
+  }
+ }
+ return fields;
+}
+
+it('localizes every shipped lowalt/traffic field ID and authored display label in Chinese', () => {
+ const fields = shippedFields();
+ for (const field of ['binding_id', 'children', 'revision', 'roles', 'state', 'status', 'template_id']) fields.push({ id: `aas.behaviour.${field}`, enums: [] });
+ expect(new Set(fields.map(field => field.id)).size).toBeGreaterThan(130);
+ for (const { id, labels } of fields) {
+  const english = displayLabel(undefined, id, 'en-US');
+  expect(english, id).toMatch(/[a-z]/i);
+  // ID-only headers and headers with friendly English labels take different
+  // branches in displayLabel. Both must retain translated field names.
+  for (const label of [undefined, id, english, ...(labels ?? [])]) expect(displayLabel(label, id, 'zh-CN'), `${id}: ${label}`).toMatch(/[\u3400-\u9fff]/);
  }
  expect(displayLabel(undefined, 'lowalt.site_position', 'zh-CN')).toBe('站点位置');
  expect(displayLabel(undefined, 'lowalt.site_open', 'zh-CN')).toBe('站点开放');
  expect(displayLabel(undefined, 'lowalt.site_capacity', 'zh-CN')).toBe('站点容量');
+});
+
+it('localizes every shipped field enum without rewriting recorded strings or arbitrary IDs', () => {
+ const enums = shippedFields().flatMap(field => field.enums.map(value => ({ id: field.id, value })));
+ expect(enums.length).toBeGreaterThan(25);
+ for (const { id, value } of enums) {
+  expect(stateValue(value, 'zh-CN'), `${id}: ${value}`).toMatch(/[\u3400-\u9fff]/);
+  expect(stateValue(value, 'en-US'), id).toBe(value);
+ }
+ expect(stateValue('restaurant-east', 'zh-CN')).toBe('restaurant-east');
+ expect(stateValue('My research label', 'zh-CN')).toBe('My research label');
+});
+
+it('localizes all shipped dimensional units while retaining exact English symbols and unitless fields', () => {
+ const fields = shippedFields();
+ expect(new Set(fields.map(field => field.unit))).toContain('ns');
+ for (const { id, unit } of fields) {
+  const field: FieldInfo = { fieldId: id, displayName: id, valueType: 'number', unit };
+  expect(displayUnit(field, 'en-US'), id).toBe(unit === '1' ? undefined : unit);
+  const chinese = displayUnit(field, 'zh-CN');
+  if (unit && unit !== '1' && unit !== '%') expect(chinese, `${id}: ${unit}`).toMatch(/[\u3400-\u9fff]/);
+  else expect(chinese, id).toBe(unit === '1' ? undefined : unit);
+ }
+ const schemaUnit: FieldInfo = { fieldId: 'unit', displayName: 'Unit', valueType: 'number', schema: { unit: { symbol: 'm/s' } } };
+ expect(displayUnit(schemaUnit, 'zh-CN')).toBe('米/秒');
+ expect(displayUnit(schemaUnit)).toBe('m/s');
+ expect(displayUnit({ ...schemaUnit, schema: { unit: '1' } }, 'zh-CN')).toBeUndefined();
+ expect(displayUnit({ ...schemaUnit, unit: 'custom/unit' }, 'zh-CN')).toBe('custom/unit');
 });

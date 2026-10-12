@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as T from 'three';
-import { Viewport, FOLLOW_CAMERA_OFFSET } from './viewport';
+import { Viewport, followCameraOffset } from './viewport';
 import { StaticOcclusion } from './occlusion';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { at, emptyCommit, fixtureCommits, fixtureHeader, vehicle } from '../behaviours/extension-fixture';
@@ -27,7 +27,7 @@ function display(mode: 'follow' | 'chase' | 'cinematic', semantic = true) {
   const viewport = Object.assign(Object.create(Viewport.prototype), {
     container, camera, controls, layer, mode, selected: vehicle, options: { semantic },
     staticRoot: new T.Group(), origin: new T.Vector3(), occlusion: new StaticOcclusion(),
-    followOffset: new T.Vector3(...FOLLOW_CAMERA_OFFSET), framed: true, cameraSettled: false,
+    framed: true, cameraSettled: false,
     revision: 0, lastFrame: '', renderedFrames: 0, shadowKey: '', shadowRevision: -1,
     quality: 'low', qualityTime: 0, qualityFrames: 0,
     lighting: { update: vi.fn(), sun: { position: new T.Vector3() } },
@@ -47,7 +47,7 @@ describe('unchanged tracked views', () => {
     expect(view.submit).toHaveBeenCalledTimes(count);
     const focus = new T.Vector3(10, 5, -20);
     expect(view.controls.target.toArray()).toEqual(focus.toArray());
-    expect(view.camera.position.toArray()).toEqual(focus.add(mode === 'follow' ? new T.Vector3(...FOLLOW_CAMERA_OFFSET) : new T.Vector3(-4, 2.4, 5.5)).toArray());
+    expect(view.camera.position.toArray()).toEqual(focus.add(mode === 'follow' ? followCameraOffset(focus.y) : new T.Vector3(-4, 2.4, 5.5)).toArray());
   });
 
   it('redraws a new recorded pose and a camera gesture after a settled follow view', () => {

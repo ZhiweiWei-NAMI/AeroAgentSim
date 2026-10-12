@@ -25,9 +25,25 @@ for(const example of examples)test(`${example.name}: committed oblique photos an
     await writeFile(join(root,`${example.name}-photo.png`),png);await writeFile(join(root,`${example.name}-metadata.json`),JSON.stringify(artifact,null,2));
     await page.getByTestId('wb-dock').getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:'Open photo',exact:true}).first().click();const photo=page.getByRole('img',{name:'Stored capture photo',exact:true});await expect(photo).toBeVisible();await expect.poll(()=>photo.evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBe(960);
     for(const [width,height] of [[1280,800],[1600,1000],[1920,1080]]){
-      await page.setViewportSize({width,height});await expect(page.locator('[data-testid=viewport][data-rendered=true]')).toBeVisible();await photo.scrollIntoViewIfNeeded();await page.screenshot({path:join(root,`${example.name}-${width}-en.png`)});
+      await page.setViewportSize({width,height});await expect(page.locator('[data-testid=viewport][data-rendered=true]')).toBeVisible();await photo.scrollIntoViewIfNeeded();
+      const preview=page.getByRole('button',{name:'View full-size photo',exact:true}),dock=page.getByTestId('wb-dock').locator('.wb-dock-body');
+      const previewBox=await preview.boundingBox(),dockBox=await dock.boundingBox();
+      expect(previewBox!.height).toBeGreaterThan(dockBox!.height*.65);expect(previewBox!.width).toBeGreaterThan(dockBox!.width*.6);
+      await page.screenshot({path:join(root,`${example.name}-${width}-en.png`)});
+      const identity=page.getByTestId('wb-inspector').locator('.wb-entity-head'),selection=await identity.textContent();
+      await preview.click();const dialog=page.getByRole('dialog'),fullPhoto=dialog.getByRole('img',{name:'Stored capture photo',exact:true});
+      await expect(fullPhoto).toBeVisible();await expect(fullPhoto).toHaveAttribute('src',(await photo.getAttribute('src'))!);
+      await expect(dialog).toContainText(artifact.request.request_id);await expect(dialog).toContainText(`Source cut #${artifact.request.source_cut.index}`);
+      await expect.poll(()=>fullPhoto.evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBe(960);
+      const fullBox=await fullPhoto.boundingBox();expect(fullBox!.width).toBeGreaterThanOrEqual(950);expect(fullBox!.height).toBeGreaterThanOrEqual(530);
+      await page.screenshot({path:join(root,`${example.name}-${width}-full-photo-en.png`)});
+      await page.keyboard.press('Escape');await expect(dialog).toBeHidden();await expect(preview).toBeFocused();
+      await expect(identity).toHaveText(selection!);
     }
-    await page.getByRole('button',{name:'Switch to Chinese',exact:true}).click();await page.screenshot({path:join(root,`${example.name}-1920-zh.png`)});await page.getByRole('button',{name:'切换到英文',exact:true}).click();
+    await page.getByRole('button',{name:'Switch to Chinese',exact:true}).click();await page.screenshot({path:join(root,`${example.name}-1920-zh.png`)});
+    await page.getByRole('button',{name:'查看完整尺寸照片',exact:true}).click();const translatedDialog=page.getByRole('dialog');await expect(translatedDialog).toContainText('来源日志位置');
+    await page.screenshot({path:join(root,`${example.name}-1920-full-photo-zh.png`)});await translatedDialog.getByRole('button',{name:'关闭',exact:true}).click();await expect(translatedDialog).toBeHidden();
+    await page.getByRole('button',{name:'切换到英文',exact:true}).click();
     if(example.name==='traffic-default'){
       await expect(page.getByTestId('workbench')).toHaveAttribute('data-status','completed',{timeout:180_000});
       const store=new TemporalFeedStore(await(await page.request.get(`/v1/runs/${run}/header`)).json());

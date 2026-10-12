@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 afterEach(()=>{cleanup();localStorage.clear();vi.restoreAllMocks();vi.unstubAllGlobals();vi.useRealTimers();});
@@ -13,6 +13,30 @@ it('retains actual storage failure and only seeks a recorded artifact source cut
  await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('corrupt blob'));expect(screen.queryByText('No stored artifacts.')).toBeNull();
  request.mockResolvedValueOnce([{digest:'a'.repeat(64),byte_count:10,renderer_mode:'browser',request:{request_id:'photo',source_cut:{index:3,instant:[10,2]}}}]);
  fireEvent.click(screen.getByText('Refresh stored artifacts'));await screen.findByText('Seek photo moment');fireEvent.click(screen.getByText('Seek photo moment'));expect(seek).toHaveBeenCalledWith(3);
+});
+
+it.each(['en-US', 'zh-CN'])('opens the same verified bytes full size with their recorded caption in %s',async locale=>{
+ localStorage.setItem('aeroagentsim.locale',locale);
+ const zh=locale==='zh-CN',api=new RunsApi('http://api');
+ const row={digest:'d'.repeat(64),byte_count:3,renderer_mode:'browser',request:{request_id:'photo.raw.id',actor:{id:'uav.alpha',generation:0},source_cut:{index:3,instant:[10,2]}}};
+ vi.spyOn(api,'request').mockImplementation(async path=>path.includes('/configuration')?{scenario:{engines:{}}}:[row]);
+ const download=vi.fn(async()=>({ok:true,arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer}));vi.stubGlobal('fetch',download);
+ vi.stubGlobal('URL',Object.assign(URL,{createObjectURL:vi.fn(()=> 'blob:full-photo'),revokeObjectURL:vi.fn()}));
+ Object.defineProperty(HTMLElement.prototype,'scrollIntoView',{configurable:true,value:vi.fn()});
+ render(<I18nProvider><ArtifactsPanel api={api} runId="run" store={new TemporalFeedStore(fixtureHeader)} onSeek={()=>{}}/></I18nProvider>);
+ fireEvent.click(await screen.findByRole('button',{name:zh?'打开照片':'Open photo'}));
+ const preview=await screen.findByRole('button',{name:zh?'查看完整尺寸照片':'View full-size photo'});
+ expect(preview).toHaveAttribute('aria-haspopup','dialog');fireEvent.click(preview);
+ const dialog=await screen.findByRole('dialog');
+ expect(within(dialog).getByRole('img',{name:zh?'已存储的拍摄照片':'Stored capture photo'})).toHaveAttribute('src','blob:full-photo');
+ expect(within(dialog).getByText('photo.raw.id')).toBeVisible();
+ expect(within(dialog).getByText(zh?'拍摄载具：uav.alpha':'Actor: uav.alpha')).toBeVisible();
+ expect(within(dialog).getByText(zh?'来源日志位置 #3':'Source cut #3')).toBeVisible();
+ expect(within(dialog).getByText(zh?'来源时刻：00:00.0':'Source time: 00:00.0')).toBeVisible();
+ expect(download).toHaveBeenCalledOnce();
+ fireEvent.click(within(dialog).getByRole('button',{name:zh?'关闭':'Close'}));
+ await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ expect(preview).toBeVisible();
 });
 
 it('discovers storage published after the tab opens through live/feed updates, then stops polling on close',async()=>{
@@ -36,7 +60,8 @@ it('opens verified stored bytes before the list and brings the image into view a
  const scroll=vi.fn();Object.defineProperty(HTMLElement.prototype,'scrollIntoView',{configurable:true,value:scroll});
  const store=new TemporalFeedStore(fixtureHeader);const view=render(<ArtifactsPanel api={api} runId="run" store={store} onSeek={()=>{}}/>);
  fireEvent.click(await screen.findByRole('button',{name:'Open photo'}));
- const image=await screen.findByAltText('Stored capture photo');expect(image.closest('figure')!.compareDocumentPosition(screen.getByText('photo').closest('article')!)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ const image=await screen.findByAltText('Stored capture photo'),article=image.closest('section')!.querySelector('article')!;
+ expect(image.closest('figure')!.compareDocumentPosition(article)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
  expect(scroll).toHaveBeenCalledWith({block:'start'});fireEvent.load(image);expect(scroll).toHaveBeenCalledTimes(2);
  view.unmount();expect(revoke).toHaveBeenCalledWith('blob:photo');
 });

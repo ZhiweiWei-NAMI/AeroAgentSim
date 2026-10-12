@@ -164,7 +164,7 @@
 /* Graph window */
 .wb-graph { position: absolute; z-index: 26; left: calc(var(--wb-left-space, var(--wb-left)) + var(--wb-gap) * 2); top: calc(var(--wb-top) + var(--wb-gap) * 2 + 74px); width: min(680px, calc(100vw - var(--wb-left-space, var(--wb-left)) - var(--wb-overlay-right-space, var(--wb-right)) - 106px)); height: min(520px, calc(100vh - var(--wb-top) - var(--wb-dock) - 140px)); display: flex; flex-direction: column; overflow: hidden; }
 .wb-graph.is-expanded { left: calc(var(--wb-left-space, var(--wb-left)) + var(--wb-gap) * 2); right: calc(var(--wb-overlay-right-space, var(--wb-right)) + var(--wb-gap) * 2 + 58px); top: calc(var(--wb-top) + var(--wb-gap) * 2); bottom: calc(var(--wb-dock) + var(--wb-gap) * 2); width: auto; height: auto; }
-.wb-graph-body { flex: 1; min-height: 0; overflow: auto; padding: 0 10px 10px; }
+.wb-graph-body { display: flex; flex: 1; min-height: 0; overflow: hidden; padding: 0 8px 8px; }
 
 /* Overlays: scenario gallery, guide, records compare */
 .wb-overlay { position: absolute; z-index: 40; inset: 0; display: flex; align-items: flex-start; justify-content: center; overflow: auto;
@@ -273,14 +273,18 @@
 .wb-stage .viewport-city-progress { top: calc(var(--wb-top) + var(--wb-kpi-height) + 36px); left: calc(var(--wb-left-space, var(--wb-left)) + 24px); z-index: 19; }
 .wb-graph-handle { cursor: grab; touch-action: none; user-select: none; padding: 8px 12px; }
 .wb-graph-handle:active { cursor: grabbing; }
-.wb-graph-body { padding: 0 8px 8px; }
+.wb-graph-body > .behaviour-run-graph { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
 .wb-graph .run-graph-heading { display: none; }
-.wb-graph .behaviour-filters { gap: 6px; padding: 6px; }
-.wb-graph .eg-root { padding: 6px; gap: 6px; min-height: 0; }
+.wb-graph .behaviour-filters { flex-shrink: 0; gap: 6px; padding: 6px; }
+.wb-graph .eg-root { flex: 1; padding: 6px; gap: 6px; min-height: 0; overflow: hidden; }
 .wb-graph .eg-controls { gap: 4px; }
 .wb-graph .eg-controls b { font-size: 11px; min-width: 130px; }
 .wb-graph .eg-hint, .wb-graph .eg-legend { display: none; }
-.wb-graph .eg-canvas, .wb-graph .eg-svg { min-height: 220px; }
+/* Only the plot scrolls when selection reveals a node below the fold. */
+.wb-graph .eg-canvas { flex: 1; min-height: 0; overflow: auto; scroll-padding: 8px; }
+.wb-graph .eg-svg { min-height: 220px; }
+.wb-graph .behaviour-records { flex-shrink: 0; max-height: 35%; overflow: auto; margin: 0; padding: 6px; }
+.wb-graph .behaviour-run-graph > .console-details { flex-shrink: 0; margin: 4px 6px; }
 .wb-graph { top: calc(var(--wb-top) + var(--wb-kpi-height) + 36px); height: min(560px, calc(100vh - var(--wb-top) - var(--wb-dock) - var(--wb-kpi-height) - 62px)); }
 .wb-waiting { left: calc(var(--wb-left-space, var(--wb-left)) + 24px); right: calc(var(--wb-right-space, var(--wb-right)) + 76px); transform: none; max-width: none; }
 .wb-waiting .ant-alert { padding: 8px 10px; }

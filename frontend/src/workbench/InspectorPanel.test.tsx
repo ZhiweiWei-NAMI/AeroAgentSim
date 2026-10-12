@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { RunsApi } from '../feeds/http';
@@ -8,7 +8,7 @@ import { InspectorPanel } from './InspectorPanel';
 vi.mock('../behaviours/RunOperations', () => ({ RunOperations: () => <div data-testid="operations" className="injection-card"><input aria-label="Event details" /></div> }));
 const scroll = vi.fn(), savedScroll = Element.prototype.scrollIntoView;
 beforeEach(() => { Element.prototype.scrollIntoView = scroll; });
-afterEach(() => { cleanup(); localStorage.clear(); Element.prototype.scrollIntoView = savedScroll; vi.clearAllMocks(); });
+afterEach(() => { cleanup(); localStorage.clear(); Element.prototype.scrollIntoView = savedScroll; vi.clearAllMocks(); vi.unstubAllGlobals(); });
 function props() {
  const store = new TemporalFeedStore(fixtureHeader); fixtureCommits.forEach(row => store.ingest(row)); store.seek('10', 3);
  return { api: new RunsApi('http://api'), runId: 'run', store, revision: 1, mode: 'live' as const, canOperate: true, onSelect: vi.fn(), onSeekCut: vi.fn(), onTrace: vi.fn(), onFocus: vi.fn(), onFollow: vi.fn(), following: false, onShowGraph: vi.fn(), onClose: vi.fn() };
@@ -55,4 +55,48 @@ it('offers scene operations from the compact hint without requiring an arbitrary
  fireEvent.click(screen.getByRole('button', { name: 'Introduce an event' }));
  expect(screen.getByRole('tab', { name: 'Operate' })).toHaveAttribute('aria-selected', 'true');
  expect(screen.getByTestId('operations')).toBeVisible();
+});
+
+it('restores an independent scroll position for State, Story and Operate', () => {
+ render(<I18nProvider><InspectorPanel {...props()} selected={vehicle}/></I18nProvider>);
+ const body = screen.getByTestId('wb-inspector').querySelector<HTMLDivElement>('.wb-panel-body')!;
+ const scrollTo = (top: number) => { body.scrollTop = top; fireEvent.scroll(body); };
+ fireEvent.click(screen.getByRole('tab', { name: 'Operate' }));
+ scrollTo(420);
+ fireEvent.click(screen.getByRole('tab', { name: 'State' }));
+ expect(body.scrollTop).toBe(0);
+ scrollTo(180);
+ fireEvent.click(screen.getByRole('tab', { name: 'Story' }));
+ expect(body.scrollTop).toBe(0);
+ scrollTo(90);
+ fireEvent.click(screen.getByRole('tab', { name: 'Operate' }));
+ expect(body.scrollTop).toBe(420);
+ fireEvent.click(screen.getByRole('tab', { name: 'State' }));
+ expect(body.scrollTop).toBe(180);
+ fireEvent.click(screen.getByRole('tab', { name: 'Story' }));
+ expect(body.scrollTop).toBe(90);
+});
+
+it('restores a tab after its asynchronous form grows and lets a manual scroll cancel that restoration', () => {
+ let resized!: () => void;
+ const disconnect = vi.fn();
+ vi.stubGlobal('ResizeObserver', class { constructor(callback: () => void) { resized = callback; } observe() {} disconnect() { disconnect(); } });
+ render(<I18nProvider><InspectorPanel {...props()} selected={vehicle}/></I18nProvider>);
+ const body = screen.getByTestId('wb-inspector').querySelector<HTMLDivElement>('.wb-panel-body')!;
+ let position = 0, capacity = 600;
+ Object.defineProperty(body, 'scrollTop', { configurable: true, get: () => position, set: value => { position = Math.min(value, capacity); } });
+ const scrollTo = (top: number) => { body.scrollTop = top; fireEvent.scroll(body); };
+ fireEvent.click(screen.getByRole('tab', { name: 'Operate' })); scrollTo(420);
+ fireEvent.click(screen.getByRole('tab', { name: 'State' })); capacity = 100;
+ fireEvent.click(screen.getByRole('tab', { name: 'Operate' }));
+ expect(body.scrollTop).toBe(100); fireEvent.scroll(body);
+ capacity = 600; act(() => resized());
+ expect(body.scrollTop).toBe(420); expect(disconnect).toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('tab', { name: 'State' })); capacity = 100;
+ fireEvent.click(screen.getByRole('tab', { name: 'Operate' }));
+ fireEvent.wheel(body); scrollTo(50); capacity = 600; act(() => resized());
+ expect(body.scrollTop).toBe(50);
+ fireEvent.click(screen.getByRole('tab', { name: 'State' }));
+ fireEvent.click(screen.getByRole('tab', { name: 'Operate' }));
+ expect(body.scrollTop).toBe(50);
 });

@@ -14,8 +14,9 @@ export function ObjectsPanel({ store, revision, selected, selectionOrigin, onSel
   const { locale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const [query, setQuery] = useState(''), [toggled, setToggled] = useState<Set<string>>(new Set()), [spatialOnly, setSpatialOnly] = useState(false);
-  const panel = useRef<HTMLElement>(null), body = useRef<HTMLDivElement>(null), selectedId = selected && entityId(selected);
+  const body = useRef<HTMLDivElement>(null), selectedId = selected && entityId(selected);
   const selectedPresent = !!selectedId && store.entities.has(selectedId);
+  const revealedId = useRef<string>();
   const revealSelection = selectionOrigin === 'manual' || !query.trim();
   useEffect(() => {
     // Live camera cues must not erase or move the list while someone searches.
@@ -33,7 +34,13 @@ export function ObjectsPanel({ store, revision, selected, selectionOrigin, onSel
     const name = displayName(entity, store.header, locale);
     if (query && !`${name} ${entity.key.id} ${entity.typeId}`.toLowerCase().includes(query.trim().toLowerCase())) setQuery('');
   }, [store, selectedId, selectedPresent, selectionOrigin, revealSelection]);
-  useEffect(() => { if (revealSelection) panel.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' }); }, [selectedId, toggled, selectionOrigin, revealSelection]);
+  // Clearing a search changes the row's position even when its identity and
+  // selection origin stay the same. Reveal it after the filtered rows commit.
+  useEffect(() => {
+    if (!revealSelection || query.trim() && revealedId.current === selectedId) return;
+    const row = body.current?.querySelector('[aria-current="true"]');
+    if (row) { row.scrollIntoView({ block: 'nearest' }); revealedId.current = selectedId; }
+  }, [selectedId, selectedPresent, toggled, selectionOrigin, revealSelection, query, spatialOnly]);
   const reveal = useRef(revealSelection); reveal.current = revealSelection;
   useEffect(() => {
     const observer = new ResizeObserver(() => { if (reveal.current) body.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' }); });
@@ -52,7 +59,7 @@ export function ObjectsPanel({ store, revision, selected, selectionOrigin, onSel
     return [...byType.entries()].sort((a, b) => Number(b[1][0]?.spatial) - Number(a[1][0]?.spatial) || a[0].localeCompare(b[0]));
   }, [store, revision, query, locale, spatialOnly, store.entities.size]);
   const total = groups.reduce((sum, [, rows]) => sum + rows.length, 0);
-  return <aside ref={panel} className="wb-panel wb-left wb-glass" aria-label={L('Objects', '对象')} data-testid="wb-objects">
+  return <aside className="wb-panel wb-left wb-glass" aria-label={L('Objects', '对象')} data-testid="wb-objects">
     <div className="wb-panel-head"><h3>{L('Objects', '对象')} <span className="wb-tag">{total}</span></h3><button className="wb-x" aria-label={L('Hide objects', '隐藏对象列表')} onClick={onClose}>‹</button></div>
     <div style={{ padding: '0 14px 6px' }}>
       <input className="wb-search" placeholder={L('Search objects…', '搜索对象…')} value={query} onChange={event => setQuery(event.target.value)} aria-label={L('Search objects', '搜索对象')} />
@@ -63,15 +70,17 @@ export function ObjectsPanel({ store, revision, selected, selectionOrigin, onSel
         const binding = resolveBinding(store.header, typeId) as { visual?: { color?: string } } | undefined;
         // Groups in the 3D scene start open; internal non-spatial groups start closed.
         const color = binding?.visual?.color ?? PALETTE[index % PALETTE.length], open = (!!binding !== toggled.has(typeId)) || !!query;
+        const visibleRows = rows.slice(0, 300), pinned = rows.find(row => sameEntity(row.key, selected));
+        if (pinned && !visibleRows.includes(pinned)) visibleRows.push(pinned);
         return <div className="wb-group" key={typeId}>
           <button className="wb-group-toggle" aria-expanded={open} onClick={() => setToggled(previous => { const next = new Set(previous); if (next.has(typeId)) next.delete(typeId); else next.add(typeId); return next; })}>
             <span className="wb-dot" style={{ background: color }} />{readableLabel(typeId, locale)}<b>{rows.length}</b><span aria-hidden>{open ? '▾' : '▸'}</span>
           </button>
-          {open && rows.slice(0, 300).map(row => <button key={entityId(row.key)} className="wb-row" aria-current={sameEntity(row.key, selected)} onClick={() => onSelect(row.key, row.spatial)} title={row.key.id}>
+          {open && visibleRows.map(row => <button key={entityId(row.key)} className="wb-row" aria-current={sameEntity(row.key, selected)} onClick={() => onSelect(row.key, row.spatial)} title={row.key.id}>
             <span className="wb-row-main"><div>{row.name}</div><small className="wb-mono">{row.key.id}</small></span>
             {!row.spatial && <span className="wb-tag" title={L('No position: inspect it in the graph and inspector', '无空间位置：在关系图和检查器中查看')}>{L('non-spatial', '非空间')}</span>}
           </button>)}
-          {open && rows.length > 300 && <div className="hint" style={{ padding: '4px 8px' }}>{L(`+${rows.length - 300} more — search to narrow`, `还有 ${rows.length - 300} 个，请搜索缩小范围`)}</div>}
+          {open && rows.length > visibleRows.length && <div className="hint" style={{ padding: '4px 8px' }}>{L(`+${rows.length - visibleRows.length} more — search to narrow`, `还有 ${rows.length - visibleRows.length} 个，请搜索缩小范围`)}</div>}
         </div>;
       })}
       {!total && <div className="wb-empty">{store.entities.size ? L('No object matches.', '没有匹配的对象。') : L('The world has no objects yet.', '世界中还没有对象。')}</div>}
