@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 import { layoutOverlayLabels, overlayArc, overlayEase, overlayFocus, overlayLabelOrder, overlayPosition, overlayRevealTimes, OverlayTimeline, type OverlayMarker, type OverlayRoute, type PreviewOverlay } from './plan-overlay';
+import { framePreview, visiblePreviewFrame } from './ScenePreview';
 
 const marker = (id: string, state: OverlayMarker['state'] = 'existing', kind: OverlayMarker['kind'] = 'place'): OverlayMarker => ({ id, state, kind, label: id, position: [0, 0, 0] });
 const route: OverlayRoute = { id: 'route', from: [0, 0, 0], to: [100, 0, 40], kind: 'handoff', state: 'new' };
@@ -118,5 +120,37 @@ describe('overlay state and motion', () => {
   it('clamps the camera easing and eases symmetrically through its midpoint', () => {
     expect([-1, 0, 0.5, 1, 2].map(overlayEase)).toEqual([0, 0, 0.5, 1, 1]);
     expect(overlayEase(0.25)).toBeCloseTo(1 - overlayEase(0.75));
+  });
+});
+
+describe('preview framing between panels', () => {
+  const rect = (left: number, top: number, width: number, height: number) => ({ left, top, width, height, right: left + width, bottom: top + height });
+  const full = rect(100, 50, 1400, 900), toolbar = rect(100, 50, 1400, 80);
+
+  it('reserves the assistant on the right and plan board on the left', () => {
+    const assistant = rect(1150, 150, 350, 700), board = rect(100, 150, 300, 700);
+    const frame = visiblePreviewFrame(full, [assistant], [board], toolbar)!;
+    expect(frame).toEqual({ x: 320, y: 100, width: 710, height: 736, fullWidth: 1400, fullHeight: 900 });
+    const camera = new THREE.PerspectiveCamera(45), target = new THREE.Vector3();
+    const bounds = new THREE.Box3(new THREE.Vector3(-50, 0, -70), new THREE.Vector3(300, 240, 150));
+    framePreview(camera, bounds, target, frame); camera.lookAt(target); camera.updateMatrixWorld();
+    for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y]) for (const z of [bounds.min.z, bounds.max.z]) {
+      const point = new THREE.Vector3(x, y, z).project(camera);
+      const px = (point.x + 1) * full.width / 2, py = (1 - point.y) * full.height / 2;
+      expect(px).toBeGreaterThan(frame.x); expect(px).toBeLessThan(frame.x + frame.width);
+      expect(py).toBeGreaterThan(frame.y); expect(py).toBeLessThan(frame.y + frame.height);
+    }
+  });
+
+  it('uses the innermost right panel and ignores hidden or off-stage obstructions', () => {
+    const config = rect(900, 150, 600, 700), assistant = rect(1150, 150, 350, 700);
+    expect(visiblePreviewFrame(full, [config, assistant], [], toolbar)?.width).toBe(760);
+    expect(visiblePreviewFrame(full, [rect(0, 0, 0, 0), rect(1600, 0, 100, 200)], [], toolbar)).toBeUndefined();
+    expect(visiblePreviewFrame(rect(0, 0, 0, 0), [assistant], [])).toBeUndefined();
+  });
+
+  it('can frame with only a plan board and keeps a positive frame when panels overlap', () => {
+    expect(visiblePreviewFrame(full, [], [rect(100, 150, 300, 700)])?.x).toBe(320);
+    expect(visiblePreviewFrame(full, [rect(700, 150, 800, 700)], [rect(100, 150, 900, 700)])?.width).toBe(1);
   });
 });
