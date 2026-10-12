@@ -13,7 +13,7 @@ from aeroagentsim.agents.provider import ProviderError
 
 from .overlay import COOP_OPTIONS, HANDOFF_FIELDS, INCIDENT_FIELDS, TASK_KINDS, cooperation_overlay
 
-FRAGMENT_PATH = Path(__file__).with_name("cooperation.snapshot.json")
+FRAGMENT_PATH: Path = Path(__file__).with_name("cooperation.snapshot.json")
 CONTRACT_ERROR = (
     "cooperation: the scene's registry lacks the AeroGraph contracts oo:Incident/oo:CargoTransferReport; "
     "merge packs/lowalt/cooperation.snapshot.json into its registry snapshot"
@@ -193,6 +193,10 @@ def merge_contract_snapshot(snapshot: dict) -> dict:
             elif left[key] != value and path.endswith(("raw_types", "types", "fields", "relations")):
                 raise ValueError(f"cooperation: conflicting snapshot provenance {path}.{key} / 来源记录冲突")
     union(result.setdefault("details", {}), fragment.get("details", {}), "details")
+    statistics = result["details"].get("statistics", {})
+    for group in ("types", "fields", "messages"):
+        if group in statistics:
+            statistics[group] = len(result["registry"].get(group, []))
     return result
 
 

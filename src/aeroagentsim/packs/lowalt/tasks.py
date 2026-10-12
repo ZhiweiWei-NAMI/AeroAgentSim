@@ -904,8 +904,10 @@ class LowaltTasks(ContextEngine):
             for incident in self.incidents.values()
         )
 
-    def _coop_distance(self, ctx: EngineContext, vehicle: str, position: Any) -> float:
+    def _coop_distance(self, ctx: EngineContext, vehicle: str, position: Any, *, horizontal: bool = False) -> float:
         point = vec(read(ctx, self.by_id[vehicle], "lowalt.position"))
+        if not horizontal:
+            return distance(point, vec(position))
         return ((point[0] - position[0]) ** 2 + (point[1] - position[1]) ** 2) ** 0.5
 
     def _coop_options(self, ctx: EngineContext, incident: Incident) -> tuple[list[str], dict[str, str]]:
@@ -1021,7 +1023,7 @@ class LowaltTasks(ContextEngine):
             for vehicle in self.cooperation["watchers"]["vehicles"]:
                 if self._coop_reserved(vehicle):
                     continue
-                gap = self._coop_distance(ctx, vehicle, incident.config["position"])
+                gap = self._coop_distance(ctx, vehicle, incident.config["position"], horizontal=True)
                 if gap > self.cooperation["watchers"]["notice_radius_m"]:
                     continue
                 incident.responder = vehicle
