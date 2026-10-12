@@ -159,6 +159,14 @@ SCRIPT: dict[str, Any] = {
         {"matches": ["two logistics uavs"], "action": "fleet"},
     ],
     "agent_goal": "Keep your own orders on time; help when you reasonably can.",
+    "replies": {
+        "later": "The person now falls at 30 s; everything else is unchanged. The parcel drone is further along its route by then, so check the notice estimate on the board.\nSuggestions: Let the courier decide | Show me two options",
+        "agent": "Couriers now decide for themselves whether to take the parcel, with the goal of keeping their own orders on time. The decision appears as an agent step in the interaction sequence.\nSuggestions: Go back to the previous version | Show me two options",
+        "restore": "Restored the previous cooperation arrangement; the rest of the latest version is kept.\nSuggestions: Let the courier decide | Make the incident happen later",
+        "fleet": "There are now two parcel drones at the depot; only the first one carries the parcel.\nSuggestions: Make the incident happen later",
+        "alternatives": "Here are two options that differ only in how couriers answer a handoff request. Compare them on the board and choose one.",
+        "participant": "That is what this drone is responsible for in the plan, with the rules it follows.",
+    },
     "reply": "Here is a concrete plan. The parcel drone's route passes about 23 m from where the person falls, inside its 150 m notice radius. The plan board shows who does what and what I assumed; nothing changes until you confirm.\nSuggestions: Make the incident happen later | Let the courier decide | Show me two options",
     "default_reply": "Describe the drones, deliveries or incident you want to study, and I will propose a concrete scene.",
 }
@@ -222,7 +230,7 @@ def completion(body: dict[str, Any]) -> dict[str, Any]:
         latest = json.loads(results[-1]["content"])
         if "error" in latest or latest.get("ok") is False:
             return {"role": "assistant", "content": "The platform rejected that change, so this proposal is not ready to confirm yet."}
-        return {"role": "assistant", "content": SCRIPT["reply"]}
+        return {"role": "assistant", "content": SCRIPT["replies"].get(action or "", SCRIPT["reply"])}
     plan = state_plan(messages)
     if plan and action in {"later", "agent", "restore", "alternatives", "fleet", "participant"}:
         if action == "later":

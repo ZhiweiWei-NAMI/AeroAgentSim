@@ -194,7 +194,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         if (!value) { overlayView?.dispose(); overlayView = undefined; hologram?.dispose(); hologram = context.hologram = undefined; host.dataset.overlayLabels = '[]'; invalidate(); return; }
         try {
           const fresh = !hologram;
-          hologram ??= new PreviewHologram(scene, invalidate); context.hologram = hologram;
+          hologram ??= new PreviewHologram(scene, invalidate, () => !context.buildingsRequested || pendingBuildings > 0); context.hologram = hologram;
           hologram.update(value, bounds);
           if (fresh) { hologram.sync(groups.ground, 'ground'); hologram.sync(groups.buildings, 'building'); hologram.sync(groups.roads, 'road'); }
           overlayView ??= new PlanOverlayView({ scene, camera, target: controls!.target, host, invalidate, frameBounds: (box, destination, target) => {
@@ -264,8 +264,9 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         });
         layoutObserver.observe(shell, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
       }
+      // The first frame already wears the overlay's look (no flash of the real city under a proposal).
       context.setOverlay(latest.current.overlay);
-      invalidate();
+      cancelAnimationFrame(frame); frame = 0; draw();
     } catch (e) { setError({ kind: 'runtime', detail: String(e) }); cleanup(); }
     return cleanup;
   }, [sceneKey]);

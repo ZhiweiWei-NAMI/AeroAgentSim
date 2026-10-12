@@ -83,7 +83,8 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
     }
     if (stage === 'configured' && plan && project) {
       const value = planOverlay(plan.scene, project.scenario as Record<string, any>, applied ? { added: applied.report.created, changed: applied.report.changed, removed: applied.report.removed, entities: applied.report.entities } : plan.diff_base, 'configured', zh);
-      return { ...value, focus, ...(reveal && reveal.version === applied?.version ? { reveal: { key: reveal.key, order: revealOrder(value) } } : {}) };
+      // The reveal also frames what changed, so the materialize sweep starts where the user is looking.
+      return { ...value, focus, ...(reveal && reveal.version === applied?.version ? { reveal: { key: reveal.key, order: revealOrder(value) }, frame: { key: reveal.key, ids: revealOrder(value) } } : {}) };
     }
     return undefined;
   }, [live, board, stage, preview, previewPlan, plan, project?.revision, applied, focus, reveal, zh]);

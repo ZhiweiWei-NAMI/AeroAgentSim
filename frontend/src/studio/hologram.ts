@@ -28,7 +28,7 @@ interface Binding { source: THREE.Material | THREE.Material[]; patches: Patch[] 
 interface Sweep { startedAt: number; center: THREE.Vector2; maxRadius: number; radius: number }
 const playedKeys = new Set<string>(), sweeps = new Map<string, Sweep>();
 const SURFACES: Record<Surface, number> = { building: 0, ground: 1, road: 2, grid: 3 };
-const SWEEP_FADE_MS = 280;
+const SWEEP_FADE_MS = 280, SWEEP_HOLD_MS = 6000;
 
 const vertexPosition = `
 vec4 hologramWorld = vec4(transformed, 1.0);
@@ -129,7 +129,9 @@ export class PreviewHologram {
     this.invalidate();
   };
 
-  constructor(private readonly scene: THREE.Scene, private readonly invalidate: () => void) {
+  private holdStart?: number;
+
+  constructor(private readonly scene: THREE.Scene, private readonly invalidate: () => void, private readonly waiting: () => boolean = () => false) {
     this.background = scene.background;
     this.media?.addEventListener('change', this.motionChange);
   }
@@ -201,6 +203,11 @@ export class PreviewHologram {
     if (this.mode === 'blueprint') return !this.reduced;
     if (this.reduced) { this.finish(); return false; }
     const key = this.revealKey!;
+    // Hold the blueprint while the real city streams in (bounded), so the sweep uncovers buildings rather than bare ground.
+    if (!this.sweep && !sweeps.has(key)) {
+      this.holdStart ??= now;
+      if (this.waiting() && now - this.holdStart < SWEEP_HOLD_MS) { this.uniforms.uSweepRadius.value = -1; return true; }
+    }
     // Start on the first rendered frame, so a discarded React effect cannot consume the reveal.
     this.sweep ??= sweeps.get(key) ?? { startedAt: now, center: this.uniforms.uSweepCenter.value.clone(), maxRadius: this.maxRadius, radius: -1 };
     sweeps.set(key, this.sweep);

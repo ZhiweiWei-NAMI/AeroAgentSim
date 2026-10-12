@@ -30,6 +30,7 @@ import type { ApplyRecord } from '../assistant/api';
 import { AssistantPanel } from '../assistant/AssistantPanel';
 import type { EditMode } from '../assistant/ModeSwitch';
 import { NeuralGlyph } from '../assistant/motion/NeuralGlyph';
+import { StageEmpty } from '../assistant/motion/StageEmpty';
 import { PlanBoard } from '../assistant/PlanBoard';
 import { useAssistantMode } from '../assistant/useAssistantMode';
 import '../assistant/motion/motion.css';
@@ -419,7 +420,7 @@ export default function Workbench() {
           {assistant.previewWorkspace && <><div className="as-stage-veil" aria-hidden /><div className="as-stage-tag" role="status" data-testid="as-stage-tag"><i />{assistant.viewing ? L(`Earlier plan v${assistant.viewing} · preview`, `早期方案 v${assistant.viewing} · 预览`) : L(`Proposed plan v${assistant.assistant.plan?.version ?? ''} · preview`, `提议方案 v${assistant.assistant.plan?.version ?? ''} · 预览`)}<em>{L('not applied', '未应用')}</em></div></>}
           {!assistant.previewWorkspace && project && <div className="wb-stage-note">{runId ? L('Connecting to the run…', '正在连接运行…') : assistant.stage === 'configured' && assistantOpen ? L(`Configured · version ${project.latest_version?.version ?? ''} · not running — Initialize to see the world at t = 0`, `已配置 · 版本 ${project.latest_version?.version ?? ''} · 未运行 — 初始化后查看 t = 0 时的世界`) : previewDraft?.id === project.id && previewDraft.dirty ? L('Unsaved draft preview · save a version to run these edits', '未保存草稿预览 · 保存版本后才能运行这些修改') : project.latest_version ? L('Draft preview · Initialize to see the authoritative world at t = 0', '草稿预览 · 初始化后可查看 t = 0 时的权威世界') : L('Draft preview · validate and save a version, then initialize', '草稿预览 · 校验并保存版本后再初始化')}</div>}</>}
       </Suspense>
-      {!project && !session && !showGallery && assistantOpen && !assistant.previewWorkspace && <div className="wb-stage-empty as-stage-empty"><div><h2>{L('Your scene will appear here', '你的场景会显示在这里')}</h2><p>{L('Describe a situation in the conversation. The proposed scene is previewed here before anything is created.', '在对话中描述一个情景。创建任何内容之前，提议的场景会先在这里预览。')}</p></div></div>}
+      {!project && !session && !showGallery && assistantOpen && !assistant.previewWorkspace && <StageEmpty title={L('Your scene will appear here', '你的场景会显示在这里')} body={L('Describe a situation in the conversation. The proposed scene is previewed here before anything is created.', '在对话中描述一个情景。创建任何内容之前，提议的场景会先在这里预览。')} />}
       {!project && !session && !showGallery && !assistantOpen && <div className="wb-stage-empty"><div><h2>{projectError ? L('Project unavailable', '项目不可用') : projectId || runId ? L('Loading project…', '正在加载项目…') : L('Run records', '运行记录')}</h2>{projectError ? <p>{projectError}</p> : !projectId && !runId && <p>{L('Open a run from the list, or choose a scenario to create a project.', '从列表打开运行，或选择场景新建项目。')}</p>}</div></div>}
 
     </div>

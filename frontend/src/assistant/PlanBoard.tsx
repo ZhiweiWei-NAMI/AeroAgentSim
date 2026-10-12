@@ -27,9 +27,9 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
   const [older, setOlder] = useState<PlanVersion>();
   const [tab, setTab] = useState<Tab>(stage === 'running' ? 'story' : 'scene');
   const [applying, setApplying] = useState(false), [applyError, setApplyError] = useState<string>();
-  const scroller = useRef<HTMLDivElement>(null), tabsRef = useRef<HTMLElement>(null);
-  // Switching tabs while the tab bar is pinned starts the new tab at its top.
-  useEffect(() => { const box = scroller.current, bar = tabsRef.current; if (box && bar && box.scrollTop > bar.offsetTop) box.scrollTop = bar.offsetTop; }, [tab]);
+  const scroller = useRef<HTMLDivElement>(null), tabsRef = useRef<HTMLElement>(null), openedAt = useRef(stage);
+  // Choosing a tab brings its content up under the pinned tab bar.
+  const choose = (next: Tab) => { setTab(next); const box = scroller.current, bar = tabsRef.current; if (box && bar) requestAnimationFrame(() => box.scrollTo({ top: bar.offsetTop, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })); };
   useEffect(() => { if (stage === 'running') setTab('story'); else if (tab === 'story') setTab('scene'); }, [stage]);
   useEffect(() => {
     if (viewing === undefined || viewing === latest?.version || !session) { setOlder(undefined); return; }
@@ -57,6 +57,9 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
   const rows = session.plan_versions;
 
   return <aside className={`as-board wb-panel wb-glass is-${shownStage}${isOld ? ' is-old' : ''}`} data-testid="as-plan-board" data-stage={shownStage} aria-label={L('Plan board', '方案面板')}>
+    <i className="as-board-scan" key={`scan-${plan.version}`} aria-hidden />
+    {/* The stage pulse marks a transition, so it never plays for the stage the board opened in. */}
+    {shownStage !== openedAt.current && <i className="as-board-charge" key={`charge-${shownStage}`} aria-hidden />}
     <header className="as-board-head">
       <ol className="as-rail" aria-label={L('Where you are', '当前阶段')}>
         {(['proposed', 'configured', 'running'] as Stage[]).map((step, index, all) => {
@@ -114,10 +117,10 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
     {stage === 'configured' && !isOld && applied && <ApplySummary record={applied} onHover={hover} />}
 
     <nav className="as-tabs" role="tablist" ref={tabsRef}>
-      {stage === 'running' && !isOld && <button role="tab" aria-selected={tab === 'story'} onClick={() => setTab('story')} data-testid="as-tab-story">{L('Story', '经过')}</button>}
-      <button role="tab" aria-selected={tab === 'scene'} onClick={() => setTab('scene')} data-testid="as-tab-scene">{L('Scene', '场景')}</button>
-      <button role="tab" aria-selected={tab === 'interactions'} onClick={() => setTab('interactions')} disabled={!plan.interactions?.steps.length} data-testid="as-tab-interactions">{L('Interactions', '交互')}{plan.interactions?.steps.length ? <span>{plan.interactions.steps.length}</span> : null}</button>
-      <button role="tab" aria-selected={tab === 'changes'} onClick={() => setTab('changes')} data-testid="as-tab-changes">{L('Changes', '变更')}{plan.diff_previous ? <span>{plan.diff_previous.added.length + plan.diff_previous.changed.length + plan.diff_previous.removed.length}</span> : null}</button>
+      {stage === 'running' && !isOld && <button role="tab" aria-selected={tab === 'story'} onClick={() => choose('story')} data-testid="as-tab-story">{L('Story', '经过')}</button>}
+      <button role="tab" aria-selected={tab === 'scene'} onClick={() => choose('scene')} data-testid="as-tab-scene">{L('Scene', '场景')}</button>
+      <button role="tab" aria-selected={tab === 'interactions'} onClick={() => choose('interactions')} disabled={!plan.interactions?.steps.length} data-testid="as-tab-interactions">{L('Interactions', '交互')}{plan.interactions?.steps.length ? <span>{plan.interactions.steps.length}</span> : null}</button>
+      <button role="tab" aria-selected={tab === 'changes'} onClick={() => choose('changes')} data-testid="as-tab-changes">{L('Changes', '变更')}{plan.diff_previous ? <span>{plan.diff_previous.added.length + plan.diff_previous.changed.length + plan.diff_previous.removed.length}</span> : null}</button>
     </nav>
 
     <div className="as-board-body" key={`${plan.version}-${tab}`}>

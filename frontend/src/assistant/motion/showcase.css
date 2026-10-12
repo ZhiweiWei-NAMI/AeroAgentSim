@@ -1,0 +1,435 @@
+/* AeroAgentSim assistant-mode showcase motion. All animation is transform/opacity/background-position only. */
+
+:root {
+  --as-show-ease: cubic-bezier(.2, .8, .2, 1);
+  --as-show-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --as-show-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ============================= DescribeCard ============================= */
+
+.as-show-describe {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  min-height: 200px;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 1px solid rgba(138, 125, 255, .25);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0b1222;
+  color: #f4f6ff;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .45s var(--as-show-ease), box-shadow .45s var(--as-show-ease), border-color .45s var(--as-show-ease);
+}
+.as-show-describe:hover,
+.as-show-describe:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 44px rgba(60, 50, 160, .28);
+  border-color: rgba(169, 157, 255, .6);
+}
+.as-show-describe:focus-visible {
+  outline: 2px solid #a99dff;
+  outline-offset: 2px;
+}
+
+.as-show-describe-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 1.2s var(--as-show-ease);
+}
+.as-show-describe:hover .as-show-describe-img { transform: scale(1.03); }
+
+.as-show-describe-console {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 22px 24px;
+  background:
+    radial-gradient(rgba(255, 255, 255, .07) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(135deg, #0b1222, #131c38 60%, #1a1446);
+  overflow: hidden;
+}
+/* Diagonal light sweep crossing the console every ~7 s. */
+.as-show-describe-console::after {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -80%;
+  width: 55%;
+  height: 220%;
+  background: linear-gradient(105deg, transparent, rgba(244, 246, 255, .06) 45%, rgba(138, 125, 255, .1) 55%, transparent);
+  transform: rotate(4deg);
+  animation: as-show-describe-sweep 7s linear infinite;
+  pointer-events: none;
+}
+@keyframes as-show-describe-sweep {
+  0% { left: -80%; opacity: 0; }
+  12% { opacity: 1; }
+  60% { opacity: 1; }
+  75%, 100% { left: 160%; opacity: 0; }
+}
+/* 1px seam where image meets console. */
+.as-show-describe-seam {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, #8a7dff 50%, transparent);
+  pointer-events: none;
+}
+
+.as-show-describe-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.as-show-describe-eyebrow {
+  font-family: var(--as-show-mono);
+  font-size: 10.5px;
+  letter-spacing: .12em;
+  color: #a99dff;
+}
+.as-show-describe-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.015em;
+  color: #f4f6ff;
+  line-height: 1.25;
+}
+
+.as-show-describe-prompt {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-height: 3.2em;
+  padding: 10px 12px;
+  border: 1px solid rgba(169, 157, 255, .35);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+  font-family: var(--as-show-mono);
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(214, 218, 255, .85);
+}
+.as-show-describe-caret-glyph { color: #8a7dff; flex: none; }
+.as-show-describe-text {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.as-show-describe-caret {
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: #8a7dff;
+  animation: as-show-caret-blink 1s steps(1, end) infinite;
+}
+@keyframes as-show-caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.as-show-describe-flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--as-show-mono);
+  font-size: 10.5px;
+  color: rgba(214, 218, 255, .62);
+}
+.as-show-describe-step { display: inline-flex; align-items: center; gap: 6px; }
+.as-show-describe-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(214, 218, 255, .35);
+  border-radius: 50%;
+  font-size: 8.5px;
+  transition: color .4s var(--as-show-ease), border-color .4s var(--as-show-ease), box-shadow .4s var(--as-show-ease);
+}
+.as-show-describe-step-label { transition: color .4s var(--as-show-ease); }
+.as-show-describe-step .is-active { color: #a99dff; }
+.as-show-describe-step .as-show-describe-num.is-active {
+  border-color: #8a7dff;
+  box-shadow: 0 0 8px rgba(138, 125, 255, .6);
+}
+.as-show-describe-arrow { opacity: .5; margin: 0 2px; }
+
+.as-show-describe-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #8a7dff, #5f8cff);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(138, 125, 255, .35);
+}
+.as-show-describe-cta-arrow { transition: transform .3s var(--as-show-ease); }
+.as-show-describe:hover .as-show-describe-cta-arrow { transform: translateX(3px); }
+
+@media (max-width: 900px) {
+  .as-show-describe { grid-template-columns: 1fr; }
+  .as-show-describe-img { max-height: 160px; }
+}
+
+/* ============================== StageEmpty ============================== */
+
+.as-show-stage {
+  /* Centre on the stage area left visible between the plan board and the chat. */
+  --as-show-cx: calc((var(--wb-left-space, 0px) - var(--wb-right-space, 0px)) / 2);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  font-family: inherit;
+}
+.as-show-stage-text {
+  position: absolute;
+  left: calc(50% + var(--as-show-cx, 0px));
+  top: 34%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  opacity: 0;
+}
+.as-show-stage-text.is-risen { opacity: 1; }
+.as-show-stage-title {
+  margin: 0 0 10px;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: #f4f6ff;
+  text-shadow: 0 0 24px rgba(138, 125, 255, .45);
+  transform: translateY(14px);
+  transition: transform .8s var(--as-show-ease), opacity .8s var(--as-show-ease);
+}
+.as-show-stage-body {
+  margin: 0 auto;
+  max-width: 440px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: rgba(214, 222, 255, .7);
+  transform: translateY(14px);
+  transition: transform .8s var(--as-show-ease) .12s, opacity .8s var(--as-show-ease) .12s;
+}
+.as-show-stage-text.is-risen .as-show-stage-title,
+.as-show-stage-text.is-risen .as-show-stage-body { transform: translateY(0); }
+
+/* Perspective floor: cyan grid with every 4th line periwinkle, drifting toward the viewer. */
+.as-show-stage-floor {
+  position: absolute;
+  left: calc(50% + var(--as-show-cx, 0px));
+  top: 55%;
+  width: 160vmax;
+  height: 160vmax;
+  background:
+    repeating-linear-gradient(to right, rgba(56, 198, 244, .13) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(to bottom, rgba(56, 198, 244, .13) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(to right, rgba(138, 125, 255, .22) 0 1px, transparent 1px 192px),
+    repeating-linear-gradient(to bottom, rgba(138, 125, 255, .22) 0 1px, transparent 1px 192px);
+  transform: translate(-50%, 0) perspective(900px) rotateX(64deg);
+  transform-origin: top center;
+  -webkit-mask-image: radial-gradient(ellipse 62% 55% at 50% 8%, #000 30%, transparent 78%);
+  mask-image: radial-gradient(ellipse 62% 55% at 50% 8%, #000 30%, transparent 78%);
+  animation: as-show-floor-drift 14s linear infinite;
+}
+@keyframes as-show-floor-drift {
+  from { background-position: 0 0, 0 0, 0 0, 0 0; }
+  to { background-position: 0 48px, 0 48px, 0 192px, 0 192px; }
+}
+
+/* Pedestal: rings lying flat on the floor (scaleY squash), plus a glowing disc. */
+.as-show-stage-pedestal {
+  position: absolute;
+  left: calc(50% + var(--as-show-cx, 0px));
+  top: 55%;
+  width: 220px;
+  height: 220px;
+  transform: translate(-50%, -50%) scale(1, .32);
+}
+.as-show-stage-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: 0;
+  animation: as-show-ring 3.6s cubic-bezier(.2, .8, .2, 1) infinite;
+}
+.as-show-stage-ring-1 { border: 1px solid #8a7dff; }
+.as-show-stage-ring-2 { border: 1px solid #38c6f4; animation-delay: 1.2s; }
+.as-show-stage-ring-3 { border: 1px solid #8a7dff; animation-delay: 2.4s; }
+@keyframes as-show-ring {
+  0% { transform: scale(.55); opacity: 0; }
+  15% { opacity: .9; }
+  70% { opacity: .35; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.as-show-stage-disc {
+  position: absolute;
+  inset: 30%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(138, 125, 255, .18), transparent 70%);
+}
+
+.as-show-stage-beam {
+  position: absolute;
+  left: calc(50% + var(--as-show-cx, 0px));
+  bottom: 45%;
+  width: 2px;
+  height: 13%;
+  transform: translateX(-50%);
+  background: linear-gradient(to top, rgba(138, 125, 255, .35), transparent 85%);
+  box-shadow: 0 0 18px 6px rgba(138, 125, 255, .22);
+  animation: as-show-beam-pulse 4s ease-in-out infinite;
+}
+@keyframes as-show-beam-pulse {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+
+/* 8 particles rising along the beam; per-particle speed/delay/lateral drift via nth-child. */
+.as-show-stage-particle {
+  position: absolute;
+  left: calc(50% + var(--as-show-cx, 0px));
+  bottom: 45%;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #8a7dff;
+  opacity: 0;
+  animation: as-show-particle-rise 5.2s linear infinite;
+}
+.as-show-stage-particle:nth-child(2n) { background: #38c6f4; width: 3px; height: 3px; }
+.as-show-stage-particle-1 { animation-duration: 4.6s; }
+.as-show-stage-particle-2 { animation-duration: 5.8s; animation-delay: .7s; --as-show-drift: 6px; }
+.as-show-stage-particle-3 { animation-duration: 5.1s; animation-delay: 1.4s; --as-show-drift: -7px; }
+.as-show-stage-particle-4 { animation-duration: 6.2s; animation-delay: 2.1s; --as-show-drift: 4px; }
+.as-show-stage-particle-5 { animation-duration: 4.9s; animation-delay: 2.8s; --as-show-drift: -5px; }
+.as-show-stage-particle-6 { animation-duration: 6.6s; animation-delay: 3.5s; --as-show-drift: 8px; }
+.as-show-stage-particle-7 { animation-duration: 5.4s; animation-delay: 4.2s; --as-show-drift: -3px; }
+.as-show-stage-particle-8 { animation-duration: 6s; animation-delay: 4.9s; --as-show-drift: 5px; }
+@keyframes as-show-particle-rise {
+  0% { transform: translate(0, 0); opacity: 0; }
+  12% { opacity: .9; }
+  80% { opacity: .5; }
+  100% { transform: translate(var(--as-show-drift, 0px), calc(-1 * var(--as-show-beam-h, 34vh))); opacity: 0; }
+}
+/* Fixed travel distance per particle so `--as-show-drift` stays independent of beam height. */
+.as-show-stage-particle { --as-show-beam-h: 120px; }
+
+/* ========================== Board effects (.as-board) ========================= */
+
+/* Scan-in line: the element spans the board; a 2px line + 60px trail travel via background-position
+   over a 200%-tall gradient, so one animation covers any board height. Plays once per plan version. */
+.as-board-scan {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0 46%,
+    rgba(138, 125, 255, .18) 46% 49.4%,
+    #8a7dff 49.4% 50.4%,
+    transparent 50.4% 100%
+  );
+  background-size: 100% 200%;
+  background-repeat: no-repeat;
+  animation: as-board-sweep .72s var(--as-show-ease) forwards;
+}
+.as-board.is-configured .as-board-scan {
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0 46%,
+    rgba(56, 198, 244, .18) 46% 49.4%,
+    #38c6f4 49.4% 50.4%,
+    transparent 50.4% 100%
+  );
+}
+.as-board.is-running .as-board-scan {
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0 46%,
+    rgba(31, 174, 107, .18) 46% 49.4%,
+    #1fae6b 49.4% 50.4%,
+    transparent 50.4% 100%
+  );
+}
+@keyframes as-board-sweep {
+  0% { background-position: 0 0%; opacity: 1; }
+  80% { opacity: 1; }
+  100% { background-position: 0 100%; opacity: 0; }
+}
+
+/* Stage-transition charge: radial wave from the bottom-right corner. */
+.as-board-charge {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+}
+.as-board-charge::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(138, 125, 255, .9);
+  background: radial-gradient(circle, rgba(138, 125, 255, .22), transparent 70%);
+  transform: scale(0);
+  animation: as-board-charge-wave .9s var(--as-show-ease) forwards;
+}
+.as-board.is-configured .as-board-charge::before { border-color: rgba(56, 198, 244, .9); background: radial-gradient(circle, rgba(56, 198, 244, .22), transparent 70%); }
+.as-board.is-running .as-board-charge::before { border-color: rgba(31, 174, 107, .9); background: radial-gradient(circle, rgba(31, 174, 107, .22), transparent 70%); }
+@keyframes as-board-charge-wave {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(var(--as-board-charge-reach, 120)); opacity: 0; }
+}
+
+/* ========================== Reduced motion ========================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .as-show-describe-console::after,
+  .as-show-describe-caret { animation: none; }
+  .as-show-describe-caret { opacity: 1; }
+  .as-show-describe,
+  .as-show-describe-img,
+  .as-show-describe-cta-arrow,
+  .as-show-describe-num,
+  .as-show-describe-step-label { transition: none; }
+
+  .as-show-stage-floor { animation: none; }
+  .as-show-stage-ring { animation: none; transform: scale(1); opacity: .5; }
+  .as-show-stage-ring-2 { opacity: .35; }
+  .as-show-stage-ring-3 { opacity: .25; }
+  .as-show-stage-beam { animation: none; opacity: .7; }
+  .as-show-stage-particle { display: none; }
+  .as-show-stage-text,
+  .as-show-stage-title,
+  .as-show-stage-body { transition: none; opacity: 1; transform: none; }
+
+  .as-board-scan,
+  .as-board-charge { display: none; }
+}

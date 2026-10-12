@@ -6,6 +6,7 @@ import { localized } from '../i18n/translate';
 import { useI18n } from '../i18n/I18nProvider';
 import { ApiError, type Project, type WorkbenchApi } from './api';
 import { Markdown } from './Markdown';
+import { DescribeCard } from '../assistant/motion/DescribeCard';
 
 const relative = (iso: string, zh: boolean) => {
   const minutes = Math.round((Date.now() - Date.parse(iso)) / 60000);
@@ -61,15 +62,7 @@ export function Gallery({ api, current, onOpenProject, onCreate, onClose, initia
           {onClose && <button className="wb-btn" onClick={onClose}>{L('Back to the scene', '返回场景')} <span className="wb-kbd">Esc</span></button>}
         </div>
         {error && <div className="wb-issues" role="alert">{error}</div>}
-        {onDescribe && <button className="as-describe" onClick={onDescribe} data-testid="wb-describe">
-          <img alt="" src={`${import.meta.env.BASE_URL}assistant/describe-card.webp`} />
-          <span className="as-describe-body">
-            <small>{L('Assistant', '助手')}</small>
-            <strong>{L('Describe a scenario in your own words', '用你自己的话描述一个场景')}</strong>
-            <span>{L('“A logistics drone notices someone has fallen, hands its parcel to a nearby courier and goes to help.” You get a concrete plan to review, then confirm once.', '“物流无人机发现有人跌倒，把包裹交给附近的配送员，然后前去查看。”你会先看到具体方案，确认一次即可应用。')}</span>
-            <em>{L('Start a conversation', '开始对话')} →</em>
-          </span>
-        </button>}
+        {onDescribe && <DescribeCard onStart={onDescribe} imageSrc={`${import.meta.env.BASE_URL}assistant/describe-card.webp`} />}
         <div className="wb-cards">
           {(templates ?? []).map(template => {
             const category = categoryMetadata(template.category, locale);

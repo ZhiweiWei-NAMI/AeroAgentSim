@@ -44,7 +44,7 @@ export interface SceneSummary {
   fleets?: Fleet[]; places?: Place[]; workloads?: Workload[]; events?: SceneEvent[]; rules?: Rule[];
   algorithms?: Record<string, string>; cooperation?: Cooperation | null; controls?: Record<string, unknown>;
 }
-export interface DiffItem { kind: string; id: string; label: string; fields?: Array<{ name: string; before: unknown; after: unknown }> }
+export interface DiffItem { kind: string; id: string; label: string; label_zh?: string; fields?: Array<{ name: string; before: unknown; after: unknown }> }
 export interface Diff { added: DiffItem[]; changed: DiffItem[]; removed: DiffItem[]; entities?: { added: string[]; changed: string[]; removed: string[] } }
 export interface Lane { id: string; label: string; label_zh?: string; kind: 'fleet' | 'vehicle' | 'place' | 'person' | 'system' | string }
 export interface Step {

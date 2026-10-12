@@ -229,7 +229,10 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
             "entity_facts": {e["id"]: hashlib.sha256(json.dumps(e, sort_keys=True, ensure_ascii=False).encode()).hexdigest() for e in document.get("entities", [])}}
 
 
-MIRRORED = {"cooperation": {"incidents", "handoff_points"}}
+# Incidents and handoff points already appear as events and places; the provider follows from the helpers' mode.
+MIRRORED = {"cooperation": {"incidents", "handoff_points", "provider"}}
+SECTION_LABELS = {"title": ("Title", "标题"), "city": ("City", "城市"), "duration_s": ("Duration", "时长"), "run_mode": ("Run mode", "运行模式"),
+                  "environment": ("Environment", "环境"), "algorithms": ("Algorithms", "算法"), "cooperation": ("Cooperation rules", "协作规则"), "controls": ("Run controls", "运行控制")}
 
 
 def _leaf_changes(before: Any, after: Any, prefix: str = "") -> list[dict]:
@@ -261,14 +264,18 @@ def diff(before: dict, after: dict) -> dict:
         old_value, new_value = before.get(section), after.get(section)
         if old_value == new_value:
             continue
+        en, zh = SECTION_LABELS[section]
+        if old_value is None or new_value is None:
+            # A whole section appearing or disappearing is one row; the scene cards show its content.
+            result["added" if old_value is None else "removed"].append({"kind": "scene", "id": section, "label": en, "label_zh": zh})
+            continue
         if isinstance(old_value, dict) and isinstance(new_value, dict):
-            # Incidents and handoff points already appear as events and places.
             mirrored = MIRRORED.get(section, set())
             fields = _leaf_changes({k: v for k, v in old_value.items() if k not in mirrored}, {k: v for k, v in new_value.items() if k not in mirrored})
         else:
             fields = [{"name": section, "before": old_value, "after": new_value}]
         if fields:
-            result["changed"].append({"kind": "scene", "id": section, "label": section, "fields": fields})
+            result["changed"].append({"kind": "scene", "id": section, "label": en, "label_zh": zh, "fields": fields})
     old_ids, new_ids = set(before.get("entity_ids", [])), set(after.get("entity_ids", []))
     result["entities"]["added"] = sorted(new_ids - old_ids)
     result["entities"]["removed"] = sorted(old_ids - new_ids)

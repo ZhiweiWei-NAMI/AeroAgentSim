@@ -7,7 +7,7 @@ import { valueText } from './present';
 const KIND: Record<string, [string, string, string]> = {
   fleet: ['drone', 'fleet', '机队'], vehicle: ['drone', 'UAV', '无人机'], place: ['customer', 'place', '地点'], workload: ['parcel', 'tasks', '任务'], task: ['parcel', 'task', '任务'],
   incident: ['incident', 'incident', '事件'], event: ['clock', 'event', '事件'], rule: ['rule', 'rule', '规则'], algorithm: ['spark', 'decision method', '决策方法'],
-  cooperation: ['handoff', 'cooperation', '协作'], environment: ['wind', 'environment', '环境'], control: ['form', 'setting', '设置'], duration: ['clock', 'duration', '时长'],
+  scene: ['layers', 'scene', '场景'], cooperation: ['handoff', 'cooperation', '协作'], environment: ['wind', 'environment', '环境'], control: ['form', 'setting', '设置'], duration: ['clock', 'duration', '时长'],
 };
 
 function Items({ items, sign, onHover }: { items: DiffItem[]; sign: '+' | '~' | '−'; onHover?: (id: string | undefined) => void }) {
@@ -15,7 +15,7 @@ function Items({ items, sign, onHover }: { items: DiffItem[]; sign: '+' | '~' | 
   return <>{items.map((item, index) => { const kind = KIND[item.kind]; return <li key={`${sign}${item.id}`} className={`as-delta is-${sign === '+' ? 'add' : sign === '~' ? 'change' : 'remove'}`} style={{ '--i': index } as CSSProperties}
     onMouseEnter={() => onHover?.(item.id)} onMouseLeave={() => onHover?.(undefined)} data-testid="as-delta">
     <span className="as-delta-sign wb-mono">{sign}</span><Icon name={kind?.[0] ?? 'dot'} size={12} />
-    <div><span>{item.label}</span> <small>{kind ? (zh ? kind[2] : kind[1]) : item.kind}</small>
+    <div><span>{(zh ? item.label_zh : undefined) ?? item.label}</span> <small>{kind ? (zh ? kind[2] : kind[1]) : item.kind}</small>
       {item.fields?.length ? <dl>{item.fields.map(field => <div key={field.name}><dt>{field.name.split('.').map(part => part.replace(/_/g, ' ')).join(' › ')}</dt><dd className="wb-mono"><s>{valueText(field.before)}</s> → <b>{valueText(field.after)}</b></dd></div>)}</dl> : null}
     </div>
   </li>; })}</>;
