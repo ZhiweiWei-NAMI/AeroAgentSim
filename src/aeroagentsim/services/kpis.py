@@ -25,12 +25,21 @@ METRICS = {
     "completion_rate": ("ratio", "Completed tasks / created tasks"),
     "mean_task_latency_s": ("s", "Mean task latency"),
     "p95_task_latency_s": ("s", "95th percentile task latency"),
+    "medical_mean_task_latency_s": ("s", "Mean medical task latency / 医疗任务平均耗时"),
+    "medical_p95_task_latency_s": (
+        "s",
+        "95th percentile medical task latency / 医疗任务耗时第95百分位",
+    ),
     "on_time_rate": (
         "ratio",
         "On-time rate over deliveries with a committed deadline",
     ),
     "energy_used_kj": ("kJ", "Energy used"),
     "distance_flown_km": ("km", "Distance flown"),
+    "spraying_distance_m": ("m", "Completed spraying segment distance / 已完成喷洒航段距离"),
+    "battery_swaps": ("count", "Battery swaps completed / 已完成换电"),
+    "inspection_observations": ("count", "Inspection observations / 巡检观测次数"),
+    "patrol_visits": ("count", "Patrol visits / 巡逻到访次数"),
     "separation_conflicts": ("count", "Separation conflicts"),
     "geofence_violations": ("count", "Geofence violations"),
     "weather_holds": ("count", "Weather holds"),
@@ -38,10 +47,10 @@ METRICS = {
     "award_committed": ("count", "Awards committed"),
     "captures_stored": ("count", "Captures stored"),
     "uploads_accepted": ("count", "Uploads accepted"),
-    "incidents_occurred": ("count", "Incidents occurred / 已发生事件"),
-    "incidents_noticed": ("count", "Incidents noticed / 已发现事件"),
-    "incidents_photographed": ("count", "Incidents photographed / 已拍摄事件"),
-    "incident_response_s": ("s", "Mean incident response / 平均事件响应时间"),
+    "incidents_occurred": ("count", "Cooperation incidents occurred / 协作事件已发生"),
+    "incidents_noticed": ("count", "Cooperation incidents noticed / 协作事件已发现"),
+    "incidents_photographed": ("count", "Cooperation incidents photographed / 协作事件已拍摄"),
+    "incident_response_s": ("s", "Mean cooperation incident response / 平均协作事件响应时间"),
     "handoffs_completed": ("count", "Handoffs completed / 已完成交接"),
 }
 
@@ -84,6 +93,10 @@ class KPIProjector:
         self.completed: set[str] = set()
         self.failed: set[str] = set()
         self.latencies: list[float] = []
+        self.medical_tasks: set[str] = set()
+        self.medical_latencies: list[float] = []
+        self.observed_counts: set[str] = set()
+        self.spraying_distance: float | None = None
         self.messages: set[str] = set()
         self.energy: dict[tuple[str, int, str], float] = {}
         self.positions: dict[tuple[str, int, str], tuple[float, ...]] = {}
@@ -127,6 +140,10 @@ class KPIProjector:
             "completed": sorted(self.completed),
             "failed": sorted(self.failed),
             "latencies": list(self.latencies),
+            "medical_tasks": sorted(self.medical_tasks),
+            "medical_latencies": list(self.medical_latencies),
+            "observed_counts": sorted(self.observed_counts),
+            "spraying_distance": self.spraying_distance,
             "messages": sorted(self.messages),
             "energy": [
                 [entity, generation, field, value]
@@ -159,6 +176,7 @@ class KPIProjector:
         """Restore state produced by :meth:`cursor`; unknown versions raise."""
         if not isinstance(cursor, dict) or cursor.get("version") != 1:
             raise ValueError("KPI cursor: unsupported checkpoint version")
+        # The feed signature rebuilds older cursors from the committed journal.
         cooperation_counts = {"incidents_occurred", "incidents_noticed", "incidents_photographed", "handoffs_completed"}
         self.counts = {name: int(cursor["counts"][name]) for name in self.counts if name not in cooperation_counts}
         # Older checkpoints predate cooperation and have no such events.
@@ -169,6 +187,14 @@ class KPIProjector:
         self.completed = set(cursor["completed"])
         self.failed = set(cursor["failed"])
         self.latencies = [float(v) for v in cursor["latencies"]]
+        self.medical_tasks = set(cursor["medical_tasks"])
+        self.medical_latencies = [float(v) for v in cursor["medical_latencies"]]
+        self.observed_counts = set(cursor["observed_counts"])
+        self.spraying_distance = (
+            number(cursor["spraying_distance"], "spraying_distance_m")
+            if cursor["spraying_distance"] is not None
+            else None
+        )
         self.messages = set(cursor["messages"])
         self.energy = {}
         self.positions = {}
@@ -291,6 +317,8 @@ class KPIProjector:
             self.completed.add(task)
             self.counts["tasks_completed"] += 1
             self.latencies.append(latency)
+            if task in self.medical_tasks:
+                self.medical_latencies.append(latency)
 
     def _traffic_incident(self, payload: dict[str, Any]) -> str:
         if "incident" in payload:
@@ -340,7 +368,15 @@ class KPIProjector:
                 self.coop_handoffs.add(handoff)
                 self.counts["handoffs_completed"] += 1
         elif schema == "lowalt.task.created":
-            self._created("lowalt:" + identity(payload["task"]), at_ns)
+            task = "lowalt:" + identity(payload["task"])
+            self._created(task, at_ns)
+            kind = payload["kind"]
+            if kind == "medical":
+                self.medical_tasks.add(task)
+            elif kind in {"inspection", "survey"}:
+                self.observed_counts.add("inspection_observations")
+            elif kind == "patrol":
+                self.observed_counts.add("patrol_visits")
         elif schema == "lowalt.task.assigned":
             task = "lowalt:" + identity(payload["task"])
             if task not in self.assigned:
@@ -363,6 +399,29 @@ class KPIProjector:
                 raise ValueError("KPI food deadline: nonnegative committed timestamp required")
             self.deadlines[order] = deadline
             self.delivered.setdefault(order, (at_ns, at_ns <= deadline))
+        elif schema == "lowalt.energy.swap_started":
+            self.observed_counts.add("battery_swaps")
+        elif schema in {
+            "lowalt.energy.swap_finished",
+            "lowalt.inspection.observed",
+            "lowalt.patrol.visited",
+        }:
+            name = {
+                "lowalt.energy.swap_finished": "battery_swaps",
+                "lowalt.inspection.observed": "inspection_observations",
+                "lowalt.patrol.visited": "patrol_visits",
+            }[schema]
+            self.observed_counts.add(name)
+            self.counts[name] += 1
+        elif schema == "lowalt.spraying.applied":
+            distance = number(payload["distance_m"], "spraying_distance_m")
+            if distance < 0:
+                raise ValueError("KPI spraying distance must be nonnegative")
+            self.spraying_distance = (
+                distance
+                if self.spraying_distance is None
+                else self.spraying_distance + distance
+            )
         elif schema in {
             "lowalt.airspace.conflict",
             "lowalt.airspace.geofence_entered",
@@ -455,6 +514,10 @@ class KPIProjector:
 
     def snapshot(self) -> dict[str, Any]:
         values: dict[str, Any] = dict(self.counts)
+        for name in ("battery_swaps", "inspection_observations", "patrol_visits"):
+            if name not in self.observed_counts:
+                values[name] = None
+        values["spraying_distance_m"] = self.spraying_distance
         values["incident_response_s"] = sum(self.coop_response_s) / len(self.coop_response_s) if self.coop_response_s else None
         values["completion_rate"] = (
             self.counts["tasks_completed"] / self.counts["tasks_created"]
@@ -467,18 +530,21 @@ class KPIProjector:
         values["distance_flown_km"] = (
             self.distance / 1000 if self.position_observed else None
         )
-        values["mean_task_latency_s"] = (
-            sum(self.latencies) / len(self.latencies) if self.latencies else None
-        )
-        if self.latencies:
-            ordered = sorted(self.latencies)
-            index = (len(ordered) - 1) * 0.95
-            lo, hi = math.floor(index), math.ceil(index)
-            values["p95_task_latency_s"] = ordered[lo] + (ordered[hi] - ordered[lo]) * (
-                index - lo
+        for prefix, latencies in (
+            ("", self.latencies), ("medical_", self.medical_latencies)
+        ):
+            values[prefix + "mean_task_latency_s"] = (
+                sum(latencies) / len(latencies) if latencies else None
             )
-        else:
-            values["p95_task_latency_s"] = None
+            if latencies:
+                ordered = sorted(latencies)
+                index = (len(ordered) - 1) * 0.95
+                lo, hi = math.floor(index), math.ceil(index)
+                values[prefix + "p95_task_latency_s"] = (
+                    ordered[lo] + (ordered[hi] - ordered[lo]) * (index - lo)
+                )
+            else:
+                values[prefix + "p95_task_latency_s"] = None
         # On-time rate counts only observed completions that carried a committed
         # deadline; deliveries without one are excluded from the denominator and
         # reported alongside as unmeasured, not late.
