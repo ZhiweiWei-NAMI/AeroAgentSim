@@ -882,7 +882,9 @@ class LowaltTasks(ContextEngine):
             # State transitions commit separately: the kernel permits only one
             # write to each fact key in a wave.
             ctx.ops.append(ScheduleTimer(
-                f"lowalt/cooperation/{incident.ref.id}/{step}",
+                # A step can recur later in the run (e.g. a helper starts after its own task);
+                # the instant keeps each timer id unique and deterministic.
+                f"lowalt/cooperation/{incident.ref.id}/{step}/{ctx.now.ns}.{ctx.now.microstep}",
                 Instant(ctx.now.ns, ctx.now.microstep + 1), payload, tuple(ctx.inputs),
             ))
 

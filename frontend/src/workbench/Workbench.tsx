@@ -26,6 +26,14 @@ import { ObjectsPanel } from './ObjectsPanel';
 import { RecordsPanel } from './RecordsPanel';
 import { runClockTime, sameEntity, useRunSession } from './useRunSession';
 import { WaitingBanner } from '../pages/WaitingBanner';
+import type { ApplyRecord } from '../assistant/api';
+import { AssistantPanel } from '../assistant/AssistantPanel';
+import type { EditMode } from '../assistant/ModeSwitch';
+import { NeuralGlyph } from '../assistant/motion/NeuralGlyph';
+import { PlanBoard } from '../assistant/PlanBoard';
+import { useAssistantMode } from '../assistant/useAssistantMode';
+import '../assistant/motion/motion.css';
+import '../assistant/assistant.css';
 import '../viewport/viewer.css';
 import '../pages/inspect.css';
 import './workbench.css';
@@ -65,6 +73,7 @@ export default function Workbench() {
   const templateApi = useMemo(() => new TemplateApi(apiBase), [apiBase]);
   const runId = query.get('run') ?? undefined;
   const panel = query.get('panel') ?? undefined;
+  const assistantOpen = panel === 'assistant';
   const graph = query.get('graph');
   const update = useCallback((patch: Record<string, string | undefined>, push = false, path?: string) => {
     const next = new URLSearchParams(location.search);
@@ -122,6 +131,20 @@ export default function Workbench() {
   const status = runStatus(!recordsError ? record?.status : undefined, session?.status);
   useEffect(() => { setRecordsKey(value => value + 1); }, [session?.status]);
   const waiting = !recordsError && record ? record.waiting : session?.waiting;
+  const assistant = useAssistantMode({ apiBase, open: assistantOpen, sessionId: query.get('assistant') ?? undefined, projectId, project, locale, runId,
+    terminal: TERMINAL.has(status ?? ''), workspaceVersion: record?.workspace_version, update });
+  if (panel && !assistantOpen) assistant.lastSection.current = panel;
+  const morphOf = (mode: EditMode) => assistant.morph ? assistant.morph.from === mode ? 'out' as const : 'in' as const : undefined;
+  const switchOrigin = () => {
+    const rect = document.querySelector('.as-switch')?.getBoundingClientRect() ?? document.querySelector('.wb-right')?.getBoundingClientRect();
+    return rect ? { x: rect.left + rect.width / 2, y: rect.top + Math.min(rect.height / 2, 40) } : { x: innerWidth - 120, y: 100 };
+  };
+  const toggleAssistant = () => {
+    if (assistantOpen) update({ panel: undefined });
+    else if (project && panel) assistant.switchMode('chat', switchOrigin());
+    else update({ panel: 'assistant', gallery: undefined });
+  };
+  const openForm = () => { if (assistantOpen && project) assistant.switchMode('form', switchOrigin()); else update({ panel: panel ? undefined : 'controls' }); };
   const [metadataBoundary, setMetadataBoundary] = useState<{ runId: string; ns: string }>();
   useEffect(() => {
     if (!runId || !waiting) return;
@@ -300,7 +323,7 @@ export default function Workbench() {
       catch (problem) { toast('error', `${L('Simulation speed could not be loaded.', '无法读取仿真速度。')} ${problemText(problem)}`); }
       toast('success', L(`Initialized version ${project.latest_version.version}. The world is held at t = 0 — press Start to run it.`, `已初始化版本 ${project.latest_version.version}。世界停在 t = 0，按“启动”开始运行。`));
       setRecordsKey(value => value + 1);
-      update({ run: run.id, mode: 'live', cut: undefined, sel: undefined, panel: undefined }, true);
+      update({ run: run.id, mode: 'live', cut: undefined, sel: undefined, panel: assistantOpen ? 'assistant' : undefined }, true);
     } catch (problem) { toast('error', problemText(problem)); } finally { setInitializing(false); }
   };
   const control = async (action: 'start' | 'pause' | 'resume' | 'stop') => {
@@ -314,6 +337,14 @@ export default function Workbench() {
       setRecordsKey(value => value + 1); if (action === 'start') session?.backToLive();
     }
     catch (problem) { toast('error', problemText(problem)); setPending(undefined); setRecordsKey(value => value + 1); }
+  };
+
+  // The assistant's Confirm wrote a draft and saved a version: show the real project.
+  const applied = async (applyRecord: ApplyRecord) => {
+    assistant.applyDone(applyRecord);
+    toast('success', L(`Applied. Version ${applyRecord.version} is saved and ready to initialize.`, `已应用。版本 ${applyRecord.version} 已保存，可以初始化。`));
+    if (applyRecord.workspace_id !== project?.id) { update({ panel: 'assistant', gallery: undefined }, true, `/w/${encodeURIComponent(applyRecord.workspace_id)}`); return; }
+    try { setPreviewDraft(undefined); setProject(await api.project(project.id)); } catch (problem) { toast('error', problemText(problem)); }
   };
 
   // Projects and templates
@@ -341,7 +372,8 @@ export default function Workbench() {
       if (event.key === ' ' && session) { event.preventDefault(); event.stopPropagation(); session.togglePlayback(); }
       else if (event.key === 'i' && session?.followingLive && mode === 'live' && ['running', 'paused', 'waiting_for_input'].includes(status ?? '')) { update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }
       else if (event.key === 'g' && session) update({ graph: query.get('graph') ? undefined : '1' });
-      else if (event.key === 'c' && project) update({ panel: panel ? undefined : 'controls' });
+      else if (event.key === 'c' && project) openForm();
+      else if (event.key === 'a') toggleAssistant();
       else if (event.key === 'r') update({ records: query.get('records') ? undefined : '1' });
       else if (event.key === 'f' && selected && store && resolveBinding(store.header, store.entities.get(entityId(selected))?.typeId ?? '')) { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }
       else if (event.key === 'l' && session) session.backToLive();
@@ -356,14 +388,15 @@ export default function Workbench() {
   // Only an active run has a live moment to return to.
   const history = !!session && mode === 'live' && !session.followingLive && !TERMINAL.has(status ?? '');
   const canOperate = !!session && session.followingLive && mode === 'live' && ['running', 'paused', 'waiting_for_input'].includes(status ?? '');
-  const showGallery = (!projectId && !runId && !query.has('contract') && !query.has('records')) || query.get('gallery') === '1';
+  const showGallery = (!projectId && !runId && !query.has('contract') && !query.has('records') && !assistantOpen) || query.get('gallery') === '1';
   const title = (project ? project.name === template?.title ? localized(template, 'title', locale) : project.name : undefined) ?? (record ? localized(record, 'template_title', locale) ?? record.workspace_name ?? record.scenario : undefined);
   const contractType = query.has('contract') ? query.get('type') ?? '' : undefined;
   const selectedSpatial = !!selected && !!store && !!resolveBinding(store.header, store.entities.get(entityId(selected))?.typeId ?? '');
   const following = camera === 'follow' && selectedSpatial;
   // Keep the usable scene and panel bounds tied to the panels actually on screen.
-  const layout = { '--wb-left-space': query.get('records') ? 'calc(var(--wb-left) + 60px)' : leftOpen ? 'var(--wb-left)' : '0px',
-    '--wb-right-space': panel ? 'var(--wb-config-width)' : rightOpen && !inspectorCompact ? 'var(--wb-right)' : '0px',
+  const boardOpen = assistantOpen && assistant.board && !query.get('records');
+  const layout = { '--wb-left-space': query.get('records') ? 'calc(var(--wb-left) + 60px)' : boardOpen ? 'var(--as-board-width)' : leftOpen ? 'var(--wb-left)' : '0px',
+    '--wb-right-space': panel ? assistantOpen ? 'var(--as-chat-width)' : 'var(--wb-config-width)' : rightOpen && !inspectorCompact ? 'var(--wb-right)' : '0px',
     '--wb-overlay-right-space': !panel && rightOpen && inspectorCompact ? '250px' : 'var(--wb-right-space)',
     '--wb-dock': dockOpen ? dockTab === 'photos' ? 'min(52vh, 560px)' : 'min(38vh, 360px)' : '92px', '--wb-kpi-height': `${kpiHeight}px`, '--wb-notice-height': history || session?.error || session?.transportError || session?.inputSource.error ? '58px' : '0px' } as CSSProperties;
 
@@ -382,10 +415,12 @@ export default function Workbench() {
         {session && store && !spatial && <div className="wb-glass" style={{ position: 'absolute', inset: 'calc(var(--wb-top) + 36px) calc(var(--wb-right) + 36px) calc(var(--wb-dock) + 36px) calc(var(--wb-left) + 36px)', overflow: 'auto', padding: 12 }}>
           <p className="hint">{L('This world has no spatial objects; it is shown as relations and state.', '这个世界没有空间对象，以关系和状态的形式展示。')}</p>
           <NonspatialViews store={store} selected={selected} onSelect={key => select(key)} view="graph" /></div>}
-        {!session && project && <><ScenePreview bare workspace={previewDraft?.id === project.id ? { ...project, scenario: previewDraft.scenario } : project} api={apiBase} layers={['ground', 'buildings', 'roads', 'entities', 'airspace']} />
-          <div className="wb-stage-note">{runId ? L('Connecting to the run…', '正在连接运行…') : previewDraft?.id === project.id && previewDraft.dirty ? L('Unsaved draft preview · save a version to run these edits', '未保存草稿预览 · 保存版本后才能运行这些修改') : project.latest_version ? L('Draft preview · Initialize to see the authoritative world at t = 0', '草稿预览 · 初始化后可查看 t = 0 时的权威世界') : L('Draft preview · validate and save a version, then initialize', '草稿预览 · 校验并保存版本后再初始化')}</div></>}
+        {!session && (project || assistant.previewWorkspace) && <><ScenePreview bare workspace={assistant.previewWorkspace ?? (previewDraft?.id === project!.id ? { ...project!, scenario: previewDraft.scenario } : project!)} api={apiBase} layers={['ground', 'buildings', 'roads', 'entities', 'airspace']} overlay={assistant.overlay} />
+          {assistant.previewWorkspace && <><div className="as-stage-veil" aria-hidden /><div className="as-stage-tag" role="status" data-testid="as-stage-tag"><i />{assistant.viewing ? L(`Earlier plan v${assistant.viewing} · preview`, `早期方案 v${assistant.viewing} · 预览`) : L(`Proposed plan v${assistant.assistant.plan?.version ?? ''} · preview`, `提议方案 v${assistant.assistant.plan?.version ?? ''} · 预览`)}<em>{L('not applied', '未应用')}</em></div></>}
+          {!assistant.previewWorkspace && project && <div className="wb-stage-note">{runId ? L('Connecting to the run…', '正在连接运行…') : assistant.stage === 'configured' && assistantOpen ? L(`Configured · version ${project.latest_version?.version ?? ''} · not running — Initialize to see the world at t = 0`, `已配置 · 版本 ${project.latest_version?.version ?? ''} · 未运行 — 初始化后查看 t = 0 时的世界`) : previewDraft?.id === project.id && previewDraft.dirty ? L('Unsaved draft preview · save a version to run these edits', '未保存草稿预览 · 保存版本后才能运行这些修改') : project.latest_version ? L('Draft preview · Initialize to see the authoritative world at t = 0', '草稿预览 · 初始化后可查看 t = 0 时的权威世界') : L('Draft preview · validate and save a version, then initialize', '草稿预览 · 校验并保存版本后再初始化')}</div>}</>}
       </Suspense>
-      {!project && !session && !showGallery && <div className="wb-stage-empty"><div><h2>{projectError ? L('Project unavailable', '项目不可用') : projectId || runId ? L('Loading project…', '正在加载项目…') : L('Run records', '运行记录')}</h2>{projectError ? <p>{projectError}</p> : !projectId && !runId && <p>{L('Open a run from the list, or choose a scenario to create a project.', '从列表打开运行，或选择场景新建项目。')}</p>}</div></div>}
+      {!project && !session && !showGallery && assistantOpen && !assistant.previewWorkspace && <div className="wb-stage-empty as-stage-empty"><div><h2>{L('Your scene will appear here', '你的场景会显示在这里')}</h2><p>{L('Describe a situation in the conversation. The proposed scene is previewed here before anything is created.', '在对话中描述一个情景。创建任何内容之前，提议的场景会先在这里预览。')}</p></div></div>}
+      {!project && !session && !showGallery && !assistantOpen && <div className="wb-stage-empty"><div><h2>{projectError ? L('Project unavailable', '项目不可用') : projectId || runId ? L('Loading project…', '正在加载项目…') : L('Run records', '运行记录')}</h2>{projectError ? <p>{projectError}</p> : !projectId && !runId && <p>{L('Open a run from the list, or choose a scenario to create a project.', '从列表打开运行，或选择场景新建项目。')}</p>}</div></div>}
 
     </div>
 
@@ -422,7 +457,8 @@ export default function Workbench() {
       <div className="wb-tools">
       <button className="wb-btn ghost" onClick={() => setPalette(true)} title={L('Search objects and actions', '搜索对象与操作')}>⌕ <span className="wb-kbd">⌘K</span></button>
       {session && <button className="wb-btn" aria-pressed={!!graph} onClick={() => update({ graph: graph ? undefined : '1' })} data-testid="wb-graph-toggle">{L('Graph', '关系图')} <span className="wb-kbd">G</span></button>}
-      {project && <button className="wb-btn" aria-pressed={!!panel} onClick={() => update({ panel: panel ? undefined : 'controls' })} data-testid="wb-configure">{L('Configure', '配置')} <span className="wb-kbd">C</span></button>}
+      <button className={`wb-btn as-top-btn${assistantOpen ? ' is-on' : ''}`} aria-pressed={assistantOpen} onClick={toggleAssistant} data-testid="wb-assistant-toggle" title={L('Build or change the scene by describing it', '用描述来搭建或修改场景')}><NeuralGlyph state={assistantOpen && assistant.assistant.busy ? 'thinking' : 'idle'} size={16} title="" />{L('Assistant', '助手')} <span className="wb-kbd">A</span></button>
+      {project && <button className="wb-btn" aria-pressed={!!panel && !assistantOpen} onClick={openForm} data-testid="wb-configure">{L('Configure', '配置')} <span className="wb-kbd">C</span></button>}
       <button className="wb-btn" aria-pressed={!!query.get('records')} onClick={() => update({ records: query.get('records') ? undefined : '1' })} data-testid="wb-records-toggle">{L('Records', '记录')} <span className="wb-kbd">R</span></button>
       <button className="wb-btn ghost" onClick={() => setLocale(zh ? 'en-US' : 'zh-CN')} aria-label={L('Switch to Chinese', '切换到英文')}>{zh ? 'EN' : '中文'}</button>
       </div>
@@ -444,14 +480,25 @@ export default function Workbench() {
     {query.get('records') ? <RecordsPanel api={api} projectId={project?.id} current={runId} refreshKey={recordsKey}
         onOpen={run => update({ run: run.id, mode: TERMINAL.has(run.status) ? 'replay' : 'live', cut: undefined, sel: undefined, records: undefined }, true, run.studio_workspace ? `/w/${encodeURIComponent(run.studio_workspace)}` : location.pathname)}
         onCompare={ids => update({ compare: ids.join(',') })} onDerive={derive} onClose={() => update({ records: undefined })} />
+      : boardOpen ? <PlanBoard api={assistant.api} assistant={assistant.assistant} stage={assistant.stage} runId={runId} story={assistant.story} storyError={assistant.storyError}
+          startNs={store?.header.start.ns} terminal={TERMINAL.has(status ?? '')} initializing={initializing} canInitialize={!!project?.latest_version} onInitialize={() => void initialize()}
+          onApplied={record => void applied(record)} onHover={assistant.setFocus} onStep={assistant.setFocus} onContract={type => update({ contract: 'assistant', type, workspace: project?.id })}
+          onSeek={cut => session?.seekCut(cut)} viewing={assistant.viewing} onViewVersion={assistant.setViewing} onClose={assistant.closeBoard} />
       : session && store && (leftOpen ? <ObjectsPanel store={store} revision={session.revision} selected={selected} selectionOrigin={selectionOrigin} onSelect={(key, fly) => select(key, fly)} onClose={() => setLeftOpen(false)} />
         : <button className="wb-collapsed-tab left wb-glass" onClick={() => setLeftOpen(true)}>☰ {L('Objects', '对象')}</button>)}
+    {assistantOpen && !boardOpen && assistant.assistant.plan && !query.get('records') && !(session && store && leftOpen) && <button className="wb-collapsed-tab left wb-glass as-board-tab" onClick={assistant.openBoard} data-testid="as-board-reopen">◇ {L(`Plan v${assistant.assistant.plan.version}`, `方案 v${assistant.assistant.plan.version}`)}</button>}
 
     {/* Right: configuration or inspector */}
-    {project && panel ? <ConfigPanel key={project.id} api={api} project={project} onProject={setProject} onDraft={previewChanged} onInitialize={() => void initialize()} initializing={initializing}
-        section={panel} onSection={section => update({ panel: section })} onClose={() => update({ panel: undefined })}
-        onInspectContract={type => update({ contract: panel, type, workspace: project.id })} />
-      : session && store && runId && (rightOpen ? <InspectorPanel api={runsApi} runId={runId} store={store} revision={session.revision} selected={selected} cut={session.cut} mode={mode ?? 'replay'} canOperate={canOperate} viewingHistory={history} operateRequest={operateRequest} inputSource={session.inputSource} onCompactChange={setInspectorCompact}
+    {(assistantOpen || assistant.morph?.from === 'chat') && <AssistantPanel assistant={assistant.assistant} connection={assistant.connection.connection} connectionError={assistant.connection.error ?? assistant.error} connectionSaving={assistant.connection.saving}
+        onConnect={assistant.connection.save} onTest={assistant.connection.test} project={project ? { id: project.id, name: title ?? project.name } : undefined}
+        selected={selected ? { id: selected.id, label: entityNames.get(selected.id) ?? selected.id } : undefined} runId={runId} onClearSelected={() => select(undefined)}
+        onClose={() => update({ panel: undefined })} onSwitch={project ? (mode, origin) => assistant.switchMode(mode, origin) : undefined} switching={!!assistant.morph} morph={morphOf('chat')}
+        onShowPlan={version => { assistant.openBoard(); assistant.setViewing(version === assistant.assistant.plan?.version ? undefined : version); }} onShowChanges={() => { assistant.openBoard(); assistant.setViewing(undefined); }} />}
+    {project && panel && (!assistantOpen || assistant.morph?.from === 'form') ? <ConfigPanel key={project.id} api={api} project={project} onProject={setProject} onDraft={previewChanged} onInitialize={() => void initialize()} initializing={initializing}
+        section={assistantOpen ? assistant.lastSection.current : panel} onSection={section => update({ panel: section })} onClose={() => update({ panel: undefined })}
+        onInspectContract={type => update({ contract: panel, type, workspace: project.id })}
+        onSwitch={(mode, origin) => assistant.switchMode(mode, origin)} switching={!!assistant.morph} morph={morphOf('form')} />
+      : !assistantOpen && session && store && runId && (rightOpen ? <InspectorPanel api={runsApi} runId={runId} store={store} revision={session.revision} selected={selected} cut={session.cut} mode={mode ?? 'replay'} canOperate={canOperate} viewingHistory={history} operateRequest={operateRequest} inputSource={session.inputSource} onCompactChange={setInspectorCompact}
           onSelect={key => select(key)} onSeekCut={session.seekCut} onTrace={ref => openTrace(ref)} following={following}
           onFocus={focusSelection} onFollow={() => { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }}
           onShowGraph={() => update({ graph: '1' })} onClose={() => setRightOpen(false)} />
@@ -491,7 +538,7 @@ export default function Workbench() {
     </div></div>}
 
     {/* Overlays */}
-    {showGallery && <Gallery api={api} current={project?.id} initialGuide={query.get('guide') ?? undefined} onOpenProject={id => update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: undefined }, true, `/w/${encodeURIComponent(id)}`)} onCreate={createFromTemplate} onClose={projectId ? () => update({ gallery: undefined }) : undefined} />}
+    {showGallery && <Gallery api={api} current={project?.id} onDescribe={() => update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: 'assistant', assistant: undefined, records: undefined }, true, '/')} initialGuide={query.get('guide') ?? undefined} onOpenProject={id => update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: undefined }, true, `/w/${encodeURIComponent(id)}`)} onCreate={createFromTemplate} onClose={projectId ? () => update({ gallery: undefined }) : undefined} />}
     {query.get('compare') && <div className="wb-overlay" onClick={event => { if (event.target === event.currentTarget) update({ compare: undefined }); }}><div className="wb-overlay-card wb-glass"><Suspense fallback={null}><CompareRuns api={templateApi} ids={query.get('compare')!.split(',')} onBack={() => update({ compare: undefined })} /></Suspense></div></div>}
     {contractType !== undefined && <div className="wb-overlay" onClick={event => { if (event.target === event.currentTarget) update({ contract: undefined, type: undefined, workspace: undefined, panel: query.get('contract') ?? panel }); }}><div className="wb-overlay-card wb-glass">
       <div className="wb-hero"><div style={{ flex: 1 }}><h1>{L('Type contract', '类型契约')}</h1><p className="wb-mono">{contractType || L('AeroGraph types, fields, relations and events', 'AeroGraph 类型、字段、关系与事件')}</p></div><button className="wb-btn primary" onClick={() => update({ contract: undefined, type: undefined, workspace: undefined, panel: query.get('contract') ?? panel })}>← {L('Back to the field you were editing', '返回正在编辑的字段')}</button></div>

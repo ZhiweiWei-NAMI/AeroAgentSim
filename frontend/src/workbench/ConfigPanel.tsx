@@ -1,3 +1,4 @@
+import { ModeSwitch, type EditMode, type Origin } from '../assistant/ModeSwitch';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TemplateApi, type AlgorithmDescriptor, type KnobValue, type ScenarioTemplate } from '../newcomers/api';
 import { TemplateKnobControl } from '../newcomers/CustomizeTemplate';
@@ -59,9 +60,10 @@ export function controlSource(knob: ScenarioTemplate['knobs'][number], draft: Sc
   return controlValue(authored?.[knob.id]);
 }
 
-export function ConfigPanel({ api, project, onProject, onInitialize, initializing, section: requested, onSection, onClose, onInspectContract, onDraft }: {
+export function ConfigPanel({ api, project, onProject, onInitialize, initializing, section: requested, onSection, onClose, onInspectContract, onDraft, onSwitch, switching, morph }: {
   api: WorkbenchApi; project: Project; onProject: (project: Project) => void;
   onInitialize: () => void; initializing: boolean; section?: string; onSection: (section: string) => void; onClose: () => void;
+  onSwitch?: (mode: EditMode, origin: Origin) => void; switching?: boolean; morph?: 'in' | 'out';
   onDraft?: (id: string, scenario: Scenario, dirty: boolean) => void;
   onInspectContract?: (typeId: string, field?: string) => void;
 }) {
@@ -313,8 +315,8 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     </>;
   };
 
-  return <FormValidity.Provider value={reportValidity}><aside className="wb-panel wb-right is-wide wb-glass" aria-label={L('Configure scenario', '配置场景')} data-testid="wb-config">
-    <div className="wb-panel-head"><h3>{L('Configure', '配置')} · {template && project.name === template.title ? localized(template, 'title', locale) : project.name}</h3><button className="wb-x" aria-label={L('Close configuration', '关闭配置')} onClick={onClose}>✕</button></div>
+  return <FormValidity.Provider value={reportValidity}><aside className="wb-panel wb-right is-wide wb-glass" aria-label={L('Configure scenario', '配置场景')} data-testid="wb-config" data-morph={morph}>
+    <div className="wb-panel-head as-rise"><h3>{L('Configure', '配置')} · {template && project.name === template.title ? localized(template, 'title', locale) : project.name}</h3>{onSwitch && <ModeSwitch mode="form" onChange={onSwitch} switching={switching} />}<button className="wb-x" aria-label={L('Close configuration', '关闭配置')} onClick={onClose}>✕</button></div>
     {restored && <div className="wb-restored">{L('Unsaved edits were restored from this browser.', '已从本浏览器恢复未保存的修改。')}<span className="wb-spacer" /><button className="wb-btn small" onClick={discard}>{L('Discard', '放弃')}</button></div>}
     {catalogError && <div className="wb-issues" role="alert">{catalogError}</div>}
     {issues.length > 0 && <div className="wb-issues" role="alert" data-testid="wb-issues">{issues.map((issue, index) => <button key={index} onClick={() => jump(issue)}>⚠ {[issue.entity_id, issue.field ?? issue.binding].filter(Boolean).join(' · ') || issue.path} — {issue.message}</button>)}</div>}

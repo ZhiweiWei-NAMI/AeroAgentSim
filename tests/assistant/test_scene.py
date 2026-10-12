@@ -29,8 +29,8 @@ def test_complete_scene_shapes_are_grounded(compiled) -> None:
     assert summary["cooperation"] is None
     assert summary["workloads"][0]["kind"] == "food"
     for row in expectations(loaded.document, summary):
-        assert {"id", "text", "text_zh", "layer", "match", "approx_s", "precheck", "depends_on"} == row.keys()
-        assert {"schema", "where"} == row["match"].keys()
+        assert {"id", "text", "text_zh", "layer", "match", "approx_s", "precheck", "depends_on"} <= row.keys() <= {"id", "text", "text_zh", "layer", "match", "approx_s", "precheck", "depends_on", "alternatives"}
+        assert {"schema", "where"} <= row["match"].keys() <= {"schema", "where", "count"}
     diagram = interactions(summary)
     lane_ids = {r["id"] for r in diagram["lanes"]}
     for step in diagram["steps"]:

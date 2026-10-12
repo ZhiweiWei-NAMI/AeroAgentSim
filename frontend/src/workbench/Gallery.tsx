@@ -33,9 +33,9 @@ function GalleryLanguage() {
 }
 
 /** The scenario library (nine ready-made worlds) and the user's projects. */
-export function Gallery({ api, current, onOpenProject, onCreate, onClose, initialGuide }: {
+export function Gallery({ api, current, onOpenProject, onCreate, onClose, initialGuide, onDescribe }: {
   api: WorkbenchApi; current?: string; initialGuide?: string;
-  onOpenProject: (id: string) => void; onCreate: (template: ScenarioTemplate) => Promise<void>; onClose?: () => void;
+  onOpenProject: (id: string) => void; onCreate: (template: ScenarioTemplate) => Promise<void>; onClose?: () => void; onDescribe?: () => void;
 }) {
   const { locale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
@@ -61,6 +61,15 @@ export function Gallery({ api, current, onOpenProject, onCreate, onClose, initia
           {onClose && <button className="wb-btn" onClick={onClose}>{L('Back to the scene', '返回场景')} <span className="wb-kbd">Esc</span></button>}
         </div>
         {error && <div className="wb-issues" role="alert">{error}</div>}
+        {onDescribe && <button className="as-describe" onClick={onDescribe} data-testid="wb-describe">
+          <img alt="" src={`${import.meta.env.BASE_URL}assistant/describe-card.webp`} />
+          <span className="as-describe-body">
+            <small>{L('Assistant', '助手')}</small>
+            <strong>{L('Describe a scenario in your own words', '用你自己的话描述一个场景')}</strong>
+            <span>{L('“A logistics drone notices someone has fallen, hands its parcel to a nearby courier and goes to help.” You get a concrete plan to review, then confirm once.', '“物流无人机发现有人跌倒，把包裹交给附近的配送员，然后前去查看。”你会先看到具体方案，确认一次即可应用。')}</span>
+            <em>{L('Start a conversation', '开始对话')} →</em>
+          </span>
+        </button>}
         <div className="wb-cards">
           {(templates ?? []).map(template => {
             const category = categoryMetadata(template.category, locale);

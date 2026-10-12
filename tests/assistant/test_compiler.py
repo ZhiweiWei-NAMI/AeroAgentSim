@@ -196,7 +196,7 @@ def test_plan_directory_cannot_replace_base_files(context: CompileContext, tmp_p
 
 
 def test_disconnected_allocator_does_not_compile_scripted_success(context: CompileContext, tmp_path: Path) -> None:
-    result = compile_ops(context, tmp_path, [op("set_control", control="allocator", value="llm")])
+    result = compile_ops(context, tmp_path, [op("set_algorithm", slot="allocation", value="llm")])
     assert not result.ok
     assert result.errors[0]["op_id"] == "op-1"
     assert "Agent decisions need a connected model" in result.errors[0]["message"]

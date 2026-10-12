@@ -200,10 +200,24 @@ def load_scenario(
 def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
     document = copy.deepcopy(document)
     _finite(document, "scenario")
-    if "algorithms" in document or "generators" in document:
+    # Cooperation and per-vehicle task kinds also expand at load time; the expansion may read the
+    # registry snapshot, which is relative to the scenario file.
+    task_extensions = any(
+        isinstance(engine, dict) and engine.get("plugin") == "lowalt_tasks"
+        and any(key in (engine.get("config") or {}) for key in ("cooperation", "vehicle_task_kinds"))
+        for engine in (document.get("engines") or {}).values()
+    )
+    if "algorithms" in document or "generators" in document or task_extensions:
         from aeroagentsim.packs.lowalt.template import expand
 
-        expand(document)
+        snapshot = (document.get("registry") or {}).get("snapshot")
+        if task_extensions and snapshot is not None:
+            document["registry"]["snapshot"] = str(source_path(text(snapshot, "registry.snapshot"), base))
+        try:
+            expand(document)
+        finally:
+            if task_extensions and snapshot is not None:
+                document["registry"]["snapshot"] = snapshot
     behaviour_engines = [
         name
         for name, item in document.get("engines", {}).items()

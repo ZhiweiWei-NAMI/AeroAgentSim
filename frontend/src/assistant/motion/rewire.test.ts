@@ -30,11 +30,11 @@ describe('phaseAt', () => {
   });
 
   it('scales every duration', () => {
-    expect(phaseAt(360, 2).phase).toBe('charge');
-    expect(phaseAt(360, 2).local).toBeCloseTo(1, 5);
-    expect(phaseAt(361, 2).phase).toBe('dissolve');
-    expect(phaseAt(1240, 2).phase).toBe('dissolve');
-    expect(phaseAt(1241, 2).phase).toBe('rewire');
+    expect(phaseAt(359, 2).phase).toBe('charge');
+    expect(phaseAt(359, 2).local).toBeCloseTo(359 / 360, 5);
+    expect(phaseAt(360, 2).phase).toBe('dissolve');
+    expect(phaseAt(1239, 2).phase).toBe('dissolve');
+    expect(phaseAt(1240, 2).phase).toBe('rewire');
     expect(phaseAt(2000, 2).phase).toBe('crystallize');
     expect(phaseAt(2700, 2).phase).toBe('done');
   });

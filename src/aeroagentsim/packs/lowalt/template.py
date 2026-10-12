@@ -148,9 +148,16 @@ def expand(document: dict[str, Any]) -> None:
         raise ValueError("fleet starts must be nonempty")
     spacing = finite(cfg["spacing_m"], "fleet spacing", 1)
     prefix = cfg["prefix"]
+    # Re-expansion regenerates the fleet in the slot it already occupied, so
+    # entities appended later (cooperation sites, handoffs) keep their order.
+    slot = next(
+        (i for i, e in enumerate(document["entities"]) if e["id"].startswith(prefix)),
+        len(document["entities"]),
+    )
     document["entities"] = [
         e for e in document["entities"] if not e["id"].startswith(prefix)
     ]
+    fleet: list[dict[str, Any]] = []
     for index in range(count):
         start = starts[index % len(starts)]
         facts = copy.deepcopy(cfg["facts"])
@@ -170,7 +177,8 @@ def expand(document: dict[str, Any]) -> None:
             if name in {"label", "label_zh"}:
                 value = value.format(index=index + 1)
             generated[name] = value
-        document["entities"].append(generated)
+        fleet.append(generated)
+    document["entities"][slot:slot] = fleet
 
     from .cooperation import expand as expand_cooperation
 

@@ -30,6 +30,8 @@ def _value(value: Any) -> Any:
 
 
 def _matches(value: Any, pattern: Any) -> bool:
+    if isinstance(pattern, dict) and set(pattern) == {"$in"}:
+        return any(_value(value) == _value(option) for option in pattern["$in"])
     if isinstance(pattern, dict):
         return isinstance(value, dict) and all(k in value and _matches(value[k], v) for k, v in pattern.items())
     return _value(value) == _value(pattern)
@@ -168,13 +170,28 @@ def run_story(run_dir: Path, expectations: list[dict], *, locale: str = "en") ->
     outcomes = []
     for expected in expectations:
         match = expected["match"]
-        event = next((e for e in events if e["schema"] == match["schema"] and _matches(e["payload"], match["where"])), None)
+        found = [e for e in events if e["schema"] == match["schema"] and _matches(e["payload"], match["where"])]
+        need = match.get("count", 1)
+        # A counted expectation ("all 6 meals delivered") happens at its last required event.
+        event = found[need - 1] if len(found) >= need else None
         outcome = {"id": expected["id"], "text": expected["text"], "text_zh": expected["text_zh"],
                    "status": "happened" if event is not None else "missed" if terminal else "pending",
                    "at_ns": event["at_ns"] if event is not None else None, "cut": event["cut"] if event is not None else None,
                    "evidence": {"text": event["text"], "text_zh": event["text_zh"], "schema": event["schema"], "payload": event["payload"]} if event is not None else None,
-                   "explanation": _missing(expected, events, approaches, terminal, last_ns) if event is None else None}
+                   "explanation": None}
+        if need > 1:
+            outcome["progress"] = {"done": min(len(found), need), "total": need}
+        if event is None and need > 1:
+            outcome["explanation"] = _explanation(f"{len(found)} of {need} recorded" + (" before the run ended." if terminal else " so far."),
+                                                  f"已记录 {len(found)}/{need}" + ("，运行已结束。" if terminal else "。"), found[-3:])
+        elif event is None:
+            outcome["explanation"] = _missing(expected, events, approaches, terminal, last_ns)
         outcomes.append(outcome)
+    # A conditional branch is "not taken" once its alternative happened — not a failure.
+    happened = {row["id"] for row in outcomes if row["status"] == "happened"}
+    for expected, outcome in zip(expectations, outcomes):
+        if outcome["status"] != "happened" and any(other in happened for other in expected.get("alternatives", [])):
+            outcome["status"] = "not_taken"
     return {"run_id": manifest.get("id", run_dir.name), "status": manifest.get("status"), "terminal": terminal, "locale": locale,
             "expectations": outcomes, "events": [e for e in events if e["schema"].startswith(KEY_PREFIXES)],
             "last_at_ns": last_ns}

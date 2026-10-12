@@ -13,25 +13,141 @@ from typing import Any
 SCRIPT: dict[str, Any] = {
     "model": "assistant-scripted",
     "flagship": {
-        "base": {"template": "food-delivery"},
-        "title": "Meals, parcels and a street incident / 外卖、包裹与街道事故",
-        "summary": "Two parcel drones can ask meal couriers to take over a delivery before photographing an incident / 两架包裹无人机可请求送餐无人机接续配送，再拍摄事故现场",
-        "note": "First proposed arrangement / 首次提议",
+        "base": {
+            "template": "food-delivery"
+        },
+        "title": "Meals, a parcel and a fallen person",
+        "summary": "A parcel drone that notices a fallen person hands its parcel to a nearby meal courier at a street handoff point, then photographs the person. The courier completes the delivery.",
+        "note": "First proposed arrangement",
         "operations": [
-            {"op": "add_place", "params": {"id": "parcel-port", "role": "vertiport", "at": "plaza", "label": "Parcel vertiport / 包裹起降点"}},
-            {"op": "add_place", "params": {"id": "handoff-east", "role": "handoff_point", "at": "east", "label": "East roof handoff / 东侧屋顶交接点"}},
-            {"op": "add_fleet", "params": {"id": "logistics", "role": "parcel", "count": 2, "start": "parcel-port", "battery_pct": 90.0, "payload_capacity_kg": 3.0, "task_kinds": ["parcel"]}},
-            {"op": "add_orders", "params": {"id": "parcel-orders", "kind": "parcel", "count": 3, "from": ["parcel-port"], "to": ["customer-1", "customer-2", "customer-3"], "release": {"start_s": 0.0, "interval_s": 20.0}, "payload_kg": 1.0}},
-            {"op": "add_incident", "params": {"id": "incident-1", "kind": "person_fall", "at": "road", "time_s": 90.0, "label": "Person fell on the street / 行人在街道跌倒"}},
-            {"op": "set_cooperation", "params": {
-                "watchers": {"vehicles": ["logistics-1", "logistics-2"], "notice_radius_m": 150.0},
-                "responder": {"mode": "prescribed", "order": ["request_handoff", "finish_then_respond", "report_only"], "rules": {"require_replacement": True, "protected_task_kinds": ["medical"], "min_battery_pct": 30.0, "max_response_distance_m": 600.0}},
-                "helpers": {"vehicles": ["drone-1", "drone-2"], "ask_radius_m": 500.0, "mode": "prescribed", "rules": {"accept_when": "idle", "min_battery_pct": 25.0}, "selection": "nearest"},
-                "handoff_points": ["handoff-east"], "photograph": {"dwell_s": 5.0, "altitude_m": 35.0},
-            }},
+            {
+                "op": "add_place",
+                "params": {
+                    "id": "parcel-depot",
+                    "role": "vertiport",
+                    "at": "plaza",
+                    "label": "Parcel depot",
+                    "label_zh": "包裹站"
+                }
+            },
+            {
+                "op": "add_place",
+                "params": {
+                    "id": "clinic-door",
+                    "role": "customer",
+                    "at": "clinic",
+                    "label": "Clinic",
+                    "label_zh": "诊所"
+                }
+            },
+            {
+                "op": "add_place",
+                "params": {
+                    "id": "handoff-street",
+                    "role": "handoff_point",
+                    "at": "street-plaza",
+                    "label": "Street handoff point",
+                    "label_zh": "街边交接点"
+                }
+            },
+            {
+                "op": "add_fleet",
+                "params": {
+                    "id": "logistics",
+                    "role": "parcel_drone",
+                    "count": 1,
+                    "start": "parcel-depot",
+                    "battery_pct": 90
+                }
+            },
+            {
+                "op": "add_orders",
+                "params": {
+                    "id": "parcels",
+                    "kind": "parcel",
+                    "count": 1,
+                    "from": [
+                        "parcel-depot"
+                    ],
+                    "to": [
+                        "clinic-door"
+                    ],
+                    "release": {
+                        "mode": "scheduled",
+                        "times_s": [
+                            0
+                        ]
+                    }
+                }
+            },
+            {
+                "op": "add_incident",
+                "params": {
+                    "id": "fall",
+                    "kind": "person_fall",
+                    "at": "street-hospital",
+                    "time_s": 20,
+                    "label": "A person has fallen",
+                    "label_zh": "有人跌倒"
+                }
+            },
+            {
+                "op": "set_cooperation",
+                "params": {
+                    "watchers": {
+                        "vehicles": [
+                            "logistics"
+                        ],
+                        "notice_radius_m": 150
+                    },
+                    "responder": {
+                        "mode": "prescribed",
+                        "order": [
+                            "request_handoff",
+                            "respond_now",
+                            "report_only"
+                        ],
+                        "rules": {
+                            "require_replacement": True,
+                            "protected_task_kinds": [
+                                "medical"
+                            ],
+                            "min_battery_pct": 30
+                        }
+                    },
+                    "helpers": {
+                        "vehicles": [
+                            "fleet"
+                        ],
+                        "ask_radius_m": 800,
+                        "mode": "prescribed",
+                        "rules": {
+                            "accept_when": "always",
+                            "min_battery_pct": 20
+                        },
+                        "selection": "nearest"
+                    },
+                    "photograph": {
+                        "dwell_s": 5,
+                        "altitude_m": 35
+                    }
+                }
+            }
         ],
-        "assumptions": ["Keep the starting point's meal workload and weather / 保留起始模板的外卖订单与天气", "Helpers accept only when idle; a carried parcel requires an accepted replacement / 接替者仅空闲时接受；已携带包裹须有人接替"],
-        "open_questions": [{"question": "Should the meal courier decide for itself whether to accept? / 送餐无人机是否自主决定接受？", "options": ["Keep prescribed idle acceptance / 保留空闲接受规则", "Let the courier decide / 让送餐无人机自主决定"]}],
+        "assumptions": [
+            "The starting point's six meal orders and weather stay as they are",
+            "Couriers always accept when asked and take the parcel after their current order",
+            "The parcel drone leaves its delivery only once a courier has accepted it"
+        ],
+        "open_questions": [
+            {
+                "question": "Should the meal courier decide for itself whether to accept the parcel?",
+                "options": [
+                    "Keep the fixed rule",
+                    "Let the courier decide"
+                ]
+            }
+        ]
     },
     "rules": [
         {"matches": ["food delivery and logistics", "外卖和物流"], "action": "flagship"},
@@ -42,9 +158,9 @@ SCRIPT: dict[str, Any] = {
         {"matches": ["two options", "两种方案"], "action": "alternatives"},
         {"matches": ["two logistics uavs"], "action": "fleet"},
     ],
-    "agent_goal": "Keep your own orders on time; help when you reasonably can. / 优先按时完成自己的订单，并在合理条件下帮助他人。",
-    "reply": "Review the compiled proposal and its validation on the plan board. Confirm configures the scene; Initialize and Start are separate. / 请在方案板查看编译结果与校验状态。确认会配置场景；初始化和启动需另外操作。\nSuggestions: Use sensible defaults | Make the incident happen later | Let the courier decide",
-    "default_reply": "Describe the drones, deliveries or incident you want to study; I can propose a scene. / 请描述要研究的无人机、配送或事故，我可以提出场景方案。",
+    "agent_goal": "Keep your own orders on time; help when you reasonably can.",
+    "reply": "Here is a concrete plan. The parcel drone's route passes about 23 m from where the person falls, inside its 150 m notice radius. The plan board shows who does what and what I assumed; nothing changes until you confirm.\nSuggestions: Make the incident happen later | Let the courier decide | Show me two options",
+    "default_reply": "Describe the drones, deliveries or incident you want to study, and I will propose a concrete scene.",
 }
 
 
@@ -105,29 +221,29 @@ def completion(body: dict[str, Any]) -> dict[str, Any]:
     if results:
         latest = json.loads(results[-1]["content"])
         if "error" in latest or latest.get("ok") is False:
-            return {"role": "assistant", "content": "The tool reported an error; this proposal is not ready to confirm. / 工具报告错误；此方案尚不能确认。"}
+            return {"role": "assistant", "content": "The platform rejected that change, so this proposal is not ready to confirm yet."}
         return {"role": "assistant", "content": SCRIPT["reply"]}
     plan = state_plan(messages)
     if plan and action in {"later", "agent", "restore", "alternatives", "fleet", "participant"}:
         if action == "later":
             operation = replacement(plan, "add_incident")
-            operation["params"]["time_s"] = 150.0
-            return tool_call("revise_plan", {"note": "Incident at 150 s / 事故改为第 150 秒", "update": [operation]}, index)
+            operation["params"]["time_s"] = operation["params"]["time_s"] + 10.0
+            return tool_call("revise_plan", {"note": f"The person falls at {operation['params']['time_s']:g} s instead", "update": [operation]}, index)
         if action == "agent":
             operation = replacement(plan, "set_cooperation")
             operation["params"]["helpers"].update(mode="agent", goal=SCRIPT["agent_goal"])
             question = SCRIPT["flagship"]["open_questions"][0]["question"]
-            return tool_call("revise_plan", {"note": "Helpers decide whether to accept / 接替者自主决定是否接受", "update": [operation], "resolve_questions": [question] if any((q if isinstance(q, str) else q["question"]) == question for q in plan["open_questions"]) else []}, index)
+            return tool_call("revise_plan", {"note": "The couriers decide for themselves whether to accept", "update": [operation], "resolve_questions": [question] if any((q if isinstance(q, str) else q["question"]) == question for q in plan["open_questions"]) else []}, index)
         if action == "restore":
             operation = replacement(plan, "set_cooperation")
-            return tool_call("restore_operations", {"from_version": max(1, plan["version"] - 1), "op_ids": [operation["id"]], "note": "Restore the previous cooperation arrangement / 恢复此前协作安排"}, index)
+            return tool_call("restore_operations", {"from_version": max(1, plan["version"] - 1), "op_ids": [operation["id"]], "note": "Back to the previous cooperation arrangement"}, index)
         if action == "participant":
             fleet = replacement(plan, "add_fleet")["params"]["id"]
             return tool_call("explain_participant", {"id": f"{fleet}-1"}, index)
         if action == "fleet":
             operation = replacement(plan, "add_fleet")
             operation["params"]["count"] = 2
-            return tool_call("revise_plan", {"note": "Use two parcel UAVs / 使用两架包裹无人机", "update": [operation]}, index)
+            return tool_call("revise_plan", {"note": "Two parcel drones instead of one", "update": [operation]}, index)
         variants = []
         for label, mode in (("A", "prescribed"), ("B", "agent")):
             operation = replacement(plan, "set_cooperation")
@@ -136,7 +252,8 @@ def completion(body: dict[str, Any]) -> dict[str, Any]:
                 operation["params"]["helpers"]["goal"] = SCRIPT["agent_goal"]
             else:
                 operation["params"]["helpers"].pop("goal", None)
-            variants.append({"label": label, "title": f"{mode} helpers / 接替者模式：{mode}", "summary": "Keep the incident and deliveries; change only helper decisions / 保留事故和配送，仅改变接替者决策", "changes": {"note": "Compare helper decisions / 比较接替者决策", "update": [operation]}, "assumptions": plan["assumptions"]})
+            title = "Couriers follow a fixed rule" if mode == "prescribed" else "Couriers decide for themselves"
+            variants.append({"label": label, "title": title, "summary": "Same incident and deliveries; only how couriers answer a handoff request differs", "changes": {"note": title, "update": [operation]}, "assumptions": plan["assumptions"]})
         return tool_call("propose_alternatives", {"variants": variants}, index)
     return {"role": "assistant", "content": SCRIPT["default_reply"]}
 

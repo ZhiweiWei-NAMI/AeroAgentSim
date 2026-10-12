@@ -114,7 +114,7 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
     for e in entities.values():
         if "lowalt.site_position" not in e["facts"]:
             continue
-        places.append({"id": e["id"], "role": e["facts"].get("assistant.place_role", inverse.get(e["type"], "incident_site")), "label": e.get("label", e["id"]),
+        places.append({"id": e["id"], "role": inverse.get(e["type"], "site"), "label": e.get("label", e["id"]),
                        "label_zh": e.get("label_zh", _chinese_label(e.get("label", e["id"]))), "position": e["facts"]["lowalt.site_position"],
                        "type": e["type"], "contract": contract(e["type"]), "details": copy.deepcopy(e["facts"])})
     groups: dict[str, list[dict]] = {}
@@ -138,13 +138,15 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
     for e in entities.values():
         if e["type"] != "lowalt:UAV" or generator and e["id"].startswith(generator["prefix"]):
             continue
-        groups.setdefault(e["facts"].get("assistant.fleet_id", e["id"]), []).append(e)
+        # Plan fleets name their members "<fleet>-<n>".
+        member = re.match(r"^(.+)-\d+$", e["id"])
+        groups.setdefault(member.group(1) if member else e["id"], []).append(e)
     fleets = []
     for identity, members in groups.items():
         first = members[0]
         cls = _common([e["facts"].get("lowalt.vehicle_class") for e in members])
         kinds = list(dict.fromkeys(kind for e in members for kind in tasks.get("vehicle_task_kinds", {}).get(e["id"], tasks.get("vehicle_kinds", {}).get(e["facts"].get("lowalt.vehicle_class"), []))))
-        role = first["facts"].get("assistant.fleet_role", _role(cls, kinds))
+        role = _role(cls, kinds)
         en, zh = ROLES[role][2:] if role in ROLES else (first.get("label", identity), first.get("label_zh", identity))
         start_position = _common([_position(e) for e in members])
         start = next((p for p in places if p["position"] == start_position), None)
@@ -154,7 +156,7 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
                        "battery_pct": _common([e["facts"]["lowalt.soc"] * 100 if "lowalt.soc" in e["facts"] else None for e in members]),
                        "payload_capacity_kg": _common([e["facts"].get("lowalt.payload_capacity_kg") for e in members]),
                        "contract": contract(first["type"]),
-                       "member_states": [{"id": e["id"], "position": _position(e),
+                       "member_states": [{"id": e["id"], "label": e.get("label", e["id"]), "label_zh": e.get("label_zh", e.get("label", e["id"])), "position": _position(e),
                                           "battery_pct": e["facts"]["lowalt.soc"] * 100 if "lowalt.soc" in e["facts"] else None,
                                           "payload_capacity_kg": e["facts"].get("lowalt.payload_capacity_kg"),
                                           "task_kinds": tasks.get("vehicle_task_kinds", {}).get(e["id"], tasks.get("vehicle_kinds", {}).get(cls, []))} for e in members]})
@@ -227,6 +229,17 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
             "entity_facts": {e["id"]: hashlib.sha256(json.dumps(e, sort_keys=True, ensure_ascii=False).encode()).hexdigest() for e in document.get("entities", [])}}
 
 
+MIRRORED = {"cooperation": {"incidents", "handoff_points"}}
+
+
+def _leaf_changes(before: Any, after: Any, prefix: str = "") -> list[dict]:
+    """Changed leaves as dotted names; display labels are derived and never a change of their own."""
+    if isinstance(before, dict) and isinstance(after, dict):
+        return [row for key in sorted(before.keys() | after.keys()) if key != "labels"
+                for row in _leaf_changes(before.get(key), after.get(key), f"{prefix}.{key}" if prefix else key)]
+    return [] if before == after else [{"name": prefix, "before": before, "after": after}]
+
+
 def diff(before: dict, after: dict) -> dict:
     if "run" in before:
         before = summarize(before)
@@ -245,9 +258,17 @@ def diff(before: dict, after: dict) -> dict:
             if fields:
                 result["changed"].append({"kind": kind, "id": identity, "label": new[identity]["label"], "fields": fields})
     for section in ("title", "city", "duration_s", "run_mode", "environment", "algorithms", "cooperation", "controls"):
-        if before.get(section) != after.get(section):
-            result["changed"].append({"kind": "scene", "id": section, "label": section,
-                                      "fields": [{"name": section, "before": before.get(section), "after": after.get(section)}]})
+        old_value, new_value = before.get(section), after.get(section)
+        if old_value == new_value:
+            continue
+        if isinstance(old_value, dict) and isinstance(new_value, dict):
+            # Incidents and handoff points already appear as events and places.
+            mirrored = MIRRORED.get(section, set())
+            fields = _leaf_changes({k: v for k, v in old_value.items() if k not in mirrored}, {k: v for k, v in new_value.items() if k not in mirrored})
+        else:
+            fields = [{"name": section, "before": old_value, "after": new_value}]
+        if fields:
+            result["changed"].append({"kind": "scene", "id": section, "label": section, "fields": fields})
     old_ids, new_ids = set(before.get("entity_ids", [])), set(after.get("entity_ids", []))
     result["entities"]["added"] = sorted(new_ids - old_ids)
     result["entities"]["removed"] = sorted(old_ids - new_ids)
@@ -322,18 +343,29 @@ def _response_estimate(summary: dict, incident: dict) -> dict | None:
 
 def expectations(document: dict, summary: dict) -> list[dict]:
     result = []
-    def add(identity: str, schema: str, where: dict, en: str, zh: str, *, layer: str = "behaviour", at=None, precheck=None, depends=()) -> str:
-        result.append({"id": identity, "text": en, "text_zh": zh, "layer": layer, "match": {"schema": schema, "where": where},
-                       "approx_s": at, "precheck": precheck, "depends_on": list(depends)})
+    def add(identity: str, schema: str, where: dict, en: str, zh: str, *, layer: str = "behaviour", at=None, precheck=None, depends=(), count: int | None = None, alternatives=()) -> str:
+        match = {"schema": schema, "where": where, **({"count": count} if count else {})}
+        result.append({"id": identity, "text": en, "text_zh": zh, "layer": layer, "match": match,
+                       "approx_s": at, "precheck": precheck, "depends_on": list(depends), **({"alternatives": list(alternatives)} if alternatives else {})})
         return identity
+    names = {e["id"]: (e.get("label", e["id"]), e.get("label_zh", e.get("label", e["id"]))) for e in document.get("entities", [])}
     for workload in summary["workloads"]:
+        if len(workload["tasks"]) > 2:
+            # A larger workload is one outcome to watch, not a row per order.
+            from .compiler import _task_label_zh
+            noun = workload.get("label") or workload["kind"]
+            add(f"workload:{workload['id']}:completed", "lowalt.task.completed", {"task": {"$in": list(workload["tasks"])}},
+                f"All {len(workload['tasks'])} {noun}{'' if noun.endswith('s') else 's'} are completed", f"全部 {len(workload['tasks'])} 个{workload.get('label_zh') or _task_label_zh(workload['kind'])}完成",
+                count=len(workload["tasks"]))
+            continue
         for i, task in enumerate(workload["tasks"]):
             times = workload["release"].get("times_s")
             at = times[i] if times and i < len(times) else None
-            created = add(f"task:{task}:created", "lowalt.task.created", {"task": task}, f"{task} appears", f"任务 {task} 出现", layer="setup", at=at)
-            assigned = add(f"task:{task}:assigned", "lowalt.task.assigned", {"task": task}, f"A UAV is allocated {task}", f"无人机获分配任务 {task}", depends=[created])
-            picked = add(f"task:{task}:picked_up", "lowalt.task.picked_up", {"task": task}, f"A UAV picks up {task}", f"无人机接取任务 {task}", depends=[assigned])
-            add(f"task:{task}:completed", "lowalt.task.completed", {"task": task}, f"{task} completes", f"任务 {task} 完成", depends=[picked])
+            en, zh = names.get(task, (task, task))
+            created = add(f"task:{task}:created", "lowalt.task.created", {"task": task}, f"{en} is released", f"{zh}发布", layer="setup", at=at)
+            assigned = add(f"task:{task}:assigned", "lowalt.task.assigned", {"task": task}, f"A UAV is assigned {en}", f"无人机获分配{zh}", depends=[created])
+            picked = add(f"task:{task}:picked_up", "lowalt.task.picked_up", {"task": task}, f"{en} is picked up", f"{zh}已取件", depends=[assigned])
+            add(f"task:{task}:completed", "lowalt.task.completed", {"task": task}, f"{en} is delivered", f"{zh}已送达", depends=[picked])
     coop = summary.get("cooperation")
     if coop:
         order = coop["responder"]["order"]
@@ -345,16 +377,17 @@ def expectations(document: dict, summary: dict) -> list[dict]:
             if "request_handoff" in order and coop["helpers"]["vehicles"]:
                 requested = add(f"incident:{identity}:requested", "lowalt.handoff.requested", {"incident": identity}, "If carrying an eligible task, the responder may ask helpers", "若携带可转交任务，响应机可能请求协助", precheck=_helper_estimate(summary), depends=[decision])
                 offered = add(f"incident:{identity}:offer", "lowalt.handoff.offer", {"incident": identity}, "A candidate replies to the handoff request", "候选协助机回复交接请求", depends=[requested])
-                accepted = add(f"incident:{identity}:accepted", "lowalt.handoff.accepted", {"incident": identity}, "If a helper accepts, one is selected", "若协助机接受，则选择其中一架", depends=[offered])
-                add(f"incident:{identity}:declined", "lowalt.handoff.declined", {"incident": identity}, "If no helper accepts, the handoff is declined", "若无人接受，则交接请求被拒绝", depends=[offered])
+                accepted = add(f"incident:{identity}:accepted", "lowalt.handoff.accepted", {"incident": identity}, "If a helper accepts, one is selected", "若协助机接受，则选择其中一架", depends=[offered], alternatives=[f"incident:{identity}:declined"])
+                add(f"incident:{identity}:declined", "lowalt.handoff.declined", {"incident": identity}, "If no helper accepts, the handoff is declined", "若无人接受，则交接请求被拒绝", depends=[offered], alternatives=[accepted])
                 dropped = add(f"incident:{identity}:dropped", "lowalt.handoff.dropped", {"incident": identity}, "If already picked up, the parcel is left at the handoff point", "若已取件，包裹被放在交接点", depends=[accepted])
                 add(f"incident:{identity}:transferred", "lowalt.handoff.transferred", {"incident": identity}, "The helper takes over the original delivery", "协助机接手原投递任务", depends=[accepted])
                 del dropped
             if any(option in order for option in ("respond_now", "request_handoff", "finish_then_respond")):
-                responding = add(f"incident:{identity}:responding", "lowalt.incident.responding", {"incident": identity}, "If permitted, the responder flies above the incident", "若条件允许，响应机飞至事件上方", depends=[decision])
+                responding = add(f"incident:{identity}:responding", "lowalt.incident.responding", {"incident": identity}, "If permitted, the responder flies above the incident", "若条件允许，响应机飞至事件上方", depends=[decision], alternatives=[f"incident:{identity}:reported"] if "report_only" in order else [])
                 add(f"incident:{identity}:photographed", "lowalt.incident.photographed", {"incident": identity}, "After responding and dwelling, the photograph event is recorded", "响应并悬停后记录拍摄事件", depends=[responding])
             if "report_only" in order:
-                add(f"incident:{identity}:reported", "lowalt.incident.reported", {"incident": identity}, "If report-only is chosen, the incident is reported", "若选择仅报告，则报告事件", depends=[decision])
+                add(f"incident:{identity}:reported", "lowalt.incident.reported", {"incident": identity}, "If report-only is chosen, the incident is reported", "若选择仅报告，则报告事件", depends=[decision],
+                    alternatives=[f"incident:{identity}:responding"] if any(option in order for option in ("respond_now", "request_handoff", "finish_then_respond")) else [])
     for event in summary["events"]:
         if event["kind"] == "person_fall":
             continue
@@ -377,7 +410,7 @@ def interactions(summary: dict) -> dict:
         if summary.get("cooperation"):
             for state in fleet.get("member_states", []):
                 if state["id"] != fleet["id"]:
-                    lanes.append({"id": state["id"], "label": state["id"], "label_zh": state["id"], "kind": "vehicle"})
+                    lanes.append({"id": state["id"], "label": state.get("label", state["id"]), "label_zh": state.get("label_zh", state["id"]), "kind": "vehicle"})
     for place in summary["places"]:
         lanes.append({"id": place["id"], "label": place["label"], "label_zh": place["label_zh"], "kind": "place"})
     steps = []

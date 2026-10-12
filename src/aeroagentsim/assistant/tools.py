@@ -70,12 +70,12 @@ def validate_arguments(schema: dict[str, Any], value: Any, path: str = "argument
 
 
 def operation_catalog() -> tuple[dict[str, Any], str]:
-    from .operations import OPERATIONS
+    from .operations import OPERATION_SPECS as OPERATIONS
 
     lines = []
     branches = []
     for name, spec in OPERATIONS.items():
-        params = spec["schema"]
+        params = spec["parameters"]
         fields = ", ".join(params.get("properties", {}))
         lines.append(f"{name}({fields}): {spec['description']}")
         branches.append(object_schema({"id": STRING, "op": {"type": "string", "enum": [name]}, "params": params}, ("op", "params")))
@@ -163,7 +163,7 @@ def short_scene(summary: Any) -> Any:
 
 def workspace_operations(operations: list[dict[str, Any]], baseline: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Apply only changed arrangements to an already-confirmed real workspace."""
-    from .operations import OPERATIONS
+    from .operations import OPERATION_SPECS as OPERATIONS
 
     old = {op["id"]: op for op in baseline}
     new = {op["id"]: op for op in operations}
@@ -173,14 +173,14 @@ def workspace_operations(operations: list[dict[str, Any]], baseline: list[dict[s
 
     def translate(op: dict[str, Any], target: str, subject: str | None, changes: dict[str, Any]) -> dict[str, Any]:
         spec = OPERATIONS[target]
-        properties = spec["schema"].get("properties", {})
+        properties = spec["parameters"].get("properties", {})
         params = copy.deepcopy(changes)
         if subject is not None:
             key = subject if subject in properties else "id" if "id" in properties else None
             if key is None:
                 raise ValueError(f"{op['id']}: {target} does not declare the entity selector / 操作未声明对象选择字段")
             params[key] = op["params"]["id"]
-        validate_arguments(spec["schema"], params, op["id"])
+        validate_arguments(spec["parameters"], params, op["id"])
         return {"id": op["id"], "op": target, "params": params}
 
     for op in operations:
@@ -290,6 +290,7 @@ class ToolRunner:
         from aeroagentsim.services.app import configuration_differences
 
         from .compiler import compile_plan, resolve_base
+        from .scene import diff as scene_diff
 
         session = self.sessions.get(identifier)
         previous = session["plans"].get(str(session["plan_version"]))
@@ -313,8 +314,11 @@ class ToolRunner:
         directory = self.sessions.plan_directory(identifier, version)
         directory.parent.mkdir(parents=True, exist_ok=True)
         result = compile_plan(ctx, base, compile_operations, directory)
-        changes = configuration_differences({"previous": previous["_document"], "current": result.document}) if previous and previous["compile"]["ok"] and result.ok else []
-        diff_previous = {"changes": changes[:80], "total_changes": len(changes), "operations": operation_diff(previous["operations"] if previous else [], operations)}
+        comparable = previous is not None and previous["compile"]["ok"] and result.ok
+        changes = configuration_differences({"previous": previous["_document"], "current": result.document}) if comparable else []
+        # The board renders scene-level differences; operation and raw config deltas stay alongside.
+        operations_changed = operation_diff(previous["operations"] if previous else [], operations)
+        diff_previous = {**scene_diff(previous["scene"], result.summary), "operations": operations_changed, "total_changes": len(changes)} if comparable else None
         plan = {"version": version, "created_at": now(), "note": note, "variant": variant, "parent": parent,
                 "base": base, "base_label": resolved.label, "title": title, "summary": summary,
                 "operations": operations, "assumptions": assumptions, "open_questions": open_questions,
@@ -329,7 +333,7 @@ class ToolRunner:
             self.on_plan(identifier, version)
         if not result.ok:
             return {"version": version, "ok": False, "errors": result.errors, "hint": "Fix the named operation ids and fields with revise_plan; this draft cannot be confirmed / 请用 revise_plan 修复指定操作和字段；该草稿不能确认"}
-        compact_diff = {"total_changes": len(changes), "changes": changes[:8], "operations": {key: [{"id": op["id"], "op": op.get("op", op.get("after", {}).get("op"))} for op in rows] for key, rows in diff_previous["operations"].items()}}
+        compact_diff = {"total_changes": len(changes), "changes": changes[:8], "operations": {key: [{"id": op["id"], "op": op.get("op", op.get("after", {}).get("op"))} for op in rows] for key, rows in operations_changed.items()}}
         return {"version": version, "ok": True, "validation": "pending", "scene": short_scene(result.summary),
                 "operations": [{"id": op["id"], "op": op["op"]} for op in operations],
                 "diff_previous": compact_diff, "warnings": result.warnings,

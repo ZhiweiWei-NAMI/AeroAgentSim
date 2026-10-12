@@ -217,7 +217,11 @@ def _rule_package(document: dict, directory: Path) -> dict:
 
 
 def _fleet_entities(document: dict, identity: str) -> list[dict]:
-    return [e for e in document["entities"] if e["facts"].get("assistant.fleet_id") == identity]
+    """A plan fleet is its members `<fleet>-<n>` (generated base-fleet members are not a plan fleet)."""
+    pattern = re.compile(rf"^{re.escape(identity)}-\d+$")
+    generator = document.get("generators", {}).get("fleet")
+    return [e for e in document["entities"] if e["type"] == "lowalt:UAV" and pattern.match(e["id"])
+            and not (generator and e["id"].startswith(generator["prefix"]))]
 
 
 def _vehicles(document: dict, values: list[str], field_name: str) -> list[str]:
@@ -406,6 +410,16 @@ def _refresh_controls(ctx: CompileContext, scene: BaseScene, document: dict, war
                 scene.controls[knob["id"]] = "interactive" if streams[0]["initial_watermark_ns"] == 0 else "scheduled"
 
 
+def _admit_task_kind(document: dict, kind: str) -> None:
+    """Older starting points declare a narrower task-kind enum; admit a supported kind in canonical order."""
+    from aeroagentsim.packs.lowalt.overlay import TASK_KINDS
+
+    for row in document.get("registry", {}).get("fields", []):
+        enum = row.get("schema", {}).get("enum") if row.get("id") == "lowalt.task_kind" else None
+        if isinstance(enum, list) and kind not in enum and kind in TASK_KINDS:
+            row["schema"]["enum"] = [value for value in TASK_KINDS if value in enum or value == kind]
+
+
 def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name: str, p: dict,
                      directory: Path, warnings: list[dict], op_id: str) -> None:
     if name == "set_control":
@@ -511,10 +525,9 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                     "label": p.get("label", p["id"]), "label_zh": p.get("label_zh", "交接点 " + p["id"])})
                 return
             _overlay(document)
-            fields = document["registry"]["fields"]
-            if not any(f["id"] == "assistant.place_role" for f in fields):
-                fields.append({"id": "assistant.place_role", "type": "lowalt:Site", "schema": {"type": "string"}, "metadata": {"role": "config"}})
-            facts = {"lowalt.site_position": _position(document, p["at"], "at"), "lowalt.site_open": True, "lowalt.site_capacity": p.get("capacity", 1), "assistant.place_role": p["role"]}
+            # The role is the contract type (lowalt:Restaurant, lowalt:Customer…); a separate role fact would
+            # need a writer binding the simulator does not have.
+            facts = {"lowalt.site_position": _position(document, p["at"], "at"), "lowalt.site_open": True, "lowalt.site_capacity": p.get("capacity", 1)}
             if p["role"] == "kitchen":
                 facts["lowalt.food_preparation_s"] = float(p.get("preparation_s", 30))
             if p["role"] == "charging_pad":
@@ -574,10 +587,6 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             _fail("id", "Fleet id already used", "机群标识已被使用")
         _unique(document, p["id"])
         _overlay(document)
-        for key in ("assistant.fleet_id", "assistant.fleet_role"):
-            fields = document["registry"].setdefault("fields", [])
-            if not any(f["id"] == key for f in fields):
-                fields.append({"id": key, "type": "lowalt:UAV", "schema": {"type": "string"}, "metadata": {"role": "config"}})
         vehicle_class, kinds, label, label_zh = ROLES[p["role"]]
         template = document.get("generators", {}).get("fleet")
         if template is None:
@@ -593,7 +602,7 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             _unique(document, identity)
             facts = copy.deepcopy(template["facts"])
             facts.update({"lowalt.position": _position(document, p["start"], "start"), "lowalt.vehicle_class": vehicle_class,
-                          "lowalt.wind_limit_mps": WIND_LIMITS[vehicle_class], "assistant.fleet_id": p["id"], "assistant.fleet_role": p["role"]})
+                          "lowalt.wind_limit_mps": WIND_LIMITS[vehicle_class]})
             if "battery_pct" in p:
                 facts["lowalt.soc"] = p["battery_pct"] / 100
                 facts["lowalt.motion_energy_j"] = facts["lowalt.capacity_j"] * facts["lowalt.soc"]
@@ -635,8 +644,9 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                     identity = f"{p['fleet']}-{i + 1}"
                     _unique(document, identity)
                     entity = copy.deepcopy(prototype); entity["id"] = identity
-                    role = ROLES[entity["facts"]["assistant.fleet_role"]]
-                    entity.update(label=f"{role[2]} {i + 1}", label_zh=f"{role[3]} {i + 1}")
+                    # Members are named "<role label> <n>"; new members continue the numbering.
+                    entity.update(label=re.sub(r"\s*\d+$", "", prototype.get("label", p["fleet"])) + f" {i + 1}",
+                                  label_zh=re.sub(r"\s*\d+$", "", prototype.get("label_zh", p["fleet"])) + f" {i + 1}")
                     document["entities"].append(entity); members.append(entity)
                     tasks.setdefault("vehicle_task_kinds", {})[identity] = list(tasks["vehicle_task_kinds"][prototype["id"]])
             elif count < len(members):
@@ -656,6 +666,7 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                 entity["facts"]["lowalt.position"] = _position(document, p["start"], "start")
         return
     if name == "add_orders":
+        _admit_task_kind(document, p["kind"])
         _add_orders(document, p)
         return
     if name in {"set_orders", "remove_orders"}:
@@ -900,7 +911,35 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         baseline = load_scenario(document, base=files)
         base_summary = summarize(baseline.document, directory=files, controls=scene.controls)
         # Keep the authored document: loader expansion must remain repeatable.
-        from aeroagentsim.packs.lowalt.template import expand
+        from aeroagentsim.packs.lowalt.template import expand as expand_template
+
+        def ensure_contracts(target: dict) -> None:
+            """Cooperation needs the frozen AeroGraph incident/cargo-transfer contracts in the plan's snapshot."""
+            if not any(e["plugin"] == "lowalt_tasks" and "cooperation" in e.get("config", {}) for e in target["engines"].values()):
+                return
+            snapshot = target["registry"].get("snapshot")
+            if snapshot is None:
+                snapshot = "registry.plan.snapshot.json"
+                baseline.compiled.write_snapshot(files / snapshot)
+                target["registry"].pop("compile", None)
+                target["registry"]["snapshot"] = snapshot
+            path = Path(snapshot) if Path(snapshot).is_absolute() else files / snapshot
+            if not path.resolve().is_relative_to(files.resolve()):
+                _fail("registry.snapshot", "Registry snapshot must be inside plan files", "注册表快照必须位于计划文件内部")
+            _write(path, _cooperation_module().merge_contract_snapshot(json.loads(path.read_text())))
+
+        def expand(target: dict) -> None:
+            # Expansion reads the snapshot; like the loader, resolve it against the plan files.
+            ensure_contracts(target)
+            snapshot = target["registry"].get("snapshot")
+            if snapshot is not None and not Path(snapshot).is_absolute():
+                target["registry"]["snapshot"] = str(files / snapshot)
+            try:
+                expand_template(target)
+            finally:
+                if snapshot is not None:
+                    target["registry"]["snapshot"] = snapshot
+
         if "generators" in document:
             expand(document)
         seen: set[str] = set()
@@ -927,19 +966,15 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         coop = next((e["config"].get("cooperation") for e in document["engines"].values() if e["plugin"] == "lowalt_tasks"), None)
         if coop is not None and not errors:
             module = _cooperation_module()
-            snapshot = document["registry"].get("snapshot")
-            if snapshot is None:
-                snapshot = "registry.plan.snapshot.json"
-                baseline.compiled.write_snapshot(files / snapshot)
-                document["registry"].pop("compile", None)
-                document["registry"]["snapshot"] = snapshot
-            path = Path(snapshot) if Path(snapshot).is_absolute() else files / snapshot
-            if not path.resolve().is_relative_to(files.resolve()):
-                _fail("registry.snapshot", "Registry snapshot must be inside plan files", "注册表快照必须位于计划文件内部")
-            _write(path, module.merge_contract_snapshot(json.loads(path.read_text())))
+            ensure_contracts(document)
             vehicles = {e["id"] for e in document["entities"] if e["type"] == "lowalt:UAV"}
             module.validate_config(coop, vehicles=vehicles)
-            module.expand(document)
+            snapshot = document["registry"]["snapshot"]
+            document["registry"]["snapshot"] = str(files / snapshot) if not Path(snapshot).is_absolute() else snapshot
+            try:
+                module.expand(document)
+            finally:
+                document["registry"]["snapshot"] = snapshot
             if not any(e["plugin"] in {"lowalt_city_capture", "traffic_camera_capture"} for e in document["engines"].values()):
                 warnings.append({"op_id": None, "field": "photograph", "message": "Photograph events are recorded, but this scene has no city camera for an image artifact / 此场景可记录拍摄事件，但没有城市相机生成照片文件"})
         if not errors:

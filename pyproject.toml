@@ -56,6 +56,7 @@ aeroagentsim = "aeroagentsim.services.cli:main"
 # python -m pip install -e ./aerokernel -e '.[server]'.
 [project.entry-points."aeroagentsim.engines"]
 lowalt_tasks = "aeroagentsim.packs.lowalt.tasks:build"
+lowalt_incident_capture = "aeroagentsim.packs.lowalt.incident_capture:build"
 lowalt_city_capture = "aeroagentsim.packs.lowalt.city_capture:build"
 lowalt_airspace = "aeroagentsim.packs.lowalt.airspace:build"
 lowalt_energy = "aeroagentsim.packs.lowalt.energy:build"

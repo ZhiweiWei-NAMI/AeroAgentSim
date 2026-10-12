@@ -154,7 +154,7 @@ export function fillGrid(
 
 export function pairAnchors(from: Point[], to: Point[], max: number = 96): Array<{ a: Point; b: Point; delay: number }> {
   const n = Math.min(max, Math.max(from.length, to.length));
-  if (n === 0) return [];
+  if (n === 0 || !from.length || !to.length) return [];
   const rand = mulberry32(1337);
   const resample = (list: Point[]): Point[] => {
     if (list.length === 0) return [];
@@ -398,7 +398,8 @@ export function rewire(options: RewireOptions): Promise<void> {
       if (info.phase === 'done') {
         // Hand over to the real panel: fade the canvas out, then clean up.
         setScan(1);
-        if (fadeFrom < 0) fadeFrom = now;
+        // Everything is developed: whatever the last frame held (a skipped scan, a pulse) must not linger as a ghost.
+        if (fadeFrom < 0) { fadeFrom = now; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); }
         const k = Math.min(1, (now - fadeFrom) / 140);
         canvas.style.opacity = String(1 - k);
         if (k >= 1) { finish(); return; }
