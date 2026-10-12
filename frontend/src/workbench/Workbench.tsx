@@ -7,7 +7,7 @@ import { localized } from '../i18n/translate';
 import { TemplateApi, type RunKpis, type ScenarioTemplate } from '../newcomers/api';
 import { businessProjection, resultsAt, type RecordedBusinessEvent } from '../newcomers/projection';
 import { runStatusLabel } from '../newcomers/presentation';
-import { metricLabel } from '../newcomers/metric-help';
+import { metricHelp, metricLabel } from '../newcomers/metric-help';
 import { readableLabel } from '../pages/inspection-format';
 import { displayTime } from '../pages/display-time';
 import { CauseTracePanel } from '../trace/CauseTracePanel';
@@ -71,6 +71,9 @@ export default function Workbench() {
   const problemText = (problem: unknown) => problem instanceof ApiError ? problem.detail : String(problem);
 
   // Project
+  const [previewDraft, setPreviewDraft] = useState<{ id: string; scenario: Project['scenario']; dirty: boolean }>();
+  const previewChanged = useCallback((id: string, scenario: Record<string, unknown>, dirty: boolean) => setPreviewDraft({ id, scenario: scenario as Project['scenario'], dirty }), []);
+  const [inspectorCompact, setInspectorCompact] = useState(true);
   const [project, setProject] = useState<Project>(), [projectError, setProjectError] = useState<string>();
   useEffect(() => {
     setProject(undefined); setProjectError(undefined);
@@ -117,13 +120,14 @@ export default function Workbench() {
     setMetadataBoundary(previous => ({ runId, ns: previous?.runId === runId && BigInt(previous.ns) > BigInt(waiting.at_ns) ? previous.ns : waiting.at_ns }));
   }, [runId, waiting?.at_ns]);
   // Host pacing of the attached live run (simulation speed, not playback speed).
+  const canSetSpeed = !!record && !TERMINAL.has(record.status);
   useEffect(() => {
     setSpeedState(undefined);
-    if (!runId || mode !== 'live' || TERMINAL.has(record?.status ?? '')) return;
+    if (!runId || mode !== 'live' || !canSetSpeed) return;
     const abort = new AbortController();
     void api.speed(runId, abort.signal).then(result => setSpeedState(result.factor)).catch(problem => { if (!abort.signal.aborted) toast('error', problemText(problem)); });
     return () => abort.abort();
-  }, [api, runId, mode]);
+  }, [api, runId, mode, canSetSpeed]);
   const changeSpeed = async (factor: number | null) => {
     if (!runId || speedPending) return;
     setSpeedPending(true);
@@ -134,8 +138,11 @@ export default function Workbench() {
 
   // Selection, camera and display-only state
   const [selected, setSelected] = useState<EntityKey>();
+  const [selectionOrigin, setSelectionOrigin] = useState<'manual' | 'director'>('manual');
   const [operateRequest, setOperateRequest] = useState(0);
-  const [camera, setCamera] = useState<Camera>('orbit'), [director, setDirector] = useState(true), [directorPaused, setDirectorPaused] = useState(false);
+  const [camera, setCamera] = useState<Camera>('orbit'), [director, setDirector] = useState(true), [directorPaused, updateDirectorPaused] = useState(!!query.get('sel'));
+  const directorPause = useRef(directorPaused);
+  const setDirectorPaused = (value: boolean) => { directorPause.current = value; updateDirectorPaused(value); };
   const [focus, setFocus] = useState<{ position: [number, number, number]; revision: number }>();
   const viewport = useRef<Viewport>();
   const [leftOpen, setLeftOpen] = useState(true), [rightOpen, setRightOpen] = useState(true);
@@ -152,16 +159,21 @@ export default function Workbench() {
   const [graphPosition, setGraphPosition] = useState<{ x: number; y: number }>();
   const graphDrag = useRef<{ x: number; y: number; left: number; top: number }>();
   const graphWindow = useRef<HTMLElement>(null);
+  const fitGraphPosition = (x: number, y: number, rect: DOMRect) => {
+    const frame = document.querySelector('[data-testid=wb-scene-frame]')?.getBoundingClientRect();
+    const left = frame?.left ?? 12, top = frame?.top ?? 12;
+    const inspector = document.querySelector('.wb-right')?.getBoundingClientRect();
+    const right = Math.min(frame?.right ?? window.innerWidth - 12, inspector ? inspector.left - 12 : window.innerWidth - 12);
+    return { x: Math.max(left, Math.min(right - rect.width, x)), y: Math.max(top, Math.min((frame?.bottom ?? window.innerHeight - 12) - rect.height, y)) };
+  };
   useEffect(() => {
     if (!query.get('graph') || !graphWindow.current) return;
     const clamp = () => {
       const rect = graphWindow.current?.getBoundingClientRect();
       if (!rect) return;
-      const minTop = (document.querySelector('[data-testid=wb-top]')?.getBoundingClientRect().bottom ?? 0) + 12;
       setGraphPosition(previous => {
         if (!previous) return previous;
-        const x = Math.max(12, Math.min(window.innerWidth - rect.width - 12, previous.x));
-        const y = Math.max(minTop, Math.min(window.innerHeight - rect.height - 12, previous.y));
+        const { x, y } = fitGraphPosition(previous.x, previous.y, rect);
         return x === previous.x && y === previous.y ? previous : { x, y };
       });
     };
@@ -169,14 +181,17 @@ export default function Workbench() {
     window.addEventListener('resize', clamp);
     return () => { observer.disconnect(); window.removeEventListener('resize', clamp); };
   }, [query.get('graph')]);
-  useEffect(() => { setSelected(undefined); setTraceStack([]); setDirectorPaused(false); setCamera('orbit'); }, [runId]);
+  useEffect(() => { setSelected(undefined); setSelectionOrigin('manual'); setTraceStack([]); setDirectorPaused(!!query.get('sel')); setCamera('orbit'); }, [runId]);
   useEffect(() => {
     if (!session || selected) return;
     const wanted = query.get('sel');
     const entity = wanted ? [...session.store.entities.values()].find(row => row.key.id === wanted) : undefined;
-    if (entity) { setSelected(entity.key); session.store.select(entity.key); }
+    if (entity) { setDirectorPaused(true); setSelectionOrigin('manual'); setSelected(entity.key); session.store.select(entity.key); }
   }, [session?.store, session?.revision]);
   const select = (key: EntityKey | undefined, fly = false) => {
+    // Every explicit selection owns the camera until the user resumes the director.
+    setDirectorPaused(true);
+    setSelectionOrigin('manual');
     setSelected(key); session?.store.select(key);
     update({ sel: key?.id });
     const spatial = !!key && !!session && !!resolveBinding(session.store.header, session.store.entities.get(entityId(key))?.typeId ?? '');
@@ -241,7 +256,7 @@ export default function Workbench() {
     fit(); const observer = new ResizeObserver(fit); observer.observe(frame);
     return () => observer.disconnect();
   }, [!!graph, dockOpen]);
-  const entityNames = useMemo(() => new Map(store ? [...store.entities.values()].map(entity => [entity.key.id, displayName(entity, store.header, locale)]) : []), [store, store?.entities.size, locale]);
+  const entityNames = useMemo(() => new Map(store ? [...store.entities.values()].map(entity => [entity.key.id, displayName(entity, store.header, locale)]) : []), [store, session?.revision, locale]);
 
   // Cause → effect trace
   const [traceStack, setTraceStack] = useState<CauseRef[]>([]);
@@ -283,7 +298,13 @@ export default function Workbench() {
   const control = async (action: 'start' | 'pause' | 'resume' | 'stop') => {
     if (!runId || pending) return;
     setPending(action);
-    try { await api.control(runId, action); setRecordsKey(value => value + 1); if (action === 'start') session?.backToLive(); }
+    try {
+      const apply = () => api.control(runId, action);
+      // A pause/stop must follow the input acknowledgement already in flight.
+      // Share the same queue used for source progress and event admission.
+      await (session ? session.inputSource.serialize(apply) : apply());
+      setRecordsKey(value => value + 1); if (action === 'start') session?.backToLive();
+    }
     catch (problem) { toast('error', problemText(problem)); setPending(undefined); setRecordsKey(value => value + 1); }
   };
 
@@ -308,6 +329,7 @@ export default function Workbench() {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setPalette(value => !value); return; }
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === ' ' && session) { event.preventDefault(); event.stopPropagation(); session.togglePlayback(); }
+      else if (event.key === 'i' && session?.followingLive && mode === 'live' && ['running', 'paused', 'waiting_for_input'].includes(status ?? '')) { update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }
       else if (event.key === 'g' && session) update({ graph: query.get('graph') ? undefined : '1' });
       else if (event.key === 'c' && project) update({ panel: panel ? undefined : 'controls' });
       else if (event.key === 'r') update({ records: query.get('records') ? undefined : '1' });
@@ -321,17 +343,18 @@ export default function Workbench() {
 
   const spatial = !!store && (store.entities.size ? [...store.entities.values()].some(entity => resolveBinding(store.header, entity.typeId)) : store.header.presentation.length > 0);
   const live = mode === 'live' && !!status && !TERMINAL.has(status);
-  const history = !!session && live && !session.followingLive;
-  const canOperate = !!session && session.followingLive && mode === 'live' && ['initialized', 'running', 'paused', 'waiting_for_input'].includes(status ?? '');
+  const history = !!session && mode === 'live' && !session.followingLive;
+  const canOperate = !!session && session.followingLive && mode === 'live' && ['running', 'paused', 'waiting_for_input'].includes(status ?? '');
   const showGallery = (!projectId && !runId && !query.has('contract') && !query.has('records')) || query.get('gallery') === '1';
-  const title = project?.name ?? (record ? localized(record, 'template_title', locale) ?? record.workspace_name ?? record.scenario : undefined);
+  const title = (project ? project.name === template?.title ? localized(template, 'title', locale) : project.name : undefined) ?? (record ? localized(record, 'template_title', locale) ?? record.workspace_name ?? record.scenario : undefined);
   const contractType = query.has('contract') ? query.get('type') ?? '' : undefined;
   const selectedSpatial = !!selected && !!store && !!resolveBinding(store.header, store.entities.get(entityId(selected))?.typeId ?? '');
   const following = camera === 'follow' && selectedSpatial;
   // Keep the usable scene and panel bounds tied to the panels actually on screen.
   const layout = { '--wb-left-space': query.get('records') ? 'calc(var(--wb-left) + 60px)' : leftOpen ? 'var(--wb-left)' : '0px',
-    '--wb-right-space': panel ? 'var(--wb-config-width)' : rightOpen ? 'var(--wb-right)' : '0px',
-    '--wb-dock': dockOpen ? 'min(38vh, 360px)' : '92px', '--wb-kpi-height': `${kpiHeight}px` } as CSSProperties;
+    '--wb-right-space': panel ? 'var(--wb-config-width)' : rightOpen && !inspectorCompact ? 'var(--wb-right)' : '0px',
+    '--wb-overlay-right-space': !panel && rightOpen && inspectorCompact ? '250px' : 'var(--wb-right-space)',
+    '--wb-dock': dockOpen ? 'min(38vh, 360px)' : '92px', '--wb-kpi-height': `${kpiHeight}px`, '--wb-notice-height': history || session?.error || session?.transportError || session?.inputSource.error ? '58px' : '0px' } as CSSProperties;
 
   return <div className="wb" style={layout} data-testid="workbench" data-run={runId ?? ''} data-status={status ?? 'none'} data-mode={mode ?? ''} data-cut={session?.cut ?? ''}>
     {/* Stage: the one 3D world */}
@@ -341,17 +364,18 @@ export default function Workbench() {
         {session && store && clock && spatial && <ViewportView key={runId} store={store} clock={clock} selected={selected} mode={camera} quality="med" trails commitCut={session.cut} highlights={traceModel?.involved}
           simple bare focus={focus} onViewport={handle => { viewport.current = handle; }}
           director={{ enabled: director, active: (live && session.followingLive) || clock.playing, paused: directorPaused, events: projected?.events ?? [] }}
-          onDirectorPause={() => setDirectorPaused(true)} onDirectorSubject={key => { setSelected(key); store.select(key); }}
+          onDirectorPause={() => setDirectorPaused(true)} onDirectorSubject={key => { if (!directorPause.current) { setSelectionOrigin('director'); setSelected(key); store.select(key); } }}
           onCameraMode={value => { if (value !== 'cinematic') setCamera(value); }}
           onSelect={key => select(key)} onTick={tick} onError={problem => toast('error', String(problem))} onQuality={() => undefined}
           onSeekCommit={(_, index) => session.seekCut(index)} />}
         {session && store && !spatial && <div className="wb-glass" style={{ position: 'absolute', inset: 'calc(var(--wb-top) + 36px) calc(var(--wb-right) + 36px) calc(var(--wb-dock) + 36px) calc(var(--wb-left) + 36px)', overflow: 'auto', padding: 12 }}>
           <p className="hint">{L('This world has no spatial objects; it is shown as relations and state.', '这个世界没有空间对象，以关系和状态的形式展示。')}</p>
           <NonspatialViews store={store} selected={selected} onSelect={key => select(key)} view="graph" /></div>}
-        {!session && project && <><ScenePreview bare workspace={project} api={apiBase} layers={['ground', 'buildings', 'roads', 'entities', 'airspace']} />
-          <div className="wb-stage-note">{runId ? L('Connecting to the run…', '正在连接运行…') : project.latest_version ? L('Draft preview · Initialize to see the authoritative world at t = 0', '草稿预览 · 初始化后可查看 t = 0 时的权威世界') : L('Draft preview · validate and save a version, then initialize', '草稿预览 · 校验并保存版本后再初始化')}</div></>}
+        {!session && project && <><ScenePreview bare workspace={previewDraft?.id === project.id ? { ...project, scenario: previewDraft.scenario } : project} api={apiBase} layers={['ground', 'buildings', 'roads', 'entities', 'airspace']} />
+          <div className="wb-stage-note">{runId ? L('Connecting to the run…', '正在连接运行…') : previewDraft?.id === project.id && previewDraft.dirty ? L('Unsaved draft preview · save a version to run these edits', '未保存草稿预览 · 保存版本后才能运行这些修改') : project.latest_version ? L('Draft preview · Initialize to see the authoritative world at t = 0', '草稿预览 · 初始化后可查看 t = 0 时的权威世界') : L('Draft preview · validate and save a version, then initialize', '草稿预览 · 校验并保存版本后再初始化')}</div></>}
       </Suspense>
-      {!project && !session && !showGallery && <div className="wb-stage-empty"><div><h2>{projectError ? L('Project unavailable', '项目不可用') : L('Loading project…', '正在加载项目…')}</h2>{projectError && <p>{projectError}</p>}</div></div>}
+      {!project && !session && !showGallery && <div className="wb-stage-empty"><div><h2>{projectError ? L('Project unavailable', '项目不可用') : projectId || runId ? L('Loading project…', '正在加载项目…') : L('Run records', '运行记录')}</h2>{projectError ? <p>{projectError}</p> : !projectId && !runId && <p>{L('Open a run from the list, or choose a scenario to create a project.', '从列表打开运行，或选择场景新建项目。')}</p>}</div></div>}
+
     </div>
 
     {/* Command bar */}
@@ -378,7 +402,7 @@ export default function Workbench() {
         {mode === 'live' && status === 'paused' && <button className="wb-btn go" data-testid="wb-resume" disabled={!!pending} onClick={() => void control('resume')}>▶ {pending === 'resume' ? L('Resuming…', '恢复中…') : L('Resume', '恢复')}</button>}
         {live && speed !== undefined && <select className="wb-btn" disabled={speedPending} aria-label={L('Simulation speed', '仿真速度')} title={L('Simulation speed: how fast simulated time advances against the wall clock. Results do not change.', '仿真速度：仿真时间相对墙钟的推进速度，不影响结果。')} data-testid="wb-speed"
           value={speed === null ? 'max' : String(speed)} onChange={event => void changeSpeed(event.target.value === 'max' ? null : Number(event.target.value))}>
-          {[...new Set([0.5, 1, 2, 5, 10, 30, 100, ...(speed ? [speed] : [])])].sort((a, b) => a - b).map(value => <option key={value} value={String(value)}>{value}×</option>)}
+          {[...new Set([0.5, 1, 2, 5, 10, 50, 100, ...(speed ? [speed] : [])])].sort((a, b) => a - b).map(value => <option key={value} value={String(value)}>{value}×</option>)}
           <option value="max">{L('Max', '最快')}</option>
         </select>}
         {live && <button className="wb-btn danger" data-testid="wb-stop" disabled={!!pending} onClick={() => { if (confirm(L('Stop this run? It cannot be resumed; its record is kept.', '停止此次运行？停止后无法继续，记录会保留。'))) void control('stop'); }}>■ {L('Stop', '停止')}</button>}
@@ -395,26 +419,28 @@ export default function Workbench() {
 
     {/* KPI cards */}
     {session && kpiIds.length > 0 && <div ref={kpiPanel} className="wb-kpis" data-testid="wb-kpis">
-      {kpiIds.slice(0, 5).map(id => { const kpi = kpis[id], label = metricLabel(id, kpi?.label ?? readableLabel(id, locale), locale, kpi?.label_zh); return <div key={id} className="wb-kpi wb-glass" title={`${label} · ${id}`}><small>{label}</small><strong className="wb-mono">{kpi?.value == null ? '—' : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1)}</strong><em>{kpi?.unit === 'count' ? '' : kpi?.unit}</em></div>; })}
+      {kpiIds.slice(0, 5).map(id => { const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh); return <div key={id} className="wb-kpi wb-glass" title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, id].filter(Boolean).join(' · ')}><small>{label}</small><strong className="wb-mono">{kpi?.value == null ? '—' : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1)}</strong><em>{kpi?.unit === 'count' ? '' : kpi?.unit}</em></div>; })}
     </div>}
 
-    {history && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing history', '正在查看历史时刻')} · <span className="wb-mono">{store && clock ? displayTime(clock.ns, store.header.start.ns) : ''}</span>{status === 'paused' ? L(' — simulation paused', ' —— 仿真已暂停') : status === 'initialized' ? L(' — awaiting Start', ' —— 等待启动') : L(' — live run attached', ' —— 已连接实时运行')}<button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Back to live', '返回实时')} <span className="wb-kbd">L</span></button></div>}
-    {session && ['waiting_for_input', 'input_timeout'].includes(status ?? '') && <div className="wb-waiting wb-glass" data-testid="wb-waiting"><WaitingBanner waiting={waiting} terminal={status === 'input_timeout'} onInject={() => { session.backToLive(); update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }} /></div>}
+    {history && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing history', '正在查看历史时刻')} · <span className="wb-mono">{store && clock ? displayTime(clock.ns, store.header.start.ns) : ''}</span><button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Back to live', '返回实时')} <span className="wb-kbd">L</span></button></div>}
+    {session && (status === 'input_timeout' || canOperate && status === 'waiting_for_input') && <div className="wb-waiting wb-glass" data-testid="wb-waiting"><WaitingBanner waiting={waiting} terminal={status === 'input_timeout'} onInject={() => { session.backToLive(); update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }} /></div>}
     {session?.error && <div className="wb-history" role="alert" style={{ background: 'rgba(190,40,30,.92)' }}>{session.error}</div>}
     {session?.transportError && !session.error && <div className="wb-history" role="status" style={{ background: 'rgba(160,110,0,.92)' }}>{L('Reconnecting to the journal stream…', '正在重新连接日志流…')} {session.transportError}</div>}
+
+    {session?.inputSource.error && <div className="wb-history" role="alert" data-testid="wb-input-error">{L('Operator input source unavailable', '操作员输入源暂不可用')} · {session.inputSource.error}</div>}
 
     {/* Left: objects or records */}
     {query.get('records') ? <RecordsPanel api={api} projectId={project?.id} current={runId} refreshKey={recordsKey}
         onOpen={run => update({ run: run.id, mode: TERMINAL.has(run.status) ? 'replay' : 'live', cut: undefined, sel: undefined, records: undefined }, true, run.studio_workspace ? `/w/${encodeURIComponent(run.studio_workspace)}` : location.pathname)}
         onCompare={ids => update({ compare: ids.join(',') })} onDerive={derive} onClose={() => update({ records: undefined })} />
-      : session && store && (leftOpen ? <ObjectsPanel store={store} revision={session.revision} selected={selected} onSelect={(key, fly) => select(key, fly)} onClose={() => setLeftOpen(false)} />
+      : session && store && (leftOpen ? <ObjectsPanel store={store} revision={session.revision} selected={selected} selectionOrigin={selectionOrigin} onSelect={(key, fly) => select(key, fly)} onClose={() => setLeftOpen(false)} />
         : <button className="wb-collapsed-tab left wb-glass" onClick={() => setLeftOpen(true)}>☰ {L('Objects', '对象')}</button>)}
 
     {/* Right: configuration or inspector */}
-    {project && panel ? <ConfigPanel api={api} project={project} onProject={setProject} onInitialize={() => void initialize()} initializing={initializing}
+    {project && panel ? <ConfigPanel key={project.id} api={api} project={project} onProject={setProject} onDraft={previewChanged} onInitialize={() => void initialize()} initializing={initializing}
         section={panel} onSection={section => update({ panel: section })} onClose={() => update({ panel: undefined })}
         onInspectContract={type => update({ contract: panel, type, workspace: project.id })} />
-      : session && store && runId && (rightOpen ? <InspectorPanel api={runsApi} runId={runId} store={store} revision={session.revision} selected={selected} cut={session.cut} mode={mode ?? 'replay'} canOperate={canOperate} viewingHistory={history} operateRequest={operateRequest}
+      : session && store && runId && (rightOpen ? <InspectorPanel api={runsApi} runId={runId} store={store} revision={session.revision} selected={selected} cut={session.cut} mode={mode ?? 'replay'} canOperate={canOperate} viewingHistory={history} operateRequest={operateRequest} inputSource={session.inputSource} onCompactChange={setInspectorCompact}
           onSelect={key => select(key)} onSeekCut={session.seekCut} onTrace={ref => openTrace(ref)} following={following}
           onFocus={focusSelection} onFollow={() => { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }}
           onShowGraph={() => update({ graph: '1' })} onClose={() => setRightOpen(false)} />
@@ -435,17 +461,17 @@ export default function Workbench() {
     {session && store && graph && <section ref={graphWindow} className={`wb-graph wb-glass${graph === '2' ? ' is-expanded' : ''}`} style={graph !== '2' && graphPosition ? { left: graphPosition.x, top: graphPosition.y } : undefined} aria-label={L('Relation graph', '运行关系图')} data-testid="wb-graph">
       <div className="wb-panel-head wb-graph-handle" title={L('Drag to move the graph window', '拖动可移动关系图窗口')}
         onPointerDown={event => { if (graph === '2' || (event.target as HTMLElement).closest('button')) return; const rect = event.currentTarget.parentElement!.getBoundingClientRect(); graphDrag.current = { x: event.clientX, y: event.clientY, left: rect.left, top: rect.top }; event.currentTarget.setPointerCapture(event.pointerId); }}
-        onPointerMove={event => { const drag = graphDrag.current; if (!drag) return; const rect = event.currentTarget.parentElement!.getBoundingClientRect(), minTop = (document.querySelector('[data-testid=wb-top]')?.getBoundingClientRect().bottom ?? 0) + 12; setGraphPosition({ x: Math.max(12, Math.min(window.innerWidth - rect.width - 12, drag.left + event.clientX - drag.x)), y: Math.max(minTop, Math.min(window.innerHeight - rect.height - 12, drag.top + event.clientY - drag.y)) }); }}
+        onPointerMove={event => { const drag = graphDrag.current; if (!drag) return; const rect = event.currentTarget.parentElement!.getBoundingClientRect(); setGraphPosition(fitGraphPosition(drag.left + event.clientX - drag.x, drag.top + event.clientY - drag.y, rect)); }}
         onPointerUp={() => { graphDrag.current = undefined; }} onPointerCancel={() => { graphDrag.current = undefined; }}><h3>{L('Relation graph', '运行关系图')}</h3>
         <button className="wb-x" title={graph === '2' ? L('Shrink', '缩小') : L('Expand', '展开')} onClick={() => update({ graph: graph === '2' ? '1' : '2' })}>{graph === '2' ? '⤡' : '⤢'}</button>
         <button className="wb-x" aria-label={L('Close graph', '关闭关系图')} onClick={() => update({ graph: undefined })}>✕</button></div>
-      <div className="wb-graph-body"><Suspense fallback={null}><BehaviourRunGraph store={store} selected={selected} onSelect={key => select(key, true)} onSeek={session.seekCut} highlights={traceModel?.involved} /></Suspense></div>
+      <div className="wb-graph-body"><Suspense fallback={<div className="wb-loading" role="status" data-testid="wb-graph-loading">{L('Loading relation graph…', '正在加载关系图…')}</div>}><BehaviourRunGraph store={store} selected={selected} onSelect={key => select(key, true)} onSeek={session.seekCut} highlights={traceModel?.involved} /></Suspense></div>
     </section>}
 
     {/* Bottom dock */}
     {session && <Dock session={session} events={projected?.events ?? []} kpiIds={kpiIds} kpis={kpis} series={series} entityNames={entityNames} selected={selected}
       tab={dockTab} onTab={setDockTab} open={dockOpen} onToggle={() => setDockOpen(value => !value)} onEvent={selectEvent} untilNs={record?.until_ns}
-      photos={runId && store ? <Suspense fallback={null}><ArtifactsPanel api={runsApi} runId={runId} store={store} commitCut={session.cut} onSeek={session.seekCut} /></Suspense> : undefined}
+      photos={runId && store ? <Suspense fallback={null}><ArtifactsPanel api={runsApi} runId={runId} store={store} commitCut={session.cut} live={mode === 'live' && !TERMINAL.has(status ?? '')} onSeek={session.seekCut} /></Suspense> : undefined}
       why={traceRef && store ? <CauseTracePanel store={store} model={traceModel} canGoBack={traceStack.length > 1} onOpen={ref => openTrace(ref, false)} onBack={() => setTraceStack(stack => stack.slice(0, -1))} onClose={() => { setTraceStack([]); setDockTab('events'); }} onSelectEntity={key => select(key, true)} onSeek={session.seekCut} /> : undefined} />}
     {!session && project && !panel && <div className="wb-dock wb-glass" style={{ height: 'auto' }}><div className="wb-dock-bar">
       <span className="wb-label">{L('Next step', '下一步')}</span>

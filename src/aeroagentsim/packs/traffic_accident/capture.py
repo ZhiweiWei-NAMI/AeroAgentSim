@@ -20,6 +20,7 @@ STORED = "traffic.capture.stored"
 ACCEPTED = "traffic.capture.accepted"
 FAILED = "traffic.capture.failed"
 VERIFIED = "traffic.capture.upload_verified"
+OBLIQUE = "uav-gimbal-oblique/v1"
 
 
 @dataclass
@@ -148,6 +149,12 @@ class TrafficCaptureBridge(ContextEngine):
                     **self.cfg["camera"],
                     "snapshot": {"cut": cut_data(ctx.view.cut), "entities": entities},
                 }
+                if camera["revision"] == OBLIQUE:
+                    # Declare the semantic target, then let the read-only
+                    # renderer resolve its fact at this exact source cut. A
+                    # camera observation must not add kernel scheduling deps.
+                    camera["subject"] = {"id": incident.id, "generation": incident.generation,
+                                         "field": camera["target_field"]}
                 request = CaptureRequest(
                     identity,
                     actor.run_id,

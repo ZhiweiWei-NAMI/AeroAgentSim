@@ -29,6 +29,21 @@ try_zh:
 - 对比就近分配与竞价分配。
 - 调整过境风速，观察哪些类型的飞行器会暂停。
 knobs:
+- id: run_mode
+  label: Run mode
+  label_zh: 运行方式
+  type: choice
+  default: scheduled
+  options:
+  - scheduled
+  - interactive
+  options_zh:
+  - 自动运行（无需人工推进）
+  - 实时交互（控制台推进与注入）
+  description: Scheduled runs keep their authored arrivals. Interactive mode waits
+    for console time advances and operator events; Stop ends the run.
+  description_zh: 自动运行保留原有任务到达计划。实时交互等待控制台推进时间及操作员事件；可随时停止。
+  apply: lowalt.operator_mode
 - id: fleet_size
   label: Number of parcel drones
   label_zh: 配送无人机数量

@@ -3,6 +3,7 @@ import { TemplateApi, type AlgorithmDescriptor, type KnobValue, type ScenarioTem
 import { TemplateKnobControl } from '../newcomers/CustomizeTemplate';
 import { algorithmSlotLabel } from '../newcomers/presentation';
 import { useI18n } from '../i18n/I18nProvider';
+import { localized } from '../i18n/translate';
 import { ApiError, type Project, type SectionId, type ValidationIssue, type WorkbenchApi } from './api';
 import { FormValidity, getAt, JsonEditor, Leaf, pointer, setAt, TreeForm } from './form';
 import { BehavioursPanel } from '../studio/BehavioursPanel';
@@ -44,9 +45,24 @@ export function controlValue(value: unknown): KnobValue | undefined {
   }
 }
 
-export function ConfigPanel({ api, project, onProject, onInitialize, initializing, section: requested, onSection, onClose, onInspectContract }: {
+/** Read the setting the draft will actually run, including declared compound controls. */
+export function controlSource(knob: ScenarioTemplate['knobs'][number], draft: Scenario, authored: Record<string, KnobValue> | undefined): KnobValue | undefined {
+  if (knob.pointer) return controlValue(getAt(draft, knob.pointer));
+  if (knob.apply === 'traffic.physics_hz') {
+    const road = controlValue(getAt(draft, '/engines/road_motion/config/step_ns'));
+    const air = controlValue(getAt(draft, '/engines/air_motion/config/step_ns'));
+    if (typeof road !== 'number' || !Number.isSafeInteger(road) || road <= 0 || air !== road) return undefined;
+    const frequency = 1e9 / road, rounded = Math.round(frequency * 1e6) / 1e6;
+    // Normalize only when applying that frequency reproduces the exact period.
+    return Math.round(1e9 / rounded) === road ? rounded : frequency;
+  }
+  return controlValue(authored?.[knob.id]);
+}
+
+export function ConfigPanel({ api, project, onProject, onInitialize, initializing, section: requested, onSection, onClose, onInspectContract, onDraft }: {
   api: WorkbenchApi; project: Project; onProject: (project: Project) => void;
   onInitialize: () => void; initializing: boolean; section?: string; onSection: (section: string) => void; onClose: () => void;
+  onDraft?: (id: string, scenario: Scenario, dirty: boolean) => void;
   onInspectContract?: (typeId: string, field?: string) => void;
 }) {
   const { locale } = useI18n();
@@ -54,7 +70,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   const [draft, setDraft] = useState<Scenario>(project.scenario as Scenario);
   const [baseRevision, setBaseRevision] = useState(project.revision);
   const [local, setLocal] = useState(false), [restored, setRestored] = useState(false);
-  const [busy, setBusy] = useState<string>(), [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string }>();
+  const [busy, setBusy] = useState<string>(), [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string; textZh?: string }>();
   const [invalid, setInvalid] = useState<Set<string>>(() => new Set());
   const reportValidity = useCallback((path: string, valid: boolean) => setInvalid(previous => {
     if (previous.has(path) === !valid) return previous;
@@ -65,6 +81,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   const [knobs, setKnobs] = useState<Record<string, KnobValue>>({});
   const [yaml, setYaml] = useState<string>();
   const [yamlDirty, setYamlDirty] = useState(false), [yamlRevision, setYamlRevision] = useState(project.revision);
+  useEffect(() => { onDraft?.(project.id, draft, local); }, [project.id, draft, local, onDraft]);
   const [catalogError, setCatalogError] = useState<string>();
   const [ruleEditor, setRuleEditor] = useState(false), [catalog, setCatalog] = useState<{ types: TypeRow[]; fields: Record<string, unknown>[]; relations: Record<string, unknown>[] }>();
   const ruleRoot = useRef<HTMLDivElement>(null), [ruleError, setRuleError] = useState<string>();
@@ -125,7 +142,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     try {
       const result = await api.validate(saved.id, saved.revision);
       onProject(await api.project(saved.id));
-      if (result.valid) { setFocus(undefined); onSection(section); setMessage({ kind: 'ok', text: L(`Revision ${saved.revision} is valid. Save it as a version to run it.`, `修订 ${saved.revision} 校验通过。保存为版本后即可运行。`) }); }
+      if (result.valid) { setFocus(undefined); onSection(section); setMessage({ kind: 'ok', text: `Revision ${saved.revision} is valid. Save it as a version to run it.`, textZh: `修订 ${saved.revision} 校验通过。保存为版本后即可运行。` }); }
       else { setMessage({ kind: 'error', text: L(`${result.issues?.length ?? 1} issue(s) found. Click one to jump to it.`, `发现 ${result.issues?.length ?? 1} 个问题，点击可定位。`) }); const first = result.issues?.[0]; if (first) jump(first); }
     } catch (problem) { fail(problem); } finally { setBusy(undefined); }
   };
@@ -134,14 +151,14 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     try {
       const version = await api.saveVersion(project.id, project.revision);
       onProject(await api.project(project.id));
-      setMessage({ kind: 'ok', text: L(`Saved version ${version.version}. Initialize it to see the world at t = 0.`, `已保存版本 ${version.version}。初始化后即可查看 t = 0 时的世界。`) });
+      setMessage({ kind: 'ok', text: `Saved version ${version.version}. Initialize it to see the world at t = 0.`, textZh: `已保存版本 ${version.version}。初始化后即可查看 t = 0 时的世界。` });
     } catch (problem) { fail(problem); } finally { setBusy(undefined); }
   };
   const applyKnobs = async () => {
     const changes = { ...knobs };
     const saved = await saveDraft(); if (!saved) return;
     setBusy('knobs');
-    try { const updated = await api.knobs(saved.id, changes, saved.revision); setKnobs({}); localStorage.removeItem(localKey(project.id)); onProject(updated); setMessage({ kind: 'ok', text: L('Controls applied to the draft.', '控制项已应用到草稿。') }); }
+    try { const updated = await api.knobs(saved.id, changes, saved.revision); setKnobs({}); localStorage.removeItem(localKey(project.id)); onProject(updated); setMessage({ kind: 'ok', text: 'Controls applied to the draft.', textZh: '控制项已应用到草稿。' }); }
     catch (problem) { fail(problem); } finally { setBusy(undefined); }
   };
   const jump = (issue: ValidationIssue) => { const target = issueSection(issue); setEntityFilter(''); onSection(`${target ?? 'file'}:${issuePointer(issue.path)}`); setFocus(issuePointer(issue.path)); };
@@ -156,7 +173,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   const controlsDirty = Object.keys(knobs).length > 0;
   // A success describes the saved revision; new local or invalid input invalidates that notice.
   useEffect(() => { if (local || controlsDirty || yamlDirty || invalid.size) setMessage(previous => previous?.kind === 'ok' ? undefined : previous); }, [draft, knobs, yaml, local, controlsDirty, yamlDirty, invalid]);
-  const valueFor = (knob: ScenarioTemplate['knobs'][number]) => controlValue(knobs[knob.id] ?? (knob.pointer ? getAt(draft, knob.pointer) : project.template?.knobs[knob.id]));
+  const valueFor = (knob: ScenarioTemplate['knobs'][number]) => knobs[knob.id] === undefined ? controlSource(knob, draft, project.template?.knobs) : controlValue(knobs[knob.id]);
   const controlsMissing = !!template?.knobs.some(knob => valueFor(knob) === undefined);
   const validNow = project.validation?.valid && project.validation.revision === project.revision && !local && !controlsDirty && !controlsMissing && !yamlDirty && !invalid.size;
   const versioned = project.latest_version && project.latest_version.revision === project.revision && !local;
@@ -181,9 +198,8 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
         <div className="wb-knobs">{template.knobs.map(knob => {
           const value = valueFor(knob);
           return <div className="wb-knob" key={knob.id} data-path={knob.pointer}>{value === undefined ? <p role="alert">{L('Missing or invalid control source. Correct it in the form or file:', '控制项来源缺失或无效，请在表单或文件中修正：')} {knob.pointer ?? knob.id}</p>
-            : <TemplateKnobControl knob={knob} value={value} onChange={value => setKnobs(previous => ({ ...previous, [knob.id]: value }))} onValidityChange={valid => reportValidity(`/knobs/${knob.id}`, valid)} algorithms={algorithms} />}</div>;
+            : <TemplateKnobControl disabled={!!busy} knob={knob} value={value} onChange={value => setKnobs(previous => ({ ...previous, [knob.id]: value }))} onValidityChange={valid => reportValidity(`/knobs/${knob.id}`, valid)} algorithms={algorithms} />}</div>;
         })}</div>
-        <div style={{ marginTop: 12 }}><button className="wb-btn primary" disabled={!!busy || !controlsDirty || controlsMissing || !!invalid.size} onClick={() => void applyKnobs()}>{L('Apply controls to draft', '应用到草稿')}</button></div>
       </>;
     }
     if (section === 'file') {
@@ -195,7 +211,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
         {yaml === undefined ? <button className="wb-btn" disabled={local || !!busy} onClick={() => void loadYaml()}>{busy === 'export' ? L('Loading scenario file…', '正在加载场景文件…') : L('Load scenario file', '加载场景文件')}</button>
           : <><textarea className="wb-json" style={{ minHeight: '52vh' }} spellCheck={false} aria-label={L('Scenario YAML', '场景 YAML')} value={yaml} onChange={event => { setYaml(event.target.value); setYamlDirty(true); }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button className="wb-btn primary" disabled={!!busy || local || yamlRevision !== project.revision} onClick={() => { setBusy('import'); void api.importYaml(project.id, yaml, project.revision).then(saved => { localStorage.removeItem(localKey(project.id)); setYamlDirty(false); setYaml(undefined); onProject(saved); setMessage({ kind: 'ok', text: L('Imported into the draft.', '已导入草稿。') }); }).catch(fail).finally(() => setBusy(undefined)); }}>{L('Import into draft', '导入草稿')}</button>
+              <button className="wb-btn primary" disabled={!!busy || local || yamlRevision !== project.revision} onClick={() => { setBusy('import'); void api.importYaml(project.id, yaml, project.revision).then(saved => { localStorage.removeItem(localKey(project.id)); setYamlDirty(false); setYaml(undefined); onProject(saved); setMessage({ kind: 'ok', text: 'Imported into the draft.', textZh: '已导入草稿。' }); }).catch(fail).finally(() => setBusy(undefined)); }}>{L('Import into draft', '导入草稿')}</button>
               <button className="wb-btn" disabled={local || !!busy} onClick={() => void loadYaml(true)}>{L('Reload', '重新加载')}</button>
               <button className="wb-btn" disabled={local || yamlDirty || !!busy} onClick={() => { const url = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' })); const link = document.createElement('a'); link.href = url; link.download = `${project.id}.yaml`; link.click(); URL.revokeObjectURL(url); }}>{L('Download YAML', '下载 YAML')}</button>
             </div></>}
@@ -298,7 +314,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   };
 
   return <FormValidity.Provider value={reportValidity}><aside className="wb-panel wb-right is-wide wb-glass" aria-label={L('Configure scenario', '配置场景')} data-testid="wb-config">
-    <div className="wb-panel-head"><h3>{L('Configure', '配置')} · {project.name}</h3><button className="wb-x" aria-label={L('Close configuration', '关闭配置')} onClick={onClose}>✕</button></div>
+    <div className="wb-panel-head"><h3>{L('Configure', '配置')} · {template && project.name === template.title ? localized(template, 'title', locale) : project.name}</h3><button className="wb-x" aria-label={L('Close configuration', '关闭配置')} onClick={onClose}>✕</button></div>
     {restored && <div className="wb-restored">{L('Unsaved edits were restored from this browser.', '已从本浏览器恢复未保存的修改。')}<span className="wb-spacer" /><button className="wb-btn small" onClick={discard}>{L('Discard', '放弃')}</button></div>}
     {catalogError && <div className="wb-issues" role="alert">{catalogError}</div>}
     {issues.length > 0 && <div className="wb-issues" role="alert" data-testid="wb-issues">{issues.map((issue, index) => <button key={index} onClick={() => jump(issue)}>⚠ {[issue.entity_id, issue.field ?? issue.binding].filter(Boolean).join(' · ') || issue.path} — {issue.message}</button>)}</div>}
@@ -308,9 +324,12 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     </div>
     <div className="wb-config-foot">
       <div className="state" aria-live="polite">
+        <div className="wb-config-state-copy">
         {local || controlsDirty || yamlDirty ? <b style={{ color: 'var(--wb-warn)' }}>{L('Unsaved edits', '有未保存的修改')}</b> : <b>{L(`Draft revision ${project.revision}`, `草稿修订 ${project.revision}`)}</b>}
         {' · '}{project.latest_version ? L(`latest version ${project.latest_version.version}${versioned ? ' (this draft)' : ''}`, `最新版本 ${project.latest_version.version}${versioned ? '（即当前草稿）' : ''}`) : L('no saved version yet', '尚无保存的版本')}
-        {message && <div style={{ color: message.kind === 'error' ? 'var(--wb-bad)' : 'var(--wb-ok)' }}>{message.text}</div>}
+        {message && <div style={{ color: message.kind === 'error' ? 'var(--wb-bad)' : 'var(--wb-ok)' }}>{zh && message.textZh ? message.textZh : message.text}</div>}
+        </div>
+        {(section === 'controls' || controlsDirty) && <button className="wb-btn primary" disabled={!!busy || !controlsDirty || controlsMissing || !!invalid.size} onClick={() => void applyKnobs()}>{busy === 'knobs' ? L('Applying controls…', '正在应用控制项…') : L('Apply controls to draft', '应用到草稿')}</button>}
       </div>
       <button className="wb-btn" disabled={!local || !!busy || !!invalid.size} onClick={() => void saveDraft()}>{busy === 'save' ? L('Saving…', '保存中…') : L('Save draft', '保存草稿')}</button>
       <button className="wb-btn" disabled={!!busy || !!invalid.size || controlsDirty || controlsMissing || yamlDirty} title={controlsDirty ? L('Apply the controls first', '请先应用控制项') : controlsMissing ? L('Correct the missing control source first', '请先修正缺失的控制项来源') : yamlDirty ? L('Import the file first', '请先导入文件') : undefined} data-testid="wb-validate" onClick={() => void validate()}>{busy === 'validate' ? L('Validating…', '校验中…') : L('Validate', '校验')}</button>

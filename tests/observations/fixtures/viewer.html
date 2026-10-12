@@ -12,7 +12,16 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const subject = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshBasicMaterial({ color: 0xe97524 }));
 scene.add(subject);
-window.aeroCapture = { async render({ request, label }) {
+const bootMs = new URLSearchParams(location.search).get('boot_ms');
+if (bootMs !== null) await new Promise(resolve => setTimeout(resolve, Number(bootMs)));
+window.aeroCapture = { async prepare(input) {
+  const delay = new URLSearchParams(location.search).get('asset_ms') ?? '0';
+  const resource = await (await fetch('/scene.json?asset_delay_ms=' + delay)).json();
+  if (input.asset_digest !== resource.asset_digest || input.asset_manifest.asset_id !== resource.asset_digest) throw Error('wrong scene assets');
+  if (input.header.runId !== input.service_run_id) throw Error('wrong resource run');
+  await renderer.compileAsync(scene, new THREE.PerspectiveCamera());
+  return {contract:'aeroagentsim.viewer-assets-ready/v1',service_run_id:input.service_run_id,asset_digest:resource.asset_digest};
+}, async render({ request, label }) {
   if (request.camera.test_delay_ms) await new Promise(resolve => setTimeout(resolve, request.camera.test_delay_ms));
   if (request.run_id !== manifest.run_id || JSON.stringify(request.actor) !== JSON.stringify(manifest.actor)) throw Error('wrong actor/run');
   if (request.asset_digest !== manifest.asset_digest) throw Error('wrong scene assets');

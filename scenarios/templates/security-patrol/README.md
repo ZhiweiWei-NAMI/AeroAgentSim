@@ -49,6 +49,10 @@ height; inter-site flights depart/arrive vertically and cruise above the 105 m
 roof ceiling. Names and business metadata are pinned with each run. See
 [the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).
 
+## Operator story
+
+Choose **interactive** Run mode to replace the built-in scheduled operator demonstration with live input. Select investigation-1, open Operate and inject investigate with origin home and destination incident-site. Why? follows the recorded release through dispatch and completion. Scheduled mode retains the original demonstration.
+
 <!-- guide-language: zh-CN -->
 
 # 安防巡逻
@@ -86,3 +90,7 @@ aeroagentsim replay runs/<run-directory>
 ## 黄浦城区布置
 
 坐标来自仓库中的 lite-city 建筑轮廓、屋顶高度和道路，由 `tools/templates/place.py` 生成。屋顶起降点使用实际屋顶高度；站点间飞行先垂直起降，再在 105 米屋顶高度上限之上巡航。名称和业务元数据会随运行固定保存。参见[共享布置指南](../../../docs/examples/city-day.md#huangpu-placements-la3)。
+
+## 操作员故事
+
+选择 **实时交互** 运行方式，以实时输入替代模板自带的定时操作演示。选择investigation-1，打开“操作”并注入investigate，设置起点 home、终点 incident-site。“为什么？”会沿真实记录追踪任务释放、派发和完成。自动运行仍保留原有演示。

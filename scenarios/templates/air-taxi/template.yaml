@@ -17,12 +17,31 @@ observe_zh:
 - 相距过近的飞行器调整到不同高度层。
 - 起降位被占用时，航班等待空位。
 try:
+- Choose interactive mode. Select east-port and inject close-vertiport. Flights using
+  it divert to north-port, with real route braking and replanning. Follow closure,
+  dispatch and flight completion in Why?.
 - Change the number of aircraft.
 - Compare altitude layers with hold-and-go.
 try_zh:
+- 选择实时交互模式。选择 east-port 并注入 close-vertiport。使用该起降场的航班改往 north-port，实际制动并重新规划航线；在“为什么？”中查看关闭、调度和航班完成。
 - 调整飞行器数量。
 - 对比高度分层与等待放行策略。
 knobs:
+- id: run_mode
+  label: Run mode
+  label_zh: 运行方式
+  type: choice
+  default: scheduled
+  options:
+  - scheduled
+  - interactive
+  options_zh:
+  - 自动运行（无需人工推进）
+  - 实时交互（控制台推进与注入）
+  description: Scheduled runs keep their authored arrivals. Interactive mode waits
+    for console time advances and operator events; Stop ends the run.
+  description_zh: 自动运行保留原有任务到达计划。实时交互等待控制台推进时间及操作员事件；可随时停止。
+  apply: lowalt.operator_mode
 - id: fleet_size
   label: Number of aircraft
   label_zh: 飞行器数量

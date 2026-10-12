@@ -10,7 +10,10 @@
 </p>
 
 
-<p align="center"><img src="docs/media/workbench-city.png" alt="AeroAgentSim operational workbench with graph, real Huangpu city and contextual inspector" width="1100"></p>
+<p align="center"><img src="docs/media/workbench-city.png" alt="Running city-day workbench with hovering object list, inspector, relation graph and timeline" width="1100"></p>
+
+[Watch the six workbench walkthroughs](docs/media/README.md): configure, run, introduce an event, explain its cause, inspect photos and compare records.
+
 
 ## Try it in three commands
 

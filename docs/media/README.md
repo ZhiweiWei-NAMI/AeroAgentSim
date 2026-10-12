@@ -1,33 +1,25 @@
-# Current workbench screenshots
+# Workbench media
 
-[Graph and city](workbench-city.png) · [Food delivery](workbench-food.png).
-These capture the current built console with the installed detailed city pack.
-See [delivery evidence](../project/workbench-delivery.md).
-
-The recordings below document the earlier console layout and packaged lite city.
-
-# Console product recordings
-
-These GIFs show the real console and backend at 1280 × 800, exported at
-960 px and 12 fps. Backend idle waits are cut from marked video segments.
-The overview explicitly uses a completed replay for its Inspect view; the
-simulation story starts and operates a new live run through operator injection,
-award and browser-rendered capture. The city and type catalog come from the
-public clone’s lite OSM bundle and packaged registry snapshot.
+These recordings show the single 3D workbench in English at 1280 × 800.
+GIFs retain 15–40 seconds of productive browser footage; marked backend waits
+are omitted. Selection, commands, receipts, causal links and photographs all
+come from real runs. Captions and cursor highlights are recording overlays.
 
 | Recording | Story |
 | --- | --- |
-| [00-overview.gif](00-overview.gif) | Home → Studio → Run → synchronized Inspect |
-| [01-configure-plugins.gif](01-configure-plugins.gif) | PX4, kinematic, SUMO, wind and field ownership |
-| [02-predicates.gif](02-predicates.gif) | Shared low-altitude predicates, battery-reserve edit, validation and a real predicate → chain → state explanation |
-| [03-rules-events.gif](03-rules-events.gif) | Predicate rule, type bindings, chains and injection points |
-| [04-aerograph.gif](04-aerograph.gif) | Type ancestry, field writers and a workspace entity |
-| [05-agents.gif](05-agents.gif) | LangGraph configuration, grants and recorded decisions |
-| [06-simulate.gif](06-simulate.gif) | Validate, start, inject accident, award and city capture |
-| [07-visualize.gif](07-visualize.gif) | Cameras, event timeline, shared selection and photo |
+| [00-overview.gif](00-overview.gif) | Gallery → guide → create project → configure → validate → save version → initialize at t = 0 → Start; hovering panels at a glance |
+| [01-configure.gif](01-configure.gif) | Controls, the seven configuration sections, a seed validation issue jumping to its field, and YAML |
+| [02-run-and-operate.gif](02-run-and-operate.gif) | Simulation speed; linked drone selection in the list, 3D and graph; inspector; restaurant picker, delay and admission receipt |
+| [03-why.gif](03-why.gif) | Recorded timeline and Why? links from restaurant delay to preparation ready, task assignment and delivery |
+| [04-photos.gif](04-photos.gif) | Shipped scheduled accident, response trace through dispatch, and the real stored UAV oblique photograph |
+| [05-records-compare source](../../frontend/e2e/flows/05-records-compare.spec.ts) | Recording blocked: Records replay lacks the required history banner and Back to live. The failing browser assertion is retained; no substitute GIF is published. |
 
-Reproduce from the repository root with `tools/docs/record-docs-media.sh`.
-See [recording setup and options](../../tools/docs/README.md).
-Native plugin settings are authored drafts; the live-agent story configures a
-future provider without making a paid model call. The completed agent replay
-uses the shipped recorded responses through the production LangGraph executor.
+The 1600 × 1000 screenshots show scheduled runs in the running workbench with the installed city:
+[food delivery with a selected drone (English)](workbench-food.png),
+[food delivery with a selected drone (中文)](workbench-food-zh.png), and
+[city-day with the relation graph open](workbench-city.png).
+The food operation story explicitly selects Interactive mode and 80-second
+preparation at the east kitchen; the baseline overview uses the shipped defaults.
+Comparison therefore reflects real configuration and runtime differences.
+
+Reproduce with [the recording tool](../../tools/docs/README.md).

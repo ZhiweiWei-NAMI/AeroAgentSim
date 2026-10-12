@@ -1,75 +1,75 @@
-# Record console product flows
+# Record workbench documentation media
 
-From the repository root:
-
-```sh
-tools/docs/record-docs-media.sh --gates
-```
-
-The script uses the installed Python and Playwright only: `--python PATH` (or
-`AEROAGENTSIM_DOCS_PYTHON`) selects the interpreter that provides `uvicorn` and
-the backend dependencies, defaulting to `python` resolved through `command -v`.
-No private virtual environment or asset path is selected implicitly. With both
-`AEROAGENTSIM_AEROGRAPH_ROOT` and `AEROAGENTSIM_TRAFFIC_ASSET_ROOT` unset, this
-records the public clone's packaged registry snapshot and lite OSM city. Set
-these variables explicitly only when recording a separately installed source
-catalog or asset pack.
-
-Chromium is selected through `AEROAGENTSIM_CHROMIUM`. When it is unset, the
-script resolves Playwright's own Chromium via
-`require('playwright').chromium.executablePath()` before selecting a scratch
-video-encoder registry; if no executable can be verified, run
-`npx playwright install chromium` (in `frontend/`) or set `AEROAGENTSIM_CHROMIUM`.
-
-The command builds the UI, starts its own backend on a free port, creates a real
-completed city-capture run, records eight 1280×800 Playwright stories, and writes
-960px/12fps GIFs to `docs/media`. Pass `--skip-gifs` to stop after the
-recordings, so flow verification leaves the existing `docs/media` GIFs
-untouched. It stops only its own server. Browser videos, logs,
-productive-segment timings and the size/duration report stay under the script's
-scratch work directory (a fresh temporary directory by default; pass `--work-dir`
-or set `AEROAGENTSIM_DOCS_WORK_DIR` to keep it stable). Cursor highlights and
-captions are injected by tests only. A
-black calibration prelude, excluded from the GIF, aligns segment marks with the
-actual screencast start rather than assuming Playwright starts recording at page
-creation. The hero and explorer omit their first 0.8 seconds of compositor
-settling; explicit `--trim` options override those defaults.
-
-The agent replay runs the shipped recorded model responses through the real
-LangGraph executor. The live-provider story selects a decision provider profile
-(`AEROAGENTSIM_DOCS_PROVIDER_PROFILE`, default `default`, a builtin operator
-profile) for a future run; it makes no paid model call. Scripted-provider token
-usage is explicitly zero, because no model inference occurs. Recording
-preparation retains the endpoint's relative per-decision timeout, so later
-triggers receive their own deadline. The live story uses the shipped 1 Hz, real-time demo
-and the console's operator controls. It records normal-speed live motion and
-omits long waits between productive actions. Native plugin stories configure
-drafts and show capability checks; they do not claim to launch PX4 or SUMO.
-
-An existing genuinely completed run can be imported with `--replay-source DIR`.
-Use a fresh `--work-dir` when re-recording an imported run. The script installs
-`imageio-ffmpeg` in that scratch directory; alternatively supply `--ffmpeg PATH`
-or `FFMPEG`. The selected ffmpeg is also linked into Playwright’s scratch
-video-encoder registry; no browser cache or npm dependency in the shared
-environment is modified.
-
-Slow backend waits remain in the original videos but are omitted using each
-flow's marked productive segments. For explicit post-processing adjustments:
+From the repository root, select the installed Python and Chromium explicitly:
 
 ```sh
-tools/docs/record-docs-media.sh --speed 07-visualize=2 --trim 00-overview=0:26
+export AEROAGENTSIM_CHROMIUM=/path/to/chrome
+# Optional: use an installed source catalog or city pack.
+export AEROAGENTSIM_AEROGRAPH_ROOT=/path/to/AeroGraph
+tools/docs/record-docs-media.sh --python .venv/bin/python \
+  --work-dir /tmp/aeroagentsim-docs-media --port 18960
 ```
 
-`make_gifs.py` also accepts these options directly. It uses separate palettegen
-and paletteuse passes with a 48-color palette and no dithering (to keep city
-textures compact), enforcing 6 MB per GIF (8 MB for the overview) without
-silently reducing resolution or frame rate. All eight recordings are required.
-The simulation story keeps display interpolation separate from exact committed
-state.
+The tool builds into `WORK_DIR/dist`, starts the production service with isolated
+runs and workspaces on the chosen free port (18960–18969), records six English
+1280 × 800 [workbench stories](../../docs/media/README.md), then converts them to
+GIFs in `docs/media`. It stops only its own server. It never writes to
+`frontend/dist`. With the optional catalog and asset environment variables unset,
+it uses the packaged registry and resolves the installed city pack, or the shipped
+lite OSM city when no detailed pack is installed. `AEROAGENTSIM_TRAFFIC_ASSET_ROOT`
+selects a separately installed city asset directory.
 
-After selector-only changes, resume against the same owned backend storage with
-`--skip-build --skip-gifs --reuse-context WORK_DIR/context.json`, where `WORK_DIR`
-is the scratch work directory of the recording being resumed. Its
-recorded local port must be free. For targeted reruns, preserve
-`videos/recordings.json` and use Playwright’s filename filter; successful videos
-are copied out of its disposable output directory.
+Each story uses the actual UI and backend. The overview demonstrates the full
+lifecycle, including an initialization held at t = 0. The operation story uses
+Interactive food delivery, an 80-second east-kitchen preparation setting and a
+20-second restaurant delay. Why and Records reuse the real runs created by those
+stories. The Photos story runs the shipped scheduled accident and its own capture configuration;
+it requires real stored browser-rendered pixels. No provider calls or invented
+journal records are prepared. Failures remain failures, with screenshots and
+browser error logs in the scratch directory.
+
+The recordings also produce `WORK_DIR/screenshots/workbench-{food,food-zh,city}.png`
+at 1600 × 1000, from separate real scheduled food-delivery and city-day runs.
+The screenshot runs are stopped after capture; 1920 × 1080 review images remain in scratch. The full conversion command copies these three files into `docs/media` after
+the stories pass; review the published screenshots alongside the GIFs. `--skip-gifs`
+keeps both the existing GIFs and published screenshots untouched.
+All source WebMs, productive-segment timings, browser errors and the conversion
+report remain in scratch. Cursor highlights and captions are added only by the
+recording fixture. A black calibration prelude aligns marks to Chromium's actual
+video start and is excluded from the exported footage.
+
+By default GIFs use 960 px, 12 fps and a 48-color palette without dithering. The
+existing two-pass ffmpeg conversion accepts explicit tuning, enforces 15–40 s
+per story, a 6 MB per-GIF budget (8 MB for overview), and a 25 MB aggregate budget
+for GIFs and PNGs in `docs/media`:
+
+```sh
+tools/docs/record-docs-media.sh --python .venv/bin/python \
+  --work-dir /tmp/aeroagentsim-docs-media --port 18960 \
+  --fps 8 --width 800 --speed 00-overview=1.6 \
+  --speed 02-run-and-operate=3.4 --budget 02-run-and-operate=8
+```
+
+`--budget FLOW=MB` explicitly changes one story’s size allowance; the 25 MB aggregate cap still applies.
+`--trim FLOW=START:END` trims the assembled productive timeline. All six current
+stories are required for a successful conversion; old page recordings cannot be published.
+The converter preserves available real footage and reports any missing story as a failure; it never fills a gap with substitute footage.
+The ffmpeg binary is installed via `imageio-ffmpeg` into a scratch virtual
+environment, or supplied with `--ffmpeg PATH` / `FFMPEG`. Playwright's encoder
+uses a scratch registry; shared browser caches and dependencies are untouched.
+If Chromium is unset, the tool resolves Playwright's installed executable first.
+
+For a selector correction, reuse the same scratch build, context and storage:
+
+```sh
+tools/docs/record-docs-media.sh --python .venv/bin/python \
+  --work-dir /tmp/aeroagentsim-docs-media --skip-build --skip-gifs \
+  --reuse-context /tmp/aeroagentsim-docs-media/context.json --flows 03-why
+```
+
+The context records the owned server port, which must be free. `--flows` accepts
+Playwright's filename filter and preserves other successful videos. Record
+00-overview and 02-run-and-operate before dependent Why and Records reruns.
+Use `--skip-gifs` for browser verification without updating published GIFs.
+`--gates` additionally runs the frontend typecheck and Vitest suite before
+recording. After replacing media or captions, run `python3 tools/docs/check_links.py`.

@@ -38,6 +38,16 @@ VECTOR = {"type": "vector", "length": 3, "items": NUMBER}
 INT = {"type": "integer", "minimum": 0}
 PAIR = {"type": "vector", "length": 2, "items": NUMBER}
 STRINGS = {"type": "array", "items": STRING}
+PROVENANCE = {
+    "type": "record",
+    "members": {"message_ids": STRINGS, "event_key": STRING, "parent_event_keys": STRINGS},
+    "required": ["message_ids"],
+    "extra": False,
+}
+
+
+def target(type_id: str) -> dict[str, str]:
+    return {"type": "ref", "target_type": "lowalt:" + type_id}
 
 
 def record(members: dict[str, Any], optional: tuple[str, ...] = ()) -> dict[str, Any]:
@@ -50,6 +60,38 @@ def record(members: dict[str, Any], optional: tuple[str, ...] = ()) -> dict[str,
 
 
 EVENT_NARRATIVES: dict[str, dict[str, Any]] = {
+    "lowalt.operator.rejected": {
+        "text": "Operator request {operation} rejected: {reason}",
+        "text_zh": "操作请求 {operation} 被拒绝：{reason}",
+        "category": "logistics", "severity": "warning", "entities": [],
+    },
+    "lowalt.parcel.dropoff_changed": {
+        "text": "{task} drop-off changed from {previous} to {destination}",
+        "text_zh": "{task}收货点从{previous}改为{destination}",
+        "entities": ["task", "previous", "destination"], "position": "destination",
+        "category": "logistics", "severity": "notice",
+    },
+    "lowalt.medical.prioritized": {
+        "text": "Urgent request raised {task} priority to {priority}",
+        "text_zh": "紧急请求将{task}优先级提高至 {priority}",
+        "entities": ["task"], "category": "emergency", "severity": "notice",
+    },
+    "lowalt.inspection.defect_reported": {
+        "text": "Defect reported at {site}; {task} released for inspection",
+        "text_zh": "{site}收到缺陷报告，已释放{task}进行复查",
+        "entities": ["site", "task"], "position": "site",
+        "category": "inspection", "severity": "warning",
+    },
+    "lowalt.spraying.paused": {
+        "text": "Operator paused spraying for {task}",
+        "text_zh": "操作员已暂停{task}的喷洒作业", "entities": ["task"],
+        "category": "agriculture", "severity": "notice",
+    },
+    "lowalt.spraying.resumed": {
+        "text": "{task} resumed after the operator spraying pause",
+        "text_zh": "操作员停喷时段结束，{task}恢复喷洒作业", "entities": ["task"],
+        "category": "agriculture", "severity": "info",
+    },
     "lowalt.food.preparation_started": {
         "text": "{restaurant} started preparing {task}",
         "text_zh": "{restaurant}开始制作{task}",
@@ -446,6 +488,17 @@ def overlay() -> dict[str, Any]:
             {"task": STRING, "origin": STRING, "destination": STRING},
             (),
         ),
+        "operator.change_dropoff": ({"task": target("Task"), "destination": target("Customer")}, ()),
+        "operator.prioritize_medical": ({"task": target("Task"), "priority": {"type": "integer", "minimum": 101, "maximum": 1000}}, ()),
+        "operator.report_defect": ({"task": target("Task"), "site": target("Site")}, ()),
+        "operator.pause_spraying": ({"task": target("Task"), "duration_s": {"type": "number", "minimum": 1, "maximum": 120}}, ()),
+        "operator.close_air_taxi_port": ({"site": target("Vertiport")}, ()),
+        "operator.rejected": ({"operation": STRING, "reason": STRING, "provenance": PROVENANCE}, ()),
+        "parcel.dropoff_changed": ({"task": STRING, "previous": STRING, "destination": STRING}, ()),
+        "medical.prioritized": ({"task": STRING, "priority": INT}, ()),
+        "inspection.defect_reported": ({"task": STRING, "site": STRING}, ()),
+        "spraying.paused": ({"task": STRING, "until_ns": INT}, ()),
+        "spraying.resumed": ({"task": STRING}, ()),
         "energy.swap_started": ({"vehicle": STRING, "pad": STRING}, ()),
         "energy.swap_finished": ({"vehicle": STRING, "pad": STRING, "soc": NUMBER}, ()),
         "mobility.pad_wait": ({"task": STRING, "vehicle": STRING, "site": STRING}, ()),
@@ -495,10 +548,17 @@ def overlay() -> dict[str, Any]:
         "allocation.result": ({"assignments_json": STRING}, ()),
         "motion.arrived": ({"entity": STRING, "position": VECTOR}, ()),
     }
-    messages: list[dict[str, Any]] = [
-        {"id": "lowalt." + name, "kind": "event", "schema": record(m, o)}
-        for name, (m, o) in members.items()
-    ]
+    messages: list[dict[str, Any]] = []
+    for name, (m, o) in members.items():
+        if name.startswith(("task.", "food.", "inspection.", "spraying.", "patrol.", "parcel.", "medical.")) or name == "site.closed":
+            m, o = {**m, "provenance": PROVENANCE}, (*o, "provenance")
+        subjects = []
+        for key, type_id in {"task": "Task", "vehicle": "UAV", "restaurant": "Restaurant", "site": "Site", "origin": "Site", "destination": "Site", "previous": "Site"}.items():
+            if key in m and m[key].get("type") == "string":
+                subjects.append({"path": [key], "type_id": "lowalt:" + type_id})
+        if "tasks" in m:
+            subjects.append({"path": ["tasks", "*"], "type_id": "lowalt:Task"})
+        messages.append({"id": "lowalt." + name, "kind": "event", "schema": record(m, o), **({"subjects": subjects} if subjects else {})})
     result = record(
         {"entity": STRING, "position": VECTOR, "reason": STRING},
         ("entity", "position", "reason"),

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import platform
 import threading
+import time
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict
 from types import MappingProxyType
@@ -34,6 +35,10 @@ from .state import StateView, Store
 from .time import ClockMapping, Cut, Instant, Stamp
 from .transactions import Candidate
 from .values import FrozenValue, ResourceBudget, canonical_json, freeze, normalize, thaw
+
+
+class _HostYield(BaseException):
+    """Unwind only an acknowledged cut, outside engine failure handling."""
 
 
 class Kernel:
@@ -97,6 +102,10 @@ class Kernel:
         self._engines: dict[str, Engine] = {}
         self._by_partition: dict[str, Engine] = {}
         self._trace: list[dict[str, Any]] = []
+        self._host_commit: Callable[[], None] | None = None
+        self._host_poll: Callable[[], bool | None] | None = None
+        self._host_thread_id: int | None = None
+        self._host_callback_seconds = 0.0
 
     def bind(
         self, registry: Registry, manifest: BindingManifest, engines: tuple[Engine, ...]
@@ -475,6 +484,38 @@ class Kernel:
             state.action_snapshots[state.cut.index] = state.actions
             state.action_snapshot_indices.append(state.cut.index)
         self._store = state
+        if self._host_commit is not None:
+            self._host_commit()
+        if self._host_poll is not None and not self._store.pending_intents:
+            self._notify_host(self._host_poll)
+
+    def _call_host(
+        self, callback: Callable[..., bool | None], *args: Any
+    ) -> bool | None:
+        # Host suspension occurs at an acknowledged cut or before constructing
+        # a candidate. Keep actual ingress/read operations available during it.
+        started = time.monotonic()
+        self._ingress_condition.release()
+        try:
+            return callback(*args)
+        finally:
+            self._ingress_condition.acquire()
+            self._host_callback_seconds += time.monotonic() - started
+
+    def _source_wait_clock(self) -> float:
+        # A host pause is not time spent waiting for a source's closed prefix.
+        # This clock affects only timeout accounting, never physical pacing.
+        return time.monotonic() - self._host_callback_seconds
+
+    def _notify_host(self, callback: Callable[[], bool | None]) -> None:
+        proceed = self._call_host(callback)
+        if (
+            proceed is False
+            and self._host_thread_id == threading.get_ident()
+            and not self._store.pending_intents
+            and not self._store.faulted
+        ):
+            raise _HostYield
 
     def _candidate(self, instant: Instant) -> Candidate:
         return Candidate(
@@ -544,6 +585,8 @@ class Kernel:
         selected = tuple(
             sorted(selected, key=lambda p: (self._store.partitions[p].engine_id, p))
         )
+        if self._host_poll is not None:
+            self._notify_host(self._host_poll)
         state, intent_record, views = wave_intents(
             self._store, selected, instant, phase
         )
@@ -574,11 +617,7 @@ class Kernel:
             else:
                 for partition in selected:
                     engine = self._by_partition[partition]
-                    intent = next(
-                        i
-                        for i in intent_record["items"]
-                        if i["kind"] == "intent" and i["partition"] == partition
-                    )
+                    intent = state.intents[state.pending_intents[partition]]
                     if phase == "advance":
                         self._input_coverage(partition, views[partition])
                         batch = engine.advance(partition, instant, views[partition])
@@ -919,8 +958,6 @@ class Kernel:
     ) -> bool:
         if not self._store.watermarks:
             return True
-        import time
-
         selected_cut = self._store.cut
         while len(safe_partitions(self._store, ns)) != len(self._store.partitions):
             self._guard()
@@ -930,12 +967,14 @@ class Kernel:
                 for s in self._store.ingress_dependencies.get(p, ())
                 if self._store.watermarks[s] < ns
             }
-            if on_wait is not None and not on_wait(
-                IngressWait(ns, tuple(sorted(blocked)))
+            if on_wait is not None and not self._call_host(
+                on_wait, IngressWait(ns, tuple(sorted(blocked)))
             ):
                 return False
+            if self._store.cut != selected_cut:
+                return True
             finite = [deadlines[s] for s in blocked if s in deadlines]
-            remaining = min(finite) - time.monotonic() if finite else None
+            remaining = min(finite) - self._source_wait_clock() if finite else None
             if remaining is not None and remaining <= 0:
                 raise KernelError(
                     "WATERMARK_TIMEOUT",
@@ -950,7 +989,7 @@ class Kernel:
             self._ingress_condition.wait(delay)
             if self._store.cut != selected_cut:
                 return True
-        return on_wait is None or on_wait(None)
+        return on_wait is None or bool(self._call_host(on_wait, None))
 
     def _pace_to(self, ns: int, selected: tuple[str, ...] | None = None) -> None:
         names = (
@@ -1179,7 +1218,13 @@ class Kernel:
             )
 
     def run_until(
-        self, ns: int, *, on_wait: Callable[[IngressWait | None], bool] | None = None
+        self,
+        ns: int,
+        *,
+        on_wait: Callable[[IngressWait | None], bool] | None = None,
+        on_boundary: Callable[[int], bool] | None = None,
+        on_commit: Callable[[], None] | None = None,
+        on_poll: Callable[[], bool | None] | None = None,
     ) -> StateView:
         """Settle a limit, or yield a committed prefix when on_wait returns False.
 
@@ -1187,12 +1232,41 @@ class Kernel:
         polled at most every 50ms while waiting, and must not advance the kernel.
         Yielding and WATERMARK_TIMEOUT preserve a replayable, nonfaulted prefix;
         a caller can resume the same target after supplying input.
+
+        Optional host hooks do not add physical boundaries or journal records.
+        on_boundary gates the next natural boundary, outside the ingress lock;
+        returning False yields the committed prefix. It must not advance the
+        kernel. on_commit observes acknowledged publication under the lock.
+        on_poll runs outside the lock before a wave or after a publication with
+        no pending invocation. Host suspension then leaves reads/admission
+        available. Returning False yields that acknowledged prefix on the
+        execution thread, without completing subsequent reactive waves.
+        Neither may advance the kernel; pausing preserves the limit.
+        on_wait also runs outside the lock. Time spent in host control hooks
+        is excluded from source-wait deadlines, preserving their active budget.
         """
         with self._ingress_condition:
-            return self._run_until(ns, on_wait=on_wait)
+            previous = self._host_commit
+            previous_poll = self._host_poll
+            previous_thread = self._host_thread_id
+            self._host_commit = on_commit
+            self._host_poll = on_poll
+            self._host_thread_id = threading.get_ident()
+            try:
+                return self._run_until(ns, on_wait=on_wait, on_boundary=on_boundary)
+            except _HostYield:
+                return self.view()
+            finally:
+                self._host_commit = previous
+                self._host_poll = previous_poll
+                self._host_thread_id = previous_thread
 
     def _run_until(
-        self, ns: int, *, on_wait: Callable[[IngressWait | None], bool] | None = None
+        self,
+        ns: int,
+        *,
+        on_wait: Callable[[IngressWait | None], bool] | None = None,
+        on_boundary: Callable[[int], bool] | None = None,
     ) -> StateView:
         self._guard()
         if (
@@ -1206,8 +1280,6 @@ class Kernel:
         if ns == self._store.sealed_ns:
             return self.view()
         self._record_control("run_limit", {"limit_ns": ns})
-        import time
-
         wait_deadlines: dict[str, float] | None = None
         try:
             while self._store.sealed_ns < ns:
@@ -1236,9 +1308,18 @@ class Kernel:
                 # the append-only global journal never moves time backwards.
                 to = max(to, self._store.cut.instant.ns)
                 pre_wait_cut = self._store.cut
+                if on_boundary is not None:
+                    # A wall-clock wait must not prevent live ingress. Recompute
+                    # horizons if admission changed the cut while the gate slept.
+                    proceed = self._call_host(on_boundary, to)
+                    self._guard()
+                    if not proceed:
+                        return self.view()
+                    if pre_wait_cut != self._store.cut:
+                        continue
                 if self._store.watermarks:
                     if wait_deadlines is None:
-                        wait_start = time.monotonic()
+                        wait_start = self._source_wait_clock()
                         wait_deadlines = {}
                         for stream in self._store.watermarks:
                             timeout = self._policy(stream).timeout_s
@@ -1333,6 +1414,12 @@ class Kernel:
         from .pause import hold_wall_clock
 
         hold_wall_clock(self, duration_s, reason)
+
+    @property
+    def acknowledged_prefix(self) -> tuple[int, int]:
+        """WAL bytes and index of one acknowledged publication, read atomically."""
+        with self._ingress_condition:
+            return self.journal.acknowledged_bytes, self._store.cut.index
 
     @property
     def sealed_ns(self) -> int:

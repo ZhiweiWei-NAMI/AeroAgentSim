@@ -5,7 +5,7 @@ import { localized } from '../i18n/translate';
 import { localizedLabel, readableLabel } from '../pages/inspection-format';
 import { parseLosslessJson } from '../feeds/lossless-json';
 import { mapping, type Draft } from './model';
-interface EntityChoice { label: string; value: unknown; typeId: string; ancestors: string[] }
+export interface EntityChoice { label: string; value: unknown; typeId: string; ancestors: string[] }
 interface Props { entityChoices?: EntityChoice[]; schema: unknown; value: unknown; onChange: (value: unknown) => void; definitions?: Draft; path?: string; onValidityChange?: (valid: boolean) => void }
 const PayloadValidity = createContext<(id: string, error: string) => void>(() => {});
 const JSON_NUMBER = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
@@ -54,7 +54,7 @@ function PayloadFields({ schema, value, onChange, definitions = {}, path = 'Payl
   const displayPath = path === 'Payload' ? t('Payload') : path.startsWith('Payload.') ? `${t('Payload')}${path.slice('Payload'.length)}` : path;
   const title = localized(descriptor, 'title', locale) ?? localized(descriptor, 'label', locale);
   const description = localized(descriptor, 'description', locale);
-  const label = typeof title === 'string' ? title : path === 'Payload' ? t('Payload') : readableLabel(path.split('.').at(-1) ?? path, locale);
+  const label = typeof title === 'string' ? t(title) : path === 'Payload' ? t('Payload') : readableLabel(path.split('.').at(-1) ?? path, locale);
   const help = typeof description === 'string' && description ? <small>{description}</small> : null;
   const errorMessage = error === 'integer' ? t('Enter an exact integer') : error === 'number' ? t('Enter a finite number using JSON syntax') : error === 'record' ? t('Record payload must be an object') : error ? t('Invalid JSON: {error}', { error }) : '';
   const jsonChange = (source: string, record = false) => {
@@ -67,15 +67,23 @@ function PayloadFields({ schema, value, onChange, definitions = {}, path = 'Payl
   };
   if (mapping(descriptor) && descriptor.type === 'record' && mapping(descriptor.members)) {
     const row = mapping(value) ? value : {};
-    return <fieldset><legend>{typeof title === 'string' ? title : path === 'Payload' ? t('Event details') : label}</legend>{help}{Object.entries(descriptor.members).map(([key, child]) => <PayloadFields key={key} schema={child} value={row[key]} onChange={next => onChange({ ...row, [key]: next })} definitions={definitions} entityChoices={entityChoices} path={`${path}.${key}`}/>)}
+    return <fieldset className="typed-payload"><legend>{typeof title === 'string' ? title : path === 'Payload' ? t('Event details') : label}</legend>{help}{Object.entries(descriptor.members).map(([key, child]) => <PayloadFields key={key} schema={child} value={row[key]} onChange={next => onChange({ ...row, [key]: next })} definitions={definitions} entityChoices={entityChoices} path={`${path}.${key}`}/>)}
       <Details title={t('Complete payload / extra members')} buttonLabel={t('Extra payload fields')}><textarea aria-label={t('{path} JSON', { path: displayPath })} aria-invalid={!!error || undefined} value={raw} onChange={event => jsonChange(event.target.value, true)}/>{error && <p role="alert">{errorMessage}</p>}</Details>
     </fieldset>;
   }
-  if (mapping(descriptor) && descriptor.type === 'ref' && entityChoices) {
+  if (mapping(descriptor) && (descriptor.type === 'ref' || descriptor.type === 'string' && typeof descriptor.target_type === 'string') && entityChoices) {
     const compatible = entityChoices.filter(choice => choice.typeId === descriptor.target_type || choice.ancestors.includes(String(descriptor.target_type)));
     const reference = mapping(value) && mapping(value.$ref) ? value.$ref : undefined;
-    return <label>{label}<select aria-label={displayPath} value={reference ? `${reference.id}:${mapping(reference.generation) ? reference.generation.$integer : reference.generation}` : ''} onChange={event => commit(compatible.find(choice => mapping(choice.value) && mapping(choice.value.$ref) && `${choice.value.$ref.id}:${mapping(choice.value.$ref.generation) ? choice.value.$ref.generation.$integer : choice.value.$ref.generation}` === event.target.value)?.value)}>
-      <option value="">{t('Choose an entity')}</option>{compatible.map(choice => { const ref = mapping(choice.value) && mapping(choice.value.$ref) ? choice.value.$ref : undefined; return ref ? <option key={`${ref.id}:${mapping(ref.generation) ? ref.generation.$integer : ref.generation}`} value={`${ref.id}:${mapping(ref.generation) ? ref.generation.$integer : ref.generation}`}>{choice.label}</option> : null; })}
+    const choiceKey = (choice: EntityChoice) => {
+      const ref = mapping(choice.value) && mapping(choice.value.$ref) ? choice.value.$ref : undefined;
+      return ref ? descriptor.type === 'string' ? String(ref.id) : `${ref.id}:${mapping(ref.generation) ? ref.generation.$integer : ref.generation}` : '';
+    };
+    const current = descriptor.type === 'string' && typeof value === 'string' ? value : reference ? `${reference.id}:${mapping(reference.generation) ? reference.generation.$integer : reference.generation}` : '';
+    return <label>{label}<select aria-label={displayPath} value={current} onChange={event => {
+      const choice = compatible.find(item => choiceKey(item) === event.target.value);
+      commit(choice ? descriptor.type === 'string' ? choiceKey(choice) : choice.value : undefined);
+    }}>
+      <option value="">{t('Choose an entity')}</option>{current && !compatible.some(choice => choiceKey(choice) === current) && <option value={current} disabled>{t('Current value: {value}', { value: current })}</option>}{compatible.map(choice => <option key={choiceKey(choice)} value={choiceKey(choice)}>{choice.label}</option>)}
     </select>{help}</label>;
   }
   if (mapping(descriptor) && ['string', 'boolean', 'number', 'integer'].includes(String(descriptor.type))) {

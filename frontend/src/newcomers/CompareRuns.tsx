@@ -107,7 +107,7 @@ function differences(runs: ComparisonRun[], templates: Map<string, ScenarioTempl
   const algorithmSlots = ['allocation', 'path_planning', 'conflict_resolution', 'charging'] as const;
   const slotLabels: Record<AlgorithmSlot, string> = {
     allocation: t('Allocation'), path_planning: t('Path Planning'),
-    conflict_resolution: t('Conflict Resolution'), charging: t('Charging'),
+    conflict_resolution: t('Conflict Resolution'), charging: t('Charging strategy'),
   };
   const usedSlots = new Set<string>();
   interface Difference { label: string; raw: (KnobValue | undefined)[]; knob?: TemplateKnob; slot?: AlgorithmSlot }
@@ -322,7 +322,13 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
             {!configuration.config_diff.length ? <p>{locale === 'zh-CN' ? '两次运行的固定配置相同。注入事件与执行结果保留在各自日志中。' : 'The pinned configurations are identical. Injected events and results remain in each run’s journal.'}</p>
               : <div style={{ maxHeight: 280, overflow: 'auto' }}><table className="newc-compare-table" style={{ tableLayout: 'fixed', overflowWrap: 'anywhere' }}>
                 <thead><tr><th style={{ width: '34%' }}>{locale === 'zh-CN' ? '配置字段' : 'Configuration field'}</th>{runs.map((run, index) => <th key={run.id} title={run.id}>{t('Run {number} · {title}', { number: index + 1, title: localized(run, 'title', locale) || run.id })}</th>)}</tr></thead>
-                <tbody>{[...configuration.config_diff].sort((a, b) => Number(a.path.endsWith('/source')) - Number(b.path.endsWith('/source')) || a.path.localeCompare(b.path)).map(row => <tr key={row.path}><th scope="row"><code>{row.path}</code></th>{runs.map(run => <td key={run.id}>{row.present[run.id] ? JSON.stringify(row.values[run.id]) : locale === 'zh-CN' ? '未设置' : 'Not set'}</td>)}</tr>)}</tbody>
+                <tbody>{[...configuration.config_diff].sort((a, b) => Number(a.path.endsWith('/source')) - Number(b.path.endsWith('/source')) || a.path.localeCompare(b.path)).map(row => <tr key={row.path}><th scope="row"><code>{row.path}</code></th>{runs.map(run => {
+                  const value = row.values[run.id];
+                  return <td key={run.id}>{!row.present[run.id] ? locale === 'zh-CN' ? '未设置' : 'Not set'
+                    : row.path.endsWith('/source') && typeof value === 'string' && value.length > 96 && value.includes('/')
+                      ? <details className="newc-config-source"><summary title={value}>{locale === 'zh-CN' ? '源位置' : 'Source location'} · {value.slice(value.lastIndexOf('/') + 1)}</summary><code>{JSON.stringify(value)}</code></details>
+                      : JSON.stringify(value)}</td>;
+                })}</tr>)}</tbody>
               </table></div>}
           </>}
       </section>

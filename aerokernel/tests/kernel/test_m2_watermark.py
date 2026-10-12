@@ -131,3 +131,64 @@ def test_real_time_cannot_bind_without_a_declared_watermark():
             BindingManifest("r", "e"),
             (SimpleEngine(Partition("p", "e", timing=Timing("real_time"))),),
         )
+
+
+def test_host_wait_releases_ingress_and_pause_preserves_the_source_budget():
+    kernel, calls = make(IngressPolicy(0, timeout_s=0.03))
+    suspended, resume, admitted = (threading.Event() for _ in range(3))
+    failures = []
+
+    def wait(state):
+        if state is not None:
+            suspended.set()
+            assert resume.wait(2)
+        return True
+
+    def run():
+        try:
+            kernel.run_until(20, on_wait=wait)
+        except BaseException as error:
+            failures.append(error)
+
+    def admit():
+        kernel.advance_watermark(20)
+        admitted.set()
+
+    execution = threading.Thread(target=run)
+    admission = threading.Thread(target=admit)
+    execution.start()
+    try:
+        assert suspended.wait(1)
+        admission.start()
+        assert admitted.wait(0.5), "A paused host must not retain the ingress lock"
+        time.sleep(0.06)  # Longer than the actual authored source timeout.
+    finally:
+        resume.set()
+        execution.join(2)
+        if admission.ident is not None:
+            admission.join(2)
+    assert not execution.is_alive() and not admission.is_alive()
+    assert failures == [] and kernel.sealed_ns == 20
+    assert [at.ns for at in calls] == [20]
+    assert sum(row["type"] == "run_limit" for row in kernel.records) == 1
+    assert replay(kernel.journal.bytes).records == kernel.records
+    kernel.close()
+
+
+def test_source_still_times_out_after_host_suspension_without_input():
+    kernel, calls = make(IngressPolicy(0, timeout_s=0.03))
+    resumed = None
+
+    def wait(state):
+        nonlocal resumed
+        if resumed is None:
+            time.sleep(0.06)
+            resumed = time.monotonic()
+        return True
+
+    with pytest.raises(KernelError, match="WATERMARK_TIMEOUT"):
+        kernel.run_until(20, on_wait=wait)
+    assert time.monotonic() - resumed >= 0.025
+    assert calls == [] and kernel.sealed_ns == 0 and not kernel._store.faulted
+    assert replay(kernel.journal.bytes).records == kernel.records
+    kernel.close()

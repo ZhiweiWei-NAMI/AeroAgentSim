@@ -55,6 +55,8 @@ All engines share one runtime. Field bindings in the scenario assign one writer 
 
 ## Change the experiment
 
+For the operator story, choose **interactive** Run mode and set Accident time to **30** seconds. Apply controls to draft, Validate, Save version, Initialize, then Start. Select `incident.01`, open **Operate**, and inject **accident** before the timer fires. The injected incident uses the real participant positions and stopping commands. Follow **Why?** through reporting, award and physical dispatch, then open the stored PNG in **Photos**. The scheduled timer remains; after activation the incident chain leaves its timer-waiting state, so it does not activate a second accident.
+
 In Configure, change one factor at a time, validate, save a version and initialize a new run, then press Start. For file-based experiments, copy the complete scenario directory to keep relative snapshot, behaviour and input references together.
 
 - **Accident timing:** the [behaviour package](../../demos/traffic-accident/behaviours.yaml) declares the accident timer and the named `accident` injection point. Change the timer for a scheduled experiment, or use [external ingress](../../../docs/guides/external-events.md) for operator-controlled timing.
@@ -131,6 +133,8 @@ aeroagentsim demo traffic-accident
 
 ## 改变实验
 
+操作员故事：选择 **实时交互** 运行方式，将事故时间设为 **30** 秒。应用到草稿、校验、保存版本、初始化，再启动。选择 `incident.01`，打开“操作”，在定时器触发前注入 **accident**。注入使用真实参与车辆的位置和停止命令。在“为什么？”中追踪报告、中标和实际派遣，再到“照片”打开已存储的 PNG。原定时器保留；事故激活后事件链离开等待定时器的状态，因此不会再次激活事故。
+
 在配置面板中一次改变一个因素，校验、保存版本并初始化新运行。文件实验应复制完整场景目录，保持快照、行为和输入的相对引用。
 
 - 事故时间：修改行为包中的定时器，或使用 `accident` 外部注入点控制时间。
@@ -151,3 +155,9 @@ aeroagentsim replay <run-directory>
 ```
 
 默认精简溯源保留回放与语义事件；需要更深入的引擎诊断时选择 `--provenance full`。
+
+## Recorded camera / 已记录相机
+
+The template references `scenarios/demos/traffic-accident/scenario.yaml`; there is one camera configuration. `uav-gimbal-oblique/v1` captures 960×540 images from the committed UAV position with a 50° downward gimbal and 96° vertical FOV. The bearing and target annotation use `traffic.incident.position_enu_m` at the issued source cut. The optical axis and incident coordinate are recorded separately: an overhead incident sits in the lower frame. Vehicle callouts identify real committed incident vehicles; they do not depict unrecorded damage. Old nadir revisions remain replayable.
+
+模板直接引用 `scenarios/demos/traffic-accident/scenario.yaml`，只有一份相机配置。`uav-gimbal-oblique/v1` 在已提交的无人机位置拍摄 960×540 图像，云台向下 50°，垂直视野 96°。朝向和目标标注来自拍摄记录时刻的 `traffic.incident.position_enu_m`。光轴瞄准点与事故坐标分别记录；无人机近乎位于事故正上方时，事故出现在画面下部。车辆标注对应真实已提交的事故车辆，不添加未记录的损伤。旧版垂直俯拍仍可回放。

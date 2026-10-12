@@ -26,7 +26,7 @@ export default defineConfig({
   testDir: './e2e', testIgnore: '**/flows/**', outputDir: join(scratch, 'artifacts'),
   workers: 1, timeout: 240_000, reporter: 'list',
   use: { baseURL, viewport: { width: 1440, height: 900 },
-    launchOptions: { executablePath, args: ['--no-sandbox', '--enable-unsafe-swiftshader', '--use-angle=swiftshader'] } },
+    launchOptions: { executablePath, args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--no-proxy-server'] } },
   webServer: {
     // Builds into the scratch directory: frontend/dist may be serving someone's console.
     command: `${process.env.AEROAGENTSIM_E2E_SKIP_BUILD === '1' ? '' : `npx vite build --outDir ${quote(join(scratch, 'dist'))} --emptyOutDir && `}cd .. && PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=${quote(pythonPath)} AEROAGENTSIM_CHROMIUM=${quote(executablePath ?? '')} AEROAGENTSIM_CONSOLE_URL=${quote(baseURL)} ${quote(python)} -m aeroagentsim.services.cli serve --out ${quote(join(scratch, 'runs'))} --frontend ${quote(join(scratch, 'dist'))} --port ${port}`,

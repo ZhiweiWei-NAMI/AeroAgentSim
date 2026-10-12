@@ -22,6 +22,7 @@ def test_traffic_knobs_change_real_schedule_physics_and_preserve_source() -> Non
         "traffic-accident", {"accident_time_s": 5, "physics_hz": 2}
     )
     assert prepared.knobs == {
+        "run_mode": "scheduled",
         "accident_time_s": 5,
         "decision_mode": "scripted",
         "physics_hz": 2,
@@ -182,7 +183,8 @@ def test_all_shipped_template_metadata_is_bilingual_and_copied() -> None:
             assert any("\u4e00" <= char <= "\u9fff" for char in knob["label_zh"])
             assert knob["label_zh"] != knob["label"]
             translated_labels += 1
-    assert (translated_bullets, translated_labels) == (46, 55)
+    # Operator stories add six guide bullets and eight run/event controls.
+    assert (translated_bullets, translated_labels) == (52, 63)
     scheduled = registry.apply("food-delivery")
     interactive = registry.apply("food-delivery", {"run_mode": "interactive"})
     assert scheduled.knobs["run_mode"] == "scheduled"
@@ -200,7 +202,8 @@ def test_all_shipped_template_metadata_is_bilingual_and_copied() -> None:
     traffic["observe_zh"][0] = "changed"
     choice["options_zh"][0] = "changed"
     assert registry.get("traffic-accident")["observe_zh"][0] != "changed"
-    assert registry.get("traffic-accident")["knobs"][1]["options_zh"][0] == "预设决策"
+    assert next(knob for knob in registry.get("traffic-accident")["knobs"]
+                if knob["id"] == "decision_mode")["options_zh"][0] == "预设决策"
 
 
 @pytest.mark.parametrize(
@@ -212,11 +215,11 @@ def test_all_shipped_template_metadata_is_bilingual_and_copied() -> None:
         (("observe_zh",), ["观察"]),
         (("try_zh",), "试试"),
         (("try_zh",), ["试试", "", "试试"]),
-        (("knobs", 0, "label_zh"), 123),
-        (("knobs", 0, "options_zh"), ["一"]),
-        (("knobs", 1, "options_zh"), ["预设"]),
-        (("knobs", 1, "options_zh"), ["预设", "  "]),
-        (("knobs", 1, "description_zh"), "响应模式"),
+        (("knobs", "accident_time_s", "label_zh"), 123),
+        (("knobs", "accident_time_s", "options_zh"), ["一"]),
+        (("knobs", "decision_mode", "options_zh"), ["预设"]),
+        (("knobs", "decision_mode", "options_zh"), ["预设", "  "]),
+        (("knobs", "decision_mode", "description_zh"), "响应模式"),
     ],
 )
 def test_template_registry_rejects_invalid_translation_shapes(
@@ -225,7 +228,7 @@ def test_template_registry_rejects_invalid_translation_shapes(
     metadata = TemplateRegistry().get("traffic-accident")
     target = metadata
     for key in path[:-1]:
-        target = target[key]
+        target = next(knob for knob in target if knob["id"] == key) if isinstance(target, list) else target[key]
     target[path[-1]] = value
     with pytest.raises(ValueError, match=str(path[-1])):
         TemplateRegistry._validate(metadata, "traffic-accident")

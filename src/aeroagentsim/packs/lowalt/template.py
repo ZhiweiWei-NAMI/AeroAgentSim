@@ -27,7 +27,39 @@ def expand(document: dict[str, Any]) -> None:
     marked by their authored prefix and recreated on load, including replay of
     a pinned scenario. No hidden defaults or external geometry is consulted.
     """
+    # Old pinned scenarios keep their business configuration while gaining the
+    # optional journal-only lineage contract used by current task engines.
+    messages = document["registry"].get("messages", [])
+    if any(item["id"].startswith("lowalt.") for item in messages):
+        wanted = {item["id"]: item for item in overlay()["messages"]}
+        types = {item["id"] for item in document["registry"].get("types", [])}
+        # Food-only descriptors also exist in other lowalt registries. Their
+        # uninhabited restaurant type must not become a subject declaration.
+        for descriptor in wanted.values():
+            if "subjects" in descriptor:
+                descriptor["subjects"] = [row for row in descriptor["subjects"] if row["type_id"] in types]
+        for item in messages:
+            descriptor = wanted.get(item["id"], {})
+            schema = descriptor.get("schema", {})
+            if "provenance" in schema.get("members", {}):
+                item["schema"]["members"]["provenance"] = copy.deepcopy(schema["members"]["provenance"])
+            if "subjects" in descriptor:
+                item["subjects"] = copy.deepcopy(descriptor["subjects"])
+        known = {item["id"] for item in messages}
+        messages.extend(copy.deepcopy(item) for key, item in wanted.items() if key not in known)
     configure_detection(document)
+    # In live operator mode the source supplies these events. Retaining the
+    # scheduled demonstration as well would dispatch the same one-shot task
+    # twice (e.g. investigate at 55 s after a live investigation).
+    demonstrations = {
+        "security-patrol": {(55 * SECOND, "investigate")},
+        "city-day": {(120 * SECOND, "close-vertiport"), (160 * SECOND, "add-urgent-order")},
+    }.get(document["id"], set())
+    if demonstrations and any(stream["id"] == "operator" and stream["initial_watermark_ns"] == 0 for stream in document.get("ingress_streams", [])):
+        document["bindings"]["commands"] = [command for command in document["bindings"].get("commands", []) if not (
+            command["schema"] == "aas.runtime.inject_event" and command["target"] == "behaviour"
+            and (command["at_ns"], command["payload"].get("injection_point")) in demonstrations
+        )]
     if "algorithms" in document:
         algorithms = document["algorithms"]
         if not isinstance(algorithms, dict) or set(algorithms) - set(SLOTS):

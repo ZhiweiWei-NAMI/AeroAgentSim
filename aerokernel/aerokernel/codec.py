@@ -21,6 +21,8 @@ def _field_set(cls: type[Any]) -> frozenset[str]:
 
 def encode(value: object) -> Any:
     """Encode an internal record while keeping portable payload trees distinct."""
+    if isinstance(value, _DecodedRecord):
+        return dict(value)
     if value is None or type(value) in (bool, int, float, str):
         return value
     if type(value) in (list, tuple):
@@ -112,8 +114,31 @@ _HISTORICAL_DECLARATION_FIELDS = {
 }
 
 
+class _DecodedRecord(dict[str, Any]):
+    """Internal read-only wire frame; retain its validated typed record once.
+
+    The wire keys remain available to lifecycle readers. This wrapper is used
+    for projections and locally constructed dispatches. Attributes are never
+    written to WAL; JSON ingestion always validates ordinary wire dictionaries.
+    """
+
+    def __init__(self, wire: dict[str, Any]) -> None:
+        super().__init__(wire)
+        self.decoded = decode_record(wire)
+
+    @classmethod
+    def from_record(cls, record: Any) -> _DecodedRecord:
+        """Encode an already validated immutable internal record once."""
+        result = dict.__new__(cls)
+        dict.__init__(result, encode(record))
+        result.decoded = record
+        return result
+
+
 def decode_record(value: Any) -> Any:
     """Decode only known kernel records, with explicit sequence fields."""
+    if isinstance(value, _DecodedRecord):
+        return value.decoded
     classes = _record_classes()
     if isinstance(value, list):
         return tuple(decode_record(v) for v in value)

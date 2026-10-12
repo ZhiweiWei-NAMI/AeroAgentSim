@@ -17,6 +17,7 @@ from aeroagentsim.scenario.loader import contract, text
 from .artifacts import ArtifactStore
 from .contracts import CaptureReceipt, CaptureRequest, artifact_id
 from .renderer import BrowserRenderer, Renderer, StubRenderer
+from .committed import CommittedBrowserRenderer
 
 # Semantic keys are mapped onto explicitly selected registry fields by config.
 METADATA = frozenset(
@@ -142,8 +143,14 @@ class Capture(ContextEngine):
         self.store = (
             ArtifactStore(Path(cfg["run_directory"])) if store is None else store
         )
-        self.renderer = (
-            self._renderer(cfg["renderer"]) if renderer is None else renderer
+        # Route shipped template cameras through the shared committed-world
+        # viewer before a legacy pack can select its private HTML renderer.
+        if not isinstance(cfg["renderer"], dict):
+            raise TypeError("capture.renderer: explicit provider configuration required")
+        self.renderer = renderer if renderer is not None else (
+            CommittedBrowserRenderer(cfg["renderer"], self.store.run_directory)
+            if cfg["renderer"].get("mode") == "traffic_browser"
+            else self._renderer(cfg["renderer"])
         )
         self.ready: list[StoredCapture] = []
         self.accepted: set[str] = set()
@@ -272,7 +279,11 @@ class Capture(ContextEngine):
                             "capture request already has a recorded acquisition"
                         )
                     self.store.register(request)
-                    frame = self.renderer.render(request)
+                    frame = (
+                        self.renderer.render_cut(request, ctx.view._store)
+                        if isinstance(self.renderer, CommittedBrowserRenderer)
+                        else self.renderer.render(request)
+                    )
                     record = self.store.put(
                         request, frame.png, renderer_mode=frame.mode
                     )

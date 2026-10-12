@@ -1,6 +1,6 @@
 # Traffic accident: authored domain scenario
 
-The integrated scene uses the shared behaviour runtime, real physical owners and explicit authored stub decisions. The default profile declares 1 Hz physics/publication and a 66,666,667 ns shared message lag. The original 15 Hz domain comparison remains a separate test profile. Actual headless Chromium renders committed poses with primitive geometry; this is simulation-camera output, not the licensed city viewer or native imagery.
+The integrated scene uses the shared behaviour runtime, real physical owners and explicit authored stub decisions. The default profile declares 1 Hz physics/publication and a 66,666,667 ns shared message lag. The original 15 Hz domain comparison remains a separate test profile. Headless Chromium renders committed poses through the shared workbench city and model renderer. The shipped `uav-gimbal-oblique/v1` sensor uses the real UAV pose, a 50° downward gimbal, a 96° vertical field of view and a 960×540 image. Its bearing comes from the committed incident location; the incident appears in the lower frame when the UAV is nearly overhead. Bilingual annotations identify the measured ENU pose, target and incident vehicles without adding unrecorded crash damage. Older `traffic-nadir/v1` and `traffic-city-nadir/v1` camera records remain supported.
 
 ```bash
 python -m aeroagentsim.services.cli run scenarios/demos/traffic-accident/scenario.yaml \

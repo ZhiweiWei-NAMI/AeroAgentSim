@@ -19,6 +19,38 @@ type Fact = FeedCommit['facts'][number];
 type Message = FeedCommit['messages'][number];
 const isObject = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const text = (value: unknown): string | undefined => typeof value === 'string' ? value : undefined;
+const storyLabels: Record<string, string> = {
+  'lowalt.operator.restaurant_delay': '操作员出餐延迟', 'lowalt.food.preparation_delayed': '备餐延迟',
+  'lowalt.food.ready': '出餐就绪', 'lowalt.food.delivered': '餐食送达',
+  'lowalt.task.created': '任务释放', 'lowalt.task.assigned': '任务派发',
+  'lowalt.task.started': '任务启动', 'lowalt.task.picked_up': '完成取件',
+  'lowalt.task.completed': '任务完成', 'lowalt.task.replanned': '任务改航',
+  'lowalt.operator.investigate': '操作员请求调查', 'lowalt.operator.close_vertiport': '操作员关闭起降场',
+  'lowalt.operator.close_air_taxi_port': '操作员关闭载客起降场', 'lowalt.site.closed': '起降场关闭',
+  'lowalt.operator.change_dropoff': '操作员变更收货点', 'lowalt.parcel.dropoff_changed': '收货点已变更',
+  'lowalt.operator.prioritize_medical': '操作员提升医疗优先级', 'lowalt.medical.prioritized': '医疗优先级已提升',
+  'lowalt.operator.report_defect': '操作员报告线路缺陷', 'lowalt.inspection.defect_reported': '线路缺陷复查已释放',
+  'lowalt.inspection.observed': '线路实际观测', 'lowalt.operator.pause_spraying': '操作员请求停喷',
+  'lowalt.spraying.paused': '喷洒已暂停', 'lowalt.spraying.resumed': '喷洒已恢复',
+  'lowalt.spraying.applied': '实际喷洒观测', 'lowalt.operator.rejected': '操作请求被拒绝',
+};
+const businessFields: Record<string, { en: string; zh: string; clock?: true }> = {
+  'lowalt.task_destination': { en: 'task destination', zh: '任务目的地' },
+  'lowalt.task_priority': { en: 'task priority', zh: '任务优先级' },
+  'lowalt.task_state': { en: 'task state', zh: '任务状态' },
+  'lowalt.site_open': { en: 'site open', zh: '起降场开放状态' },
+  'lowalt.task_created_ns': { en: 'task release time', zh: '任务释放时间', clock: true },
+  'lowalt.task_started_ns': { en: 'task start time', zh: '任务启动时间', clock: true },
+  'lowalt.task_completed_ns': { en: 'task completion time', zh: '任务完成时间', clock: true },
+  'lowalt.food_expected_ready_ns': { en: 'expected readiness', zh: '预计出餐时间', clock: true },
+  'lowalt.food_preparation_started_ns': { en: 'preparation start time', zh: '开始备餐时间', clock: true },
+  'lowalt.food_ready_ns': { en: 'ready time', zh: '实际出餐时间', clock: true },
+  'lowalt.food_delivered_ns': { en: 'delivery time', zh: '餐食送达时间', clock: true },
+  'lowalt.food_deadline_ns': { en: 'delivery deadline', zh: '餐食送达截止时间', clock: true },
+};
+const messageLabel = (schema: string, locale: string) => schema === 'aas.runtime.inject_event'
+  ? locale === 'zh-CN' ? '操作员请求' : 'Operator request'
+  : locale === 'zh-CN' && storyLabels[schema] ? storyLabels[schema] : readableLabel(schema, locale);
 
 /** A pointer to something that happened. Other pages build these and call `openCauseTrace`. */
 export type CauseRef =
@@ -72,6 +104,7 @@ interface Index {
   steps: StepRec[]; stepsByCut: Map<number, StepRec[]>; stepByKey: Map<string, StepRec>;
   byEventSchema: Map<string, StepRec[]>; byCommand: Map<string, StepRec[]>;
   messages: Map<string, { cut: number; message: Message }>; receipts: Map<string, { status: string; cut: number }>;
+  parents: Map<string, string[]>; children: Map<string, string[]>;
   evals: EvalRec[]; evalsByEntity?: Map<string, EvalRec[]>;
   chains: Map<string, { transitions: TransitionDef[] }>; predicates: Map<string, { expression?: unknown; parameters?: Record<string, unknown> }>;
 }
@@ -95,6 +128,7 @@ function build(store: TemporalFeedStore, locale = 'en-US'): Index {
     locale,
     count: store.commits.length, steps: [], stepsByCut: new Map(), stepByKey: new Map(), byEventSchema: new Map(), byCommand: new Map(),
     messages: new Map(), receipts: new Map(), evals: [], chains: new Map(), predicates: new Map(),
+    parents: new Map(), children: new Map(),
   };
   const behaviour = store.header.behaviour as { packages?: Array<{ chains?: Record<string, { transitions?: TransitionDef[] }>; predicates?: Record<string, { expression?: unknown; parameters?: Record<string, unknown> }> }> } | undefined;
   for (const pack of behaviour?.packages ?? []) {
@@ -115,6 +149,43 @@ function build(store: TemporalFeedStore, locale = 'en-US'): Index {
     }
     for (const rec of commit.predicateTruth ?? []) if (rec.op !== 'close') index.evals.push({ cut: commit.commitIndex, rec });
   }
+  const link = (parent: string, child: string) => {
+    const before = index.messages.get(parent), after = index.messages.get(child);
+    if (!before || !after || parent === child || before.cut > after.cut) return;
+    const parents = index.parents.get(child) ?? [], children = index.children.get(parent) ?? [];
+    if (!parents.includes(parent)) parents.push(parent);
+    if (!children.includes(child)) children.push(child);
+    index.parents.set(child, parents); index.children.set(parent, children);
+  };
+  const eventKeys = new Map<string, string>();
+  for (const { message } of index.messages.values()) {
+    const payload = isObject(message.payload) ? message.payload : {};
+    const provenance = isObject(payload.provenance) ? payload.provenance : {};
+    if (typeof provenance.event_key === 'string') eventKeys.set(provenance.event_key, message.id);
+  }
+  for (const { message } of index.messages.values()) {
+    const payload = isObject(message.payload) ? message.payload : {};
+    const provenance = isObject(payload.provenance) ? payload.provenance : {};
+    if (Array.isArray(provenance.message_ids)) for (const parent of provenance.message_ids) if (typeof parent === 'string') link(parent, message.id);
+    if (Array.isArray(provenance.parent_event_keys)) for (const key of provenance.parent_event_keys) {
+      if (typeof key !== 'string') continue;
+      const parent = eventKeys.get(key); if (parent) link(parent, message.id);
+    }
+  }
+  // Injection execution receipts identify the command and authored point.
+  // Match the emitted event to that point's schema and exact submitted payload.
+  // This also works for existing lean journals without kernel cause arrays.
+  const points = store.header.behaviour?.injectionPoints ?? store.header.behaviour?.injection_points ?? [];
+  for (const commit of store.commits) for (const receipt of commit.receipts) {
+    if (receipt.status !== 'succeeded' || !isObject(receipt.result)) continue;
+    const command = index.messages.get(receipt.commandId)?.message;
+    if (!command || command.schemaId !== 'aas.runtime.inject_event' || !isObject(command.payload)) continue;
+    const submitted = command.payload;
+    const result = receipt.result;
+    const point = points.find(row => row.id === result.injection_point);
+    if (!point) continue;
+    for (const message of commit.messages) if (message.kind === 'event' && message.source === command.target && message.schemaId === point.emits && exactValue(message.payload) === exactValue(submitted.payload)) link(command.id, message.id);
+  }
   cache.set(store, index);
   return index;
 }
@@ -126,6 +197,8 @@ export const idLabel = (store: TemporalFeedStore, id: string, locale = 'en-US') 
 const keyLabel = (store: TemporalFeedStore, key: EntityKey, locale = 'en-US') => idLabel(store, entityId(key), locale);
 /** Short plain name for a field: last path segment without its unit suffix. */
 export function fieldWords(fieldId: string, locale = 'en-US'): string {
+  const business = businessFields[fieldId];
+  if (business) return locale === 'zh-CN' ? business.zh : business.en;
   const last = fieldId.slice(fieldId.lastIndexOf('.') + 1).replace(/_(?:enu_m|mps2|mps|deg|rad|ns|m|s|j|w)$/, '');
   return translate(locale, last.replace(/_/g, ' '));
 }
@@ -262,10 +335,18 @@ function effectsOf(store: TemporalFeedStore, index: Index, step: StepRec): Effec
 function effectView(store: TemporalFeedStore, fact: Fact, cut: number, at?: Instant, locale = 'en-US'): EffectView {
   const previous = factBefore(store, fact.entity, fact.fieldId, cut), declared = declaredWriter(store, fact.fieldId);
   const field = fieldInfo(store, fact.fieldId);
-  const unit = field?.unit && field.unit !== '1' ? field.unit : undefined;
+  const unit = !businessFields[fact.fieldId]?.clock && field?.unit && field.unit !== '1' ? field.unit : undefined;
+  const value = (raw: unknown) => {
+    if (businessFields[fact.fieldId]?.clock) {
+      const stamp = typeof raw === 'number' && Number.isSafeInteger(raw) ? String(raw)
+        : isObject(raw) && typeof raw.$integer === 'string' && /^-?\d+$/.test(raw.$integer) ? raw.$integer : undefined;
+      if (stamp !== undefined) return displayTime(stamp, store.header.start.ns);
+    }
+    return showValue(store, raw, 60, locale);
+  };
   return {
     entity: fact.entity, entityLabel: keyLabel(store, fact.entity,locale), fieldId: fact.fieldId, fieldLabel: fieldWords(fact.fieldId,locale),
-    before: previous ? showValue(store, previous.value,60,locale) : undefined, hadBefore: !!previous, after: showValue(store, fact.value,60,locale),
+    before: previous ? value(previous.value) : undefined, hadBefore: !!previous, after: value(fact.value),
     writer: fact.producer, declaredWriter: declared, writerOk: !declared || declared === fact.producer, at: at ?? fact.validFrom ?? store.commits.find(row => row.commitIndex === cut)!.at, cut, unit,
   };
 }
@@ -358,14 +439,16 @@ function followUpsOfStep(store: TemporalFeedStore, index: Index, step: StepRec, 
   for (const item of producedMessages(step, definition, 'event')) {
     const message = item.message;
     const receivers = (index.byEventSchema.get(message.schemaId) ?? []).filter(row => row.cut >= step.cut && exactValue((row.rec.trigger as { payload?: unknown }).payload) === exactValue(message.payload));
-    result.push({ kind: 'event', label: t('Announced "{event}"', {event:readableLabel(message.schemaId,locale)}), detail: receivers.length ? receivers.length === 1 ? t('1 chain step reacted') : t('{count} chain steps reacted', {count:receivers.length}) : t('No event-chain step reacted to it'), at: message.at });
+    result.push({ kind: 'event', label: t('Announced "{event}"', {event:readableLabel(message.schemaId,locale)}), detail: receivers.length ? receivers.length === 1 ? t('1 chain step reacted') : t('{count} chain steps reacted', {count:receivers.length}) : t('No event-chain step reacted to it'), at: message.at, ref: { kind: 'message', messageId: message.id, cut: step.cut } });
     for (const receiver of receivers.slice(0, 4)) result.push(stepFollowUp(store, index, receiver, 'reacted to the announcement'));
   }
   for (const item of producedMessages(step, definition, 'command')) {
     const message = item.message, receipt = index.receipts.get(message.id);
-    result.push({ kind: 'command', label: t('Asked {writer} to "{command}"', {writer:message.target ? writerName(String(message.target),locale) : t('an engine'),command:readableLabel(message.schemaId,locale)}), detail: receipt ? t('Result: {result}', {result:readableLabel(receipt.status,locale)}) : t('No result recorded yet'), at: message.at });
+    result.push({ kind: 'command', label: t('Asked {writer} to "{command}"', {writer:message.target ? writerName(String(message.target),locale) : t('an engine'),command:readableLabel(message.schemaId,locale)}), detail: receipt ? t('Result: {result}', {result:readableLabel(receipt.status,locale)}) : t('No result recorded yet'), at: message.at, ref: { kind: 'message', messageId: message.id, cut: step.cut } });
     for (const receiver of index.byCommand.get(message.id) ?? []) if (receiver.cut >= step.cut && receiver.key !== step.key) result.push(stepFollowUp(store, index, receiver, 'handled the result'));
   }
+  const next = index.steps.find(row => row.rec.instanceId === step.rec.instanceId && row.cut > step.cut && row.key !== step.key);
+  if (next && !result.some(row => row.ref?.kind === 'step' && row.ref.instanceId === next.rec.instanceId && revision(row.ref.revision) === revision(next.rec.revision))) result.push(stepFollowUp(store, index, next, 'continued'));
   const seen = new Set<string>();
   for (const effect of effects) {
     const stamp = effect.at.ns;
@@ -443,14 +526,36 @@ function explainMessage(store: TemporalFeedStore, index: Index, messageId: strin
   const receivers = message.kind === 'event' ? (index.byEventSchema.get(message.schemaId) ?? []).filter(row => row.cut >= cut && exactValue((row.rec.trigger as { payload?: unknown }).payload) === exactValue(message.payload)) : index.byCommand.get(message.id) ?? [];
   for (const receiver of receivers.slice(0, 6)) followUps.push(stepFollowUp(store, index, receiver, 'reacted'));
   const locale = index.locale, t = translator(locale);
+  // Traverse only recorded message handles, never entity/time proximity.
+  const visited = new Set([message.id]), queue = [...(index.children.get(message.id) ?? [])];
+  while (queue.length) {
+    const id = queue.shift()!; if (visited.has(id)) continue; visited.add(id);
+    const child = index.messages.get(id); if (!child) continue;
+    followUps.push({ kind: child.message.kind, label: messageLabel(child.message.schemaId, locale),
+      detail: messageDetail(store, child.message, locale), at: child.message.at,
+      ref: { kind: 'message', messageId: id, cut: child.cut } });
+    queue.push(...(index.children.get(id) ?? []));
+  }
+  followUps.sort((a, b) => a.at && b.at ? BigInt(a.at.ns) < BigInt(b.at.ns) ? -1 : BigInt(a.at.ns) > BigInt(b.at.ns) ? 1 : a.at.microstep - b.at.microstep : 0);
   if (!followUps.length) followUps.push({ kind: 'none', label: t('Nothing reacted to this'), detail: t('No chain step was waiting for it.') });
+  const parents = (index.parents.get(message.id) ?? []).map(id => index.messages.get(id)).filter((row): row is { cut: number; message: Message } => !!row);
+  const effects = store.commits.find(row => row.commitIndex === cut)?.facts.filter(fact => fact.producer === message.source && (message.subjects ?? []).some(key => entityId(key) === entityId(fact.entity))).map(fact => effectView(store, fact, cut, undefined, locale)) ?? [];
   const model: TraceModel = {
-    focus: 'message', heading: readableLabel(message.schemaId,locale), subtitle: message.kind === 'event' ? t('announced at {at}', {at:at(store, message.at)}) : t('requested at {at}', {at:at(store, message.at)}), at: message.at, cut,
+    focus: 'message', heading: messageLabel(message.schemaId,locale), subtitle: message.kind === 'event' ? t('announced at {at}', {at:at(store, message.at)}) : t('requested at {at}', {at:at(store, message.at)}), at: message.at, cut,
     sender: origin ? { text: t('Sent by the chain "{chain}"', {chain:readableLabel(origin.rec.templateId,locale)}), ref: { kind: 'step', instanceId: origin.rec.instanceId, revision: revision(origin.rec.revision) } } : { text: t('Sent by the {writer}', {writer:writerName(message.source,locale)}) },
-    effects: [], followUps, involved: [], choices: [], notes: [t(LEAN_NOTE)],
+    trigger: parents.length ? { kind: parents[0].message.kind, summary: messageLabel(parents[0].message.schemaId, locale), at: parents[0].message.at, ref: { kind: 'message', messageId: parents[0].message.id, cut: parents[0].cut } } : undefined,
+    effects, followUps, involved: [], choices: parents.slice(1).map(parent => ({ label: messageLabel(parent.message.schemaId, locale), at: parent.message.at, ref: { kind: 'message', messageId: parent.message.id, cut: parent.cut } })), notes: [t(LEAN_NOTE)],
   };
+  if (message.schemaId === 'lowalt.operator.rejected' && isObject(message.payload) && typeof message.payload.reason === 'string') model.notes.unshift(message.payload.reason);
   model.involved = involvedOf(store, model, undefined, message.subjects ?? []);
   return model;
+}
+
+function messageDetail(store: TemporalFeedStore, message: Message, locale: string): string {
+  const names = (message.subjects ?? []).map(key => keyLabel(store, key, locale));
+  if (message.schemaId === 'lowalt.operator.rejected' && isObject(message.payload) && typeof message.payload.reason === 'string') names.push(message.payload.reason);
+  const receipt = message.kind === 'command' ? build(store, locale).receipts.get(message.id) : undefined;
+  return [...names, ...(receipt ? [translate(locale, 'Result: {result}', { result: readableLabel(receipt.status, locale) })] : [])].join(' · ');
 }
 
 function explainChange(store: TemporalFeedStore, index: Index, entity: EntityKey, fieldId: string, cut: number): TraceModel | undefined {

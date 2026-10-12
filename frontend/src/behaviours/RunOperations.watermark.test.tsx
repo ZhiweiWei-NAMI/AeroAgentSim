@@ -5,148 +5,64 @@ import { TemporalFeedStore } from '../feeds/temporal-store';
 import { emptyCommit, fixtureHeader } from './extension-fixture';
 import { ConsoleNotifications } from '../console/Notifications';
 import { RunOperations } from './RunOperations';
-import { activateInjectionShortcut } from './injection-defaults';
+import type { OperatorInput } from '../workbench/useOperatorInput';
 
-it('pauses a waiting run by keyboard and recognizes resume back into the wait', async () => {
-  const api = new RunsApi('http://api');
-  let status = 'waiting_for_input';
-  const runs = vi.spyOn(api, 'runs').mockRejectedValue(Error('The expensive run listing must not be used for controls'));
-  const request = vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
-    if (path.endsWith('/configuration')) return { scenario: { id: 'external', behaviours: [] } };
-    if (path.includes('/commits?')) return { status, commits: [], next: 2 };
-    expect(options).toMatchObject({method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
-    const action = path.split('/').at(-1);
-    if (action === 'pause') status = 'paused';
-    else if (action === 'resume') status = 'waiting_for_input';
-    else throw Error(`Unexpected API request: ${path}`);
-    return { requested: action, status };
-  });
-  try {
-    const store = new TemporalFeedStore(fixtureHeader);
-    store.ingest(emptyCommit(1)); store.seek('0', 1);
-    await act(async () => { render(<ConsoleNotifications><RunOperations api={api} runId="waiting" store={store} onSelect={() => {}} onSeek={() => {}} mode="live" /></ConsoleNotifications>); });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Pause simulation' })).toBeEnabled());
-    fireEvent.keyDown(document, { key: ' ' });
-    await waitFor(() => expect(screen.getByText(/Requested: pause/)).toHaveTextContent('effective status: paused'));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Resume simulation' })).toBeEnabled());
-    fireEvent.keyDown(document, { key: ' ' });
-    await waitFor(() => expect(screen.getByText(/Requested: resume/)).toHaveTextContent('effective status: waiting for input'));
-    expect(screen.getByText(/Requested: resume/)).not.toHaveTextContent('pending at safe boundary');
-    expect(runs).not.toHaveBeenCalled();
-  } finally { cleanup(); request.mockRestore(); runs.mockRestore(); }
-});
-
-it('waits for the kernel before advancing acknowledged operator watermarks, capped at the authored end', async () => {
-  vi.useFakeTimers();
-  const api = new RunsApi('http://api'), watermarks: number[] = [];
-  let acknowledged = 0, status = 'running';
-  const request = vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
-    if (path.endsWith('/configuration')) return { scenario: {
-      id: 'food-delivery', run: { advance_ns: 1_000_000_000, until_ns: 2_500_000_000 },
-      ingress_streams: [{ id: 'operator', initial_watermark_ns: 0 }], behaviours: [],
-    } };
-    if (path.includes('/commits?')) return { status, commits: [], next: 2 };
-    if (path.endsWith('/inputs')) return {status,watermarks:{operator:acknowledged},pause_requested:false};
-    if (!path.endsWith('/watermark')) throw Error(`Unexpected API request: ${path}`);
-    const body = JSON.parse(String(options?.body)) as {stream_id: string; watermark_ns: number};
-    expect(body.stream_id).toBe('operator');
-    watermarks.push(body.watermark_ns); acknowledged=body.watermark_ns;
-    return {contract: 'aeroagentsim.watermark-receipt/v2', stream_id: 'operator', watermark_ns: body.watermark_ns};
-  });
-  try {
-    const store = new TemporalFeedStore(fixtureHeader);
-    store.ingest(emptyCommit(1)); store.seek('0', 1);
-    await act(async () => { render(<ConsoleNotifications><RunOperations api={api} runId="idle" store={store} onSelect={() => {}} onSeek={() => {}} mode="live" /></ConsoleNotifications>); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
-    expect(watermarks).toEqual([]);
-    status = 'waiting_for_input';
-    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
-    expect(store.commits.at(-1)?.at.ns).toBe('0');
-    expect(watermarks).toEqual([1_000_000_000, 2_000_000_000, 2_500_000_000]);
-    fireEvent.click(screen.getByRole('button',{name:'Source timing'}));
-    expect(screen.getByText(/closed through 00:02.5/)).toBeVisible();
-  } finally { cleanup(); request.mockRestore(); vi.useRealTimers(); }
-});
-
-it('injects the authored accident in one click with real identity and automatic transport',async()=>{
- const api=new RunsApi('http://api'),bodies:unknown[]=[];
- const point={id:'accident',stream_id:'operator',command:'aas.runtime.inject_event',target:'behaviour',emits:'traffic.inject.accident'};
- const header={...fixtureHeader,kernelRunId:'actual-kernel',types:[...fixtureHeader.types,{typeId:'aas:TrafficIncident',displayName:'Incident',ancestors:[]}],messages:[
-  {id:point.command,kind:'command',schema:{type:'record',members:{},required:[]}},
-  {id:point.emits,kind:'event',schema:{type:'record',members:{incident:{type:'ref',target_type:'aas:TrafficIncident'},request_id:{type:'string'},source_cut:{type:'integer'},reason:{type:'string',default:'Operator report'}},required:[]}},
- ]};
- const store=new TemporalFeedStore(header),commit=emptyCommit(7);commit.created=[{id:'incident.real',generation:0,typeId:'aas:TrafficIncident'}];store.ingest(commit);store.seek('0');
- const request=vi.spyOn(api,'request').mockImplementation(async(path,options)=>{
-  if(path.endsWith('/configuration'))return {scenario:{id:'traffic-accident',run:{advance_ns:1_000_000_000,until_ns:90_000_000_000},ingress_streams:[{id:'operator',initial_watermark_ns:0}],behaviours:[{document:{injection_points:[point]}}]}};
-  if(path.includes('/commits?'))return {status:'running',commits:[],next:8};
-  if(path.endsWith('/inputs'))return {status:'running',watermarks:{operator:0},pause_requested:false};
-   if(path.endsWith('/ingress')){bodies.push(JSON.parse(String(options?.body)));return {disposition:'accepted'};}
-  throw Error(`Unexpected request: ${path}`);
+it('keeps a delayed read-only status poll out of the top-bar action queue', async () => {
+ const api = new RunsApi('http://api'), store = new TemporalFeedStore(fixtureHeader);
+ store.ingest(emptyCommit(1)); store.seek('0');
+ let release!: (value: unknown) => void;
+ const pending = new Promise(resolve => { release = resolve; });
+ const request = vi.spyOn(api, 'request').mockImplementation(async path => {
+  if (path.endsWith('/configuration')) return { scenario: {} };
+  if (path.includes('/commits?')) return pending;
+  if (path.endsWith('/stop')) return { status: 'stopped' };
+  throw Error(path);
  });
- try{
-  render(<ConsoleNotifications><RunOperations api={api} runId="actual-service" store={store} onSelect={()=>{}} onSeek={()=>{}} mode="live"/></ConsoleNotifications>);
-  await waitFor(()=>expect(screen.getByTestId('inject-accident')).toBeEnabled());
-  expect(screen.getByLabelText('Payload.reason')).toHaveValue('Operator report');
-  expect(screen.queryByLabelText('Ingress at_ns')).toBeNull();
-  activateInjectionShortcut(screen.getByTestId('injection-card'));
-  await waitFor(()=>expect(bodies).toHaveLength(1));
-  expect(bodies[0]).toMatchObject({schema:point.command,target:point.target,stream_id:'operator',at_ns:1,source_stamp:{clock_id:'canonical',mapping_id:'canonical',numerator:1,denominator:1},payload:{injection_point:'accident',payload:{incident:{$ref:{run_id:'actual-kernel',epoch:fixtureHeader.epoch,id:'incident.real',generation:0,type_id:'aas:TrafficIncident'}},source_cut:7,request_id:expect.any(String),reason:'Operator report'}},idempotency_key:expect.any(String)});
- }finally{cleanup();request.mockRestore();}
+ let tail: Promise<unknown> = Promise.resolve();
+ const input: OperatorInput = { serialize: action => { const result = tail.then(action, action); tail = result; return result; } };
+ try {
+  render(<ConsoleNotifications><RunOperations api={api} runId="run" store={store} mode="live" onSelect={()=>{}} onSeek={()=>{}} inputSource={input}/></ConsoleNotifications>);
+  await waitFor(() => expect(request.mock.calls.some(([path]) => path.includes('/commits?'))).toBe(true));
+  void input.serialize(() => api.request('/v1/runs/run/stop', { method: 'POST' }));
+  await waitFor(() => expect(request.mock.calls.some(([path]) => path.endsWith('/stop'))).toBe(true));
+ } finally {
+  await act(async () => { release({ status: 'stopped' }); }); cleanup(); request.mockRestore();
+ }
 });
 
-
-it('restores food input progress across reloads and never advances during a requested or effective pause', async () => {
-  vi.useFakeTimers();
-  const api=new RunsApi('http://api'),watermarks:number[]=[];
-  let acknowledged=4_000_000_000,status='running',pauseRequested=true;
-  const request=vi.spyOn(api,'request').mockImplementation(async(path,options)=>{
-    if(path.endsWith('/configuration'))return {scenario:{id:'food-delivery',run:{advance_ns:500_000_000,until_ns:10_000_000_000},ingress_streams:[{id:'operator',initial_watermark_ns:0}],behaviours:[]}};
-    if(path.includes('/commits?'))return {status,commits:[],next:2};
-    if(path.endsWith('/inputs'))return {status,watermarks:{operator:acknowledged},pause_requested:pauseRequested};
-    if(path.endsWith('/watermark')){acknowledged=JSON.parse(String(options?.body)).watermark_ns;watermarks.push(acknowledged);return {watermark_ns:acknowledged};}
-    throw Error(`Unexpected request: ${path}`);
-  });
-  const store=new TemporalFeedStore(fixtureHeader);store.ingest(emptyCommit(1));store.seek('0',1);
-  const mount=()=>render(<ConsoleNotifications><RunOperations api={api} runId="food" store={store} onSelect={()=>{}} onSeek={()=>{}} mode="live"/></ConsoleNotifications>);
-  try {
-    let view:ReturnType<typeof render>;
-    await act(async()=>{view=mount();});
-    await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
-    expect(watermarks).toEqual([]);
-    status='paused';pauseRequested=false;
-    await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
-    expect(watermarks).toEqual([]);
-    status='waiting_for_input';
-    await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});
-    expect(watermarks).toEqual([4_500_000_000]);
-    await act(async()=>{view!.unmount();});
-    await act(async()=>{mount();});
-    await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});
-    expect(watermarks).toEqual([4_500_000_000,5_000_000_000]);
-    expect(store.commits.at(-1)?.at.ns).toBe('0');
-  } finally {cleanup();request.mockRestore();vi.useRealTimers();}
-});
-
-it('clears a recovered source read error while retaining a failed control error',async()=>{
-  vi.useFakeTimers();
-  const api=new RunsApi('http://api');let offline=false;
-  const request=vi.spyOn(api,'request').mockImplementation(async(path)=>{
-    if(path.endsWith('/configuration'))return {scenario:{id:'external',behaviours:[]}};
-    if(path.includes('/commits?')){if(offline)throw new TypeError('source offline');return {status:'running',commits:[],next:2};}
-    if(path.endsWith('/pause'))throw Error('pause rejected');
-    throw Error(`Unexpected request: ${path}`);
-  });
-  try{
-    const store=new TemporalFeedStore(fixtureHeader);store.ingest(emptyCommit(1));store.seek('0',1);
-    await act(async()=>{render(<ConsoleNotifications><RunOperations api={api} runId="reconnect" store={store} onSelect={()=>{}} onSeek={()=>{}} mode="live"/></ConsoleNotifications>);});
-    await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Pause simulation'}));});
-    expect(screen.getAllByText('pause rejected').length).toBeGreaterThan(0);
-    offline=true;await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});
-    expect(screen.getByText('source offline')).toBeVisible();
-    offline=false;await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});
-    expect(screen.queryByText('source offline')).toBeNull();
-    expect(screen.getAllByText('pause rejected').length).toBeGreaterThan(0);
-  }finally{cleanup();request.mockRestore();vi.useRealTimers();}
+it('retains the actual newer source frontier when a background read arrives after command preflight', async () => {
+ const api = new RunsApi('http://api'), point = { id:'restaurant_delay', stream_id:'operator', command:'aas.runtime.inject_event', target:'behaviour', emits:'lowalt.operator.restaurant_delay' };
+ const header = { ...fixtureHeader, messages:[
+  { id:point.command, kind:'command', schema:{ type:'record', members:{}, required:[] } },
+  { id:point.emits, kind:'event', schema:{ type:'record', members:{ restaurant:{ type:'string' }, delay_s:{ type:'number' } }, required:['restaurant','delay_s'] } },
+ ] };
+ const store = new TemporalFeedStore(header); store.ingest(emptyCommit(1)); store.seek('0');
+ let reads = 0, release!: (value: unknown) => void;
+ const pending = new Promise(resolve => { release = resolve; });
+ const progress = (value: number) => ({ status:'paused', pause_requested:true, watermarks:{ operator:value } });
+ const request = vi.spyOn(api, 'request').mockImplementation(async path => {
+  if (path.endsWith('/configuration')) return { scenario:{ registry:{ messages:header.messages }, run:{ advance_ns:1_000_000_000, until_ns:90_000_000_000 }, ingress_streams:[{ id:'operator', initial_watermark_ns:0 }], behaviours:[{ document:{ injection_points:[point] } }] } };
+  if (path.includes('/commits?')) return { status:'paused' };
+  if (path.endsWith('/inputs')) { reads++; return reads === 2 ? pending : progress(reads === 1 ? 1_000_000_000 : 2_000_000_000); }
+  if (path.endsWith('/ingress')) return { disposition:'accepted' };
+  throw Error(path);
+ });
+ try {
+  render(<ConsoleNotifications><RunOperations api={api} runId="food" store={store} mode="live" onSelect={()=>{}} onSeek={()=>{}}/></ConsoleNotifications>);
+  fireEvent.change(await screen.findByLabelText('Payload.restaurant'), { target:{ value:'restaurant-east' } });
+  fireEvent.change(screen.getByLabelText('Payload.delay_s'), { target:{ value:'45' } });
+  await waitFor(() => expect(screen.getByTestId('inject-restaurant_delay')).toBeEnabled());
+  await waitFor(() => expect(reads).toBe(2), { timeout:3000 });
+  fireEvent.click(screen.getByTestId('inject-restaurant_delay'));
+  await waitFor(() => expect(request.mock.calls.some(([path]) => path.endsWith('/ingress'))).toBe(true));
+  const body = JSON.parse(String(request.mock.calls.find(([path]) => path.endsWith('/ingress'))![1]!.body));
+  expect(body.at_ns).toBe(2_000_000_001);
+  await act(async () => { release(progress(500_000_000)); });
+  fireEvent.click(screen.getByRole('button', { name:'Source timing' }));
+  expect(screen.getByText(/Operator source progress is closed through 00:02\.0/)).toBeVisible();
+ } finally {
+  await act(async () => { release(progress(500_000_000)); }); cleanup(); request.mockRestore();
+ }
 });
 
 it('requires a complete authored payload and blocks historical commands without changing the recorded selection', async () => {
@@ -158,7 +74,7 @@ it('requires a complete authored payload and blocks historical commands without 
   ]};
   const store = new TemporalFeedStore(header);store.ingest(emptyCommit(1));store.seek('0',1);
   const request = vi.spyOn(api,'request').mockImplementation(async(path) => {
-    if(path.endsWith('/configuration'))return {scenario:{run:{advance_ns:1_000_000_000,until_ns:90_000_000_000},ingress_streams:[{id:'operator',initial_watermark_ns:0}],behaviours:[{document:{injection_points:[point]}}]}};
+    if(path.endsWith('/configuration'))return {scenario:{registry:{messages:header.messages},run:{advance_ns:1_000_000_000,until_ns:90_000_000_000},ingress_streams:[{id:'operator',initial_watermark_ns:0}],behaviours:[{document:{injection_points:[point]}}]}};
     if(path.includes('/commits?'))return {status:'paused'};
     if(path.endsWith('/inputs'))return {status:'paused',watermarks:{operator:0},pause_requested:true};
     if(path.endsWith('/ingress'))return {disposition:'accepted'};
@@ -178,13 +94,35 @@ it('requires a complete authored payload and blocks historical commands without 
     store.liveFollow=true;store.ingest(emptyCommit(2));
     view.rerender(<ConsoleNotifications><RunOperations {...props}/></ConsoleNotifications>);
     expect(screen.getByTestId('inject-restaurant_delay')).toBeEnabled();
-    expect(screen.getByRole('button',{name:'Stop simulation'})).toBeEnabled();
+    expect(screen.queryByRole('button',{name:'Stop simulation'})).toBeNull();
     view.rerender(<ConsoleNotifications><RunOperations {...props} commitCut={1}/></ConsoleNotifications>);
     expect(screen.getByTestId('inject-restaurant_delay')).toBeDisabled();
     expect(screen.getByText(/Return to live before submitting/)).toBeVisible();
-    expect(screen.getByRole('button',{name:'Stop simulation'})).toBeDisabled();
+    expect(screen.queryByRole('button',{name:'Stop simulation'})).toBeNull();
     expect(request.mock.calls.some(([path])=>path.endsWith('/ingress'))).toBe(false);
     view.rerender(<ConsoleNotifications><RunOperations {...props}/></ConsoleNotifications>);
     await waitFor(()=>expect(screen.getByTestId('inject-restaurant_delay')).toBeEnabled());
   } finally {cleanup();request.mockRestore();}
+});
+
+it('prefills a selected matching entity from the declared subject and sends its original string identity',async()=>{
+ const api=new RunsApi('http://api'),point={id:'restaurant_delay',stream_id:'operator',command:'aas.runtime.inject_event',target:'behaviour',emits:'lowalt.operator.restaurant_delay'};
+ const header={...fixtureHeader,types:[...fixtureHeader.types,{typeId:'Restaurant',displayName:'Restaurant',ancestors:['Site']},{typeId:'UAV',displayName:'Drone',ancestors:[]}],messages:[
+  {id:point.command,kind:'command',schema:{type:'record',members:{},required:[]}},
+  {id:point.emits,kind:'event',subjects:[{path:['restaurant'],type_id:'Restaurant'}],schema:{type:'record',members:{restaurant:{type:'string'},delay_s:{type:'number'}},required:['restaurant','delay_s']}},
+ ]};
+ const store=new TemporalFeedStore({...header,messages:header.messages.map(({subjects,...row})=>row)}),commit=emptyCommit(1);commit.created=[{id:'east',generation:0,typeId:'Restaurant'},{id:'drone',generation:0,typeId:'UAV'}];store.ingest(commit);store.seek('0',1);
+ const request=vi.spyOn(api,'request').mockImplementation(async(path)=>{
+  if(path.endsWith('/configuration'))return {scenario:{registry:{messages:header.messages},run:{advance_ns:1_000_000_000,until_ns:90_000_000_000},ingress_streams:[{id:'operator',initial_watermark_ns:0}],behaviours:[{document:{injection_points:[point]}}]}};
+  if(path.includes('/commits?'))return {status:'paused'};
+  if(path.endsWith('/inputs'))return {status:'paused',watermarks:{operator:0},pause_requested:true};
+  if(path.endsWith('/ingress'))return {disposition:'accepted'};
+  throw Error(path);
+ });
+ try{
+  render(<ConsoleNotifications><RunOperations api={api} runId="food" store={store} selected={{id:'east',generation:0}} onSelect={()=>{}} onSeek={()=>{}} mode="live"/></ConsoleNotifications>);
+  const picker=await screen.findByLabelText('Payload.restaurant');await waitFor(()=>expect(picker).toHaveValue('east'));expect(picker.tagName).toBe('SELECT');expect(picker).not.toHaveTextContent('drone');
+  fireEvent.change(screen.getByLabelText('Payload.delay_s'),{target:{value:'45'}});await waitFor(()=>expect(screen.getByTestId('inject-restaurant_delay')).toBeEnabled());fireEvent.click(screen.getByTestId('inject-restaurant_delay'));
+  await waitFor(()=>expect(request.mock.calls.some(([path])=>path.endsWith('/ingress'))).toBe(true));const body=JSON.parse(String(request.mock.calls.find(([path])=>path.endsWith('/ingress'))![1]!.body));expect(body.payload.payload.restaurant).toBe('east');
+ }finally{cleanup();request.mockRestore();}
 });

@@ -63,6 +63,10 @@ improves 11/18 to 14/18; the extra two aircraft complete one further order.
 Preemption and congestion still leave a backlog. These are unfinished orders,
 not task failures, and adding aircraft is not guaranteed to improve every seed.
 
+## Operator story
+
+Choose **interactive** Run mode, Apply controls to draft, Validate, Save version, Initialize, then Start. Select urgent-2 and inject prioritize-medical with priority 200. The unused medical request releases immediately and can preempt routine work; follow dispatch and completion in Why?. Events require a live run; receipt acceptance is followed by recorded domain effects.
+
 <!-- guide-language: zh-CN -->
 
 # 紧急医疗配送
@@ -109,3 +113,7 @@ aeroagentsim replay runs/<run-directory>
 普通订单在 180 秒停止到达，晚到的普通配送可在医疗抢占后恢复。电池、间隔和风速策略可在[共享规则](../../../docs/guides/lowalt-rules.md)中编辑。
 
 种子 42、默认六架飞行器和 `hold_and_go` 下，300 秒内完成 18 个已创建订单中的 15 个。四架飞行器只改变冲突处理器，完成数可由 11/18 提升至 14/18；增加两架再多完成一个。抢占和拥堵仍会留下积压：未完成订单并不等于失败，增加飞行器也不保证每个种子都改善。
+
+## 操作员故事
+
+选择 **实时交互** 运行方式，应用到草稿、校验、保存版本、初始化，再明确启动。选择 urgent-2，注入 prioritize-medical 并将优先级设为 200。尚未释放的医疗任务立即进入队列，可抢占普通任务；在“为什么？”中查看调度和完成。 事件须在实时运行中提交；接收回执之后，以日志中的领域影响确认执行。

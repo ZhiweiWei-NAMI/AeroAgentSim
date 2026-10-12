@@ -5,7 +5,7 @@ The console now starts with saved workspaces and runs, then provides a shared
 graph, detailed Huangpu city, searchable explorer, contextual inspector and
 recorded timeline. Runtime controls and replay playback have separate controls.
 
-![Shared graph and detailed city](../media/workbench-city.png)
+![Running city-day workbench with hovering graph and contextual inspector](../media/workbench-city.png)
 
 ## Start and access
 
@@ -41,7 +41,7 @@ seconds while that kitchen is preparing. The typed admission and execution
 records identify the affected orders. Scheduled mode completes unattended;
 interactive mode waits indefinitely when the operator disconnects.
 
-![Food delivery inspection](../media/workbench-food.png)
+![Running food-delivery workbench with a selected drone and its inspector](../media/workbench-food.png)
 
 **Traffic accident:** load the traffic template. The scripted and configured
 live runs both executed accident reporting, bidding, award, photography and

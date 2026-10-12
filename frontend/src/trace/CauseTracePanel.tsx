@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import type { EntityKey, Instant } from '../contracts/viewer-feed';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
 import { exactValue } from '../feeds/format';
@@ -78,7 +79,15 @@ function FollowUps({ items, onOpen, store }: { items: FollowUpView[]; onOpen: (r
 /** "Why did this happen?" vertical story: what set it off, what ran, what changed, what came next. */
 export function CauseTracePanel({ store, model, canGoBack, onOpen, onBack, onClose, onSelectEntity, onSeek }: Props) {
   const { t, locale } = useI18n();
-  return <section className="cause-trace" aria-label={t('Why did this happen?')} data-testid="cause-trace">
+  const root = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    // Event lists can leave their shared dock scrolled far down. A new cause
+    // must open at its heading; live follow-up arrivals retain reading position.
+    for (let parent = root.current?.parentElement; parent; parent = parent.parentElement) {
+      if (parent.scrollHeight > parent.clientHeight) { parent.scrollTop = 0; break; }
+    }
+  }, [model?.focus, model?.cut, model?.heading]);
+  return <section ref={root} className="cause-trace" aria-label={t('Why did this happen?')} data-testid="cause-trace">
     <header className="ct-head">
       <h3>{t('Why did this happen?')}</h3>
       <span>{canGoBack && <button type="button" className="ct-small" onClick={onBack}>{t('← Back')}</button>}<button type="button" className="ct-small" onClick={onClose} aria-label={t('Close explanation')}>{t('Close')}</button></span>
@@ -87,16 +96,16 @@ export function CauseTracePanel({ store, model, canGoBack, onOpen, onBack, onClo
       <h4 className="ct-title">{model.heading}</h4>
       {model.subtitle && <p className="ct-when">{model.subtitle}</p>}
       {model.choices.length > 0 && <div className="ct-choices"><p className="ct-sub">{t('Other things happened at this moment')}</p>{model.choices.map((choice, index) => <button key={index} type="button" className="ct-link" onClick={() => onOpen(choice.ref)}>{choice.label}</button>)}</div>}
-      <ol className="ct-story">
+      <ol className={`ct-story${model.focus === 'message' ? ' ct-message-story' : ''}`}>
         {model.trigger && <Trigger store={store} trigger={model.trigger} onOpen={onOpen} onSelectEntity={onSelectEntity} />}
         {model.predicate && <li className="ct-card ct-trigger"><h4>{t('The condition')}</h4><p className="ct-main">{t('{condition} is ', {condition:model.predicate.label})}<strong>{model.predicate.value === null ? t('unknown') : model.predicate.value ? t('true') : t('false')}</strong><small> · {when(store, model.predicate.at)}</small></p><PredicateCard store={store} predicate={model.predicate} onOpen={onOpen} onSelectEntity={onSelectEntity} /></li>}
-        {model.sender && <li className="ct-card ct-trigger"><h4>{t('Where it came from')}</h4><p className="ct-main">{model.sender.text}</p>{model.sender.ref && <button type="button" className="ct-link" onClick={() => onOpen(model.sender!.ref!)}>{t('See that step')}</button>}</li>}
+        {model.sender && (model.sender.ref || !model.trigger) && <li className="ct-card ct-trigger"><h4>{t('Where it came from')}</h4><p className="ct-main">{model.sender.text}</p>{model.sender.ref && <button type="button" className="ct-link" onClick={() => onOpen(model.sender!.ref!)}>{t('See that step')}</button>}</li>}
         {model.step && <li className="ct-card ct-step"><h4>{t('What ran')}</h4>
           <p className="ct-main">{t('Event chain')} <strong>{model.step.chainLabel}</strong></p>
           <p className="ct-states">{model.step.fromState ? <><span className="ct-state">{readableLabel(model.step.fromState,locale)}</span> → </> : null}<span className="ct-state ct-state-to">{readableLabel(model.step.toState,locale)}</span><small> · {t('step “{step}”', {step:model.step.stepId})}</small></p>
           {model.step.actions.length > 0 && <ul className="ct-actions">{model.step.actions.map(action => <li key={action.id} className={`ct-action-${action.kind}`}>{action.text}</li>)}</ul>}
         </li>}
-        {(model.step || model.focus === 'change') && <Effects store={store} effects={model.effects} onSeek={onSeek} />}
+        {(model.step || model.focus === 'change' || model.effects.length > 0) && <Effects store={store} effects={model.effects} onSeek={onSeek} />}
         <FollowUps items={model.followUps} onOpen={onOpen} store={store} />
       </ol>
       {model.involved.length > 0 && <p className="ct-involved">{locale === 'zh-CN' ? '涉及对象：' : 'Involved objects:'} {model.involved.map(key => <EntityChip key={entityId(key)} store={store} entity={key} onSelectEntity={onSelectEntity} />)}</p>}

@@ -54,7 +54,12 @@ def snapshot_scene(
 
 def attach(run: Path, draft: dict[str, Any], directory: Path) -> None:
     """Copy the draft's (or frozen version's) display geometry into the run."""
-    if draft.get("demo_console", {}).get("capture_mode") == "city":
+    # The shared city scene follows the draft's declared city; choosing no
+    # city in the configuration must not keep displaying it.
+    if (
+        draft.get("demo_console", {}).get("capture_mode") == "city"
+        and draft.get("scenario", {}).get("city") == "huangpu"
+    ):
         (run / "console-scene.json").write_text(
             json.dumps(draft["demo_console"]["scene"], allow_nan=False),
             encoding="utf-8",

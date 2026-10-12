@@ -17,12 +17,31 @@ observe_zh:
 - 紧急请求打断包裹配送，处理完毕后再恢复原任务。
 - 观察医疗物资多久能送达诊所。
 try:
+- Choose interactive mode. Select urgent-2 and inject prioritize-medical with priority
+  200. The unused medical request releases immediately and can preempt routine work;
+  follow dispatch and completion in Why?.
 - Add drones to reduce the wait for urgent supplies.
 - Compare nearest and auction allocation.
 try_zh:
+- 选择实时交互模式。选择 urgent-2，注入 prioritize-medical 并将优先级设为 200。尚未释放的医疗任务立即进入队列，可抢占普通任务；在“为什么？”中查看调度和完成。
 - 增加无人机，缩短紧急物资的等待时间。
 - 对比就近分配与竞价分配。
 knobs:
+- id: run_mode
+  label: Run mode
+  label_zh: 运行方式
+  type: choice
+  default: scheduled
+  options:
+  - scheduled
+  - interactive
+  options_zh:
+  - 自动运行（无需人工推进）
+  - 实时交互（控制台推进与注入）
+  description: Scheduled runs keep their authored arrivals. Interactive mode waits
+    for console time advances and operator events; Stop ends the run.
+  description_zh: 自动运行保留原有任务到达计划。实时交互等待控制台推进时间及操作员事件；可随时停止。
+  apply: lowalt.operator_mode
 - id: fleet_size
   label: Number of aircraft
   label_zh: 飞行器数量

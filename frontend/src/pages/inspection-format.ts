@@ -68,12 +68,14 @@ export function displayUnit(field: FieldInfo | undefined): string | undefined {
   if (unit && typeof unit === 'object' && 'symbol' in unit && typeof unit.symbol === 'string') return unit.symbol === '1' ? undefined : unit.symbol;
 }
 export function entityLabel(entity: EntityState, locale = 'en-US'): string {
-  for (const id of ['name', 'label', 'display_name', 'traffic.actor.label', 'oo:name', 'lowalt.label']) {
+  for (const id of ['traffic.actor.label', 'oo:name', 'lowalt.label', 'name', 'label', 'display_name']) {
     const chinese = locale.startsWith('zh') ? entity.fields.get(`${id}_zh`)?.value : undefined;
     if (typeof chinese === 'string' && chinese.trim()) return chinese;
     const value = entity.fields.get(id)?.value;
     if (typeof value === 'string' && value.trim()) return localizedLabel(value, locale);
   }
+  const authored = locale.startsWith('zh') ? entity.authoredLabel?.label_zh ?? entity.authoredLabel?.label : entity.authoredLabel?.label;
+  if (authored?.trim()) return localizedLabel(authored, locale);
   return readableLabel(entity.key.id, locale);
 }
 export function stateValue(value: unknown, locale = 'en-US'): string | undefined {

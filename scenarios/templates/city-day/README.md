@@ -81,6 +81,10 @@ ground plane; the standalone swap pad is at the field edge.
 The four operational rules are editable predicates and event chains; see
 [the rules guide](../../../docs/guides/lowalt-rules.md).
 
+## Operator story
+
+Choose **interactive** Run mode to replace the built-in scheduled operator demonstration with live input. Select east-port, open Operate and inject close-vertiport. Why? follows the recorded rerouting through dispatch and completion. Scheduled mode retains the original demonstration.
+
 <!-- guide-language: zh-CN -->
 
 # 城市的一天
@@ -139,3 +143,7 @@ aeroagentsim replay runs/<run-directory>
 坐标来自仓库中的 lite-city 建筑轮廓、屋顶高度和道路，由 `tools/templates/place.py` 生成。屋顶起降点使用实际屋顶高度；站点间飞行先垂直起降，再在 105 米屋顶高度上限之上巡航。名称和业务元数据会随运行固定保存。参见[共享布置指南](../../../docs/examples/city-day.md#huangpu-placements-la3)。
 
 绿色地块是在密集城区以北明确编写的演示多边形，并非 OSM 农田。喷洒行位于地面上方 5 米，独立换电平台位于田边。四个运行规则是可编辑的谓词与事件链，参见[规则指南](../../../docs/guides/lowalt-rules.md)。
+
+## 操作员故事
+
+选择 **实时交互** 运行方式，以实时输入替代模板自带的定时操作演示。选择east-port，打开“操作”并注入close-vertiport。“为什么？”会沿真实记录追踪改航、派发和完成。自动运行仍保留原有演示。

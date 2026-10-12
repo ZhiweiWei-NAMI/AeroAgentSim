@@ -65,6 +65,10 @@ FOOD_FIELDS = (
 )
 
 
+class OperatorRejected(ValueError):
+    """An admitted event whose requested business operation is ineligible."""
+
+
 @dataclass
 class Job:
     ref: EntityRef
@@ -78,6 +82,12 @@ class Job:
     food_window_ns: int | None = None
     preparation_started_ns: int | None = None
     ready_ns: int | None = None
+    # Actual operator message handles, retained across timer/receipt callbacks.
+    # These explain business records; they never participate in allocation.
+    operator_messages: tuple[str, ...] = ()
+    last_message: str | None = None
+    last_event_key: str | None = None
+    spray_hold_until_ns: int | None = None
 
 
 class _WorkPlanRecorder:
@@ -158,6 +168,7 @@ class LowaltTasks(ContextEngine):
             for kind, spec in self.cfg.get("work_routes", {}).items()
         }
         self.site_busy: dict[str, list[int]] = {}
+        self.business_event_sequence = 0
         self.pad_waits: set[tuple[str, str]] = set()
         self.flights = {r.id: Flight(r) for r in refs(build, "lowalt:UAV")}
         self.jobs: dict[str, Job] = {}
@@ -228,6 +239,12 @@ class LowaltTasks(ContextEngine):
                     "lowalt.patrol.visited",
                     "lowalt.site.closed",
                     "lowalt.mobility.pad_wait",
+                    "lowalt.parcel.dropoff_changed",
+                    "lowalt.medical.prioritized",
+                    "lowalt.inspection.defect_reported",
+                    "lowalt.spraying.paused",
+                    "lowalt.spraying.resumed",
+                    "lowalt.operator.rejected",
                 )
                 + (
                     tuple(
@@ -352,7 +369,35 @@ class LowaltTasks(ContextEngine):
         ctx.wake_at(self.tick, {"lowalt_tasks": "tick"})
 
     def _event(self, ctx: EngineContext, phase: str, **payload: Any) -> None:
-        ctx.emit("lowalt.task." + phase, payload, topic="lowalt.events")
+        self._business_event(ctx, "lowalt.task." + phase, payload)
+
+    def _business_event(
+        self, ctx: EngineContext, schema: str, payload: dict[str, Any],
+        *, sources: tuple[str, ...] = (),
+    ) -> str | None:
+        job = self.jobs.get(payload.get("task", ""))
+        links = list(sources)
+        if job is not None and job.operator_messages:
+            links.extend(job.operator_messages)
+            if job.last_message is not None:
+                links.append(job.last_message)
+        if links:
+            # The kernel assigns message handles after the callback commits.
+            # A recorded domain event key links successive emissions within
+            # that callback as well as later receipts/ticks, without predicting
+            # kernel IDs or influencing business decisions.
+            self.business_event_sequence += 1
+            event_key = f"{self.build.id}/{links[0]}/{self.business_event_sequence}"
+            provenance = {"message_ids": list(dict.fromkeys(links)), "event_key": event_key}
+            if job is not None and job.last_event_key is not None:
+                provenance["parent_event_keys"] = [job.last_event_key]
+            payload = {**payload, "provenance": provenance}
+            if job is not None:
+                job.last_event_key = event_key
+        else:
+            event_key = None
+        ctx.emit(schema, payload, topic="lowalt.events")
+        return event_key
 
     def _state(self, ctx: EngineContext, job: Job, phase: str) -> None:
         job.phase = phase
@@ -649,6 +694,10 @@ class LowaltTasks(ContextEngine):
                 self._submit(ctx, flight, None)
         for delivery in ctx.inbox:
             payload = cast(dict[str, Any], thaw(delivery.message.payload))
+            if delivery.message.source == self.build.id and "task" in payload:
+                job = self.jobs.get(payload["task"])
+                if job is not None and job.operator_messages:
+                    job.last_message = delivery.message.id
             if (
                 delivery.message.schema_id == "aas.langgraph.record"
                 and payload["phase"] == "failure"
@@ -673,7 +722,14 @@ class LowaltTasks(ContextEngine):
             elif delivery.message.schema_id == "lowalt.airspace.zone_activated":
                 self._zone_changed(ctx, payload["zone"])
             elif delivery.message.schema_id.startswith("lowalt.operator."):
-                self._operator(ctx, delivery.message.schema_id, payload)
+                if delivery.message.schema_id == "lowalt.operator.rejected":
+                    continue
+                try:
+                    self._operator(ctx, delivery.message.schema_id, payload, delivery.message.id)
+                except OperatorRejected as problem:
+                    self._business_event(ctx, "lowalt.operator.rejected", {
+                        "operation": delivery.message.schema_id, "reason": str(problem),
+                    }, sources=(delivery.message.id,))
             elif delivery.message.schema_id == "lowalt.control":
                 self._control(ctx, payload)
             elif delivery.message.schema_id == "lowalt.allocation.result":
@@ -844,10 +900,10 @@ class LowaltTasks(ContextEngine):
                 # Arrival at an original asset waypoint is real, but its new
                 # reconnection leg must not inflate surveyed/applied distance.
                 payload["distance_m"] = 0.0 if flight.waypoint_is_connector else moved
-            ctx.emit(schema, payload, topic="lowalt.events")
+            self._business_event(ctx, schema, payload)
 
     def _operator(
-        self, ctx: EngineContext, schema: str, payload: dict[str, Any]
+        self, ctx: EngineContext, schema: str, payload: dict[str, Any], source: str
     ) -> None:
         if schema == "lowalt.operator.restaurant_delay":
             restaurant = self.by_id[payload["restaurant"]]
@@ -865,24 +921,32 @@ class LowaltTasks(ContextEngine):
                     and read(ctx, job.ref, "lowalt.task_origin") == restaurant.id
                 ):
                     assert job.ready_ns is not None
+                    job.operator_messages += (source,)
                     job.ready_ns += round(delay_s * 1e9)
                     ctx.set(job.ref, "lowalt.food_expected_ready_ns", job.ready_ns)
                     affected.append(job.ref.id)
-            ctx.emit(
+            delayed_key = self._business_event(
+                ctx,
                 "lowalt.food.preparation_delayed",
                 {"restaurant": restaurant.id, "delay_s": delay_s, "tasks": affected},
-                topic="lowalt.events",
+                sources=(source,),
             )
-        elif schema == "lowalt.operator.close_vertiport":
-            identity = payload["site"]
+            for identity in affected:
+                self.jobs[identity].last_event_key = delayed_key
+        elif schema in {"lowalt.operator.close_vertiport", "lowalt.operator.close_air_taxi_port"}:
+            identity = self._target(payload["site"], "lowalt:Vertiport").id if isinstance(payload["site"], dict) else payload["site"]
             site = self.by_id[identity]
             if not self.build.registry.is_a(site.type_id, "lowalt:Vertiport"):
                 raise ValueError("operator must close an actual vertiport")
+            if schema == "lowalt.operator.close_air_taxi_port" and not read(ctx, site, "lowalt.site_open"):
+                raise OperatorRejected("vertiport is already closed")
             alternative = self.cfg["site_diversions"][identity]
             if not read(ctx, self.by_id[alternative], "lowalt.site_open"):
+                if schema == "lowalt.operator.close_air_taxi_port":
+                    raise OperatorRejected("diversion vertiport is closed")
                 raise ValueError("diversion vertiport is closed")
             ctx.set(site, "lowalt.site_open", False)
-            ctx.emit("lowalt.site.closed", {"site": identity}, topic="lowalt.events")
+            closed_key = self._business_event(ctx, "lowalt.site.closed", {"site": identity}, sources=(source,))
             for job in self.jobs.values():
                 if job.phase in {"completed", "failed"}:
                     continue
@@ -891,6 +955,9 @@ class LowaltTasks(ContextEngine):
                     if read(ctx, job.ref, "lowalt.task_" + endpoint) == identity:
                         ctx.set(job.ref, "lowalt.task_" + endpoint, alternative)
                         changed = True
+                if changed:
+                    job.operator_messages += (source,)
+                    job.last_event_key = closed_key
                 if changed and job.vehicle is not None:
                     flight = self.flights[job.vehicle]
                     flight.replan = True
@@ -923,9 +990,70 @@ class LowaltTasks(ContextEngine):
             ctx.set(job.ref, "lowalt.task_kind", kind)
             ctx.set(job.ref, "lowalt.task_priority", 100)
             job.release_ns = ctx.now.ns
+            job.operator_messages += (source,)
             # Release next tick, after endpoint/kind facts commit.
+        elif schema in {
+            "lowalt.operator.change_dropoff", "lowalt.operator.prioritize_medical",
+            "lowalt.operator.report_defect", "lowalt.operator.pause_spraying",
+        }:
+            task = self._target(payload["task"], "lowalt:Task")
+            job = self.jobs[task.id]
+            kind = read(ctx, task, "lowalt.task_kind")
+            expected = {
+                "lowalt.operator.change_dropoff": "parcel",
+                "lowalt.operator.prioritize_medical": "medical",
+                "lowalt.operator.report_defect": "inspection",
+                "lowalt.operator.pause_spraying": "spraying",
+            }[schema]
+            if kind != expected or job.phase in {"completed", "failed"}:
+                raise OperatorRejected(f"{schema} requires an unfinished {expected} task")
+            if schema == "lowalt.operator.change_dropoff":
+                destination = self._target(payload["destination"], "lowalt:Customer")
+                previous = read(ctx, task, "lowalt.task_destination")
+                if destination.id == previous:
+                    raise OperatorRejected("new drop-off must differ from the current destination")
+                ctx.set(task, "lowalt.task_destination", destination.id)
+                job.operator_messages += (source,)
+                self._business_event(ctx, "lowalt.parcel.dropoff_changed", {
+                    "task": task.id, "previous": previous, "destination": destination.id,
+                })
+                if job.vehicle is not None and job.phase == "picked_up":
+                    flight = self.flights[job.vehicle]
+                    flight.route, flight.replan = (), True
+                    self._brake(ctx, flight)
+            elif schema == "lowalt.operator.prioritize_medical":
+                priority = ns(payload["priority"], "medical priority", 101)
+                if priority <= read(ctx, task, "lowalt.task_priority"):
+                    raise OperatorRejected("urgent request must increase the task priority")
+                ctx.set(task, "lowalt.task_priority", priority)
+                if job.phase == "unreleased":
+                    job.release_ns = ctx.now.ns
+                job.operator_messages += (source,)
+                self._business_event(ctx, "lowalt.medical.prioritized", {"task": task.id, "priority": priority})
+            elif schema == "lowalt.operator.report_defect":
+                site = self._target(payload["site"], "lowalt:Site")
+                if job.phase != "unreleased" or site.id != read(ctx, task, "lowalt.task_destination"):
+                    raise OperatorRejected("defect report requires an unused inspection task ending at the reported asset")
+                ctx.set(task, "lowalt.task_priority", 100)
+                job.release_ns = ctx.now.ns
+                job.operator_messages += (source,)
+                self._business_event(ctx, "lowalt.inspection.defect_reported", {"task": task.id, "site": site.id})
+            else:
+                duration = finite(payload["duration_s"], "spraying pause", 1.0)
+                job.spray_hold_until_ns = ctx.now.ns + round(duration * 1e9)
+                job.operator_messages += (source,)
+                self._business_event(ctx, "lowalt.spraying.paused", {"task": task.id, "until_ns": job.spray_hold_until_ns})
+                if job.vehicle is not None:
+                    self._control(ctx, {"vehicle": job.vehicle, "action": "hold", "until_ns": job.spray_hold_until_ns})
         else:
             raise ValueError(f"unsupported lowalt operator event: {schema}")
+
+    def _target(self, value: dict[str, Any], type_id: str) -> EntityRef:
+        """Resolve the exact authored generation; no coercion or guessed targets."""
+        target = EntityRef.from_data(value["$ref"])
+        if self.by_id.get(target.id) != target or not self.build.registry.is_a(target.type_id, type_id):
+            raise OperatorRejected(f"operator target must be an authored {type_id}")
+        return target
 
     def _prepare_food(self, ctx: EngineContext) -> None:
         """Kitchen slots prepare actual food orders before allocation is eligible."""
@@ -936,7 +1064,8 @@ class LowaltTasks(ContextEngine):
             if ctx.now.ns >= job.ready_ns:
                 self._state(ctx, job, "queued")
                 ctx.set(job.ref, "lowalt.food_ready_ns", ctx.now.ns)
-                ctx.emit(
+                self._business_event(
+                    ctx,
                     "lowalt.food.ready",
                     {
                         "task": job.ref.id,
@@ -944,7 +1073,6 @@ class LowaltTasks(ContextEngine):
                         "preparation_s": (ctx.now.ns - job.preparation_started_ns)
                         / 1e9,
                     },
-                    topic="lowalt.events",
                 )
         busy: dict[str, int] = {}
         for job in self.jobs.values():
@@ -1020,6 +1148,11 @@ class LowaltTasks(ContextEngine):
                 continue
             if flight.job is None and flight.purpose == "task":
                 continue
+            if flight.job is not None and flight.job.spray_hold_until_ns is not None:
+                if ctx.now.ns < flight.job.spray_hold_until_ns:
+                    continue
+                self._business_event(ctx, "lowalt.spraying.resumed", {"task": flight.job.ref.id})
+                flight.job.spray_hold_until_ns = None
             held = read(ctx, flight.vehicle, "lowalt.weather_held")
             charging = read(ctx, flight.vehicle, "lowalt.charging")
             if held or charging or ctx.now.ns < flight.hold_until_ns:
@@ -1153,7 +1286,8 @@ class LowaltTasks(ContextEngine):
                             deadline = read(ctx, job.ref, "lowalt.food_deadline_ns")
                             ready = read(ctx, job.ref, "lowalt.food_ready_ns")
                             ctx.set(job.ref, "lowalt.food_delivered_ns", ctx.now.ns)
-                            ctx.emit(
+                            self._business_event(
+                                ctx,
                                 "lowalt.food.delivered",
                                 {
                                     "task": job.ref.id,
@@ -1165,7 +1299,6 @@ class LowaltTasks(ContextEngine):
                                     "ready_to_delivery_s": (ctx.now.ns - ready) / 1e9,
                                     "on_time": ctx.now.ns <= deadline,
                                 },
-                                topic="lowalt.events",
                             )
                         if kind == "passenger":
                             site = read(ctx, job.ref, "lowalt.task_destination")

@@ -34,9 +34,55 @@ def test_oversized_gif_is_reported_without_lowering_quality(tmp_path: Path) -> N
 
 
 def test_calibration_aligns_marks_to_the_actual_video_start() -> None:
-    flow = make_gifs.Flow('04-aerograph', [make_gifs.Segment(Path('video.webm'), 8, 3)], black_prelude=True)
+    flow = make_gifs.Flow('04-photos', [make_gifs.Segment(Path('video.webm'), 8, 3)], black_prelude=True)
     def runner(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         assert 'blackdetect' in ' '.join(argv)
         return subprocess.CompletedProcess(argv, 0, '', 'black_start:0.24 black_end:6.4 black_duration:6.16')
     make_gifs.align_prelude('ffmpeg', flow, runner)
     assert flow.segments[0].start == 8.24
+
+
+@pytest.mark.parametrize(('seconds', 'valid'), [(14, False), (15, True), (27, True), (40, True), (41, False)])
+def test_workbench_story_duration_budget(tmp_path: Path, seconds: int, valid: bool) -> None:
+    target = tmp_path / 'flow.gif'
+    def runner(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        if argv[-1].endswith('.gif'):
+            target.write_bytes(b'actual-encoded-output')
+        return subprocess.CompletedProcess(argv, 0, '', f'time=00:00:{seconds:02d}.00')
+    args = ('ffmpeg', make_gifs.Flow('flow', [make_gifs.Segment(tmp_path / 'video.webm', 0, seconds)]), target, 1000, 12, 960, None, runner, tmp_path / 'palette.png')
+    if valid:
+        assert make_gifs.convert_flow(*args).duration_s == seconds
+    else:
+        with pytest.raises(RuntimeError, match='15–40s'):
+            make_gifs.convert_flow(*args)
+
+
+def test_deleted_page_recordings_cannot_be_published(tmp_path: Path) -> None:
+    videos = tmp_path / 'videos'; videos.mkdir()
+    media = tmp_path / 'media'; media.mkdir()
+    obsolete = media / '07-visualize.gif'; obsolete.write_bytes(b'previous-published-recording')
+    video = videos / 'video.webm'; video.write_bytes(b'real-recording')
+    import json
+    (videos / 'recordings.json').write_text(json.dumps({'00-overview': {'segments': [{'path': str(video)}]}, '07-visualize': {'segments': [{'path': str(video)}]}}))
+    with pytest.raises(SystemExit, match='all six workbench flows'):
+        make_gifs.main(['--input', str(videos), '--output', str(tmp_path / 'media'), '--report', str(tmp_path / 'report.json'), '--ffmpeg', 'ffmpeg'], runner=lambda *args, **kwargs: subprocess.CompletedProcess([], 0, '', ''))
+    assert obsolete.read_bytes() == b'previous-published-recording'
+
+
+def test_missing_story_is_reported_without_substitute_footage(tmp_path: Path) -> None:
+    import json
+    videos = tmp_path / 'videos'; videos.mkdir()
+    video = videos / 'video.webm'; video.write_bytes(b'recorded-source')
+    (videos / 'recordings.json').write_text(json.dumps({'00-overview': {'segments': [{'path': str(video), 'duration': 20}]}}))
+    media = tmp_path / 'media'; media.mkdir()
+    report = tmp_path / 'report.json'
+    def runner(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        if argv[-1].endswith('.gif'):
+            Path(argv[-1]).write_bytes(b'encoded-recording')
+        return subprocess.CompletedProcess(argv, 0, '', 'time=00:00:20.00')
+    with pytest.raises(SystemExit, match='Failed recordings:'):
+        make_gifs.main(['--input', str(videos), '--output', str(media), '--report', str(report), '--ffmpeg', 'ffmpeg'], runner=runner)
+    result = json.loads(report.read_text())
+    assert [item['flow'] for item in result['items']] == ['00-overview']
+    assert len(result['failures']) == 5
+    assert not (media / '05-records-compare.gif').exists()

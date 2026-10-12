@@ -41,3 +41,18 @@ it('explains that history must return to live before an event can be introduced'
  render(<I18nProvider><InspectorPanel {...props()} canOperate={false} viewingHistory operateRequest={1} /></I18nProvider>);
  expect(screen.getByText('You are viewing history. Back to live before introducing an event.')).toBeVisible();
 });
+it('compacts the empty hint and restores the inspector for selection or scene operations', () => {
+ const compact = vi.fn(), parameters = props();
+ const view = render(<I18nProvider><InspectorPanel {...parameters} onCompactChange={compact} /></I18nProvider>);
+ expect(screen.getByTestId('wb-inspector')).toHaveClass('is-compact'); expect(compact).toHaveBeenLastCalledWith(true);
+ view.rerender(<I18nProvider><InspectorPanel {...parameters} selected={vehicle} onCompactChange={compact} /></I18nProvider>);
+ expect(screen.getByTestId('wb-inspector')).not.toHaveClass('is-compact'); expect(compact).toHaveBeenLastCalledWith(false);
+ view.rerender(<I18nProvider><InspectorPanel {...parameters} operateRequest={1} onCompactChange={compact} /></I18nProvider>);
+ expect(screen.getByTestId('wb-inspector')).not.toHaveClass('is-compact');
+});
+it('offers scene operations from the compact hint without requiring an arbitrary object selection', () => {
+ render(<I18nProvider><InspectorPanel {...props()} /></I18nProvider>);
+ fireEvent.click(screen.getByRole('button', { name: 'Introduce an event' }));
+ expect(screen.getByRole('tab', { name: 'Operate' })).toHaveAttribute('aria-selected', 'true');
+ expect(screen.getByTestId('operations')).toBeVisible();
+});

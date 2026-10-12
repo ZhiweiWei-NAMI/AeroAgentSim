@@ -251,6 +251,28 @@ def expected_schemas() -> dict[str, dict[str, object]]:
             "task": "meal-1", "vehicle": "drone-2", "destination": "customer-1",
             "deadline_ns": 142_000_000_000, "ready_to_delivery_s": 51.0, "on_time": True,
         },
+        "lowalt.operator.rejected": {
+            "operation": "change-dropoff", "reason": "task already completed",
+            "provenance": {"message_ids": ["operator-1"]},
+        },
+        "lowalt.parcel.dropoff_changed": {
+            "task": "task-1", "previous": "customer-1", "destination": "customer-2",
+            "provenance": {"message_ids": ["operator-2"]},
+        },
+        "lowalt.medical.prioritized": {
+            "task": "urgent-2", "priority": 200,
+            "provenance": {"message_ids": ["operator-3"]},
+        },
+        "lowalt.inspection.defect_reported": {
+            "site": "line-end", "task": "line-survey-2",
+            "provenance": {"message_ids": ["operator-4"]},
+        },
+        "lowalt.spraying.paused": {
+            "task": "field-1", "provenance": {"message_ids": ["operator-5"]},
+        },
+        "lowalt.spraying.resumed": {
+            "task": "field-1", "provenance": {"message_ids": ["operator-5"]},
+        },
     }
 
 
@@ -288,6 +310,11 @@ def test_every_lowalt_schema_renders_plain_text(tmp_path: Path) -> None:
     assert "drone-1" in translated[1] and "customer-3" in translated[1]
     assert "central-no-fly" in translated[8]
     by_schema = dict(zip(payloads, events))
+    rejected = by_schema["lowalt.operator.rejected"]
+    assert rejected["text"] == "Operator request change-dropoff rejected: task already completed"
+    assert rejected["text_zh"] == "操作请求 change-dropoff 被拒绝：task already completed"
+    assert rejected["severity"] == "warning"
+    assert rejected["entities"] == []
     for schema in ("lowalt.inspection.observed", "lowalt.spraying.applied", "lowalt.patrol.visited"):
         assert by_schema[schema]["entities"] == [payloads[schema]["task"], payloads[schema]["vehicle"]]
         assert by_schema[schema]["position"] == payloads[schema]["position"]

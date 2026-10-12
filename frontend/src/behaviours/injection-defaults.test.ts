@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { actualTargetSummary, emptyTransport, newIdempotencyKey, payloadProblem, receiptSummary, transportForPoint } from './injection-defaults';
+import { actualTargetSummary, emptyTransport, entityPayloadSchema, newIdempotencyKey, payloadProblem, receiptSummary, transportForPoint } from './injection-defaults';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { fixtureHeader } from './extension-fixture';
 
 const point = { id:'accident', stream_id:'operator', command:'aas.runtime.inject_event', target:'behaviour', emits:'accident' };
+
+it('uses declared subjects to pick string entity identities without changing the event contract',()=>{
+ const schema={type:'record',members:{restaurant:{type:'string'},reason:{type:'string'},target:{type:'ref',target_type:'Customer'}}};
+ const form=entityPayloadSchema('event',[{path:['restaurant'],type_id:'Restaurant'}],{event:schema});
+ expect(form).toEqual({...schema,members:{...schema.members,restaurant:{type:'string',target_type:'Restaurant'}}});
+ expect(schema.members.restaurant).toEqual({type:'string'});
+ expect(payloadProblem(schema,{restaurant:'east',reason:'operator',target:{$ref:{id:'customer'}}})).toBeUndefined();
+});
 
 describe('injection defaults', () => {
   it('formats multiple real incident labels without passing the array index as a locale', () => {

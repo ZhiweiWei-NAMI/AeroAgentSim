@@ -10,29 +10,113 @@ difficulty: beginner
 duration_s: 300
 scenario: scenario.yaml
 observe:
-  - Orders appear over time and are assigned to available drones.
-  - Drones route around the protected central square.
-  - Watch separation alerts and battery use as the fleet works.
+- Orders appear over time and are assigned to available drones.
+- Drones route around the protected central square.
+- Watch separation alerts and battery use as the fleet works.
 observe_zh:
-  - 订单陆续生成，并分配给空闲无人机。
-  - 无人机绕开受保护的中央广场。
-  - 观察机队运行中的间隔告警和电量消耗。
+- 订单陆续生成，并分配给空闲无人机。
+- 无人机绕开受保护的中央广场。
+- 观察机队运行中的间隔告警和电量消耗。
 try:
-  - Switch the allocator and compare delivery times.
-  - Add drones or increase orders to make the district busier.
-  - Increase wind speed to see flights pause.
+- Choose interactive mode. Select a parcel task and inject change-dropoff with a different
+  Customer destination. Watch its drop-off change, physical pickup and delivery; use
+  Why? to follow the recorded response.
+- Switch the allocator and compare delivery times.
+- Add drones or increase orders to make the district busier.
+- Increase wind speed to see flights pause.
 try_zh:
-  - 切换任务分配算法，对比配送时间。
-  - 增加无人机或订单，让街区更繁忙。
-  - 提高风速，观察航班何时暂停。
+- 选择实时交互模式。选择包裹任务，注入 change-dropoff 并选取不同的客户收货点。观察收货点变更、实际取件和送达，并在“为什么？”中追踪记录的响应。
+- 切换任务分配算法，对比配送时间。
+- 增加无人机或订单，让街区更繁忙。
+- 提高风速，观察航班何时暂停。
 knobs:
-  - {id: fleet_size, label: Number of drones, label_zh: 无人机数量, type: integer, default: 8, min: 1, max: 40, pointer: /generators/fleet/count}
-  - {id: order_rate, label: Orders per second, label_zh: 每秒订单数, type: number, default: 0.08, min: 0.005, max: 1, pointer: /engines/tasks/config/generators/0/arrivals/rate_per_s}
-  - {id: allocator, label: Task allocation algorithm, label_zh: 任务分配算法, type: choice, default: nearest, options: [nearest, auction, hungarian, llm], pointer: /algorithms/allocation}
-  - {id: path_planner, label: Route planning algorithm, label_zh: 航线规划算法, type: choice, default: corridor_astar, options: [straight, corridor_astar], pointer: /algorithms/path_planning}
-  - {id: wind_speed, label: Wind speed in metres per second, label_zh: 风速（米/秒）, type: number, default: 2, min: 0, max: 20, pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0}
-  - {id: battery_reserve, label: Battery reserve (%), label_zh: 预留电量（%）, type: number, default: 20, min: 10, max: 85, pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent}
-  - {id: safety_distance, label: Safety distance (m), label_zh: 安全间隔（米）, type: number, default: 20, min: 5, max: 60, pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m}
-  - {id: wind_limit, label: Wind limit (m/s), label_zh: 风速上限（米/秒）, type: number, default: 12, min: 2, max: 20, pointer: /behaviours/0/predicates/wind_above_limit/parameters/parcel_limit_mps}
-kpis: [tasks_completed, mean_task_latency_s, energy_used_kj, separation_conflicts, geofence_violations]
+- id: run_mode
+  label: Run mode
+  label_zh: 运行方式
+  type: choice
+  default: scheduled
+  options:
+  - scheduled
+  - interactive
+  options_zh:
+  - 自动运行（无需人工推进）
+  - 实时交互（控制台推进与注入）
+  description: Scheduled runs keep their authored arrivals. Interactive mode waits
+    for console time advances and operator events; Stop ends the run.
+  description_zh: 自动运行保留原有任务到达计划。实时交互等待控制台推进时间及操作员事件；可随时停止。
+  apply: lowalt.operator_mode
+- id: fleet_size
+  label: Number of drones
+  label_zh: 无人机数量
+  type: integer
+  default: 8
+  min: 1
+  max: 40
+  pointer: /generators/fleet/count
+- id: order_rate
+  label: Orders per second
+  label_zh: 每秒订单数
+  type: number
+  default: 0.08
+  min: 0.005
+  max: 1
+  pointer: /engines/tasks/config/generators/0/arrivals/rate_per_s
+- id: allocator
+  label: Task allocation algorithm
+  label_zh: 任务分配算法
+  type: choice
+  default: nearest
+  options:
+  - nearest
+  - auction
+  - hungarian
+  - llm
+  pointer: /algorithms/allocation
+- id: path_planner
+  label: Route planning algorithm
+  label_zh: 航线规划算法
+  type: choice
+  default: corridor_astar
+  options:
+  - straight
+  - corridor_astar
+  pointer: /algorithms/path_planning
+- id: wind_speed
+  label: Wind speed in metres per second
+  label_zh: 风速（米/秒）
+  type: number
+  default: 2
+  min: 0
+  max: 20
+  pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
+- id: battery_reserve
+  label: Battery reserve (%)
+  label_zh: 预留电量（%）
+  type: number
+  default: 20
+  min: 10
+  max: 85
+  pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent
+- id: safety_distance
+  label: Safety distance (m)
+  label_zh: 安全间隔（米）
+  type: number
+  default: 20
+  min: 5
+  max: 60
+  pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m
+- id: wind_limit
+  label: Wind limit (m/s)
+  label_zh: 风速上限（米/秒）
+  type: number
+  default: 12
+  min: 2
+  max: 20
+  pointer: /behaviours/0/predicates/wind_above_limit/parameters/parcel_limit_mps
+kpis:
+- tasks_completed
+- mean_task_latency_s
+- energy_used_kj
+- separation_conflicts
+- geofence_violations
 thumbnail: thumbnail.png

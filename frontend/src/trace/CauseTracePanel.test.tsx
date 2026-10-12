@@ -50,3 +50,18 @@ it('localizes the complete cause walk while Back, close, entity focus and seek r
   fireEvent.click(screen.getByRole('button',{name:'关闭原因说明'})); expect(close).toHaveBeenCalledOnce();
   view.unmount(); localStorage.clear();
 });
+
+it('opens a new explanation at its heading and retains reading position as live follow-ups arrive', () => {
+  const store = traceStore();
+  const props = { store, canGoBack: false, onOpen: vi.fn(), onBack: vi.fn(), onClose: vi.fn(), onSelectEntity: vi.fn(), onSeek: vi.fn() };
+  const view = render(<div data-testid="scrolling-dock"><CauseTracePanel {...props} /></div>);
+  const dock = screen.getByTestId('scrolling-dock');
+  Object.defineProperties(dock, { scrollHeight: { value: 1000 }, clientHeight: { value: 200 } });
+  dock.scrollTop = 500;
+  const model = explain(store, { kind: 'event', text: 'Car stopped' })!;
+  view.rerender(<div data-testid="scrolling-dock"><CauseTracePanel {...props} model={model} /></div>);
+  expect(dock.scrollTop).toBe(0);
+  dock.scrollTop = 120;
+  view.rerender(<div data-testid="scrolling-dock"><CauseTracePanel {...props} model={{ ...model, followUps: [...model.followUps] }} /></div>);
+  expect(dock.scrollTop).toBe(120);
+});

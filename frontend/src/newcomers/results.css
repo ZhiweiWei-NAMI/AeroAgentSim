@@ -265,6 +265,8 @@
 .newc-compare-table td.is-best { color: var(--csl-teal-600); font-weight: 700; }
 .newc-compare-table .newc-bar { display: block; width: 100%; height: 5px; margin-top: 2px; color: var(--csl-teal-400); }
 .newc-compare-table td.is-best .newc-bar { color: var(--csl-teal-600); }
+.newc-config-source summary { cursor: pointer; color: var(--csl-text-muted); }
+.newc-config-source code { display: block; margin-top: 6px; overflow-wrap: anywhere; }
 
 .newc-compare-section h4 {
   margin: var(--csl-sp-2) 0 var(--csl-sp-1);

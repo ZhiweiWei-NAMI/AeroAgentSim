@@ -24,8 +24,8 @@ from aeroagentsim.scenario import Scenario, load_scenario
 
 from .projector import header
 from .security import LOCAL_ORIGIN, RequestBoundary
-from .storage import RunStorage
-from .worker import execute
+from .storage import RunStorage, committed_prefix
+from .worker import execute, superseded_watermark
 
 TERMINAL = {"completed", "stopped", "faulted", "interrupted", "input_timeout"}
 CONTROLS = {"start", "pause", "resume", "stop"}
@@ -246,9 +246,17 @@ def create_app(
 
         try:
             while process.is_alive():
-                await asyncio.to_thread(update, path)
-                await asyncio.sleep(0.25)
-            await asyncio.to_thread(update, path)
+                prefix = committed_prefix(path)
+                if prefix is None or prefix["index"] < 1:
+                    # Startup has not acknowledged a world cut yet. Scanning
+                    # visible WAL or building a projector now duplicates the
+                    # cold initialization and can race the first publication.
+                    await asyncio.sleep(0.02)
+                    continue
+                complete = await asyncio.to_thread(update, path, max_batches=1)
+                await asyncio.sleep(0.25 if complete else 0.02)
+            while not await asyncio.to_thread(update, path, max_batches=1):
+                await asyncio.sleep(0.02)
         except Exception:
             # The derived cache never changes worker success or source data.
             # A foreground projection request exposes this same error to callers.
@@ -335,8 +343,7 @@ def create_app(
         process.start()
         workers[run_id] = (process, paused, stopped, started, speed)
         inputs[run_id] = (host_input, threading.Lock())
-        if template is not None:
-            index_tasks.append(asyncio.create_task(warm_feed(path, process)))
+        index_tasks.append(asyncio.create_task(warm_feed(path, process)))
         worker_input.close()
         # The console requests identity/injection configuration immediately after
         # creation. A created directory is not an acknowledged worker startup:
@@ -364,8 +371,10 @@ def create_app(
     def run_summary(path: Path, *, include_kpis: bool = True) -> dict[str, Any]:
         from .feed_index import kpi_result as project_run
 
-        metadata = RunStorage(path).metadata()
-        document = json.loads((path / "scenario.json").read_text())
+        from .storage import summary_configuration
+
+        metadata = json.loads((path / "manifest.json").read_text())
+        document = summary_configuration(path)
         template = metadata.get("template")
         return {
             **metadata,
@@ -668,8 +677,7 @@ def create_app(
         limit: int = Query(256, ge=1, le=4096),
     ) -> dict[str, Any]:
         path = directory(run_id)
-        storage = RunStorage(path)
-        metadata = storage.metadata()
+        metadata = json.loads((path / "manifest.json").read_text())
         from .feed_index import page
 
         result = page(path, max(1, from_index), limit)
@@ -698,37 +706,62 @@ def create_app(
 
         async def tail() -> AsyncIterator[str]:
             nonlocal cursor
-            from .feed_index import page
+            from .feed_index import stream_page
 
             last_status: tuple[str, str] | None = None
-            while not await request.is_disconnected():
-                storage = RunStorage(path)
-                records = await asyncio.to_thread(page, path, cursor, 256)
-                for commit in records:
-                    cursor = commit["commitIndex"] + 1
-                    yield f"id: {commit['commitIndex']}\nevent: commit\ndata: {json.dumps(commit, separators=(',', ':'))}\n\n"
-                metadata = storage.metadata()
-                status = metadata["status"]
-                state = {
-                    "status": status,
-                    **(
-                        {"waiting": metadata["waiting"]}
-                        if "waiting" in metadata
-                        else {}
-                    ),
-                }
-                state_key = (status, json.dumps(state, sort_keys=True))
-                if state_key != last_status:
-                    yield f"event: status\ndata: {json.dumps(state, separators=(',', ':'))}\n\n"
-                    last_status = state_key
-                if not records and status in TERMINAL:
-                    final_cursor = metadata["final_cursor"]
-                    if cursor >= final_cursor:
-                        yield f"event: end\ndata: {json.dumps({**state, 'finalCursor': final_cursor})}\n\n"
-                        return
-                if not records:
-                    yield ": waiting\n\n"
-                    await asyncio.sleep(0.1)
+            def projected_frames(start: int) -> list[tuple[int, str]]:
+                return [
+                    (commit["commitIndex"], f"id: {commit['commitIndex']}\nevent: commit\ndata: {json.dumps(commit, separators=(',', ':'))}\n\n")
+                    for commit in stream_page(path, start, 32)
+                ]
+
+            projection: asyncio.Task[list[tuple[int, str]]] | None = None
+            try:
+                while not await request.is_disconnected():
+                    # Deliver a small prefix immediately instead of making the
+                    # first live cut wait for hundreds of subsequent cuts.
+                    prefix = committed_prefix(path)
+                    # Idle live polls need no SQLite transaction, source
+                    # signature checks, or projector task. The acknowledged
+                    # coordinate tells us whether any real cut is available.
+                    projection = (
+                        asyncio.create_task(asyncio.to_thread(projected_frames, cursor))
+                        if prefix is None or prefix["index"] >= cursor else None
+                    )
+                    while True:
+                        # Controls must not wait behind a large projection or a
+                        # replay backlog. Their small manifest is authoritative.
+                        metadata = json.loads((path / "manifest.json").read_text())
+                        status = metadata["status"]
+                        state = {
+                            "status": status,
+                            **({"waiting": metadata["waiting"]} if "waiting" in metadata else {}),
+                        }
+                        state_key = (status, json.dumps(state, sort_keys=True))
+                        if state_key != last_status:
+                            yield f"event: status\ndata: {json.dumps(state, separators=(',', ':'))}\n\n"
+                            last_status = state_key
+                        if projection is None or projection.done():
+                            break
+                        await asyncio.wait({projection}, timeout=0.02)
+                        if await request.is_disconnected():
+                            return
+                    records = projection.result() if projection is not None else []
+                    projection = None
+                    for index, frame in records:
+                        cursor = index + 1
+                        yield frame
+                    if not records and status in TERMINAL:
+                        final_cursor = metadata["final_cursor"]
+                        if cursor >= final_cursor:
+                            yield f"event: end\ndata: {json.dumps({**state, 'finalCursor': final_cursor})}\n\n"
+                            return
+                    if not records:
+                        yield ": waiting\n\n"
+                        await asyncio.sleep(0.02)
+            finally:
+                if projection is not None:
+                    projection.cancel()
 
         return StreamingResponse(
             tail(),
@@ -738,10 +771,40 @@ def create_app(
 
     def worker_input_call(run_id: str, operation: str, body: Any) -> dict[str, Any]:
         path = directory(run_id)
-        if run_id not in inputs or RunStorage(path).metadata()["status"] in TERMINAL:
+        status = json.loads((path / "manifest.json").read_text())["status"]
+
+        def closed_progress(state: str) -> dict[str, Any] | None:
+            if state not in TERMINAL or not (path / "input-progress.json").is_file():
+                return None
+            watermarks = json.loads((path / "input-progress.json").read_text())["watermarks"]
+            if operation == "watermark":
+                try:
+                    return superseded_watermark(body, watermarks)
+                except (ValueError, TypeError) as exc:
+                    raise HTTPException(422, str(exc)) from exc
+            if operation != "progress":
+                return None
+            # A queued GET can cross the worker's final publication. Read its
+            # retained real frontier rather than rejecting that read with 409.
+            return {
+                "contract": "aeroagentsim.input-progress/v1",
+                "watermarks": watermarks,
+                "status": state,
+                "pause_requested": False,
+            }
+
+        final_progress = closed_progress(status)
+        if final_progress is not None:
+            return final_progress
+        if run_id not in inputs or status in TERMINAL:
             raise HTTPException(409, "Run has no active worker")
         connection, lock = inputs[run_id]
         with lock:
+            # Another progress read may have held this lock while cleanup
+            # finished; inspect the real terminal publication after acquiring it.
+            final_progress = closed_progress(json.loads((path / "manifest.json").read_text())["status"])
+            if final_progress is not None:
+                return final_progress
             if not workers[run_id][0].is_alive():
                 raise HTTPException(409, "Run worker has exited")
             try:
@@ -765,7 +828,7 @@ def create_app(
     async def input_progress(run_id: str) -> dict[str, Any]:
         """Read the active kernel source frontier, including progress without events."""
         path = directory(run_id)
-        status = RunStorage(path).metadata()["status"]
+        status = json.loads((path / "manifest.json").read_text())["status"]
         if status in TERMINAL:
             retained = path / "input-progress.json"
             if retained.is_file():
@@ -794,7 +857,7 @@ def create_app(
     mount_artifacts(app, directory, worker_input_call)
 
     @app.get("/v1/runs/{run_id}/speed")
-    def get_speed(run_id: str) -> dict[str, Any]:
+    async def get_speed(run_id: str) -> dict[str, Any]:
         directory(run_id)
         if run_id not in workers:
             raise HTTPException(409, "Run has no active worker")
@@ -802,10 +865,10 @@ def create_app(
         return {"id": run_id, "factor": value if value > 0 else None}
 
     @app.post("/v1/runs/{run_id}/speed")
-    def set_speed(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    async def set_speed(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
         """Host pacing only: how fast simulated time advances against the wall clock."""
         path = directory(run_id)
-        if run_id not in workers or RunStorage(path).metadata()["status"] in TERMINAL:
+        if run_id not in workers or json.loads((path / "manifest.json").read_text())["status"] in TERMINAL:
             raise HTTPException(409, "Run has no active worker")
         if set(body) != {"factor"}:
             raise HTTPException(422, "speed: factor required (positive number, or null for as fast as possible)")
@@ -816,12 +879,11 @@ def create_app(
         return {"id": run_id, "factor": factor}
 
     @app.post("/v1/runs/{run_id}/{operation}")
-    def control(run_id: str, operation: str) -> dict[str, Any]:
+    async def control(run_id: str, operation: str) -> dict[str, Any]:
         path = directory(run_id)
         if operation not in CONTROLS:
             raise HTTPException(404, "Unknown control operation")
-        storage = RunStorage(path)
-        status = storage.metadata()["status"]
+        status = json.loads((path / "manifest.json").read_text())["status"]
         if run_id not in workers or status in TERMINAL:
             raise HTTPException(409, "Run has no active worker")
         _, paused, stopped, started, _ = workers[run_id]
@@ -841,7 +903,7 @@ def create_app(
         return {
             "id": run_id,
             "requested": operation,
-            "status": storage.metadata()["status"],
+            "status": json.loads((path / "manifest.json").read_text())["status"],
         }
 
     # Optional authoring hook: execution continues to use the existing run API.

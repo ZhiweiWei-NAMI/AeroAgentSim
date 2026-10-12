@@ -49,6 +49,10 @@ height; inter-site flights depart/arrive vertically and cruise above the 105 m
 roof ceiling. Names and business metadata are pinned with each run. See
 [the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).
 
+## Operator story
+
+Choose **interactive** Run mode, Apply controls to draft, Validate, Save version, Initialize, then Start. Select line-end and inject report-defect for unused task line-survey-2 at that site. Watch the high-priority inspection release, dispatch and real waypoint observations in Why?. Events require a live run; receipt acceptance is followed by recorded domain effects.
+
 <!-- guide-language: zh-CN -->
 
 # 输电线路巡检
@@ -87,3 +91,7 @@ aeroagentsim replay runs/<run-directory>
 ## 黄浦城区布置
 
 坐标来自仓库中的 lite-city 建筑轮廓、屋顶高度和道路，由 `tools/templates/place.py` 生成。屋顶起降点使用实际屋顶高度；站点间飞行先垂直起降，再在 105 米屋顶高度上限之上巡航。名称和业务元数据会随运行固定保存。参见[共享布置指南](../../../docs/examples/city-day.md#huangpu-placements-la3)。
+
+## 操作员故事
+
+选择 **实时交互** 运行方式，应用到草稿、校验、保存版本、初始化，再明确启动。选择 line-end，注入 report-defect，指定尚未释放的 line-survey-2 和该站点。观察高优先级复查任务释放、派发与实际航点观测，并查看“为什么？”。 事件须在实时运行中提交；接收回执之后，以日志中的领域影响确认执行。

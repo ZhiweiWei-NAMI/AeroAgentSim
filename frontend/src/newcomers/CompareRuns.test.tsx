@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { CompareRuns, comparisonConfiguration } from './CompareRuns';
 import type { TemplateApi } from './api';
@@ -41,4 +41,18 @@ it('keeps the configuration comparison readable in Chinese',async()=>{
   render(<I18nProvider><CompareRuns api={api} ids={['a','b']}/></I18nProvider>);
   expect(await screen.findByText(/两次运行的固定配置相同/)).toBeVisible();
   expect(screen.getByText(/仿真时长可能不同/)).toBeVisible();
+});
+
+it.each(['en-US','zh-CN'])('keeps long source locations compact and exposes their exact recorded values in %s',async(locale)=>{
+  localStorage.setItem(STORAGE_KEY,locale);
+  const source='/tmp/aas-sol/polish/e2e-release/runs/.workspaces/studio-a841d6909e3c4413a2f50e153d6c598c/versions/1/files:$.behaviours[0]';
+  const api={request:vi.fn().mockResolvedValue({alignment:'recorded_run_end',recorded_ends,config_diff:[
+    {path:'/run/seed',values:{a:42,b:43},present:{a:true,b:true}},
+    {path:'/behaviours/0/source',values:{a:source,b:source.replace('a841d','b841d')},present:{a:true,b:true}},
+  ]}),compare:vi.fn().mockResolvedValue({runs}),templates:vi.fn().mockResolvedValue([]),algorithms:vi.fn().mockResolvedValue([])} as unknown as TemplateApi;
+  render(<I18nProvider><CompareRuns api={api} ids={['a','b']}/></I18nProvider>);
+  await screen.findByText('/run/seed');
+  const full=screen.getByText(JSON.stringify(source));expect(full).not.toBeVisible();
+  const detail=full.closest('details')!;expect(within(detail).getByText(locale==='zh-CN'?'源位置 · files:$.behaviours[0]':'Source location · files:$.behaviours[0]')).toBeVisible();
+  fireEvent.click(detail.querySelector('summary')!);expect(full).toBeVisible();expect(screen.getByText('43')).toBeVisible();
 });

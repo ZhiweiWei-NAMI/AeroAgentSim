@@ -36,7 +36,7 @@ it('interpolates waiting guidance and uses a drawer callback instead of changing
   localStorage.setItem('aeroagentsim.locale', 'zh-CN');
   const inject = vi.fn();
   const view = render(<I18nProvider><WaitingBanner waiting={{stream_ids:['operator'],at_ns:'2500000000'}} injectionHref="#run-operations" onInject={inject}/></I18nProvider>);
-  expect(screen.getByText('场景在 00:02.5 等待你的操作。选择一个事件即可继续。')).toBeTruthy();
+  expect(screen.getByText('场景在 00:02.5 等待实时输入。你可以引入一个事件。')).toBeTruthy();
   const action = screen.getByRole('button', {name:translate('zh-CN','Introduce an event')});
   expect(action.tagName).toBe('BUTTON');
   fireEvent.click(action); expect(inject).toHaveBeenCalledOnce();

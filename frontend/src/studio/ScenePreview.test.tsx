@@ -21,7 +21,7 @@ import { authoredPositions, draftBinding, framePreview, ScenePreview } from './S
 const workspace: any = {
   id: 'w1', demo_console: { scene: { city: { kind: 'traffic-city', url: '/city/scene.json' } } },
   scene: { ground: { width_m: 300, depth_m: 300 }, origin: { lat: 1, lon: 2, alt: 0 }, roads: [{ points: [[0, 0, 0], [10, 10, 0]] }] },
-  scenario: { presentation: [{ typeId: 't', positionField: 'pos' }], entities: [
+  scenario: { city: 'huangpu', presentation: [{ typeId: 't', positionField: 'pos' }], entities: [
     { type: 't', facts: { pos: [1, 2, 3], 'aas.studio.airspace': { floor_m: 0, ceiling_m: 50, polygon: [[0, 0], [5, 0], [5, 5]] } } }] },
 };
 const ALL = ['ground', 'buildings', 'roads', 'entities', 'airspace'];
@@ -77,6 +77,14 @@ describe('ScenePreview layer toggles', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading city geometry…');
     await act(async () => { resolveOsm(new THREE.Group()); });
     expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('drops the shared city when the draft no longer declares it', async () => {
+    const view = render(<ScenePreview workspace={workspace} api="/api" layers={ALL} />);
+    await vi.waitFor(() => expect(mocks.city).toHaveBeenCalledTimes(1));
+    view.rerender(<ScenePreview workspace={{ ...workspace, scenario: { ...workspace.scenario, city: null } }} api="/api" layers={ALL} />);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(mocks.city).toHaveBeenCalledTimes(1);
   });
 
   it('rebuilds only for a genuinely different scene', async () => {

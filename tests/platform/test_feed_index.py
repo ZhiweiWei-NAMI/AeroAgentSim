@@ -40,8 +40,10 @@ def test_persistent_page_resume_and_source_invalidation(
     registry = MemoryRegistry.from_data(
         json.loads((directory / "runtime.registry.json").read_text())
     )
-    subjects = SubjectProjection(registry, prepared.document)
-    kpis = KPIProjector(registry, prepared.document.get("presentation"))
+    # The feed projects from the run's pinned, compiled declarations.
+    pinned = json.loads((directory / "scenario.json").read_text())
+    subjects = SubjectProjection(registry, pinned)
+    kpis = KPIProjector(registry, pinned.get("presentation", []))
     narratives = NarrativeProjector.from_directory(directory)
     expected = [
         {

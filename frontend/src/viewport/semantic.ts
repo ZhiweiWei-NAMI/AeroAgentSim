@@ -149,12 +149,12 @@ export function semanticSites(header: RunHeader, store: { entities: Map<string, 
 
 /** Human-readable display name. Authored names win; otherwise a sensible identity. */
 export function displayName(entity: EntityState, header: RunHeader, locale = 'en-US'): string {
-  for (const fieldId of ['traffic.actor.label','oo:name', 'lowalt.label', 'name', 'label']) {
+  for (const fieldId of ['traffic.actor.label','oo:name', 'lowalt.label', 'name', 'label', 'display_name']) {
     const chinese = locale === 'zh-CN' ? scalar(entity.fields.get(`${fieldId}_zh`)?.value) : undefined;
     const value = typeof chinese === 'string' && chinese.trim() ? chinese : scalar(entity.fields.get(fieldId)?.value);
     if (typeof value === 'string' && value.trim()) return localizedLabel(value.trim(), locale);
   }
-  const authored = header.entities?.find(item => item.id === entity.key.id);
+  const authored = entity.authoredLabel ?? header.entities?.find(item => item.id === entity.key.id);
   const authoredName = localized(authored, 'label', locale);
   if (typeof authoredName === 'string' && authoredName.trim()) return localizedLabel(authoredName.trim(), locale);
   const type = header.types.find(type => type.typeId === entity.typeId);

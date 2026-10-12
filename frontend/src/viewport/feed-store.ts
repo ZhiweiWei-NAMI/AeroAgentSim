@@ -4,7 +4,7 @@ import { SampleBuffer } from './samples';
 import { compareInstant, nanos } from './time';
 
 type Fact = FeedCommit['facts'][number];
-export interface EntityState { key: EntityKey; typeId: string; fields: Map<string, Fact> }
+export interface EntityState { key: EntityKey; typeId: string; fields: Map<string, Fact>; authoredLabel?: { label?: string; label_zh?: string } }
 interface Lifetime { created: FeedCommit; removed?: FeedCommit }
 
 /** Retained replay journal with a separate committed cut and display sample index. */
@@ -18,12 +18,13 @@ export class FeedStore {
   private buffers = new Map<string, Map<string, SampleBuffer>>();
   private lifetimes = new Map<string, Lifetime>();
   private ingestedEntities = new Set<string>();
+  private readonly authoredNames: Map<string, { label?: string; label_zh?: string }>;
   private cursor = -1;
   private cutNs?: bigint;
   private cutIndex?: number;
   /** Temporal subclasses materialize their own valid-time fields and edges. */
   protected temporalState = false;
-  constructor(readonly header: RunHeader) { nanos(header.start.ns); }
+  constructor(readonly header: RunHeader) { nanos(header.start.ns); this.authoredNames = new Map((header.entities ?? []).filter(row => row.label || row.label_zh).map(row => [row.id, { label: row.label, label_zh: row.label_zh }])); }
   ingest(commit: FeedCommit) {
     const previous = this.commits[this.commits.length - 1];
     if (!Number.isSafeInteger(commit.commitIndex) || commit.commitIndex < 0 || !Number.isSafeInteger(commit.at.microstep) || commit.at.microstep < 0) throw Error('Invalid commit index or microstep');
@@ -79,7 +80,7 @@ export class FeedStore {
     this.cursor = target; this.cutNs = at; this.cutIndex = commitIndex;
   }
   private apply(commit: FeedCommit) {
-    for (const key of commit.created) this.entities.set(entityId(key), { key: { id: key.id, generation: key.generation }, typeId: key.typeId, fields: new Map() });
+    for (const key of commit.created) this.entities.set(entityId(key), { key: { id: key.id, generation: key.generation }, typeId: key.typeId, fields: new Map(), ...(this.authoredNames.has(key.id) ? { authoredLabel: this.authoredNames.get(key.id) } : {}) });
     if (!this.temporalState) {
       for (const fact of commit.retracted) this.entities.get(entityId(fact.entity))!.fields.delete(fact.fieldId);
       for (const fact of commit.facts) this.entities.get(entityId(fact.entity))!.fields.set(fact.fieldId, fact);

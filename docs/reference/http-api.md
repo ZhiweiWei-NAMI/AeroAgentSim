@@ -106,6 +106,12 @@ streams and the simulated boundary the kernel was waiting for.
 | `/v1/runs/{id}/ingress` | POST | Submit typed live input after worker-side validation against the pinned injection manifest (see below). 409 if the worker is gone; 422 with a kernel error code for rejected payloads. Returns an admission receipt. |
 | `/v1/runs/{id}/watermark` | POST | Advance stream progress: exactly one of `watermark_ns` (integer) or `source_stamp` (`clock_id, mapping_id, numerator, denominator`), optional `stream_id`. Returns a `aeroagentsim.watermark-receipt/v2` with the effective watermark. |
 
+Concurrent producers can send `stream_id`, `watermark_ns`, and
+`expected_watermark_ns` together. If the source has advanced beyond that observed
+frontier, the receipt returns its actual watermark with `advanced: false`, without
+writing another journal record. An applied conditional closure returns
+`advanced: true`. Unconditional backwards closures remain invalid.
+
 Ingress bodies name `engine`, `schema`, `target`, `payload` and optionally
 `stream_id`, `at_ns`, `source_stamp`, `idempotency_key`. If the schema is a
 declared behaviour injection command, the payload must carry an

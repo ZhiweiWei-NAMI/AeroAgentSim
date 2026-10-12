@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import json
 from pathlib import Path
 from typing import Any
 
@@ -303,3 +304,15 @@ def test_run_speed_paces_host_time_only(tmp_path: Path) -> None:
         assert client.post(f"/v1/runs/{run_id}/speed", json={"factor": None}).json()["factor"] is None
         assert wait_status(client, run_id, {"completed"})["status"] == "completed"
         assert client.post(f"/v1/runs/{run_id}/speed", json={"factor": 2}).status_code == 409
+
+
+def test_run_shows_the_shared_city_only_while_the_draft_declares_it(tmp_path: Path) -> None:
+    from aeroagentsim.authoring.replay import attach
+
+    scene = {"id": "Huangpu", "city": {"kind": "traffic-city", "url": "/scene.json"}}
+    draft = {"scenario": {"city": "huangpu"}, "demo_console": {"capture_mode": "city", "scene": scene}}
+    attach(tmp_path, draft, tmp_path)
+    assert json.loads((tmp_path / "console-scene.json").read_text()) == scene
+    (tmp_path / "console-scene.json").unlink()
+    attach(tmp_path, {**draft, "scenario": {"city": None}}, tmp_path)
+    assert not (tmp_path / "console-scene.json").exists()

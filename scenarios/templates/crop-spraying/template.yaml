@@ -19,12 +19,31 @@ observe_zh:
 - 换电在农田边缘进行。
 - 大风过境时喷洒暂停。
 try:
+- Choose interactive mode. Select field-1 and inject pause-spraying for 20 seconds.
+  The motion owner stops the aircraft; spraying observations pause, then resume after
+  the hold. Follow both records in Why?.
 - Change row spacing to compare flight distance.
 - Change the wind speed to test the spraying limit.
 try_zh:
+- 选择实时交互模式。选择 field-1，注入 pause-spraying，停喷时长设为 20 秒。运动组件使飞行器停止，喷洒观测在停喷时段暂停，随后恢复；在“为什么？”中追踪这两条记录。
 - 调整作业行间距，对比飞行距离。
 - 调整风速，测试喷洒作业的风速限制。
 knobs:
+- id: run_mode
+  label: Run mode
+  label_zh: 运行方式
+  type: choice
+  default: scheduled
+  options:
+  - scheduled
+  - interactive
+  options_zh:
+  - 自动运行（无需人工推进）
+  - 实时交互（控制台推进与注入）
+  description: Scheduled runs keep their authored arrivals. Interactive mode waits
+    for console time advances and operator events; Stop ends the run.
+  description_zh: 自动运行保留原有任务到达计划。实时交互等待控制台推进时间及操作员事件；可随时停止。
+  apply: lowalt.operator_mode
 - id: fleet_size
   label: Number of aircraft
   label_zh: 飞行器数量

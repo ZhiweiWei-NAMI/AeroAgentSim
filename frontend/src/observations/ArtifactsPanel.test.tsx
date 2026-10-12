@@ -1,7 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
-afterEach(()=>{cleanup();localStorage.clear();vi.restoreAllMocks();});
+afterEach(()=>{cleanup();localStorage.clear();vi.restoreAllMocks();vi.unstubAllGlobals();vi.useRealTimers();});
 import { ArtifactsPanel } from './ArtifactsPanel';
 import { RunsApi } from '../feeds/http';
 import { TemporalFeedStore } from '../feeds/temporal-store';
@@ -13,6 +13,32 @@ it('retains actual storage failure and only seeks a recorded artifact source cut
  await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('corrupt blob'));expect(screen.queryByText('No stored artifacts.')).toBeNull();
  request.mockResolvedValueOnce([{digest:'a'.repeat(64),byte_count:10,renderer_mode:'browser',request:{request_id:'photo',source_cut:{index:3,instant:[10,2]}}}]);
  fireEvent.click(screen.getByText('Refresh stored artifacts'));await screen.findByText('Seek photo moment');fireEvent.click(screen.getByText('Seek photo moment'));expect(seek).toHaveBeenCalledWith(3);
+});
+
+it('discovers storage published after the tab opens through live/feed updates, then stops polling on close',async()=>{
+ vi.useFakeTimers();const api=new RunsApi('http://api');let stored:unknown[]=[];
+ const request=vi.spyOn(api,'request').mockImplementation(async path=>path.includes('/configuration')?{scenario:{engines:{}}}:stored);
+ const store=new TemporalFeedStore(fixtureHeader);store.liveFollow=true;
+ let view!:ReturnType<typeof render>;
+ await act(async()=>{view=render(<ArtifactsPanel api={api} runId="run" store={store} onSeek={()=>{}}/>);});
+ expect(screen.getByText('No stored artifacts.')).toBeVisible();
+ stored=[{digest:'a'.repeat(64),byte_count:10,renderer_mode:'browser',request:{request_id:'late-photo'}}];
+ await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});expect(screen.getByText('late-photo')).toBeVisible();
+ store.liveFollow=false;store.ingest(fixtureCommits[0]);stored=[...stored,{digest:'b'.repeat(64),request:{request_id:'final-photo'}}];
+ await act(async()=>{await vi.advanceTimersByTimeAsync(1000);});expect(screen.getByText('final-photo')).toBeVisible();
+ const count=request.mock.calls.length;view.unmount();await act(async()=>{await vi.advanceTimersByTimeAsync(3000);});expect(request.mock.calls).toHaveLength(count);
+});
+it('opens verified stored bytes before the list and brings the image into view after load',async()=>{
+ const api=new RunsApi('http://api'),row={digest:'c'.repeat(64),byte_count:3,renderer_mode:'browser',request:{request_id:'photo'}};
+ vi.spyOn(api,'request').mockImplementation(async path=>path.includes('/configuration')?{scenario:{engines:{}}}:[row]);
+ vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer})));
+ const create=vi.fn(()=> 'blob:photo'),revoke=vi.fn();vi.stubGlobal('URL',Object.assign(URL,{createObjectURL:create,revokeObjectURL:revoke}));
+ const scroll=vi.fn();Object.defineProperty(HTMLElement.prototype,'scrollIntoView',{configurable:true,value:scroll});
+ const store=new TemporalFeedStore(fixtureHeader);const view=render(<ArtifactsPanel api={api} runId="run" store={store} onSeek={()=>{}}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Open photo'}));
+ const image=await screen.findByAltText('Stored capture photo');expect(image.closest('figure')!.compareDocumentPosition(screen.getByText('photo').closest('article')!)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ expect(scroll).toHaveBeenCalledWith({block:'start'});fireEvent.load(image);expect(scroll).toHaveBeenCalledTimes(2);
+ view.unmount();expect(revoke).toHaveBeenCalledWith('blob:photo');
 });
 it('localizes photo guidance and storage status while preserving request IDs and exact source moments',async()=>{
  localStorage.setItem('aeroagentsim.locale','zh-CN');

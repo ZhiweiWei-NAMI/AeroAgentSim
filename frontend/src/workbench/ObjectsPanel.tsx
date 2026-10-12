@@ -10,13 +10,17 @@ import { sameEntity } from './useRunSession';
 const PALETTE = ['#1f7ae0', '#e8a317', '#1fae6b', '#b26bff', '#e0453a', '#38c6f4', '#ff7a45', '#5b6b7d'];
 
 /** Every concrete object of the world, grouped by type; selecting here selects everywhere. */
-export function ObjectsPanel({ store, revision, selected, onSelect, onClose }: { store: TemporalFeedStore; revision: number; selected?: EntityKey; onSelect: (key: EntityKey, focus: boolean) => void; onClose: () => void }) {
+export function ObjectsPanel({ store, revision, selected, selectionOrigin, onSelect, onClose }: { store: TemporalFeedStore; revision: number; selected?: EntityKey; selectionOrigin: 'manual' | 'director'; onSelect: (key: EntityKey, focus: boolean) => void; onClose: () => void }) {
   const { locale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const [query, setQuery] = useState(''), [toggled, setToggled] = useState<Set<string>>(new Set()), [spatialOnly, setSpatialOnly] = useState(false);
   const panel = useRef<HTMLElement>(null), body = useRef<HTMLDivElement>(null), selectedId = selected && entityId(selected);
   const selectedPresent = !!selectedId && store.entities.has(selectedId);
+  const revealSelection = selectionOrigin === 'manual' || !query.trim();
   useEffect(() => {
+    // Live camera cues must not erase or move the list while someone searches.
+    // Explicit selections from the graph/scene still reveal their object.
+    if (!revealSelection) return;
     const entity = selectedId && store.entities.get(selectedId);
     if (!entity) return;
     const spatial = !!resolveBinding(store.header, entity.typeId);
@@ -28,10 +32,11 @@ export function ObjectsPanel({ store, revision, selected, onSelect, onClose }: {
     if (!spatial) setSpatialOnly(false);
     const name = displayName(entity, store.header, locale);
     if (query && !`${name} ${entity.key.id} ${entity.typeId}`.toLowerCase().includes(query.trim().toLowerCase())) setQuery('');
-  }, [store, selectedId, selectedPresent]);
-  useEffect(() => { panel.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' }); }, [selectedId, toggled]);
+  }, [store, selectedId, selectedPresent, selectionOrigin, revealSelection]);
+  useEffect(() => { if (revealSelection) panel.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' }); }, [selectedId, toggled, selectionOrigin, revealSelection]);
+  const reveal = useRef(revealSelection); reveal.current = revealSelection;
   useEffect(() => {
-    const observer = new ResizeObserver(() => { body.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' }); });
+    const observer = new ResizeObserver(() => { if (reveal.current) body.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' }); });
     if (body.current) observer.observe(body.current);
     return () => observer.disconnect();
   }, []);

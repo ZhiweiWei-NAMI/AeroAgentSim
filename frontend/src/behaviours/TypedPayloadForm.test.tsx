@@ -115,3 +115,20 @@ it('localizes known schema titles and member descriptions without changing membe
   expect(screen.queryByText('Report details')).toBeNull();
   expect(screen.getByRole('textbox')).toHaveValue('test');
 });
+
+it('limits contract identity strings to matching live entities and preserves their string wire format',()=>{
+ const change=vi.fn(),choices=[
+  {label:'East kitchen',typeId:'Restaurant',ancestors:['Site'],value:{$ref:{id:'east',generation:0}}},
+  {label:'Drone',typeId:'UAV',ancestors:[],value:{$ref:{id:'drone',generation:0}}},
+ ];
+ render(<I18nProvider><TypedPayloadForm schema={{type:'string',target_type:'Site'}} value={undefined} onChange={change} entityChoices={choices}/></I18nProvider>);
+ expect(screen.getByRole('option',{name:'East kitchen'})).toBeTruthy();expect(screen.queryByRole('option',{name:'Drone'})).toBeNull();expect(screen.queryByRole('textbox')).toBeNull();
+ fireEvent.change(screen.getByLabelText('Payload'),{target:{value:'east'}});expect(change).toHaveBeenLastCalledWith('east');
+ fireEvent.change(screen.getByLabelText('Payload'),{target:{value:''}});expect(change).toHaveBeenLastCalledWith(undefined);
+});
+
+it('translates known authored titles without changing the free-text payload',()=>{
+ localStorage.setItem('aeroagentsim.locale','zh-CN');
+ const change=vi.fn();render(<I18nProvider><TypedPayloadForm schema={{type:'record',members:{reason:{type:'string',title:'Reason'}}}} value={{reason:'Operator observation'}} onChange={change}/></I18nProvider>);
+ expect(screen.getByText('原因')).toBeVisible();expect(screen.queryByText('Reason')).toBeNull();expect(screen.getByRole('textbox',{name:'载荷.reason'})).toHaveValue('Operator observation');expect(change).not.toHaveBeenCalled();
+});

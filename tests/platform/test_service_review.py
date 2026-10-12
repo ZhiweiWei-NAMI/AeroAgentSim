@@ -112,7 +112,7 @@ def test_h5_worker_never_publishes_success_before_cleanup(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, document: dict[str, Any]
 ) -> None:
     path = tmp_path / "run"
-    storage = artifacts(path)
+    storage = RunStorage(path)
     statuses: list[str] = []
     original = RunStorage.status
 
@@ -126,27 +126,20 @@ def test_h5_worker_never_publishes_success_before_cleanup(
         statuses.append(outcome)
         original(self, outcome, error=error, waiting=waiting)
 
-    class Session:
-        now_ns = 0
-        started_wall = 0.0
+    close = RunSession.close
 
-        def __init__(self, *_: Any, **__: Any) -> None:
-            pass
-
-        def start(self) -> None:
-            pass
-
-        def run_until(self, ns: int) -> None:
-            self.now_ns = ns
-
-        def close(self) -> None:
-            raise RuntimeError("CLOSE_FAILED")
+    def failed_close(self: RunSession) -> None:
+        # Exercise the real committed prefix and source frontier, then fail
+        # finalization. A mock session would omit the worker's lifecycle data.
+        close(self)
+        raise RuntimeError("CLOSE_FAILED")
 
     from aeroagentsim.scenario import load_scenario
 
     document["run"]["until_ns"] = 0
     scenario = load_scenario(document)
-    monkeypatch.setattr(worker, "RunSession", Session)
+    storage.prepare(scenario)
+    monkeypatch.setattr(RunSession, "close", failed_close)
     monkeypatch.setattr(RunStorage, "status", status)
     try:
         worker.execute(scenario, path, threading.Event(), threading.Event())

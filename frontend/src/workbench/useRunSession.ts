@@ -3,10 +3,12 @@ import type { EntityKey } from '../contracts/viewer-feed';
 import { awaitRunConfiguration, HttpViewerFeed, RunsApi, type WaitingContext } from '../feeds/http';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { PlaybackClock } from '../viewport/clock';
+import { useOperatorInput, type OperatorInput } from './useOperatorInput';
 import { TERMINAL } from './api';
 
 export interface RunSession {
   store: TemporalFeedStore; clock: PlaybackClock;
+  inputSource: OperatorInput;
   /** Server-reported run status (initialized, running, paused, completed, …). */
   status: string; waiting?: WaitingContext;
   /** The replay or terminal subscription has delivered its complete journal. */
@@ -41,7 +43,7 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
   const [cut, setCut] = useState<number>(), cutRef = useRef<number>();
   const [pendingCut, setPendingCut] = useState<number>(), requestedCut = useRef<number>();
   const [revision, setRevision] = useState(0);
-  const follow = useRef(mode === 'live');
+  const follow = useRef(mode === 'live' && initialCut === undefined);
   const statusRef = useRef('loading');
   const tick = () => setRevision(value => value + 1);
 
@@ -49,7 +51,7 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
     setState(undefined); setError(undefined); setSeekError(undefined); setTransportError(undefined); setCut(undefined); cutRef.current = undefined;
     setJournalComplete(false);
     requestedCut.current = initialCut; setPendingCut(initialCut);
-    setStatus('loading'); statusRef.current = 'loading'; setWaiting(undefined); setReportedBoundaryNs(undefined); follow.current = mode === 'live';
+    setStatus('loading'); statusRef.current = 'loading'; setWaiting(undefined); setReportedBoundaryNs(undefined); follow.current = mode === 'live' && initialCut === undefined;
     if (!runId) return;
     const abort = new AbortController();
     let paint: number | undefined, activeStore: TemporalFeedStore | undefined;
@@ -72,7 +74,7 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
         if (header.scene.city.assetsBase) header.scene.city.assetsBase = new URL(header.scene.city.assetsBase, apiBase + '/').href;
       }
       const store = new TemporalFeedStore(header), clock = new PlaybackClock(header.start.ns, header.end?.ns ?? header.start.ns);
-      activeStore = store; store.liveFollow = mode === 'live';
+      activeStore = store; store.liveFollow = mode === 'live' && follow.current;
       setState({ store, clock });
       return feed.subscribe(0, commit => {
         store.ingest(commit);
@@ -100,6 +102,7 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
     return () => { abort.abort(); if (paint !== undefined) cancelAnimationFrame(paint); };
   }, [runs, runId, mode]);
 
+  const inputSource = useOperatorInput(runs, runId, mode === 'live' && TERMINAL.has(status) ? 'replay' : mode, follow.current && cut === undefined && pendingCut === undefined);
   if (!state || !runId) return undefined;
   const { store, clock } = state;
   const liveAllowed = () => mode === 'live' && !TERMINAL.has(statusRef.current) && statusRef.current !== 'paused';
@@ -111,7 +114,7 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
     cutRef.current = commit.commitIndex; setCut(commit.commitIndex); store.seek(clock.ns, commit.commitIndex); tick();
   };
   return {
-    store, clock, status, waiting, reportedBoundaryNs, journalComplete, pendingCut, cut, error: error ?? seekError, transportError, revision,
+    store, clock, inputSource, status, waiting, reportedBoundaryNs, journalComplete, pendingCut, cut, error: error ?? seekError, transportError, revision,
     followingLive: mode === 'live' && follow.current && cut === undefined,
     seekOffset,
     seekCut: index => {

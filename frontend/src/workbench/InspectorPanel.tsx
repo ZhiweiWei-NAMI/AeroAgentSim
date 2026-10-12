@@ -5,6 +5,7 @@ import type { TemporalFeedStore } from '../feeds/temporal-store';
 import { useI18n } from '../i18n/I18nProvider';
 import { InspectionPanel } from '../pages/InspectionPanel';
 import { readableLabel } from '../pages/inspection-format';
+import type { OperatorInput } from './useOperatorInput';
 import { RunOperations } from '../behaviours/RunOperations';
 import { ChangeList, MomentsList } from '../trace/EntityStory';
 import type { CauseRef } from '../trace/cause-trace';
@@ -14,8 +15,9 @@ import { displayName } from '../viewport/semantic';
 type Tab = 'state' | 'story' | 'operate';
 
 /** The selected object: state at the viewed moment, its story, and the operations it admits. */
-export function InspectorPanel({ api, runId, store, revision, selected, cut, mode, canOperate, viewingHistory, operateRequest, onSelect, onSeekCut, onTrace, onFocus, onFollow, following, onShowGraph, onClose }: {
+export function InspectorPanel({ api, runId, store, revision, selected, cut, mode, canOperate, viewingHistory, operateRequest, onSelect, onSeekCut, onTrace, onFocus, onFollow, following, onShowGraph, onClose, inputSource, onCompactChange }: {
   api: RunsApi; runId: string; store: TemporalFeedStore; revision: number; selected?: EntityKey; cut?: number; mode: 'live' | 'replay'; canOperate: boolean; viewingHistory?: boolean; operateRequest?: number;
+  inputSource?: OperatorInput; onCompactChange?: (compact: boolean) => void;
   onSelect: (key: EntityKey) => void; onSeekCut: (cut: number) => void; onTrace: (ref: CauseRef) => void;
   onFocus: () => void; onFollow: () => void; following: boolean; onShowGraph: () => void; onClose: () => void;
 }) {
@@ -38,8 +40,10 @@ export function InspectorPanel({ api, runId, store, revision, selected, cut, mod
   }, [operateRequest, tab]);
   void revision;
   const entity = selected ? store.entities.get(entityId(selected)) : undefined;
+  const compact = !entity && tab !== 'operate';
+  useEffect(() => { onCompactChange?.(compact); }, [compact, onCompactChange]);
   const spatial = entity ? !!resolveBinding(store.header, entity.typeId) : false;
-  return <aside className="wb-panel wb-right wb-glass" aria-label={L('Inspector', '检查器')} data-testid="wb-inspector">
+  return <aside className={`wb-panel wb-right wb-glass${compact ? ' is-compact' : ''}`} aria-label={L('Inspector', '检查器')} data-testid="wb-inspector" data-compact={compact}>
     <div className="wb-panel-head"><h3>{L('Inspector', '检查器')}</h3><button className="wb-x" aria-label={L('Hide inspector', '隐藏检查器')} onClick={onClose}>›</button></div>
     {entity ? <div className="wb-entity-head">
       <span className="wb-tag wb-mono">{readableLabel(entity.typeId, locale)}</span>
@@ -51,7 +55,7 @@ export function InspectorPanel({ api, runId, store, revision, selected, cut, mod
         <button className="wb-btn small" onClick={onShowGraph}>{L('Show in graph', '在关系图中查看')}</button>
         {!spatial && <span className="wb-tag" title={L('This object has no position; it is shown in the graph and lists, never placed in 3D.', '此对象没有空间位置，只在关系图和列表中显示，不会放进三维场景。')}>{L('non-spatial', '非空间')}</span>}
       </div>
-    </div> : <div className="wb-entity-head"><div className="wb-empty"><strong>{selected ? L('Object absent at this moment', '此时刻对象不存在') : tab === 'operate' ? L('Scene events', '场景事件') : L('Nothing selected', '未选择对象')}</strong>{selected ? `${selected.id} · ${L('Choose another timeline moment to inspect it.', '选择其他时间点查看此对象。')}` : tab === 'operate' ? L('Choose an authored event below to continue.', '选择下方已定义的事件以继续。') : L('Click a drone, vehicle or site in the scene, the object list or the graph.', '在场景、对象列表或关系图中点击无人机、车辆或站点。')}</div></div>}
+    </div> : <div className="wb-entity-head"><div className="wb-empty"><strong>{selected ? L('Object absent at this moment', '此时刻对象不存在') : tab === 'operate' ? L('Scene events', '场景事件') : L('Nothing selected', '未选择对象')}</strong>{selected ? `${selected.id} · ${L('Choose another timeline moment to inspect it.', '选择其他时间点查看此对象。')}` : tab === 'operate' ? L('Choose an authored event below to continue.', '选择下方已定义的事件以继续。') : L('Click a drone, vehicle or site in the scene, the object list or the graph.', '在场景、对象列表或关系图中点击无人机、车辆或站点。')}</div>{compact && canOperate && <button className="wb-btn small" onClick={() => setTab('operate')}>{L('Introduce an event', '引入事件')}</button>}</div>}
     {(entity || tab === 'operate') && <>
       <div className="wb-tabs" role="tablist">
         {(['state', 'story', 'operate'] as Tab[]).map(item => <button key={item} role="tab" disabled={!entity && item !== 'operate'} aria-selected={tab === item} onClick={() => setTab(item)}>{item === 'state' ? L('State', '状态') : item === 'story' ? L('Story', '经历') : L('Operate', '操作')}</button>)}
@@ -65,8 +69,8 @@ export function InspectorPanel({ api, runId, store, revision, selected, cut, mod
         {tab === 'operate' && <>
           <p className="hint">{canOperate ? L('Introduce an event below, then follow its recorded response in the scene and timeline.', '在下方引入事件，然后在场景和时间轴中查看记录的响应。')
             : viewingHistory ? L('You are viewing history. Back to live before introducing an event.', '正在查看历史。请返回实时后再引入事件。')
-            : mode === 'replay' ? L('Replay reads the recorded journal; operations are not available.', '回放只读取已记录的日志，不能执行操作。') : L('Operations are available while the run is initialized, running or paused.', '运行处于已初始化、运行中或暂停时才可执行操作。')}</p>
-          <RunOperations api={api} runId={runId} store={store} selected={selected} commitCut={cut} onSelect={onSelect} onSeek={onSeekCut} mode={mode} interactive={canOperate} />
+            : mode === 'replay' ? L('Replay reads the recorded journal; operations are not available.', '回放只读取已记录的日志，不能执行操作。') : L('Operations are available while the run is running or paused.', '运行处于运行中或暂停时才可执行操作。')}</p>
+          <RunOperations api={api} runId={runId} store={store} selected={selected} commitCut={cut} onSelect={onSelect} onSeek={onSeekCut} mode={mode} interactive={canOperate} inputSource={inputSource} />
         </>}
       </div>
     </>}

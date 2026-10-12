@@ -21,8 +21,8 @@ from aerokernel.registry import MemoryRegistry
 
 from .kpis import KPIProjector
 from .narratives import NarrativeProjector
-from .projector import project
-from .storage import RunStorage
+from .projector import project, projection_record
+from .storage import RunStorage, committed_prefix
 from .subjects import SubjectProjection
 
 FORMAT = "aeroagentsim.viewer-index/v1"
@@ -39,6 +39,7 @@ class _Projection:
     subjects: SubjectProjection
     kpis: KPIProjector
     narratives: NarrativeProjector
+    storage: RunStorage
 
 
 # A bounded working set, never the source of truth. The committed SQLite blob
@@ -107,34 +108,39 @@ def _decode(value: bytes) -> Any:
     return json.loads(zlib.decompress(value))
 
 
-def update(path: Path, *, through_index: int | None = None) -> None:
+def update(
+    path: Path, *, through_index: int | None = None, max_batches: int | None = None
+) -> bool:
     """Build bounded batches so first-page readers need only their requested cuts.
 
     Release the per-run lock between batches. A background tail or metrics read
     must not hold the interactive first page behind a whole journal rebuild.
+
+    Background warmup can yield after a bounded amount of work. The return
+    value reports whether this acknowledged prefix is completely projected.
     """
+    if max_batches is not None and (type(max_batches) is not int or max_batches <= 0):
+        raise ValueError("Viewer index: max_batches must be a positive integer")
     path = path.resolve()
-    storage = RunStorage(path)
-    available = storage.entries[-1]["index"] + 1 if storage.entries else 1
+    prefix = committed_prefix(path)
+    if prefix is not None:
+        available = prefix["index"] + 1
+    else:
+        storage = RunStorage(path)
+        available = storage.entries[-1]["index"] + 1 if storage.entries else 1
     target = min(available, through_index) if through_index is not None else available
-    while not _update_batch(path, target):
-        pass
+    batches = 0
+    while True:
+        complete = _update_batch(path, target)
+        batches += 1
+        if complete or (max_batches is not None and batches >= max_batches):
+            return complete
 
 
 def _update_batch(path: Path, requested_target: int) -> bool:
-    """Publish one complete checkpoint, at most 256 new journal records."""
+    """Publish one complete checkpoint, at most 64 new journal records."""
     with _path_lock(path), closing(_connect(path)) as database, database:
-        storage = RunStorage(path)
-        target = storage.entries[-1]["index"] + 1 if storage.entries else 1
         signature = _signature(path)
-        if storage.entries:
-            tail = storage.entries[-1]
-            if (path / "journal.jsonl").stat().st_size < tail["offset"] + tail[
-                "length"
-            ]:
-                raise ValueError(
-                    "Viewer index: WAL is shorter than its retained prefix"
-                )
         database.execute("BEGIN IMMEDIATE")
         row = database.execute("SELECT data FROM checkpoint WHERE id=1").fetchone()
         # Remove the working cursor before mutation. A projection/SQLite failure
@@ -143,6 +149,20 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             cached = _PROJECTIONS.pop(path, None)
         if cached is not None and (row is None or cached.checkpoint != row[0]):
             cached = None
+        # Live readers retain their byte cursor. Recopying the whole JSON index
+        # on every SSE poll makes long runs progressively slower.
+        storage = (
+            cached.storage
+            if cached is not None and cached.signature == signature
+            and committed_prefix(path) is not None
+            else RunStorage(path)
+        )
+        storage.refresh_committed()
+        target = storage.entries[-1]["index"] + 1 if storage.entries else 1
+        if storage.entries:
+            tail = storage.entries[-1]
+            if (path / "journal.jsonl").stat().st_size < tail["offset"] + tail["length"]:
+                raise ValueError("Viewer index: WAL is shorter than its retained prefix")
         state: dict[str, Any] = (
             {"signature": cached.signature, "next": cached.next}
             if cached is not None
@@ -177,19 +197,22 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             cursor = 1
             database.execute("DELETE FROM cuts")
             database.execute("DELETE FROM checkpoint")
-        target = min(target, requested_target, cursor + 256)
+        target = min(target, requested_target, cursor + 64)
         while cursor < target:
             records = storage.records(cursor, min(256, target - cursor))
             if not records:
                 # records() takes its own index snapshot. A final-tail publisher
                 # can interleave with that read; reacquire the source once before
                 # diagnosing a genuinely missing retained prefix.
-                records = RunStorage(path).records(cursor, min(256, target - cursor))
+                retry_storage = RunStorage(path)
+                retry_storage.refresh_committed()
+                records = retry_storage.records(cursor, min(256, target - cursor))
                 if not records:
                     raise ValueError("Viewer index: retained WAL prefix is missing")
             for record in records:
                 if record["index"] != cursor:
                     raise ValueError("Viewer index: non-contiguous committed prefix")
+                record = projection_record(record)
                 cut = project(record, subjects=subjects, kpis=kpis)
                 cut["events"] = narratives.consume(record)
                 database.execute(
@@ -217,13 +240,48 @@ def _update_batch(path: Path, requested_target: int) -> bool:
         )
         database.commit()
         _retain(
-            path, _Projection(checkpoint, signature, cursor, subjects, kpis, narratives)
+            path, _Projection(checkpoint, signature, cursor, subjects, kpis, narratives, storage)
         )
         return cursor >= requested_target
 
 
+def stream_page(path: Path, start: int = 1, limit: int = 32) -> list[dict[str, Any]]:
+    """Emit a ready committed fragment before computing subsequent live cuts."""
+    path = path.resolve()
+    prefix = committed_prefix(path)
+    database_path = path / FILENAME
+    if prefix is not None and database_path.exists():
+        # WAL readers can consume the already committed derived prefix while
+        # a writer projects later cuts. Taking its write lock first defeats
+        # bounded batches: every live subscriber queues behind future work.
+        # Validate the source signature and clip to the actual kernel ACK.
+        with closing(sqlite3.connect(database_path.as_uri() + "?mode=ro", uri=True)) as database:
+            database.execute("BEGIN")
+            tables = {
+                item[0] for item in database.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('cuts','checkpoint')"
+                )
+            }
+            row = (
+                database.execute("SELECT data FROM checkpoint WHERE id=1").fetchone()
+                if tables == {"cuts", "checkpoint"} else None
+            )
+            if row is not None and _decode(row[0])["signature"] == _signature(path.resolve()):
+                records = [
+                    _decode(item[0])
+                    for item in database.execute(
+                        "SELECT payload FROM cuts WHERE idx>=? AND idx<=? ORDER BY idx LIMIT ?",
+                        (max(1, start), prefix["index"], limit),
+                    )
+                ]
+                if records:
+                    return records
+    return page(path, start, limit)
+
+
 def page(path: Path, start: int = 1, limit: int = 256) -> list[dict[str, Any]]:
-    """Random-access projected cuts, including reconnects in a fresh process."""
+    """Project the requested acknowledged prefix for REST/history readers."""
+    path = path.resolve()
     update(path, through_index=max(1, start) + limit)
     with closing(_connect(path)) as database, database:
         return [

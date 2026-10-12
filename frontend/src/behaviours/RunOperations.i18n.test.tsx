@@ -39,131 +39,6 @@ const labels = {
   'en-US': { operations: 'Run operations', pause: 'Pause simulation', resume: 'Resume simulation', stop: 'Stop simulation', ingress: 'Submit typed ingress', pauseToast: 'Simulation pause requested.', resumeToast: 'Simulation resume requested.', stopToast: 'Simulation stop requested.', acceptedToast: 'Event accepted. Follow its response in the timeline.', advanced: 'Advanced', details: 'Details' },
 };
 
-it.each(['zh-CN', 'en-US'] as const)('uses bilingual controls and toasts with per-run status, exact routes and waiting resume (%s)', async locale => {
-  const api = new RunsApi('http://api'), text = labels[locale];
-  let status = 'waiting_for_input';
-  const listing = vi.spyOn(api, 'runs').mockRejectedValue(Error('Do not fetch the expensive KPI listing'));
-  const request = vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
-    if (path.endsWith('/configuration')) return configuration();
-    if (path.includes('/commits?')) return { status, commits: [], next: 8 };
-    if (path.endsWith('/inputs')) return {status,watermarks:{operator:0},pause_requested:status==='paused'};
-    // Source progress is independent of pause/resume/stop and may tick during
-    // slow UI queries. Acknowledge it instead of treating it as a control.
-    if (path === '/v1/runs/service%2Frun%20id/watermark') {
-      expect(options).toMatchObject({ method: 'POST', headers: { 'Content-Type': 'application/json' } });
-      const body = JSON.parse(String(options?.body));
-      expect(body).toEqual({ stream_id: 'operator', watermark_ns: expect.any(Number) });
-      return { watermark_ns: body.watermark_ns };
-    }
-    if (options?.method === 'POST') {
-      expect(options).toMatchObject({ headers: { 'Content-Type': 'application/json' }, body: '{}' });
-      const action = path.split('/').at(-1);
-      status = action === 'pause' ? 'paused' : action === 'resume' ? 'waiting_for_input' : 'stopped';
-      return { requested: action, status };
-    }
-    throw Error(`Unexpected request ${path}`);
-  });
-  mount(api, runStore(), locale);
-  await waitFor(() => expect(screen.getByRole('button', { name: text.pause })).toBeEnabled());
-  expect(screen.getByRole('heading', { name: text.operations })).toBeVisible();
-  fireEvent.click(screen.getByRole('button', { name: text.pause }));
-  await waitFor(() => expect(screen.getByText(text.pauseToast)).toBeVisible());
-  await waitFor(() => expect(screen.getByRole('button', { name: text.resume })).toBeEnabled());
-  expect(screen.getByRole('button', { name: text.pause })).toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: text.resume }));
-  await waitFor(() => expect(screen.getByText(text.resumeToast)).toBeVisible());
-  const section = screen.getByRole('region', { name: text.operations });
-  expect(within(section).getByRole('status')).toHaveTextContent(locale === 'zh-CN' ? '等待输入' : 'waiting for input');
-  expect(within(section).getByRole('status')).not.toHaveTextContent(locale === 'zh-CN' ? '等待安全边界' : 'pending at safe boundary');
-  await waitFor(() => expect(screen.getByRole('button', { name: text.stop })).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', { name: text.stop }));
-  await waitFor(() => expect(screen.getByText(text.stopToast)).toBeVisible());
-  [text.pause, text.resume, text.stop, text.ingress].forEach(name => expect(screen.getByRole('button', { name })).toBeDisabled());
-  const controlPosts = request.mock.calls.filter(([path, options]) => options?.method === 'POST' && path !== '/v1/runs/service%2Frun%20id/watermark');
-  expect(controlPosts.map(([path]) => path)).toEqual(['pause', 'resume', 'stop'].map(action => `/v1/runs/service%2Frun%20id/${action}`));
-  expect(request.mock.calls.some(([path]) => path === '/v1/runs/service%2Frun%20id/commits?from=8&limit=1')).toBe(true);
-  expect(listing).not.toHaveBeenCalled();
-});
-
-it.each(['completed', 'faulted'])('disables controls and operator watermarks for an initially %s live run', async status => {
-  vi.useFakeTimers();
-  const api = new RunsApi('http://api'), onInjections = vi.fn(), onRequestInject = vi.fn();
-  const request = vi.spyOn(api, 'request').mockImplementation(async path => {
-    if (path.endsWith('/configuration')) return configuration();
-    if (path.includes('/commits?')) return { status, commits: [], next: 8 };
-    if (path.endsWith('/inputs')) return {status,watermarks:{operator:0},pause_requested:status==='paused'};
-    throw Error(`Terminal run must not be mutated: ${path}`);
-  });
-  await act(async () => { mount(api, runStore(), 'zh-CN', { onInjections, onRequestInject }); });
-  ['暂停仿真', '继续仿真', '停止仿真', '提交类型化输入'].forEach(name => expect(screen.getByRole('button', { name })).toBeDisabled());
-  expect(screen.getByText(/无法使用运行控制/)).toBeVisible();
-  fireEvent.keyDown(document, { key: ' ' }); fireEvent.keyDown(document, { key: 'i' });
-  fireEvent.click(screen.getByRole('button', { name: '暂停仿真' }));
-  await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
-  expect(request.mock.calls.every(([, options]) => options?.method !== 'POST')).toBe(true);
-  expect(onInjections).toHaveBeenLastCalledWith(false);
-  expect(onRequestInject).not.toHaveBeenCalled();
-});
-
-it('fails closed before initial status and locks duplicate clicks and Space until the control receipt', async () => {
-  const api = new RunsApi('http://api');
-  let resolveInitial!: (reply: unknown) => void, resolvePause!: (reply: unknown) => void, status = 'running';
-  const initial = new Promise(resolve => { resolveInitial = resolve; });
-  const pause = new Promise(resolve => { resolvePause = resolve; });
-  let firstStatus = true;
-  const request = vi.spyOn(api, 'request').mockImplementation(async path => {
-    if (path.endsWith('/configuration')) return configuration();
-    if (path.endsWith('/inputs')) return {status,watermarks:{operator:0},pause_requested:status==='paused'};
-    if (path.includes('/commits?')) { if (firstStatus) { firstStatus = false; return initial; } return { status, commits: [], next: 8 }; }
-    if (path.endsWith('/pause')) return pause;
-    throw Error(`Unexpected request ${path}`);
-  });
-  mount(api, runStore());
-  expect(screen.getByText('正在检查运行状态…')).toBeVisible();
-  expect(screen.getByRole('button', { name: '暂停仿真' })).toBeDisabled();
-  await act(async () => { resolveInitial({ status, commits: [], next: 8 }); });
-  await waitFor(() => expect(screen.getByRole('button', { name: '暂停仿真' })).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', { name: '暂停仿真' }));
-  fireEvent.click(screen.getByRole('button', { name: '暂停仿真' }));
-  fireEvent.keyDown(document, { key: ' ' });
-  await waitFor(() => expect(request.mock.calls.filter(([path]) => path.endsWith('/pause'))).toHaveLength(1));
-  expect(screen.getByRole('region', { name: '运行操作' })).toHaveAttribute('aria-busy', 'true');
-  ['暂停仿真', '继续仿真', '停止仿真', '提交类型化输入'].forEach(name => expect(screen.getByRole('button', { name })).toBeDisabled());
-  await act(async () => { status = 'paused'; resolvePause({ requested: 'pause', status }); });
-  await waitFor(() => expect(screen.getByRole('button', { name: '继续仿真' })).toBeEnabled());
-  expect(screen.getByRole('region', { name: '运行操作' })).toHaveAttribute('aria-busy', 'false');
-});
-
-it('rechecks status before a mutation and does not POST if the run completed after the last poll', async () => {
-  const api = new RunsApi('http://api');
-  let status = 'running';
-  const request = vi.spyOn(api, 'request').mockImplementation(async path => {
-    if (path.endsWith('/configuration')) return configuration();
-    if (path.includes('/commits?')) return { status, commits: [], next: 8 };
-    if (path.endsWith('/inputs')) return {status,watermarks:{operator:0},pause_requested:status==='paused'};
-    throw Error(`Stale run must not be mutated: ${path}`);
-  });
-  mount(api, runStore());
-  await waitFor(() => expect(screen.getByRole('button', { name: '暂停仿真' })).toBeEnabled());
-  status = 'completed';
-  fireEvent.click(screen.getByRole('button', { name: '暂停仿真' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: '暂停仿真' })).toBeDisabled());
-  await waitFor(() => expect(screen.getByTestId('console-notices')).toHaveTextContent('无法使用运行控制'));
-  expect(request.mock.calls.every(([, options]) => options?.method !== 'POST')).toBe(true);
-});
-
-it.each([{ mode: 'replay' as const, interactive: true }, { mode: 'live' as const, interactive: false }])('keeps buttons and shortcuts read-only in $mode / interactive=$interactive', async props => {
-  const api = new RunsApi('http://api'), onRequestInject = vi.fn();
-  const request = vi.spyOn(api, 'request').mockImplementation(async path => path.endsWith('/configuration') ? configuration() : path.endsWith('/inputs') ? {status:'running',watermarks:{operator:0},pause_requested:false} : { status: 'running', commits: [], next: 8 });
-  await act(async () => { mount(api, runStore(), 'en-US', { ...props, onRequestInject }); });
-  ['Pause simulation', 'Resume simulation', 'Stop simulation', 'Submit typed ingress'].forEach(name => expect(screen.getByRole('button', { name })).toBeDisabled());
-  fireEvent.keyDown(document, { key: ' ' }); fireEvent.keyDown(document, { key: 'i' });
-  fireEvent.click(screen.getByRole('button', { name: 'Submit typed ingress' }));
-  await act(async () => {});
-  expect(request.mock.calls.every(([, options]) => options?.method !== 'POST')).toBe(true);
-  expect(onRequestInject).not.toHaveBeenCalled();
-});
-
 it.each(['zh-CN', 'en-US'] as const)('localizes event notices and admission explanations while preserving schema, codes and payload (%s)', async locale => {
   const api = new RunsApi('http://api'), bodies: unknown[] = [], text = labels[locale];
   let receipt: unknown = { disposition: 'accepted', status: 'accepted', code: 'raw_ACCEPT' };
@@ -177,6 +52,8 @@ it.each(['zh-CN', 'en-US'] as const)('localizes event notices and admission expl
   });
   mount(api, runStore(), locale);
   await waitFor(() => expect(screen.getByRole('button', { name: text.ingress })).toBeEnabled());
+  expect(screen.getByTestId('injection-card')).not.toHaveTextContent(/configured plugin|配置的插件/);
+  expect(screen.queryByText('Inject an event and follow the simulation’s response.')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: text.ingress }));
   await waitFor(() => expect(screen.getByText(text.acceptedToast)).toBeVisible());
   expect(bodies[0]).toMatchObject({ schema: point.command, target: point.target, stream_id: 'operator', at_ns: 1, payload: { injection_point: 'alarm', payload: { reason: 'Operator report', source_cut: 7, request_id: expect.any(String) } }, idempotency_key: expect.any(String) });
@@ -237,7 +114,7 @@ it('localizes record pagination and seeking while keeping subjects and generatio
   store.seek('0', 7);
   const select = vi.fn(), seek = vi.fn();
   mount(api, store, 'zh-CN', { onSelect: select, onSeek: seek });
-  await waitFor(() => expect(screen.getByRole('button', { name: '暂停仿真' })).toBeEnabled());
+  await waitFor(() => expect(screen.queryByText('正在检查运行状态…')).not.toBeInTheDocument());
   fireEvent.click(screen.getByText('当前时刻的决策 / LangGraph 与类型化事件记录'));
   expect(screen.getByText('51 条记录 · 第 1 / 2 页')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: '下一页记录' }));
@@ -251,4 +128,36 @@ it('localizes record pagination and seeking while keeping subjects and generatio
   expect(screen.getByText('执行 #2')).toBeVisible();
   expect(screen.getByText('执行 #101')).toBeVisible();
   expect(screen.queryByText('执行 #1')).toBeNull();
+});
+
+it.each(['zh-CN', 'en-US'] as const)('leaves simulation control to the top bar and makes replay read-only (%s)', async locale => {
+  const api = new RunsApi('http://api'), text = labels[locale];
+  const request = vi.spyOn(api, 'request').mockImplementation(async path => path.endsWith('/configuration') ? configuration() : path.endsWith('/inputs') ? { status: 'running', watermarks: { operator: 0 }, pause_requested: false } : { status: 'running' });
+  const view = mount(api, runStore(), locale, { mode: 'replay' });
+  await waitFor(() => expect(screen.getByTestId('inject-alarm')).toBeVisible());
+  [text.pause, text.resume, text.stop].forEach(name => expect(screen.queryByRole('button', { name })).toBeNull());
+  expect(screen.getByRole('button', { name: text.ingress })).toBeDisabled();
+  fireEvent.keyDown(document, { key: ' ' });
+  await act(async () => {});
+  expect(request.mock.calls.every(([, options]) => options?.method !== 'POST')).toBe(true);
+  view.unmount();
+});
+it('locks duplicate submissions and rechecks real run status before admitting events', async () => {
+  const api = new RunsApi('http://api'); let status = 'running', finish!: (value: unknown) => void;
+  const request = vi.spyOn(api, 'request').mockImplementation(async path => {
+    if (path.endsWith('/configuration')) return configuration();
+    if (path.includes('/commits?')) return { status };
+    if (path.endsWith('/inputs')) return { status, watermarks: { operator: 0 }, pause_requested: false };
+    if (path.endsWith('/ingress')) return new Promise(resolve => { finish = resolve; });
+    throw Error(path);
+  });
+  mount(api, runStore(), 'en-US'); const submit = await screen.findByTestId('inject-alarm');
+  await waitFor(() => expect(submit).toBeEnabled());
+  fireEvent.click(submit); fireEvent.click(submit);
+  await waitFor(() => expect(request.mock.calls.filter(([path]) => path.endsWith('/ingress'))).toHaveLength(1));
+  expect(submit).toBeDisabled();
+  await act(async () => { finish({ disposition: 'accepted' }); });
+  await waitFor(() => expect(submit).toBeEnabled()); status = 'completed'; fireEvent.click(submit);
+  await waitFor(() => expect(submit).toBeDisabled());
+  expect(request.mock.calls.filter(([path]) => path.endsWith('/ingress'))).toHaveLength(1);
 });

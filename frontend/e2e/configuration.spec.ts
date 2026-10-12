@@ -20,6 +20,23 @@ const language = async (page: Page, zh: boolean) => {
   }
 };
 
+test('physics control reads the real source engines and applies the selected frequency',async({page})=>{
+ const errors=errorsOn(page);await page.setViewportSize({width:1280,height:800});
+ await page.goto('/?gallery=1');await page.getByTestId('wb-template-traffic-accident').click();await page.getByTestId('wb-create-project').click();
+ await expect(page.getByTestId('wb-config')).toBeVisible({timeout:60_000});
+ const id=new URL(page.url()).pathname.split('/').at(-1)!,read=async()=>(await(await page.request.get(`/v1/studio/workspaces/${id}`)).json());
+ // Save real advanced engine edits while retaining the earlier knob metadata,
+ // as happens when importing or deriving an existing draft.
+ const original=await read();original.scenario.engines.road_motion.config.step_ns=66666667;original.scenario.engines.air_motion.config.step_ns=66666667;
+ const saved=await page.request.post(`/v1/studio/workspaces/${id}`,{data:{revision:original.revision,scenario:original.scenario}});expect(saved.ok()).toBe(true);await page.reload();
+ const input=page.getByTestId('knob-physics_hz');await expect.poll(async()=>Number(await input.inputValue()),{timeout:60_000}).toBe(15);
+ const before=await read();expect(before.scenario.engines.road_motion.config.step_ns).toBe(66666667);expect(before.scenario.engines.air_motion.config.step_ns).toBe(66666667);
+ await expect(page.getByTestId('draft-preview')).toHaveAttribute('data-rendered','true',{timeout:90_000});await expect(page.getByRole('button',{name:'Apply controls to draft',exact:true})).toBeInViewport({ratio:1});await shot(page,'physics-control-actual-15hz-en');await language(page,true);expect(Number(await input.inputValue())).toBe(15);await expect(page.getByRole('button',{name:'应用到草稿',exact:true})).toBeInViewport({ratio:1});await shot(page,'physics-control-actual-15hz-zh');await language(page,false);
+ let release!:(value?:unknown)=>void;const pending=new Promise(resolve=>{release=resolve;});await page.route('**/v1/studio/workspaces/*/knobs',async route=>{await pending;await route.continue();});
+ await input.fill('1');await page.getByRole('button',{name:'Apply controls to draft',exact:true}).click();await expect(input).toBeDisabled();await expect(page.getByRole('button',{name:'Applying controls…',exact:true})).toBeInViewport({ratio:1});await shot(page,'controls-pending-locked');release();await expect(page.getByText('Controls applied to the draft.',{exact:true})).toBeVisible();expect(Number(await input.inputValue())).toBe(1);
+ const after=await read();expect(after.scenario.engines.road_motion.config.step_ns).toBe(1e9);expect(after.scenario.engines.air_motion.config.step_ns).toBe(1e9);expect(after.scenario.run.seed).toBe(before.scenario.run.seed);await shot(page,'physics-control-applied-1hz');expect(errors).toEqual([]);
+});
+
 for (const id of templates) test(`scenario ${id}: guide, every configuration section in both languages and sizes, held initialization`, async ({ page }) => {
   test.setTimeout(300_000); const errors = errorsOn(page); page.on('dialog', dialog => dialog.accept());
   await page.goto('/?gallery=1');

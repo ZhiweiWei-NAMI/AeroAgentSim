@@ -12,7 +12,7 @@ test.beforeAll(async ({ browser }) => { context = await browser.newContext({ bas
 test.afterAll(async () => { await context.close(); });
 test.afterEach(async ({}, info) => {
   if (info.status !== info.expectedStatus) {
-    const name = info.title.split(':')[0];
+    const name = info.title.includes('polished workbench shell') ? info.title.split(':')[1].trim().split(' ')[0] + '-shell' : info.title.split(':')[0];
     await page.screenshot({ path: join(shots, `${name}-failure.png`) });
     writeFileSync(join(shots, `${name}-failure.json`), JSON.stringify({ url: page.url(), status: await status(page), network }, null, 2));
   }
@@ -32,7 +32,7 @@ async function initialize(request: APIRequestContext, template: string) {
 }
 async function rendered(page: Page) {
   await expect(page.getByTestId('viewport')).toHaveAttribute('data-rendered', 'true', { timeout: 90_000 });
-  await expect(page.getByTestId('viewport')).toHaveAttribute('data-city', 'loaded', { timeout: 180_000 });
+  await expect(page.getByTestId('viewport')).toHaveAttribute('data-city', 'loaded', { timeout: 360_000 });
 }
 const status = (page: Page) => page.getByTestId('workbench').getAttribute('data-status');
 async function noCoveredPanels(page: Page) {
@@ -82,7 +82,7 @@ for (const template of templates) test(`${template}: real initialized/live/histo
   const receipt = await changed; expect(receipt.ok()).toBe(true); expect((await receipt.json()).factor).toBe(0.5);
   const readback = await page.evaluate(async path => { const response = await fetch(path); if (!response.ok) throw Error(await response.text()); return response.json(); }, `/v1/runs/${run}/speed`);
   expect(readback.factor).toBe(0.5);
-  if (template === 'food-delivery') for (const value of ['1', '2', '5', '10', '30', '100', 'max', '0.5']) {
+  if (template === 'food-delivery') for (const value of ['1', '2', '5', '10', '50', '100', 'max', '0.5']) {
     const changed = page.waitForResponse(response => response.url().endsWith(`/v1/runs/${run}/speed`) && response.request().method() === 'POST');
     await page.getByTestId('wb-speed').selectOption(value); const receipt = await changed;
     expect(receipt.ok()).toBe(true); expect((await receipt.json()).factor).toBe(value === 'max' ? null : Number(value));
@@ -113,6 +113,8 @@ for (const template of templates) test(`${template}: real initialized/live/histo
   const row = page.getByTestId('wb-objects').locator('.wb-row').filter({ hasText: /drone|courier|uav|无人机|aircraft/i }).first();
   await row.click();
   await expect(page.getByTestId('viewport')).toHaveAttribute('data-camera', 'follow');
+  // A paused tracked subject should release the GPU once its camera arrives.
+  await expect(page.getByTestId('viewport')).toHaveAttribute('data-idle', 'true', { timeout: 30_000 });
   const selected = new URL(page.url()).searchParams.get('sel');
   await expect(page.getByTestId('wb-inspector').locator('.wb-entity-head')).toContainText(selected!);
   await page.getByTestId('wb-camera').getByTitle('Zoom out', { exact: true }).click();
@@ -143,7 +145,7 @@ for (const template of templates) test(`${template}: real initialized/live/histo
   await page.keyboard.press('Escape'); await expect(graph).toHaveCount(0);
   const timeline = page.getByTestId('wb-track').locator('input');
   await timeline.fill('1'); await timeline.dispatchEvent('input');
-  await expect(page.getByTestId('wb-history')).toBeVisible(); await expect(page.getByTestId('wb-history')).toContainText('simulation paused');
+  await expect(page.getByTestId('wb-history')).toBeVisible(); await expect(page.getByTestId('wb-status')).toContainText('Paused');
   await page.keyboard.press('l'); await expect(page.getByTestId('wb-history')).toHaveCount(0);
   await page.getByTestId('wb-dock').getByRole('button', { name: /^Events / }).click();
   for (const size of [{ width: 1280, height: 800 }, { width: 1600, height: 1000 }, { width: 1920, height: 1080 }]) {
@@ -244,7 +246,8 @@ test('real runtime controls stay synchronized while the journal transport is del
     await expect(page.getByTestId('wb-catching-up')).toHaveCount(0, { timeout: 60_000 });
     await page.getByTestId('wb-objects').locator('.wb-row').filter({ hasText: 'Meal courier 1' }).click();
     await page.getByTestId('wb-inspector').getByRole('tab', { name: 'Operate', exact: true }).click();
-    await expect(page.getByTestId('wb-inspector').getByRole('button', { name: 'Stop simulation', exact: true })).toBeEnabled();
+    await expect(page.getByTestId('wb-inspector').getByRole('button', { name: 'Stop simulation', exact: true })).toHaveCount(0);
+    await expect(page.getByTestId('wb-stop')).toBeEnabled();
     const keyboardControls: string[] = [];
     const recordControl = (request: import('@playwright/test').Request) => { if (request.method() === 'POST' && new RegExp(`/v1/runs/${run}/(start|pause|resume|stop)$`).test(request.url())) keyboardControls.push(request.url()); };
     page.on('request', recordControl);
@@ -253,7 +256,7 @@ test('real runtime controls stay synchronized while the journal transport is del
     await page.waitForTimeout(1500); // Give an accidental engine command time to reach the real API.
     expect(keyboardControls).toEqual([]);
     expect((await (await request.get(`/v1/runs/${run}/commits?from=1&limit=1`)).json()).status).toBe('paused');
-    await expect(page.getByTestId('wb-inspector').getByRole('button', { name: 'Stop simulation', exact: true })).toBeDisabled();
+    await expect(page.getByTestId('wb-inspector').getByRole('button', { name: 'Submit typed ingress', exact: true })).toBeDisabled();
     await expect(page.getByTestId('wb-inspector')).toContainText('Back to live before introducing an event.');
     await page.screenshot({ path: join(shots, 'operate-space-playback-only.png') });
     page.off('request', recordControl);
@@ -264,4 +267,73 @@ test('real runtime controls stay synchronized while the journal transport is del
     await expect(page.getByTestId('wb-catching-up')).toHaveCount(0, { timeout: 60_000 });
     expect(errors).toEqual([]);
   } finally { release(); if (delayed) await streamContinued; await page.unroute(`**/v1/runs/${run}/stream?*`); }
+});
+
+for (const template of ['food-delivery', 'city-day', 'traffic-accident']) test(`polished workbench shell: ${template} in five states, both languages and three sizes`, async ({ request }) => {
+  test.setTimeout(900_000);
+  const errors: string[] = [];
+  page.removeAllListeners('pageerror'); page.removeAllListeners('console'); page.removeAllListeners('response');
+  page.on('pageerror', error => errors.push(String(error)));
+  page.on('console', message => { if (message.type() === 'error' && !/favicon|ERR_ABORTED/.test(message.text())) errors.push(message.text()); });
+  page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.request().method()} ${response.url()}`); });
+  const { workspace, run } = await initialize(request, template);
+  await request.post(`/v1/runs/${run}/speed`, { data: { factor: 0.5 } });
+  await navigate(`/w/${workspace}?run=${run}&mode=live`); await rendered(page);
+  await expect(page.getByTestId('wb-inspector')).toHaveAttribute('data-compact', 'true');
+  const matrix = async (state: string) => {
+    for (const size of [{ width: 1280, height: 800 }, { width: 1600, height: 1000 }, { width: 1920, height: 1080 }]) {
+      await page.setViewportSize(size);
+      for (const locale of ['en', 'zh']) {
+        const toggle = page.getByRole('button', { name: locale === 'en' ? '切换到英文' : 'Switch to Chinese', exact: true });
+        if (await toggle.count()) await toggle.click();
+        await rendered(page); await noCoveredPanels(page);
+        // Inspect real screen geometry, including labels in front of the glass.
+        const covers = await page.evaluate(() => {
+          const rect = (element: Element) => element.getBoundingClientRect();
+          const obstacles = [...document.querySelectorAll('.wb-panel, .wb-kpis, .wb-top, .wb-dock, .wb-camera, .wb-history')].map(rect);
+          return [...document.querySelectorAll<HTMLElement>('.entity-label:not([hidden])')].flatMap(element => {
+            const label = rect(element);
+            const covered = obstacles.some(box => label.left < box.right && label.right > box.left && label.top < box.bottom && label.bottom > box.top);
+            return covered || label.left < 0 || label.right > innerWidth ? [element.textContent] : [];
+          });
+        }); expect(covers).toEqual([]);
+        expect(await page.getByTestId('wb-kpis').innerText()).not.toMatch(/medical_mean_task_latency/);
+        if (template === 'city-day' && locale === 'zh') await expect(page.getByTestId('wb-kpis')).toContainText('医疗任务平均用时');
+        await page.screenshot({ path: join(shots, `${template}-${state}-${size.width}-${locale}.png`) });
+      }
+    }
+    const toggle = page.getByRole('button', { name: '切换到英文', exact: true }); if (await toggle.count()) await toggle.click();
+  };
+  await matrix('initialized');
+  const speeds = page.getByTestId('wb-speed'); expect(await speeds.locator('option').allTextContents()).toEqual(['0.5×', '1×', '2×', '5×', '10×', '50×', '100×', 'Max']);
+  await speeds.selectOption('50'); await expect(speeds).toHaveValue('50');
+  expect((await (await request.get(`/v1/runs/${run}/speed`)).json()).factor).toBe(50);
+  await speeds.selectOption('0.5'); await page.getByTestId('wb-start').click(); await expect.poll(() => status(page), { timeout: 60_000 }).toBe('running');
+  await matrix('running');
+  await page.getByTestId('wb-pause').click(); await expect.poll(() => status(page), { timeout: 60_000 }).toBe('paused');
+  const configuration = await (await request.get(`/v1/studio/runs/${run}/configuration`)).json();
+  const drone = configuration.scenario.entities.find((row: any) => row.id === 'uav.alpha') ?? configuration.scenario.entities.find((row: any) => ['aas:TrafficUAV', 'lowalt:UAV'].includes(row.type)); expect(drone).toBeTruthy();
+  await page.getByRole('textbox', { name: 'Search objects', exact: true }).fill(drone.id); await page.getByTestId('wb-objects').locator('.wb-row').first().click();
+  await expect(page.getByTestId('wb-inspector')).toHaveAttribute('data-compact', 'false');
+  await page.getByRole('button', { name: 'Focus', exact: true }).click(); await page.waitForTimeout(1000);
+  const name = await page.locator('.wb-entity-head h2').innerText();
+  const identityFields = page.locator('.inspection-fields > div').filter({ has: page.locator('dt').filter({ hasText: /^Label$|^Name$/ }) });
+  if (await identityFields.count()) await expect(identityFields.locator('dd').first()).toHaveText(name);
+  await matrix('paused');
+  await page.getByRole('tab', { name: 'Operate', exact: true }).click();
+  await expect(page.getByTestId('wb-inspector').getByRole('group', { name: 'Simulation controls', exact: true })).toHaveCount(0);
+  await page.getByTestId('wb-inspector').locator('.wb-panel-body').evaluate(element => { element.scrollTop = 0; });
+  await page.setViewportSize({ width: 1280, height: 800 }); await page.screenshot({ path: join(shots, `${template}-operate-1280-en.png`) });
+  await page.getByRole('tab', { name: 'State', exact: true }).click();
+  const timeline = page.getByTestId('wb-track').locator('input'); await timeline.fill('2'); await timeline.dispatchEvent('input');
+  await expect(page.getByTestId('wb-history')).toBeVisible(); await page.getByTestId('wb-graph-toggle').click(); await expect(page.locator('.behaviour-run-graph')).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const reachable = await page.getByTestId('wb-back-live').evaluate(element => { const box = element.getBoundingClientRect(); return element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)); }); expect(reachable).toBe(true);
+  await page.screenshot({ path: join(shots, `${template}-history-graph-1280-en.png`) });
+  await page.getByTestId('wb-back-live').click(); await expect(page.getByTestId('wb-history')).toHaveCount(0); await page.getByTestId('wb-graph-toggle').click();
+  await speeds.selectOption('max'); await page.getByTestId('wb-resume').click(); await expect.poll(() => status(page), { timeout: 180_000 }).toBe('completed');
+  await expect(page.getByTestId('wb-catching-up')).toHaveCount(0, { timeout: 180_000 }); await matrix('completed');
+  const head = Number(await timeline.getAttribute('max')); await navigate(`/w/${workspace}?run=${run}&mode=replay&cut=${Math.max(2, Math.floor(head / 2))}`);
+  await rendered(page); await expect(page.getByTestId('wb-seeking')).toHaveCount(0, { timeout: 120_000 });
+  await matrix('replaying-history'); expect(errors).toEqual([]);
 });

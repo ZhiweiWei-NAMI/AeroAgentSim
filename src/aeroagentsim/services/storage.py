@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from bisect import bisect_left
@@ -37,11 +38,47 @@ def _journal_format(
         return header["major"], reader.budget, header.get("provenance") == "lean"
 
 
+def committed_prefix(directory: Path) -> dict[str, int] | None:
+    """The worker's acknowledged WAL coordinate, separate from derived offsets.
+
+    Older/headless runs publish index.json only. Never infer a live commit from
+    file size: bytes can be visible before their durability acknowledgement.
+    """
+    path = directory / "committed-prefix.json"
+    if not path.exists():
+        return None
+    prefix = json.loads(path.read_text())
+    if (
+        not isinstance(prefix, dict)
+        or set(prefix) != {"bytes", "index"}
+        or any(type(value) is not int or value < 0 for value in prefix.values())
+    ):
+        raise ValueError("Invalid acknowledged WAL prefix")
+    return prefix  # type: ignore[no-any-return]
+
+
+@lru_cache(maxsize=4096)
+def _summary_configuration(path: Path, identity: tuple[int, int, int, int]) -> dict[str, Any]:
+    document = json.loads(path.read_text())
+    return {"id": document["id"], "algorithms": document.get("algorithms", {})}
+
+
+def summary_configuration(directory: Path) -> dict[str, Any]:
+    """Read the real pinned declarations once, retaining only summary fields."""
+    path = (directory / "scenario.json").resolve()
+    stat = path.stat()
+    return copy.deepcopy(_summary_configuration(
+        path, (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+    ))
+
+
 class RunStorage:
     def __init__(self, directory: Path) -> None:
         self.directory = directory
         self.offset = 0
         self.entries: list[dict[str, int]] = []
+        self._live_snapshot = False
+        self._published_prefix: tuple[int, int] | None = None
         index = directory / "index.json"
         if index.exists():
             info = index.stat()
@@ -122,15 +159,55 @@ class RunStorage:
             result.pop("error", None)
         self._atomic("manifest.json", result)
 
-    def index(self) -> None:
+    def publish_prefix(self, byte_length: int, index: int) -> None:
+        """Publish only a coordinate supplied after the kernel acknowledged it."""
+        coordinate = (byte_length, index)
+        if coordinate != self._published_prefix:
+            self._atomic("committed-prefix.json", {"bytes": byte_length, "index": index})
+            self._published_prefix = coordinate
+
+    def refresh_committed(self) -> None:
+        """Extend this reader's offsets to the acknowledged live prefix only."""
+        prefix = committed_prefix(self.directory)
+        if prefix is None:
+            return
+        if prefix["bytes"] < self.offset:
+            # index.json can be published during finalization before the small
+            # live coordinate. A new reader must honor that coordinate too.
+            self.entries = [
+                entry for entry in self.entries
+                if entry["offset"] + entry["length"] <= prefix["bytes"]
+            ]
+            self.offset = (
+                self.entries[-1]["offset"] + self.entries[-1]["length"]
+                if self.entries else 0
+            )
+        if prefix["bytes"] > self.offset:
+            self.index(publish=False, through_bytes=prefix["bytes"])
+        if self.offset != prefix["bytes"] or (
+            self.entries[-1]["index"] if self.entries else 0
+        ) != prefix["index"]:
+            raise ValueError("Acknowledged WAL index differs from its byte coordinate")
+        self._live_snapshot = True
+
+    def index(self, *, publish: bool = True, through_bytes: int | None = None) -> None:
         journal = self.directory / "journal.jsonl"
         if not journal.exists():
             return
         previous_count = len(self.entries)
         with journal.open("rb") as stream:
+            if through_bytes is not None and through_bytes > journal.stat().st_size:
+                raise ValueError("Acknowledged WAL prefix is beyond the journal")
             stream.seek(self.offset)
-            while line := stream.readline():
+            while through_bytes is None or self.offset < through_bytes:
+                line = stream.readline(
+                    -1 if through_bytes is None else through_bytes - self.offset
+                )
+                if not line:
+                    break
                 if not line.endswith(b"\n"):
+                    if through_bytes is not None:
+                        raise ValueError("Acknowledged WAL prefix ends inside a record")
                     break
                 record = json.loads(line)
                 index = record["index"]
@@ -141,7 +218,7 @@ class RunStorage:
                     {"index": index, "offset": self.offset, "length": len(line)}
                 )
                 self.offset += len(line)
-        if (
+        if publish and (
             len(self.entries) != previous_count
             or not (self.directory / "index.json").exists()
         ):
@@ -152,10 +229,13 @@ class RunStorage:
         index = self.directory / "index.json"
         if not index.exists():
             raise FileNotFoundError(f"Run index missing: {index}")
-        info = index.stat()
-        entries = _read_index(
-            index, (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
-        )
+        if self._live_snapshot:
+            entries = self.entries
+        else:
+            info = index.stat()
+            entries = _read_index(
+                index, (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
+            )
         result: list[dict[str, Any]] = []
         if not entries:
             return result

@@ -197,6 +197,7 @@ def parse_json(data: bytes, budget: ResourceBudget | None = None) -> Value:
         raise ResourceLimit("frame bytes exceeded")
     if data.startswith(b"\xef\xbb\xbf"):
         raise KernelError("JSON_BOM", "UTF-8 BOM is forbidden")
+    float_count = 0
 
     def parse_integer(token: str) -> int:
         if len(token.lstrip("-")) > budget.integer_digits:
@@ -205,6 +206,14 @@ def parse_json(data: bytes, budget: ResourceBudget | None = None) -> Value:
 
     def parse_constant(token: str) -> Any:
         raise KernelError("JSON_FINITE", f"nonfinite token {token}")
+
+    def parse_float(token: str) -> float:
+        nonlocal float_count
+        float_count += 1
+        value = float(token)
+        if not math.isfinite(value):
+            raise KernelError("VALUE_FINITE", "nonfinite binary64 value")
+        return 0.0 if value == 0 else value
 
     def pairs(items: list[tuple[str, Value]]) -> dict[str, Value]:
         result: dict[str, Value] = {}
@@ -218,9 +227,46 @@ def parse_json(data: bytes, budget: ResourceBudget | None = None) -> Value:
         result = json.loads(
             data.decode("utf-8"),
             parse_int=parse_integer,
+            parse_float=parse_float,
             parse_constant=parse_constant,
             object_pairs_hook=pairs,
         )
     except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
         raise KernelError("JSON_INVALID", "invalid UTF-8 JSON frame") from exc
-    return normalize(result, budget)
+    # JSON already supplies a fresh, acyclic portable tree. Copying it and
+    # re-encoding every scalar to count bytes dominates large live WAL reads.
+    # Strings/integers/containers cannot grow in canonical JSON; binary64 repr
+    # is shorter than 32 bytes. This conservative bound includes the final LF.
+    # Near the ceiling, retain the exact canonical byte accounting.
+    if len(data) + 32 * float_count + 1 > budget.frame_bytes:
+        return normalize(result, budget)
+    # Strict UTF-8 decoding already validates literal JSON strings. Only a
+    # Unicode escape can introduce a surrogate; avoid walking every scalar
+    # string/key again in the usual canonical, ensure_ascii=False WAL frames.
+    escaped_unicode = b"\\u" in data
+    pending = [(result, 0)]
+    while pending:
+        value, depth = pending.pop()
+        if depth > budget.nesting_depth:
+            raise ResourceLimit("nesting depth exceeded")
+        if escaped_unicode and isinstance(value, str):
+            if not value.isascii():
+                text(value)  # Reject unpaired Unicode surrogates, as normalize does.
+        elif isinstance(value, (list, dict)):
+            if value and depth >= budget.nesting_depth:
+                raise ResourceLimit("nesting depth exceeded")
+            if isinstance(value, dict):
+                if escaped_unicode:
+                    for key in value:
+                        if not key.isascii():
+                            text(key)
+                children = value.values()
+            else:
+                children = value
+            for child in children:
+                kind = type(child)
+                if kind is list or kind is dict:
+                    pending.append((child, depth + 1))
+                elif escaped_unicode and kind is str and not child.isascii():
+                    text(child)
+    return result

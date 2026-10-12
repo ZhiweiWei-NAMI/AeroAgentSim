@@ -26,6 +26,10 @@ example, not a guarantee: the matched three-seed experiment found that eight
 aircraft completed fewer orders than four under heavier shared-site congestion.
 See [the measured comparison](../../../docs/guides/algorithms.md#comparing-allocators).
 
+## Operator story
+
+Choose **interactive** Run mode, Apply controls to draft, Validate, Save version, Initialize, then Start. Select a parcel task and inject change-dropoff with a different Customer destination. Watch its drop-off change, physical pickup and delivery; use Why? to follow the recorded response. Events require a live run; receipt acceptance is followed by recorded domain effects.
+
 <!-- guide-language: zh-CN -->
 
 # 城市包裹配送
@@ -46,3 +50,7 @@ See [the measured comparison](../../../docs/guides/algorithms.md#comparing-alloc
 新订单在 180 秒停止到达，留出两分钟清理积压。尚未释放的任务槽位是容量，不是已创建订单。起降站有四个泊位，包裹取货不使用乘客降落平台队列。电池、空域和风速策略可在[共享规则](../../../docs/guides/lowalt-rules.md)中编辑。
 
 默认种子 42、当前 `hold_and_go` 配置下，300 秒内完成 20 个已创建订单中的 18 个；相同需求和时限下，高度分层完成 13 个。剩余两个订单是尚未完成，并未报告为失败。这只是一个已测案例：三个种子的配对实验中，共享站点拥堵更严重时，八架飞行器反而比四架完成得少。参见[算法对比](../../../docs/guides/algorithms.md#comparing-allocators)。
+
+## 操作员故事
+
+选择 **实时交互** 运行方式，应用到草稿、校验、保存版本、初始化，再明确启动。选择包裹任务，注入 change-dropoff 并选取不同的客户收货点。观察收货点变更、实际取件和送达，并在“为什么？”中追踪记录的响应。 事件须在实时运行中提交；接收回执之后，以日志中的领域影响确认执行。

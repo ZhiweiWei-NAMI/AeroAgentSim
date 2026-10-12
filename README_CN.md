@@ -10,7 +10,10 @@
 </p>
 
 
-<p align="center"><img src="docs/media/workbench-city.png" alt="AeroAgentSim operational workbench with graph, real Huangpu city and contextual inspector" width="1100"></p>
+<p align="center"><img src="docs/media/workbench-food-zh.png" alt="外卖配送工作台：选中的送餐无人机、对象列表、检查器与时间轴" width="1100"></p>
+
+[查看六段工作台演示](docs/media/README.md)：配置、运行、引入事件、追踪原因、查看照片和对比记录。
+
 
 ## 三条命令开始
 

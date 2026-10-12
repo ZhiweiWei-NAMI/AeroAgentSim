@@ -19,7 +19,10 @@ import type { CityProgress } from '../scene/traffic-city';
 import { CameraDirector, type CameraMode } from '../scene/camera-director';
 import { translate } from '../i18n/translate';
 import type {DirectorTarget} from './business-director';
+import { workbenchLayoutKey } from './label-placement';
 export type { CameraMode } from '../scene/camera-director';
+// Look down far enough to retain city context when following an airborne unit.
+export const FOLLOW_CAMERA_OFFSET = [22, 48, 24] as const;
 export interface ViewportOptions extends AssetOptions {
   quality?: Quality;
   locale?: string;
@@ -55,7 +58,7 @@ export class Viewport {
   private disposed = false;
   private qualityTime = 0;
   private qualityFrames = 0;
-  private followOffset = new T.Vector3(22, 14, 24);
+  private followOffset = new T.Vector3(...FOLLOW_CAMERA_OFFSET);
   private environment?: T.WebGLRenderTarget;
   private staticRoot = new T.Group();
   private occlusion = new StaticOcclusion();
@@ -70,6 +73,7 @@ export class Viewport {
   private gpuTimer?: GpuTimer;
   private revision = 0;
   private lastFrame = '';
+  private cameraSettled = false;
   private renderedFrames = 0;
   private shadowKey = '';
   private shadowRevision = -1;
@@ -260,11 +264,13 @@ export class Viewport {
       if(this.camera.position.distanceToSquared(position)<0.0025&&this.controls.target.distanceToSquared(target)<0.0025){this.camera.position.copy(position);this.controls.target.copy(target);this.cameraTransition=undefined;}
     }
     if(this.mode==='orbit')this.controls.update();
-    const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.camera.position.toArray()}/${this.camera.quaternion.toArray()}/${this.controls.target.toArray()}`;
-    if(this.mode==='orbit'&&!this.cameraTransition&&frameKey===this.lastFrame){this.container.dataset.idle='true';return;}
+    const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.camera.position.toArray()}/${this.camera.quaternion.toArray()}/${this.controls.target.toArray()}/${workbenchLayoutKey(this.container)}`;
+    const continuousShot=this.mode==='cinematic'&&!this.options.semantic;
+    if(!continuousShot&&!this.cameraTransition&&(this.mode==='orbit'||this.cameraSettled)&&frameKey===this.lastFrame){this.container.dataset.idle='true';return;}
     this.lastFrame=frameKey;this.container.dataset.idle='false';
     this.district?.update(store,this.origin);
     const chosen = this.mode === 'cinematic' ? (this.businessShot ? this.businessShot.entity : (this.options.semantic ? this.selected : this.director.choose(store,ns,deltaSeconds,this.selected))) : this.selected;
+    this.cameraSettled=true;
     const aimCamera=()=>{
       if(!this.framed && this.layer.positions.size){
         const bounds=this.district?.bounds?.clone().translate(this.origin.clone().negate())??new T.Box3().setFromPoints([...this.layer.positions.values()]),center=bounds.getCenter(new T.Vector3());
@@ -283,7 +289,12 @@ export class Viewport {
         this.camera.position.lerp(destination,1-Math.exp(-(this.mode==='cinematic'?1.8:5)*delta));
         // The transition itself must stay clear when crossing a building, not just its endpoint.
         this.camera.position.copy(this.occlusion.liftCamera(this.camera.position));
-        this.controls.target.lerp(focus,1-Math.exp(-(this.mode==='cinematic'?2.4:8)*delta));this.camera.lookAt(this.controls.target);
+        this.controls.target.lerp(focus,1-Math.exp(-(this.mode==='cinematic'?2.4:8)*delta));
+        this.cameraSettled=this.camera.position.distanceToSquared(destination)<0.0025&&this.controls.target.distanceToSquared(focus)<0.0025;
+        // Finish the display transition at the same tolerance as orbit/zoom.
+        // An unchanged paused subject then needs no repeated city draw.
+        if(this.cameraSettled){this.camera.position.copy(destination);this.controls.target.copy(focus);}
+        this.camera.lookAt(this.controls.target);
       }
     };
     this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion, aimCamera);

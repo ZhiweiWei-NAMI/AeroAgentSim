@@ -18,14 +18,26 @@ observe_zh:
   - 查看获选无人机到达现场并上传相机图像的过程。
   - 调整参数后，对比响应时间和能耗。
 try:
+  - Choose interactive mode, set the accident time to 30 seconds, then select incident.01 and inject accident before the scheduled timer. Follow Why? through dispatch and open the stored photo.
   - Move the accident earlier or later in the run.
   - Increase the physics update rate.
   - Use a configured live model for the response decisions.
 try_zh:
+  - 选择实时交互，将事故时间设为 30 秒；启动后选择 incident.01，在定时事故前注入 accident。在“为什么？”中追踪派遣，再打开已存储的现场照片。
   - 提前或推迟事故发生时间。
   - 提高物理状态的更新频率。
   - 配置实时模型，让模型参与响应决策。
 knobs:
+  - id: run_mode
+    label: Run mode
+    label_zh: 运行方式
+    type: choice
+    default: scheduled
+    options: [scheduled, interactive]
+    options_zh: [自动运行（无需人工推进）, 实时交互（控制台推进与注入）]
+    description: Interactive mode opens the operator input source. The authored accident timer remains; inject before it fires.
+    description_zh: 实时交互开启操作员输入源，原定时事故仍保留；请在定时器触发前注入。
+    apply: lowalt.operator_mode
   - id: accident_time_s
     label: Accident time (seconds)
     label_zh: 事故发生时间（秒）

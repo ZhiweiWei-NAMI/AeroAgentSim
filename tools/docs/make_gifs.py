@@ -350,8 +350,8 @@ def convert_flow(
         )
         if len(payload) <= budget:
             duration = round(decode_duration(runner, ffmpeg, target), 3)
-            if not 10 <= duration <= 30:
-                raise RuntimeError(f"{flow.name}: {duration}s is outside the 10–30s story length; adjust --speed or --trim")
+            if not 15 <= duration <= 40:
+                raise RuntimeError(f"{flow.name}: {duration}s is outside the 15–40s story length; adjust --speed or --trim")
             return FlowResult(
                 flow=flow.name,
                 gif=str(target),
@@ -423,24 +423,33 @@ def main(argv: Sequence[str] | None = None, runner: Runner = subprocess.run) -> 
         if not Path(args.ffmpeg).is_file():
             raise SystemExit(f"ffmpeg executable is missing: {args.ffmpeg}")
         require_gif_support(args.ffmpeg, runner)
-    if not 12 <= args.fps <= 15 or args.width != 960:
-        raise SystemExit("Documentation GIFs require width 960 and fps 12–15")
+    if not 8 <= args.fps <= 15 or not 800 <= args.width <= 1280:
+        raise SystemExit("Documentation GIFs require width 800–1280 and fps 8–15")
     speeds = parse_overrides(args.speed, "speed")
     trims = parse_overrides(args.trim, "trim")
     budgets = parse_overrides(args.budget, "budget")
     if not args.input.is_dir():
         raise SystemExit(f"Input directory is missing: {args.input}")
     flows = discover_flows(args.input)
-    expected = {"00-overview", "01-configure-plugins", "02-predicates", "03-rules-events", "04-aerograph", "05-agents", "06-simulate", "07-visualize"}
-    if {flow.name for flow in flows} != expected:
-        raise SystemExit(f"Expected all eight product flows; missing: {sorted(expected - {flow.name for flow in flows})}")
-    missing = find_missing(args.input, flows)
+    expected = {"00-overview", "01-configure", "02-run-and-operate", "03-why", "04-photos", "05-records-compare"}
+    recorded = {flow.name for flow in flows}
+    if recorded - expected:
+        raise SystemExit(f"Expected all six workbench flows; unexpected: {sorted(recorded - expected)}")
+    # Remove only the explicitly retired page stories once the input contains
+    # current recordings exclusively. Missing stories remain failures below.
+    for name in ("01-configure-plugins", "02-predicates", "03-rules-events", "04-aerograph", "05-agents", "06-simulate", "07-visualize"):
+        obsolete = args.output / f"{name}.gif"
+        if obsolete.exists():
+            obsolete.unlink()
+            print(f"Removed retired recording: {obsolete}", flush=True)
+    missing = sorted((expected - recorded) | set(find_missing(args.input, flows)))
     if not flows:
         detail = f" ({', '.join(missing)} produced no video)" if missing else ""
         raise SystemExit(f"No flow recordings under {args.input}{detail}")
     results: list[FlowResult] = []
     failures: list[dict[str, str]] = []
-    palette = args.output / ".palette.png"
+    args.report.parent.mkdir(parents=True, exist_ok=True)
+    palette = args.report.parent / "palette.png"
     for flow in flows:
         flow.speed = speeds.get(flow.name, flow.speed)
         trim: tuple[float, float] | None = trims.get(flow.name)
@@ -482,7 +491,11 @@ def main(argv: Sequence[str] | None = None, runner: Runner = subprocess.run) -> 
             }
         )
         print(f"FAILED {name}: recording artifact is missing", flush=True)
+    media_bytes = sum(path.stat().st_size for path in args.output.iterdir() if path.is_file() and path.suffix in {".gif", ".png"})
+    if media_bytes > 25_000_000:
+        failures.append({"flow": "media-total", "reason": f"{media_bytes} bytes exceeds 25 MB; adjust --fps, --width or --trim"})
     report = {
+        "media_bytes": media_bytes,
         "ffmpeg": args.ffmpeg,
         "default_fps": args.fps,
         "default_width": args.width,

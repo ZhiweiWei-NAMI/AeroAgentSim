@@ -53,6 +53,14 @@ browser never evaluates predicates or simulates behaviour — the server does.
 - **Records**: replay, compare 2–4 runs, **Modify & retry** to derive a new
   draft from a run.
 
+The persistent camera browser acknowledges app readiness, then initializes the
+issued run header's pinned city resources and shaders before its first frame.
+Browser startup and asset initialization each have a 30-second bound. Asset
+readiness is reused for the same camera resources; preparation creates no PNG
+or journal event. Frame acquisition still uses the smaller of the renderer and
+request timeouts and verifies the exact source cut, camera and assets. Failure
+in any phase remains an explicit capture failure and never produces a photo.
+
 ## Feed contract
 
 The pinned service boundary is

@@ -4,6 +4,7 @@
 .capture-artifacts article>strong {overflow-wrap:anywhere}
 .capture-artifacts p {line-height:1.6;overflow-wrap:anywhere;color:var(--csl-text-muted,#5d6c7d)}
 .capture-artifacts article>.console-btn,.capture-artifacts article>.console-details {margin:4px 6px 4px 0}
-.capture-artifacts figure {margin:18px 0 0}
+.capture-artifacts figure {margin:18px 0;scroll-margin-top:8px}
+.capture-artifacts figure img {max-height:min(260px,calc(var(--wb-dock,390px) - 130px));object-fit:contain;background:#101c29}
 .capture-artifacts img {display:block;border:1px solid var(--csl-border,#d9e2ec);border-radius:6px}
 .capture-artifacts figcaption {font-size:12px;line-height:1.6;margin-top:8px;color:var(--csl-text-muted,#5d6c7d)}

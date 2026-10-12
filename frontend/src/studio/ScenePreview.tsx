@@ -74,7 +74,9 @@ export function ScenePreview({ workspace, api, layers, bare = false }: { workspa
   const latest = useRef({ workspace, layers }); latest.current = { workspace, layers };
   const [error, setError] = useState<{ kind: 'descriptor' | 'runtime'; detail?: string }>(), [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<CityProgress>(), [rendered, setRendered] = useState(false);
-  const city = workspace.demo_console?.scene;
+  // The shared city follows the draft's declared city (choosing none hides it).
+  const cityScene = (ws: Workspace) => ws.scenario?.city === 'huangpu' ? ws.demo_console?.scene : undefined;
+  const city = cityScene(workspace);
   const sceneKey = JSON.stringify([workspace.id, api, city?.city?.kind ?? null, city?.city?.url ?? null, city?.camera ?? null,
     workspace.scene?.ground ?? null, workspace.scene?.origin ?? null]);
   const roadsKey = JSON.stringify(workspace.scene?.roads ?? null);
@@ -113,7 +115,7 @@ export function ScenePreview({ workspace, api, layers, bare = false }: { workspa
       };
       const invalidate = () => { if (!frame && !abort.signal.aborted) frame = requestAnimationFrame(draw); };
       controls.addEventListener('change', invalidate);
-      const cityScene = ws.demo_console?.scene;
+      const shownCity = cityScene(ws);
       let userMoved = false, framedCity = false;
       controls.addEventListener('start', () => { userMoved = true; });
       const visibleFrame = (): PreviewFrame | undefined => {
@@ -162,11 +164,11 @@ export function ScenePreview({ workspace, api, layers, bare = false }: { workspa
         if (!userMoved) fitView();
       }, buildingsRequested: false, loadBuildings: () => {
         if (context.buildingsRequested) return; context.buildingsRequested = true;
-        if (cityScene?.city) {
-          if (cityScene.city.kind !== 'traffic-city') { setError({ kind: 'descriptor' }); }
+        if (shownCity?.city) {
+          if (shownCity.city.kind !== 'traffic-city') { setError({ kind: 'descriptor' }); }
           else {
             assets = new Assets(renderer!); beginLoad();
-            void loadTrafficCity(cityScene.city.url, assets, abort.signal, { onUpdate: (group, value) => { acceptCity(group); setProgress({ ...value }); } }).then(group => {
+            void loadTrafficCity(shownCity.city.url, assets, abort.signal, { onUpdate: (group, value) => { acceptCity(group); setProgress({ ...value }); } }).then(group => {
               if (abort.signal.aborted) { disposeObject(group); return; }
               acceptCity(group);
             })
@@ -247,6 +249,7 @@ export function ScenePreview({ workspace, api, layers, bare = false }: { workspa
       const marker = new THREE.Sprite(new THREE.SpriteMaterial({ color: draftBinding(scenario, generator.type)?.visual?.color ?? '#50c9ff', sizeAttenuation: false, depthTest: false }));
       marker.scale.set(0.01, 0.01, 1); marker.position.set(start[0], start[2], -start[1]); current.groups.entities.add(marker);
     }
+    if (root.current) root.current.dataset.markerPositions = JSON.stringify(current.groups.entities.children.map(marker => ({ id: marker.name, position: marker.position.toArray() })));
     current.invalidate();
   }, [sceneKey, entitiesKey]);
 

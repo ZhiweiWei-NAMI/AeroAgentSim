@@ -67,3 +67,59 @@ describe('cause trace', () => {
     expect(explain(store(), { kind: 'step', instanceId: 'missing', revision: 1 })).toBeUndefined();
   });
 });
+
+it('follows recorded operator provenance through readiness, dispatch and delivery without linking unrelated orders', () => {
+  const value = new TemporalFeedStore(fixtureHeader);
+  const message = (id: string, schemaId: string, ns: string, payload: unknown) => ({ id, schemaId, kind: 'event' as const, source: 'tasks', at: { ns, microstep: 0 }, payload, subjects: [vehicle] });
+  value.ingest({ ...emptyCommit(1), created: [{ ...vehicle, typeId: 'vehicle' }] });
+  value.ingest({ ...emptyCommit(2, '10'), messages: [message('delay', 'lowalt.food.preparation_delayed', '10', { tasks: ['order-a'] })], events: [{ at_ns: '10', category: 'logistics', severity: 'warning', text: 'Preparation delayed', entities: [vehicle.id] }] });
+  value.ingest({ ...emptyCommit(3, '20'), messages: [message('ready', 'lowalt.food.ready', '20', { task: 'order-a', provenance: { message_ids: ['delay'] } }), message('unrelated', 'lowalt.food.ready', '20', { task: 'order-b' })] });
+  value.ingest({ ...emptyCommit(4, '30'), messages: [message('assigned', 'lowalt.task.assigned', '30', { task: 'order-a', provenance: { message_ids: ['ready', 'delay'] } })] });
+  value.ingest({ ...emptyCommit(5, '40'), messages: [message('delivered', 'lowalt.food.delivered', '40', { task: 'order-a', provenance: { message_ids: ['assigned', 'delay'] } })] });
+  value.seek('40');
+  const model = explain(value, { kind: 'event', atNs: '10', text: 'Preparation delayed', entities: [vehicle.id] })!;
+  expect(model.focus).toBe('message');
+  expect(model.followUps.map(row => row.ref?.kind === 'message' ? row.ref.messageId : undefined)).toEqual(['ready', 'assigned', 'delivered']);
+  expect(explain(value, model.followUps.at(-1)!.ref!)!.trigger!.ref).toMatchObject({ kind: 'message', messageId: 'assigned' });
+  expect(explain(value, model.followUps[0].ref!, 'zh-CN')!.followUps).toHaveLength(2);
+});
+
+it('uses an injection execution receipt to link the actual ingress command to its authored event', () => {
+  const value = new TemporalFeedStore({ ...fixtureHeader, behaviour: { extensions: [], injectionPoints: [{ id: 'delay', emits: 'lowalt.operator.restaurant_delay' }] } });
+  const payload = { restaurant: 'east', delay_s: 20 };
+  value.ingest({ ...emptyCommit(1), messages: [{ id: 'command-1', schemaId: 'aas.runtime.inject_event', kind: 'command', source: 'operator', target: 'behaviour', at: { ns: '0', microstep: 0 }, payload: { injection_point: 'delay', payload } }] });
+  value.ingest({ ...emptyCommit(2, '10'), receipts: [{ commandId: 'command-1', status: 'succeeded', result: { injection_point: 'delay' } }], messages: [{ id: 'event-1', schemaId: 'lowalt.operator.restaurant_delay', kind: 'event', source: 'behaviour', at: { ns: '10', microstep: 0 }, payload }] });
+  value.seek('10');
+  expect(explain(value, { kind: 'message', messageId: 'command-1', cut: 1 })!.followUps[0].ref).toMatchObject({ kind: 'message', messageId: 'event-1' });
+  expect(explain(value, { kind: 'message', messageId: 'event-1', cut: 2 })!.trigger?.ref).toMatchObject({ kind: 'message', messageId: 'command-1' });
+});
+
+it('resolves recorded business event keys for closure and rerouting emitted in the same callback', () => {
+  const value = new TemporalFeedStore(fixtureHeader);
+  const event = (id: string, schemaId: string, provenance: unknown) => ({ id, schemaId, kind: 'event' as const, source: 'tasks', at: { ns: '10', microstep: 0 }, payload: { provenance } });
+  value.ingest({ ...emptyCommit(1, '10'), messages: [
+    event('closed', 'lowalt.site.closed', { message_ids: [], event_key: 'tasks/operator-1/1' }),
+    event('rerouted', 'lowalt.task.replanned', { message_ids: [], event_key: 'tasks/operator-1/2', parent_event_keys: ['tasks/operator-1/1'] }),
+    event('other', 'lowalt.task.replanned', { message_ids: [], parent_event_keys: ['tasks/operator-2/1'] }),
+  ] });
+  expect(explain(value, { kind: 'message', messageId: 'closed', cut: 1 })!.followUps.map(row => row.ref)).toEqual([{ kind: 'message', messageId: 'rerouted', cut: 1 }]);
+  expect(explain(value, { kind: 'message', messageId: 'rerouted', cut: 1 })!.trigger?.ref).toEqual({ kind: 'message', messageId: 'closed', cut: 1 });
+});
+
+it('continues along the same recorded chain instance across engine and receipt callbacks', () => {
+  const value = store(), first = value.chainHistory.find(row => row.value.instanceId === 'chain:a')!.value;
+  value.ingest({ ...emptyCommit(6, '3000000000'), chainInstances: [{ ...first, revision: 2, state: 'reported', transitionId: 'report', validFrom: { ns: '3000000000', microstep: 0 } }] });
+  value.ingest({ ...emptyCommit(7, '4000000000'), chainInstances: [{ ...first, instanceId: 'unrelated', revision: 2, state: 'completed', transitionId: 'report', validFrom: { ns: '4000000000', microstep: 0 } }] });
+  const next = explain(value, { kind: 'step', instanceId: 'chain:a', revision: 1 })!.followUps.filter(row => row.detail.startsWith('continued'));
+  expect(next.map(row => row.ref)).toEqual([{ kind: 'step', instanceId: 'chain:a', revision: '2' }]);
+});
+
+it('explains recorded kitchen readiness as clock times with bilingual business names', () => {
+  const fieldId = 'lowalt.food_expected_ready_ns';
+  const value = new TemporalFeedStore({ ...fixtureHeader, fields: [...fixtureHeader.fields, { fieldId, displayName: fieldId, valueType: 'integer', unit: 'ns' }] });
+  value.ingest({ ...emptyCommit(1), created: [{ ...vehicle, typeId: 'vehicle' }], facts: [{ entity: vehicle, fieldId, value: 38_000_000_000, producer: 'tasks', validFrom: { ns: '0', microstep: 0 } }] });
+  value.ingest({ ...emptyCommit(2, '20000000000'), facts: [{ entity: vehicle, fieldId, value: { $integer: '58000000000' }, producer: 'tasks', validFrom: { ns: '20000000000', microstep: 0 } }] });
+  const focus = { kind: 'change' as const, entity: vehicle, fieldId, cut: 2 };
+  expect(explain(value, focus, 'zh-CN')!.effects[0]).toMatchObject({ fieldLabel: '预计出餐时间', before: '00:38.0', after: '00:58.0', unit: undefined });
+  expect(explain(value, focus)!.effects[0].fieldLabel).toBe('expected readiness');
+});

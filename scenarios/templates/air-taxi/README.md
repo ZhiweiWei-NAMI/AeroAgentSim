@@ -49,6 +49,10 @@ height; inter-site flights depart/arrive vertically and cruise above the 105 m
 roof ceiling. Names and business metadata are pinned with each run. See
 [the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).
 
+## Operator story
+
+Choose **interactive** Run mode, Apply controls to draft, Validate, Save version, Initialize, then Start. Select east-port and inject close-vertiport. Flights using it divert to north-port, with real route braking and replanning. Follow closure, dispatch and flight completion in Why?. Events require a live run; receipt acceptance is followed by recorded domain effects.
+
 <!-- guide-language: zh-CN -->
 
 # 空中出租车服务
@@ -88,3 +92,7 @@ aeroagentsim replay runs/<run-directory>
 ## 黄浦城区布置
 
 坐标来自仓库中的 lite-city 建筑轮廓、屋顶高度和道路，由 `tools/templates/place.py` 生成。屋顶起降点使用实际屋顶高度；站点间飞行先垂直起降，再在 105 米屋顶高度上限之上巡航。名称和业务元数据会随运行固定保存。参见[共享布置指南](../../../docs/examples/city-day.md#huangpu-placements-la3)。
+
+## 操作员故事
+
+选择 **实时交互** 运行方式，应用到草稿、校验、保存版本、初始化，再明确启动。选择 east-port 并注入 close-vertiport。使用该起降场的航班改往 north-port，实际制动并重新规划航线；在“为什么？”中查看关闭、调度和航班完成。 事件须在实时运行中提交；接收回执之后，以日志中的领域影响确认执行。

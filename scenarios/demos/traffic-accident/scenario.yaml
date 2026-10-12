@@ -8095,12 +8095,16 @@ engines:
       upload_schema: traffic.capture.upload
       upload_lag_ns: 200000000
       camera:
-        revision: traffic-nadir/v1
-        fov: 55.0
-        provenance: simulation camera; primitive geometry; committed poses
+        revision: uav-gimbal-oblique/v1
+        frame: enu
+        pitch_deg: 50.0
+        fov: 96.0
+        coincident_azimuth_deg: -90.0
+        target_field: traffic.incident.position_enu_m
+        provenance: UAV gimbal at committed actor pose; incident bearing; shared city assets
       asset_digest: traffic-camera-assets/v1
-      width: 256
-      height: 192
+      width: 960
+      height: 540
       timeout_s: 20.0
       pose_fields:
         aas:TrafficRoadVehicle: traffic.road.position_enu_m

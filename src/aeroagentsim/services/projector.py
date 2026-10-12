@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from aerokernel.codec import decode_record
+from aerokernel.codec import _DecodedRecord, decode_record
 from aerokernel.compact import expand_record
 from aerokernel.ids import EntityRef
 from aerokernel.messages import Emit
@@ -63,6 +63,27 @@ def stamp(value: Any) -> dict[str, str]:
         "mappingId": value.mapping_id,
         "numerator": str(value.numerator),
         "denominator": str(value.denominator),
+    }
+
+
+def projection_record(record: dict[str, Any]) -> dict[str, Any]:
+    """Share validated typed operations across the three read-only projectors.
+
+    Re-decoding messages for subjects, KPIs and narratives repeatedly freezes
+    their same payloads. Keep this per-frame cache out of WAL/storage readers.
+    """
+    return {
+        **record,
+        "items": [
+            {
+                key: _DecodedRecord(value)
+                if key in {"proposal", "message", "edge"}
+                and isinstance(value, dict) and "$type" in value
+                else value
+                for key, value in item.items()
+            }
+            for item in record["items"]
+        ],
     }
 
 

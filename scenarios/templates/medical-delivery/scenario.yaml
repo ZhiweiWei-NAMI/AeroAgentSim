@@ -381,11 +381,26 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        kind: *id003
-        priority: *id006
-        origin: *id003
-        destination: *id003
+        task: &id009
+          type: string
+        kind: *id009
+        priority:
+          type: integer
+          minimum: 0
+        origin: *id009
+        destination: *id009
+        provenance:
+          type: record
+          members:
+            message_ids: &id011
+              type: array
+              items: &id010
+                type: string
+            event_key: *id010
+            parent_event_keys: *id011
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - kind
@@ -396,9 +411,22 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
-        algorithm: *id003
+        task: &id012
+          type: string
+        vehicle: *id012
+        algorithm: *id012
+        provenance:
+          type: record
+          members:
+            message_ids: &id014
+              type: array
+              items: &id013
+                type: string
+            event_key: *id013
+            parent_event_keys: *id014
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - vehicle
@@ -409,8 +437,21 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
+        task: &id015
+          type: string
+        vehicle: *id015
+        provenance:
+          type: record
+          members:
+            message_ids: &id017
+              type: array
+              items: &id016
+                type: string
+            event_key: *id016
+            parent_event_keys: *id017
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - vehicle
@@ -420,8 +461,21 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
+        task: &id018
+          type: string
+        vehicle: *id018
+        provenance:
+          type: record
+          members:
+            message_ids: &id020
+              type: array
+              items: &id019
+                type: string
+            event_key: *id019
+            parent_event_keys: *id020
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - vehicle
@@ -431,9 +485,23 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
-        latency_s: *id002
+        task: &id021
+          type: string
+        vehicle: *id021
+        latency_s:
+          type: number
+        provenance:
+          type: record
+          members:
+            message_ids: &id023
+              type: array
+              items: &id022
+                type: string
+            event_key: *id022
+            parent_event_keys: *id023
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - vehicle
@@ -444,9 +512,22 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
-        urgent_task: *id003
+        task: &id024
+          type: string
+        vehicle: *id024
+        urgent_task: *id024
+        provenance:
+          type: record
+          members:
+            message_ids: &id026
+              type: array
+              items: &id025
+                type: string
+            event_key: *id025
+            parent_event_keys: *id026
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - vehicle
@@ -457,8 +538,21 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
+        task: &id027
+          type: string
+        vehicle: *id027
+        provenance:
+          type: record
+          members:
+            message_ids: &id029
+              type: array
+              items: &id028
+                type: string
+            event_key: *id028
+            parent_event_keys: *id029
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - vehicle
@@ -468,10 +562,23 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
-        reason: *id003
-        zone: *id003
+        task: &id030
+          type: string
+        vehicle: *id030
+        reason: *id030
+        zone: *id030
+        provenance:
+          type: record
+          members:
+            message_ids: &id032
+              type: array
+              items: &id031
+                type: string
+            event_key: *id031
+            parent_event_keys: *id032
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - vehicle
@@ -482,10 +589,27 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
-        position: *id001
-        distance_m: *id002
+        task: &id033
+          type: string
+        vehicle: *id033
+        position:
+          type: vector
+          length: 3
+          items: &id034
+            type: number
+        distance_m: *id034
+        provenance:
+          type: record
+          members:
+            message_ids: &id036
+              type: array
+              items: &id035
+                type: string
+            event_key: *id035
+            parent_event_keys: *id036
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - vehicle
@@ -497,10 +621,27 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
-        position: *id001
-        distance_m: *id002
+        task: &id037
+          type: string
+        vehicle: *id037
+        position:
+          type: vector
+          length: 3
+          items: &id038
+            type: number
+        distance_m: *id038
+        provenance:
+          type: record
+          members:
+            message_ids: &id040
+              type: array
+              items: &id039
+                type: string
+            event_key: *id039
+            parent_event_keys: *id040
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - vehicle
@@ -512,9 +653,26 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
-        position: *id001
+        task: &id041
+          type: string
+        vehicle: *id041
+        position:
+          type: vector
+          length: 3
+          items:
+            type: number
+        provenance:
+          type: record
+          members:
+            message_ids: &id043
+              type: array
+              items: &id042
+                type: string
+            event_key: *id042
+            parent_event_keys: *id043
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - vehicle
@@ -525,7 +683,20 @@ registry:
     schema:
       type: record
       members:
-        site: *id003
+        site:
+          type: string
+        provenance:
+          type: record
+          members:
+            message_ids: &id045
+              type: array
+              items: &id044
+                type: string
+            event_key: *id044
+            parent_event_keys: *id045
+          required:
+          - message_ids
+          extra: false
       required:
       - site
       extra: false
@@ -534,7 +705,8 @@ registry:
     schema:
       type: record
       members:
-        site: *id003
+        site:
+          type: string
       required:
       - site
       extra: false
@@ -543,9 +715,10 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        origin: *id003
-        destination: *id003
+        task: &id046
+          type: string
+        origin: *id046
+        destination: *id046
       required:
       - task
       - origin
@@ -556,9 +729,10 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        origin: *id003
-        destination: *id003
+        task: &id047
+          type: string
+        origin: *id047
+        destination: *id047
       required:
       - task
       - origin
@@ -569,8 +743,9 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id003
-        pad: *id003
+        vehicle: &id048
+          type: string
+        pad: *id048
       required:
       - vehicle
       - pad
@@ -580,9 +755,11 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id003
-        pad: *id003
-        soc: *id002
+        vehicle: &id049
+          type: string
+        pad: *id049
+        soc:
+          type: number
       required:
       - vehicle
       - pad
@@ -593,9 +770,10 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
-        site: *id003
+        task: &id050
+          type: string
+        vehicle: *id050
+        site: *id050
       required:
       - task
       - vehicle
@@ -606,9 +784,22 @@ registry:
     schema:
       type: record
       members:
-        task: *id003
-        vehicle: *id003
-        reason: *id003
+        task: &id051
+          type: string
+        vehicle: *id051
+        reason: *id051
+        provenance:
+          type: record
+          members:
+            message_ids: &id053
+              type: array
+              items: &id052
+                type: string
+            event_key: *id052
+            parent_event_keys: *id053
+          required:
+          - message_ids
+          extra: false
       required:
       - task
       - reason
@@ -618,10 +809,12 @@ registry:
     schema:
       type: record
       members:
-        a: *id003
-        b: *id003
-        horizontal_m: *id002
-        vertical_m: *id002
+        a: &id054
+          type: string
+        b: *id054
+        horizontal_m: &id055
+          type: number
+        vertical_m: *id055
       required:
       - a
       - b
@@ -633,9 +826,10 @@ registry:
     schema:
       type: record
       members:
-        a: *id003
-        b: *id003
-        action: *id003
+        a: &id056
+          type: string
+        b: *id056
+        action: *id056
       required:
       - a
       - b
@@ -646,8 +840,9 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id003
-        zone: *id003
+        vehicle: &id057
+          type: string
+        zone: *id057
       required:
       - vehicle
       - zone
@@ -657,8 +852,9 @@ registry:
     schema:
       type: record
       members:
-        zone: *id003
-        reason: *id003
+        zone: &id058
+          type: string
+        reason: *id058
       required:
       - zone
       - reason
@@ -668,8 +864,9 @@ registry:
     schema:
       type: record
       members:
-        zone: *id003
-        reason: *id003
+        zone: &id059
+          type: string
+        reason: *id059
       required:
       - zone
       - reason
@@ -679,8 +876,10 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id003
-        soc: *id002
+        vehicle:
+          type: string
+        soc:
+          type: number
       required:
       - vehicle
       - soc
@@ -690,9 +889,11 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id003
-        pad: *id003
-        soc: *id002
+        vehicle: &id060
+          type: string
+        pad: *id060
+        soc:
+          type: number
       required:
       - vehicle
       - pad
@@ -703,9 +904,11 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id003
-        pad: *id003
-        soc: *id002
+        vehicle: &id061
+          type: string
+        pad: *id061
+        soc:
+          type: number
       required:
       - vehicle
       - pad
@@ -716,10 +919,12 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id003
-        zone: *id003
-        reason: *id003
-        wind_mps: *id002
+        vehicle: &id062
+          type: string
+        zone: *id062
+        reason: *id062
+        wind_mps:
+          type: number
       required:
       - reason
       extra: false
@@ -728,10 +933,12 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id003
-        zone: *id003
-        reason: *id003
-        wind_mps: *id002
+        vehicle: &id063
+          type: string
+        zone: *id063
+        reason: *id063
+        wind_mps:
+          type: number
       required:
       - reason
       extra: false
@@ -740,11 +947,18 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id003
-        action: *id003
-        target: *id001
-        until_ns: *id006
-        reason: *id003
+        vehicle: &id064
+          type: string
+        action: *id064
+        target:
+          type: vector
+          length: 3
+          items:
+            type: number
+        until_ns:
+          type: integer
+          minimum: 0
+        reason: *id064
       required:
       - vehicle
       - action
@@ -755,8 +969,9 @@ registry:
     schema:
       type: record
       members:
-        tasks_json: *id003
-        vehicles_json: *id003
+        tasks_json: &id065
+          type: string
+        vehicles_json: *id065
       required:
       - tasks_json
       - vehicles_json
@@ -766,7 +981,8 @@ registry:
     schema:
       type: record
       members:
-        assignments_json: *id003
+        assignments_json:
+          type: string
       required:
       - assignments_json
       extra: false
@@ -775,8 +991,13 @@ registry:
     schema:
       type: record
       members:
-        entity: *id003
-        position: *id001
+        entity:
+          type: string
+        position:
+          type: vector
+          length: 3
+          items:
+            type: number
       required:
       - entity
       - position
@@ -786,13 +1007,18 @@ registry:
     schema:
       type: record
       members:
-        entity: *id003
-        target: *id001
+        entity:
+          type: string
+        target:
+          type: vector
+          length: 3
+          items:
+            type: number
       required:
       - entity
       - target
       extra: false
-    result_schema: &id009
+    result_schema: &id066
       type: record
       members:
         entity: *id003
@@ -800,40 +1026,44 @@ registry:
         reason: *id003
       required: []
       extra: false
-    feedback_schema: *id009
+    feedback_schema: *id066
     cancel_support: false
   - id: lowalt.motion.hold
     kind: command
     schema:
       type: record
       members:
-        entity: *id003
+        entity:
+          type: string
       required:
       - entity
       extra: false
-    result_schema: *id009
-    feedback_schema: *id009
+    result_schema: *id066
+    feedback_schema: *id066
     cancel_support: false
   - id: lowalt.motion.stop
     kind: command
     schema:
       type: record
       members:
-        entity: *id003
+        entity:
+          type: string
       required:
       - entity
       extra: false
-    result_schema: *id009
-    feedback_schema: *id009
+    result_schema: *id066
+    feedback_schema: *id066
     cancel_support: false
   - id: lowalt.airspace.activate
     kind: command
     schema:
       type: record
       members:
-        zone: *id003
-        active: *id005
-        reason: *id003
+        zone: &id067
+          type: string
+        active:
+          type: boolean
+        reason: *id067
       required:
       - zone
       - active
@@ -854,8 +1084,9 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id008
-        reason: *id008
+        vehicle: &id068
+          type: string
+        reason: *id068
       required:
       - vehicle
       - reason
@@ -875,8 +1106,9 @@ registry:
     schema:
       type: record
       members:
-        a: *id008
-        b: *id008
+        a: &id069
+          type: string
+        b: *id069
       required:
       - a
       - b
@@ -895,9 +1127,10 @@ registry:
     schema:
       type: record
       members:
-        vehicle: *id008
-        action: *id008
-        reason: *id008
+        vehicle: &id070
+          type: string
+        action: *id070
+        reason: *id070
       required:
       - vehicle
       - action
@@ -911,6 +1144,337 @@ registry:
       required: []
       extra: false
     cancel_support: false
+  - id: lowalt.food.preparation_started
+    kind: event
+    schema:
+      type: record
+      members:
+        task: &id071
+          type: string
+        restaurant: *id071
+        ready_ns:
+          type: integer
+          minimum: 0
+        provenance:
+          type: record
+          members:
+            message_ids: &id073
+              type: array
+              items: &id072
+                type: string
+            event_key: *id072
+            parent_event_keys: *id073
+          required:
+          - message_ids
+          extra: false
+      required:
+      - task
+      - restaurant
+      - ready_ns
+      extra: false
+  - id: lowalt.food.ready
+    kind: event
+    schema:
+      type: record
+      members:
+        task: &id074
+          type: string
+        restaurant: *id074
+        preparation_s:
+          type: number
+        provenance:
+          type: record
+          members:
+            message_ids: &id076
+              type: array
+              items: &id075
+                type: string
+            event_key: *id075
+            parent_event_keys: *id076
+          required:
+          - message_ids
+          extra: false
+      required:
+      - task
+      - restaurant
+      - preparation_s
+      extra: false
+  - id: lowalt.food.preparation_delayed
+    kind: event
+    schema:
+      type: record
+      members:
+        restaurant: &id077
+          type: string
+        delay_s:
+          type: number
+        tasks:
+          type: array
+          items: *id077
+        provenance:
+          type: record
+          members:
+            message_ids: &id079
+              type: array
+              items: &id078
+                type: string
+            event_key: *id078
+            parent_event_keys: *id079
+          required:
+          - message_ids
+          extra: false
+      required:
+      - restaurant
+      - delay_s
+      - tasks
+      extra: false
+  - id: lowalt.food.delivered
+    kind: event
+    schema:
+      type: record
+      members:
+        task: &id080
+          type: string
+        vehicle: *id080
+        destination: *id080
+        deadline_ns:
+          type: integer
+          minimum: 0
+        ready_to_delivery_s:
+          type: number
+        on_time:
+          type: boolean
+        provenance:
+          type: record
+          members:
+            message_ids: &id082
+              type: array
+              items: &id081
+                type: string
+            event_key: *id081
+            parent_event_keys: *id082
+          required:
+          - message_ids
+          extra: false
+      required:
+      - task
+      - vehicle
+      - destination
+      - deadline_ns
+      - ready_to_delivery_s
+      - on_time
+      extra: false
+  - id: lowalt.operator.restaurant_delay
+    kind: event
+    schema:
+      type: record
+      members:
+        restaurant:
+          type: string
+        delay_s:
+          type: number
+          minimum: 0.001
+      required:
+      - restaurant
+      - delay_s
+      extra: false
+  - id: lowalt.operator.change_dropoff
+    kind: event
+    schema:
+      type: record
+      members:
+        task:
+          type: ref
+          target_type: lowalt:Task
+        destination:
+          type: ref
+          target_type: lowalt:Customer
+      required:
+      - task
+      - destination
+      extra: false
+  - id: lowalt.operator.prioritize_medical
+    kind: event
+    schema:
+      type: record
+      members:
+        task:
+          type: ref
+          target_type: lowalt:Task
+        priority:
+          type: integer
+          minimum: 101
+          maximum: 1000
+      required:
+      - task
+      - priority
+      extra: false
+  - id: lowalt.operator.report_defect
+    kind: event
+    schema:
+      type: record
+      members:
+        task:
+          type: ref
+          target_type: lowalt:Task
+        site:
+          type: ref
+          target_type: lowalt:Site
+      required:
+      - task
+      - site
+      extra: false
+  - id: lowalt.operator.pause_spraying
+    kind: event
+    schema:
+      type: record
+      members:
+        task:
+          type: ref
+          target_type: lowalt:Task
+        duration_s:
+          type: number
+          minimum: 1
+          maximum: 120
+      required:
+      - task
+      - duration_s
+      extra: false
+  - id: lowalt.operator.close_air_taxi_port
+    kind: event
+    schema:
+      type: record
+      members:
+        site:
+          type: ref
+          target_type: lowalt:Vertiport
+      required:
+      - site
+      extra: false
+  - id: lowalt.parcel.dropoff_changed
+    kind: event
+    schema:
+      type: record
+      members:
+        task: &id083
+          type: string
+        previous: *id083
+        destination: *id083
+        provenance:
+          type: record
+          members:
+            message_ids: &id085
+              type: array
+              items: &id084
+                type: string
+            event_key: *id084
+            parent_event_keys: *id085
+          required:
+          - message_ids
+          extra: false
+      required:
+      - task
+      - previous
+      - destination
+      extra: false
+  - id: lowalt.medical.prioritized
+    kind: event
+    schema:
+      type: record
+      members:
+        task:
+          type: string
+        priority:
+          type: integer
+          minimum: 0
+        provenance:
+          type: record
+          members:
+            message_ids: &id087
+              type: array
+              items: &id086
+                type: string
+            event_key: *id086
+            parent_event_keys: *id087
+          required:
+          - message_ids
+          extra: false
+      required:
+      - task
+      - priority
+      extra: false
+  - id: lowalt.inspection.defect_reported
+    kind: event
+    schema:
+      type: record
+      members:
+        task: &id088
+          type: string
+        site: *id088
+        provenance:
+          type: record
+          members:
+            message_ids: &id090
+              type: array
+              items: &id089
+                type: string
+            event_key: *id089
+            parent_event_keys: *id090
+          required:
+          - message_ids
+          extra: false
+      required:
+      - task
+      - site
+      extra: false
+  - id: lowalt.spraying.paused
+    kind: event
+    schema:
+      type: record
+      members:
+        task:
+          type: string
+        until_ns:
+          type: integer
+          minimum: 0
+        provenance:
+          type: record
+          members:
+            message_ids: &id092
+              type: array
+              items: &id091
+                type: string
+            event_key: *id091
+            parent_event_keys: *id092
+          required:
+          - message_ids
+          extra: false
+      required:
+      - task
+      - until_ns
+      extra: false
+  - id: lowalt.spraying.resumed
+    kind: event
+    schema:
+      type: record
+      members:
+        task:
+          type: string
+        provenance:
+          type: record
+          members:
+            message_ids: &id094
+              type: array
+              items: &id093
+                type: string
+            event_key: *id093
+            parent_event_keys: *id094
+          required:
+          - message_ids
+          extra: false
+      required:
+      - task
+      extra: false
 entities:
 - id: weather
   type: lowalt:Environment
@@ -920,7 +1484,7 @@ entities:
 - id: home
   type: lowalt:Vertiport
   facts:
-    lowalt.site_position: &id010
+    lowalt.site_position: &id095
     - -13.05
     - -100.037
     - 0.0
@@ -931,7 +1495,7 @@ entities:
 - id: home-pad
   type: lowalt:ChargingPad
   facts:
-    lowalt.site_position: *id010
+    lowalt.site_position: *id095
     lowalt.site_open: true
     lowalt.site_capacity: 1
     lowalt.pad_power_w: 5000.0
@@ -973,7 +1537,7 @@ entities:
 - id: depot-east
   type: lowalt:Vertiport
   facts:
-    lowalt.site_position: &id011
+    lowalt.site_position: &id096
     - 328.337
     - -136.882
     - 12.0
@@ -984,7 +1548,7 @@ entities:
 - id: east-pad
   type: lowalt:ChargingPad
   facts:
-    lowalt.site_position: *id011
+    lowalt.site_position: *id096
     lowalt.site_open: true
     lowalt.site_capacity: 1
     lowalt.pad_power_w: 5000.0
@@ -1562,8 +2126,8 @@ generators:
     prefix: drone-
     type: lowalt:UAV
     starts:
-    - *id010
-    - *id011
+    - *id095
+    - *id096
     spacing_m: 1.0
     facts:
       lowalt.velocity:
@@ -2080,7 +2644,7 @@ behaviours:
         from: returning
         'on':
           receipt: recall
-          status: &id012
+          status: &id097
           - failed
           - rejected
           - canceled
@@ -2235,7 +2799,7 @@ behaviours:
         from: resolving
         'on':
           receipt: resolve
-          status: *id012
+          status: *id097
         to: monitoring
         priority: 0
         actions: []
@@ -2365,3 +2929,75 @@ behaviours:
     variables: {}
     multiplicity: once_per_entity
     on_unbind: retain_until_terminal
+- format: aeroagentsim.behaviour-package/v1
+  id: lowalt.operator
+  revision: 1
+  registry:
+    snapshot: registry.snapshot.json
+  evaluator:
+    version: aerograph-predicate/1
+    dialect: original
+  budgets:
+    max_transitions_per_instance_per_ns: 64
+    max_instances: 100
+    max_timers_per_instance: 8
+    max_creations_per_instance: 8
+  predicates: {}
+  chains: {}
+  bindings: []
+  injection_points:
+  - id: prioritize-medical
+    stream_id: operator
+    command: aas.runtime.inject_event
+    target: behaviour
+    emits: lowalt.operator.prioritize_medical
+    topic: lowalt.events
+ingress_streams:
+- id: operator
+  engine_ids:
+  - behaviour
+  mapping_id: canonical
+  initial_watermark_ns: 300000000000
+  lateness: reject
+  timeout_s: 10.0
+event_narratives:
+  lowalt.parcel.dropoff_changed:
+    entities:
+    - task
+    - previous
+    - destination
+    position: destination
+    category: logistics
+    severity: notice
+    template: '{task} drop-off changed from {previous} to {destination}'
+    template_zh: '{task}收货点从{previous}改为{destination}'
+  lowalt.medical.prioritized:
+    entities:
+    - task
+    category: emergency
+    severity: notice
+    template: Urgent request raised {task} priority to {priority}
+    template_zh: 紧急请求将{task}优先级提高至 {priority}
+  lowalt.inspection.defect_reported:
+    entities:
+    - site
+    - task
+    position: site
+    category: inspection
+    severity: warning
+    template: Defect reported at {site}; {task} released for inspection
+    template_zh: '{site}收到缺陷报告，已释放{task}进行复查'
+  lowalt.spraying.paused:
+    entities:
+    - task
+    category: agriculture
+    severity: notice
+    template: Operator paused spraying for {task}
+    template_zh: 操作员已暂停{task}的喷洒作业
+  lowalt.spraying.resumed:
+    entities:
+    - task
+    category: agriculture
+    severity: info
+    template: '{task} resumed after the operator spraying pause'
+    template_zh: 操作员停喷时段结束，{task}恢复喷洒作业

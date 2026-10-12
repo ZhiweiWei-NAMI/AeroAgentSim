@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .codec import encode
+from .codec import _DecodedRecord, encode
 from .engine import Batch
 from .errors import KernelError, MicrostepLimitExceeded
 from .ids import ItemRef
@@ -146,8 +146,9 @@ def wave_intents(
                 delivery = Delivery(
                     store.messages[work.message_id], partition, instant, work.cause, ref
                 )
-                items.append({"kind": "dispatch", "delivery": encode(delivery)})
-                inbox.append(delivery)
+                wire = _DecodedRecord.from_record(delivery)
+                items.append({"kind": "dispatch", "delivery": encode(wire)})
+                inbox.append(wire)
                 state.actions.record_dispatch(delivery)
             else:
                 if work.dirty is None:
@@ -161,15 +162,16 @@ def wave_intents(
                     work.dirty.payload,
                     work.dirty.resource_budget,
                 )
+                wire = _DecodedRecord.from_record(notification)
                 items.append(
                     {
                         "kind": "dirty_dispatch",
-                        "notification": encode(notification),
+                        "notification": encode(wire),
                         "origin": encode(work.cause),
                         "recipient": partition,
                     }
                 )
-                dirty.append(notification)
+                dirty.append(wire)
             authorized.append(ref)
         intent_ref = ItemRef(index, len(items))
         expected_native = native
@@ -198,7 +200,9 @@ def wave_intents(
             "status": "pending",
         }
         items.append(intent)
-        state.intents[intent_ref] = intent.copy()
+        # Keep the typed dispatch cache in private execution state only. WAL
+        # intent/dispatch trees remain ordinary strictly portable dictionaries.
+        state.intents[intent_ref] = {**intent, "inbox": inbox, "dirty": dirty}
         state.pending_intents[partition] = intent_ref
         views[partition] = StateView(
             store,

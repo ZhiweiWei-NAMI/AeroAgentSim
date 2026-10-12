@@ -99,6 +99,7 @@ def test_city_feed_advertises_quality_and_installed_packs(tmp_path: Path, monkey
     document.update(entities=[], engines={}, bindings={"exact": [], "lifecycle": []})
     document.pop("generators")
     document.pop("behaviours")
+    document.pop("ingress_streams")
     base = Path("scenarios/templates/parcel-delivery")
     root = tmp_path / "runs"
     run_id = "run-" + "a" * 32

@@ -13,6 +13,9 @@ def test_snapshot_only_registry(
 ) -> None:
     monkeypatch.delenv("AEROAGENTSIM_AEROGRAPH_ROOT", raising=False)
     monkeypatch.delenv("AEROAGENTSIM_TRAFFIC_ASSET_ROOT", raising=False)
+    # This fixture checks the default public-console URL, independently of
+    # the caller's live server used by other real browser capture tests.
+    monkeypatch.delenv("AEROAGENTSIM_CONSOLE_URL", raising=False)
     app = create_app(tmp_path / "runs", studio_root=tmp_path / "studio")
     with TestClient(app, base_url="http://localhost") as client:
         workspace = client.post(

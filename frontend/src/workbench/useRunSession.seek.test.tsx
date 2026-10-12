@@ -4,10 +4,13 @@ import { fixtureCommits, fixtureHeader } from '../behaviours/extension-fixture';
 import type { FeedCommit } from '../contracts/viewer-feed';
 import { useRunSession } from './useRunSession';
 
-const stream = vi.hoisted(() => ({ deliver: undefined as ((commit: FeedCommit) => void) | undefined, finish: undefined as (() => void) | undefined }));
+const stream = vi.hoisted(() => ({ deliver: undefined as ((commit: FeedCommit) => void) | undefined, finish: undefined as (() => void) | undefined, status: undefined as ((status:string)=>void) | undefined }));
+// This suite isolates journal navigation; source production has its own tests.
+vi.mock('./useOperatorInput', () => ({useOperatorInput: () => ({})}));
 vi.mock('../feeds/http', () => ({
   RunsApi: class {},
   HttpViewerFeed: class {
+    constructor(_api:unknown,_id:string,_mode:string,status:(value:string)=>void) { stream.status=status; }
     async header() { return { ...fixtureHeader, kernelRunId: 'fixture-kernel-run' }; }
     subscribe(_from: number, deliver: (commit: FeedCommit) => void) {
       stream.deliver = deliver;
@@ -15,10 +18,10 @@ vi.mock('../feeds/http', () => ({
     }
   },
 }));
-beforeEach(() => { stream.deliver = undefined; stream.finish = undefined; });
+beforeEach(() => { stream.deliver = undefined; stream.finish = undefined; stream.status=undefined; });
 afterEach(cleanup);
-async function loaded() {
-  const hook = renderHook(() => useRunSession('http://api', 'run', 'replay'));
+async function loaded(mode:'live'|'replay'='replay') {
+  const hook = renderHook(() => useRunSession('http://api', 'run', mode));
   await waitFor(() => expect(hook.result.current).toBeDefined());
   act(() => stream.deliver!(fixtureCommits[0]));
   return hook;
@@ -58,4 +61,18 @@ it('lets a new timeline choice cancel a pending photo moment', async () => {
   expect(result.current!.pendingCut).toBeUndefined();
   expect(result.current!.cut).toBe(1);
   expect(result.current!.clock.ns).toBe('0');
+});
+
+it('returns from a completed run’s historical cut to its real final head without resuming simulation',async()=>{
+  const {result}=await loaded('live');
+  act(()=>{fixtureCommits.slice(1).forEach(commit=>stream.deliver!(commit));stream.status!('completed');stream.finish!();});
+  await waitFor(()=>expect(result.current!.journalComplete).toBe(true));
+  act(()=>result.current!.seekCut(1));
+  expect(result.current!.followingLive).toBe(false);expect(result.current!.clock.ns).toBe('0');
+  expect(result.current!.status).toBe('completed');
+  act(()=>result.current!.backToLive());
+  expect(result.current!.cut).toBeUndefined();expect(result.current!.followingLive).toBe(true);
+  expect(result.current!.clock.ns).toBe(fixtureCommits.at(-1)!.at.ns);
+  expect(result.current!.store.viewCursor?.knownAt).toBe(fixtureCommits.at(-1)!.commitIndex);
+  expect(result.current!.status).toBe('completed');expect(result.current!.store.liveFollow).toBe(false);
 });

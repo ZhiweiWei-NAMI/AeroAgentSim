@@ -17,12 +17,31 @@ observe_zh:
 - 巡检观测记录出现在沿线实际测量的位置。
 - 强风使飞行暂停，风减弱后巡检继续。
 try:
+- Choose interactive mode. Select line-end and inject report-defect for unused task
+  line-survey-2 at that site. Watch the high-priority inspection release, dispatch
+  and real waypoint observations in Why?.
 - Change the wind speed to see when the drone must wait.
 - Add a second inspection drone.
 try_zh:
+- 选择实时交互模式。选择 line-end，注入 report-defect，指定尚未释放的 line-survey-2 和该站点。观察高优先级复查任务释放、派发与实际航点观测，并查看“为什么？”。
 - 调整风速，观察无人机何时需要等待。
 - 再增加一架巡检无人机。
 knobs:
+- id: run_mode
+  label: Run mode
+  label_zh: 运行方式
+  type: choice
+  default: scheduled
+  options:
+  - scheduled
+  - interactive
+  options_zh:
+  - 自动运行（无需人工推进）
+  - 实时交互（控制台推进与注入）
+  description: Scheduled runs keep their authored arrivals. Interactive mode waits
+    for console time advances and operator events; Stop ends the run.
+  description_zh: 自动运行保留原有任务到达计划。实时交互等待控制台推进时间及操作员事件；可随时停止。
+  apply: lowalt.operator_mode
 - id: fleet_size
   label: Number of aircraft
   label_zh: 飞行器数量

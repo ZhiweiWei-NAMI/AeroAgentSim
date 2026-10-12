@@ -40,7 +40,7 @@ export function runStatusLabel(status: string, locale = 'en-US', rawEnglish = fa
       case 'faulted': return t('Faulted');
       case 'failed': return t('Failed');
       case 'interrupted': return t('Interrupted');
-      case 'waiting_for_input': return t('Waiting for your event');
+      case 'waiting_for_input': return t('Waiting for live inputs');
       case 'input_timeout': return t('Input Timeout');
       default: return status.replace(/[_-]/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
     }

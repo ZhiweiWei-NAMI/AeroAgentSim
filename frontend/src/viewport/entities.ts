@@ -5,6 +5,7 @@ import { resolveBinding, entityId } from './bindings';
 import { modelGlyph } from './model-glyph';
 import { proceduralModel } from './procedural-traffic';
 import { Assets } from './assets';
+import { placeLabel, type LabelRect } from './label-placement';
 import type { StaticOcclusion } from './occlusion';
 import { worldOrientation, worldPosition } from './coordinates';
 import type { EntityState } from './feed-store';
@@ -38,6 +39,8 @@ export class EntityLayer {
   readonly ring: T.Mesh;
   private loads=new PayloadLayer();
   get payloadCount(){return this.semantic?this.loads.markers.size:0;}
+  /** Capture waits for batches requested by its current state/camera, not unrelated catalog assets. */
+  get modelsReady() { return [...this.batches.values()].every(batch => batch.loaded); }
   labelsMs = 0;
   transformsChanged = false;
   readonly selection: T.Object3D[]=[];
@@ -349,6 +352,11 @@ export class EntityLayer {
     const labelsStarted = performance.now();
     camera.updateMatrixWorld();
     const occupied: Array<{ left: number; right: number; top: number; bottom: number }>=[];let labelAttempts=0;
+    const wb = this.overlay.closest('.wb'), overlayRect = this.overlay.getBoundingClientRect();
+    const relative = (rect: DOMRect): LabelRect => ({ left: rect.left - overlayRect.left, right: rect.right - overlayRect.left, top: rect.top - overlayRect.top, bottom: rect.bottom - overlayRect.top });
+    const frame = wb?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
+    const safe = frame && frame.width > 0 ? relative(frame) : { left: 8, right: width - 8, top: 8, bottom: height - 8 };
+    const obstacles = wb ? [...wb.querySelectorAll('.wb-panel, .wb-camera, .wb-graph, .wb-history, .wb-waiting')].map(node => relative(node.getBoundingClientRect())) : [];
     candidates.sort((a,b)=>Number(b.selected)-Number(a.selected)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
     for(const item of candidates) {
       if(this.semantic&&!item.interest)continue;
@@ -373,12 +381,13 @@ export class EntityLayer {
       if(label.hidden)label.hidden=false;
       // Business-interest labels used to bypass collision avoidance entirely;
       // colocated task-active UAVs obscured each other. Measure the actual label.
-      const bounds={left:x-label.offsetWidth/2,right:x+label.offsetWidth/2,top:y-label.offsetHeight,bottom:y};
-      if(!item.selected&&occupied.some(box=>bounds.left<box.right+6&&bounds.right+6>box.left&&bounds.top<box.bottom+4&&bounds.bottom+4>box.top))continue;
+      label.style.maxWidth = `${Math.max(0, safe.right - safe.left)}px`;
+      const placed = placeLabel(x, y, label.offsetWidth, label.offsetHeight, safe, [...obstacles, ...occupied], item.selected);
+      if (!placed) continue;
       visibleLabels.add(item.id);
-      const left=`${x}px`,top=`${y}px`;
+      const left=`${placed.x}px`,top=`${placed.y}px`;
       if(label.style.left!==left)label.style.left=left;if(label.style.top!==top)label.style.top=top;
-      label.classList.toggle('selected',item.selected);occupied.push(bounds);
+      label.classList.toggle('selected',item.selected);occupied.push(placed.box);
     }
     for(const [id,label] of this.labels)if(!visibleLabels.has(id)&&!label.hidden)label.hidden=true;
     // Keep a small reusable label pool; retired generations cannot accumulate DOM.

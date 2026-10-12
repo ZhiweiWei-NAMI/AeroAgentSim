@@ -2,6 +2,16 @@ import { mapping, type Draft } from './model';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
 import { entityLabel } from '../pages/inspection-format';
 
+/** String identities keep their wire format; subject declarations supply their entity contract. */
+export function entityPayloadSchema(schema: unknown, subjects: unknown, definitions: Draft = {}, path: string[] = []): unknown {
+  const reference = typeof schema === 'string' ? schema : mapping(schema) && typeof schema.schema_ref === 'string' ? schema.schema_ref : undefined;
+  const descriptor = reference ? definitions[reference] : schema;
+  if (!mapping(descriptor)) return descriptor;
+  if (descriptor.type === 'record' && mapping(descriptor.members)) return { ...descriptor, members: Object.fromEntries(Object.entries(descriptor.members).map(([key, child]) => [key, entityPayloadSchema(child, subjects, definitions, [...path, key])])) };
+  const subject = Array.isArray(subjects) ? subjects.find(row => mapping(row) && Array.isArray(row.path) && JSON.stringify(row.path) === JSON.stringify(path)) : undefined;
+  return descriptor.type === 'string' && mapping(subject) && typeof subject.type_id === 'string' ? { ...descriptor, target_type: subject.type_id } : descriptor;
+}
+
 /**
  * Friendly defaults for an authored behaviour injection point. Transport
  * fields are derived from the authored declaration and, for the operator

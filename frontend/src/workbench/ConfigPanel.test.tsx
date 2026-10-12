@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { ConfigPanel, controlValue, issuePointer, issueSection } from './ConfigPanel';
+import { ConfigPanel, controlSource, controlValue, issuePointer, issueSection } from './ConfigPanel';
 import type { Project, WorkbenchApi } from './api';
+import { I18nProvider, useI18n } from '../i18n/I18nProvider';
 const catalog = vi.hoisted(() => ({ template: vi.fn(), algorithms: vi.fn() }));
 vi.mock('../newcomers/api', async original => ({ ...await original<object>(), TemplateApi: class { template = catalog.template; algorithms = catalog.algorithms; } }));
 vi.mock('../studio/BehavioursPanel', () => ({ BehavioursPanel: () => null }));
 const project: Project = { id: 'test-project', name: 'Project', revision: 2, updated_at: '', dirty: true, latest_version: null, scenario: { entities: [{ id: 'restaurant', type: 'lowalt:Restaurant', facts: { capacity: 2 } }], run: { until_ns: 360000000000 } } };
 beforeEach(() => { localStorage.clear(); catalog.algorithms.mockResolvedValue([]); Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { value: vi.fn(), configurable: true }); });
 afterEach(() => { cleanup(); Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView'); });
+function LanguageSwitch() { const { locale, setLocale } = useI18n(); return <button onClick={()=>setLocale(locale==='zh-CN'?'en-US':'zh-CN')}>Switch language</button>; }
 function setup(initial = project, section = 'run', extra: Record<string, unknown> = {}) {
   const api = { base: '/api', save: vi.fn().mockImplementation(async (_id, scenario, revision) => ({ ...initial, scenario, revision: revision + 1 })), exportYaml: vi.fn().mockResolvedValue('run:\n  until_ns: 360000000000\n'), validate: vi.fn(), ...extra } as unknown as WorkbenchApi;
   const onInitialize = vi.fn();
@@ -16,7 +18,7 @@ function setup(initial = project, section = 'run', extra: Record<string, unknown
     const [draft, setDraft] = useState(initial), [where, setWhere] = useState(section);
     return <ConfigPanel api={api} project={draft} onProject={setDraft} section={where} onSection={setWhere} onInitialize={onInitialize} initializing={false} onClose={vi.fn()} />;
   }
-  const view = render(<Harness />); return { api, view, onInitialize };
+  const view = render(<I18nProvider><LanguageSwitch/><Harness /></I18nProvider>); return { api, view, onInitialize };
 }
 it('accepts wire pointers and escapes authored path tokens', () => {
   expect(issuePointer('/entities/0/facts/lowalt.capacity')).toBe('/entities/0/facts/lowalt.capacity');
@@ -27,6 +29,13 @@ it('reads tagged rule parameters for numeric controls without defaulting missing
   expect(controlValue({ $number: '12.0' })).toBe(12);
   expect(controlValue({ $integer: '42' })).toBe(42);
   expect(controlValue(undefined)).toBeUndefined(); expect(controlValue(null)).toBeUndefined();
+});
+it('reads compound physics frequency from actual engine periods, preserving the draft',()=>{
+ const knob={id:'physics_hz',label:'Physics updates per second',type:'number' as const,default:1,apply:'traffic.physics_hz'};
+ const scenario={run:{advance_ns:1e9},engines:{road_motion:{config:{step_ns:66666667}},air_motion:{config:{step_ns:66666667}}}};
+ expect(controlSource(knob,scenario,{physics_hz:1})).toBe(15);expect(scenario.engines.road_motion.config.step_ns).toBe(66666667);
+ expect(controlSource(knob,{engines:{road_motion:{config:{step_ns:1e9}},air_motion:{config:{step_ns:1e9}}}},{physics_hz:15})).toBe(1);
+ expect(controlSource(knob,{engines:{road_motion:{config:{step_ns:1e9}},air_motion:{config:{step_ns:5e8}}}},{physics_hz:1})).toBeUndefined();
 });
 it('jumps a validation issue to its field even when the objects filter excludes it', async () => {
   setup({ ...project, validation: { valid: false, revision: 2, errors: ['bad'], issues: [{ source: 'scenario', path: '/entities/0/facts/capacity', section: 'objects', message: 'bad' }] } }, 'objects');
@@ -57,6 +66,14 @@ it('reads controls from the actual draft and applies only the changed knob', asy
   expect(input).toHaveValue('12'); fireEvent.change(input, { target: { value: '13' } });
   fireEvent.click(screen.getByRole('button', { name: 'Apply controls to draft' }));
   await waitFor(() => expect(knobs).toHaveBeenCalledWith(initial.id, { fleet: 13 }, initial.revision));
+});
+it('locks template controls during application so a pending response cannot discard a new edit',async()=>{
+ catalog.template.mockResolvedValue({id:'example',knobs:[{id:'fleet',label:'Fleet count',type:'integer',pointer:'/generators/fleet/count',default:8}]});
+ const initial={...project,template:{id:'example',knobs:{fleet:8}},scenario:{generators:{fleet:{count:8}}}};
+ let finish!:(value:Project)=>void;const knobs=vi.fn(()=>new Promise<Project>(resolve=>{finish=resolve;}));setup(initial,'controls',{knobs});
+ const input=await screen.findByRole('spinbutton',{name:'Fleet count'});fireEvent.change(input,{target:{value:'9'}});fireEvent.click(screen.getByRole('button',{name:'Apply controls to draft'}));
+ await waitFor(()=>expect(input).toBeDisabled());expect(screen.getByRole('button',{name:'Applying controls…'})).toBeDisabled();
+ await act(async()=>{finish({...initial,revision:3,scenario:{generators:{fleet:{count:9}}}});});expect(input).toBeEnabled();expect(input).toHaveValue('9');
 });
 it('shows file loading and blocks conflicting actions until the real export arrives', async () => {
   let finish!: (text: string) => void;
@@ -97,4 +114,21 @@ it('edits large engine geometry without mounting thousands of hidden inputs or d
   await waitFor(() => expect(api.save).toHaveBeenCalled());
   const scenario = vi.mocked(api.save).mock.calls[0][1] as any;
   expect(scenario.engines.capture.config.scene.points).toEqual(changed.scene.points);
+});
+it('publishes unsaved coordinate edits for preview without saving or initializing', async () => {
+ const onDraft = vi.fn(), save = vi.fn();
+ const initial = { ...project, scenario: { ...project.scenario, entities: [{ id: 'drone', type: 'lowalt:UAV', facts: { 'lowalt.position': [10, 20, 30] } }] } };
+ render(<ConfigPanel api={{ base: '/api', save } as unknown as WorkbenchApi} project={initial} onProject={vi.fn()} onDraft={onDraft} onInitialize={vi.fn()} initializing={false} section="objects" onSection={vi.fn()} onClose={vi.fn()} />);
+ fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+ const coordinate = document.querySelector<HTMLInputElement>('[data-path="/entities/0/facts/lowalt.position"] input')!;
+ fireEvent.change(coordinate, { target: { value: '120, 20, 30' } });
+ await waitFor(() => expect(onDraft).toHaveBeenLastCalledWith(initial.id, expect.objectContaining({ entities: [expect.objectContaining({ facts: { 'lowalt.position': [120, 20, 30] } })] }), true));
+ expect(save).not.toHaveBeenCalled();
+});
+it('translates the saved control notice and template title when language changes, keeping edited values',async()=>{
+ catalog.template.mockResolvedValue({id:'example',title:'World',title_zh:'世界',knobs:[{id:'fleet',label:'Fleet count',label_zh:'数量',type:'integer',pointer:'/generators/fleet/count',default:8}]});
+ const initial={...project,name:'World',template:{id:'example',knobs:{fleet:8}},scenario:{generators:{fleet:{count:8}}}};
+ const knobs=vi.fn().mockResolvedValue({...initial,revision:3,scenario:{generators:{fleet:{count:9}}}});setup(initial,'controls',{knobs});
+ fireEvent.change(await screen.findByRole('spinbutton',{name:'Fleet count'}),{target:{value:'9'}});fireEvent.click(screen.getByRole('button',{name:'Apply controls to draft'}));await screen.findByText('Controls applied to the draft.');
+ fireEvent.click(screen.getByRole('button',{name:'Switch language'}));expect(screen.getByText('控制项已应用到草稿。')).toBeVisible();expect(screen.getByRole('heading',{name:'配置 · 世界'})).toBeVisible();expect(screen.getByRole('spinbutton',{name:'数量'})).toHaveValue('9');expect(knobs).toHaveBeenCalledTimes(1);
 });
