@@ -227,7 +227,9 @@ export default function AeroGraphPage() {
   const base = explorerApiBase(location.search);
   const api = useMemo(() => new StudioApi(base), [base]);
 
-  const requestedType=query.get('type');
+  // A pack type (lowalt:UAV) may be absent from the shared catalog; callers list nearer-first fallbacks after it.
+  const requestedTypes=(query.get('type') ?? '').split(',').filter(Boolean);
+  const requestedKey=requestedTypes.join(',');
   const requestedWorkspace=query.get('workspace');
   const [payload, setPayload] = useState<ExplorerPayload>();
   const [workspaceId, setWorkspaceId] = useState<string>();
@@ -243,10 +245,10 @@ export default function AeroGraphPage() {
     writeAeroGraphCache(aeroGraphCacheKey(base, data.workspace?.id ?? undefined), data);
     setPayload({...data, relations:[...data.relations, ...(data.workspace_relations ?? []).map(row=>({...row,sourceClass:row.sourceClass??row.source_type??row.source,targetClass:row.targetClass??row.target_type??row.target}))]});
     setWorkspaceId(data.workspace?.id);
-    setSelected(previous => previous && data.types.some(row => row.id === previous) ? previous : requestedType && data.types.some(row=>row.id===requestedType) ? requestedType : data.types.find(row=>row.count!==null&&row.count>0&&!row.abstract)?.id ?? data.types[0]?.id);
+    setSelected(previous => previous && data.types.some(row => row.id === previous) ? previous : requestedKey.split(',').find(id => id && data.types.some(row=>row.id===id)) ?? data.types.find(row=>row.count!==null&&row.count>0&&!row.abstract)?.id ?? data.types[0]?.id);
     writeAeroGraphCache(aeroGraphCacheKey(base, data.workspace?.id ?? requestedWorkspace ?? undefined), data);
     setReady(true);
-  }, [base, requestedType]);
+  }, [base, requestedKey]);
 
   const load = useCallback((target?: string) => {
     const sequence = ++requestSequence.current;
@@ -405,6 +407,7 @@ export default function AeroGraphPage() {
       title={t('AeroGraph')}
       description={t('Browse the shared entity types, fields, relations, predicates and behaviour chains behind your workspaces.')}
     />
+    {payload && requestedTypes.length > 1 && selected && selected !== requestedTypes[0] && requestedTypes.includes(selected) && <p className="aerograph-hint" data-testid="aerograph-fallback">{locale.startsWith('zh') ? `当前目录尚未包含 ${requestedTypes[0]}，显示最接近的目录类型 ${selected}。` : `${requestedTypes[0]} is not in this catalog yet; showing its closest catalog type, ${selected}.`}</p>}
     {error && <PageState kind="error" title={t('The explorer catalog is unavailable')} description={t(error)} action={<button type="button" className="console-btn" onClick={() => load(workspaceId ?? requestedWorkspace ?? undefined)}>{t('Retry')}</button>} />}
     {error && ready && <p className="aerograph-hint">{t('Showing the last loaded catalog. Retry to check for updates.')}</p>}
     {loading && !error && ready && <p className="aerograph-hint" role="status">{t('Refreshing the AeroGraph catalog…')}</p>}

@@ -32,6 +32,7 @@ import type { EditMode } from '../assistant/ModeSwitch';
 import { NeuralGlyph } from '../assistant/motion/NeuralGlyph';
 import { StageEmpty } from '../assistant/motion/StageEmpty';
 import { PlanBoard } from '../assistant/PlanBoard';
+import { Contained } from '../assistant/Contained';
 import { useAssistantMode } from '../assistant/useAssistantMode';
 import '../assistant/motion/motion.css';
 import '../assistant/assistant.css';
@@ -481,10 +482,10 @@ export default function Workbench() {
     {query.get('records') ? <RecordsPanel api={api} projectId={project?.id} current={runId} refreshKey={recordsKey}
         onOpen={run => update({ run: run.id, mode: TERMINAL.has(run.status) ? 'replay' : 'live', cut: undefined, sel: undefined, records: undefined }, true, run.studio_workspace ? `/w/${encodeURIComponent(run.studio_workspace)}` : location.pathname)}
         onCompare={ids => update({ compare: ids.join(',') })} onDerive={derive} onClose={() => update({ records: undefined })} />
-      : boardOpen ? <PlanBoard api={assistant.api} assistant={assistant.assistant} stage={assistant.stage} runId={runId} story={assistant.story} storyError={assistant.storyError}
+      : boardOpen ? <Contained resetKey={`${assistant.assistant.plan?.version}-${assistant.viewing}`} fallback={retry => <aside className="as-board wb-panel wb-glass" data-testid="as-board-failed" role="alert"><p className="as-quiet">{L('This plan version could not be shown. The conversation and project are unaffected.', '无法显示此方案版本，对话和项目不受影响。')}</p><button className="wb-btn" onClick={retry}>{L('Try again', '重试')}</button></aside>}><PlanBoard api={assistant.api} assistant={assistant.assistant} stage={assistant.stage} runId={runId} story={assistant.story} storyError={assistant.storyError}
           startNs={store?.header.start.ns} terminal={TERMINAL.has(status ?? '')} initializing={initializing} canInitialize={!!project?.latest_version} onInitialize={() => void initialize()}
           onApplied={record => void applied(record)} onHover={assistant.setFocus} onStep={assistant.setFocus} onContract={type => update({ contract: 'assistant', type, workspace: project?.id })}
-          onSeek={cut => session?.seekCut(cut)} viewing={assistant.viewing} onViewVersion={assistant.setViewing} onClose={assistant.closeBoard} />
+          onSeek={cut => session?.seekCut(cut)} viewing={assistant.viewing} onViewVersion={assistant.setViewing} onClose={assistant.closeBoard} /></Contained>
       : session && store && (leftOpen ? <ObjectsPanel store={store} revision={session.revision} selected={selected} selectionOrigin={selectionOrigin} onSelect={(key, fly) => select(key, fly)} onClose={() => setLeftOpen(false)} />
         : <button className="wb-collapsed-tab left wb-glass" onClick={() => setLeftOpen(true)}>☰ {L('Objects', '对象')}</button>)}
     {assistantOpen && !boardOpen && assistant.assistant.plan && !query.get('records') && !(session && store && leftOpen) && <button className="wb-collapsed-tab left wb-glass as-board-tab" onClick={assistant.openBoard} data-testid="as-board-reopen">◇ {L(`Plan v${assistant.assistant.plan.version}`, `方案 v${assistant.assistant.plan.version}`)}</button>}
@@ -542,7 +543,7 @@ export default function Workbench() {
     {showGallery && <Gallery api={api} current={project?.id} onDescribe={() => update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: 'assistant', assistant: undefined, records: undefined }, true, '/')} initialGuide={query.get('guide') ?? undefined} onOpenProject={id => update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: undefined }, true, `/w/${encodeURIComponent(id)}`)} onCreate={createFromTemplate} onClose={projectId ? () => update({ gallery: undefined }) : undefined} />}
     {query.get('compare') && <div className="wb-overlay" onClick={event => { if (event.target === event.currentTarget) update({ compare: undefined }); }}><div className="wb-overlay-card wb-glass"><Suspense fallback={null}><CompareRuns api={templateApi} ids={query.get('compare')!.split(',')} onBack={() => update({ compare: undefined })} /></Suspense></div></div>}
     {contractType !== undefined && <div className="wb-overlay" onClick={event => { if (event.target === event.currentTarget) update({ contract: undefined, type: undefined, workspace: undefined, panel: query.get('contract') ?? panel }); }}><div className="wb-overlay-card wb-glass">
-      <div className="wb-hero"><div style={{ flex: 1 }}><h1>{L('Type contract', '类型契约')}</h1><p className="wb-mono">{contractType || L('AeroGraph types, fields, relations and events', 'AeroGraph 类型、字段、关系与事件')}</p></div><button className="wb-btn primary" onClick={() => update({ contract: undefined, type: undefined, workspace: undefined, panel: query.get('contract') ?? panel })}>← {L('Back to the field you were editing', '返回正在编辑的字段')}</button></div>
+      <div className="wb-hero"><div style={{ flex: 1 }}><h1>{L('Type contract', '类型契约')}</h1><p className="wb-mono">{contractType?.split(',')[0] || L('AeroGraph types, fields, relations and events', 'AeroGraph 类型、字段、关系与事件')}</p></div><button className="wb-btn primary" onClick={() => update({ contract: undefined, type: undefined, workspace: undefined, panel: query.get('contract') ?? panel })}>← {L('Back to the field you were editing', '返回正在编辑的字段')}</button></div>
       <Suspense fallback={null}><AeroGraphPage /></Suspense></div></div>}
     {palette && <Palette onClose={() => setPalette(false)} items={[
       ...(store ? [...store.entities.values()].map(entity => ({ id: `e:${entityId(entity.key)}`, label: displayName(entity, store.header, locale), hint: entity.typeId, run: () => select(entity.key, true) })) : []),

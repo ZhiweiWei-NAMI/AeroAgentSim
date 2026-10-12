@@ -171,7 +171,12 @@ def run_story(run_dir: Path, expectations: list[dict], *, locale: str = "en") ->
     for expected in expectations:
         match = expected["match"]
         found = [e for e in events if e["schema"] == match["schema"] and _matches(e["payload"], match["where"])]
-        need = match.get("count", 1)
+        need = configured = match.get("count", 1)
+        if match.get("released_schema"):
+            # Configured slots may never be released within the run; judge completion against what was released.
+            released = sum(1 for e in events if e["schema"] == match["released_schema"] and _matches(e["payload"], match["where"]))
+            if terminal and 0 < released < configured:
+                need = released
         # A counted expectation ("all 6 meals delivered") happens at its last required event.
         event = found[need - 1] if len(found) >= need else None
         outcome = {"id": expected["id"], "text": expected["text"], "text_zh": expected["text_zh"],
@@ -179,11 +184,12 @@ def run_story(run_dir: Path, expectations: list[dict], *, locale: str = "en") ->
                    "at_ns": event["at_ns"] if event is not None else None, "cut": event["cut"] if event is not None else None,
                    "evidence": {"text": event["text"], "text_zh": event["text_zh"], "schema": event["schema"], "payload": event["payload"]} if event is not None else None,
                    "explanation": None}
-        if need > 1:
-            outcome["progress"] = {"done": min(len(found), need), "total": need}
-        if event is None and need > 1:
-            outcome["explanation"] = _explanation(f"{len(found)} of {need} recorded" + (" before the run ended." if terminal else " so far."),
-                                                  f"已记录 {len(found)}/{need}" + ("，运行已结束。" if terminal else "。"), found[-3:])
+        if configured > 1:
+            outcome["progress"] = {"done": min(len(found), need), "total": need, **({"configured": configured} if need != configured else {})}
+        if event is None and configured > 1:
+            unreleased = (f" {configured - need} of the {configured} configured were never released before the run ended.", f"另有 {configured - need}/{configured} 个已配置任务在运行结束前未发布。") if need != configured else ("", "")
+            outcome["explanation"] = _explanation(f"{len(found)} of {need}{' released' if need != configured else ''} recorded" + (" before the run ended." if terminal else " so far.") + unreleased[0],
+                                                  f"已记录 {len(found)}/{need}" + ("，运行已结束。" if terminal else "。") + unreleased[1], found[-3:])
         elif event is None:
             outcome["explanation"] = _missing(expected, events, approaches, terminal, last_ns)
         outcomes.append(outcome)

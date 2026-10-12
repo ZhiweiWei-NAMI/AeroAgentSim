@@ -109,12 +109,12 @@ def tool_schemas() -> list[dict[str, Any]]:
     })
     specs = [
         ("get_current_scene", "Read the bound project's real draft scene; returns no scene when unbound.", object_schema({})),
-        ("list_starting_points", "List available scenario templates and their defaults.", object_schema({})),
+        ("list_starting_points", "List every scenario template with its control defaults. Use describe_starting_point for control ranges, options and the template scene.", object_schema({})),
         ("describe_starting_point", "Read a template's actual participants and controls.", object_schema({"template_id": STRING}, ("template_id",))),
         ("list_capabilities", "Read supported operations, parameter limits and installed algorithms.", object_schema({"topic": STRING})),
         ("find_places", "Find named catalogue places; use their keys in add_place.at or add_incident.at.", object_schema({"query": STRING, "near": {"anyOf": [STRING, {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 3}]}, "role": STRING})),
         ("lookup_contract", "Search real AeroGraph types, fields, relations and ancestry.", object_schema({"term": STRING}, ("term",))),
-        ("draft_plan", "Compile a proposed plan now. Operations use {id?, op, params}; ids are assigned by the server. Never applies.\n" + catalogue, object_schema({"base": BASE, "title": STRING, "summary": STRING, "operations": operations, "assumptions": STRINGS, "open_questions": QUESTIONS, "note": STRING}, ("base", "title", "summary", "operations", "assumptions", "open_questions"))),
+        ("draft_plan", "Compile a proposed plan now. Operations use {id?, op, params}; ids are assigned by the server. Never applies.\n" + catalogue, object_schema({"base": BASE, "title": STRING, "summary": STRING, "operations": operations, "assumptions": STRINGS, "open_questions": QUESTIONS, "note": STRING}, ("base", "title", "summary", "operations"))),
         ("revise_plan", "Compile a minimal revision. update contains full operations with existing ids; remove lists ids. Leave all other operations intact.\n" + catalogue, revision),
         ("restore_operations", "Restore all or selected operation ids from an earlier version; keep unrelated operations.", object_schema({"from_version": {"type": "integer", "minimum": 1}, "op_ids": STRINGS, "note": STRING}, ("from_version", "note"))),
         ("propose_alternatives", "Compile two or three labelled variants of the current plan. Supply complete operations or minimal changes, never both.", object_schema({"variants": {"type": "array", "minItems": 2, "maxItems": 3, "items": object_schema({"label": STRING, "title": STRING, "summary": STRING, "note": STRING, "operations": operations, "changes": revision, "assumptions": STRINGS}, ("label", "title", "summary", "assumptions"))}}, ("variants",))),
@@ -255,8 +255,9 @@ class ToolRunner:
         return {"workspace_id": workspace, "revision": draft["revision"], "scene": summarize(draft["scenario"], directory=self.store.directory(workspace), catalog=self.store.catalog_for(workspace), controls=(draft.get("template") or {}).get("knobs", {}))}
 
     def list_starting_points(self, identifier: str) -> list[dict[str, Any]]:
-        keys = ("id", "title", "title_zh", "summary", "summary_zh", "category", "duration_s")
-        return [{**{k: row[k] for k in keys if k in row}, "controls": [{k: knob[k] for k in ("id", "label", "label_zh", "default", "options", "min", "max") if k in knob} for knob in row["knobs"]]} for row in self.templates.list()]
+        # Every starting point must fit one tool result; describe_starting_point has the control details.
+        keys = ("id", "title", "title_zh", "summary", "category", "duration_s")
+        return [{**{k: row[k] for k in keys if k in row}, "controls": {knob["id"]: knob.get("default") for knob in row["knobs"]}} for row in self.templates.list()]
 
     def describe_starting_point(self, identifier: str, template_id: str) -> dict[str, Any]:
         from aeroagentsim.authoring.catalog import ScenarioCatalog
@@ -352,13 +353,15 @@ class ToolRunner:
         if not result.ok:
             return {"version": version, "ok": False, "errors": result.errors, "hint": "Fix the named operation ids and fields with revise_plan; this draft cannot be confirmed / 请用 revise_plan 修复指定操作和字段；该草稿不能确认"}
         compact_diff = {"total_changes": len(changes), "changes": changes[:8], "operations": {key: [{"id": op["id"], "op": op.get("op", op.get("after", {}).get("op"))} for op in rows] for key, rows in operations_changed.items()}}
-        return {"version": version, "ok": True, "validation": "pending", "scene": short_scene(result.summary),
+        return {"version": version, "ok": True, "validation": "running automatically; the board enables Confirm when it passes", "scene": short_scene(result.summary),
                 "operations": [{"id": op["id"], "op": op["op"]} for op in operations],
                 "diff_previous": compact_diff, "warnings": result.warnings,
                 "prechecks": result.expectations, "note": note, "variant": variant}
 
     def draft_plan(self, identifier: str, **arguments: Any) -> dict[str, Any]:
         arguments.setdefault("note", "First proposal / 初版方案")
+        arguments.setdefault("assumptions", [])
+        arguments.setdefault("open_questions", [])
         return self._compile(identifier, **arguments)
 
     @staticmethod
@@ -397,6 +400,8 @@ class ToolRunner:
         return result
 
     def revise_plan(self, identifier: str, **changes: Any) -> dict[str, Any]:
+        if self.sessions.get(identifier)["plan_version"] is None:
+            raise ValueError("No plan in this conversation yet; start one with draft_plan (an open project is its base) / 本对话还没有方案；请先用 draft_plan 起草（已打开的项目即为起点）")
         plan = self.sessions.plan(identifier)
         return self._compile(identifier, **self._revision(plan, changes), parent=plan["version"], retained={op["id"] for op in plan["operations"]})
 

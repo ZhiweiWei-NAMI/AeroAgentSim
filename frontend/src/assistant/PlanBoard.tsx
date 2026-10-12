@@ -119,7 +119,7 @@ export function PlanBoard({ api, assistant, stage, runId, story, storyError, sta
     <nav className="as-tabs" role="tablist" ref={tabsRef}>
       {stage === 'running' && !isOld && <button role="tab" aria-selected={tab === 'story'} onClick={() => choose('story')} data-testid="as-tab-story">{L('Story', '经过')}</button>}
       <button role="tab" aria-selected={tab === 'scene'} onClick={() => choose('scene')} data-testid="as-tab-scene">{L('Scene', '场景')}</button>
-      <button role="tab" aria-selected={tab === 'interactions'} onClick={() => choose('interactions')} disabled={!plan.interactions?.steps.length} data-testid="as-tab-interactions">{L('Interactions', '交互')}{plan.interactions?.steps.length ? <span>{plan.interactions.steps.length}</span> : null}</button>
+      <button role="tab" aria-selected={tab === 'interactions'} onClick={() => choose('interactions')} disabled={!plan.interactions?.steps?.length} data-testid="as-tab-interactions">{L('Interactions', '交互')}{plan.interactions?.steps?.length ? <span>{plan.interactions.steps.length}</span> : null}</button>
       <button role="tab" aria-selected={tab === 'changes'} onClick={() => choose('changes')} data-testid="as-tab-changes">{L('Changes', '变更')}{plan.diff_previous ? <span>{plan.diff_previous.added.length + plan.diff_previous.changed.length + plan.diff_previous.removed.length}</span> : null}</button>
     </nav>
 

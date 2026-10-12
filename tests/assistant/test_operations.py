@@ -44,3 +44,17 @@ def test_capability_index_is_compact_and_topics_have_strict_schemas() -> None:
     details = capabilities("participants", templates=templates, algorithms=installed)
     assert "meal_courier" in details["roles"]
     assert all(s["parameters"]["additionalProperties"] is False for s in details["operations"])
+
+
+def test_every_starting_point_fits_one_tool_result(tmp_path) -> None:
+    # A truncated list hid later templates (powerline-inspection) from the model.
+    import json
+
+    from aeroagentsim.assistant.sessions import SessionStore
+    from aeroagentsim.assistant.tools import ToolRunner, compact_json
+    from aeroagentsim.authoring.templates import TemplateRegistry
+
+    templates = TemplateRegistry()
+    runner = ToolRunner(None, templates, SessionStore(tmp_path / "sessions"), tmp_path)
+    listed = json.loads(compact_json(runner.list_starting_points("session")))
+    assert [row["id"] for row in listed] == [row["id"] for row in templates.list()]

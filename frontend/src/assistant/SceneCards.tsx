@@ -18,7 +18,7 @@ function Badge({ mark, L }: { mark: Mark; L: Lang }) {
 function ContractChip({ contract, onContract }: { contract?: Contract; onContract?: (type: string) => void }) {
   if (!contract?.type) return null;
   const chain = [...(contract.ancestry ?? []).slice(-2), contract.type].filter((item, index, list) => list.indexOf(item) === index);
-  return <button className="as-contract" title={[...(contract.ancestry ?? []), contract.type].join(' › ')} onClick={event => { event.stopPropagation(); onContract?.(contract.type!); }} data-testid="as-contract">
+  return <button className="as-contract" title={[...(contract.ancestry ?? []), contract.type].join(' › ')} onClick={event => { event.stopPropagation(); onContract?.([contract.type!, ...(contract.ancestry ?? [])].join(',')); }} data-testid="as-contract">
     <Icon name="layers" size={10} />{chain.map((item, index) => <span key={item}>{index ? <i>›</i> : null}{item}</span>)}
   </button>;
 }

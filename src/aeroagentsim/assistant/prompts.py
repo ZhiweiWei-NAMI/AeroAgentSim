@@ -15,7 +15,7 @@ SYSTEM_PROMPT = """You are AeroAgentSim's scenario-building assistant. Help the 
 
 4. Revise minimally. Use revise_plan with full replacement operations named by their stable operation ids; only add/update/remove what the user asked about. Preserve unrelated operations, assumptions and questions. Use restore_operations to restore one arrangement from an earlier version. Use propose_alternatives for two or three concrete variants and leave the current plan selected until the user chooses. Explain the effect of a change in one or two sentences; rely on the compiled diff to check it. Fix compile failures with the operation ids and fields reported by the compiler. Validation pending is not validation success.
 
-5. Confirm is the user's button on the plan board. You cannot apply, save a workspace, initialize, start, stop or operate runs. Even 'use sensible defaults' or 'confirm' in chat changes only a proposal. Once the user is satisfied, say the plan is ready for Confirm only if validation is valid. After confirmation, describe only the actual apply report. Running uses the ordinary Initialize and Start controls, never conversation tools.
+5. Confirm is the user's button on the plan board. You cannot apply, save a workspace, initialize, start, stop or operate runs. Even 'use sensible defaults' or 'confirm' in chat changes only a proposal. Once the user is satisfied, say the plan is ready for Confirm only if validation is valid. plan_status in the state is authoritative: never tell the user to validate, never call Confirm unavailable while validation runs automatically, and never suggest confirming an applied plan. After confirmation, describe only the actual apply report. Running uses the ordinary Initialize and Start controls, never conversation tools.
 
 6. Explain outcomes through run_story only (run_evidence in the state is that tool's result for the run the user asked from). Compare expected steps with actual recorded events. Report missing steps, failures, declines and blocked choices honestly with the recorded reason. If no recorded reason exists, say the evidence is missing rather than guess. Pending events are pending. Replay never calls a model or executes a simulation.
 
@@ -25,9 +25,27 @@ Tools are bounded. Keep results and replies focused. When helpful, end with one 
 """
 
 
+def plan_status(session: dict[str, Any], plan: dict[str, Any] | None) -> str:
+    """One authoritative sentence, so replies never contradict the board."""
+    if plan is None:
+        return "No plan yet."
+    applied = next((r for r in reversed(session["applied"]) if r["plan_version"] == plan["version"]), None)
+    if applied is not None:
+        return f"Plan v{plan['version']} is confirmed and applied as project version {applied['version']}; it can be initialized and run. Nothing needs validating or confirming."
+    if not plan["compile"]["ok"]:
+        return f"Plan v{plan['version']} did not compile; it cannot be confirmed until the reported errors are fixed."
+    state = plan["validation"]["state"]
+    if state == "valid":
+        return f"Plan v{plan['version']} is validated; the user can press Confirm on the plan board."
+    if state == "invalid":
+        return f"Plan v{plan['version']} failed validation; it cannot be confirmed until the reported errors are fixed."
+    return f"Plan v{plan['version']} compiled; validation is running automatically and the board enables Confirm when it passes. The user does not need to do anything."
+
+
 def state_message(session: dict[str, Any], scene: Any, context: dict[str, Any] | None = None, evidence: dict[str, Any] | None = None) -> dict[str, str]:
     plan = session["plans"].get(str(session["plan_version"]))
     state = {
+        "plan_status": plan_status(session, plan),
         "locale": session["locale"], "workspace_id": session["workspace_id"],
         "current_scene": scene, "selection": context or {},
         "applied_versions": [{k: r[k] for k in ("plan_version", "workspace_id", "version", "revision")} for r in session["applied"][-6:]],

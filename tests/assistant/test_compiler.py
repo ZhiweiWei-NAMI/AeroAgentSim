@@ -116,7 +116,7 @@ def test_compile_isolated_files_and_revision_conflict(context: CompileContext, t
 def test_apply_validated_draft_and_version(context: CompileContext, tmp_path: Path, workspace: bool) -> None:
     if workspace:
         draft = context.store.import_template("food-delivery", {}, registry=context.templates)
-        base = {"workspace": draft["id"]}
+        base = {"workspace": draft["id"], "revision": draft["revision"]}  # as assistant/tools.py passes it
         workspace_id = draft["id"]
     else:
         base, workspace_id = {"template": "food-delivery"}, None
@@ -185,6 +185,14 @@ def test_cooperation_revisions_rebuild_handoff_points(context: CompileContext, t
     assert result.ok, result.errors
     points = [e for e in result.document["entities"] if e["type"] == "lowalt:HandoffPoint"]
     assert [(e["id"], e["facts"]["lowalt.site_position"]) for e in points] == [("street", [30.0, -60.0, 0.0])]
+    assert validate_compiled(context, tmp_path / "plan")["valid"]
+
+
+def test_kitchen_without_meal_orders_is_a_valid_site(context: CompileContext, tmp_path: Path) -> None:
+    # Models add kitchens to bases without meals; the task engine writes kitchen facts only when meals exist.
+    result = compile_ops(context, tmp_path, [op("add_place", id="kitchen-1", role="kitchen", at=[-80, 60, 0], preparation_s=30)], "city-day")
+    assert result.ok, result.errors
+    assert any(w["field"] == "kitchens" and "kitchen-1" in w["message"] for w in result.warnings)
     assert validate_compiled(context, tmp_path / "plan")["valid"]
 
 

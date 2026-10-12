@@ -117,3 +117,17 @@ def test_closest_approach_uses_recorded_positions_after_incident(tmp_path: Path,
     explanation = story["expectations"][0]["explanation"]
     assert "250.0 m at 12 s" in explanation["text"]
     assert explanation["evidence"][0]["cut"] == 3
+
+
+def test_counted_outcome_is_judged_against_released_work(tmp_path: Path) -> None:
+    # Five meal slots are configured; the run ends after releasing three and completing two.
+    tasks = [f"meal-{i}" for i in range(1, 6)]
+    created = {"kind": "food", "priority": 1, "origin": "kitchen", "destination": "customer"}
+    records = [{"at_ns": (i + 1) * 1_000_000_000, "items": [event("lowalt.task.created", {"task": f"meal-{i + 1}", **created}, (i + 1) * 1_000_000_000)]} for i in range(3)]
+    records += [{"at_ns": (i + 10) * 1_000_000_000, "items": [event("lowalt.task.completed", {"task": f"meal-{i + 1}", "vehicle": "uav-1", "latency_s": 9.0}, (i + 10) * 1_000_000_000)]} for i in range(2)]
+    counted = expectation("lowalt.task.completed", {"task": {"$in": tasks}}, "meals")
+    counted["match"].update(count=5, released_schema="lowalt.task.created")
+    outcome = run_story(journal_run(tmp_path / "run", records), [counted])["expectations"][0]
+    assert outcome["status"] == "missed"
+    assert outcome["progress"] == {"done": 2, "total": 3, "configured": 5}
+    assert "2 of 3 released" in outcome["explanation"]["text"] and "2 of the 5 configured were never released" in outcome["explanation"]["text"]

@@ -72,7 +72,8 @@ class PlanConflict(ValueError):
 def resolve_base(ctx: CompileContext, base: dict) -> BaseScene:
     if not isinstance(base, dict):
         raise ValueError("base: workspace or template required / base 需要工作区或模板")
-    if set(base) == {"workspace"}:
+    # The tool layer records the revision it compiled against; apply_plan checks it, not this.
+    if "workspace" in base and not set(base) - {"workspace", "revision"}:
         draft = ctx.store.get(base["workspace"])
         document = copy.deepcopy(draft["scenario"])
         _editable_packages(document)
@@ -345,6 +346,25 @@ def _food_bindings(document: dict, owner: str) -> None:
             rule["fields"] = list(dict.fromkeys([*rule["fields"], *fields]))
 
 
+def _idle_kitchens(document: dict, warnings: list[dict]) -> None:
+    """Kitchens without meal orders are plain sites: the task engine only produces food facts when meals exist."""
+    if not any(e["type"] == "lowalt:Restaurant" for e in document["entities"]):
+        return
+    owner, tasks = _engine(document, "lowalt_tasks")
+    if any(g["kind"] == "food" for g in tasks.get("generators", [])):
+        return
+    idle = [e for e in document["entities"] if e["type"] == "lowalt:Restaurant" and e["facts"].pop("lowalt.food_preparation_s", None) is not None]
+    if not idle:
+        return
+    rules = document["bindings"]["rules"]
+    for rule in rules:
+        if rule["writer"] == owner and rule["type"] == "lowalt:Restaurant":
+            rule["fields"] = [f for f in rule["fields"] if f != "lowalt.food_preparation_s"]
+    document["bindings"]["rules"] = [r for r in rules if r["fields"]]
+    names = ", ".join(e["id"] for e in idle)
+    warnings.append({"op_id": None, "field": "kitchens", "message": f"Kitchen {names} has no meal orders, so it is only a site; add orders with kind food to cook / 厨房 {names} 没有餐食订单，仅作为站点；请添加 food 类型订单"})
+
+
 def _add_orders(document: dict, p: dict) -> None:
     owner, tasks = _engine(document, "lowalt_tasks")
     if any(_group_id(g) == p["id"] for g in tasks["generators"]):
@@ -550,6 +570,8 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             facts = {"lowalt.site_position": _position(document, p["at"], "at"), "lowalt.site_open": True, "lowalt.site_capacity": p.get("capacity", 1)}
             if p["role"] == "kitchen":
                 facts["lowalt.food_preparation_s"] = float(p.get("preparation_s", 30))
+                # A base without meals has no writer for kitchen facts until one is declared.
+                _food_bindings(document, _engine(document, "lowalt_tasks")[0])
             if p["role"] == "charging_pad":
                 facts["lowalt.pad_power_w"] = float(p.get("power_w", 5000))
             document["entities"].append({"id": p["id"], "type": "lowalt:" + PLACE_TYPES[p["role"]],
@@ -1007,6 +1029,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
             if not any(e["plugin"] in {"lowalt_city_capture", "traffic_camera_capture"} for e in document["engines"].values()):
                 warnings.append({"op_id": None, "field": "photograph", "message": "Photograph events are recorded, but this scene has no city camera for an image artifact / 此场景可记录拍摄事件，但没有城市相机生成照片文件"})
         if not errors:
+            _idle_kitchens(document, warnings)
             loaded = load_scenario(document, base=files)
             document = loaded.document
             _editable_packages(document)

@@ -933,6 +933,10 @@ def create_app(
         if not (frontend / "index.html").exists():
             raise ValueError(f"Frontend build missing: {frontend}; run npm run build")
         app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")
+        # Files copied from frontend/public: decoders, textures and assistant artwork.
+        for public in ("assistant", "decoders", "textures", "data"):
+            if (frontend / public).is_dir():
+                app.mount(f"/{public}", StaticFiles(directory=frontend / public), name=f"public-{public}")
 
         @app.get("/logo192.png", include_in_schema=False)
         @app.get("/manifest.json", include_in_schema=False)

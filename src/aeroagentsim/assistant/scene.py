@@ -350,8 +350,8 @@ def _response_estimate(summary: dict, incident: dict) -> dict | None:
 
 def expectations(document: dict, summary: dict) -> list[dict]:
     result = []
-    def add(identity: str, schema: str, where: dict, en: str, zh: str, *, layer: str = "behaviour", at=None, precheck=None, depends=(), count: int | None = None, alternatives=()) -> str:
-        match = {"schema": schema, "where": where, **({"count": count} if count else {})}
+    def add(identity: str, schema: str, where: dict, en: str, zh: str, *, layer: str = "behaviour", at=None, precheck=None, depends=(), count: int | None = None, released: str | None = None, alternatives=()) -> str:
+        match = {"schema": schema, "where": where, **({"count": count} if count else {}), **({"released_schema": released} if released else {})}
         result.append({"id": identity, "text": en, "text_zh": zh, "layer": layer, "match": match,
                        "approx_s": at, "precheck": precheck, "depends_on": list(depends), **({"alternatives": list(alternatives)} if alternatives else {})})
         return identity
@@ -362,8 +362,8 @@ def expectations(document: dict, summary: dict) -> list[dict]:
             from .compiler import _task_label_zh
             noun = workload.get("label") or workload["kind"]
             add(f"workload:{workload['id']}:completed", "lowalt.task.completed", {"task": {"$in": list(workload["tasks"])}},
-                f"All {len(workload['tasks'])} {noun}{'' if noun.endswith('s') else 's'} are completed", f"全部 {len(workload['tasks'])} 个{workload.get('label_zh') or _task_label_zh(workload['kind'])}完成",
-                count=len(workload["tasks"]))
+                f"Every released {noun.rstrip('s')} is completed ({len(workload['tasks'])} configured)", f"每个已发布的{workload.get('label_zh') or _task_label_zh(workload['kind'])}都完成（共配置 {len(workload['tasks'])} 个）",
+                count=len(workload["tasks"]), released="lowalt.task.created")
             continue
         for i, task in enumerate(workload["tasks"]):
             times = workload["release"].get("times_s")

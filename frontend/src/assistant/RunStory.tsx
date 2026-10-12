@@ -41,8 +41,9 @@ export function RunStory({ story, startNs, terminal, expectations, onSeek, onAsk
         <time className="wb-mono">{seconds !== undefined ? clock(seconds) : approx !== undefined && approx !== null ? `≈${clock(approx)}` : '—'}</time>
         <div className="as-story-text">
           <span>{text(item)}{item.status === 'not_taken' && <em className="as-story-tag">{L('branch not taken', '分支未触发')}</em>}</span>
-          {item.progress && item.status !== 'happened' && <span className="as-story-progress" aria-label={L(`${item.progress.done} of ${item.progress.total}`, `${item.progress.done}/${item.progress.total}`)}>
+          {item.progress && (item.status !== 'happened' || item.progress.configured) && <span className="as-story-progress" aria-label={L(`${item.progress.done} of ${item.progress.total}`, `${item.progress.done}/${item.progress.total}`)}>
             <i style={{ '--p': item.progress.done / Math.max(1, item.progress.total) } as CSSProperties} /><b className="wb-mono">{item.progress.done}/{item.progress.total}</b>
+            {item.progress.configured ? <small>{L(`released · ${item.progress.configured} configured`, `已发布 · 共配置 ${item.progress.configured}`)}</small> : null}
           </span>}
           {(item.status === 'missed' || item.status === 'not_taken') && item.explanation && <p className="as-why"><b>{L('Recorded:', '记录显示：')}</b> {(zh ? item.explanation.text_zh : undefined) ?? item.explanation.text}</p>}
           {item.evidence ? <p className="as-evidence"><span>{pick(item.evidence, zh) || item.evidence.schema}</span></p> : null}

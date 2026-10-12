@@ -69,6 +69,11 @@ export interface PlanVersion {
   validation: { state: 'pending' | 'valid' | 'invalid'; errors?: string[] };
   scene?: SceneSummary; diff_base?: Diff; diff_previous?: Diff | null; interactions?: Interactions; expectations?: Expectation[];
 }
+/** A draft that failed to compile is stored with empty scene parts; it has no scene, sequence or expectations to show. */
+export function compiledParts(plan: PlanVersion): PlanVersion {
+  if (plan.compile.ok) return plan;
+  return { ...plan, scene: undefined, interactions: undefined, expectations: undefined, diff_base: undefined, diff_previous: null };
+}
 export interface PlanVersionRow { version: number; note: string; variant?: string | null; parent?: number | null; created_at: string; compile_ok: boolean; validation_state: 'pending' | 'valid' | 'invalid' }
 export interface ApplyReport { created: DiffItem[]; changed: DiffItem[]; removed: DiffItem[]; entities?: Diff['entities']; summary_text?: string; validation?: unknown }
 export interface ApplyRecord { plan_version: number; workspace_id: string; version: number; revision: number; applied_at: string; report: ApplyReport }
@@ -81,7 +86,7 @@ export interface SessionRow { id: string; title: string; workspace_id: string | 
 /** One expectation checked against the committed journal (assistant/story.py). */
 export interface StoryEvidence { schema?: string; text?: string; text_zh?: string; at_ns?: string | number; cut?: number }
 export interface StoryItem {
-  id: string; text: string; text_zh?: string; status: 'happened' | 'missed' | 'pending' | 'not_taken'; progress?: { done: number; total: number };
+  id: string; text: string; text_zh?: string; status: 'happened' | 'missed' | 'pending' | 'not_taken'; progress?: { done: number; total: number; configured?: number };
   at_ns?: string | number | null; cut?: number | null; evidence?: StoryEvidence | null;
   explanation?: { text: string; text_zh?: string; evidence?: StoryEvidence[] } | null;
 }
@@ -104,7 +109,7 @@ export class AssistantApi {
   send(id: string, text: string, context?: MessageContext) { return this.http.request<{ turn: number; seq: number }>(this.path(`/sessions/${encodeURIComponent(id)}/messages`), { body: { text, ...(context ? { context } : {}) } }); }
   events(id: string, after: number, wait: number, signal?: AbortSignal) { return this.http.request<{ events: AssistantEvent[]; last_seq: number; busy: boolean }>(this.path(`/sessions/${encodeURIComponent(id)}/events?after=${after}&wait=${wait}`), { signal }); }
   cancel(id: string) { return this.http.request<{ cancelled: boolean }>(this.path(`/sessions/${encodeURIComponent(id)}/cancel`), { body: {} }); }
-  plan(id: string, version: number, signal?: AbortSignal) { return this.http.request<PlanVersion>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}`), { signal }); }
+  async plan(id: string, version: number, signal?: AbortSignal) { return compiledParts(await this.http.request<PlanVersion>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}`), { signal })); }
   preview(id: string, version: number, signal?: AbortSignal) { return this.http.request<PlanPreview>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}/scenario`), { signal }); }
   choose(id: string, version: number) { return this.http.request<Session>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}/choose`), { body: {} }); }
   apply(id: string, version: number) { return this.http.request<ApplyRecord>(this.path(`/sessions/${encodeURIComponent(id)}/apply`), { body: { plan_version: version } }); }

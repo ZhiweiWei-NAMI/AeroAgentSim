@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../workbench/api';
-import type { AssistantApi, AssistantEvent, Connection, MessageContext, PlanVersion, Session } from './api';
+import { compiledParts, type AssistantApi, type AssistantEvent, type Connection, type MessageContext, type PlanVersion, type Session } from './api';
 
 const problemText = (problem: unknown) => problem instanceof ApiError ? problem.detail : String(problem);
 /** Events that change what the session shows beyond the transcript. */
@@ -82,7 +82,8 @@ export function useAssistantSession(api: AssistantApi, sessionId: string | undef
     return record;
   }, [api, sessionId, refresh]);
 
-  const plan: PlanVersion | undefined = session?.plan ?? undefined;
+  const raw = session?.plan;
+  const plan: PlanVersion | undefined = useMemo(() => raw ? compiledParts(raw) : undefined, [raw]);
   const applied = useMemo(() => plan ? session?.applied.filter(row => row.plan_version === plan.version).at(-1) : undefined, [session, plan]);
   return { session, events, busy, error, pending, plan, applied, send, cancel, choose, apply, refresh };
 }
