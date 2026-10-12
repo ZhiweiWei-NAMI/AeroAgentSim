@@ -100,7 +100,7 @@ aerokernel = {path = "./aerokernel", editable = true}
 [tool.setuptools.package-data]
 "aeroagentsim.observations" = ["viewer_bridge.mjs"]
 "aeroagentsim.packs.traffic_accident" = ["camera.html"]
-"aeroagentsim.packs.lowalt" = ["registry.overlay.yaml", "registry.snapshot.json"]
+"aeroagentsim.packs.lowalt" = ["registry.overlay.yaml", "registry.snapshot.json", "cooperation.snapshot.json"]
 "aeroagentsim.authoring" = ["assets/*.xml", "assets/*.json", "assets/*.txt"]
 
 [tool.ruff]
