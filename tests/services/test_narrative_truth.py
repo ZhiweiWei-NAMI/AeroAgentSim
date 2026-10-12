@@ -111,12 +111,14 @@ def test_completion_uses_committed_destination_change(projector: NarrativeProjec
     assert "East Roof" not in completed["text"]
 
 
-@pytest.mark.parametrize("state", ["blocked", "cleared"])
+@pytest.mark.parametrize("state,severity", [("blocked", "warning"), ("cleared", "notice")])
+@pytest.mark.parametrize("actor_link", [False, True])
 def test_occupancy_events_stay_neutral_before_and_after_accident(
-    projector: NarrativeProjector, state: str,
+    projector: NarrativeProjector, state: str, severity: str, actor_link: bool,
 ) -> None:
     actor = ref("road-1", "aas:TrafficRoadVehicle")
-    payload = {"actor": {"$ref": actor.to_data()}}
+    # Road messages have no required members: both payloads are valid.
+    payload = {"actor": {"$ref": actor.to_data()}} if actor_link else {}
     projector.consume(record(write(actor, "traffic.road.position_enu_m", [1.0, 2.0, 0.0], 0)))
     before = projector.consume(record(event("traffic.road." + state, payload, 1)))[0]
     incident = {"$ref": ref("incident-1", "aas:TrafficIncident").to_data()}
@@ -125,10 +127,14 @@ def test_occupancy_events_stay_neutral_before_and_after_accident(
     for row in (before, after):
         assert row["text"] == "Road traffic conflict " + ("detected" if state == "blocked" else "cleared")
         assert "事故" not in row["text_zh"]
-        assert row["category"] == "mobility"
-        assert row["severity"] == "info"
-        assert row["entities"] == ["road-1"]
-        assert row["position"] == [1.0, 2.0, 0.0]
+        assert row["category"] == "emergency"
+        assert row["severity"] == severity
+        if actor_link:
+            assert row["entities"] == ["road-1"]
+            assert row["position"] == [1.0, 2.0, 0.0]
+        else:
+            assert row["entities"] == []
+            assert "position" not in row
 
 
 @pytest.mark.parametrize("state,severity", [("blocked", "warning"), ("cleared", "notice")])

@@ -714,6 +714,7 @@ class NarrativeProjector:
             and payload.get("reason") not in {"accident", "traffic incident"}
         ):
             blocked = message.schema_id == "traffic.road.blocked"
+            # Cause determines wording; category and severity remain declared.
             declaration = {
                 **declaration,
                 "template": (
@@ -721,8 +722,6 @@ class NarrativeProjector:
                     if blocked else "Road traffic conflict cleared"
                 ),
                 "template_zh": "道路交通冲突出现" if blocked else "道路交通冲突解除",
-                "category": "mobility",
-                "severity": "info",
                 "position": "actor",
             }
 

@@ -144,7 +144,7 @@ def test_completion_resumes_suspended_work_and_payload(patrol: Any, medical: boo
     urgent.phase = "picked_up"
     facts[urgent.ref.id]["lowalt.task_state"] = "picked_up"
     destination = tuple(facts["incident-site"]["lowalt.site_position"])
-    facts["drone-1"]["lowalt.position"] = destination
+    facts["drone-1"]["lowalt.position"] = list(destination)
     facts["drone-1"]["lowalt.payload_kg"] = 2.0 if medical else 0.0
     flight.route, flight.goal, flight.pending = (), destination, False
     flight.command_id, flight.waypoint = "urgent-arrival", destination
