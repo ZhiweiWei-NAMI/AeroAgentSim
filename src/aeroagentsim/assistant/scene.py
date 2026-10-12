@@ -27,7 +27,57 @@ EVENT_LABELS = {
     "add_urgent_order": ("Add urgent order", "新增紧急订单"), "restaurant_delay": ("Kitchen delay", "厨房延迟"),
     "change_dropoff": ("Change drop-off", "更改收货点"), "prioritize_medical": ("Prioritize medical task", "提高医疗任务优先级"),
     "investigate": ("Investigate incident", "调查事件"),
+    "report_defect": ("Report an inspection defect", "报告巡检缺陷"),
+    "pause_spraying": ("Pause spraying", "暂停喷洒"),
 }
+MISSION_STEPS = {
+    "spraying": [
+        ("field", "lowalt.task.picked_up", "from", "Fly to the field entry", "飞至农田入口"),
+        ("spray", "lowalt.spraying.applied", "to", "Apply spray passes along the field route", "沿农田路线逐趟喷洒"),
+        ("finish", "lowalt.task.completed", "to", "Finish the spray route at the field exit", "完成喷洒路线并到达农田出口"),
+    ],
+    "inspection": [
+        ("route", "lowalt.task.picked_up", "from", "Reach the start of the inspection route", "到达巡检路线起点"),
+        ("observe", "lowalt.inspection.observed", "to", "Follow the route and observe inspection segments", "沿路线飞行并观测巡检区段"),
+        ("finish", "lowalt.task.completed", "to", "Finish the inspection route", "完成巡检路线"),
+    ],
+    "patrol": [
+        ("route", "lowalt.task.picked_up", "from", "Reach the patrol route", "到达巡逻路线"),
+        ("visit", "lowalt.patrol.visited", "to", "Visit patrol checkpoints in order", "按顺序巡访巡逻检查点"),
+        ("finish", "lowalt.task.completed", "to", "Finish the patrol route", "完成巡逻路线"),
+    ],
+    "passenger": [
+        ("board", "lowalt.task.picked_up", "from", "Board passengers at the origin vertiport", "在出发起降场接载乘客"),
+        ("pad-wait", "lowalt.mobility.pad_wait", "to", "Wait for a pad if a vertiport is busy", "若起降场繁忙，则等待空闲起降位"),
+        ("land", "lowalt.task.completed", "to", "Land passengers at the destination vertiport", "载客降落在目的地起降场"),
+    ],
+    "incident_response": [
+        ("depart", "lowalt.task.picked_up", "from", "Reach the investigation departure point", "到达调查任务出发点"),
+        ("investigate", "lowalt.task.completed", "to", "Fly to the incident site and finish the investigation flight", "飞至事件现场并完成调查飞行"),
+    ],
+}
+ROUTINE_TEXT = {
+    "food": ("Take the next ready meal order, fly to the customer, deliver it, and recharge when needed.", "接取下一份已备好的餐食订单，飞至客户处送达，并在需要时充电。"),
+    "parcel": ("Take the next parcel, fly to its destination, deliver it, and recharge when needed.", "接取下一件包裹，飞至目的地送达，并在需要时充电。"),
+    "medical": ("Take a priority medical task, fly the supplies to the clinic, and recharge when needed.", "接取高优先级医疗任务，将物资飞送至诊所，并在需要时充电。"),
+    "inspection": ("Take an inspection route, observe its segments, pause in strong wind, and recharge when needed.", "接取巡检路线，观测各区段，强风时暂停，并在需要时充电。"),
+    "spraying": ("Take a field, spray it in passes, pause in strong wind, and recharge when needed.", "接取一块农田，逐趟喷洒，强风时暂停，并在需要时充电。"),
+    "patrol": ("Take a patrol route, visit its checkpoints in order, and recharge when needed.", "接取巡逻路线，按顺序巡访检查点，并在需要时充电。"),
+    "passenger": ("Board passengers at a vertiport, wait for busy pads, land at the destination, and recharge when needed.", "在起降场接载乘客，繁忙时等待起降位，降落在目的地，并在需要时充电。"),
+    "incident_response": ("Take an investigation task, fly to the incident site, and recharge when needed.", "接取调查任务，飞至事件现场，并在需要时充电。"),
+}
+
+
+def _mission_steps(workload: dict) -> list[tuple]:
+    kind = workload["kind"]
+    if kind in {"food", "parcel", "medical"}:
+        return [("pickup", "lowalt.task.picked_up", "from", "Pick up after release and preparation", "释放并准备好后接取任务"),
+                ("delivery", "lowalt.task.completed", "to", "Complete through the real flight receipt flow", "通过真实飞行回执流程完成任务")]
+    steps = MISSION_STEPS.get("inspection" if kind == "survey" else kind, [
+        ("origin", "lowalt.task.picked_up", "from", "Reach the task origin", "到达任务起点"),
+        ("finish", "lowalt.task.completed", "to", "Complete the configured route", "完成已配置路线"),
+    ])
+    return [s for s in steps if s[1] not in {"lowalt.spraying.applied", "lowalt.inspection.observed", "lowalt.patrol.visited"} or workload.get("work_route") is not None]
 
 
 def _tasks_config(document: dict) -> dict:
@@ -186,7 +236,13 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
         kind = group["kind"]
         workloads.append({"id": _workload_id(group), "kind": kind, "label": TASK_NOUN.get(kind, kind), "label_zh": TASK_NOUN_ZH.get(kind, kind),
                           "count": len(group["tasks"]), "tasks": list(group["tasks"]), "from": list(group["origins"]), "to": list(group["destinations"]),
-                          "release": release, "priority": group["priority"], "payload_kg": group["payload_kg"], "protected": kind in protected})
+                          "release": release, "priority": group["priority"], "payload_kg": group["payload_kg"], "protected": kind in protected,
+                          "work_route": copy.deepcopy(tasks.get("work_routes", {}).get(kind))})
+    routine = []
+    for kind in dict.fromkeys(w["kind"] for w in workloads):
+        en, zh = ROUTINE_TEXT.get("inspection" if kind == "survey" else kind,
+                                  ("Take the next task and complete its configured route.", "接取下一项任务并完成已配置路线。"))
+        routine.append({"kind": kind, "text": en, "text_zh": zh})
     events = []
     for incident in (cooperation or {}).get("incidents", []):
         events.append({"id": incident["id"], "kind": incident["kind"], "label": incident.get("label", EVENT_LABELS[incident["kind"]][0]),
@@ -222,7 +278,7 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
     return {"title": document.get("title", document.get("id")), "city": document.get("city"),
             "duration_s": document["run"]["until_ns"] / SECOND, "run_mode": run_mode,
             "environment": {"wind": {"speed_mps": _common(speeds), "gusts": gusts}, "zones": zones},
-            "fleets": fleets, "places": places, "workloads": workloads, "events": events, "rules": rules,
+            "fleets": fleets, "places": places, "workloads": workloads, "events": events, "rules": rules, "routine": routine,
             "algorithms": copy.deepcopy(document.get("algorithms", {})), "cooperation": cooperation,
             "controls": copy.deepcopy(controls) if controls is not None else {},
             "entity_ids": sorted(e["id"] for e in document.get("entities", [])),
@@ -357,22 +413,24 @@ def expectations(document: dict, summary: dict) -> list[dict]:
         return identity
     names = {e["id"]: (e.get("label", e["id"]), e.get("label_zh", e.get("label", e["id"]))) for e in document.get("entities", [])}
     for workload in summary["workloads"]:
-        if len(workload["tasks"]) > 2:
-            # A larger workload is one outcome to watch, not a row per order.
-            from .compiler import _task_label_zh
-            noun = workload.get("label") or workload["kind"]
-            add(f"workload:{workload['id']}:completed", "lowalt.task.completed", {"task": {"$in": list(workload["tasks"])}},
-                f"Every released {noun.rstrip('s')} is completed ({len(workload['tasks'])} configured)", f"每个已发布的{workload.get('label_zh') or _task_label_zh(workload['kind'])}都完成（共配置 {len(workload['tasks'])} 个）",
-                count=len(workload["tasks"]), released="lowalt.task.created")
-            continue
-        for i, task in enumerate(workload["tasks"]):
-            times = workload["release"].get("times_s")
-            at = times[i] if times and i < len(times) else None
-            en, zh = names.get(task, (task, task))
-            created = add(f"task:{task}:created", "lowalt.task.created", {"task": task}, f"{en} is released", f"{zh}发布", layer="setup", at=at)
-            assigned = add(f"task:{task}:assigned", "lowalt.task.assigned", {"task": task}, f"A UAV is assigned {en}", f"无人机获分配{zh}", depends=[created])
-            picked = add(f"task:{task}:picked_up", "lowalt.task.picked_up", {"task": task}, f"{en} is picked up", f"{zh}已取件", depends=[assigned])
-            add(f"task:{task}:completed", "lowalt.task.completed", {"task": task}, f"{en} is delivered", f"{zh}已送达", depends=[picked])
+        times = workload["release"].get("times_s")
+        counted = len(workload["tasks"]) > 2
+        counts = {"count": len(workload["tasks"]), "released": "lowalt.task.created"} if counted else {}
+        scopes = [(f"workload:{workload['id']}", {"task": {"$in": list(workload["tasks"])}},
+                   workload["label"], workload["label_zh"], times[0] if times else None)] if counted else [
+            (f"task:{task}", {"task": task}, *names.get(task, (task, task)), times[i] if times and i < len(times) else None)
+            for i, task in enumerate(workload["tasks"])]
+        for prefix, where, en, zh, at in scopes:
+            created = add(prefix + ":created", "lowalt.task.created", where, f"{en} is released", f"{zh}发布", layer="setup", at=at, **counts)
+            assigned = add(prefix + ":assigned", "lowalt.task.assigned", where, f"A UAV is assigned {en}", f"无人机获分配{zh}", depends=[created], **counts)
+            previous = assigned
+            for _, schema, _, text, text_zh in _mission_steps(workload):
+                suffix = schema.rsplit(".", 1)[-1]
+                conditional = schema == "lowalt.mobility.pad_wait"
+                identity = add(prefix + ":" + suffix, schema, where, f"{en}: {text}", f"{zh}：{text_zh}",
+                               depends=[assigned if conditional else previous], **({} if conditional else counts))
+                if not conditional:
+                    previous = identity
     coop = summary.get("cooperation")
     if coop:
         order = coop["responder"]["order"]
@@ -428,13 +486,14 @@ def interactions(summary: dict) -> dict:
         fleets = [f for f in summary["fleets"] if work["kind"] in f["task_kinds"]]
         to = fleets[0]["id"] if fleets else "system"
         origin, destination = work["from"][0], work["to"][0]
-        first = work["tasks"][0] if work["tasks"] else None
-        prefix = "task:" + first if first else None
+        prefix = "workload:" + work["id"] if len(work["tasks"]) > 2 else "task:" + work["tasks"][0] if work["tasks"] else None
         times = work["release"].get("times_s")
         step(work["id"] + ":appears", origin, "system", f"{work['count']} configured task slots appear according to their release schedule", f"{work['count']} 个已配置任务槽按释放计划出现", layer="setup", at=times[0] if times else None, expect=prefix + ":created" if prefix else None)
         step(work["id"] + ":allocation", "system", to, "Allocate an eligible UAV", "分配符合条件的无人机", mode="agent" if summary["algorithms"].get("allocation") == "llm" else "prescribed", expect=prefix + ":assigned" if prefix else None)
-        step(work["id"] + ":pickup", to, origin, "Pick up after release and preparation", "释放并准备好后接取任务", expect=prefix + ":picked_up" if prefix else None)
-        step(work["id"] + ":delivery", to, destination, "Complete through the real flight receipt flow", "通过真实飞行回执流程完成任务", expect=prefix + ":completed" if prefix else None)
+        for suffix, schema, target, en, zh in _mission_steps(work):
+            branch = {"group": work["id"] + ":pad", "when": "a vertiport pad is busy / 起降位繁忙"} if schema == "lowalt.mobility.pad_wait" else None
+            step(work["id"] + ":" + suffix, to, origin if target == "from" else destination, en, zh, branch=branch,
+                 expect=prefix + ":" + schema.rsplit(".", 1)[-1] if prefix else None)
     coop = summary.get("cooperation")
     if coop:
         for incident in coop["incidents"]:

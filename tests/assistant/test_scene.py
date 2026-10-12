@@ -15,6 +15,12 @@ def compiled():
     return load_scenario(prepared.document, base=prepared.base), prepared
 
 
+def _template_scene(identifier: str):
+    prepared = TemplateRegistry().apply(identifier)
+    loaded = load_scenario(prepared.document, base=prepared.base)
+    return loaded.document, summarize(loaded.document, directory=prepared.base)
+
+
 def test_complete_scene_shapes_are_grounded(compiled) -> None:
     loaded, prepared = compiled
     summary = summarize(loaded.document, directory=prepared.base, controls=prepared.knobs)
@@ -73,3 +79,56 @@ def test_unavailable_observations_stay_absent(compiled) -> None:
             e["facts"].pop("lowalt.soc")
     summary = summarize(document, directory=prepared.base)
     assert summary["fleets"][0]["battery_pct"] is None
+
+
+def test_crop_spraying_uses_field_work_steps() -> None:
+    document, summary = _template_scene("crop-spraying")
+    steps = interactions(summary)["steps"]
+    assert any("field entry" in s["text"] for s in steps)
+    spray = next(s for s in steps if "spray passes" in s["text"])
+    assert spray["text_zh"] == "沿农田路线逐趟喷洒"
+    assert all("pick up" not in s["text"].lower() for s in steps)
+    rows = {r["id"]: r for r in expectations(document, summary)}
+    assert rows[spray["expect"]]["match"] == {"schema": "lowalt.spraying.applied", "where": {"task": "field-1"}}
+    assert summary["routine"][0]["kind"] == "spraying"
+    assert "spray it in passes" in summary["routine"][0]["text"]
+
+
+def test_powerline_inspection_uses_route_observations() -> None:
+    document, summary = _template_scene("powerline-inspection")
+    steps = interactions(summary)["steps"]
+    observed = next(s for s in steps if "observe inspection segments" in s["text"])
+    assert observed["text_zh"] == "沿路线飞行并观测巡检区段"
+    assert all("pick up" not in s["text"].lower() for s in steps)
+    rows = {r["id"]: r for r in expectations(document, summary)}
+    match = rows[observed["expect"]]["match"]
+    assert match == {"schema": "lowalt.inspection.observed", "where": {"task": {"$in": summary["workloads"][0]["tasks"]}},
+                     "count": 3, "released_schema": "lowalt.task.created"}
+    assert not any(r["match"]["schema"] == "lowalt.inspection.defect_reported" for r in rows.values())
+
+
+@pytest.mark.parametrize("template", ["food-delivery", "crop-spraying", "powerline-inspection", "security-patrol",
+                                     "air-taxi", "medical-delivery", "traffic-accident", "city-day"])
+def test_template_step_expectations_exist(template: str) -> None:
+    document, summary = _template_scene(template)
+    rows = expectations(document, summary)
+    identities = {r["id"] for r in rows}
+    assert len(identities) == len(rows)
+    diagram = interactions(summary)
+    lanes = {lane["id"] for lane in diagram["lanes"]}
+    for step in diagram["steps"]:
+        assert step["expect"] is None or step["expect"] in identities
+        assert step["from"] in lanes and step["to"] in lanes
+    for row in rows:
+        assert set(row["depends_on"]) <= identities
+    assert {r["kind"] for r in summary["routine"]} == {w["kind"] for w in summary["workloads"]}
+    assert len(summary["routine"]) == len({w["kind"] for w in summary["workloads"]})
+
+
+def test_work_observations_require_a_configured_work_route() -> None:
+    document, _ = _template_scene("crop-spraying")
+    document["engines"]["tasks"]["config"]["work_routes"] = {}
+    summary = summarize(document)
+    rows = expectations(document, summary)
+    assert not any(r["match"]["schema"] == "lowalt.spraying.applied" for r in rows)
+    assert not any("spray passes" in s["text"] for s in interactions(summary)["steps"])
