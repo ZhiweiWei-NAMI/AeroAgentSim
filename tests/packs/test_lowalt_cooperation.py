@@ -234,6 +234,20 @@ def test_respond_now_suspends_and_resumes_original_parcel(tmp_path: Path) -> Non
     assert not _events(records, "lowalt.handoff.requested")
 
 
+def test_zero_dwell_commits_responding_before_photographed(tmp_path: Path) -> None:
+    document = _document(tmp_path)
+    coop = document["engines"]["tasks"]["config"]["cooperation"]
+    coop["responder"]["order"] = ["respond_now", "report_only"]
+    coop["responder"]["rules"]["require_replacement"] = False
+    coop["photograph"]["dwell_s"] = 0.0
+    records = _run(document)
+    responding = _events(records, "lowalt.incident.responding")[0]
+    photographed = _events(records, "lowalt.incident.photographed")[0]
+    assert responding["at"]["ns"] == photographed["at"]["ns"]
+    assert responding["at"]["microstep"] < photographed["at"]["microstep"]
+    assert _fact_values(records, "incident-1", "lowalt.incident_state") == ["pending", "occurred", "noticed", "responding", "photographed"]
+
+
 def _reply(choice: str) -> dict[str, Any]:
     return {"message": {"role": "assistant", "content": json.dumps({"choice": choice, "reason": "Help while keeping delivery / 协助并保持交付"})}, "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
 

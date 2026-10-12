@@ -199,6 +199,8 @@ class LowaltTasks(ContextEngine):
         self.incidents: dict[str, Incident] = {}
         self.coop_pending: set[tuple[str, str, str]] = set()
         self.coop_decisions: dict[str, tuple[str, str, str]] = {}
+        self.coop_steps: set[tuple[str, str]] = set()
+        self.coop_resumed: set[str] = set()
         if self.cooperation is not None:
             validate_config(self.cooperation, vehicles=set(self.flights))
             self.incidents = {
@@ -709,6 +711,7 @@ class LowaltTasks(ContextEngine):
 
     def on_inputs(self, ctx: EngineContext) -> None:
         self.snapshot_ctx, self.snapshot_state = None, None
+        self.coop_resumed.clear()
         for dirty in ctx.dirty:
             if dirty.kind != "receipt":
                 continue
@@ -815,6 +818,28 @@ class LowaltTasks(ContextEngine):
                         "incident": incident.ref.id, "kind": incident.config["kind"],
                         "position": incident.config["position"],
                     })
+            if "lowalt_coop_step" in payload:
+                incident = self.incidents[payload["lowalt_coop_step"]]
+                step = payload["step"]
+                self.coop_steps.discard((incident.ref.id, step))
+                if step == "decide":
+                    self._coop_decide(ctx, incident)
+                elif step == "select":
+                    self._coop_select(ctx, incident)
+                elif step == "start_helper":
+                    self._coop_start_helper(ctx, incident)
+                elif step == "response_due":
+                    assert incident.responder is not None
+                    flight = self.flights[incident.responder]
+                    if (
+                        flight.purpose == "incident_response"
+                        and not flight.pending and flight.command_id is None
+                        and not read(ctx, flight.vehicle, "lowalt.weather_held")
+                        and not read(ctx, flight.vehicle, "lowalt.charging")
+                        and ctx.now.ns >= flight.hold_until_ns
+                        and all(abs(v) <= 1e-6 for v in vec(read(ctx, flight.vehicle, "lowalt.velocity")))
+                    ):
+                        self._coop_flight(ctx, flight)
         if any(
             payload in ({"lowalt_tasks": "tick"}, {"lowalt_tasks": "release"})
             for payload in timers
@@ -844,6 +869,22 @@ class LowaltTasks(ContextEngine):
     def _coop_state(self, ctx: EngineContext, incident: Incident, phase: str) -> None:
         incident.phase = phase
         ctx.set(incident.ref, "lowalt.incident_state", phase)
+
+    def _coop_defer(self, ctx: EngineContext, incident: Incident, step: str, *, at_ns: int | None = None) -> None:
+        key = (incident.ref.id, step)
+        if key in self.coop_steps:
+            return
+        self.coop_steps.add(key)
+        payload = {"lowalt_coop_step": incident.ref.id, "step": step}
+        if at_ns is not None and at_ns > ctx.now.ns:
+            ctx.wake_at(at_ns, payload)
+        else:
+            # State transitions commit separately: the kernel permits only one
+            # write to each fact key in a wave.
+            ctx.ops.append(ScheduleTimer(
+                f"lowalt/cooperation/{incident.ref.id}/{step}",
+                Instant(ctx.now.ns, ctx.now.microstep + 1), payload, tuple(ctx.inputs),
+            ))
 
     def _handoff_state(self, ctx: EngineContext, incident: Incident, phase: str) -> None:
         incident.handoff_phase = phase
@@ -1004,7 +1045,7 @@ class LowaltTasks(ContextEngine):
                     ]
                     self._coop_request(ctx, incident, vehicle, "responder", allowed, [descriptions[v] for v in allowed] + constraints + [f"{v}: {reason}" for v, reason in blocked.items()])
                 else:
-                    self._coop_decide(ctx, incident)
+                    self._coop_defer(ctx, incident, "decide")
                 break
 
     def _coop_decide(self, ctx: EngineContext, incident: Incident, choice: str | None = None, reason: str | None = None, *, after_handoff: bool = False) -> None:
@@ -1091,7 +1132,7 @@ class LowaltTasks(ContextEngine):
         ctx.set(ref, "lowalt.handoff_from", incident.responder)
         self._business_event(ctx, "lowalt.handoff.requested", {**self._handoff_payload(incident), "candidates": list(incident.candidates)})
         if not incident.candidates:
-            self._coop_select(ctx, incident)
+            self._coop_defer(ctx, incident, "select")
         for helper in incident.candidates:
             if self.cooperation["helpers"]["mode"] == "agent":
                 self._coop_request(ctx, incident, helper, "helper", ["accept", "decline"], [
@@ -1124,7 +1165,7 @@ class LowaltTasks(ContextEngine):
         incident.offers[helper] = accepted
         self._business_event(ctx, "lowalt.handoff.offer", {**self._handoff_payload(incident), "helper": helper, "accepted": accepted, "reason": reason, "mode": self.cooperation["helpers"]["mode"]})
         if len(incident.offers) == len(incident.candidates):
-            self._coop_select(ctx, incident)
+            self._coop_defer(ctx, incident, "select")
 
     def _coop_select(self, ctx: EngineContext, incident: Incident) -> None:
         assert self.cooperation is not None and incident.offers is not None and incident.responder is not None and incident.job is not None
@@ -1164,7 +1205,7 @@ class LowaltTasks(ContextEngine):
         else:
             requester.purpose, requester.work_active = "handoff_drop", False
             self._brake(ctx, requester)
-        self._coop_start_helper(ctx, incident)
+        self._coop_defer(ctx, incident, "start_helper")
 
     def _coop_start_helper(self, ctx: EngineContext, incident: Incident) -> None:
         assert incident.helper is not None and incident.job is not None
@@ -1190,7 +1231,8 @@ class LowaltTasks(ContextEngine):
             return
         for incident in self.incidents.values():
             if incident.helper == flight.vehicle.id and incident.handoff_phase in {"accepted", "dropped"}:
-                self._coop_start_helper(ctx, incident)
+                if not flight.pending and flight.command_id is None:
+                    self._coop_defer(ctx, incident, "start_helper")
                 return
             if incident.responder == flight.vehicle.id and incident.phase == "noticed" and incident.choice == "finish_then_respond":
                 assert self.cooperation is not None
@@ -1222,6 +1264,8 @@ class LowaltTasks(ContextEngine):
                     incident.dwell_until_ns = ctx.now.ns + round(self.cooperation["photograph"]["dwell_s"] * 1e9)
                     self._coop_state(ctx, incident, "responding")
                     self._business_event(ctx, "lowalt.incident.responding", {"incident": incident.ref.id, "vehicle": flight.vehicle.id, "position": list(current)})
+                    self._coop_defer(ctx, incident, "response_due", at_ns=incident.dwell_until_ns)
+                    return True
                 if ctx.now.ns >= incident.dwell_until_ns:
                     self._coop_state(ctx, incident, "photographed")
                     self._business_event(ctx, "lowalt.incident.photographed", {"incident": incident.ref.id, "vehicle": flight.vehicle.id, "position": list(incident.config["position"])})
@@ -1233,6 +1277,7 @@ class LowaltTasks(ContextEngine):
                         flight.job = job
                         flight.suspended, flight.suspended_phase = None, None
                         flight.replan = True
+                        self.coop_resumed.add(flight.vehicle.id)
                         self._event(ctx, "resumed", task=job.ref.id, vehicle=flight.vehicle.id)
                 return True
             assert incident.job is not None and incident.helper is not None
@@ -1670,6 +1715,8 @@ class LowaltTasks(ContextEngine):
             self._coop_tick(ctx)
         self._preempt(ctx)
         for flight in self.flights.values():
+            if flight.vehicle.id in self.coop_resumed:
+                continue
             if flight.pending or flight.command_id is not None:
                 continue
             if flight.job is None and flight.purpose == "task":
