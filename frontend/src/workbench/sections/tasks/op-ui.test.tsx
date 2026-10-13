@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider, useI18n } from '../../../i18n/I18nProvider';
 import { ApiError, type Project, type WorkbenchApi } from '../../api';
@@ -120,4 +120,43 @@ it('updates a shown numeric error when the locale changes', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Chinese' }));
   expect(screen.getByRole('alert')).toHaveTextContent('不能小于 0。');
   expect(screen.getByRole('alert')).not.toHaveTextContent('Cannot');
+});
+
+it('blocks sibling Preview/Confirm until the authoritative GET completes, then expires reviews and previews the new revision (T2-R3-006 / T3-R3-002 / T4-R3-004)', async () => {
+  let finishRead!: (project: Project) => void;
+  loadProject.mockImplementationOnce(() => new Promise<Project>(resolve => { finishRead = resolve; }));
+  const form = (name: string, seconds: number) => <fieldset aria-label={name}><Harness seconds={seconds} /></fieldset>;
+  render(<I18nProvider>{form('First', 120)}{form('Reviewed sibling', 180)}{form('Unreviewed sibling', 240)}</I18nProvider>);
+  const first = within(screen.getByRole('group', { name: 'First' }));
+  const reviewed = within(screen.getByRole('group', { name: 'Reviewed sibling' }));
+  const unreviewed = within(screen.getByRole('group', { name: 'Unreviewed sibling' }));
+  fireEvent.click(first.getByRole('button', { name: 'Preview' }));
+  await first.findByRole('button', { name: 'Confirm' });
+  fireEvent.click(reviewed.getByRole('button', { name: 'Preview' }));
+  await reviewed.findByRole('button', { name: 'Confirm' });
+  fireEvent.click(first.getByRole('button', { name: 'Confirm' }));
+  await waitFor(() => expect(loadProject).toHaveBeenCalledOnce());
+  expect(reviewed.getByRole('button', { name: 'Confirm' })).toBeDisabled();
+  expect(unreviewed.getByRole('button', { name: 'Preview' })).toBeDisabled();
+  expect(reviewed.getByRole('note')).toHaveTextContent('Applying another change…');
+  expect(unreviewed.getByRole('note')).toHaveTextContent('Applying another change…');
+  fireEvent.click(unreviewed.getByRole('button', { name: 'Preview' }));
+  expect(request).toHaveBeenCalledTimes(3);
+  await act(async () => finishRead({ ...base, revision: 8 }));
+  await waitFor(() => expect(onProject).toHaveBeenCalledOnce());
+  expect(reviewed.queryByRole('button', { name: 'Confirm' })).toBeNull();
+  expect(reviewed.getByRole('status')).toHaveTextContent('Out of date');
+  fireEvent.click(reviewed.getByRole('button', { name: 'Preview again' }));
+  await reviewed.findByRole('button', { name: 'Confirm' });
+  expect(request.mock.calls[3][1].body.revision).toBe(8);
+  fireEvent.click(unreviewed.getByRole('button', { name: 'Preview' }));
+  await unreviewed.findByRole('button', { name: 'Confirm' });
+  expect(request.mock.calls[4][1].body.revision).toBe(8);
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.queryByText(/changed elsewhere/)).toBeNull();
+});
+
+it('aligns the operation actions with the input baseline inside a form grid (D13)', () => {
+  const { container } = render(<I18nProvider><div className="wb-form-grid"><Harness /></div></I18nProvider>);
+  expect(container.querySelector('.wb-form-grid > .wb-op-apply')).toHaveStyle({ alignSelf: 'end' });
 });

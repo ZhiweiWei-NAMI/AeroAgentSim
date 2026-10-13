@@ -1,3 +1,4 @@
+import { useCallback, useSyncExternalStore } from 'react';
 import { ApiError, type Project, type WorkbenchApi } from '../api';
 
 /** One edit in the vocabulary the assistant compiles; forms send the same operations (see GET /v1/studio/operations). */
@@ -10,6 +11,65 @@ export interface Capabilities { lowalt: boolean; region: boolean; network: boole
 export interface OperationProblem { operation: string | null; field?: string; message: string }
 
 const endpoint = (id: string) => `/v1/studio/workspaces/${encodeURIComponent(id)}/operations`;
+export interface WorkspaceOperationsState { applying: boolean; project?: Project }
+const idle: WorkspaceOperationsState = { applying: false };
+const workspaceStates = new Map<string, WorkspaceOperationsState>();
+const workspaceListeners = new Map<string, Set<() => void>>();
+
+export const getOperationsState = (workspaceId: string): WorkspaceOperationsState => workspaceStates.get(workspaceId) ?? idle;
+export function subscribeOperations(workspaceId: string, listener: () => void): () => void {
+  const listeners = workspaceListeners.get(workspaceId) ?? new Set<() => void>();
+  listeners.add(listener); workspaceListeners.set(workspaceId, listeners);
+  return () => {
+    listeners.delete(listener);
+    if (!listeners.size) {
+      workspaceListeners.delete(workspaceId);
+      if (!getOperationsState(workspaceId).applying) workspaceStates.delete(workspaceId);
+    }
+  };
+}
+function publishOperations(workspaceId: string, state: WorkspaceOperationsState) {
+  workspaceStates.set(workspaceId, state);
+  workspaceListeners.get(workspaceId)?.forEach(listener => listener());
+}
+/** A mutation response bridges the interval before the parent renders the new project. */
+export function currentOperationsProject(project: Project): Project {
+  const current = getOperationsState(project.id).project;
+  return current && current.revision > project.revision ? current : project;
+}
+export function useWorkspaceOperations(project: Project) {
+  const subscribe = useCallback((listener: () => void) => subscribeOperations(project.id, listener), [project.id]);
+  const snapshot = useSyncExternalStore(subscribe, () => getOperationsState(project.id), () => idle);
+  return { ...snapshot, project: currentOperationsProject(project) };
+}
+export class OperationStateError extends Error {
+  constructor(readonly reason: 'applying' | 'stale') {
+    super(reason === 'applying' ? 'Applying another change… / 正在应用另一项变更…'
+      : 'The draft was updated. Preview again before applying. / 草稿已更新，请重新预览后再应用。');
+  }
+}
+export function assertOperationsReady(project: Project) {
+  const state = getOperationsState(project.id);
+  if (state.applying) throw new OperationStateError('applying');
+  if (state.project && state.project.revision > project.revision) throw new OperationStateError('stale');
+}
+
+/** One apply per workspace, including the authoritative read after a mutation.
+ * Never queue an old confirmation and apply it against a different revision.
+ * Run settings and raw draft saves use the same gate as C11 operations.
+ */
+export async function mutateWorkspace(project: Project, apply: () => Promise<Project>): Promise<Project> {
+  assertOperationsReady(project);
+  publishOperations(project.id, { ...getOperationsState(project.id), applying: true });
+  try {
+    const updated = await apply();
+    publishOperations(project.id, { applying: true, project: updated });
+    return updated;
+  } finally {
+    publishOperations(project.id, { ...getOperationsState(project.id), applying: false });
+    if (!workspaceListeners.has(project.id)) workspaceStates.delete(project.id);
+  }
+}
 let serial = 0;
 /** Operation ids only identify edits within one request. */
 export const operation = (op: string, params: Record<string, unknown> = {}): Operation => ({ id: `form-${++serial}`, op, params });
@@ -39,13 +99,16 @@ export function capabilities(project: Project): Capabilities | undefined {
 }
 
 export function previewOperations(api: WorkbenchApi, project: Project, operations: Operation[]) {
+  assertOperationsReady(project);
   return api.request<OperationPreview>(endpoint(project.id), { body: { operations, revision: project.revision, dry_run: true } });
 }
 
 /** Applies to the server draft (never saves a version or starts a run) and returns the full updated project. */
 export async function applyOperations(api: WorkbenchApi, project: Project, operations: Operation[]) {
-  await api.request<unknown>(endpoint(project.id), { body: { operations, revision: project.revision } });
-  return api.project(project.id);
+  return mutateWorkspace(project, async () => {
+    await api.request<unknown>(endpoint(project.id), { body: { operations, revision: project.revision } });
+    return api.project(project.id);
+  });
 }
 
 export function operationCatalogue(api: WorkbenchApi, signal?: AbortSignal) {
@@ -59,7 +122,7 @@ export function operationProblem(problem: unknown): OperationProblem {
       const detail = JSON.parse(problem.detail) as Partial<OperationProblem>;
       if (detail && typeof detail.message === 'string') return { operation: detail.operation ?? null, field: detail.field, message: detail.message };
     } catch { /* Plain-text detail. */ }
-    return { operation: null, message: problem.status === 409 ? 'The draft changed elsewhere; reload it before applying. / 草稿已在别处修改，请重新加载后再应用。' : problem.detail };
+    return { operation: null, message: problem.status === 409 ? 'The draft changed since this preview. Reload the draft and preview again. / 草稿在预览后已变化，请重新加载草稿并再次预览。' : problem.detail };
   }
   return { operation: null, message: String(problem) };
 }

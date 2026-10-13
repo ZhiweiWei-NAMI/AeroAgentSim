@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type Project, type WorkbenchApi } from '../api';
-import { applyOperations, operation, operationFreshnessKey, operationProblem, operationText, previewOperations } from './operations';
+import { applyOperations, currentOperationsProject, getOperationsState, OperationStateError, operation, operationFreshnessKey, operationProblem, operationText, previewOperations, subscribeOperations } from './operations';
 
 const project = { id: 'workspace/1', revision: 7 } as Project;
 
@@ -47,4 +47,52 @@ it('selects one language from C11 messages while preserving units and paths (T4-
   expect(operationText(message, false)).toBe('Kitchen k has no meal orders; keep 2 m/s at /config/profiles');
   expect(operationText(message, true)).toBe('厨房 k 没有餐食订单，请保留 2 m/s');
   expect(operationText('2 m/s', false)).toBe('2 m/s');
+});
+
+it('locks a workspace through POST and the following GET, publishes the new revision, and rejects old confirmations locally (T2-R3-006 / T3-R3-002 / T4-R3-004)', async () => {
+  const base = { ...project, id: 'serial-workspace' }, updated = { ...base, revision: 8 };
+  let finishRead!: (value: Project) => void;
+  const api = { request: vi.fn().mockResolvedValue(updated), project: vi.fn(() => new Promise<Project>(resolve => { finishRead = resolve; })) };
+  const snapshots: Array<{ applying: boolean; revision?: number }> = [];
+  const unsubscribe = subscribeOperations(base.id, () => { const state = getOperationsState(base.id); snapshots.push({ applying: state.applying, revision: state.project?.revision }); });
+  try {
+    const edits = [operation('set_wind', { speed_mps: 3 })];
+    const applying = applyOperations(api as unknown as WorkbenchApi, base, edits);
+    expect(getOperationsState(base.id).applying).toBe(true);
+    await vi.waitFor(() => expect(api.project).toHaveBeenCalledOnce());
+    expect(() => previewOperations(api as unknown as WorkbenchApi, base, [operation('add_gust', { start_s: 10, end_s: 20, speed_mps: 5 })])).toThrow(OperationStateError);
+    await expect(applyOperations(api as unknown as WorkbenchApi, base, edits)).rejects.toMatchObject({ reason: 'applying' });
+    expect(api.request).toHaveBeenCalledOnce();
+    finishRead(updated);
+    expect(await applying).toBe(updated);
+    expect(snapshots).toEqual([{ applying: true }, { applying: true, revision: 8 }, { applying: false, revision: 8 }]);
+    expect(currentOperationsProject(base)).toBe(updated);
+    await expect(applyOperations(api as unknown as WorkbenchApi, base, edits)).rejects.toMatchObject({ reason: 'stale' });
+    expect(api.request).toHaveBeenCalledOnce();
+    expect(operationProblem(new OperationStateError('stale')).message).not.toContain('elsewhere');
+  } finally { unsubscribe(); }
+});
+
+it('releases the shared gate after a rejected operation and keeps the real failure', async () => {
+  const base = { ...project, id: 'rejected-workspace' };
+  const failure = new ApiError(422, JSON.stringify({ operation: 'invalid', message: 'Invalid wind / 风速无效' }));
+  const api = { request: vi.fn().mockRejectedValue(failure), project: vi.fn() };
+  const unsubscribe = subscribeOperations(base.id, () => undefined);
+  try {
+    await expect(applyOperations(api as unknown as WorkbenchApi, base, [operation('set_wind', { speed_mps: -1 })])).rejects.toBe(failure);
+    expect(getOperationsState(base.id)).toEqual({ applying: false });
+    expect(api.project).not.toHaveBeenCalled();
+  } finally { unsubscribe(); }
+});
+
+it('allows independent workspaces to apply without sharing a global lock', async () => {
+  const bases = ['a', 'b'].map(id => ({ ...project, id }));
+  const resolvers = new Map<string, (value: Project) => void>();
+  const api = { request: vi.fn().mockResolvedValue({}), project: vi.fn((id: string) => new Promise<Project>(resolve => resolvers.set(id, resolve))) };
+  const applying = bases.map(base => applyOperations(api as unknown as WorkbenchApi, base, [operation('set_duration', { seconds: 600 })]));
+  await vi.waitFor(() => expect(resolvers.size).toBe(2));
+  expect(bases.map(base => getOperationsState(base.id).applying)).toEqual([true, true]);
+  for (const base of bases) resolvers.get(base.id)!({ ...base, revision: 8 });
+  await Promise.all(applying);
+  expect(bases.map(base => getOperationsState(base.id).applying)).toEqual([false, false]);
 });

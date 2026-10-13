@@ -17,6 +17,8 @@ import { TasksSection } from './sections/TasksSection';
 import { ComponentsSection } from './sections/ComponentsSection';
 import { AlgorithmsSection } from './sections/AlgorithmsSection';
 import { RunSection } from './sections/RunSection';
+import { assertOperationsReady, currentOperationsProject, mutateWorkspace, operationText, useWorkspaceOperations } from './sections/operations';
+import { StagedFormWorkspace, useStagedFormStatus } from './sections/useStagedForm';
 
 const SECTION_BODIES: Record<SectionId, (props: SectionProps) => JSX.Element> = {
   space: SpaceSection, objects: ObjectsSection, relations: RelationsSection, tasks: TasksSection,
@@ -77,7 +79,7 @@ export function controlSource(knob: ScenarioTemplate['knobs'][number], draft: Sc
   return controlValue(authored?.[knob.id]);
 }
 
-export function ConfigPanel({ api, project, onProject, onInitialize, initializing, section: requested, onSection, onClose, onInspectContract, onDraft, onSwitch, switching, morph, activeRunVersion }: {
+export function ConfigPanel({ api, project: suppliedProject, onProject, onInitialize, initializing, section: requested, onSection, onClose, onInspectContract, onDraft, onSwitch, switching, morph, activeRunVersion }: {
   api: WorkbenchApi; project: Project; onProject: (project: Project) => void;
   onInitialize: (version: number) => void; initializing: boolean; section?: string; onSection: (section: string) => void; onClose: () => void;
   onSwitch?: (mode: EditMode, origin: Origin) => void; switching?: boolean; morph?: 'in' | 'out';
@@ -87,6 +89,8 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   activeRunVersion?: number;
 }) {
   const { locale } = useI18n();
+  const workspaceOperations = useWorkspaceOperations(suppliedProject), project = workspaceOperations.project;
+  const stagedInputs = useStagedFormStatus(project.id);
   const zh = locale === 'zh-CN';
   const L = useCallback((en: string, cn: string) => zh ? cn : en, [zh]);
   // sessionStorage survives refresh but a different tab cannot overwrite or clear this buffer.
@@ -169,15 +173,19 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   const edit = (path: string, value: unknown) => { setDraft(previous => setAt(previous, path, value)); setLocal(true); setMessage(previous => previous?.kind === 'ok' ? undefined : previous); };
   const issues: ValidationIssue[] = project.validation && project.validation.revision === project.revision && !project.validation.valid ? project.validation.issues ?? project.validation.errors.map(message => ({ source: 'scenario', path: '$', message })) : [];
   const issueSections = new Set(issues.map(issueSection));
-  const fail = (problem: unknown) => setMessage({ kind: 'error', text: problem instanceof ApiError ? problem.detail : String(problem) });
+  const fail = (problem: unknown) => {
+    const text = problem instanceof ApiError ? problem.detail : String(problem);
+    setMessage({ kind: 'error', text: operationText(text, false), textZh: operationText(text, true) });
+  };
 
   const saveDraft = async (): Promise<Project | undefined> => {
+    try { assertOperationsReady(currentOperationsProject(project)); } catch (problem) { fail(problem); return; }
     if (invalid.size) { fail(L('Correct the highlighted input before saving.', '请修正标记的输入后再保存。')); return; }
     if (merge) { fail(L('Choose the values in Compare and merge before saving.', '请先在“对比并合并”中选择要保留的值再保存。')); return; }
-    if (!local) return project;
+    if (!local) return currentOperationsProject(project);
     setBusy('save');
     try {
-      const saved = await api.save(project.id, draft, baseRevision);
+      const saved = await mutateWorkspace(project, () => api.save(project.id, draft, baseRevision));
       sectionProject(saved);
       return saved;
     } catch (problem) {
@@ -203,7 +211,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     setBusy('merge');
     try {
       const merged = mergeSections(draft, merge.server.scenario as Scenario, choices);
-      const saved = await api.save(project.id, merged, merge.server.revision);
+      const saved = await mutateWorkspace(merge.server, () => api.save(project.id, merged, merge.server.revision));
       replaceProject(saved);
       setMerge(undefined); onProject(saved);
       setMessage({ kind: 'ok', text: `Merged draft saved as revision ${saved.revision}.`, textZh: `合并后的草稿已保存为修订 ${saved.revision}。` });
@@ -238,7 +246,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     const changes = { ...knobs };
     const saved = await saveDraft(); if (!saved) return;
     setBusy('knobs');
-    try { const updated = await api.knobs(saved.id, changes, saved.revision); setKnobs({}); sectionProject(updated); setMessage({ kind: 'ok', text: 'Controls applied to the draft.', textZh: '控制项已应用到草稿。' }); }
+    try { const updated = await mutateWorkspace(saved, () => api.knobs(saved.id, changes, saved.revision)); setKnobs({}); sectionProject(updated); setMessage({ kind: 'ok', text: 'Controls applied to the draft.', textZh: '控制项已应用到草稿。' }); }
     catch (problem) { fail(problem); } finally { setBusy(undefined); }
   };
   const jump = (issue: ValidationIssue) => { const target = issueSection(issue); onSection(`${target ?? 'file'}:${issuePointer(issue.path)}`); setFocus(issuePointer(issue.path)); };
@@ -275,7 +283,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
         <div className="wb-knobs">{template.knobs.map(knob => {
           const value = valueFor(knob);
           return <div className="wb-knob" key={knob.id} data-path={knob.pointer}>{value === undefined ? <p role="alert">{L('Missing or invalid control source. Correct it in the form or file:', '控制项来源缺失或无效，请在表单或文件中修正：')} {knob.pointer ?? knob.id}</p>
-            : <TemplateKnobControl disabled={!!busy} knob={knob} value={value} onChange={value => setKnobs(previous => ({ ...previous, [knob.id]: value }))} onValidityChange={valid => reportValidity(`/knobs/${knob.id}`, valid)} algorithms={algorithms} />}</div>;
+            : <TemplateKnobControl disabled={workspaceOperations.applying || !!busy} knob={knob} value={value} onChange={value => setKnobs(previous => ({ ...previous, [knob.id]: value }))} onValidityChange={valid => reportValidity(`/knobs/${knob.id}`, valid)} algorithms={algorithms} />}</div>;
         })}</div>
       </>;
     }
@@ -285,12 +293,12 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
         {local && <p className="hint" style={{ color: 'var(--wb-warn)' }}>{L('Unsaved form edits are kept; this file shows the last saved draft. You can still export or repair it here, and reload the saved draft over your form edits.', '未保存的表单修改仍保留；此文件显示最近一次保存的草稿。仍可在此导出或修复，并可用已保存草稿覆盖表单修改。')}</p>}
         {yamlDirty && yamlRevision !== project.revision && <p role="alert">{L('This file was edited from an older revision. Copy your changes and reload the current draft before importing.', '此文件基于旧修订修改。请复制修改并重新加载当前草稿后导入。')}</p>}
         {busy === 'export' && <p className="hint" role="status">{L('Loading the saved scenario file…', '正在加载已保存的场景文件…')}</p>}
-        {yaml === undefined ? <button className="wb-btn" disabled={!!busy} onClick={() => void loadYaml()}>{busy === 'export' ? L('Loading scenario file…', '正在加载场景文件…') : L('Load scenario file', '加载场景文件')}</button>
+        {yaml === undefined ? <button className="wb-btn" disabled={workspaceOperations.applying || !!busy} onClick={() => void loadYaml()}>{busy === 'export' ? L('Loading scenario file…', '正在加载场景文件…') : L('Load scenario file', '加载场景文件')}</button>
           : <><textarea className="wb-json" style={{ minHeight: '52vh' }} spellCheck={false} aria-label={L('Scenario YAML', '场景 YAML')} value={yaml} onChange={event => { setYaml(event.target.value); setYamlDirty(true); }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button className="wb-btn primary" disabled={!!busy || local || yamlRevision !== project.revision} title={local ? L('Save or discard your form edits first; importing here would replace them.', '请先保存或放弃表单修改；此处导入会覆盖它们。') : yamlRevision !== project.revision ? L('Reload the file at the current revision first.', '请先按当前修订重新加载文件。') : undefined} onClick={() => { setBusy('import'); void api.importYaml(project.id, yaml, project.revision).then(saved => { setYamlDirty(false); setYaml(undefined); sectionProject(saved); setMessage({ kind: 'ok', text: 'Imported into the draft.', textZh: '已导入草稿。' }); }).catch(fail).finally(() => setBusy(undefined)); }}>{L('Import into draft', '导入草稿')}</button>
-              <button className="wb-btn" disabled={!!busy} onClick={() => void loadYaml(true)} title={local ? L('This replaces your unsaved form edits with the saved draft.', '这会用已保存草稿覆盖未保存的表单修改。') : undefined}>{L('Reload', '重新加载')}</button>
-              <button className="wb-btn" disabled={!!busy} onClick={() => { const url = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' })); const link = document.createElement('a'); link.href = url; link.download = `${project.id}.yaml`; link.click(); URL.revokeObjectURL(url); }}>{L('Download YAML', '下载 YAML')}</button>
+              <button className="wb-btn primary" disabled={workspaceOperations.applying || !!busy || local || yamlRevision !== project.revision} title={local ? L('Save or discard your form edits first; importing here would replace them.', '请先保存或放弃表单修改；此处导入会覆盖它们。') : yamlRevision !== project.revision ? L('Reload the file at the current revision first.', '请先按当前修订重新加载文件。') : undefined} onClick={() => { setBusy('import'); void mutateWorkspace(project, () => api.importYaml(project.id, yaml, project.revision)).then(saved => { setYamlDirty(false); setYaml(undefined); sectionProject(saved); setMessage({ kind: 'ok', text: 'Imported into the draft.', textZh: '已导入草稿。' }); }).catch(fail).finally(() => setBusy(undefined)); }}>{L('Import into draft', '导入草稿')}</button>
+              <button className="wb-btn" disabled={workspaceOperations.applying || !!busy} onClick={() => void loadYaml(true)} title={local ? L('This replaces your unsaved form edits with the saved draft.', '这会用已保存草稿覆盖未保存的表单修改。') : undefined}>{L('Reload', '重新加载')}</button>
+              <button className="wb-btn" disabled={workspaceOperations.applying || !!busy} onClick={() => { const url = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' })); const link = document.createElement('a'); link.href = url; link.download = `${project.id}.yaml`; link.click(); URL.revokeObjectURL(url); }}>{L('Download YAML', '下载 YAML')}</button>
             </div></>}
       </>;
     }
@@ -300,7 +308,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     return <Body {...props} />;
   };
 
-  return <FormValidity.Provider value={reportValidity}><aside className="wb-panel wb-right is-wide wb-glass" aria-label={L('Configure scenario', '配置场景')} data-testid="wb-config" data-morph={morph}>
+  return <StagedFormWorkspace.Provider value={{ id: project.id, revision: project.revision }}><FormValidity.Provider value={reportValidity}><aside className="wb-panel wb-right is-wide wb-glass" aria-label={L('Configure scenario', '配置场景')} data-testid="wb-config" data-morph={morph}>
     <div className="wb-panel-head as-rise"><h3>{L('Configure', '配置')} · {template && project.name === template.title ? localized(template, 'title', locale) : project.name}</h3>{onSwitch && <ModeSwitch mode="form" onChange={onSwitch} switching={switching} />}<button className="wb-x" aria-label={L('Close configuration', '关闭配置')} onClick={onClose}>✕</button></div>
     {restored && <div className="wb-restored">{L('Unsaved edits were restored from this browser.', '已从本浏览器恢复未保存的修改。')}<span className="wb-spacer" /><button className="wb-btn small" onClick={discard}>{L('Discard', '放弃')}</button></div>}
     {catalogError && <div className="wb-issues" role="alert">{catalogError}</div>}
@@ -319,37 +327,38 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
           </tr>)}</tbody>
         </table>
         <div className="wb-merge-choose" role="radiogroup" aria-label={row.section}>
-          <button type="button" className="wb-btn small" disabled={!!busy} aria-pressed={merge.choices[row.section] === 'mine'} onClick={() => chooseMerge(row.section, 'mine')}>{L('Keep mine', '保留我的')}</button>
-          <button type="button" className="wb-btn small" disabled={!!busy} aria-pressed={merge.choices[row.section] === 'server'} onClick={() => chooseMerge(row.section, 'server')}>{L('Take server', '采用服务器')}</button>
+          <button type="button" className="wb-btn small" disabled={workspaceOperations.applying || !!busy} aria-pressed={merge.choices[row.section] === 'mine'} onClick={() => chooseMerge(row.section, 'mine')}>{L('Keep mine', '保留我的')}</button>
+          <button type="button" className="wb-btn small" disabled={workspaceOperations.applying || !!busy} aria-pressed={merge.choices[row.section] === 'server'} onClick={() => chooseMerge(row.section, 'server')}>{L('Take server', '采用服务器')}</button>
         </div>
       </div>)}
       <div className="wb-merge-actions">
-        <button className="wb-btn primary" disabled={!!busy || !!invalid.size || conflict.length !== Object.keys(merge.choices).length} data-testid="wb-merge-save" onClick={() => void saveMerge()}>{busy === 'merge' ? L('Saving merged draft…', '正在保存合并草稿…') : L('Save merged draft', '保存合并草稿')}</button>
-        <button className="wb-btn" disabled={!!busy} onClick={() => setMerge(undefined)}>{L('Close without merging', '不合并，直接关闭')}</button>
+        <button className="wb-btn primary" disabled={workspaceOperations.applying || !!busy || !!invalid.size || conflict.length !== Object.keys(merge.choices).length} data-testid="wb-merge-save" onClick={() => void saveMerge()}>{busy === 'merge' ? L('Saving merged draft…', '正在保存合并草稿…') : L('Save merged draft', '保存合并草稿')}</button>
+        <button className="wb-btn" disabled={workspaceOperations.applying || !!busy} onClick={() => setMerge(undefined)}>{L('Close without merging', '不合并，直接关闭')}</button>
       </div>
     </div>}
     <div className="wb-config">
       <nav aria-label={L('Configuration sections', '配置分区')}>{nav.map(item => <button key={item.id} aria-current={section === item.id} onClick={() => { onSection(item.id); setFocus(undefined); }}>{item.label}{issueSections.has(item.id as SectionId) && <i className="wb-issue-dot" aria-label={L('has issues', '有问题')} />}</button>)}</nav>
-      <div className="wb-config-body">{mounted.map(target => <div key={target} hidden={section !== target} data-section={target}>
+      <fieldset className="wb-config-body" disabled={workspaceOperations.applying} style={{ border: 0, margin: 0, minWidth: 0 }}>{mounted.map(target => <div key={target} hidden={section !== target} data-section={target}>
         <ConfigureBoundary label={nav.find(item => item.id === target)?.label ?? target} L={L}>
           <ConfigureBody render={() => sectionBody(target)} />
         </ConfigureBoundary>
-      </div>)}</div>
+      </div>)}</fieldset>
     </div>
     <div className="wb-config-foot">
       <div className="state" aria-live="polite">
         <div className="wb-config-state-copy">
-        {local || controlsDirty || yamlDirty ? <b style={{ color: 'var(--wb-warn)' }}>{L('Unsaved edits', '有未保存的修改')}</b> : <b>{L(`Draft revision ${project.revision}`, `草稿修订 ${project.revision}`)}</b>}
+        {local || controlsDirty || yamlDirty ? <b style={{ color: 'var(--wb-warn)' }}>{L('Unsaved edits', '有未保存的修改')}</b> : stagedInputs ? <b style={{ color: 'var(--wb-warn)' }}>{L('Unconfirmed form inputs', '有未确认的表单输入')}</b> : <b>{L(`Draft revision ${project.revision}`, `草稿修订 ${project.revision}`)}</b>}
         {' · '}{project.latest_version ? L(`latest version v${project.latest_version.version}${versioned ? ' (this draft)' : ' (earlier revision)'}`, `最新版本 v${project.latest_version.version}${versioned ? '（即当前草稿）' : '（较早修订）'}`) : L('no saved version yet', '尚无保存的版本')}
         {activeRunVersion !== undefined && <div className="hint">{L(`Edits here go into the draft and a new version; the open run of v${activeRunVersion} is not affected.`, `此处修改写入草稿和新版本，不会影响已打开的 v${activeRunVersion} 运行。`)}</div>}
         {message && <div style={{ color: message.kind === 'error' ? 'var(--wb-bad)' : 'var(--wb-ok)' }}>{L(message.text, message.textZh ?? message.text)}</div>}
+        {workspaceOperations.applying && <div className="hint" role="status">{L('Applying a change…', '正在应用变更…')}</div>}
         </div>
-        {(section === 'controls' || controlsDirty) && <button className="wb-btn primary" disabled={!!busy || !controlsDirty || controlsMissing || !!invalid.size} onClick={() => void applyKnobs()}>{busy === 'knobs' ? L('Applying controls…', '正在应用控制项…') : L('Apply controls to draft', '应用到草稿')}</button>}
+        {(section === 'controls' || controlsDirty) && <button className="wb-btn primary" disabled={workspaceOperations.applying || !!busy || !controlsDirty || controlsMissing || !!invalid.size} onClick={() => void applyKnobs()}>{busy === 'knobs' ? L('Applying controls…', '正在应用控制项…') : L('Apply controls to draft', '应用到草稿')}</button>}
       </div>
-      <button className="wb-btn" disabled={!local || !!busy || !!invalid.size || !!merge} onClick={() => void saveDraft()}>{busy === 'save' ? L('Saving…', '保存中…') : L('Save draft', '保存草稿')}</button>
-      <button className="wb-btn" disabled={!!busy || !!invalid.size || controlsDirty || controlsMissing || yamlDirty} title={controlsDirty ? L('Apply the controls first', '请先应用控制项') : controlsMissing ? L('Correct the missing control source first', '请先修正缺失的控制项来源') : yamlDirty ? L('Import the file first', '请先导入文件') : undefined} data-testid="wb-validate" onClick={() => void validate()}>{busy === 'validate' ? L('Validating…', '校验中…') : L('Validate', '校验')}</button>
-      <button className="wb-btn primary" disabled={!validNow || !!versioned || !!busy} data-testid="wb-save-version" title={!validNow ? L('Validate this revision first', '请先校验当前修订') : undefined} onClick={() => void saveVersion()}>{L('Save version', '保存版本')}</button>
-      <button className="wb-btn go" disabled={!project.latest_version || initializing || !!busy} data-testid="wb-initialize" onClick={() => { if (project.latest_version) onInitialize(project.latest_version.version); }} title={L('Create a run of the latest saved version, held at t = 0', '以最新保存的版本创建运行，停在 t = 0')}>{initializing ? L('Initializing…', '初始化中…') : L(`Initialize v${project.latest_version?.version ?? '–'}`, `初始化 v${project.latest_version?.version ?? '–'}`)}</button>
+      <button className="wb-btn" disabled={workspaceOperations.applying || !local || !!busy || !!invalid.size || !!merge} onClick={() => void saveDraft()}>{busy === 'save' ? L('Saving…', '保存中…') : L('Save draft', '保存草稿')}</button>
+      <button className="wb-btn" disabled={workspaceOperations.applying || !!busy || !!invalid.size || controlsDirty || controlsMissing || yamlDirty} title={controlsDirty ? L('Apply the controls first', '请先应用控制项') : controlsMissing ? L('Correct the missing control source first', '请先修正缺失的控制项来源') : yamlDirty ? L('Import the file first', '请先导入文件') : undefined} data-testid="wb-validate" onClick={() => void validate()}>{busy === 'validate' ? L('Validating…', '校验中…') : L('Validate', '校验')}</button>
+      <button className="wb-btn primary" disabled={workspaceOperations.applying || !validNow || !!versioned || !!busy} data-testid="wb-save-version" title={!validNow ? L('Validate this revision first', '请先校验当前修订') : undefined} onClick={() => void saveVersion()}>{L('Save version', '保存版本')}</button>
+      <button className="wb-btn go" disabled={workspaceOperations.applying || !project.latest_version || initializing || !!busy} data-testid="wb-initialize" onClick={() => { if (project.latest_version) onInitialize(project.latest_version.version); }} title={L('Create a run of the latest saved version, held at t = 0', '以最新保存的版本创建运行，停在 t = 0')}>{initializing ? L('Initializing…', '初始化中…') : L(`Initialize v${project.latest_version?.version ?? '–'}`, `初始化 v${project.latest_version?.version ?? '–'}`)}</button>
     </div>
-  </aside></FormValidity.Provider>;
+  </aside></FormValidity.Provider></StagedFormWorkspace.Provider>;
 }

@@ -23,6 +23,7 @@ const config = { cooperation: { incidents: [{ id: 'fall-east', kind: 'person_fal
 const props = { config, api: {} as never, project, onProject, saveDraft, L, duration_s: 360 };
 const element = (override: Partial<typeof props> = {}) => <I18nProvider><IncidentsBlock {...props} {...override} /></I18nProvider>;
 beforeEach(() => {
+  sessionStorage.clear();
   window.localStorage.setItem('aeroagentsim.locale', 'en-US');
   onProject.mockClear(); saveDraft.mockClear(); previewOperations.mockClear(); applyOperations.mockClear();
 });
@@ -87,4 +88,27 @@ it('offers a visible read-only explanation when editing is not wired', () => {
   render(<I18nProvider><IncidentsBlock config={config} L={L} /></I18nProvider>);
   expect(screen.getByText(/Open this form from the workbench/)).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Preview removal' })).toBeNull();
+});
+
+it('restores a closed incident editor independently of the staged new incident', () => {
+  const first = render(element());
+  fireEvent.change(screen.getByLabelText('Incident ID'), { target: { value: 'pending-new' } });
+  fireEvent.change(screen.getByLabelText('Incident position'), { target: { value: '10,20,5' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+  const editing = within(screen.getByTestId('wb-incident-edit'));
+  fireEvent.change(editing.getByLabelText('Time (s)'), { target: { value: '120.5' } });
+  fireEvent.change(editing.getByLabelText('Incident position'), { target: { value: '30,40,7' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  first.unmount();
+  render(element());
+  expect(screen.getByLabelText('Incident ID')).toHaveValue('pending-new');
+  expect(screen.getByLabelText('Incident position')).toHaveValue('10,20,5');
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+  const reopened = within(screen.getByTestId('wb-incident-edit'));
+  expect(reopened.getByLabelText('Time (s)')).toHaveValue('120.5');
+  expect(reopened.getByLabelText('Incident position')).toHaveValue('30,40,7');
+  expect(screen.getAllByText('Restored unsaved inputs')).toHaveLength(2);
+  fireEvent.click(reopened.getByRole('button', { name: 'Discard' }));
+  expect(reopened.getByLabelText('Time (s)')).toHaveValue('90');
+  expect(screen.getByLabelText('Incident ID')).toHaveValue('pending-new');
 });

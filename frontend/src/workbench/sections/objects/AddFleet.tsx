@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { operation } from '../operations';
+import { operation, useWorkspaceOperations } from '../operations';
+import { useStagedForm } from '../useStagedForm';
+import { StagedFormNote } from '../tasks/op-ui';
 import type { Project, WorkbenchApi } from '../../api';
 import type { Scenario } from '../types';
 import { ID_PATTERN, nextRoleId, num, strictVector3 } from './model';
@@ -15,6 +16,7 @@ const FLEET_ROLES = [
   { role: 'sprayer', en: 'Sprayer', zh: '植保无人机' },
 ] as const;
 type FleetRole = (typeof FLEET_ROLES)[number]['role'];
+interface FleetFields { role: FleetRole; idText: string; count: string; startMode: 'keep' | 'centre' | 'facility' | 'enu'; facilityId: string; coordinates: string[]; battery: string; payload: string; touched: string[] }
 export type FleetEditing = { id: string; count: number; battery_pct?: number; start?: string | number[] };
 
 /** Members a fleet owns, from the actual server-written `<id>-<n>` entities. */
@@ -46,17 +48,21 @@ export function AddFleet({ api, project, draft, onProject, L, onClose, editing, 
   const members = editing ? fleetMembers(entities, editing.id) : [];
   const isUpdate = !!editing;
   const initialStart = editing?.start;
-  const [role, setRole] = useState<FleetRole>(initialRole);
-  const [idText, setIdText] = useState(() => editing?.id ?? nextRoleId(initialRole, entities.map(entity => entity.id)));
-  const [count, setCount] = useState(isUpdate ? String(editing.count) : '3');
-  const [startMode, setStartMode] = useState<'keep' | 'centre' | 'facility' | 'enu'>(
-    strictVector3(initialStart) ? 'enu' : typeof initialStart === 'string' ? ['centre', 'center', 'middle'].includes(initialStart) ? 'centre' : 'facility' : isUpdate ? 'keep' : 'centre');
-  const [facilityId, setFacilityId] = useState(typeof initialStart === 'string' ? initialStart : '');
-  const [coordinates, setCoordinates] = useState(() => strictVector3(initialStart) ? initialStart.map(String) : ['0', '0', '0']);
-  const [battery, setBattery] = useState(editing?.battery_pct !== undefined ? String(editing.battery_pct) : '');
-  const [payload, setPayload] = useState('');
-  const [touched, setTouched] = useState<Set<string>>(new Set());
-  const mark = (field: string) => setTouched(previous => new Set(previous).add(field));
+  const staged = useStagedForm<FleetFields>(project.id, isUpdate ? `fleet.edit:${editing.id}` : 'fleet.add', {
+    role: initialRole, idText: editing?.id ?? nextRoleId(initialRole, entities.map(entity => entity.id)),
+    count: isUpdate ? String(editing.count) : '3',
+    startMode: strictVector3(initialStart) ? 'enu' : typeof initialStart === 'string' ? ['centre', 'center', 'middle'].includes(initialStart) ? 'centre' : 'facility' : isUpdate ? 'keep' : 'centre',
+    facilityId: typeof initialStart === 'string' ? initialStart : '',
+    coordinates: strictVector3(initialStart) ? initialStart.map(String) : ['0', '0', '0'],
+    battery: editing?.battery_pct !== undefined ? String(editing.battery_pct) : '', payload: '', touched: [],
+  }, project.revision);
+  const { role, idText, count, startMode, facilityId, coordinates, battery, payload } = staged.values;
+  const touched = new Set(staged.values.touched);
+  const set = <K extends keyof FleetFields>(field: K, value: FleetFields[K]) => staged.setValues(previous => ({ ...previous, [field]: value }));
+  const mark = (field: string) => staged.setValues(previous => ({ ...previous, touched: [...new Set([...previous.touched, field])] }));
+  const setRole = (value: FleetRole) => set('role', value), setIdText = (value: string) => set('idText', value);
+  const setCount = (value: string) => set('count', value), setBattery = (value: string) => set('battery', value), setPayload = (value: string) => set('payload', value);
+  const setStartMode = (value: FleetFields['startMode']) => set('startMode', value), setFacilityId = (value: string) => set('facilityId', value);
   const idBad = !idText.trim() || !ID_PATTERN.test(idText.trim()) || (!isUpdate && entities.some(entity => entity.id === idText.trim() || String(entity.id).startsWith(`${idText.trim()}-`)));
   const countValue = num(count), batteryValue = num(battery), payloadValue = num(payload), vector = coordinates.map(num);
   const countInvalid = countValue === undefined || !Number.isInteger(countValue) || countValue < 1 || countValue > 1000;
@@ -73,12 +79,14 @@ export function AddFleet({ api, project, draft, onProject, L, onClose, editing, 
   if (isUpdate && start !== undefined && JSON.stringify(resolveStart(start)) !== JSON.stringify(resolveStart(initialStart))) params.start = start;
   if (battery.trim() !== '' && (!isUpdate || batteryValue !== editing.battery_pct)) params.battery_pct = batteryValue;
   if (!isUpdate && payload.trim() !== '') params.payload_capacity_kg = payloadValue;
-  const review = useOperationsReview(api, project, [operation(isUpdate ? 'set_fleet' : 'add_fleet', params)]);
-  const apply = async () => { if (!canPreview) return; const updated = await review.apply(); if (updated) { onProject(updated); onClose(); } };
+  const workspaceOperations = useWorkspaceOperations(project);
+  const review = useOperationsReview(api, workspaceOperations.project, [operation(isUpdate ? 'set_fleet' : 'add_fleet', params)]);
+  const apply = async () => { if (!canPreview || workspaceOperations.applying) return; const updated = await review.apply(); if (updated) { staged.clear(staged.values); onProject(updated); onClose(); } };
   const removesMembers = !!review.preview && operationChanges(review.preview.diff, entities as Array<{ id: string }>).removed.length > 0;
 
   return <div className="wb-object-form wb-form-card" data-testid="wb-add-fleet">
     <h4 className="wb-form-card-title">{isUpdate ? L('Edit fleet', '编辑机群') : L('Add fleet', '添加机群')}</h4>
+    <StagedFormNote form={staged} L={L} onDiscard={review.clear} />
     {isUpdate && <p className="hint">{L(`Members: ${members.join(', ')}. Unchanged settings are preserved.`, `成员：${members.join('、')}。未修改的设置会保留。`)}</p>}
     {!isUpdate && <div className="wb-choice-group" role="group" aria-label={L('Fleet role', '机群角色')}>
       {FLEET_ROLES.map(row => <button type="button" key={row.role} aria-pressed={role === row.role} className="wb-choice"
@@ -105,7 +113,7 @@ export function AddFleet({ api, project, draft, onProject, L, onClose, editing, 
       {startMode === 'enu' && <div className="wb-form-grid" style={{ gridColumn: '1 / -1' }}>
         {[L('east (m)', '东向 (m)'), L('north (m)', '北向 (m)'), L('up (m)', '天向 (m)')].map((label, index) => <label className="wb-form-field" key={index}>
           <span className="wb-label">{label}</span><input inputMode="decimal" value={coordinates[index]} aria-invalid={touched.has('start') && vector[index] === undefined}
-            onChange={event => { setCoordinates(previous => previous.map((value, axis) => axis === index ? event.target.value : value)); mark('start'); }} />
+            onChange={event => { set('coordinates', coordinates.map((value, axis) => axis === index ? event.target.value : value)); mark('start'); }} />
         </label>)}
       </div>}
       {!isUpdate && <label className="wb-form-field"><span className="wb-label">{L('payload capacity (kg)', '载荷容量 (kg)')}</span><input inputMode="decimal" value={payload} aria-invalid={touched.has('payload') && payloadInvalid}
@@ -120,9 +128,10 @@ export function AddFleet({ api, project, draft, onProject, L, onClose, editing, 
     {startInvalid && touched.has('start') && <p className="wb-field-error" role="alert">{L('Choose a facility or enter three finite coordinates.', '请选择设施或输入三个有限坐标。')}</p>}
     {review.preview && <OperationDiff {...review.preview} entities={entities as Array<{ id: string }>} stale={review.stale} L={L} />}
     {review.problem && <p className="wb-field-error" role="alert">{review.problem.field && <span className="wb-mono">{review.problem.field}: </span>}{operationText(review.problem.message, L)}</p>}
+    {workspaceOperations.applying && review.busy !== 'apply' && <p className="hint wb-form-prerequisite" role="note">{L('Applying another change…', '正在应用另一项变更…')}</p>}
     <div className="wb-form-actions wb-object-actions">
-      <button className="wb-btn" disabled={!canPreview || !!review.busy} onClick={() => void review.load()}>{review.busy === 'preview' ? L('Previewing…', '预览中…') : review.preview ? L('Preview again', '重新预览') : L('Preview', '预览')}</button>
-      {review.preview && <button className="wb-btn primary" disabled={!canPreview || review.stale || !!review.busy} onClick={() => void apply()}>
+      <button className="wb-btn" disabled={!canPreview || !!review.busy || workspaceOperations.applying} onClick={() => void review.load()}>{review.busy === 'preview' ? L('Previewing…', '预览中…') : review.preview ? L('Preview again', '重新预览') : L('Preview', '预览')}</button>
+      {review.preview && <button className="wb-btn primary" disabled={!canPreview || review.stale || !!review.busy || workspaceOperations.applying} onClick={() => void apply()}>
         {review.busy === 'apply' ? L('Applying…', '应用中…') : removesMembers ? L('Confirm resize', '确认调整规模') : L('Apply', '应用')}</button>}
       <button className="wb-btn" disabled={!!review.busy} onClick={onClose}>{L('Close', '关闭')}</button>
     </div>

@@ -53,6 +53,24 @@ it('blocks saving and validation while a numeric input is invalid', async () => 
   expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
   expect(api.save).not.toHaveBeenCalled();
 });
+
+it('recovers an unapplied duration on refresh, reports unconfirmed input, and leaves the server draft unchanged (T3-R3-003 / T4-R2-009)', () => {
+  const first = setup();
+  fireEvent.change(screen.getByLabelText('Duration (s)'), { target: { value: '777' } });
+  expect(screen.getByText('Unconfirmed form inputs')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+  expect(screen.getByRole('textbox', { name: /until_ns/ })).toHaveValue('360000000000');
+  expect(first.api.save).not.toHaveBeenCalled();
+  first.view.unmount();
+  const second = setup();
+  expect(screen.getByLabelText('Duration (s)')).toHaveValue('777');
+  expect(screen.getByText('Restored unsaved inputs')).toBeVisible();
+  expect(screen.getByRole('textbox', { name: /until_ns/ })).toHaveValue('360000000000');
+  expect(second.api.save).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+  expect(screen.getByLabelText('Duration (s)')).toHaveValue('360');
+  expect(screen.queryByText('Unconfirmed form inputs')).toBeNull();
+});
 it('recovers edits against an older revision without deleting them', async () => {
   sessionStorage.setItem('aas.draft.test-project', JSON.stringify({ revision: 1, scenario: { run: { until_ns: 123 } } }));
   setup();

@@ -1,15 +1,17 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import { AddPlace } from './AddPlace';
 import type { PlaceEditing } from './model';
 import type { PlacePickerMapProps } from '../space/PlacePickerMap';
 
-vi.mock('../space/PlacePickerMap', async importOriginal => ({ ...await importOriginal<object>(), PlacePickerMap: ({ position, onPick }: PlacePickerMapProps) => <div>
+vi.mock('../space/PlacePickerMap', async importOriginal => ({ ...await importOriginal<object>(), PlacePickerMap: ({ position, onPick, L }: PlacePickerMapProps) => <div>
+  <span role="status">{L('Click to place — east/north fill in automatically', '点击放置——东/北坐标会自动填入')}</span>
   <button onClick={() => onPick(80, -25, true)}>Map click</button>
   <output aria-label="Map marker">{JSON.stringify(position)}</output>
 </div> }));
 afterEach(cleanup);
+beforeEach(() => sessionStorage.clear());
 const en = (text: string) => text, zh = (_en: string, text: string) => text;
 const project = { id: 'w', revision: 7 };
 const applied = { ...project, revision: 8, scenario: { entities: [] } };
@@ -88,20 +90,84 @@ it('selects only the current locale for roles and language-field labels (T4-R2-0
   expect(screen.queryByText('Name (Chinese)')).toBeNull();
 });
 
-it('keeps the current picker mounted after a click and follows typed coordinates, preserving height (D7)', async () => {
+it('Map click supplies east/north and preserves height; typed edits move the marker (T1-R3-004 / T2-R3-004 / T3-R3-001 / T4-R3-001)', async () => {
   const { api } = setup({ id: 'kitchen', role: 'kitchen', position: [100, 0, 10], preparation_s: 3 }, en, {
     project_detail: { region: { extract: 'test', bounds: [121, 31, 122, 32], alt: 0, level_height_m: 3.5 }, scene: { origin: { lat: 31.5, lon: 121.5, alt: 0 } } },
   });
   expect(screen.getByTestId('wb-place-picker')).toBeTruthy();
   expect(screen.getByText('Click the map to place it')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Map click' }));
+  expect(screen.getByLabelText('Position from')).toHaveValue('map');
   expect(screen.getByLabelText('East (m)')).toHaveValue('80.0');
   expect(screen.getByLabelText('North (m)')).toHaveValue('-25.0');
   expect(screen.getByLabelText('Height (m)')).toHaveValue('10');
   expect(screen.getByLabelText('Map marker')).toHaveTextContent('[80,-25]');
   fireEvent.change(screen.getByLabelText('East (m)'), { target: { value: '90' } });
+  expect(screen.getByLabelText('Position from')).toHaveValue('typed');
   expect(screen.getByLabelText('Map marker')).toHaveTextContent('[90,-25]');
   fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
   await screen.findByRole('button', { name: 'Apply' });
   expect(api.request.mock.calls[0][1].body.operations[0].params.at).toEqual([90, -25, 10]);
+});
+
+it('Typed is available without a region or facilities and sends the authoritative three inputs (T1-R3-004 / T3-R3-001)', async () => {
+  const { api } = setup(undefined, en, { draft: { entities: [] } });
+  fireEvent.change(screen.getByLabelText('Position from'), { target: { value: 'typed' } });
+  expect(screen.queryByLabelText('Existing facility')).toBeNull();
+  fireEvent.change(screen.getByLabelText('East (m)'), { target: { value: '150' } });
+  fireEvent.change(screen.getByLabelText('North (m)'), { target: { value: '20' } });
+  fireEvent.change(screen.getByLabelText('Height (m)'), { target: { value: '7' } });
+  expect(screen.getByLabelText('Position from')).toHaveValue('typed');
+  expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+  await screen.findByRole('button', { name: 'Apply' });
+  expect(api.request.mock.calls[0][1].body.operations[0].params.at).toEqual([150, 20, 7]);
+});
+
+const region = { region: { extract: 'test', bounds: [121, 31, 122, 32], alt: 0, level_height_m: 3.5 }, scene: { origin: { lat: 31.5, lon: 121.5, alt: 0 } } };
+
+it('Existing facility copies its actual position into all inputs and the map marker (T2-R3-004 / T4-R3-001)', async () => {
+  const { api } = setup(undefined, en, { project_detail: region });
+  fireEvent.change(screen.getByLabelText('Position from'), { target: { value: 'facility' } });
+  expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
+  expect(screen.getByText('Choose an existing facility.')).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('Existing facility'), { target: { value: 'kitchen' } });
+  expect(screen.getByLabelText('East (m)')).toHaveValue('100');
+  expect(screen.getByLabelText('North (m)')).toHaveValue('0');
+  expect(screen.getByLabelText('Height (m)')).toHaveValue('10');
+  expect(screen.getByLabelText('Map marker')).toHaveTextContent('[100,0]');
+  fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+  await screen.findByRole('button', { name: 'Apply' });
+  expect(api.request.mock.calls[0][1].body.operations[0].params.at).toEqual([100, 0, 10]);
+});
+
+it('uses the shared picker hint exactly once, in the active locale (D12)', () => {
+  setup(undefined, zh, { project_detail: region });
+  expect(screen.getAllByText('点击地图放置')).toHaveLength(1);
+  expect(screen.queryByText(/点击放置——/)).toBeNull();
+  expect(screen.queryByText('Click the map to place it')).toBeNull();
+});
+
+it('restores unapplied place inputs after close or Conversation and clears them only on apply or Discard (T2-R3-003)', async () => {
+  const first = setup();
+  fireEvent.change(screen.getByLabelText('Id'), { target: { value: 'unsaved-recovery-place' } });
+  fireEvent.change(screen.getByLabelText('East (m)'), { target: { value: '123' } });
+  fireEvent.change(screen.getByLabelText('Name (English)'), { target: { value: 'Unfinished station' } });
+  first.unmount();
+  const second = setup();
+  expect(screen.getByLabelText('Id')).toHaveValue('unsaved-recovery-place');
+  expect(screen.getByLabelText('East (m)')).toHaveValue('123');
+  expect(screen.getByLabelText('Name (English)')).toHaveValue('Unfinished station');
+  expect(screen.getByRole('note')).toHaveTextContent('Restored unsaved inputs');
+  expect(second.api.request).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Apply' }));
+  await waitFor(() => expect(second.onProject).toHaveBeenCalled());
+  expect(Object.keys(sessionStorage).filter(key => key.startsWith('aas.staged.'))).toHaveLength(0);
+  second.unmount();
+  setup();
+  fireEvent.change(screen.getByLabelText('Id'), { target: { value: 'discard-this' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+  expect(screen.getByLabelText('Id')).toHaveValue('charging-pad-2');
+  expect(Object.keys(sessionStorage).filter(key => key.startsWith('aas.staged.'))).toHaveLength(0);
 });

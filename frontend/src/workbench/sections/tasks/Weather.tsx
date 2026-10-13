@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { SectionProps } from '../types';
 import { canonicalJson, operation } from '../operations';
+import { useStagedForm } from '../useStagedForm';
 import { nsToS, windSpeed, type Draft } from './model';
-import { OpApply, Prerequisite, StagedNumber, parseStagedNumber, stagedNumberProblem, type FormNavigation } from './op-ui';
+import { OpApply, Prerequisite, StagedFormNote, StagedNumber, parseStagedNumber, stagedNumberProblem, type FormNavigation } from './op-ui';
 import { gustProblem } from './ops';
 
 interface Props extends FormNavigation {
@@ -17,10 +18,13 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
       .map(([key, wind]) => ({ entity, key, wind: wind as Draft }))), [canonicalJson(environment.config?.profiles)]);
   const speeds = slots.map(({ wind }) => windSpeed(Array.isArray(wind.value?.[0]) ? wind.value[0] : wind.value));
   const commonSpeed = speeds.length && speeds.every(speed => speed !== undefined && speed === speeds[0]) ? speeds[0] : undefined;
-  const [background, setBackground] = useState<string>();
+  const backgroundForm = useStagedForm<Partial<{ speed: string }>>(project.id, `weather.background:${_name}`, {}, project.revision);
+  const background = backgroundForm.values.speed;
+  const setBackground = (speed: string) => backgroundForm.setValues({ speed });
   const backgroundText = background ?? (commonSpeed !== undefined ? String(commonSpeed) : '');
   const duration_s = nsToS(draft.run?.until_ns), step_s = nsToS(draft.run?.advance_ns ?? draft.run?.step_ns);
-  const [gust, setGust] = useState<Partial<{ start: string; end: string; speed: string }>>({});
+  const gustForm = useStagedForm<Partial<{ start: string; end: string; speed: string }>>(project.id, `weather.gust:${_name}`, {}, project.revision);
+  const { values: gust, setValues: setGust } = gustForm;
   const start = gust.start ?? (duration_s !== undefined && duration_s > 0 ? String(duration_s * 0.25) : '');
   const end = gust.end ?? (duration_s !== undefined && duration_s > 0 ? String(duration_s * 0.5) : '');
   const speed = gust.speed ?? '9';
@@ -46,13 +50,15 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
   return <div className="wb-weather wb-form-section" data-testid="wb-weather">
     <p className="hint">{L('Background wind and short gusts. Gust times must fall inside the run duration.', '设置背景风与短时阵风，阵风时段必须处于运行时长之内。')}</p>
     <fieldset className="wb-form-card"><legend className="wb-form-card-title">{L('Background wind', '背景风')}</legend>
+      <StagedFormNote form={backgroundForm} L={L} />
       <div className="wb-form-grid">
         <StagedNumber label={`${L('Background speed', '背景风速')} (m/s)`} value={backgroundText} min={0} onChange={setBackground} />
-        <OpApply {...opProps} operations={windOperations} label={L('Preview', '预览')} primary small onApplied={() => setBackground(undefined)} />
+        <OpApply {...opProps} operations={windOperations} label={L('Preview', '预览')} primary small onApplied={() => backgroundForm.clear(backgroundForm.values)} />
       </div>
       {commonSpeed === undefined && <p className="hint">{L('Enter a speed to apply to all configured wind profiles.', '请输入要应用到所有风场的风速。')}</p>}
     </fieldset>
     <fieldset className="wb-form-card wb-gust-add"><legend className="wb-form-card-title">{L('Add gust', '添加阵风')}</legend>
+      <StagedFormNote form={gustForm} L={L} />
       {(missingDuration || shortDuration) && <Prerequisite goTo={goTo} section="run" action={L('Run & recording', '运行与记录')}>
         {missingDuration ? L('Set a run duration in Run & recording.', '请在“运行与记录”中设置运行时长。')
           : L(`Run duration is ${duration_s} s — lengthen it on Run & recording.`, `运行时长为 ${duration_s} 秒——请在“运行与记录”中延长。`)}
@@ -61,7 +67,7 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
         <StagedNumber label={`${L('Start', '开始')} (s)`} value={start} min={0} problem={errors?.start_s} onChange={text => setGust(previous => ({ ...previous, start: text }))} />
         <StagedNumber label={`${L('End', '结束')} (s)`} value={end} min={0} problem={endProblem} showError={gust.start !== undefined || gust.end !== undefined} onChange={text => setGust(previous => ({ ...previous, end: text }))} />
         <StagedNumber label={`${L('Speed', '风速')} (m/s)`} value={speed} min={0} problem={errors?.speed_mps} onChange={text => setGust(previous => ({ ...previous, speed: text }))} />
-        <OpApply {...opProps} operations={gustOperations} label={L('Preview', '预览')} primary small onApplied={() => setGust({})} />
+        <OpApply {...opProps} operations={gustOperations} label={L('Preview', '预览')} primary small onApplied={() => gustForm.clear(gustForm.values)} />
       </div>
       {intervalProblem && !Object.keys(gust).length && <p className="hint wb-form-prerequisite">{intervalProblem}</p>}
     </fieldset>

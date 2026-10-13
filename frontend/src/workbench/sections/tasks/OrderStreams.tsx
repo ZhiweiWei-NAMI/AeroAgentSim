@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { SectionProps } from '../types';
 import { canonicalJson, operation } from '../operations';
+import { useStagedForm } from '../useStagedForm';
 import { nsToS, orderStreamId, scalarNumber, siteIds, type Draft } from './model';
-import { OpApply, Prerequisite, StagedNumber, parseStagedNumber, stagedNumberProblem, type FormNavigation } from './op-ui';
+import { OpApply, Prerequisite, StagedFormNote, StagedNumber, parseStagedNumber, stagedNumberProblem, type FormNavigation } from './op-ui';
 import { addOrdersParams, TASK_KINDS_C11, taskKindLabel, type OrdersInput, type Release } from './ops';
 
 type OperationProps = Pick<SectionProps, 'api' | 'project' | 'onProject' | 'saveDraft' | 'zh' | 'L'> & FormNavigation;
@@ -35,7 +36,8 @@ function initialFields(draft: Draft, stream?: Draft, identity?: string): Fields 
 /** Both create and edit keep raw text until preview; low-altitude structures are written by C11. */
 function OrdersForm({ draft, stream, identity, existingIds = [], ...props }: OperationProps & { draft: Draft; stream?: Draft; identity?: string; existingIds?: Array<string | undefined> }) {
   const { L, zh, goTo } = props;
-  const [changes, setChanges] = useState<Partial<Fields>>({});
+  const staged = useStagedForm<Partial<Fields>>(props.project.id, stream ? `orders.edit:${identity}` : 'orders.add', {}, props.project.revision);
+  const { values: changes, setValues: setChanges } = staged;
   const [touched, setTouched] = useState<Set<keyof Fields>>(() => new Set());
   const fields = { ...initialFields(draft, stream, identity), ...changes };
   const set = <K extends keyof Fields>(key: K, value: Fields[K]) => {
@@ -97,6 +99,7 @@ function OrdersForm({ draft, stream, identity, existingIds = [], ...props }: Ope
   </label>;
   return <fieldset className="wb-form-card wb-order-add">
     <legend className="wb-form-card-title">{L(stream ? 'Edit order stream' : 'Add order stream', stream ? '编辑订单流' : '添加订单流')}</legend>
+    <StagedFormNote form={staged} L={L} onDiscard={() => setTouched(new Set())} />
     <label className="wb-form-field">{L('Order stream ID', '订单流标识')}
       <input aria-label={L('New order stream ID', '新订单流标识')} readOnly={!!stream} placeholder={L('e.g. parcel-rush', '例如 parcel-rush')} value={fields.id} onChange={event => set('id', event.target.value)} />
       {touched.has('id') && (!fields.id.trim() || idTaken) && <span className="hint wb-field-error" role="alert">{idTaken ? L('This stream ID is already used.', '该订单流标识已被使用。') : L('Required.', '必填。')}</span>}
@@ -139,7 +142,7 @@ function OrdersForm({ draft, stream, identity, existingIds = [], ...props }: Ope
     </div>
     {fields.kind === 'food' && <StagedNumber label={`${L('Delivery window', '配送时间窗')} (s)`} value={fields.window} exclusiveMin={0} allowEmpty onChange={value => set('window', value)} />}
     <OpApply {...props} operations={operations} missing={missing} label={L('Preview', '预览')} primary small
-      onApplied={() => { setChanges({}); setTouched(new Set()); }} />
+      onApplied={() => { staged.clear(staged.values); setTouched(new Set()); }} />
   </fieldset>;
 }
 

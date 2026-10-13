@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { ConfigPanel } from './ConfigPanel';
 import { ApiError, type Project, type WorkbenchApi } from './api';
 import type { SectionProps } from './sections/types';
+import { useStagedForm } from './sections/useStagedForm';
+import { StagedFormNote } from './sections/tasks/op-ui';
+import { mutateWorkspace } from './sections/operations';
 
 const sectionState = vi.hoisted(() => ({ broken: false, mutation: undefined as Project | undefined }));
 vi.mock('../newcomers/api', () => ({ TemplateApi: class { algorithms = async () => []; } }));
@@ -13,9 +16,11 @@ vi.mock('./sections/ObjectsSection', () => ({ ObjectsSection: (props: SectionPro
 vi.mock('./sections/RunSection', () => ({ RunSection: (props: SectionProps) => <TestSection id="run" {...props} /> }));
 
 function TestSection({ id, ...props }: SectionProps & { id: string }) {
-  const [text, setText] = useState('');
+  const staged = useStagedForm(props.project.id, `test.${id}`, { text: '' });
+  const text = staged.values.text, setText = (text: string) => staged.setValues({ text });
   if (id === 'space' && sectionState.broken) throw Error('Map initialization failed');
   return <>
+    <StagedFormNote form={staged} L={props.L} />
     <input aria-label={`${id} pending form`} value={text} onChange={event => setText(event.target.value)} />
     <button onClick={() => props.edit('/city', undefined)}>Clear city locally</button>
     <button onClick={() => props.edit('/run/seed', 43)}>Edit seed locally</button>
@@ -116,4 +121,46 @@ it('D6: goTo switches to the requested section, preserves the full focus path an
   await waitFor(() => expect(screen.getByTestId('objects-focus')).toHaveTextContent('/entities/0/facts/lowalt:site'));
   fireEvent.click(screen.getByRole('button', { name: 'Run & recording' }));
   expect(screen.getByLabelText('run pending form')).toHaveValue('600');
+});
+
+it('keeps staged inputs through Close, Conversation and a full panel remount, with unload protection while closed (T1-R3-003 / T2-R3-003)', () => {
+  function Harness() {
+    const [open, setOpen] = useState(true);
+    return <>{open ? <ConfigPanel api={{ base: '/api' } as WorkbenchApi} project={initial} onProject={vi.fn()} section="run" onSection={vi.fn()}
+      onInitialize={vi.fn()} initializing={false} onClose={() => setOpen(false)} onSwitch={() => setOpen(false)} />
+      : <button onClick={() => setOpen(true)}>Open form</button>}</>;
+  }
+  const first = render(<I18nProvider><Harness /></I18nProvider>);
+  fireEvent.change(screen.getByLabelText('run pending form'), { target: { value: 'research-input' } });
+  expect(screen.getByText('Unconfirmed form inputs')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Close configuration' }));
+  const leaving = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(leaving);
+  expect(leaving.defaultPrevented).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Open form' }));
+  expect(screen.getByLabelText('run pending form')).toHaveValue('research-input');
+  expect(screen.getByText('Restored unsaved inputs')).toBeVisible();
+  fireEvent.click(screen.getByRole('tab', { name: 'Conversation' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Open form' }));
+  expect(screen.getByLabelText('run pending form')).toHaveValue('research-input');
+  first.unmount();
+  render(<I18nProvider><Harness /></I18nProvider>);
+  expect(screen.getByLabelText('run pending form')).toHaveValue('research-input');
+  fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+  expect(screen.getByLabelText('run pending form')).toHaveValue('');
+  expect(screen.queryByText('Unconfirmed form inputs')).toBeNull();
+});
+
+it('gates all section forms during a mutation while section navigation remains available (T2-R3-006)', async () => {
+  setup('run');
+  let finish!: (value: Project) => void;
+  let applying!: Promise<Project>;
+  act(() => { applying = mutateWorkspace(initial, () => new Promise<Project>(resolve => { finish = resolve; })); });
+  expect(screen.getByLabelText('run pending form')).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Edit seed locally' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Objects' })).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Objects' }));
+  expect(screen.getByLabelText('objects pending form')).toBeDisabled();
+  await act(async () => { finish({ ...initial, revision: 3 }); await applying; });
+  expect(screen.getByLabelText('objects pending form')).toBeEnabled();
+  expect(screen.getByText('Draft revision 3')).toBeVisible();
 });

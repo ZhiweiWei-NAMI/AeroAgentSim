@@ -28,6 +28,7 @@ const element = (override: Partial<typeof props> = {}) => <I18nProvider><RunSect
 const durationForm = () => screen.getByLabelText('Duration (s)').closest('fieldset') as HTMLElement;
 const settingsForm = () => screen.getByLabelText('Random seed').closest('fieldset') as HTMLElement; // same card: Run timing
 beforeEach(() => {
+  sessionStorage.clear();
   window.localStorage.setItem('aeroagentsim.locale', 'en-US');
   edit.mockClear(); onProject.mockClear(); previewOperations.mockClear(); applyOperations.mockClear(); save.mockClear(); saveDraft.mockClear();
 });
@@ -111,4 +112,40 @@ it.each([['Duration (s)', '0'], ['Duration (s)', ''], ['Step (s)', 'abc'], ['Ste
   const preview = label === 'Duration (s)' ? 'Preview duration' : 'Preview step & seed';
   expect(within(form).getByRole('button', { name: preview })).toBeDisabled();
   expect(save).not.toHaveBeenCalled(); expect(previewOperations).not.toHaveBeenCalled();
+});
+
+it('restores unconfirmed duration/step/seed after remount and discards only the selected form (T3-R3-003 / T4-R2-009)', () => {
+  const first = render(element());
+  fireEvent.change(screen.getByLabelText('Duration (s)'), { target: { value: '240' } });
+  fireEvent.change(screen.getByLabelText('Step (s)'), { target: { value: '2' } });
+  fireEvent.change(screen.getByLabelText('Random seed'), { target: { value: '73' } });
+  first.unmount();
+  render(element({ project: structuredClone(project), draft: structuredClone(draft) }));
+  expect(screen.getByLabelText('Duration (s)')).toHaveValue('240');
+  expect(screen.getByLabelText('Step (s)')).toHaveValue('2');
+  expect(screen.getByLabelText('Random seed')).toHaveValue('73');
+  expect(screen.getAllByText('Restored unsaved inputs')).toHaveLength(2);
+  fireEvent.click(screen.getAllByRole('button', { name: 'Discard' })[0]);
+  expect(screen.getByLabelText('Duration (s)')).toHaveValue('300');
+  expect(screen.getByLabelText('Step (s)')).toHaveValue('2');
+  expect(screen.getByLabelText('Random seed')).toHaveValue('73');
+  expect(save).not.toHaveBeenCalled();
+  expect(previewOperations).not.toHaveBeenCalled();
+});
+
+it('applying duration clears its buffer while preserving the pending step and seed', async () => {
+  const view = render(element());
+  fireEvent.change(screen.getByLabelText('Duration (s)'), { target: { value: '777' } });
+  fireEvent.change(screen.getByLabelText('Step (s)'), { target: { value: '2' } });
+  fireEvent.change(screen.getByLabelText('Random seed'), { target: { value: '73' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Preview duration' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+  await waitFor(() => expect(onProject).toHaveBeenCalledOnce());
+  const updated = onProject.mock.calls[0][0];
+  view.rerender(element({ project: updated, draft: updated.scenario }));
+  expect(screen.getByLabelText('Duration (s)')).toHaveValue('777');
+  expect(screen.getByLabelText('Step (s)')).toHaveValue('2');
+  expect(screen.getByLabelText('Random seed')).toHaveValue('73');
+  const buffers = Object.keys(sessionStorage).filter(key => key.startsWith('aas.staged.')).map(key => JSON.parse(sessionStorage.getItem(key)!));
+  expect(buffers.map(buffer => buffer.form)).toEqual(['run.settings']);
 });

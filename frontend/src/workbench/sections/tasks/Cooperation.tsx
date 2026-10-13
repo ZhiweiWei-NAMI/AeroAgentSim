@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { pointer } from '../../form';
 import type { SectionProps } from '../types';
 import { canonicalJson, operation } from '../operations';
+import { useStagedForm } from '../useStagedForm';
 import { handoffPointIds, nsToS, scalarNumber, vehicleIds, type Draft } from './model';
-import { OpApply, Prerequisite, StagedNumber, parseStagedNumber, stagedNumberProblem, type FormNavigation } from './op-ui';
+import { OpApply, Prerequisite, StagedFormNote, StagedNumber, parseStagedNumber, stagedNumberProblem, type FormNavigation } from './op-ui';
 import { cooperationParams } from './ops';
 import { IncidentsBlock } from './Traffic';
 
@@ -30,7 +31,8 @@ export function CooperationEditor({ config, engineName, draft, edit: _edit, focu
     responderMode: coop?.responder?.mode ?? 'prescribed', helperMode: coop?.helpers?.mode ?? 'prescribed',
     responderGoal: coop?.responder?.goal ?? '', helperGoal: coop?.helpers?.goal ?? '', selection: coop?.helpers?.selection ?? 'nearest',
   };
-  const [changes, setChanges] = useState<Partial<Fields>>({});
+  const staged = useStagedForm<Partial<Fields>>(props.project.id, `cooperation:${engineName}`, {}, props.project.revision);
+  const { values: changes, setValues: setChanges } = staged;
   const fields = { ...initial, ...changes };
   const set = <K extends keyof Fields>(key: K, value: Fields[K]) => setChanges(previous => ({ ...previous, [key]: value }));
   const radiusProblem = stagedNumberProblem(fields.radius, { exclusiveMin: 0, zh });
@@ -79,6 +81,7 @@ export function CooperationEditor({ config, engineName, draft, edit: _edit, focu
     <p className="hint">{L('Assign who notices an incident, who decides the response, and who helps at a handoff point.', '指派事件观察者、响应决策者，以及在交接点提供帮助的无人机。')}</p>
     <fieldset className="wb-form-card wb-form-stack">
       <legend className="wb-form-card-title">{L('Cooperation', '协同')}</legend>
+      <StagedFormNote form={staged} L={L} />
       {!vehicles.length && <Prerequisite goTo={goTo} section="objects" action={L('Add fleet', '添加机群')}>{L('No UAVs yet — add a fleet in Objects.', '还没有无人机——请在“对象”中添加机群。')}</Prerequisite>}
       <div className="wb-form-grid">
         {multi('watchers', L('Watcher vehicles', '观察者无人机'), vehicles)}
@@ -101,7 +104,7 @@ export function CooperationEditor({ config, engineName, draft, edit: _edit, focu
       </div>
       {multi('handoffs', L('Handoff points', '交接点'), handoffs)}
       {!handoffs.length && <Prerequisite goTo={goTo} section="objects" focus="add-place" action={L('Add handoff point', '添加交接点')}>{L('No handoff-point places yet — add one in Objects → Add place.', '还没有交接点设施——请在“对象”→“添加设施”中添加。')}</Prerequisite>}
-      <OpApply {...props} operations={operations} missing={missing} label={L('Preview', '预览')} primary small onApplied={() => setChanges({})} />
+      <OpApply {...props} operations={operations} missing={missing} label={L('Preview', '预览')} primary small onApplied={() => staged.clear(staged.values)} />
     </fieldset>
     {coop && <>
       <details><summary>{L('Incidents', '事件')}</summary>

@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { SectionProps } from '../types';
 import { operation } from '../operations';
+import { useStagedForm } from '../useStagedForm';
 import type { Draft } from './model';
-import { OpApply, StagedNumber, parseStagedNumber, stagedNumberProblem } from './op-ui';
+import { OpApply, StagedFormNote, StagedNumber, parseStagedNumber, stagedNumberProblem } from './op-ui';
 import { pointer, TreeForm } from '../../form';
 
 /** Traffic sources retain their actual provenance. */
@@ -35,77 +36,87 @@ export function parseIncidentPosition(text: string): string | number[] | undefin
 }
 
 type IncidentFields = { id: string; at: string; time: string };
+type IncidentWiring = Pick<SectionProps, 'api' | 'project' | 'onProject' | 'saveDraft'>;
 type IncidentProps = {
   config: Draft; duration_s?: number; focus?: string; L: SectionProps['L'];
   api?: SectionProps['api']; project?: SectionProps['project']; onProject?: SectionProps['onProject']; saveDraft?: SectionProps['saveDraft'];
 };
 
-/** Incidents use the persisted server IDs and positions for both editing and removal. */
+function IncidentPosition({ value, onChange, touched, L }: { value: string; onChange: (value: string) => void; touched: boolean; L: SectionProps['L'] }) {
+  return <label className="wb-form-field"><span className="wb-label">{L('Place ID or east, north, up (m)', '设施标识或东、北、上坐标（米）')}</span>
+    <input aria-label={L('Incident position', '事件位置')} placeholder={L('e.g. street-east or 20,40,0', '例如 street-east 或 20,40,0')} value={value} onChange={event => onChange(event.target.value)} />
+    {touched && parseIncidentPosition(value) === undefined && <span role="alert" className="hint wb-field-error">{L('Enter a place ID or three finite coordinates.', '请输入设施标识或三个有限坐标。')}</span>}
+  </label>;
+}
+
+function IncidentEditForm({ incident, wiring, duration_s, L, zh, onClose }: { incident: Draft; wiring: IncidentWiring; duration_s?: number; L: SectionProps['L']; zh: boolean; onClose: () => void }) {
+  const at = incident.at ?? incident.position;
+  const form = useStagedForm<IncidentFields>(wiring.project.id, `incident.edit:${incident.id}`, {
+    id: incident.id, at: typeof at === 'string' ? at : Array.isArray(at) ? at.join(',') : '',
+    time: incident.at_s === undefined ? '' : String(incident.at_s),
+  }, wiring.project.revision);
+  const fields = form.values;
+  const [touched, setTouched] = useState(false);
+  const valid = fields.id === incident.id && parseIncidentPosition(fields.at) !== undefined && !stagedNumberProblem(fields.time, { min: 0, max: duration_s, zh });
+  const operations = useMemo(() => valid ? [operation('set_incident', { id: incident.id, at: parseIncidentPosition(fields.at), time_s: parseStagedNumber(fields.time) })] : undefined, [valid, incident.id, fields.at, fields.time]);
+  return <div className="wb-form-card wb-form-stack wb-incident-edit" data-testid="wb-incident-edit">
+    <p className="hint">{L(`Change incident "${incident.id}". Review the changes before applying.`, `修改事件“${incident.id}”，应用前请核对变更。`)}</p>
+    <StagedFormNote form={form} L={L} onDiscard={() => setTouched(false)} />
+    <IncidentPosition L={L} value={fields.at} touched={touched} onChange={at => { setTouched(true); form.setValues(previous => ({ ...previous, at })); }} />
+    <StagedNumber label={`${L('Time', '时间')} (s)`} value={fields.time} min={0} max={duration_s} onChange={time => form.setValues(previous => ({ ...previous, time }))} />
+    <OpApply {...wiring} operations={operations} label={L('Preview', '预览')} primary small onApplied={() => { form.clear(form.values); onClose(); }} />
+  </div>;
+}
+
+/** Incidents use the persisted server IDs and positions; each editor keeps its own staged buffer. */
 export function IncidentsBlock({ config, api, project, onProject, saveDraft, duration_s, L }: IncidentProps) {
   const { locale } = useI18n(), zh = locale === 'zh-CN';
   const incidents = Array.isArray(config.cooperation?.incidents) ? config.cooperation.incidents as Draft[] : [];
-  const [editing, setEditing] = useState<IncidentFields>();
-  const [newFields, setNewFields] = useState<IncidentFields>({ id: '', at: '', time: '' });
+  const [editingId, setEditingId] = useState<string>();
+  const form = useStagedForm<IncidentFields>(project?.id, 'incident.add', {
+    id: '', at: '', time: duration_s !== undefined && duration_s > 0 ? String(duration_s * 0.25) : '',
+  }, project?.revision);
+  const fields = form.values;
   const [touched, setTouched] = useState<Set<string>>(() => new Set());
-  const time = newFields.time || (!touched.has('new.time') && duration_s !== undefined && duration_s > 0 ? String(duration_s * 0.25) : '');
-  const readonly = !(api && project && onProject && saveDraft);
-  const ready = (fields: IncidentFields) => !!fields.id.trim() && parseIncidentPosition(fields.at) !== undefined
-    && !stagedNumberProblem(fields.time, { min: 0, max: duration_s, zh });
-  const newReady = ready({ ...newFields, time });
-  const editReady = !!editing && incidents.some(incident => incident.id === editing.id) && ready(editing);
-  const newOperations = useMemo(() => newReady ? [operation('add_incident', {
-    id: newFields.id.trim(), kind: 'person_fall', at: parseIncidentPosition(newFields.at), time_s: parseStagedNumber(time),
-  })] : undefined, [newReady, newFields.id, newFields.at, time]);
-  const editOperations = useMemo(() => editReady && editing ? [operation('set_incident', {
-    id: editing.id, at: parseIncidentPosition(editing.at), time_s: parseStagedNumber(editing.time),
-  })] : undefined, [editReady, editing?.id, editing?.at, editing?.time]);
+  const valid = !!fields.id.trim() && parseIncidentPosition(fields.at) !== undefined && !stagedNumberProblem(fields.time, { min: 0, max: duration_s, zh });
+  const newOperations = useMemo(() => valid ? [operation('add_incident', {
+    id: fields.id.trim(), kind: 'person_fall', at: parseIncidentPosition(fields.at), time_s: parseStagedNumber(fields.time),
+  })] : undefined, [valid, fields.id, fields.at, fields.time]);
   const removals = useMemo(() => incidents.map(incident => typeof incident.id === 'string' && incident.id.trim()
     ? [operation('remove_incident', { id: incident.id })] : undefined), [JSON.stringify(incidents.map(incident => incident.id))]);
-  const update = (scope: 'new' | 'edit', key: keyof IncidentFields, value: string) => {
-    setTouched(previous => new Set([...previous, `${scope}.${key}`]));
-    if (scope === 'new') setNewFields(previous => ({ ...previous, [key]: value }));
-    else setEditing(previous => previous ? { ...previous, [key]: value } : previous);
+  const update = (key: keyof IncidentFields, value: string) => {
+    setTouched(previous => new Set([...previous, key]));
+    form.setValues(previous => ({ ...previous, [key]: value }));
   };
-  const position = (scope: 'new' | 'edit', at: string) => <label className="wb-form-field">{L('Place ID or east, north, up (m)', '设施标识或东、北、上坐标（米）')}
-    <input aria-label={L('Incident position', '事件位置')} placeholder={L('e.g. street-east or 20,40,0', '例如 street-east 或 20,40,0')} value={at} onChange={event => update(scope, 'at', event.target.value)} />
-    {touched.has(`${scope}.at`) && parseIncidentPosition(at) === undefined && <span role="alert" className="hint wb-field-error">{L('Enter a place ID or three finite coordinates.', '请输入设施标识或三个有限坐标。')}</span>}
-  </label>;
   const wiring = api && project && onProject && saveDraft ? { api, project, onProject, saveDraft } : undefined;
   return <div className="wb-form-section">
     {!incidents.length && <p className="hint">{L('No incidents configured. Schedule one below.', '尚未配置事件，可在下方安排。')}</p>}
-    {readonly && <p className="hint wb-form-prerequisite">{L('Open this form from the workbench to change incidents.', '请从工作台打开此表单以修改事件。')}</p>}
+    {!wiring && <p className="hint wb-form-prerequisite">{L('Open this form from the workbench to change incidents.', '请从工作台打开此表单以修改事件。')}</p>}
     {incidents.map((incident, index) => {
       const id = typeof incident.id === 'string' && incident.id.trim() ? incident.id : undefined;
-      return <div key={id ?? index} className="wb-gust-row" data-testid="wb-incident">
-        <span className="wb-mono">{id ?? L('Missing ID', '缺少标识')}</span>
-        <span className="wb-tag">{incident.kind === 'person_fall' ? L('Person fell', '行人跌倒') : L('Unsupported incident kind', '不支持的事件类型')}</span>
-        <span className="wb-tag">{incident.at_s !== undefined ? `${incident.at_s} s` : L('No time set', '尚未设置时间')}</span>
-        {wiring && <>
-          <button type="button" className="wb-btn small" disabled={!id} aria-expanded={editing?.id === id} onClick={() => {
-            if (!id) return;
-            if (editing?.id === id) { setEditing(undefined); return; }
-            const at = incident.at ?? incident.position;
-            setEditing({ id, at: typeof at === 'string' ? at : Array.isArray(at) ? at.join(',') : '', time: incident.at_s === undefined ? '' : String(incident.at_s) });
-          }}>{editing?.id === id && id ? L('Close', '收起') : L('Change', '修改')}</button>
-          <OpApply {...wiring} operations={removals[index]} label={L('Preview removal', '预览移除')} danger small />
-        </>}
+      return <div key={id ?? index}>
+        <div className="wb-gust-row" data-testid="wb-incident">
+          <span className="wb-mono">{id ?? L('Missing ID', '缺少标识')}</span>
+          <span className="wb-tag">{incident.kind === 'person_fall' ? L('Person fell', '行人跌倒') : L('Unsupported incident kind', '不支持的事件类型')}</span>
+          <span className="wb-tag">{incident.at_s !== undefined ? `${incident.at_s} s` : L('No time set', '尚未设置时间')}</span>
+          {wiring && <>
+            <button type="button" className="wb-btn small" disabled={!id} aria-expanded={editingId === id} onClick={() => { if (id) setEditingId(previous => previous === id ? undefined : id); }}>{editingId === id && id ? L('Close', '收起') : L('Change', '修改')}</button>
+            <OpApply {...wiring} operations={removals[index]} label={L('Preview removal', '预览移除')} danger small />
+          </>}
+        </div>
+        {editingId === id && id && wiring && <IncidentEditForm key={id} incident={incident} wiring={wiring} duration_s={duration_s} L={L} zh={zh} onClose={() => setEditingId(undefined)} />}
       </div>;
     })}
-    {editing && wiring && <div className="wb-form-card wb-form-stack wb-incident-edit" data-testid="wb-incident-edit">
-      <p className="hint">{L(`Change incident "${editing.id}". Review the changes before applying.`, `修改事件“${editing.id}”，应用前请核对变更。`)}</p>
-      {position('edit', editing.at)}
-      <StagedNumber label={`${L('Time', '时间')} (s)`} value={editing.time} min={0} max={duration_s} onChange={value => update('edit', 'time', value)} />
-      <OpApply {...wiring} operations={editOperations} label={L('Preview', '预览')} primary small onApplied={() => setEditing(undefined)} />
-    </div>}
     {wiring && <fieldset className="wb-form-card wb-form-stack">
       <legend className="wb-form-card-title">{L('Add incident', '添加事件')}</legend>
-      <label className="wb-form-field">{L('Incident ID', '事件标识')}
-        <input aria-label={L('Incident ID', '事件标识')} placeholder={L('e.g. fall-east', '例如 fall-east')} value={newFields.id} onChange={event => update('new', 'id', event.target.value)} />
-        {touched.has('new.id') && !newFields.id.trim() && <span role="alert" className="hint wb-field-error">{L('Required.', '必填。')}</span>}
+      <StagedFormNote form={form} L={L} onDiscard={() => setTouched(new Set())} />
+      <label className="wb-form-field"><span className="wb-label">{L('Incident ID', '事件标识')}</span>
+        <input aria-label={L('Incident ID', '事件标识')} placeholder={L('e.g. fall-east', '例如 fall-east')} value={fields.id} onChange={event => update('id', event.target.value)} />
+        {touched.has('id') && !fields.id.trim() && <span role="alert" className="hint wb-field-error">{L('Required.', '必填。')}</span>}
       </label>
-      {position('new', newFields.at)}
-      <StagedNumber label={`${L('Time', '时间')} (s)`} value={time} min={0} max={duration_s} onChange={value => update('new', 'time', value)} />
-      <OpApply {...wiring} operations={newOperations} label={L('Preview', '预览')} primary small onApplied={() => { setNewFields({ id: '', at: '', time: '' }); setTouched(new Set()); }} />
+      <IncidentPosition L={L} value={fields.at} touched={touched.has('at')} onChange={value => update('at', value)} />
+      <StagedNumber label={`${L('Time', '时间')} (s)`} value={fields.time} min={0} max={duration_s} onChange={value => update('time', value)} />
+      <OpApply {...wiring} operations={newOperations} label={L('Preview', '预览')} primary small onApplied={() => { form.clear(form.values); setTouched(new Set()); }} />
     </fieldset>}
   </div>;
 }

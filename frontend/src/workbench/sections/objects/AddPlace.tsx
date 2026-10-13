@@ -1,12 +1,17 @@
-import { useState } from 'react';
-import { operation } from '../operations';
+import { operation, useWorkspaceOperations } from '../operations';
+import { useStagedForm } from '../useStagedForm';
+import { StagedFormNote } from '../tasks/op-ui';
 import type { Project, WorkbenchApi } from '../../api';
 import type { Scenario } from '../types';
 import { ID_PATTERN, nextRoleId, num, PLACE_ROLES, placeRoleOf, strictVector3, type PlaceEditing, type PlaceRole } from './model';
 import { OperationDiff, operationText, useOperationsReview } from './Operations';
 import { PlacePickerMap, canPickOnMap } from '../space/PlacePickerMap';
 
-type PositionMode = 'centre' | 'facility' | 'enu';
+type PositionMode = 'map' | 'typed' | 'facility';
+interface PlaceFields {
+  role?: PlaceRole; idText: string; labelEn: string; labelZh: string; mode: PositionMode; facilityId: string;
+  east: string; north: string; up: string; capacity: string; preparation: string; power: string; touched: string[];
+}
 
 /** All lowalt place mutations use C11; an edit retains its role and current service settings. */
 export function AddPlace({ api, project, draft, project_detail, onProject, L, onClose, editing, initialRole = 'charging_pad' }: {
@@ -18,36 +23,52 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
   const facilities = entities.filter(entity => strictVector3(entity.facts?.['lowalt.site_position']));
   const isUpdate = !!editing;
   const savedRole = editing?.role ?? placeRoleOf(editing?.type);
-  const [role, setRole] = useState<PlaceRole | undefined>(isUpdate ? savedRole : initialRole);
-  const [idText, setIdText] = useState(() => editing?.id ?? nextRoleId(initialRole, entities.map(entity => entity.id)));
-  const [touched, setTouched] = useState<Set<string>>(new Set());
-  const mark = (field: string) => setTouched(previous => new Set(previous).add(field));
-  const [labelEn, setLabelEn] = useState(editing?.label ?? '');
-  const [labelZh, setLabelZh] = useState(editing?.label_zh ?? '');
-  const [mode, setMode] = useState<PositionMode>(isUpdate ? 'enu' : 'centre');
-  const [facilityId, setFacilityId] = useState('');
+  const workspace = project_detail ?? project;
+  const canPick = canPickOnMap(workspace);
   const savedPosition = strictVector3(editing?.position) ? editing.position : undefined;
-  const [east, setEast] = useState(savedPosition ? String(savedPosition[0]) : isUpdate ? '' : '0');
-  const [north, setNorth] = useState(savedPosition ? String(savedPosition[1]) : isUpdate ? '' : '0');
-  const [up, setUp] = useState(savedPosition ? String(savedPosition[2]) : isUpdate ? '' : '0');
-  // These are the documented C11 defaults, shown as editable values only for new places.
-  const [capacity, setCapacity] = useState(editing?.capacity !== undefined ? String(editing.capacity) : isUpdate ? '' : '1');
-  const [preparation, setPreparation] = useState(editing?.preparation_s !== undefined ? String(editing.preparation_s) : isUpdate ? '' : '30');
-  const [power, setPower] = useState(editing?.power_w !== undefined ? String(editing.power_w) : isUpdate ? '' : '5000');
+  const staged = useStagedForm<PlaceFields>(project.id, isUpdate ? `place.edit:${editing.id}` : 'place.add', {
+    role: isUpdate ? savedRole : initialRole,
+    idText: editing?.id ?? nextRoleId(initialRole, entities.map(entity => entity.id)),
+    labelEn: editing?.label ?? '', labelZh: editing?.label_zh ?? '',
+    mode: isUpdate || !canPick ? 'typed' : 'map', facilityId: '',
+    east: savedPosition ? String(savedPosition[0]) : isUpdate ? '' : '0',
+    north: savedPosition ? String(savedPosition[1]) : isUpdate ? '' : '0',
+    up: savedPosition ? String(savedPosition[2]) : isUpdate ? '' : '0',
+    // Documented C11 defaults are explicit values for new places.
+    capacity: editing?.capacity !== undefined ? String(editing.capacity) : isUpdate ? '' : '1',
+    preparation: editing?.preparation_s !== undefined ? String(editing.preparation_s) : isUpdate ? '' : '30',
+    power: editing?.power_w !== undefined ? String(editing.power_w) : isUpdate ? '' : '5000', touched: [],
+  }, project.revision);
+  const { role, idText, labelEn, labelZh, mode, facilityId, east, north, up, capacity, preparation, power } = staged.values;
+  const touched = new Set(staged.values.touched);
+  const set = <K extends keyof PlaceFields>(field: K, value: PlaceFields[K]) => staged.setValues(previous => ({ ...previous, [field]: value }));
+  const mark = (field: string) => staged.setValues(previous => ({ ...previous, touched: [...new Set([...previous.touched, field])] }));
+  const setRole = (value: PlaceRole) => set('role', value), setIdText = (value: string) => set('idText', value);
+  const setLabelEn = (value: string) => set('labelEn', value), setLabelZh = (value: string) => set('labelZh', value);
+  const setMode = (value: PositionMode) => set('mode', value);
+  const setEast = (value: string) => set('east', value), setNorth = (value: string) => set('north', value), setUp = (value: string) => set('up', value);
+  const setCapacity = (value: string) => set('capacity', value), setPreparation = (value: string) => set('preparation', value), setPower = (value: string) => set('power', value);
+  const copyFacility = (id: string) => {
+    const position = facilities.find(entity => entity.id === id)?.facts['lowalt.site_position'];
+    staged.setValues(previous => ({ ...previous, mode: 'facility', facilityId: id,
+      ...(strictVector3(position) ? { east: String(position[0]), north: String(position[1]), up: String(position[2]) } : {}),
+      touched: [...new Set([...previous.touched, 'facility'])],
+    }));
+  };
   const chosen = PLACE_ROLES.find(row => row.role === role);
   const hasCapacity = role !== 'handoff_point';
   const hasPreparation = role === 'kitchen' || (isUpdate && editing.preparation_s !== undefined);
   const hasPower = role === 'charging_pad' || (isUpdate && editing.power_w !== undefined);
   const idBad = !idText.trim() || !ID_PATTERN.test(idText.trim()) || (!isUpdate && entities.some(entity => entity.id === idText.trim()));
   const numbers = [num(east), num(north), num(up)];
-  const positionInvalid = mode === 'enu' && numbers.some(value => value === undefined);
+  const positionInvalid = numbers.some(value => value === undefined);
   const capacityValue = num(capacity), preparationValue = num(preparation), powerValue = num(power);
   const cleared = (field: string, raw: string, current: unknown) => isUpdate && touched.has(field) && raw.trim() === '' && current !== undefined;
   const capacityInvalid = hasCapacity && (capacity.trim() !== '' && (capacityValue === undefined || !Number.isInteger(capacityValue) || capacityValue < 1 || capacityValue > 1000) || cleared('capacity', capacity, editing?.capacity));
   const preparationInvalid = hasPreparation && (preparation.trim() !== '' && (preparationValue === undefined || preparationValue <= 0) || cleared('preparation', preparation, editing?.preparation_s));
   const powerInvalid = hasPower && (power.trim() !== '' && (powerValue === undefined || powerValue <= 0) || cleared('power', power, editing?.power_w));
   const labelInvalid = cleared('label', labelEn, editing?.label) || cleared('label_zh', labelZh, editing?.label_zh);
-  const at = mode === 'centre' ? 'centre' : mode === 'facility' ? facilityId : numbers;
+  const at = numbers;
   const startInvalid = mode === 'facility' && !facilities.some(entity => entity.id === facilityId);
   const canPreview = (isUpdate || !!chosen) && !idBad && !positionInvalid && !startInvalid && !capacityInvalid && !preparationInvalid && !powerInvalid && !labelInvalid;
   const params: Record<string, unknown> = { id: idText.trim() };
@@ -58,38 +79,37 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
   if (hasCapacity && capacity.trim() !== '' && (!isUpdate || capacityValue !== editing.capacity)) params.capacity = capacityValue;
   if (hasPreparation && preparation.trim() !== '' && (!isUpdate || preparationValue !== editing.preparation_s)) params.preparation_s = preparationValue;
   if (hasPower && power.trim() !== '' && (!isUpdate || powerValue !== editing.power_w)) params.power_w = powerValue;
-  const review = useOperationsReview(api, project, [operation(isUpdate ? 'update_place' : 'add_place', params)]);
-  const apply = async () => { if (!canPreview) return; const updated = await review.apply(); if (updated) { onProject(updated); onClose(); } };
+  const workspaceOperations = useWorkspaceOperations(project);
+  const review = useOperationsReview(api, workspaceOperations.project, [operation(isUpdate ? 'update_place' : 'add_place', params)]);
+  const apply = async () => { if (!canPreview || workspaceOperations.applying) return; const updated = await review.apply(); if (updated) { staged.clear(staged.values); onProject(updated); onClose(); } };
 
-  const workspace = project_detail ?? project;
-  const canPick = canPickOnMap(workspace);
   const marker: [number, number] | null = numbers[0] !== undefined && numbers[1] !== undefined ? [numbers[0], numbers[1]] : null;
 
   return <div className="wb-object-form wb-form-card" data-testid="wb-add-place">
     <h4 className="wb-form-card-title">{isUpdate ? L('Edit place', '编辑设施') : L('Add place', '添加设施')}</h4>
     <p className="wb-form-card-sub">{L('Set the place and its service settings, then review the changes before applying.', '设置设施及服务参数，查看变更后再应用。')}</p>
+    <StagedFormNote form={staged} L={L} onDiscard={review.clear} />
     {isUpdate ? chosen && <p className="wb-form-field"><span className="wb-label">{L('Role', '角色')}: {L(chosen.en, chosen.zh)}</span></p>
       : <div className="wb-choice-group" role="group" aria-label={L('Place role', '设施角色')}>
       {PLACE_ROLES.map(row => <button type="button" key={row.role} aria-pressed={role === row.role} className="wb-choice"
         onClick={() => { setRole(row.role); if (!touched.has('id')) setIdText(nextRoleId(row.role, entities.map(entity => entity.id))); }}>{L(row.en, row.zh)}</button>)}
     </div>}
     {canPick ? <div className="wb-place-picker" data-testid="wb-place-picker">
-      <span className="wb-place-picker-hint">{L('Click the map to place it', '点击地图放置')}</span>
-      <PlacePickerMap api={api} workspace={workspace} draft={draft} L={L} position={marker}
-        onPick={(pickedEast, pickedNorth) => { setMode('enu'); setEast(pickedEast.toFixed(1)); setNorth(pickedNorth.toFixed(1)); mark('position'); }} />
+      <PlacePickerMap api={api} workspace={workspace} draft={draft} L={(en, zh) => en === 'Click to place — east/north fill in automatically' ? L('Click the map to place it', '点击地图放置') : L(en, zh)} position={marker}
+        onPick={(pickedEast, pickedNorth) => { setMode('map'); setEast(pickedEast.toFixed(1)); setNorth(pickedNorth.toFixed(1)); mark('position'); }} />
     </div>
       : <p className="wb-form-prerequisite">{L('Apply a region in Scene & space to pick a position on the map.', '在“场景与空间”应用区域后即可在地图上选点。')}</p>}
     <div className="wb-form-grid">
       <label className="wb-form-field"><span className="wb-label">{L('East (m)', '东（m）')}</span><input inputMode="decimal" value={east} aria-invalid={touched.has('position') && numbers[0] === undefined}
-        onChange={event => { setMode('enu'); setEast(event.target.value); mark('position'); }} /></label>
+        onChange={event => { setMode('typed'); setEast(event.target.value); mark('position'); }} /></label>
       <label className="wb-form-field"><span className="wb-label">{L('North (m)', '北（m）')}</span><input inputMode="decimal" value={north} aria-invalid={touched.has('position') && numbers[1] === undefined}
-        onChange={event => { setMode('enu'); setNorth(event.target.value); mark('position'); }} /></label>
+        onChange={event => { setMode('typed'); setNorth(event.target.value); mark('position'); }} /></label>
       <label className="wb-form-field"><span className="wb-label">{L('Height (m)', '高度（m）')}</span><input inputMode="decimal" value={up} aria-invalid={touched.has('position') && numbers[2] === undefined}
-        onChange={event => { setMode('enu'); setUp(event.target.value); mark('position'); }} /></label>
-      <label className="wb-form-field"><span className="wb-label">{L('Position from', '位置来源')}</span><select value={mode} onChange={event => { setMode(event.target.value as PositionMode); mark('position'); }}>
-        <option value="centre">{L('Map centre', '地图中心')}</option>
-        <option value="enu" disabled={!canPick}>{L('Map click', '地图选点')}</option>
-        <option value="facility" disabled={!facilities.length}>{L('Typed', '手动输入')}</option>
+        onChange={event => { setMode('typed'); setUp(event.target.value); mark('position'); }} /></label>
+      <label className="wb-form-field"><span className="wb-label">{L('Position from', '位置来源')}</span><select value={mode} onChange={event => { const source = event.target.value as PositionMode; if (source === 'facility' && facilityId) copyFacility(facilityId); else setMode(source); mark('position'); }}>
+        <option value="map" disabled={!canPick}>{L('Map click', '地图选点')}</option>
+        <option value="typed">{L('Typed', '手动输入')}</option>
+        <option value="facility" disabled={!facilities.length}>{L('Existing facility', '已有设施')}</option>
       </select></label>
     </div>
     {touched.has('id') && idBad && <p className="wb-field-error" role="alert">{L('Enter a unique id using letters, digits and . _ : / - without spaces.', '请输入唯一 id，只能使用字母、数字和 . _ : / -，不能包含空格。')}</p>}
@@ -102,12 +122,12 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
     </div>
     {mode === 'facility' && <div className="wb-form-grid">
       <label className="wb-form-field"><span className="wb-label">{L('Existing facility', '已有设施')}</span><select value={facilityId} disabled={!facilities.length}
-        onChange={event => { setFacilityId(event.target.value); mark('facility'); }}>
+        onChange={event => { copyFacility(event.target.value); }}>
         <option value="">{L('Choose…', '选择…')}</option>{facilities.map(entity => <option key={entity.id} value={entity.id}>{L(entity.label ?? entity.id, entity.label_zh ?? entity.label ?? entity.id)}</option>)}
       </select></label>
     </div>}
     {positionInvalid && (touched.has('position') || isUpdate) && <p className="wb-field-error" role="alert">{L('Enter three finite numbers for the position.', '请输入三个有限数值作为位置。')}</p>}
-    {startInvalid && touched.has('facility') && <p className="wb-field-error" role="alert">{L('Choose an existing facility.', '请选择已有设施。')}</p>}
+    {startInvalid && <p className="hint wb-form-prerequisite" role="note">{L('Choose an existing facility.', '请选择已有设施。')}</p>}
     <div className="wb-form-grid">
       {hasCapacity && <label className="wb-form-field"><span className="wb-label">{L('capacity (parallel slots)', '容量（并行位）')}</span><input inputMode="numeric" value={capacity} aria-invalid={touched.has('capacity') && capacityInvalid}
         onChange={event => { setCapacity(event.target.value); mark('capacity'); }} /></label>}
@@ -120,9 +140,10 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
     {((preparationInvalid && touched.has('preparation')) || (powerInvalid && touched.has('power'))) && <p className="wb-field-error" role="alert">{L('Enter a positive number.', '请输入正数。')}</p>}
     {review.preview && <OperationDiff {...review.preview} stale={review.stale} L={L} />}
     {review.problem && <p className="wb-field-error" role="alert">{review.problem.field && <span className="wb-mono">{review.problem.field}: </span>}{operationText(review.problem.message, L)}</p>}
+    {workspaceOperations.applying && review.busy !== 'apply' && <p className="hint wb-form-prerequisite" role="note">{L('Applying another change…', '正在应用另一项变更…')}</p>}
     <div className="wb-form-actions wb-object-actions">
-      <button className="wb-btn" disabled={!canPreview || !!review.busy} onClick={() => void review.load()}>{review.busy === 'preview' ? L('Previewing…', '预览中…') : review.preview ? L('Preview again', '重新预览') : L('Preview', '预览')}</button>
-      {review.preview && <button className="wb-btn primary" disabled={!canPreview || review.stale || !!review.busy} onClick={() => void apply()}>{review.busy === 'apply' ? L('Applying…', '应用中…') : L('Apply', '应用')}</button>}
+      <button className="wb-btn" disabled={!canPreview || !!review.busy || workspaceOperations.applying} onClick={() => void review.load()}>{review.busy === 'preview' ? L('Previewing…', '预览中…') : review.preview ? L('Preview again', '重新预览') : L('Preview', '预览')}</button>
+      {review.preview && <button className="wb-btn primary" disabled={!canPreview || review.stale || !!review.busy || workspaceOperations.applying} onClick={() => void apply()}>{review.busy === 'apply' ? L('Applying…', '应用中…') : L('Apply', '应用')}</button>}
       <button className="wb-btn" disabled={!!review.busy} onClick={onClose}>{L('Close', '关闭')}</button>
     </div>
   </div>;

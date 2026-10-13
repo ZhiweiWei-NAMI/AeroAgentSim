@@ -60,6 +60,7 @@ it('reviews gust removal before confirming and sends the reviewed selector', asy
   expect(applyOperations.mock.calls[0][2][0]).toMatchObject({ op: 'remove_gust', params: { start_s: 20 } });
 });
 beforeEach(() => {
+  sessionStorage.clear();
   window.localStorage.setItem('aeroagentsim.locale', 'en-US');
   edit.mockClear(); replaceDraft.mockClear(); onProject.mockClear(); saveDraft.mockClear(); previewOperations.mockClear(); applyOperations.mockClear();
 });
@@ -72,6 +73,28 @@ const fillOrder = () => {
   fireEvent.change(screen.getByLabelText('From facility'), { target: { value: 'kitchen-1' } });
   fireEvent.change(screen.getByLabelText('To facility'), { target: { value: 'customer-1' } });
 };
+
+it('restores a complete staged order setup after close/refresh without applying it (T1-R3-003)', () => {
+  const first = render(streams()); fillOrder();
+  fireEvent.change(screen.getByLabelText('New order stream ID'), { target: { value: 'research-draft' } });
+  fireEvent.change(screen.getByLabelText('New order kind'), { target: { value: 'food' } });
+  fireEvent.change(screen.getByLabelText('Task count'), { target: { value: '7' } });
+  fireEvent.change(screen.getByLabelText('Rate (1/min)'), { target: { value: '12' } });
+  first.unmount();
+  render(streams());
+  expect(screen.getByLabelText('New order stream ID')).toHaveValue('research-draft');
+  expect(screen.getByLabelText('New order kind')).toHaveValue('food');
+  expect(screen.getByLabelText('Task count')).toHaveValue('7');
+  expect(screen.getByLabelText('From facility')).toHaveValue('kitchen-1');
+  expect(screen.getByLabelText('To facility')).toHaveValue('customer-1');
+  expect(screen.getByLabelText('Rate (1/min)')).toHaveValue('12');
+  expect(screen.getByText('Restored unsaved inputs')).toBeTruthy();
+  expect(previewOperations).not.toHaveBeenCalled();
+  expect(applyOperations).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+  expect(screen.getByLabelText('New order stream ID')).toHaveValue('');
+  expect(Object.keys(sessionStorage)).toHaveLength(0);
+});
 
 it('previews orders in one action and keeps the review across equal parent inputs (P0 previews / D5)', async () => {
   const view = render(streams());
@@ -181,6 +204,23 @@ it('shows nanoseconds as seconds and edits existing streams through set_orders w
 });
 
 const cooperation = (override: Partial<Parameters<typeof CooperationEditor>[0]> = {}) => <I18nProvider><CooperationEditor config={{ generators: [] }} engineName="tasks" draft={draft} edit={edit} replaceDraft={replaceDraft} L={L} {...opProps} {...override} /></I18nProvider>;
+
+it('restores staged cooperation participants, radius and goal after the editor unmounts', () => {
+  const first = render(cooperation());
+  fireEvent.change(screen.getByLabelText('Watcher vehicles'), { target: { value: 'courier-1' } });
+  fireEvent.change(screen.getByLabelText('Notice radius (m)'), { target: { value: '180.' } });
+  fireEvent.change(screen.getByLabelText('Handoff points'), { target: { value: 'handoff-east' } });
+  fireEvent.change(screen.getByLabelText('Response mode'), { target: { value: 'agent' } });
+  fireEvent.change(screen.getByLabelText('Response goal'), { target: { value: 'Investigate the actual incident' } });
+  first.unmount();
+  render(cooperation());
+  expect(screen.getByLabelText('Watcher vehicles')).toHaveValue(['courier-1']);
+  expect(screen.getByLabelText('Notice radius (m)')).toHaveValue('180.');
+  expect(screen.getByLabelText('Handoff points')).toHaveValue(['handoff-east']);
+  expect(screen.getByLabelText('Response goal')).toHaveValue('Investigate the actual incident');
+  expect(screen.getByText('Restored unsaved inputs')).toBeTruthy();
+  expect(previewOperations).not.toHaveBeenCalled();
+});
 const coopForm = () => screen.getByLabelText('Watcher vehicles').closest('.wb-form-stack') as HTMLElement;
 
 it('assigns a real handoff point and retains cooperation preview across parent rerenders (T1-012 / P0)', async () => {
@@ -219,6 +259,27 @@ it('shows handoff and UAV prerequisites inline and rejects invalid numeric assig
 });
 
 const weather = (override: Partial<Parameters<typeof WeatherBlock>[0]> = {}) => <I18nProvider><WeatherBlock environmentName="weather" environment={environment} draft={draft} edit={edit} L={L} {...opProps} {...override} /></I18nProvider>;
+
+it('restores background wind and gust inputs independently; applying background wind keeps the pending gust', async () => {
+  const first = render(weather());
+  fireEvent.change(screen.getByLabelText('Background speed (m/s)'), { target: { value: '3.5' } });
+  fireEvent.change(screen.getByLabelText('Start (s)'), { target: { value: '10' } });
+  fireEvent.change(screen.getByLabelText('End (s)'), { target: { value: '20' } });
+  fireEvent.change(screen.getByLabelText('Speed (m/s)'), { target: { value: '5.5' } });
+  first.unmount();
+  render(weather());
+  expect(screen.getByLabelText('Background speed (m/s)')).toHaveValue('3.5');
+  expect(screen.getByLabelText('Start (s)')).toHaveValue('10');
+  expect(screen.getByLabelText('End (s)')).toHaveValue('20');
+  expect(screen.getByLabelText('Speed (m/s)')).toHaveValue('5.5');
+  expect(screen.getAllByText('Restored unsaved inputs')).toHaveLength(2);
+  fireEvent.click(within(windForm()).getByRole('button', { name: 'Preview' }));
+  fireEvent.click(await within(windForm()).findByRole('button', { name: 'Confirm' }));
+  await waitFor(() => expect(onProject).toHaveBeenCalledOnce());
+  const buffers = Object.keys(sessionStorage).map(key => JSON.parse(sessionStorage.getItem(key)!));
+  expect(buffers.map(buffer => buffer.form)).toEqual(['weather.gust:weather']);
+  expect(screen.getByLabelText('Speed (m/s)')).toHaveValue('5.5');
+});
 const windForm = () => screen.getByLabelText('Background speed (m/s)').closest('fieldset') as HTMLElement;
 const gustForm = () => screen.getByLabelText('Start (s)').closest('fieldset') as HTMLElement;
 

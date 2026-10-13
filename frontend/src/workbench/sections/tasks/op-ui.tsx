@@ -1,8 +1,9 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { Project, WorkbenchApi } from '../../api';
-import { applyOperations, operationFreshnessKey, operationProblem, operationText, previewOperations, type Operation, type OperationPreview } from '../operations';
+import { applyOperations, assertOperationsReady, currentOperationsProject, getOperationsState, operationFreshnessKey, operationProblem, operationText, previewOperations, useWorkspaceOperations, type Operation, type OperationPreview } from '../operations';
 import { OperationDiff } from '../objects/Operations';
+import type { StagedForm } from '../useStagedForm';
 import type { SectionProps } from '../types';
 import '../tasks.css';
 
@@ -11,6 +12,17 @@ export function problemMessage(problem: unknown, zh = false): string {
 }
 
 export type FormNavigation = Pick<SectionProps, 'goTo'>;
+
+export function StagedFormNote({ form, L, onDiscard }: { form: Pick<StagedForm<unknown>, 'dirty' | 'restored' | 'error' | 'discard'>; L: SectionProps['L']; onDiscard?: () => void }) {
+  const error = form.error && operationText(form.error, L('en', 'zh') === 'zh');
+  return <>
+    {error && <p className="hint wb-field-error" role="alert">{L(`Could not preserve these inputs: ${error}`, `无法保留这些输入：${error}`)}</p>}
+    {(form.dirty || form.error) && <p className="hint" role="note">
+      <span>{form.restored ? L('Restored unsaved inputs', '已恢复未保存的输入') : L('Unsaved inputs', '未保存的输入')}</span>
+      {' · '}<button type="button" className="wb-btn small ghost" onClick={() => { form.discard(); onDiscard?.(); }}>{L('Discard', '放弃')}</button>
+    </p>}
+  </>;
+}
 
 export function Prerequisite({ children, section, focus, action, goTo }: FormNavigation & { children: ReactNode; section: Parameters<NonNullable<SectionProps['goTo']>>[0]; focus?: string; action: string }) {
   return <p className="hint wb-form-prerequisite" role="note">
@@ -36,11 +48,13 @@ export interface OpApplyProps {
 }
 
 /** Polls and render identities cannot expire a review: only operations/params or its base revision can. */
-export function OpApply({ api, project, onProject, saveDraft, operations, label, danger, primary, small, missing, summary, note, onApplied }: OpApplyProps) {
+export function OpApply({ api, project: suppliedProject, onProject, saveDraft, operations, label, danger, primary, small, missing, summary, note, onApplied }: OpApplyProps) {
   const { locale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => (zh ? cn : en);
   const [preview, setPreview] = useState<{ ops: Operation[]; key: string; data: OperationPreview; base: Project }>();
   const [busy, setBusy] = useState<'preview' | 'apply'>(), [error, setError] = useState<unknown>();
+  const workspace = useWorkspaceOperations(suppliedProject), project = workspace.project;
+  const blocked = workspace.applying && busy !== 'apply';
   const pending = useRef(false);
   const staged = !!operations?.length;
   const fresh = !!preview && !!operations && !missing && preview.base.id === project.id
@@ -52,30 +66,33 @@ export function OpApply({ api, project, onProject, saveDraft, operations, label,
     finally { pending.current = false; setBusy(undefined); }
   };
   const previewNow = () => {
-    if (!operations?.length || missing) return;
+    if (!operations?.length || missing || getOperationsState(project.id).applying) return;
     const ops = structuredClone(operations);
     void run('preview', async () => {
       setPreview(undefined);
-      const saved = await saveDraft();
-      if (!saved) throw new Error(L('Fix the highlighted input before previewing.', '请先修正标记的输入后再预览。'));
+      const draft = await saveDraft();
+      if (!draft) throw new Error(L('Fix the highlighted input before previewing.', '请先修正标记的输入后再预览。'));
+      const saved = currentOperationsProject(draft);
       const data = await previewOperations(api, saved, ops);
       setPreview({ ops, data, base: saved, key: operationFreshnessKey(ops, saved.revision) });
     });
   };
   const applyNow = () => {
-    if (!preview || !fresh) return;
+    if (!preview || !fresh || getOperationsState(project.id).applying) return;
     const reviewed = preview;
     void run('apply', async () => {
       // A failed response cannot leave a repeatable confirmation of a possibly committed request.
+      assertOperationsReady(reviewed.base);
       setPreview(undefined);
       onProject(await applyOperations(api, reviewed.base, reviewed.ops));
       onApplied?.();
     });
   };
-  return <div className="wb-op-apply">
+  return <div className="wb-op-apply" style={{ alignSelf: 'end', marginBlock: 0 }}>
+    {blocked && <p className="hint wb-form-prerequisite" role="note">{L('Applying another change…', '正在应用另一项变更…')}</p>}
     {!preview && <div className="wb-form-actions">
       <button type="button" className={`wb-btn${small ? ' small' : ''}${danger ? ' danger' : ''}${primary ? ' primary' : ''}`}
-        disabled={!staged || !!missing || !!busy} title={missing} onClick={previewNow}>
+        disabled={!staged || !!missing || !!busy || blocked} title={blocked ? L('Applying another change…', '正在应用另一项变更…') : missing} onClick={previewNow}>
         {busy === 'preview' ? L('Checking…', '正在预览…') : busy === 'apply' ? L('Applying…', '正在应用…') : label}
       </button>
       {missing && <span role="note" className="hint wb-form-prerequisite">{missing}</span>}
@@ -85,9 +102,9 @@ export function OpApply({ api, project, onProject, saveDraft, operations, label,
       {summary}
       <DiffPreview preview={preview.data} L={L} zh={zh} />
       <div className="wb-form-actions">
-        {fresh ? <button type="button" className={`wb-btn small ${danger ? 'danger' : 'primary'}`} disabled={!!busy} onClick={applyNow}>{L('Confirm', '确认')}</button>
+        {fresh ? <button type="button" className={`wb-btn small ${danger ? 'danger' : 'primary'}`} disabled={!!busy || blocked} onClick={applyNow}>{L('Confirm', '确认')}</button>
           : <><p className="hint wb-form-prerequisite" role="status">{L('Out of date — preview again.', '已过期——请重新预览。')}</p>
-            <button type="button" className="wb-btn small" disabled={!staged || !!missing || !!busy} onClick={previewNow}>{L('Preview again', '重新预览')}</button></>}
+            <button type="button" className="wb-btn small" disabled={!staged || !!missing || !!busy || blocked} onClick={previewNow}>{L('Preview again', '重新预览')}</button></>}
         <button type="button" className="wb-btn small ghost" disabled={!!busy} onClick={() => setPreview(undefined)}>{L('Cancel', '取消')}</button>
       </div>
       {missing && <p className="hint wb-form-prerequisite" role="note">{missing}</p>}
