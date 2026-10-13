@@ -31,6 +31,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "audit:unused": "node scripts/audit-unused.mjs",
     "test:e2e": "playwright test",
     "preview": "vite preview"
   },

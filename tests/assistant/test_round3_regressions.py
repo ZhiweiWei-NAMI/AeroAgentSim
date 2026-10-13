@@ -228,5 +228,7 @@ def test_t2_as_012_completion_uses_validation_that_finished_after_its_prompt(pro
     turn = tools.sessions.begin_turn(identifier, "Review this plan")
     agent_for(tools, identifier, complete).run_turn(identifier, turn["turn"])
     answer = next(e["text"] for e in tools.sessions.get(identifier)["events"] if e["kind"] == "assistant")
-    assert "Plan revision v1 is validated" in answer and "press Confirm" in answer
+    assert tools.sessions.plan(identifier)["validation"]["state"] == "valid"
+    assert "Plan revision v1" in answer and "it is validated" in answer
+    assert "Click Confirm and apply" in answer
     assert "pending" not in answer and "Wait" not in answer

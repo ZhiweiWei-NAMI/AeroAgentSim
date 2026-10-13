@@ -1,5 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -13,11 +15,12 @@ import { TemporalFeedStore } from '../feeds/temporal-store';
 import { PlaybackClock } from '../viewport/clock';
 import type { RunSession } from './useRunSession';
 import { Details } from '../console/Details';
-// Vitest disables CSS transforms here, including ?raw imports. Read the real
-// styles so layer/flow assertions exercise the shipped layout declarations.
-const workbenchStyles=readFileSync(new URL('./workbench.css',import.meta.url),'utf8');
-const detailsStyles=readFileSync(new URL('../console/details.css',import.meta.url),'utf8');
-const runStatusStyles=readFileSync(new URL('./run-status.css',import.meta.url),'utf8');
+// Resolve filesystem paths so Vite cannot rewrite CSS URLs to browser assets.
+// These assertions read the shipped styles even with Vitest CSS transforms off.
+const stylesDirectory=dirname(fileURLToPath(import.meta.url));
+const workbenchStyles=readFileSync(resolve(stylesDirectory,'workbench.css'),'utf8');
+const detailsStyles=readFileSync(resolve(stylesDirectory,'../console/details.css'),'utf8');
+const runStatusStyles=readFileSync(resolve(stylesDirectory,'run-status.css'),'utf8');
 
 const mocks = vi.hoisted(() => ({ panelRender: vi.fn(), apply: vi.fn(), readSession: vi.fn(), session: undefined as Session | undefined, runSession: undefined as RunSession | undefined }));
 vi.mock('../assistant/AssistantPanel', () => ({ AssistantPanel: () => { mocks.panelRender(); return <input aria-label="Search objects" />; } }));
