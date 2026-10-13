@@ -39,8 +39,8 @@ export function comparisonConfiguration(value: unknown, ids?: string[]): Compari
  * Lead with run identity and recorded end. Settings, KPI values and changes
  * appear only in the detailed sections below.
  */
-function SummaryTable({ runs, configuration, templates, locale }: {
-  runs: ComparisonRun[]; configuration?: ComparisonConfiguration;
+function SummaryTable({ runs, configuration, configurationError, templates, locale }: {
+  runs: ComparisonRun[]; configuration?: ComparisonConfiguration; configurationError?: string;
   templates: Map<string, ScenarioTemplate>; locale: string;
 }) {
   const { t } = useI18n();
@@ -67,6 +67,7 @@ function SummaryTable({ runs, configuration, templates, locale }: {
             {runs.map(run => {
               const end = endOf(run.id);
               return <td key={run.id}>{end ? <>{displayTime(end.at_ns, '0')} · {runStatusLabel(end.status, locale)} · #{end.commit_index}</>
+                : configurationError ? <span className="newc-config-absent" title={configurationError}>{zh ? '不可用' : 'Unavailable'}</span>
                 : <span className="newc-config-absent">{zh ? '读取中…' : 'Loading…'}</span>}</td>;
             })}
           </tr>
@@ -406,7 +407,7 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
       </header>
       <MixedNote runs={runs} />
       {catalogNote && <p className="newc-catalog-note" role="note">{t('Metric names and settings come from machine ids — template details are unavailable ({error}).', { error: catalogNote })}</p>}
-      <SummaryTable runs={runs} configuration={configuration} templates={templates} locale={locale} />
+      <SummaryTable runs={runs} configuration={configuration} configurationError={configurationError} templates={templates} locale={locale} />
       <section className="newc-compare-section" data-testid="comparison-configuration">
         <h4>{locale === 'zh-CN' ? '固定配置差异' : 'Pinned configuration differences'}</h4>
         {configurationError ? <p role="status">{locale === 'zh-CN' ? '无法读取固定配置差异：' : 'Could not read pinned configuration differences: '}{configurationError}</p>

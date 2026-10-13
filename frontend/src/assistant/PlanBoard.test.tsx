@@ -5,6 +5,7 @@ import { PlanBoard } from './PlanBoard';
 import type { AssistantApi, PlanVersion, Session } from './api';
 import type { AssistantSession } from './useAssistant';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { RunStory } from './RunStory';
 
 afterEach(() => cleanup());
 
@@ -91,4 +92,69 @@ it('keeps the comparison closed by default and explains the read-only rule', asy
   // Closing restores the plain board.
   fireEvent.click(screen.getByRole('button', { name: /Close the side-by-side comparison/i }));
   expect(screen.queryByTestId('as-alternatives')).toBeNull();
+});
+
+const rejectedPlan = {
+  ...plan(7), validation: { state: 'invalid', errors: ['range check failed'] },
+  compile: { ok: false, warnings: [], errors: [{ op_id: 'op-2', field: 'speed_mps', message: 'wind speed must be between 0 and 20 m/s' }] },
+} as unknown as PlanVersion;
+
+it('shows per-operation errors with a Revise affordance and never crashes the board', async () => {
+  const rejected: Session = { ...session, plan: rejectedPlan };
+  const reviseAssistant = { ...assistant, session: rejected, plan: rejectedPlan };
+  render(<I18nProvider><PlanBoard api={api} assistant={reviseAssistant} stage="proposed" terminal={false} initializing={false}
+    canInitialize={false} onInitialize={() => {}} onApplied={() => {}} onHover={() => {}} onStep={() => {}}
+    onContract={() => {}} onSeek={() => {}} viewing={undefined} onViewVersion={() => {}} onClose={() => {}} /></I18nProvider>);
+  // The board labels the state as rejected, not as a valid proposal.
+  expect(await screen.findByTestId('as-plan-state')).toHaveTextContent(/not applied|未应用/);
+  const errors = await screen.findByTestId('as-op-errors');
+  expect(errors).toHaveTextContent('op-2');
+  expect(errors).toHaveTextContent('wind speed must be between 0 and 20 m/s');
+  expect(within(errors).getAllByTestId('as-revise')).toHaveLength(2); // one compile + one validation error
+  // Confirm stays disabled for a rejected version.
+  expect(screen.getByTestId('as-confirm')).toBeDisabled();
+  // Revise names the operation, field and problem to the assistant.
+  fireEvent.click(within(errors).getByTestId('as-revise'));
+  await waitFor(() => expect(reviseAssistant.send).toHaveBeenCalledWith(expect.stringContaining('op-2')));
+  expect(String(reviseAssistant.send.mock.calls[0][0])).toContain('speed_mps');
+});
+
+const applied = [{ plan_version: 6, workspace_id: 'w1', version: 3, revision: 1, applied_at: '2025-01-01T00:00:00Z',
+  report: { created: [], changed: [], removed: [] } }];
+
+it('labels an applied plan as applied and never resurrects it as a draft', async () => {
+  const appliedSession: Session = { ...session, applied };
+  const appliedAssistant = { ...assistant, session: appliedSession, applied: applied[0] };
+  render(<I18nProvider><PlanBoard api={api} assistant={appliedAssistant} stage="proposed" terminal={false} initializing={false}
+    canInitialize={false} onInitialize={() => {}} onApplied={() => {}} onHover={() => {}} onStep={() => {}}
+    onContract={() => {}} onSeek={() => {}} viewing={undefined} onViewVersion={() => {}} onClose={() => {}} /></I18nProvider>);
+  // Stage 'proposed' from the workbench must not win over the server's apply record.
+  expect(await screen.findByTestId('as-plan-state')).toHaveTextContent(/Applied as version 3|已应用为版本 3/);
+  expect(screen.getByTestId('as-apply-report')).toBeVisible();
+  expect(screen.queryByTestId('as-confirm')).toBeNull();
+  // Initialize remains the only forward action, and only when the workbench allows it.
+  expect(screen.getByTestId('as-initialize')).toBeDisabled(); // canInitialize is false
+  // The versions row for the applied plan is not presented as the open draft.
+  expect(screen.getByTestId('as-version-5')).toBeVisible();
+});
+
+it('marks a superseded applied plan and hides Initialize for it', async () => {
+  const superseding = { ...applied[0], plan_version: 99, version: 4, applied_at: '2025-01-02T00:00:00Z' };
+  const supersededSession: Session = { ...session, applied: [...applied, superseding] };
+  const supersededAssistant = { ...assistant, session: supersededSession, applied: superseding };
+  render(<I18nProvider><PlanBoard api={api} assistant={supersededAssistant} stage="configured" terminal={false} initializing={false}
+    canInitialize onInitialize={() => {}} onApplied={() => {}} onHover={() => {}} onStep={() => {}}
+    onContract={() => {}} onSeek={() => {}} viewing={undefined} onViewVersion={() => {}} onClose={() => {}} /></I18nProvider>);
+  expect(await screen.findByTestId('as-plan-state')).toHaveTextContent(/Superseded · v6|已被取代 · v6/);
+  expect(screen.queryByTestId('as-initialize')).toBeNull();
+  expect(screen.getByText(/the project now uses version 4|项目现在使用版本 4/)).toBeVisible();
+});
+
+it('labels which plan version the story follows', () => {
+  const base = { startNs: undefined, terminal: true, expectations: [] };
+  const { rerender } = render(<I18nProvider><RunStory {...base} story={{ run_id: 'r1', terminal: true, plan_version: 3, expectations: [], events: [] }} planVersion={3} /></I18nProvider>);
+  expect(screen.getByTestId('as-story-plan')).toHaveTextContent(/plan v3|方案 v3/);
+  // A run of another plan says so plainly instead of mixing the two up.
+  rerender(<I18nProvider><RunStory {...base} story={{ run_id: 'r1', terminal: true, plan_version: 3, expectations: [], events: [] }} planVersion={6} /></I18nProvider>);
+  expect(screen.getByTestId('as-story-plan')).toHaveTextContent(/followed plan v3/);
 });

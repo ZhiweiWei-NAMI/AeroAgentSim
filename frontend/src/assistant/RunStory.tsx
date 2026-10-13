@@ -10,8 +10,10 @@ export const storySeconds = (atNs: string | number | null | undefined, startNs: 
 };
 
 /** Expected vs recorded, honestly: a missing step shows the recorded reason, never a replayed success. */
-export function RunStory({ story, startNs, terminal, expectations, onSeek, onAsk, error }: {
-  story?: Story; startNs?: string; terminal: boolean; expectations?: Expectation[]; onSeek?: (cut: number) => void; onAsk?: (item: StoryItem) => void; error?: string;
+export function RunStory({ story, startNs, terminal, expectations, planVersion, onSeek, onAsk, error }: {
+  story?: Story; startNs?: string; terminal: boolean; expectations?: Expectation[];
+  /** The plan version shown on the board, so the reader can tell whether the story follows it. */
+  planVersion?: number; onSeek?: (cut: number) => void; onAsk?: (item: StoryItem) => void; error?: string;
 }) {
   const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   if (error && !story) return <p className="as-note bad">{error}</p>;
@@ -22,6 +24,9 @@ export function RunStory({ story, startNs, terminal, expectations, onSeek, onAsk
   const text = (item: StoryItem) => (zh ? item.text_zh : undefined) ?? item.text;
   const planned = new Map((expectations ?? []).map(row => [row.id, row]));
   const ended = story.terminal ?? terminal;
+  // Which plan the run actually followed, and whether that is the version on the board.
+  const recordedVersion = story.plan_version ?? null;
+  const followsShown = recordedVersion === null || planVersion === undefined || recordedVersion === planVersion;
   // Chronological: recorded moments first by time, then expected ones by their planned time.
   const when = (item: StoryItem) => storySeconds(item.at_ns, startNs) ?? planned.get(item.id)?.approx_s ?? Infinity;
   const ordered = items.map((item, index) => ({ item, index })).sort((a, b) => when(a.item) - when(b.item) || a.index - b.index).map(row => row.item);
@@ -30,6 +35,10 @@ export function RunStory({ story, startNs, terminal, expectations, onSeek, onAsk
       <strong className="wb-mono">{happened}<small>/{total}</small></strong>
       <div>
         <span>{ended ? missed ? L(`${missed} expected step${missed === 1 ? '' : 's'} did not happen`, `${missed} 个预期步骤未发生`) : happened === total ? L('Everything the plan expected happened', '方案预期的步骤全部发生') : L('Run ended', '运行已结束') : L('Watching the run', '正在跟踪运行')}</span>
+        <small className="as-story-plan" data-testid="as-story-plan">{recordedVersion !== null
+          ? followsShown ? L(`Against plan v${recordedVersion}`, `对照方案 v${recordedVersion}`)
+            : L(`This run followed plan v${recordedVersion}, not the v${planVersion} shown here.`, `这次运行遵循的是方案 v${recordedVersion}，而非当前显示的 v${planVersion}。`)
+          : L('Compared with the plan’s expectations', '对照方案的预期')}</small>
         <div className="as-story-bar" aria-hidden>{items.filter(item => item.status !== 'not_taken').map(item => <i key={item.id} className={`is-${item.status}`} />)}</div>
         {skipped > 0 && <small className="as-story-skipped">{L(`${skipped} conditional branch${skipped === 1 ? '' : 'es'} not taken`, `${skipped} 个条件分支未触发`)}</small>}
       </div>

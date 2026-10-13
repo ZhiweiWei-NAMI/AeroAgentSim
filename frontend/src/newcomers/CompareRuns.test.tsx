@@ -88,3 +88,12 @@ it('explains limited comparability when templates differ and keeps exact large i
   expect(await screen.findByText('9007199254740993')).toBeVisible();
   expect(screen.getAllByText('Not set').length).toBeGreaterThan(0);
 });
+
+it('does not leave the summary stuck on Loading when recorded ends are unavailable',async()=>{
+  const api={request:vi.fn().mockRejectedValue(Error('configuration offline')),compare:vi.fn().mockResolvedValue({runs}),templates:vi.fn().mockResolvedValue([])} as unknown as TemplateApi;
+  render(<I18nProvider><CompareRuns api={api} ids={['a','b']}/></I18nProvider>);
+  await screen.findByText(/Could not read pinned configuration differences/);
+  const summary=screen.getByTestId('comparison-summary');
+  expect(within(summary).getAllByText('Unavailable')).toHaveLength(2);
+  expect(within(summary).queryByText(/Loading…/)).toBeNull();
+});

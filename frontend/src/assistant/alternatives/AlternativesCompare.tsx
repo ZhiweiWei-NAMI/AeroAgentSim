@@ -33,7 +33,7 @@ export function AlternativesCompare({ api, sessionId, versions, current, onSelec
   }, [api, sessionId, versions.join(',')]);
 
   const pair = useMemo(() => columns.filter((column): column is AltColumn & { plan: PlanVersion } => !!column.plan), [columns]);
-  const common = useMemo(() => commonItems(pair.map(column => column.plan)), [pair]);
+  const common = useMemo(() => commonItems(pair.map(column => column.plan), zh), [pair, zh]);
   if (!versions.length) return null;
   return <section className="as-alt" data-testid="as-alternatives" aria-label={L('Alternative options side by side', '备选方案并排对比')}>
     <header className="as-alt-head">
@@ -45,9 +45,10 @@ export function AlternativesCompare({ api, sessionId, versions, current, onSelec
     {error && <p className="as-note bad" role="alert">{L('Could not load the alternatives for comparison:', '无法加载备选方案进行对比：')}{error}</p>}
     {!loading && !error && pair.length < 2 && <p className="as-quiet">{L('The alternatives are not compiled yet, so there is nothing to compare side by side.', '备选方案尚未编译完成，暂时无法并排对比。')}</p>}
     {pair.length >= 2 && <div className="as-alt-grid" style={{ '--as-alt-n': pair.length } as CSSProperties}>
-      {pair.map(({ plan }) => <article key={plan.version} className={`as-alt-col${current === plan.version ? ' is-current' : ''}`} data-testid={`as-alt-${plan.version}`}>
+      {pair.map(({ plan }) => <article key={plan.version} className={`as-alt-col${current === plan.version ? ' is-current' : ''}`} data-testid={`as-alt-${plan.version}`} aria-current={current === plan.version || undefined}>
         <header className="as-alt-col-head">
           <b>{plan.variant ? plan.variant : L('Option', '方案')} · v{plan.version}</b>
+          {current === plan.version && <span className="as-alt-tag is-current" data-testid={`as-alt-active-${plan.version}`}>{L('under review', '查看中')}</span>}
           <ValidationTag plan={plan} />
         </header>
         {plan.summary && <p className="as-alt-summary">{bi(plan.summary, zh)}</p>}
@@ -95,10 +96,11 @@ function ValidationTag({ plan }: { plan: PlanVersion }) {
 }
 
 /**
- * Labels that every compared plan shares, drawn from the compiled scene.
- * Common = present with the same id in all versions; anything else is a difference.
+ * Labels that every compared plan shares, drawn from the compiled scene, in the
+ * reader's language. Common = present with the same id in all versions; anything
+ * else is a difference.
  */
-function commonItems(plans: PlanVersion[]): string[] {
+function commonItems(plans: PlanVersion[], zh: boolean): string[] {
   if (plans.length < 2) return [];
   const sceneOf = (plan: PlanVersion) => plan.scene;
   const first = sceneOf(plans[0]);
@@ -107,10 +109,10 @@ function commonItems(plans: PlanVersion[]): string[] {
     const scene = sceneOf(plan);
     if (!scene) return undefined;
     const rows: Array<[string, string | undefined]> = [
-      ...(scene.places ?? []).map(place => [place.id, place.label_zh ?? place.label] as [string, string | undefined]),
-      ...(scene.fleets ?? []).map(fleet => [fleet.id, fleet.label_zh ?? fleet.label] as [string, string | undefined]),
-      ...(scene.workloads ?? []).map(workload => [workload.id, workload.label_zh ?? workload.label] as [string, string | undefined]),
-      ...(scene.events ?? []).map(event => [event.id, event.label_zh ?? event.label] as [string, string | undefined]),
+      ...(scene.places ?? []).map(place => [place.id, zh ? place.label_zh ?? place.label : place.label] as [string, string | undefined]),
+      ...(scene.fleets ?? []).map(fleet => [fleet.id, zh ? fleet.label_zh ?? fleet.label : fleet.label] as [string, string | undefined]),
+      ...(scene.workloads ?? []).map(workload => [workload.id, zh ? workload.label_zh ?? workload.label : workload.label] as [string, string | undefined]),
+      ...(scene.events ?? []).map(event => [event.id, zh ? event.label_zh ?? event.label : event.label] as [string, string | undefined]),
     ];
     return new Map(rows);
   };

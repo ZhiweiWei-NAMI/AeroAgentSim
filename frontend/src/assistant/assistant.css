@@ -470,6 +470,15 @@
 .as-story-events button { all: unset; cursor: pointer; display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 8px; width: 100%; box-sizing: border-box; padding: 4px 6px; border-radius: 6px; font-size: 11.5px; }
 .as-story-events button:hover:not(:disabled) { background: rgba(31, 122, 224, .07); }
 .as-story-events time { color: var(--wb-muted); font-size: 10.5px; }
+.as-story-plan { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 500; color: var(--wb-muted); }
+
+/* Rejected version: each operation error names its id and field, with a Revise affordance. */
+.as-op-errors { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.as-op-errors li { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.as-op-errors li .wb-mono { font-size: 11px; font-weight: 400; }
+.as-op-error-field { color: var(--wb-muted); font-size: 10.5px; }
+.as-op-error-field code { font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--wb-ink); background: rgba(224, 69, 58, .07); padding: 0 3px; border-radius: 3px; }
+.as-op-errors .wb-btn { margin-left: auto; }
 
 /* Stage while a plan is proposed */
 .as-stage-veil { z-index: 1; }

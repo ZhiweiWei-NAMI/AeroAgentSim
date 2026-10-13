@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
-import { questionOf, type ApplyRecord, type AssistantApi, type PlanVersion, type Story, type StoryItem } from './api';
+import { questionOf, type ApplyRecord, type AssistantApi, type CompileIssue, type PlanVersion, type Story, type StoryItem } from './api';
 import { Icon } from './icons';
 import { InteractionDiagram } from './InteractionDiagram';
 import { markerIds } from './overlay';
@@ -46,11 +46,15 @@ export function PlanBoard({ api, assistant, stage, waiting = false, runId, story
   const plan = older ?? latest;
   if (!session || !plan) return null;
   const isOld = !!older && older.version !== latest?.version;
+  // Which plan version actually changed the project — a shown plan that was
+  // already applied is labelled "applied", never presented as an open draft.
+  const appliedForPlan = session.applied.filter(row => row.plan_version === plan.version).at(-1);
+  const supersededBy = appliedForPlan ? session.applied.filter(row => row.plan_version !== plan.version && row.applied_at >= appliedForPlan.applied_at).at(-1) : undefined;
   const alternatives = session.alternatives ?? [];
   const isAlternative = alternatives.includes(plan.version) && plan.version !== latest?.version;
   const scene = plan.scene;
   const hover = (id: string | undefined) => onHover(id ? markerIds(scene, id) : []);
-  const valid = plan.validation.state === 'valid' && plan.compile.ok, applyDone = !!applied && applied.plan_version === plan.version;
+  const valid = plan.validation.state === 'valid' && plan.compile.ok, applyDone = !!appliedForPlan;
   const confirm = async () => {
     setApplying(true); setApplyError(undefined);
     try { onApplied(await assistant.apply(plan.version)); } catch (problem) { setApplyError(problem instanceof Error ? problem.message : String(problem)); } finally { setApplying(false); }
@@ -60,7 +64,12 @@ export function PlanBoard({ api, assistant, stage, waiting = false, runId, story
   const answer = (question: string, text: string) => { setAnswered(rows => { const next = [...rows, question]; try { sessionStorage.setItem(`aas-answered:${session.id}`, JSON.stringify(next)); } catch { /* storage unavailable */ } return next; }); ask(text); };
   const questions = plan.open_questions.map(questionOf).filter(row => !answered.includes(row.question));
   const askWhy = (item: StoryItem) => void assistant.send(L(`Why didn't this happen: "${item.text}"?`, `为什么这一步没有发生：“${item.text_zh ?? item.text}”？`), { run_id: runId, locale }).catch(() => undefined);
-  const shownStage: Stage = isOld ? 'proposed' : stage;
+  // A plan that is already applied is shown as applied (or superseded), never as a
+  // fresh proposal — returning from Form or a refresh must not resurrect it.
+  const appliedShown = !isOld && !!appliedForPlan;
+  // While a run is live the board stays in the running stage; otherwise an applied
+  // plan is labelled applied/superseded, never resurrected as an open draft.
+  const shownStage: Stage = appliedShown ? (stage === 'running' ? 'running' : 'configured') : isOld ? 'proposed' : stage;
   const rows = session.plan_versions;
 
   return <aside className={`as-board wb-panel wb-glass is-${shownStage}${isOld ? ' is-old' : ''}`} data-testid="as-plan-board" data-stage={shownStage} aria-label={L('Plan board', '方案面板')}>
@@ -85,7 +94,10 @@ export function PlanBoard({ api, assistant, stage, waiting = false, runId, story
     <div className="as-board-title as-rise">
       <span className={`as-badge is-${shownStage}`} data-testid="as-plan-state">
         {shownStage === 'proposed' ? <>{isOld ? L(`Earlier version · v${plan.version}`, `早期版本 · v${plan.version}`) : L(`Proposed plan · v${plan.version}`, `提议方案 · v${plan.version}`)}<em>{L('not applied', '未应用')}</em></>
-          : shownStage === 'configured' ? <>{L(`Configured · version ${applied?.version ?? ''}`, `已配置 · 版本 ${applied?.version ?? ''}`)}<em>{L('not running', '未运行')}</em></>
+          : shownStage === 'configured' ? <>{appliedShown
+              ? <>{supersededBy ? L(`Superseded · v${plan.version}`, `已被取代 · v${plan.version}`) : L(`Applied as version ${appliedForPlan?.version ?? ''}`, `已应用为版本 ${appliedForPlan?.version ?? ''}`)}</>
+              : <>{L(`Configured · version ${applied?.version ?? ''}`, `已配置 · 版本 ${applied?.version ?? ''}`)}</>}
+            <em>{supersededBy ? L(`superseded by version ${supersededBy.version}`, `已被版本 ${supersededBy.version} 取代`) : L('not running', '未运行')}</em></>
           : <>{terminal ? L('Run finished', '运行结束') : waiting ? L('Initialized · press Start', '已初始化 · 请按启动') : L('Running', '运行中')}<em className="wb-mono">{runId}</em></>}
       </span>
       <h2>{plan.title}</h2>
@@ -131,7 +143,7 @@ export function PlanBoard({ api, assistant, stage, waiting = false, runId, story
       </details>}
     </div>}
 
-    {stage === 'configured' && !isOld && applied && <ApplySummary record={applied} onHover={hover} />}
+    {shownStage === 'configured' && !isOld && appliedShown && appliedForPlan && <ApplySummary record={appliedForPlan} onHover={hover} supersededBy={supersededBy?.version} />}
 
     <nav className="as-tabs" role="tablist" ref={tabsRef}>
       {stage === 'running' && !isOld && <button role="tab" aria-selected={tab === 'story'} onClick={() => choose('story')} data-testid="as-tab-story">{L('Story', '经过')}</button>}
@@ -144,15 +156,27 @@ export function PlanBoard({ api, assistant, stage, waiting = false, runId, story
       {tab === 'scene' && (scene ? <SceneCards scene={scene} diff={plan.diff_previous ?? plan.diff_base} onHover={hover} onContract={onContract} busy={busy || isOld} onMode={ask} /> : <p className="as-quiet">{L('The plan could not be compiled into a scene yet.', '方案尚未编译成场景。')}</p>)}
       {tab === 'interactions' && plan.interactions && <InteractionDiagram interactions={plan.interactions} onStep={lanes => onStep(lanes.flatMap(id => markerIds(scene, id)))} />}
       {tab === 'changes' && <PlanChanges plan={plan} onHover={hover} />}
-      {tab === 'story' && <RunStory story={story} error={storyError} startNs={startNs} terminal={terminal} expectations={plan.expectations} onSeek={onSeek} onAsk={askWhy} />}
+      {tab === 'story' && <RunStory story={story} error={storyError} startNs={startNs} terminal={terminal} expectations={plan.expectations} planVersion={plan.version} onSeek={onSeek} onAsk={askWhy} />}
       {stage !== 'proposed' && !isOld && tab === 'scene' && plan.expectations?.length ? <Watch plan={plan} /> : null}
     </div>
     </div>
 
     <footer className="as-board-foot">
       {isOld ? <p className="as-quiet">{L('Viewing an earlier version. Only the latest version can be confirmed.', '正在查看早期版本。只能确认最新版本。')}</p>
+        : appliedShown ? <>
+          {shownStage === 'configured' ? <div className="as-foot-actions">
+            <span className="as-quiet">{supersededBy ? L(`A later version (${supersededBy.version}) is what the project runs now.`, `项目现在使用的是更新的版本（${supersededBy.version}）。`) : L('Already applied to the project. Nothing more to confirm.', '已应用到项目。无需再次确认。')}</span>
+            {!supersededBy && <button className="wb-btn primary" disabled={!canInitialize || initializing} onClick={onInitialize} data-testid="as-initialize"><Icon name="play" size={12} />{initializing ? L('Initializing…', '初始化中…') : L(`Initialize version ${appliedForPlan?.version ?? ''}`, `初始化版本 ${appliedForPlan?.version ?? ''}`)}</button>}
+          </div> : <div className="as-foot-actions">
+            <span className="as-quiet">{terminal ? L('Ask about anything that surprised you.', '对结果有疑问可以直接问。') : L('The story updates as events are recorded.', '记录到事件后经过会更新。')}</span>
+            <button className="wb-btn" disabled={busy} onClick={() => ask(terminal ? L('Summarise what happened in this run compared with the plan.', '对照方案总结这次运行发生了什么。') : L('What is happening right now?', '现在发生了什么？'))}>{terminal ? L('Summarise the run', '总结运行') : L('What is happening?', '现在怎样了？')}</button>
+          </div>}
+        </>
         : stage === 'proposed' ? <>
-          <Validation plan={plan} onFix={() => ask(L('Fix the problems the simulator reported.', '修复仿真器报告的问题。'))} busy={busy} />
+          <Validation plan={plan} busy={busy}
+            onFix={operation => ask(operation
+              ? L(`Revise operation ${operation.op_id ?? ''}: fix the problem with ${operation.field ?? 'its parameters'} — ${operation.message}`.replace(/\s+/g, ' ').trim(), `修改操作 ${operation.op_id ?? ''}：解决 ${operation.field ?? '其参数'} 的问题 —— ${operation.message}`.replace(/\s+/g, ' ').trim())
+              : L('Fix the problems the simulator reported.', '修复仿真器报告的问题。'))} />
           {applyError && <p className="as-note bad" role="alert">{applyError}</p>}
           <div className="as-foot-actions">
             <span className="as-quiet">{applyDone ? L('Already applied.', '已应用。') : L('Your scene changes only when you confirm.', '确认后场景才会改变。')}</span>
@@ -174,29 +198,40 @@ export function PlanBoard({ api, assistant, stage, waiting = false, runId, story
   </aside>;
 }
 
-function Validation({ plan, onFix, busy }: { plan: PlanVersion; onFix: () => void; busy: boolean }) {
+function Validation({ plan, onFix, busy }: { plan: PlanVersion; onFix: (operation?: CompileIssue) => void; busy: boolean }) {
   const { locale } = useI18n(), L = (en: string, cn: string) => locale === 'zh-CN' ? cn : en;
-  const errors = [...plan.compile.errors.map(error => `${error.op_id ? `${error.op_id}: ` : ''}${error.message}`), ...(plan.validation.errors ?? [])];
+  const errors = plan.compile.errors.map(error => ({ ...error, text: `${error.op_id ? `${error.op_id}: ` : ''}${error.message}` }));
+  const validationErrors = (plan.validation.errors ?? []).map(message => ({ op_id: undefined, field: undefined, message, text: message }));
+  const all = [...errors, ...validationErrors];
   const state = !plan.compile.ok ? 'invalid' : plan.validation.state, zh = locale === 'zh-CN';
   const notes = plan.compile.warnings.map(row => typeof row === 'string' ? row : row.message);
   return <>{state !== 'invalid' && notes.length > 0 && <ul className="as-compile-notes" data-testid="as-compile-notes">{notes.slice(0, 3).map(note => <li key={note}><Icon name="dot" size={10} />{bi(note, zh)}</li>)}</ul>}
   <div className={`as-validation is-${state}`} data-testid="as-validation" data-state={state} role="status">
     {state === 'pending' ? <><span className="as-spin" />{L('Checking with the simulator…', '正在用仿真器校验…')}</>
       : state === 'valid' ? <><Icon name="check" size={12} />{L('Checked: the simulator loads this scene', '已校验：仿真器可以加载此场景')}</>
-      : <details><summary><Icon name="cross" size={12} />{L('The simulator rejected this version', '仿真器拒绝了此版本')}</summary>
-        <ul>{errors.slice(0, 6).map(error => <li key={error} className="wb-mono">{bi(error, locale === 'zh-CN')}</li>)}</ul>
-        <button className="wb-btn small" disabled={busy} onClick={onFix}>{L('Ask the assistant to fix it', '让助手修复')}</button>
+      : <details open={all.length > 0}>
+        <summary><Icon name="cross" size={12} />{L('The simulator rejected this version', '仿真器拒绝了此版本')}</summary>
+        <ul className="as-op-errors" data-testid="as-op-errors">{all.slice(0, 6).map((error, index) => <li key={`${error.op_id ?? ''}-${index}`}>
+          <span className="wb-mono">{error.text}</span>
+          {error.field && error.op_id && <small className="as-op-error-field">{L('field', '字段')} · <code>{error.field}</code></small>}
+          <button className="wb-btn small ghost" disabled={busy} onClick={() => onFix(error.op_id ? error : undefined)} data-testid="as-revise">
+            {L('Revise', '修改')}
+          </button>
+        </li>)}</ul>
+        {all.length > 6 && <small className="as-quiet">{L(`${all.length - 6} more problems`, `还有 ${all.length - 6} 个问题`)}</small>}
+        <button className="wb-btn small" disabled={busy} onClick={() => onFix()}>{L('Ask the assistant to fix it', '让助手修复')}</button>
       </details>}
   </div></>;
 }
 
-function ApplySummary({ record, onHover }: { record: ApplyRecord; onHover: (id: string | undefined) => void }) {
+function ApplySummary({ record, onHover, supersededBy }: { record: ApplyRecord; onHover: (id: string | undefined) => void; supersededBy?: number }) {
   const { locale } = useI18n(), L = (en: string, cn: string) => locale === 'zh-CN' ? cn : en;
   const { created, changed, removed } = record.report;
   return <section className="as-applied-card" data-testid="as-apply-report">
     <div className="as-applied-head"><span className="as-applied-icon"><Icon name="check" size={13} /></span>
       <div><strong>{L(`Applied as version ${record.version}`, `已应用为版本 ${record.version}`)}</strong>
         <small className="wb-mono">{L(`${created.length} created · ${changed.length} changed · ${removed.length} removed`, `新增 ${created.length} · 修改 ${changed.length} · 移除 ${removed.length}`)}</small></div></div>
+    {supersededBy !== undefined && <p className="as-note" role="note">{L(`This version is no longer the latest: the project now uses version ${supersededBy}.`, `此版本已不是最新：项目现在使用版本 ${supersededBy}。`)}</p>}
     <DiffList diff={{ added: created, changed, removed }} onHover={onHover} empty={L('Nothing in the scene changed.', '场景没有变化。')} />
   </section>;
 }
