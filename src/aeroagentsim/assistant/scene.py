@@ -267,6 +267,18 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
                 release["end_s"] = arrivals["end_ns"] / SECOND
             if "burst_size" in arrivals:
                 release["burst_size"] = arrivals["burst_size"]
+            # Configured orders are only the slots; random arrivals stop when the window closes.
+            # Models read "count: 6" as six orders, so the expected number released is stated.
+            burst = arrivals.get("burst_size", 1)
+            window = (arrivals.get("end_ns", document["run"]["until_ns"]) - arrivals["start_ns"]) / SECOND
+            expected = min(len(group["tasks"]), round((burst if burst > 1 else 0) + arrivals["rate_per_s"] * max(0.0, window - (2 if burst > 1 else 0))))
+            release["expected_released"] = expected
+            if expected < len(group["tasks"]):
+                closes = release.get("end_s", document["run"]["until_ns"] / SECOND)
+                release["note"] = (f"Random arrivals: only about {expected} of the {len(group['tasks'])} configured orders arrive before releases stop at "
+                                   f"{closes:g} s. For exactly {len(group['tasks'])}, give this workload scheduled release times (set_orders) or raise the rate.")
+                release["note_zh"] = (f"随机到达：发布在 {closes:g} 秒停止前，预计只有约 {expected} 个（共配置 {len(group['tasks'])} 个）订单到达。"
+                                      f"若要正好 {len(group['tasks'])} 个，请用 set_orders 为该工作量指定发布时间，或提高速率。")
         kind = group["kind"]
         workloads.append({"id": _workload_id(group), "kind": kind, "label": TASK_NOUN.get(kind, kind), "label_zh": TASK_NOUN_ZH.get(kind, kind),
                           "count": len(group["tasks"]), "tasks": list(group["tasks"]), "from": list(group["origins"]), "to": list(group["destinations"]),

@@ -1055,6 +1055,9 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         errors.append({"op_id": operations[-1].get("id", f"op-{len(operations)}") if isinstance(operations, list) and operations and isinstance(operations[-1], dict) else None,
                        "field": getattr(exc, "field", getattr(exc, "path", "base")), "message": f"{type(exc).__name__}: {exc}"})
     summary = summarize(document, directory=files, controls=scene.controls) if not errors else {}
+    for work in summary.get("workloads", []):
+        if "note" in work["release"]:
+            warnings.append({"op_id": None, "field": f"workloads.{work['id']}.release", "message": f"{work['release']['note']} / {work['release']['note_zh']}"})
     result = CompileResult(not errors, errors, warnings, document, files, _digest(document, files), summary,
                            diff(base_summary, summary) if not errors else {}, interactions(summary) if not errors else {},
                            expectations(document, summary) if not errors else [])

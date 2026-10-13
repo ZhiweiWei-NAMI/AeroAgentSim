@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from aeroagentsim.assistant.compiler import CompileContext, compile_plan
 from aeroagentsim.assistant.scene import diff, expectations, explain_participant, explain_relation, interactions, summarize
+from aeroagentsim.authoring.workspace import WorkspaceStore
 from aeroagentsim.authoring.templates import TemplateRegistry
 from aeroagentsim.scenario import load_scenario
 
@@ -206,3 +208,14 @@ def test_scheduled_operator_steps_match_business_payloads(template, point, at_s,
         assert row["match"]["where"] == {k: params[k] for k in ("task", "site", "priority") if k in params}
         assert any(s["expect"] == row["id"] for s in interactions(summary)["steps"])
     assert all(s["expect"] is None or s["expect"] in rows for s in interactions(summary)["steps"])
+
+
+def test_random_release_states_how_many_orders_arrive(tmp_path) -> None:
+    # Six configured slots at 0.01 orders/s over a 100 s window are about two orders, not six.
+    context = CompileContext(WorkspaceStore(tmp_path / "workspaces", None), TemplateRegistry(), None)
+    sparse = compile_plan(context, {"template": "food-delivery"}, [{"id": "op-1", "op": "set_control", "params": {"control": "order_rate", "value": 0.01}}], tmp_path / "sparse")
+    release = sparse.summary["workloads"][0]["release"]
+    assert sparse.ok and release["expected_released"] < 6 and "set_orders" in release["note"] and "set_orders" in release["note_zh"]
+    assert any(w["field"] == "workloads.meal.release" for w in sparse.warnings)
+    default = compile_plan(context, {"template": "food-delivery"}, [], tmp_path / "default")
+    assert default.summary["workloads"][0]["release"]["expected_released"] == 6 and "note" not in default.summary["workloads"][0]["release"]
