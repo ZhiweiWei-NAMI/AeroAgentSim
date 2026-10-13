@@ -40,7 +40,7 @@ def create_router(
     run_root: Path | None = None,
 ) -> APIRouter:
     """Only configured local extracts are exposed, never arbitrary host-file paths."""
-    from .scene import extract_bounds, generate_sumo
+    from .scene import extract_bounds
 
     sources = configured_extracts() if extracts is None else extracts
     router = APIRouter(prefix="/v1/studio", tags=["studio"])
@@ -374,6 +374,8 @@ def create_router(
     @router.post("/workspaces/{identifier}/network")
     def network(identifier: str) -> dict[str, Any]:
         def compile_network() -> dict[str, Any]:
+            from .scene import generate_sumo
+
             with store.lock:
                 draft = store.get(identifier)
                 directory = store.directory(identifier)
@@ -384,7 +386,9 @@ def create_router(
                 result = generate_sumo(
                     directory / "region.osm.xml", directory / "network.net.xml"
                 )
+                result["source"] = store.network_source(draft, directory)
                 draft["network"] = result
+                draft["network_state"] = {"status": "generated"}
                 store._write(draft)
                 return result
 
@@ -393,10 +397,10 @@ def create_router(
     @router.get("/workspaces/{identifier}/network.net.xml")
     def network_file(identifier: str) -> FileResponse:
         def read() -> FileResponse:
-            store.get(identifier)
+            draft = store.summary(identifier)
             path = store.directory(identifier) / "network.net.xml"
-            if not path.is_file():
-                raise FileNotFoundError("network: generate a SUMO network first")
+            if not draft["capabilities"]["network"]:
+                raise ValueError("network: the road network is missing or stale; regenerate it from the applied region / 道路网络缺失或已过期，请从已应用区域重新生成")
             return FileResponse(path, media_type="application/xml")
 
         return checked(read)

@@ -1,74 +1,76 @@
 import { useState } from 'react';
-import { pointer } from '../../form';
+import type { Project, WorkbenchApi } from '../../api';
 import type { Scenario } from '../types';
+import { AddFleet, fleetMembers } from './AddFleet';
+import { RemoveEntity } from './RemoveEntity';
+import { pointer } from '../../form';
 
-/** A fleet is a generation rule in draft.generators, never an already-existing instance. */
-export function Fleets({ draft, edit, L }: {
-  draft: Scenario; edit: (path: string, value: unknown) => void; L: (en: string, zh: string) => string;
+/** Fleets are server structures (C11 add_fleet / set_fleet, generated members, or draft generators).
+ * This list never mutates the draft itself: adding and editing go through the operations API, and
+ * removal goes through the server's own dependency preview (C3) per member — never a client wipe. */
+export function Fleets({ api, studioApi, project, draft, onProject, L, onRemoved }: {
+  api: WorkbenchApi; studioApi: { request<T = unknown>(path: string, body?: unknown): Promise<T> };
+  project: Project; draft: Scenario; onProject: (project: Project) => void;
+  L: (en: string, zh: string) => string; onRemoved?: () => void;
 }) {
-  const entries = Object.entries((draft.generators ?? {}) as Record<string, Record<string, any>>);
   const [adding, setAdding] = useState(false);
-  const [name, setName] = useState('');
-  const [type, setType] = useState('');
-  const [count, setCount] = useState(2);
-  const [spawn, setSpawn] = useState('0');
-  const [spacing, setSpacing] = useState('35');
-  const nameBad = !/^[A-Za-z0-9_-]+$/.test(name) || entries.some(([key]) => key === name);
-  const countBad = !Number.isInteger(count) || count < 1;
-  const spawnBad = !Number.isFinite(Number(spawn));
-  const add = () => {
-    if (nameBad || countBad || spawnBad) return;
-    edit(pointer('generators', name), {
-      count, prefix: `${name}-`, type,
-      starts: [[Number(spawn), 0, 0]],
-      spacing_m: Number(spacing) || 0,
-      facts: {
-        'aas.studio.velocity_enu_m_s': [0, 0, 0],
-        'aas.studio.energy_j': 100000,
-      },
-    });
-    setAdding(false); setName(''); setType(''); setCount(2); setSpawn('0');
-  };
-  const remove = (key: string) => {
-    const rest = { ...((draft.generators ?? {}) as Record<string, unknown>) };
-    delete rest[key];
-    edit('generators', rest);
-  };
+  const [editing, setEditing] = useState<{ id: string; count: number; battery_pct?: number; start?: string | number[] }>();
+  const [removing, setRemoving] = useState<{ fleet: string; member: string }>();
+
+  const entities = (Array.isArray(draft.entities) ? draft.entities : []) as Array<Record<string, any>>;
+  const uavs = entities.filter(entity => entity.type === 'lowalt:UAV' || String(entity.type).endsWith(':UAV'));
+  // Explicit plan fleets: groups of `<id>-<n>` UAV members written by earlier add_fleet operations.
+  const generatorPrefix = String((draft.generators as Record<string, any> | undefined)?.fleet?.prefix ?? '')
+    .replace(/-\d*$/, '');
+  const fleetIds = Array.from(new Set(uavs
+    .map(entity => String(entity.id).replace(/-\d+$/, ''))
+    .filter(prefix => prefix && prefix !== generatorPrefix)));
+  const generator = (draft.generators as Record<string, any> | undefined)?.fleet as Record<string, any> | undefined;
+
   return <>
-    <h4>{L('Generated fleets', '批量生成的机队')}</h4>
-    <p className="hint">{L('A fleet is a generation rule, not existing instances: it expands to members at initialization.', '机队是一条生成规则，不是已存在的实例：初始化时才展开成成员。')}</p>
-    {entries.map(([key, generator]) => <div key={key} style={{ border: '1px solid var(--wb-line)', borderRadius: 10, padding: '8px 10px', marginBottom: 8 }} data-path={pointer('generators', key)}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <b className="wb-mono">{key}</b>
-        <span className="wb-tag wb-mono">{generator.type ?? '?'}</span>
-        <span className="wb-tag ok">{L(`will generate ${generator.count ?? '?'}`, `将生成 ${generator.count ?? '?'}`)}</span>
-        <span className="wb-tag warn" style={{ flex: 1 }}>{L(`expected at t=0: +${generator.count ?? '?'} (not counted as explicit instances)`, `t=0 预期：+${generator.count ?? '?'}（不计入显式实例）`)}</span>
-        <button className="wb-btn small danger" onClick={() => remove(key)}>{L('Remove fleet', '移除机队')}</button>
-      </div>
-      <label className="wb-field"><span>{`${key} · ${L('count', '数量')}`}</span>
-        <input type="number" min={1} value={generator.count ?? ''} onChange={event => edit(pointer('generators', key, 'count'), Number(event.target.value))} /></label>
-      <label className="wb-field"><span>{`${key} · ${L('type', '类型')} (${L('read-only; author it in the registry', '只读；请在 registry 中声明')})`}</span>
-        <input className="wb-mono" value={generator.type ?? ''} readOnly /></label>
-      <label className="wb-field"><span>{`${key} · ${L('first spawn point east (m)', '首个出生点东向 (m)')}`}</span>
-        <input inputMode="decimal" value={Array.isArray(generator.starts?.[0]) ? String(generator.starts[0][0]) : ''} onChange={event => {
-          const starts = (generator.starts ?? [[0, 0, 0]]).map((row: unknown) => Array.isArray(row) ? [...row] : [0, 0, 0]);
-          starts[0] = [Number(event.target.value) || 0, starts[0]?.[1] ?? 0, starts[0]?.[2] ?? 0];
-          edit(pointer('generators', key, 'starts'), starts);
-        }} /></label>
-    </div>)}
-    {!entries.length && <div className="wb-empty">{L('No generated fleets.', '没有批量生成的机队。')}</div>}
-    {adding ? <div style={{ border: '1px dashed var(--wb-line)', borderRadius: 10, padding: 10, margin: '6px 0' }}>
-      <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-        <label className="wb-field"><span>{L('fleet name', '机队名称')}</span><input value={name} onChange={event => setName(event.target.value)} placeholder="fleet" aria-invalid={nameBad} /></label>
-        <label className="wb-field"><span>{L('type id (must exist in the registry)', '类型 id（必须在 registry 中已声明）')}</span><input className="wb-mono" value={type} onChange={event => setType(event.target.value)} placeholder="oo:UAV" /></label>
-        <label className="wb-field"><span>{L('count', '数量')}</span><input type="number" min={1} value={count} onChange={event => setCount(Number(event.target.value) || 0)} aria-invalid={countBad} /></label>
-        <label className="wb-field"><span>{L('first spawn east (m)', '首个出生点东向 (m)')}</span><input inputMode="decimal" value={spawn} onChange={event => setSpawn(event.target.value)} aria-invalid={spawnBad} /></label>
-      </div>
-      <p className="wb-add-note">{L('Mirrors the draft generator shape: count, prefix, type, starts, spacing_m and initial facts. Member ids are fleet-1 … fleet-N.', '与草稿生成器结构一致：count、prefix、type、starts、spacing_m 与初始事实。成员 id 为 机队名-1 … 机队名-N。')}</p>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="wb-btn small primary" disabled={nameBad || countBad || spawnBad || !type.trim()} onClick={add}>{L('Add fleet', '添加机队')}</button>
-        <button className="wb-btn small ghost" onClick={() => setAdding(false)}>{L('Cancel', '取消')}</button>
-      </div>
-    </div> : <button className="wb-btn small" onClick={() => setAdding(true)}>{L('Add fleet', '添加机队')}</button>}
+    <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', margin: '4px 0' }}>
+      <h4 style={{ margin: 0 }}>{L('Fleets', '机群')}</h4>
+      <button className="wb-btn small" aria-expanded={adding} aria-pressed={adding}
+        onClick={() => { setAdding(value => !value); setEditing(undefined); }}>
+        {adding ? L('Close add fleet', '收起添加机群') : L('Add fleet', '添加机群')}</button>
+    </div>
+    <p className="hint">{L('Fleets are created and changed by server operations; members and counts below come from the server draft.', '机群由服务器操作创建和修改；下方的成员与数量均来自服务器草稿。')}</p>
+    {adding && <AddFleet api={api} project={project} draft={draft} onProject={onProject} L={L} onClose={() => setAdding(false)} />}
+    {editing && <AddFleet api={api} project={project} draft={draft} onProject={onProject} L={L} editing={editing} onClose={() => setEditing(undefined)} />}
+    {fleetIds.map(fleetId => {
+      const members = fleetMembers(entities, fleetId);
+      return <div key={fleetId} style={{ border: '1px solid var(--wb-line)', borderRadius: 10, padding: '8px 10px', marginBottom: 8 }} data-testid="wb-fleet">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <b className="wb-mono">{fleetId}</b>
+          <span className="wb-tag">{L(`${members.length} member(s)`, `${members.length} 名成员`)}</span>
+          <button className="wb-btn small" onClick={() => { setEditing({ id: fleetId, count: members.length }); setAdding(false); }}>{L('Edit', '编辑')}</button>
+        </div>
+        <div className="wb-mono" style={{ fontSize: 11, color: 'var(--wb-muted)' }}>{members.join(', ') || L('no members', '无成员')}</div>
+      </div>;
+    })}
+    {generator && <div style={{ border: '1px dashed var(--wb-line)', borderRadius: 10, padding: '8px 10px', marginBottom: 8 }} data-testid="wb-fleet-generated">
+      <b className="wb-mono">{generatorPrefix || 'fleet'}</b>{' '}
+      <span className="wb-tag warn">{L(`will generate ${generator.count ?? '?'}`, `将生成 ${generator.count ?? '?'}`)}</span>
+      <div className="wb-mono" style={{ fontSize: 11, color: 'var(--wb-muted)' }}>{String(generator.type ?? '')}</div>
+      <p className="wb-add-note" style={{ margin: '4px 0 0' }}>{L(
+        'A generated fleet is a starting-point rule owned by the template; resize it through the controls that author it, or remove members individually below (server dependency preview).',
+        '生成机群是模板拥有的起点规则；请通过创建它的控件调整规模，或在下方逐个移除成员（服务器依赖预览）。')}</p>
+      {Array.from({ length: typeof generator.count === 'number' ? generator.count : 0 }, (_, index) => `${generator.prefix ?? 'fleet-'}${index + 1}`).map(member => <div key={member} style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: 11.5 }}>
+        <span className="wb-mono">{member}</span>
+        <button className="wb-btn small danger" onClick={() => { setRemoving({ fleet: generatorPrefix || 'fleet', member }); setEditing(undefined); setAdding(false); }}>{L('Remove', '移除')}</button>
+      </div>)}
+    </div>}
+    {!fleetIds.length && !generator && !adding && !editing &&
+      <div className="wb-empty">{L('No fleets yet. "Add fleet" creates one through a server operation with a dry-run diff.', '还没有机群。“添加机群”会通过服务器操作创建，并先展示预演差异。')}</div>}
+    {removing && <div style={{ border: '1px solid var(--wb-warn)', borderRadius: 10, padding: 10, margin: '6px 0' }}>
+      <p style={{ margin: '0 0 6px' }} role="status">{L(
+        `The operation vocabulary has no whole-fleet removal, so removal goes member by member with the server's dependency preview. Removing ${removing.member} removes only its own references.`,
+        '操作词汇表不支持整体移除机群，因此逐个成员移除，并使用服务器的依赖预览。移除 ' + removing.member + ' 只会移除其自身的引用。')}</p>
+      <RemoveEntity api={api} studioApi={studioApi} project={project} draft={draft} onProject={onProject}
+        L={L} entityId={removing.member} onDone={() => { setRemoving(undefined); onRemoved?.(); }} />
+    </div>}
   </>;
 }
+
+/** Kept for existing imports: the draft pointer of a generator entry (read-only display use). */
+export const generatorPath = (name: string) => pointer('generators', name);

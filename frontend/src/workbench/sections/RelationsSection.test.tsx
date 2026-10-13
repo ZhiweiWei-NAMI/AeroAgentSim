@@ -37,12 +37,13 @@ it('adds an edge in the loader shape {writer, relation, type, ids}', async () =>
   fireEvent.click(screen.getByRole('button', { name: 'Add relation' }));
   fireEvent.change(await screen.findByLabelText('relation type'), { target: { value: 'oo:relation:observation-subject' } });
   fireEvent.change(screen.getByLabelText('source instance'), { target: { value: 'obs-1' } });
-  fireEvent.change(screen.getByLabelText('target instance'), { target: { value: 'uav-1' } });
+  fireEvent.change(screen.getByLabelText(/target instance/), { target: { value: 'uav-1' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add relation' }));
   await waitFor(() => expect(edit).toHaveBeenCalled());
   const [path, value] = (edit as ReturnType<typeof vi.fn>).mock.calls[0];
   expect(path).toBe('/bindings/relations');
-  expect(value[0]).toEqual({ writer: 'operations', relation: 'oo:relation:observation-subject', type: 'aas:KinematicObservation', ids: 'obs-1,uav-1' });
+  // `ids` is a source-id glob scope (fnmatchcase in the loader), not an endpoint list.
+  expect(value[0]).toEqual({ writer: 'operations', relation: 'oo:relation:observation-subject', type: 'aas:KinematicObservation', ids: 'obs-1' });
 });
 
 it('blocks endpoints whose type contradicts the relation contract', async () => {
@@ -53,7 +54,7 @@ it('blocks endpoints whose type contradicts the relation contract', async () => 
   fireEvent.click(screen.getByRole('button', { name: 'Add relation' }));
   fireEvent.change(await screen.findByLabelText('relation type'), { target: { value: 'oo:relation:observation-subject' } });
   fireEvent.change(screen.getByLabelText('source instance'), { target: { value: 'uav-1' } });
-  fireEvent.change(screen.getByLabelText('target instance'), { target: { value: 'uav-2' } });
+  fireEvent.change(screen.getByLabelText(/target instance/), { target: { value: 'uav-2' } });
   expect(screen.getByText(/do not match the relation contract/)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Add relation' }).hasAttribute('disabled')).toBe(true);
 });

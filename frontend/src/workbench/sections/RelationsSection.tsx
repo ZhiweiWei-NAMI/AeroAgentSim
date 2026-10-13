@@ -24,11 +24,12 @@ function RelationCard({ edge, index, onRemove, zh, L }: {
     </div>
     <div style={{ fontSize: 12 }}>
       {labelOf(edge.type)} <span className="wb-mono" style={{ fontSize: 10, color: 'var(--wb-muted)' }}>{String(edge.type ?? '')}</span>
-      {' → '}{labelOf(edge.ids)}
-      <div className="wb-mono" style={{ fontSize: 10, color: 'var(--wb-muted)' }}>{String(edge.ids ?? '*')}</div>
+      <div style={{ marginTop: 2 }}>
+        <span className="wb-tag">source-id scope</span> <span className="wb-mono" style={{ fontSize: 10 }}>{String(edge.ids ?? '*')}</span>
+      </div>
     </div>
     <Leaf path={pointer('bindings', 'relations', index, 'writer')} label={L('writer engine', '写入引擎')} value={edge.writer} onChange={() => undefined} readOnly />
-    <Leaf path={pointer('bindings', 'relations', index, 'ids')} label={L('member id pattern', '成员 id 模式')} value={edge.ids ?? '*'} onChange={() => undefined} readOnly />
+    <Leaf path={pointer('bindings', 'relations', index, 'ids')} label={L('source-id scope (glob)', '源 id 范围（通配模式）')} value={edge.ids ?? '*'} onChange={() => undefined} readOnly />
   </div>;
 }
 
@@ -52,8 +53,11 @@ export function RelationsSection({ studioApi, project, draft, edit, focus, zh, L
 
   const add = () => {
     if (!canAdd || !chosen) return;
-    // The loader's contract for bindings.relations[] is {writer, relation, type} plus optional ids.
-    const next = [...edges, { ...relationEdge('operations', chosen.id, chosen.source_type), ids: `${sourceId},${targetId}` }];
+    // The loader contract (bindings.relations[] = {writer, relation, type} + optional ids): `ids` is a
+    // glob over SOURCE entity ids (fnmatchcase) scoping which sources this writer may bind — it is not
+    // an endpoint list (T1-013). Scope the rule to the chosen source; the target types come from the
+    // relation contract itself, so they are never written here.
+    const next = [...edges, { ...relationEdge('operations', chosen.id, chosen.source_type), ids: sourceId }];
     edit(pointer('bindings', 'relations'), next);
     setAdding(false); setRelationId(''); setSourceId(''); setTargetId('');
   };
@@ -83,10 +87,13 @@ export function RelationsSection({ studioApi, project, draft, edit, focus, zh, L
             <label className="wb-field"><span>{L('source instance', '源实例')}</span>
               <select value={sourceId} onChange={event => setSourceId(event.target.value)}><option value="">{L('Choose…', '选择…')}</option>
                 {entities.map(entity => <option key={entity.id} value={entity.id}>{entity.id}{entity.type !== chosen.source_type ? ` (${L(`type ${entity.type}`, `类型 ${entity.type}`)})` : ''}</option>)}</select></label>
-            <label className="wb-field"><span>{L('target instance', '目标实例')}</span>
+            <label className="wb-field"><span>{L('target instance (validation only)', '目标实例（仅校验）')}</span>
               <select value={targetId} onChange={event => setTargetId(event.target.value)}><option value="">{L('Choose…', '选择…')}</option>
                 {entities.map(entity => <option key={entity.id} value={entity.id}>{entity.id}{entity.type !== chosen.target_type ? ` (${L(`type ${entity.type}`, `类型 ${entity.type}`)})` : ''}</option>)}</select></label>
           </div>
+          <p className="hint">{L(
+            'The saved edge is a writer rule: {writer, relation, type, ids}. Its "ids" is a glob over source instance ids (e.g. "obs-1" or "uav-*") that scopes which sources this writer may bind; the runtime resolves targets from the relation contract and behaviour writes, so the target above is only a type check.',
+            '保存的边是一条写入规则：{writer, relation, type, ids}。其中 "ids" 是作用于源实例 id 的通配模式（如 "obs-1" 或 "uav-*"），限定该写入者可绑定的源；目标由关系契约与行为写入解析，因此上方的目标仅用于类型校验。')}</p>
           {endpointBad && <p role="alert" style={{ color: 'var(--wb-bad)' }}>{L('The chosen endpoint types do not match the relation contract; the server would reject this edge.', '所选端点类型不符合关系契约，服务器会拒绝这条边。')}</p>}
           <div style={{ display: 'flex', gap: 8, margin: '6px 0' }}>
             <button className="wb-btn primary" disabled={!canAdd} onClick={add}>{L('Add relation', '添加关系')}</button>

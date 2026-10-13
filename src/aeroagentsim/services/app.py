@@ -32,6 +32,31 @@ TERMINAL = {"completed", "stopped", "faulted", "interrupted", "input_timeout"}
 CONTROLS = {"start", "pause", "resume", "stop"}
 
 
+async def close_workers(workers: dict[str, tuple[Any, Any, Any, Any, Any]], root: Path) -> None:
+    """Signal every worker first; the shutdown deadline is shared across runs."""
+    for process, paused, stopped, _, _ in workers.values():
+        stopped.set()
+        paused.clear()
+
+    async def close(process: Any) -> None:
+        await asyncio.to_thread(process.join, 10)
+        forced = process.is_alive()
+        if forced:
+            process.terminate()
+            await asyncio.to_thread(process.join, 2)
+            if process.is_alive():
+                process.kill()
+                await asyncio.to_thread(process.join, 2)
+        storage = RunStorage(root / process.name)
+        if forced or storage.metadata()["status"] not in TERMINAL:
+            storage.status("interrupted", error=(
+                "worker did not close within shutdown deadline" if forced
+                else "worker exited without recording a terminal status during shutdown"
+            ))
+
+    await asyncio.gather(*(close(process) for process, _, _, _, _ in workers.values()))
+
+
 def create_app(
     root: Path = Path("runs"),
     *,
@@ -70,24 +95,15 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        yield
-        for process, paused, stopped, _, _ in workers.values():
-            stopped.set()
-            paused.clear()
-        for process, _, _, _, _ in workers.values():
-            await asyncio.to_thread(process.join, 10)
-            if process.is_alive():
-                # Preserve an explicitly interrupted prefix rather than invent cleanup.
-                process.terminate()
-                await asyncio.to_thread(process.join, 2)
-                RunStorage(root / process.name).status(
-                    "interrupted", error="worker did not close within shutdown deadline"
-                )
-        for connection, input_lock in inputs.values():
-            connection.close()
-        await asyncio.to_thread(experiments.close)
-        if index_tasks:
-            await asyncio.gather(*index_tasks)
+        try:
+            yield
+        finally:
+            await close_workers(workers, root)
+            for connection, input_lock in inputs.values():
+                connection.close()
+            await asyncio.to_thread(experiments.close)
+            if index_tasks:
+                await asyncio.gather(*index_tasks)
 
     app = FastAPI(title="AeroAgentSim", lifespan=lifespan)
     app.state.templates = templates
@@ -765,6 +781,7 @@ def create_app(
             finally:
                 if projection is not None:
                     projection.cancel()
+                    await asyncio.gather(projection, return_exceptions=True)
 
         return StreamingResponse(
             tail(),

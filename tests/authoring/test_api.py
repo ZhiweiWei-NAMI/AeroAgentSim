@@ -131,8 +131,8 @@ def test_writer_conflict_is_real_diagnostic(store: WorkspaceStore) -> None:
     result = store.validate(w["id"], doc)
     assert result["valid"] is False
     assert result["errors"]
-    with pytest.raises(ValueError, match="export"):
-        store.export(w["id"])
+    # The YAML repair editor must still open the real invalid saved draft.
+    assert yaml.safe_load(store.export(w["id"])) == doc
 
 
 def test_catalog_and_real_run_replay(tmp_path: Path) -> None:

@@ -97,14 +97,14 @@ it('places each reviewed instance and adopts the updated workspace', async () =>
   expect(onProject).toHaveBeenLastCalledWith(allPlaced);
 });
 
-it('reports which instances failed and still lists the created ones', async () => {
+it('reports which instances failed and stops rather than chaining stale placements', async () => {
   const { api } = setup({ request: vi.fn().mockRejectedValueOnce(Object.assign(Error('HTTP 422: bad'), { status: 422 })).mockResolvedValue({ id: 'w', revision: 3, scenario: {} }) });
   await chooseUav();
   fireEvent.change(screen.getByLabelText('id (or id prefix)'), { target: { value: 'uav' } });
   fireEvent.change(screen.getByLabelText('count'), { target: { value: '2' } });
   await waitFor(() => expect(screen.getByText('uav-2')).toBeTruthy());
   fireEvent.click(screen.getByRole('button', { name: /Create 2 objects/ }));
-  expect(await screen.findByText(/Created: uav-2/)).toBeTruthy();
-  expect(screen.getByText(/Failed on uav-1/)).toBeTruthy();
-  expect(api.request).toHaveBeenCalledTimes(2);
+  expect(await screen.findByText(/Failed on uav-1/)).toBeTruthy();
+  // The batch stops at the first failure; the second placement is not replayed against a stale draft.
+  expect(api.request).toHaveBeenCalledTimes(1);
 });

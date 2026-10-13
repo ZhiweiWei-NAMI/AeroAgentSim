@@ -318,6 +318,8 @@ class WorkspaceStore:
                 raise ValueError("name: nonempty string required")
             if "scenario" in changes and not isinstance(changes["scenario"], dict):
                 raise TypeError("scenario: mapping required")
+            if "scenario" in changes and not changes["scenario"]:
+                raise ValueError("scenario: an empty root would erase the whole draft; remove only the selected object or generator / 空根对象会清空整个草稿，请只删除选定对象或生成器")
             draft.update(copy.deepcopy({key: value for key, value in changes.items() if key != "revision"}))
             if "scenario" in changes:
                 from .wire import normalize_wire
@@ -738,8 +740,10 @@ class WorkspaceStore:
                 source, region["bounds"], self.directory(identifier) / "region.osm.xml"
             )
             # A new crop invalidates the previous traffic network.
+            had_network = "network" in draft or (self.directory(identifier) / "network.net.xml").is_file()
             (self.directory(identifier) / "network.net.xml").unlink(missing_ok=True)
             draft.pop("network", None)
+            draft["network_state"] = {"status": "stale", "reason": "region_changed"} if had_network else {"status": "missing"}
             draft["region"] = {key: copy.deepcopy(region[key]) for key in required}
             draft["scene"] = scene
             draft["scenario"]["origin"] = scene["origin"]
@@ -747,8 +751,8 @@ class WorkspaceStore:
             draft.pop("validation", None)
             return self._write(draft)
 
-    def _check_behaviour_refs(self, specs: Any, identifier: str) -> None:
-        root = self.directory(identifier)
+    def _check_behaviour_refs(self, specs: Any, identifier: str, *, directory: Path | None = None) -> None:
+        root = self.directory(identifier) if directory is None else directory.resolve()
         active: set[Path] = set()
 
         def visit(spec: Any, base: Path) -> None:
@@ -784,8 +788,9 @@ class WorkspaceStore:
         for spec in specs:
             visit(spec, root)
 
-    def _base(self, document: dict[str, Any], identifier: str) -> Path:
+    def _base(self, document: dict[str, Any], identifier: str, *, directory: Path | None = None) -> Path:
         """Browser imports cannot widen the configured source-file scope."""
+        root = self.directory(identifier) if directory is None else directory.resolve()
         registry = document.get("registry", {})
         if not isinstance(registry, dict):
             raise TypeError("registry: mapping required")
@@ -799,17 +804,17 @@ class WorkspaceStore:
                     "registry.compile.root: must use configured AeroGraph root"
                 )
         if "snapshot" in registry:
-            snapshot = (self.directory(identifier) / registry["snapshot"]).resolve()
-            if not snapshot.is_relative_to(self.directory(identifier)):
+            snapshot = source_path(registry["snapshot"], root).resolve()
+            if not snapshot.is_relative_to(root):
                 raise ValueError("registry.snapshot: must be inside this workspace")
         if "behaviours" in document:
-            self._check_behaviour_refs(document["behaviours"], identifier)
+            self._check_behaviour_refs(document["behaviours"], identifier, directory=root)
         for engine in document.get("engines", {}).values():
             if engine.get("plugin") == "behaviour" and "packages" in engine.get(
                 "config", {}
             ):
-                self._check_behaviour_refs(engine["config"]["packages"], identifier)
-        return self.directory(identifier)
+                self._check_behaviour_refs(engine["config"]["packages"], identifier, directory=root)
+        return root
 
     def validate(
         self, identifier: str, scenario: dict[str, Any] | None = None, *, revision: int | None = None
@@ -944,7 +949,7 @@ class WorkspaceStore:
             text = json.dumps(draft["scenario"], ensure_ascii=False, allow_nan=False)
             text = text.replace(json.dumps(str(directory))[1:-1], json.dumps(str(files))[1:-1])
             scenario = json.loads(text)
-            geometry = {key: copy.deepcopy(draft[key]) for key in ("demo_console", "region", "scene", "scene_source", "network") if key in draft}
+            geometry = {key: copy.deepcopy(draft[key]) for key in ("demo_console", "region", "scene", "scene_source", "network", "network_state") if key in draft}
             digest = hashlib.sha256()
             digest.update(json.dumps(scenario, sort_keys=True, ensure_ascii=False).encode())
             digest.update(json.dumps(geometry, sort_keys=True, ensure_ascii=False, allow_nan=False).encode())
@@ -980,13 +985,34 @@ class WorkspaceStore:
         draft["dirty"] = latest is None or latest["revision"] != draft["revision"]
         from aeroagentsim.packs.lowalt.template import has_lowalt_components
 
+        draft["network_state"] = self.network_state(draft, self.directory(identifier))
+        if "network" in draft and draft["network_state"]["status"] != "generated":
+            draft["network"]["status"] = "stale"
         draft["capabilities"] = {
             "lowalt": has_lowalt_components(draft["scenario"]),
             "region": "region" in draft and "scene" in draft,
-            "network": "network" in draft and (self.directory(identifier) / "network.net.xml").is_file(),
+            "network": draft["network_state"]["status"] == "generated",
             "city": draft.get("scene_source", {}).get("kind") == "fixed-city" and draft.get("demo_console", {}).get("city_available") is True,
         }
         return draft
+
+    @staticmethod
+    def network_source(draft: dict[str, Any], directory: Path) -> dict[str, Any]:
+        return {"region": copy.deepcopy(draft["region"]),
+                "osm_sha256": hashlib.sha256((directory / "region.osm.xml").read_bytes()).hexdigest()}
+
+    @classmethod
+    def network_state(cls, draft: dict[str, Any], directory: Path) -> dict[str, str]:
+        if "network" not in draft:
+            previous = draft.get("network_state", {})
+            return dict(previous) if previous.get("status") == "stale" else {"status": "missing"}
+        if not (directory / "network.net.xml").is_file():
+            return {"status": "stale", "reason": "network_file_missing"}
+        if "region" not in draft or not (directory / "region.osm.xml").is_file():
+            return {"status": "stale", "reason": "region_source_missing"}
+        if draft["network"].get("source") != cls.network_source(draft, directory):
+            return {"status": "stale", "reason": "region_source_changed"}
+        return {"status": "generated"}
 
     def derive(self, run: Path, name: str | None, *, registry: Any = None) -> dict[str, Any]:
         """A new draft from a run's own configuration; the run is not changed."""
@@ -1009,7 +1035,7 @@ class WorkspaceStore:
                 text = json.dumps(frozen["scenario"], ensure_ascii=False)
                 text = text.replace(json.dumps(str(files))[1:-1], json.dumps(str(directory))[1:-1])
                 draft["scenario"] = json.loads(text)
-                for key in ("template", "demo_console", "region", "scene", "scene_source", "network"):
+                for key in ("template", "demo_console", "region", "scene", "scene_source", "network", "network_state"):
                     original = frozen.get(key)
                     if original is not None:
                         draft[key] = original
@@ -1030,24 +1056,88 @@ class WorkspaceStore:
         )
 
     def export(self, identifier: str) -> str:
-        result = self.validate(identifier)
-        if not result["valid"]:
-            raise ValueError("export: " + "; ".join(result["errors"]))
-        return yaml.safe_dump(
-            self.get(identifier)["scenario"], allow_unicode=True, sort_keys=False
-        )
+        from .portable import pack
+
+        # File is also the repair editor: exporting an authored draft does not
+        # validate, start execution or mutate its revision.
+        with self.lock:
+            draft = self.get(identifier)
+            if "network" in draft:
+                draft["network_state"] = self.network_state(draft, self.directory(identifier))
+                if draft["network_state"]["status"] != "generated":
+                    draft.pop("network")
+            return yaml.safe_dump(pack(draft, self.directory(identifier)),
+                                  allow_unicode=True, sort_keys=False)
 
     def import_yaml(self, identifier: str, text: str, *, revision: int | None = None) -> dict[str, Any]:
-        self.check_revision(self.get(identifier), revision)
         try:
             document = yaml.load(text, Loader=UniqueLoader)
         except yaml.YAMLError as exc:
             raise ValueError(f"import: invalid YAML: {exc}") from exc
         if not isinstance(document, dict):
             raise TypeError("import: scenario YAML mapping required")
-        # Compile before replacing an existing draft. Failed imports preserve the draft.
-        load_scenario(document, base=self._base(document, identifier))
-        return self.save(identifier, {"scenario": document, "revision": revision})
+        from .portable import FORMAT, GEOGRAPHY, WORKSPACE, bind_paths, unpack, write_resources
+
+        with self.lock:
+            draft = self.get(identifier)
+            self.check_revision(draft, revision)
+            if document.get("format") != FORMAT:
+                # Legacy scenario-only files retain the target's geography;
+                # reject origin mismatches instead of silently changing it.
+                self._check_scene_source(draft, document)
+                load_scenario(document, base=self._base(document, identifier))
+                self.save(identifier, {"scenario": document, "revision": revision})
+                return self.summary(identifier)
+            scenario, resources, metadata = unpack(document)
+            candidate = copy.deepcopy(draft)
+            for key in GEOGRAPHY | {"template", "scene_source", "demo_console", "registry_catalog", "behaviour_layout"}:
+                candidate.pop(key, None)
+            candidate.update(copy.deepcopy(metadata))
+            directory = self.directory(identifier)
+            with tempfile.TemporaryDirectory(prefix="import-", dir=self.root) as scratch:
+                staging = Path(scratch)
+                write_resources(resources, staging)
+                staged = bind_paths(scenario, WORKSPACE, str(staging) + "/")
+                candidate["scenario"] = staged
+                if "region" in candidate:
+                    from .scene import _bounds, _number
+
+                    region, scene = candidate["region"], candidate["scene"]
+                    if not isinstance(region, dict) or set(region) != {"extract", "bounds", "alt", "level_height_m"}:
+                        raise ValueError("import.region: extract/bounds/alt/level_height_m required")
+                    if not isinstance(region["extract"], str) or not region["extract"].strip():
+                        raise ValueError("import.region.extract: nonempty source id required")
+                    bounds = _bounds(region["bounds"])
+                    alt = _number(region["alt"], "import.region.alt")
+                    if _number(region["level_height_m"], "import.region.level_height_m") <= 0:
+                        raise ValueError("import.region.level_height_m: must be positive")
+                    origin = {"lon": (bounds[0] + bounds[2]) / 2, "lat": (bounds[1] + bounds[3]) / 2, "alt": alt}
+                    if not isinstance(scene, dict) or scene.get("origin") != origin or scene.get("bounds") != bounds:
+                        raise ValueError("import.scene: geometry must match the applied region's bounds and origin")
+                    if not {"geojson", "roads", "ground", "diagnostics", "attribution"} <= scene.keys():
+                        raise ValueError("import.scene: compiled geometry and source metadata required")
+                self._check_scene_source(candidate)
+                base = self._base(staged, identifier, directory=staging)
+                from .wire import normalize_wire
+
+                normalized = normalize_wire(staged, self.catalog, base=base)
+                validate_configuration(normalized, base=base, directory=staging)
+                candidate["scenario"] = normalized
+                self._resolve_city(candidate)
+                candidate["network_state"] = self.network_state(candidate, staging)
+                # All schema and scope checks finish before any live file is
+                # replaced. Existing saved versions are never overwritten.
+                committed = bind_paths(normalized, str(staging) + "/", str(directory) + "/")
+                # Reject non-JSON metadata before installing any resources.
+                json.dumps(candidate, allow_nan=False)
+                write_resources(resources, directory)
+                if "network" not in candidate:
+                    (directory / "network.net.xml").unlink(missing_ok=True)
+                if "region" not in candidate:
+                    (directory / "region.osm.xml").unlink(missing_ok=True)
+                candidate["scenario"] = committed
+                self._write(candidate)
+            return self.summary(identifier)
 
     def place(self, identifier: str, payload: dict[str, Any]) -> dict[str, Any]:
         required = {"id", "type", "kind", "position", "engine"}

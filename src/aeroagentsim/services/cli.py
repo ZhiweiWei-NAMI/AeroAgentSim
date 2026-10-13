@@ -20,6 +20,17 @@ from aeroagentsim.scenario.loader import UniqueLoader
 if TYPE_CHECKING:
     from aeroagentsim.authoring.templates import TemplateRegistry
 
+GRACEFUL_SHUTDOWN_SECONDS = 5
+
+
+def serve_app(app: Any, *, host: str, port: int) -> None:
+    import uvicorn
+
+    # Waiting SSE clients cannot block lifespan cleanup indefinitely. Uvicorn
+    # cancels remaining requests at this deadline, then the app stops workers.
+    uvicorn.run(app, host=host, port=port,
+                timeout_graceful_shutdown=GRACEFUL_SHUTDOWN_SECONDS)
+
 
 def _registry(templates_root: Path | None) -> "TemplateRegistry":
     from aeroagentsim.authoring.templates import TemplateRegistry
@@ -147,9 +158,7 @@ def run_template_command(
     import webbrowser
 
     webbrowser.open(url)
-    import uvicorn
-
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    serve_app(app, host="127.0.0.1", port=port)
 
 
 def experiment_command(
@@ -415,7 +424,7 @@ def main() -> None:
         studio_root = args.studio_root or Path(
             os.environ.get("AEROAGENTSIM_STUDIO_ROOT") or args.out / ".workspaces"
         )
-        uvicorn.run(
+        serve_app(
             create_app(
                 args.out,
                 scenario_root=args.scenario_root,

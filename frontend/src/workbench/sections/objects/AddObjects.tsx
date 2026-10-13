@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { ApiError, type Project, type WorkbenchApi } from '../../api';
 import type { TypeDetail, TypeRow } from '../../../studio/api';
 import type { Scenario } from '../types';
-import { ID_PATTERN, KINEMATIC_DEFAULTS, parseFact, positionFieldOf, STUDIO_AIRSPACE, STUDIO_STATE, useCatalog, WORKFLOW_DEFAULT_STATE } from './model';
+import { ID_PATTERN, KINEMATIC_DEFAULTS, num, parseFact, positionFieldOf, STUDIO_AIRSPACE, STUDIO_STATE, useCatalog, WORKFLOW_DEFAULT_STATE } from './model';
 import { RegionMap, type RegionMapBasemap, type RegionMapGeometry } from '../space/RegionMap';
 import { readRegion } from '../space/model';
 
@@ -56,8 +56,9 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
   const facilityLike = kind === 'facility' || kind === 'airspace';
   const effectiveKind: Kind = kind === 'airspace' ? 'airspace' : facilityLike ? 'facility' : 'entity';
   const countInvalid = !Number.isInteger(count) || count < 1 || count > 500;
-  const posInvalid = [east, north, up].some(raw => parseFact({ type: 'number' }, raw).value === undefined);
-  const spacingInvalid = count > 1 && parseFact({ type: 'number' }, spacing).value === undefined;
+  // Position parsing keeps the raw text while typing and accepts negative metres (T4-02/T1-019).
+  const posInvalid = [east, north, up].some(raw => num(raw) === undefined);
+  const spacingInvalid = count > 1 && num(spacing) === undefined;
   const idBase = idText.trim();
 
   const idFor = (index: number) => count === 1 ? idBase : `${idBase}-${index + 1}`;
@@ -78,13 +79,25 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
     if (field.id === STUDIO_STATE) return WORKFLOW_DEFAULT_STATE;
     return undefined;
   };
+  // Invalid fact input is a visible per-field error that blocks creation — it is never silently
+  // dropped or replaced by a default (T1-006).
+  const factErrors = useMemo(() => {
+    const errors: Record<string, string> = {};
+    for (const [key, raw] of Object.entries(facts) as Array<[string, string]>) {
+      if (raw.trim() === '') continue;
+      const field = fieldRows.find(candidate => candidate.id === key);
+      const parsed = parseFact(field?.schema ?? { type: 'string' }, raw);
+      if (parsed.error !== undefined) errors[key] = parsed.error;
+    }
+    return errors;
+  }, [facts, fieldRows]);
   const reviewRows: Row[] = useMemo(() => {
     if (!chosen || idsBad || countInvalid) return [];
-    const base = [Number(east) || 0, Number(north) || 0, Number(up) || 0];
-    const step = count > 1 ? Number(spacing) || 0 : 0;
+    const base = [num(east) ?? 0, num(north) ?? 0, num(up) ?? 0];
+    const step = count > 1 ? num(spacing) ?? 0 : 0;
     return Array.from({ length: count }, (_, index) => {
       const rowFacts: Record<string, unknown> = {};
-      for (const [key, raw] of Object.entries(facts)) {
+      for (const [key, raw] of Object.entries(facts) as Array<[string, string]>) {
         if (raw.trim() === '') continue;
         const field = fieldRows.find(candidate => candidate.id === key);
         const parsed = parseFact(field?.schema ?? { type: 'string' }, raw);
@@ -103,16 +116,19 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
     return points.every(Boolean) && points.length >= 3 ? points as number[][] : undefined;
   }, [kind, polygon]);
   const airspaceBad = kind === 'airspace' && (!polygonPoints || parseFact({ type: 'number' }, floor).value === undefined || parseFact({ type: 'number' }, ceiling).value === undefined);
-  const canCreate = !!chosen && !chosen.abstract && !creating && !countInvalid && !idsBad && !posInvalid && !spacingInvalid && !airspaceBad;
+  const canCreate = !!chosen && !chosen.abstract && !creating && !countInvalid && !idsBad && !posInvalid && !spacingInvalid && !airspaceBad && !Object.keys(factErrors).length;
 
   const create = async () => {
     if (!canCreate || !chosen) return;
     setCreating(true); setResult(undefined);
     try {
+      // Save the local draft first and adopt the server's returned state (T1-007); `/place` takes no
+      // revision, so the batch stops at the first failure instead of replaying against a stale draft.
       const saved = await api.save(project.id, draft as Record<string, unknown>, project.revision);
       onProject(saved);
       const created: string[] = [], failed: Array<{ id: string; error: string }> = [];
       for (const row of reviewRows) {
+        if (failed.length) break; // keep the server draft authoritative; do not chain stale placements
         const body: Record<string, unknown> = { id: row.id, type: row.type, kind: row.kind, position: row.position, engine: row.engine };
         if (Object.keys(row.facts).length) body.facts = row.facts;
         if (row.kind === 'airspace') { body.polygon = polygonPoints; body.floor_m = Number(floor); body.ceiling_m = Number(ceiling); }
@@ -218,13 +234,15 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
           const schema = field.schema ?? {};
           const placeholder = fallback !== undefined ? `${fallback}${field.metadata?.unit ? ` ${field.metadata.unit}` : ''}` : schema.type === 'boolean' ? 'true | false' : schema.type === 'vector' ? L('numbers, comma separated', '数字，逗号分隔') : '';
           return <label className="wb-field" key={field.id}><span className="wb-mono" style={{ fontSize: 11 }}>{field.id}</span>
-            <input value={facts[field.id] ?? ''} placeholder={placeholder}
+            <input value={facts[field.id] ?? ''} placeholder={placeholder} aria-invalid={!!factErrors[field.id]}
               onChange={event => setFacts(previous => ({ ...previous, [field.id]: event.target.value }))} />
             {fallback !== undefined && <small style={{ color: 'var(--wb-muted)' }}>{L('server default', '服务器默认值')}{field.metadata?.unit ? ` · ${field.metadata.unit}` : ''}</small>}
+            {factErrors[field.id] && <span className="wb-field-error" role="alert">{L(`Expected: ${factErrors[field.id]}`, `应为：${factErrors[field.id]}`)}</span>}
           </label>;
         })}
         {!fieldRows.length && <p className="hint">{L('This type declares no extra contract fields.', '该类型没有额外的契约字段。')}</p>}
       </div>}
+      {!!Object.keys(factErrors).length && <p className="wb-field-error" role="alert">{L('Fix the marked contract fields — invalid values are not sent.', '请修正标记的契约字段——无效值不会被发送。')}</p>}
       {facilityLike && <p className="wb-add-note">{L('A facility is a catalog placement: its real-world service behaviour is only as real as the type contract declares.', '设施是一次目录放置：其真实服务行为取决于该类型契约所声明的内容。')}</p>}
       <h4 style={{ margin: '10px 0 4px' }}>{L(`Review — ${reviewRows.length} instance(s) to create`, `确认 — 将创建 ${reviewRows.length} 个实例`)}</h4>
       <table className="wb-table wb-review"><thead><tr><th>{L('id', 'id')}</th><th>{L('type', '类型')}</th><th>{L('kind / engine', '种类 / 引擎')}</th><th>{L('position ENU (m)', '位置 ENU (m)')}</th><th>{L('facts', '事实')}</th></tr></thead><tbody>

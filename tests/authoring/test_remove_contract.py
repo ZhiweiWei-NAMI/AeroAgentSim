@@ -203,3 +203,66 @@ def test_generated_member_removal_preserves_siblings_and_prevents_regeneration(t
     loaded = load_scenario(removed["scenario"], base=store.directory(draft["id"]))
     remaining = {entity["id"]: entity for entity in loaded.document["entities"] if entity["id"].startswith("drone-")}
     assert remaining == {identity: entity for identity, entity in before.items() if identity != "drone-2"}
+
+
+@pytest.mark.parametrize("scheduled", [True, False])
+def test_removing_one_order_keeps_its_shared_workload_and_other_releases(tmp_path: Path, scheduled: bool) -> None:
+    store = WorkspaceStore(tmp_path / "workspaces", None)
+    draft = store.import_template("food-delivery", {}, registry=TemplateRegistry())
+    config = draft["scenario"]["engines"]["tasks"]["config"]
+    group = next(group for group in config["generators"] if len(group["tasks"]) > 1)
+    if scheduled:
+        group["arrivals"] = {"mode": "scheduled", "times_ns": [i * 20_000_000_000 for i in range(len(group["tasks"]))]}
+    else:
+        group["arrivals"] = {"mode": "poisson", "rate_per_s": 0.05, "start_ns": 0}
+    victim = group["tasks"][1]
+    draft = store._write(draft)
+    original = copy.deepcopy(draft["scenario"])
+    before = {str(path): path.read_bytes() for path in store.root.rglob("*") if path.is_file()}
+    app = FastAPI()
+    app.include_router(create_router(store, extracts={}))
+    url = f"/v1/studio/workspaces/{draft['id']}/remove"
+    with TestClient(app) as client:
+        preview = client.post(url, json={"id": victim, "revision": draft["revision"], "dry_run": True})
+        assert preview.status_code == 200, preview.json()
+        dependencies = preview.json()["dependencies"]
+        index = config["generators"].index(group)
+        root = f"/engines/tasks/config/generators/{index}"
+        assert any(row["path"] == root + "/tasks/1" for row in dependencies)
+        assert not any(row["path"] == root for row in dependencies)
+        assert any(row["path"] == root + "/arrivals/times_ns/1" for row in dependencies) is scheduled
+        assert {str(path): path.read_bytes() for path in store.root.rglob("*") if path.is_file()} == before
+        response = client.post(url, json={"id": victim, "revision": draft["revision"]})
+        assert response.status_code == 200, response.json()
+        assert response.json() == client.get(url.removesuffix("/remove")).json()
+    expected = copy.deepcopy(original)
+    expected["entities"] = [entity for entity in expected["entities"] if entity["id"] != victim]
+    expected_group = expected["engines"]["tasks"]["config"]["generators"][index]
+    expected_group["tasks"].pop(1)
+    if scheduled:
+        expected_group["arrivals"]["times_ns"].pop(1)
+    assert store.get(draft["id"])["scenario"] == expected
+    assert store.validate(draft["id"])["valid"] is True
+
+
+def test_site_removal_does_not_delete_workloads_that_share_it(tmp_path: Path) -> None:
+    document = {"entities": [{"id": "site", "facts": {}}, {"id": "keeper", "facts": {}}], "engines": {
+        "tasks": {"plugin": "lowalt_tasks", "config": {"generators": [{
+            "id": "meals", "kind": "food", "tasks": ["meal-1", "meal-2"],
+            "origins": ["site", "kitchen"], "destinations": ["customer"],
+            "arrivals": {"mode": "scheduled", "times_ns": [0, 30]},
+        }]}}
+    }}
+    cleaned, dependencies = RemovalPlan(document, "site", tmp_path).build()
+    group = cleaned["engines"]["tasks"]["config"]["generators"][0]
+    assert group == {**document["engines"]["tasks"]["config"]["generators"][0], "origins": ["kitchen"]}
+    assert [row["path"] for row in dependencies] == ["/engines/tasks/config/generators/0/origins/0"]
+
+
+def test_empty_root_save_cannot_turn_fleet_removal_into_a_scene_wipe(tmp_path: Path) -> None:
+    store = WorkspaceStore(tmp_path / "workspaces", None)
+    draft = placed(store)
+    before = store.get(draft["id"])
+    with pytest.raises(ValueError, match="erase the whole draft"):
+        store.save(draft["id"], {"scenario": {}, "revision": draft["revision"]})
+    assert store.get(draft["id"]) == before

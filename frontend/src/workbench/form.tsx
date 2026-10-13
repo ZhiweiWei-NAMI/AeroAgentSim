@@ -58,14 +58,26 @@ export function Leaf({ path, label, value, onChange, focus, readOnly, options }:
   const id = useId(), { locale } = useI18n();
   const unit = unitHint(label);
   const [text, setText] = useState(() => isTagged(value) ? tagText(value) : value == null ? '' : String(value));
-  const [bad, setBad] = useState(false);
-  useFieldValidity(path, !bad);
   const row = useRef<HTMLDivElement>(null);
-  useEffect(() => { setText(isTagged(value) ? tagText(value) : value == null ? '' : String(value)); setBad(false); }, [value]);
   const focused = focus !== undefined && focus !== '' && (focus === path || focus.startsWith(path + '/'));
   useEffect(() => { if (focused) row.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, [focused]);
+  // Numeric and tagged values parse on blur/Enter only: while typing, the raw text (including '-' or a
+  // trailing '.') stays in the field, is never coerced to 0 and never reverts mid-edit (T4-02/T1-019).
+  const numeric = typeof value === 'number' || isTagged(value);
+  const [bad, setBadState] = useState(false);
+  const setBad = (next: boolean) => setBadState(current => current === next ? current : next);
+  useFieldValidity(path, !bad);
+  // Reset only when the committed value itself changes; parents often hand a fresh array/object with
+  // equal contents, and resetting on every render would clear an error the user is correcting.
+  const committed = useRef(value);
+  useEffect(() => {
+    if (committed.current === value) return;
+    committed.current = value;
+    setText(isTagged(value) ? tagText(value) : value == null ? '' : String(value));
+    setBad(false);
+  }, [value]);
   const commit = (raw: string) => {
-    if (typeof value === 'number' || isTagged(value)) {
+    if (numeric) {
       const integer = isTagged(value) && '$integer' in value;
       if (!(integer ? /^-?(?:0|[1-9]\d*)$/ : /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/).test(raw.trim()) || (!integer && !Number.isFinite(Number(raw)))) { setBad(true); return; }
       setBad(false);
@@ -80,8 +92,10 @@ export function Leaf({ path, label, value, onChange, focus, readOnly, options }:
     {typeof value === 'boolean'
       ? <select id={id} value={String(value)} disabled={readOnly} onChange={event => onChange(path, event.target.value === 'true')}><option value="true">true</option><option value="false">false</option></select>
       : options ? <select id={id} value={String(value)} disabled={readOnly} onChange={event => onChange(path, event.target.value)}>{[...new Set([String(value), ...options])].map(option => <option key={option}>{option}</option>)}</select>
-      : <input id={id} value={text} readOnly={readOnly} aria-invalid={bad} aria-describedby={bad ? `${id}-error` : undefined} style={bad ? { borderColor: 'var(--wb-bad)' } : undefined} inputMode={typeof value === 'number' || isTagged(value) ? 'decimal' : undefined}
-          onChange={event => { setText(event.target.value); commit(event.target.value); }} onKeyDown={event => { if (event.key === 'Enter') commit((event.target as HTMLInputElement).value); }} />}
+      : <input id={id} value={text} readOnly={readOnly} aria-invalid={bad} aria-describedby={bad ? `${id}-error` : undefined} style={bad ? { borderColor: 'var(--wb-bad)' } : undefined} inputMode={numeric ? 'decimal' : undefined}
+          onChange={event => { setText(event.target.value); if (numeric) setBad(false); else commit(event.target.value); }}
+          onBlur={event => { if (numeric) commit(event.target.value); }}
+          onKeyDown={event => { if (event.key === 'Enter') { const target = event.target as HTMLInputElement; if (numeric) commit(target.value); target.blur(); } }} />}
     {bad && <span id={`${id}-error`} className="wb-field-error" role="alert">{locale === 'zh-CN' ? '请输入有效数值；整数不能含小数。' : 'Enter a valid number; integers cannot contain decimals.'}</span>}
   </div>;
 }
@@ -91,16 +105,33 @@ function VectorField({ value, path, label, onChange, focus }: { value: number[];
   const [text, setText] = useState(value.join(', ')), [bad, setBad] = useState(false);
   const focused = focus === path || focus?.startsWith(path + '/');
   useFieldValidity(path, !bad);
-  useEffect(() => { setText(value.join(', ')); setBad(false); }, [value]);
+  // Same committed-value guard as Leaf: equal contents in a new array must not reset the field.
+  const committed = useRef(value);
+  useEffect(() => {
+    if (committed.current === value) return;
+    committed.current = value;
+    setText(value.join(', '));
+    setBad(false);
+  }, [value]);
   useEffect(() => { if (focused) row.current?.scrollIntoView({ block: 'center' }); }, [focused]);
+  // Like Leaf: the raw text survives typing ('-' and trailing separators included); the vector is
+  // parsed and written only on blur/Enter, and an invalid value shows a field error (T4-02/T1-019).
+  const parse = (raw: string) => {
+    const tokens = raw.split(',').map(part => part.trim()), parts = tokens.map(Number);
+    return parts.length === value.length && tokens.every(token => /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(token)) && parts.every(Number.isFinite)
+      ? parts : undefined;
+  };
+  const commit = (raw: string) => {
+    const parts = parse(raw);
+    if (!parts) { setBad(true); return; }
+    setBad(false); onChange(path, parts);
+  };
   return <div ref={row} className={`wb-field${focused ? ' is-focus' : ''}`} data-path={path}>
     <label htmlFor={id}>{label ?? path}<small>[{value.length}]</small></label>
-    <input id={id} value={text} aria-invalid={bad} aria-describedby={bad ? `${id}-error` : undefined} onChange={event => {
-      const raw = event.target.value; setText(raw);
-      const tokens = raw.split(',').map(part => part.trim()), parts = tokens.map(Number);
-      const valid = parts.length === value.length && tokens.every(token => /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(token)) && parts.every(Number.isFinite);
-      setBad(!valid); if (valid) onChange(path, parts);
-    }} />
+    <input id={id} value={text} aria-invalid={bad} aria-describedby={bad ? `${id}-error` : undefined} inputMode="decimal"
+      onChange={event => { setText(event.target.value); setBad(false); }}
+      onBlur={event => commit(event.target.value)}
+      onKeyDown={event => { if (event.key === 'Enter') { const target = event.target as HTMLInputElement; commit(target.value); target.blur(); } }} />
     {bad && <span id={`${id}-error`} className="wb-field-error" role="alert">{locale === 'zh-CN' ? `请输入 ${value.length} 个以逗号分隔的数值。` : `Enter ${value.length} comma-separated numbers.`}</span>}
   </div>;
 }

@@ -55,7 +55,13 @@ class RemovalPlan:
 
             # Materialize the surviving fleet before removing its regeneration
             # rule, so a later load neither resurrects this id nor loses siblings.
-            expand(self.original)
+            declaration = self.original["generators"]["fleet"]
+            members = {declaration["prefix"] + str(i + 1) for i in range(declaration["count"])}
+            missing = members - {entity["id"] for entity in self.original["entities"]}
+            if missing:
+                expanded = copy.deepcopy(self.original)
+                expand(expanded)
+                self.original["entities"].extend(entity for entity in expanded["entities"] if entity["id"] in missing)
         self.dependencies: dict[str, dict[str, str]] = {}
         self.external: dict[tuple[str, ...], str] = {}
         self.wrappers: set[tuple[str, ...]] = set()
@@ -108,7 +114,7 @@ class RemovalPlan:
             active.remove(source)
         return document
 
-    def add(self, path: tuple[str, ...], kind: str, names: set[str]) -> None:
+    def add(self, path: tuple[str, ...], kind: str, names: set[str], *, reason: str | None = None) -> None:
         location = pointer(path)
         authored = location
         ancestors = sorted((row for row in self.external.items() if path[:len(row[0])] == row[0]), key=lambda row: len(row[0]))
@@ -124,10 +130,11 @@ class RemovalPlan:
         for part in path:
             node = node[int(part)] if isinstance(node, list) else node[part]
         actual = {name for name in names if references(node, {name}) or name == path[-1]}
-        if kind == "generator" and generated_member(node, self.entity_id):
-            reason = f"generates {self.entity_id} / 会生成 {self.entity_id}"
-        else:
-            reason = f"references {', '.join(sorted(actual))} / 引用 {', '.join(sorted(actual))}"
+        if reason is None:
+            if kind == "generator" and generated_member(node, self.entity_id):
+                reason = f"generates {self.entity_id} / 会生成 {self.entity_id}"
+            else:
+                reason = f"references {', '.join(sorted(actual))} / 引用 {', '.join(sorted(actual))}"
         self.dependencies[authored] = {
             "path": location, "kind": kind,
             "detail": f"Remove {authored}; {reason} / 删除 {authored}",
@@ -140,6 +147,37 @@ class RemovalPlan:
                 self.add((*path, str(i)), kind, names)
             else:
                 kept.append(row)
+        return kept
+
+    def workloads(self, rows: list[Any], path: tuple[str, ...], names: set[str]) -> list[Any]:
+        """A workload shares endpoints and release settings across task members."""
+        kept = []
+        for i, row in enumerate(rows):
+            location = (*path, str(i))
+            if not isinstance(row, dict) or not isinstance(row.get("tasks"), list):
+                raise ValueError(f"{pointer(location)}.tasks: task list required / 须提供任务列表")
+            indices = [j for j, task in enumerate(row["tasks"]) if task in names]
+            if indices and len(indices) == len(row["tasks"]):
+                self.add(location, "generator", names)
+                continue
+            cleaned = copy.deepcopy(row)
+            if indices:
+                cleaned["tasks"] = self.rows(row["tasks"], (*location, "tasks"), "generator", names)
+                arrivals = row.get("arrivals")
+                if not isinstance(arrivals, dict):
+                    raise ValueError(f"{pointer(location)}.arrivals: release configuration required")
+                if arrivals.get("mode") == "scheduled":
+                    times = arrivals.get("times_ns")
+                    if not isinstance(times, list) or len(times) != len(row["tasks"]):
+                        raise ValueError(f"{pointer(location)}.arrivals: one scheduled time per task required / 每个任务须对应一个释放时间")
+                    cleaned["arrivals"]["times_ns"] = [time for j, time in enumerate(times) if j not in indices]
+                    for j in indices:
+                        self.add((*location, "arrivals", "times_ns", str(j)), "generator", names,
+                                 reason=f"scheduled release for {row['tasks'][j]} / 对应 {row['tasks'][j]} 的定时释放")
+            for key in ("origins", "destinations"):
+                if key in row:
+                    cleaned[key] = self.rows(row[key], (*location, key), "generator", names)
+            kept.append(cleaned)
         return kept
 
     def binding_rows(self, section: str, rows: list[Any], engines: set[str]) -> list[Any]:
@@ -165,6 +203,8 @@ class RemovalPlan:
         if isinstance(value, str):
             return _DROP if value in names else value
         if isinstance(value, list):
+            if len(path) == 4 and path[0] == "engines" and path[-2:] == ("config", "generators") and self.original["engines"][path[1]].get("plugin") == "lowalt_tasks":
+                return self.workloads(value, path, names)
             return self.rows(value, path, "engine", names)
         if not isinstance(value, dict):
             return value

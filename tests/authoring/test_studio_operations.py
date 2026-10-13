@@ -235,6 +235,35 @@ def test_saved_scenario_keeps_region_crop_and_network_can_use_it(api, monkeypatc
     crop.unlink()
     response = client.post(path + "/network")
     assert response.status_code == 422 and "reapply" in response.json()["detail"]
+    reopened = client.get(path).json()
+    assert reopened["capabilities"]["network"] is False
+    assert reopened["network_state"] == {"status": "stale", "reason": "region_source_missing"}
+
+
+def test_region_parameters_and_network_invalidation_are_authoritative_after_refresh(api, monkeypatch: pytest.MonkeyPatch) -> None:
+    store, _, client = api
+    draft = store.create("Region refresh")
+    url = f"/v1/studio/workspaces/{draft['id']}"
+    params = {"extract": "fixture", "bounds": extract_bounds(SOURCE), "alt": 25, "level_height_m": 6}
+    response = client.post(url + "/region", json=params)
+    assert response.status_code == 200, response.json()
+    assert client.get(url).json()["region"] == params
+
+    def generate(osm: Path, output: Path) -> dict:
+        output.write_bytes(SOURCE.with_name("wujiaochang.net.xml").read_bytes())
+        return {"status": "generated", "edge_count": 1, "lane_count": 2}
+
+    monkeypatch.setattr("aeroagentsim.authoring.scene.generate_sumo", generate)
+    response = client.post(url + "/network")
+    assert response.status_code == 200, response.json()
+    assert client.get(url).json()["network_state"] == {"status": "generated"}
+    updated = client.post(url + "/region", json={**params, "alt": 30})
+    assert updated.status_code == 200, updated.json()
+    reopened = WorkspaceStore(store.root, None).summary(draft["id"])
+    assert reopened["region"] == {**params, "alt": 30}
+    assert "network" not in reopened and reopened["capabilities"]["network"] is False
+    assert reopened["network_state"] == {"status": "stale", "reason": "region_changed"}
+    assert client.get(url + "/network.net.xml").status_code == 422
 
 
 def test_fixed_city_capability_comes_from_resolved_city_assets(api) -> None:
