@@ -3,7 +3,8 @@ import { useI18n } from '../../i18n/I18nProvider';
 import type { AssistantApi, PlanVersion } from '../api';
 import type { DiffItem, SceneSummary } from '../api';
 import { bi, pick } from '../present';
-import { PlanSummary } from '../OperationSummary';
+import { hasCompiledExpansion, PlanSummary } from '../OperationSummary';
+import { CompiledChanges } from '../PlanChanges';
 import { Icon } from '../icons';
 import '../alternatives.css';
 
@@ -53,6 +54,7 @@ export function AlternativesCompare({ api, sessionId, versions, current, onSelec
           <ValidationTag plan={plan} />
         </header>
         <div className="as-alt-summary"><PlanSummary plan={plan}/></div>
+        {hasCompiledExpansion(plan) && <CompiledChanges plan={plan}/>}
         <Group title={L('Shared with the other option(s)', '与其他方案相同')}>
           {common.length ? <ul className="as-alt-common">{common.map(item => <li key={item.id}>{pick(item,zh)||item.id}</li>)}</ul>
             : <p className="as-quiet">{L('Everything differs — no shared items.', '全部不同——没有共同项。')}</p>}
@@ -62,7 +64,7 @@ export function AlternativesCompare({ api, sessionId, versions, current, onSelec
           <DeltaList items={plan.diff_previous?.changed} scene={plan.scene} sign="~" />
           <DeltaList items={plan.diff_previous?.removed} sign="−" />
         </Group>
-        {plan.assumptions.length > 0 && <Group title={L('Assumptions', '假设')}>
+        {!hasCompiledExpansion(plan) && plan.assumptions.length > 0 && <Group title={L('Assumptions', '假设')}>
           <ul className="as-alt-common">{plan.assumptions.map(text => <li key={text}>{bi(text,zh)}</li>)}</ul>
         </Group>}
         <footer className="as-alt-foot">

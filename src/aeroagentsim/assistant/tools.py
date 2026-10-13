@@ -235,6 +235,18 @@ class ToolRunner:
 
         return CompileContext(self.store, self.templates, self.agent_profile, locale=self.sessions.get(identifier)["locale"], allow_region=True)
 
+    @staticmethod
+    def _workspace_state(draft: dict[str, Any]) -> dict[str, Any]:
+        latest = draft["latest_version"]
+        return {"workspace_id": draft["id"], "revision": draft["revision"], "dirty": draft["dirty"],
+                "validation": copy.deepcopy(draft.get("validation")),
+                "latest_version": {k: copy.deepcopy(latest[k]) for k in ("version", "revision", "validation")} if latest is not None else None}
+
+    def workspace_state(self, identifier: str) -> dict[str, Any] | None:
+        """Read the same current draft/version status as the workbench, without loading a plan scene."""
+        workspace = self.sessions.get(identifier)["workspace_id"]
+        return self._workspace_state(self.store.summary(workspace)) if workspace is not None else None
+
     def execute(self, identifier: str, name: str, arguments: dict[str, Any]) -> Any:
         schemas = {row["function"]["name"]: row["function"]["parameters"] for row in tool_schemas()}
         if name not in schemas:
@@ -259,9 +271,10 @@ class ToolRunner:
         workspace = self.sessions.get(identifier)["workspace_id"]
         if workspace is None:
             return {"scene": None, "detail": "No bound scene yet / 尚未绑定场景"}
-        draft = self.store.get(workspace)
+        draft = self.store.summary(workspace)
         summary = summarize(draft["scenario"], directory=self.store.directory(workspace), catalog=self.store.catalog_for(workspace), controls=(draft.get("template") or {}).get("knobs", {}))
-        result = {"workspace_id": workspace, "revision": draft["revision"], "source": "saved_draft"}
+        result = {"workspace_id": workspace, "revision": draft["revision"], "source": "saved_draft",
+                  "workspace_state": self._workspace_state(draft)}
         if id is not None:
             return {**result, "participant": explain_participant(draft["scenario"], summary, id)}
         return {**result, "scene": short_scene(summary), "detail": "Overview lists participant ids but samples details; query get_current_scene(id=...) for complete saved facts / 摘要仅采样详情；用 id 查询完整已保存事实"}
@@ -422,6 +435,20 @@ class ToolRunner:
         directory.parent.mkdir(parents=True, exist_ok=True)
         result = compile_plan(ctx, base, compile_operations, directory, resolved=resolved)
         result.notes.extend(recovery_notes)
+        from .presentation import change_summaries
+
+        what_changes = change_summaries(result.diff_base) if result.ok else []
+        model_prose = {"summary": summary, "assumptions": copy.deepcopy(assumptions), "note": note}
+        expanded = result.ok and result.operations != compile_operations
+        if expanded:
+            # The compiler introduced real prerequisites. Model prose written
+            # before that expansion cannot establish their effects or absence.
+            summary = operation_summary(result.operations, session["locale"])
+            key = "text_zh" if session["locale"].startswith("zh") else "text"
+            component_changes = [row[key] for row in what_changes if row["kind"] == "components"]
+            summary += "; " + "; ".join(component_changes) if component_changes else ""
+            assumptions = []
+            note = summary
         if "template" in requested_base and "workspace" in base:
             result.notes.append(f"Bound workspace preserved; requested template {requested_base['template']!r} was not substituted. Lowalt prerequisites are installed by explicit compiler operations / 保留绑定工作区，未替换为请求模板，低空前置组件通过编译操作安装")
         if recovery_notes or ("template" in requested_base and "workspace" in base):
@@ -441,9 +468,12 @@ class ToolRunner:
                 "compile": {"ok": result.ok, "errors": result.errors, "warnings": result.warnings, "notes": result.notes, "operations": result.operations},
                 "validation": {"state": "pending" if result.ok else "invalid", "errors": [] if result.ok else result.errors},
                 "scene": result.summary, "diff_base": result.diff_base, "diff_previous": diff_previous,
+                "what_changes": what_changes,
                 "interactions": result.interactions, "expectations": result.expectations,
                 "_document": result.document,
                 "_baseline_operations": baseline, "_compile_operations": result.operations}
+        if expanded:
+            plan["_model_prose"] = model_prose
         from .presentation import operation_summaries
 
         plan["operation_summaries"] = operation_summaries(operations)
@@ -467,7 +497,7 @@ class ToolRunner:
         compact_diff = {"total_changes": len(changes), "changes": changes[:8], "operations": {key: [{"id": op["id"], "op": op.get("op", op.get("after", {}).get("op"))} for op in rows] for key, rows in operations_changed.items()}}
         latest = self.sessions.plan(identifier, version)
         return {"version": version, "ok": True, "validation": latest["validation"], "base": base, "scene": short_scene(result.summary),
-                "operations": operation_list(operations),
+                "operations": operation_list(result.operations), "what_changes": what_changes,
                 "diff_previous": compact_diff, "warnings": result.warnings, "notes": result.notes,
                 "prechecks": result.expectations, "note": note, "variant": variant}
 

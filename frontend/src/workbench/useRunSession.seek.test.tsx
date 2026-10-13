@@ -5,9 +5,9 @@ import type { FeedCommit } from '../contracts/viewer-feed';
 import { useRunSession } from './useRunSession';
 
 const stream = vi.hoisted(() => ({ deliver: undefined as ((commit: FeedCommit) => void) | undefined, finish: undefined as (() => void) | undefined, status: undefined as ((status:string)=>void) | undefined }));
-const control=vi.hoisted(()=>({request:vi.fn(),serialize:vi.fn(async(action:()=>Promise<unknown>)=>action()),following:vi.fn()}));
+const control=vi.hoisted(()=>({request:vi.fn(),serialize:vi.fn(async(action:()=>Promise<unknown>)=>action()),source:vi.fn()}));
 // This suite isolates journal navigation; source production has its own tests.
-vi.mock('./useOperatorInput', () => ({useOperatorInput: (_api:unknown,_run:string,mode:string,following:boolean) => {control.following(mode,following);return {serialize:control.serialize};}}));
+vi.mock('./useOperatorInput', () => ({useOperatorInput: (...args:unknown[]) => {control.source(...args);return {serialize:control.serialize};}}));
 vi.mock('../feeds/http', () => ({
   RunsApi: class {request=control.request;},
   HttpViewerFeed: class {
@@ -19,10 +19,10 @@ vi.mock('../feeds/http', () => ({
     }
   },
 }));
-beforeEach(() => { stream.deliver = undefined; stream.finish = undefined; stream.status=undefined; control.request.mockReset();control.serialize.mockClear();control.following.mockClear();sessionStorage.clear(); });
+beforeEach(() => { stream.deliver = undefined; stream.finish = undefined; stream.status=undefined; control.request.mockReset();control.serialize.mockClear();control.source.mockClear();sessionStorage.clear(); });
 afterEach(cleanup);
-async function loaded(mode:'live'|'replay'='replay') {
-  const hook = renderHook(() => useRunSession('http://api', 'run', mode));
+async function loaded(mode:'live'|'replay'='replay', initialCut?:number) {
+  const hook = renderHook(() => useRunSession('http://api', 'run', mode, initialCut));
   await waitFor(() => expect(hook.result.current).toBeDefined());
   act(() => stream.deliver!(fixtureCommits[0]));
   return hook;
@@ -79,76 +79,77 @@ it('returns from a completed run’s historical cut to its real final head witho
   expect(control.request).not.toHaveBeenCalled();
 });
 
-it('T3-001: holds the producer before requesting a real history pause, then resumes on Back to live',async()=>{
-  let releaseWrite!:()=>void;
-  const write=new Promise<void>(resolve=>{releaseWrite=resolve;});
-  control.serialize.mockImplementationOnce(async action=>{await write;return action();});
-  control.request.mockImplementation(async(path:string)=>({id:'run',requested:path.endsWith('/pause')?'pause':'resume',status:path.endsWith('/pause')?'paused':'running'}));
+it.each(['running','waiting_for_input'])('T2-R3-007 / T3-001: seeking and playback leave the %s simulation and source alone',async status=>{
   const {result}=await loaded('live');
-  act(()=>stream.status!('running'));
+  act(()=>{fixtureCommits.slice(1,3).forEach(commit=>stream.deliver!(commit));stream.status!(status);});
+  const sourceMode=()=>expect(control.source).toHaveBeenLastCalledWith(expect.anything(),'run','live');
   act(()=>result.current!.seekOffset(0));
-  expect(result.current!.followingLive).toBe(false);
-  expect(control.following).toHaveBeenLastCalledWith('live',false);
-  expect(control.serialize).toHaveBeenCalledTimes(1);
-  expect(control.request).not.toHaveBeenCalled();
-  await act(async()=>releaseWrite());
-  await waitFor(()=>expect(control.request).toHaveBeenCalledWith('/v1/runs/run/pause',expect.objectContaining({method:'POST'})));
-  expect(result.current!.status).toBe('paused');
-  act(()=>result.current!.seekCut(1));
-  expect(control.request).toHaveBeenCalledTimes(1);
+  expect(result.current!.followingLive).toBe(false);sourceMode();
+  act(()=>result.current!.seekCut(2));sourceMode();
+  act(()=>result.current!.togglePlayback());
+  expect(result.current!.clock.playing).toBe(true);sourceMode();
+  act(()=>result.current!.setSpeed(4));
+  act(()=>result.current!.togglePlayback());
+  expect(result.current!.clock.playing).toBe(false);sourceMode();
   act(()=>result.current!.backToLive());
-  await waitFor(()=>expect(control.request).toHaveBeenCalledWith('/v1/runs/run/resume',expect.objectContaining({method:'POST'})));
-  expect(result.current!.followingLive).toBe(true);
-  expect(result.current!.status).toBe('running');
-  expect(control.following).toHaveBeenLastCalledWith('live',true);
+  expect(result.current!.followingLive).toBe(true);sourceMode();
+  expect(result.current!.status).toBe(status);
+  expect(control.serialize).not.toHaveBeenCalled();
+  expect(control.request).not.toHaveBeenCalled();
 });
 
-it('T3-001: a quick return to live waits for the history pause acknowledgement before resuming',async()=>{
-  let acknowledge!:()=>void;
-  const requests:string[]=[];
-  control.request.mockImplementation(async(path:string)=>{
-    requests.push(path);
-    if(path.endsWith('/pause'))await new Promise<void>(resolve=>{acknowledge=resolve;});
-    return {id:'run',status:path.endsWith('/pause')?'paused':'running'};
-  });
+it('T4-R3-003: returning to live uses the delivered head and keeps following later commits',async()=>{
   const {result}=await loaded('live');act(()=>stream.status!('waiting_for_input'));
   act(()=>result.current!.seekCut(1));
-  await waitFor(()=>expect(requests).toEqual(['/v1/runs/run/pause']));
+  act(()=>fixtureCommits.slice(1,3).forEach(commit=>stream.deliver!(commit)));
+  await waitFor(()=>expect(result.current!.store.viewCursor?.knownAt).toBe(1));
+  expect(result.current!.clock.ns).toBe('0');
+  expect(result.current!.clock.end).toBe('10');
   act(()=>result.current!.backToLive());
-  expect(requests).toEqual(['/v1/runs/run/pause']);
-  await act(async()=>acknowledge());
-  await waitFor(()=>expect(requests).toEqual(['/v1/runs/run/pause','/v1/runs/run/resume']));
+  expect(result.current!.clock.ns).toBe('10');
+  expect(result.current!.store.viewCursor?.knownAt).toBe(3);
+  act(()=>stream.deliver!(fixtureCommits[3]));
+  await waitFor(()=>expect(result.current!.store.viewCursor?.knownAt).toBe(4));
+  expect(result.current!.clock.ns).toBe(fixtureCommits[3].at.ns);
+  expect(result.current!.store.liveFollow).toBe(true);
+  expect(control.request).not.toHaveBeenCalled();
 });
 
-it('T3-001: history in a manually paused run never resumes that run',async()=>{
+it('T2-R3-007: cancelling an undelivered history cut reattaches immediately without run controls',async()=>{
+  const {result}=await loaded('live');act(()=>stream.status!('running'));
+  act(()=>result.current!.seekCut(4));
+  expect(result.current!.pendingCut).toBe(4);
+  act(()=>result.current!.backToLive());
+  expect(result.current!.pendingCut).toBeUndefined();
+  act(()=>fixtureCommits.slice(1).forEach(commit=>stream.deliver!(commit)));
+  await waitFor(()=>expect(result.current!.store.viewCursor?.knownAt).toBe(4));
+  expect(result.current!.followingLive).toBe(true);
+  expect(result.current!.cut).toBeUndefined();
+  expect(control.serialize).not.toHaveBeenCalled();
+  expect(control.request).not.toHaveBeenCalled();
+});
+
+it('T2-R3-007: history in a manually paused run never resumes that run',async()=>{
   const {result}=await loaded('live');act(()=>stream.status!('paused'));
   act(()=>result.current!.seekCut(1));act(()=>result.current!.backToLive());
   await act(async()=>Promise.resolve());
   expect(control.request).not.toHaveBeenCalled();
   expect(result.current!.status).toBe('paused');
+  expect(result.current!.store.liveFollow).toBe(false);
+  expect(control.source).toHaveBeenLastCalledWith(expect.anything(),'run','live');
 });
 
-it('T3-001: exposes a rejected history pause without claiming the run paused',async()=>{
-  control.request.mockRejectedValue(Error('HTTP 409: Run has no active worker'));
-  const {result}=await loaded('live');act(()=>stream.status!('running'));
-  act(()=>result.current!.seekCut(1));
-  await waitFor(()=>expect(result.current!.error).toContain('HTTP 409'));
-  expect(result.current!.status).toBe('running');
-  expect(control.request).toHaveBeenCalledTimes(1);
-  act(()=>result.current!.backToLive());
-  await waitFor(()=>expect(result.current!.error).toBeUndefined());
-  expect(control.request).toHaveBeenCalledTimes(1);
-});
-
-it('T3-001: refresh restores history and the server pause, with no implicit resume',async()=>{
-  control.request.mockImplementation(async(path:string)=>({id:'run',status:path.endsWith('/pause')?'paused':'running'}));
-  const first=await loaded('live');act(()=>stream.status!('running'));act(()=>first.result.current!.seekCut(1));
-  await waitFor(()=>expect(first.result.current!.status).toBe('paused'));
+it('T2-R3-007: refreshing a historical link observes the server pause without claiming ownership of it',async()=>{
+  sessionStorage.setItem('aas-history-pause:http%3A%2F%2Fapi/run',JSON.stringify({cut:1}));
+  const first=await loaded('live',1);act(()=>stream.status!('paused'));
+  expect(first.result.current!.cut).toBe(1);
   first.unmount();control.request.mockClear();
-  const second=await loaded('live');act(()=>stream.status!('paused'));
-  await waitFor(()=>expect(second.result.current!.cut).toBe(1));
+  const second=await loaded('live',1);act(()=>stream.status!('paused'));
+  expect(second.result.current!.cut).toBe(1);
   expect(second.result.current!.followingLive).toBe(false);
   expect(control.request).not.toHaveBeenCalled();
   act(()=>second.result.current!.backToLive());
-  await waitFor(()=>expect(control.request).toHaveBeenCalledWith('/v1/runs/run/resume',expect.objectContaining({method:'POST'})));
+  expect(second.result.current!.status).toBe('paused');
+  expect(control.request).not.toHaveBeenCalled();
+  expect(control.serialize).not.toHaveBeenCalled();
 });

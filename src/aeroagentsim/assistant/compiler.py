@@ -473,6 +473,15 @@ def _admit_task_kind(document: dict, kind: str) -> None:
             row["schema"]["enum"] = [value for value in TASK_KINDS if value in enum or value == kind]
 
 
+def _sync_initial_wind(document: dict, profiles: list[tuple[str, str, dict]]) -> None:
+    """An authored initial wind must equal its profile at t=0, including a zero-start gust."""
+    for identity, key, profile in profiles:
+        entity = _entity(document, identity, "speed_mps")
+        if key in entity["facts"]:
+            value = next((g["value"] for g in profile.get("gusts", []) if g["start_ns"] <= 0 < g["end_ns"]), profile["value"])
+            entity["facts"][key] = copy.deepcopy(value)
+
+
 def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name: str, p: dict,
                      directory: Path, warnings: list[dict], op_id: str) -> list[dict] | None:
     if name == "set_region":
@@ -526,15 +535,15 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                 stream.pop("timeout_s", None)
         return
     if name in {"set_wind", "add_gust", "remove_gust"}:
-        profiles = [(key, value) for e in document["engines"].values() if e["plugin"] == "environment"
-                    for profile in e["config"].get("profiles", {}).values() for key, value in profile.items()
+        profiles = [(identity, key, value) for e in document["engines"].values() if e["plugin"] == "environment"
+                    for identity, profile in e["config"].get("profiles", {}).items() for key, value in profile.items()
                     if key in {"lowalt.wind", "oo:digital_twin.wind.horizontalVelocity"}]
         if not profiles:
             _fail("params" if name == "remove_gust" else "speed_mps", "Starting scene has no lowalt wind profile", "起点场景没有低空风场配置")
         if name == "remove_gust":
             selector = "index" if "index" in p else "start_s"
             matches = []
-            for _, profile in profiles:
+            for _, _, profile in profiles:
                 gusts = profile.get("gusts", [])
                 indices = ([p["index"]] if p["index"] < len(gusts) else []) if selector == "index" else [
                     index for index, gust in enumerate(gusts) if gust["start_ns"] == round(p["start_s"] * SECOND)]
@@ -549,12 +558,13 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                 if not profile["gusts"]:
                     profile.pop("gusts")
                     profile["mode"] = "constant"
+            _sync_initial_wind(document, profiles)
             return
         if name == "add_gust" and p["end_s"] <= p["start_s"]:
             _fail("end_s", "Gust end must follow start", "阵风结束必须晚于开始")
         if name == "add_gust" and round(p["end_s"] * SECOND) <= round(p["start_s"] * SECOND):
             _fail("end_s", "Gust interval must span at least one nanosecond", "阵风间隔必须至少一纳秒")
-        for key, profile in profiles:
+        for _, key, profile in profiles:
             vector = [float(p["speed_mps"]), 0.0, 0.0] if key == "lowalt.wind" else [[float(p["speed_mps"]), 0.0]]
             if name == "set_wind":
                 profile["value"] = vector
@@ -563,6 +573,7 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                     _fail("start_s", "Gust overlaps an existing interval; choose a separate interval", "阵风与已有时段重叠，请选择独立时段")
                 profile["mode"] = "gust"
                 profile.setdefault("gusts", []).append({"start_ns": round(p["start_s"] * SECOND), "end_ns": round(p["end_s"] * SECOND), "value": vector})
+        _sync_initial_wind(document, profiles)
         return
     if name == "set_algorithm":
         from aeroagentsim.services.algorithm_catalog import discover_algorithm_catalog
@@ -1226,7 +1237,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
             operations.insert(0, {"id": automatic_id, "op": "add_lowalt_components", "params": {}})
             message = "Prepended add_lowalt_components: standard lowalt engines, algorithm slots and rules; no places, fleets or orders; existing entities and origin preserved / 已前置 add_lowalt_components：安装标准低空引擎、算法槽和规则，不生成设施、机群或订单，保留已有实体和原点"
             notes.append(message)
-            warnings.append({"op_id": automatic_id, "field": "operations", "message": message})
+            warnings.append({"op_id": automatic_id, "field": "operations", "message": "Required drone scene engines, decision methods and safety rules are included; review them before confirming / 已包含必需的无人机场景引擎、决策方法与安全规则，请审阅后再确认"})
         created_by: dict[str, str] = {}
         workload_creators = {o["id"]: o["params"]["id"] for o in operations if isinstance(o, dict) and o.get("op") == "add_orders" and
                              isinstance(o.get("params"), dict) and isinstance(o.get("params", {}).get("id"), str) and isinstance(o.get("id"), str)}
@@ -1306,7 +1317,11 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
     if result.ok:
         result.diff_base["removed"].extend(removed_references)
     if result.ok and not base_lowalt and has_lowalt_components(document):
-        result.diff_base["added"].insert(0, {"kind": "components", "id": "lowalt_components", "label": "Standard lowalt engines, algorithm slots and rules", "label_zh": "标准低空引擎、算法槽和规则", "op": "add_lowalt_components"})
+        added_engines = sorted(document["engines"].keys() - baseline.document["engines"].keys())
+        result.diff_base["added"].insert(0, {"kind": "components", "id": "lowalt_components",
+            "label": f"{len(added_engines)} required drone scene engines, decision methods and safety rules",
+            "label_zh": f"{len(added_engines)} 个必需的无人机场景引擎、决策方法与安全规则", "op": "add_lowalt_components",
+            "fields": [{"name": "engines", "before": [], "after": added_engines}]})
     region_plan = files / "region.plan.json"
     if result.ok and region_plan.is_file():
         region_record = json.loads(region_plan.read_text())

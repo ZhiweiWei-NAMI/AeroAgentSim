@@ -77,7 +77,8 @@ def _value(value: Any, key: str, zh: bool) -> str:
     if type(value) is bool:
         return ("是" if value else "否") if zh else ("yes" if value else "no")
     if isinstance(value, (int, float)):
-        return f"{value:g}" + (" " + UNITS[key] if key in UNITS else "")
+        number = format(value, ".12g") if key in {"bounds", "lat", "lon"} else f"{value:g}"
+        return number + (" " + UNITS[key] if key in UNITS else "")
     if isinstance(value, str):
         # Object ids are preserved verbatim; role and option values get labels.
         return VALUES.get(value, (value, value))[language] if key not in {"id", "fleet", "vehicle", "task", "extract", "from", "to"} else value
@@ -103,4 +104,20 @@ def operation_summaries(operations: list[dict]) -> list[dict]:
             text = labels[int(zh)] + (": " + ", ".join(parts) if parts else "")
             texts.append(text[:320] + ("…" if len(text) > 320 else ""))
         rows.append({"id": op.get("id"), "label": labels[0], "label_zh": labels[1], "text": texts[0], "text_zh": texts[1]})
+    return rows
+
+
+def change_summaries(difference: dict) -> list[dict[str, str]]:
+    """Describe actual compiled effects, including prerequisites the model did not request."""
+    rows = []
+    for group, verbs in (("added", ("Add", "新增")), ("changed", ("Change", "修改")), ("removed", ("Remove", "移除"))):
+        for item in difference[group]:
+            row = {"kind": item["kind"], "id": item["id"]}
+            for zh in (False, True):
+                suffix = "_zh" if zh else ""
+                text = f"{verbs[int(zh)]} {item['kind_label' + suffix]}: {item['label' + suffix]} ({item['id']})"
+                fields = [f"{field['label' + suffix]}: {field['before_text' + suffix]} → {field['after_text' + suffix]}"
+                          for field in item.get("fields", [])]
+                row["text" + suffix] = text + ("; " + "; ".join(fields) if fields else "")
+            rows.append(row)
     return rows

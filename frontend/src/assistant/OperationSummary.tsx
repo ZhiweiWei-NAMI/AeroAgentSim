@@ -44,6 +44,8 @@ const ROLES: Record<string,[string,string]> = {
   inspection_drone: ['Inspection drone','巡检无人机'], patrol_drone: ['Patrol drone','巡逻无人机'], air_taxi: ['Air taxi','空中出租车'], sprayer: ['Sprayer','喷洒无人机'],
 };
 export function parameterValue(key: string, value: unknown, scene: SceneSummary | undefined, zh: boolean, L: Lang): string {
+  if((key==='lat'||key==='lon') && typeof value==='number')return valueText(value,L('°','度'),6);
+  if(key==='bounds' && Array.isArray(value))return valueText(value,L('°','度'),6);
   if(key==='release' && value && typeof value==='object')return releaseText(value as Release,L);
   if(key==='role' && typeof value==='string')return ROLES[value] ? L(...ROLES[value]) : placeRole(value,L);
   if(key==='kind' && typeof value==='string')return kindNoun(value,1,L);
@@ -57,12 +59,21 @@ export function parameterValue(key: string, value: unknown, scene: SceneSummary 
   return bi(valueText(value),zh);
 }
 
+export function effectiveOperations(plan: PlanVersion): Operation[] {
+  return plan.compile.ok && plan.compile.operations ? plan.compile.operations : plan.operations;
+}
+
+export function hasCompiledExpansion(plan: PlanVersion): boolean {
+  return plan.compile.ok && effectiveOperations(plan).some(op=>op.op==='add_lowalt_components') &&
+    !plan.operations.some(op=>op.op==='add_lowalt_components');
+}
+
 /** The compiler's revision summaries sometimes contain a full operation dump. */
 export function PlanSummary({ plan }: { plan: PlanVersion }) {
   const {locale}=useI18n(), zh=locale==='zh-CN', L: Lang=(en,cn)=>zh?cn:en;
   const machineSummary=plan.operations.some(op=>plan.summary.includes(`${op.op}:`)) && /[{}]/.test(plan.summary);
-  if(!machineSummary)return plan.summary?<p>{bi(plan.summary,zh)}</p>:null;
-  return <ul className="as-arrangement" data-testid="as-arrangement">{plan.operations.map(op=>{
+  if(!machineSummary && !hasCompiledExpansion(plan))return plan.summary?<p>{bi(plan.summary,zh)}</p>:null;
+  return <ul className="as-arrangement" data-testid="as-arrangement">{effectiveOperations(plan).map(op=>{
     const params=operationParams(op);
     const entries=Object.entries(params).filter(([key])=>!(zh ? key==='label' && typeof params.label_zh==='string' : key==='label_zh'));
     return <li key={op.id}><strong>{operationName(op.op,L)}</strong>

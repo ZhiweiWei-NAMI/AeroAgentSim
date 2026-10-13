@@ -47,7 +47,13 @@ export interface SceneSummary {
   routine?: Array<{ kind: string; text: string; text_zh?: string }>;
   algorithms?: Record<string, string>; cooperation?: Cooperation | null; controls?: Record<string, unknown>;
 }
-export interface DiffItem { kind: string; id: string; label: string; label_zh?: string; fields?: Array<{ name: string; before: unknown; after: unknown }> }
+export interface DiffField {
+  name: string; before: unknown; after: unknown; label?: string; label_zh?: string;
+  before_text?: string; before_text_zh?: string; after_text?: string; after_text_zh?: string;
+}
+export interface DiffItem {
+  kind: string; kind_label?: string; kind_label_zh?: string; id: string; label: string; label_zh?: string; fields?: DiffField[];
+}
 export interface Diff { added: DiffItem[]; changed: DiffItem[]; removed: DiffItem[]; entities?: { added: string[]; changed: string[]; removed: string[] } }
 export interface Lane { id: string; label: string; label_zh?: string; kind: 'fleet' | 'vehicle' | 'place' | 'person' | 'system' | string }
 export interface Step {
@@ -70,7 +76,7 @@ export interface PlanVersion {
   version: number; created_at: string; note: string; variant?: string | null; parent?: number | null;
   base: Record<string, unknown>; base_label?: string; title: string; summary: string;
   operations: Operation[]; assumptions: string[]; open_questions: OpenQuestion[];
-  compile: { ok: boolean; errors: CompileIssue[]; warnings: Array<string | CompileIssue> };
+  compile: { ok: boolean; errors: CompileIssue[]; warnings: Array<string | CompileIssue>; operations?: Operation[] };
   validation: { state: 'pending' | 'valid' | 'invalid'; errors?: PlanIssue[] };
   scene?: SceneSummary; diff_base?: Diff; diff_previous?: Diff | null; interactions?: Interactions; expectations?: Expectation[];
 }

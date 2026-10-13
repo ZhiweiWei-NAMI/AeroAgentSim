@@ -10,7 +10,7 @@ self.onmessage = (event: MessageEvent<OperatorSourceRequest>) => {
     if (message.kind === 'start') {
       if (source) throw Error('Operator source was already started');
       source = new OperatorSource(new RunsApi(message.base), message.runId, {
-        following: message.following, acknowledged: message.acknowledged,
+        acknowledged: message.acknowledged,
         onReceipt: ns => reply({ kind: 'receipt', ns }),
         onError: error => reply({ kind: 'error', error }),
       });
@@ -20,6 +20,5 @@ self.onmessage = (event: MessageEvent<OperatorSourceRequest>) => {
     if (!source) throw Error('Operator source has not started');
     if (message.kind === 'hold') { await source.hold(); reply({ kind: 'held', id: message.id }); }
     else if (message.kind === 'resume') source.resume();
-    else if (message.kind === 'following') source.setFollowing(message.value);
   })().catch(error => reply({ kind: 'fatal', error: String(error) }));
 };

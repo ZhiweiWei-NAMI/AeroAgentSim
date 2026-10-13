@@ -8,6 +8,7 @@ import { bi } from './present';
 import { ModeSwitch, type EditMode, type Origin } from './ModeSwitch';
 import { NeuralGlyph } from './motion/NeuralGlyph';
 import type { AssistantSession } from './useAssistant';
+import { hasCompiledExpansion } from './OperationSummary';
 
 type ToolEvent = Extract<AssistantEvent, { kind: 'tool' }>;
 type Item =
@@ -123,7 +124,7 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
       }
       case 'plan': return <button className="as-plan-chip" onClick={() => onShowPlan(item.version)} data-testid="as-plan-chip">
         <span className="as-plan-v">v{item.version}{item.variant ? ` · ${item.variant}` : ''}</span>
-        <span className="as-plan-note">{item.versions && item.versions.length > 1 ? L(`${item.versions.length} options to compare`, `${item.versions.length} 个方案可对比`) : bi(item.note, zh) || L('Plan updated', '方案已更新')}</span>
+        <span className="as-plan-note">{item.versions && item.versions.length > 1 ? L(`${item.versions.length} options to compare`, `${item.versions.length} 个方案可对比`) : plan?.version===item.version && hasCompiledExpansion(plan) ? L('Includes the required drone scene components. Review the changes before applying.','包含必需的无人机场景组件，请审阅变更后再应用。') : bi(item.note, zh) || L('Plan updated', '方案已更新')}</span>
         <span className="as-plan-go">{L('View', '查看')} →</span>
       </button>;
       case 'validated': return <div className="as-note bad" role="status"><Icon name="cross" size={13} /><span>{L(`Plan v${item.version} does not pass the simulator's checks yet`, `方案 v${item.version} 尚未通过仿真器校验`)}{item.errors?.[0] ? ` — ${bi(issueOf(item.errors[0]).message,zh)}` : ''}</span></div>;

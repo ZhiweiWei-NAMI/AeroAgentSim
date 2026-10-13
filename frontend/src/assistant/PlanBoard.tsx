@@ -4,7 +4,7 @@ import { issueOf, questionOf, type ApplyRecord, type AssistantApi, type CompileI
 import { Icon } from './icons';
 import { InteractionDiagram } from './InteractionDiagram';
 import { markerIds } from './overlay';
-import { DiffList, PlanChanges } from './PlanChanges';
+import { CompiledChanges, DiffList, PlanChanges } from './PlanChanges';
 import { bi, clock } from './present';
 import { RunStory } from './RunStory';
 import { SceneCards } from './SceneCards';
@@ -12,7 +12,7 @@ import { AlternativesCompare } from './alternatives/AlternativesCompare';
 import type { AssistantSession } from './useAssistant';
 import { draftMessage } from './AssistantPanel';
 import { Contained } from './Contained';
-import { parameterName, PlanSummary } from './OperationSummary';
+import { hasCompiledExpansion, parameterName, PlanSummary } from './OperationSummary';
 import { valueText } from './present';
 import { RegionProposal } from './RegionProposal';
 
@@ -48,17 +48,18 @@ export function PlanBoard(props: PlanBoardProps) {
 function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, storyError, startNs, terminal, initializing, canInitialize, latestVersion, onInitialize, onApplied, onHover, onStep, onContract, onSeek, viewing, onViewVersion, onClose }: PlanBoardProps) {
   const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const { session, plan: latest, busy, applied } = assistant;
+  const currentStage: Stage = session?.applied.some(row=>row.plan_version===latest?.version) ? stage : 'proposed';
   const [older, setOlder] = useState<PlanVersion>();
   const [versionError,setVersionError]=useState<string>();
   const [answered, setAnswered] = useState<string[]>([]);
   useEffect(() => { try { setAnswered(JSON.parse(sessionStorage.getItem(`aas-answered:${session?.id}`) ?? '[]')); } catch { setAnswered([]); } }, [session?.id]);
-  const [tab, setTab] = useState<Tab>(stage === 'running' ? 'story' : 'scene');
+  const [tab, setTab] = useState<Tab>(currentStage === 'running' ? 'story' : 'scene');
   const [compareAlt, setCompareAlt] = useState(false);
   const [applying, setApplying] = useState(false), [applyError, setApplyError] = useState<string>();
   const scroller = useRef<HTMLDivElement>(null), tabsRef = useRef<HTMLElement>(null), openedAt = useRef(stage);
   // Choosing a tab brings its content up under the pinned tab bar.
   const choose = (next: Tab) => { setTab(next); const box = scroller.current, bar = tabsRef.current; if (box && bar) requestAnimationFrame(() => box.scrollTo({ top: box.scrollTop + (bar.nextElementSibling ?? bar).getBoundingClientRect().top - box.getBoundingClientRect().top - (bar.nextElementSibling ? bar.offsetHeight : 0), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })); };
-  useEffect(() => { if (stage === 'running') setTab('story'); else if (tab === 'story') setTab('scene'); }, [stage]);
+  useEffect(() => { if (currentStage === 'running') setTab('story'); else if (tab === 'story') setTab('scene'); }, [currentStage]);
   useEffect(() => {
     setVersionError(undefined);setOlder(undefined);
     if (viewing === undefined || viewing === latest?.version || !session) return;
@@ -70,6 +71,8 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
 
   const plan = older ?? latest;
   if (!session || !plan) return null;
+  const expanded = hasCompiledExpansion(plan);
+  const assumptions = expanded ? [] : plan.assumptions;
   const isOld = !!older && older.version !== latest?.version;
   // Which plan version actually changed the project — a shown plan that was
   // already applied is labelled "applied", never presented as an open draft.
@@ -93,9 +96,8 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
   // A plan that is already applied is shown as applied (or superseded), never as a
   // fresh proposal — returning from Form or a refresh must not resurrect it.
   const appliedShown = !isOld && !!appliedForPlan;
-  // While a run is live the board stays in the running stage; otherwise an applied
-  // plan is labelled applied/superseded, never resurrected as an open draft.
-  const shownStage: Stage = appliedShown ? (stage === 'running' ? 'running' : 'configured') : isOld ? 'proposed' : stage;
+  // An unapplied revision is always a proposal, even with an older run selected.
+  const shownStage: Stage = appliedShown ? (stage === 'running' ? 'running' : 'configured') : 'proposed';
   const rows = session.plan_versions;
   const initializeVersion=latestVersion ?? assistant.draftState?.latestVersion;
   const initializeAllowed=canInitialize && initializeVersion !== undefined && !assistant.draftState?.dirty && !loadingVersion && !versionError;
@@ -124,13 +126,15 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
       <span className={`as-badge is-${shownStage}`} data-testid="as-plan-state">
         {shownStage === 'proposed' ? <>{isOld ? L(`Earlier version · v${plan.version}`, `早期版本 · v${plan.version}`) : L(`Proposed plan · v${plan.version}`, `提议方案 · v${plan.version}`)}<em>{L('not applied', '未应用')}</em></>
           : shownStage === 'configured' ? <>{appliedShown
-              ? <>{supersededBy ? L(`Superseded · v${plan.version}`, `已被取代 · v${plan.version}`) : L(`Applied as version ${appliedForPlan?.version ?? ''}`, `已应用为版本 ${appliedForPlan?.version ?? ''}`)}</>
-              : <>{L(`Configured · version ${applied?.version ?? ''}`, `已配置 · 版本 ${applied?.version ?? ''}`)}</>}
-            <em>{supersededBy ? L(`superseded by version ${supersededBy.version}`, `已被版本 ${supersededBy.version} 取代`) : L('not running', '未运行')}</em></>
+              ? <>{supersededBy ? L(`Superseded plan · v${plan.version}`, `已被取代的方案 · v${plan.version}`) : L(`Applied as project version ${appliedForPlan?.version ?? ''}`, `已应用为项目版本 ${appliedForPlan?.version ?? ''}`)}</>
+              : <>{L(`Configured · project version ${applied?.version ?? ''}`, `已配置 · 项目版本 ${applied?.version ?? ''}`)}</>}
+            <em>{supersededBy ? L(`superseded by project version ${supersededBy.version}`, `已被项目版本 ${supersededBy.version} 取代`) : L('not running', '未运行')}</em></>
           : <>{terminal ? L('Run finished', '运行结束') : waiting ? L('Initialized · press Start', '已初始化 · 请按启动') : L('Running', '运行中')}<em className="wb-mono">{runId}</em></>}
       </span>
       <h2>{bi(plan.title,zh)}</h2>
       <PlanSummary plan={plan}/>
+      {expanded && <CompiledChanges plan={plan} onHover={hover}/>}
+      {shownStage==='proposed' && !isOld && runId && <p className="hint" data-testid="as-pinned-run-notice">{L(`Confirm saves a new project version. Run ${runId} keeps its fixed version.`,`确认会保存新的项目版本，运行 ${runId} 仍使用其固定版本。`)}</p>}
       {versionError?<p className="wb-issues" role="alert">{L(`Could not load plan v${viewing}.`,`无法加载方案 v${viewing}。`)} {bi(versionError,zh)}</p>
         :loadingVersion?<p className="hint" role="status">{L(`Loading plan v${viewing}…`,`正在加载方案 v${viewing}…`)}</p>:null}
       {appliedShown && !isOld && <DraftNotice state={assistant.draftState}/>}
@@ -156,7 +160,7 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
           onSelect={version => view(version === latest?.version ? undefined : version)} onClose={() => setCompareAlt(false)} />}
     </div>
 
-    {!isOld && (shownStage === 'proposed' || !!assistant.draftState?.changes?.length) && (questions.length > 0 || plan.assumptions.length > 0) && <div className="as-asks as-rise">
+    {!isOld && (shownStage === 'proposed' || !!assistant.draftState?.changes?.length) && (questions.length > 0 || assumptions.length > 0) && <div className="as-asks as-rise">
       {(shownStage==='proposed'?questions:[]).map(({ question, options }) => <div key={question} className="as-question" data-testid="as-question">
         <span className="as-question-mark">?</span>
         <div><p>{bi(question,zh)}</p>
@@ -166,9 +170,9 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
           </div>
         </div>
       </div>)}
-      {plan.assumptions.length > 0 && <details className="as-assumptions" open={shownStage==='proposed' && (plan.version === 1 || questions.length === 0)}>
-        <summary>{shownStage==='proposed'?L(`Assumptions (${plan.assumptions.length})`, `假设（${plan.assumptions.length}）`):L('Assumptions in this plan','此方案的假设')}<small>{shownStage==='proposed'?L('filled in for you — change any of them', '已为你补全，可随时修改'):L('The current draft differs below.','当前草稿已改变。')}</small></summary>
-        <ul>{plan.assumptions.map(text => <li key={text}>
+      {assumptions.length > 0 && <details className="as-assumptions" open={shownStage==='proposed' && (plan.version === 1 || questions.length === 0)}>
+        <summary>{shownStage==='proposed'?L(`Assumptions (${assumptions.length})`, `假设（${assumptions.length}）`):L('Assumptions in this plan','此方案的假设')}<small>{shownStage==='proposed'?L('filled in for you — change any of them', '已为你补全，可随时修改'):L('The current draft differs below.','当前草稿已改变。')}</small></summary>
+        <ul>{assumptions.map(text => <li key={text}>
           <span>{bi(text,zh)}</span>
           <button className="as-link" onClick={() => draftMessage(L(`Instead of "${text}", `, `不要“${text}”，改为`))}>{L('Change', '修改')}</button>
         </li>)}</ul>
@@ -178,7 +182,7 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
     {shownStage === 'configured' && !isOld && appliedShown && appliedForPlan && <ApplySummary record={appliedForPlan} onHover={hover} supersededBy={supersededBy?.version} />}
 
     <nav className="as-tabs" role="tablist" ref={tabsRef}>
-      {stage === 'running' && !isOld && <button role="tab" aria-selected={tab === 'story'} onClick={() => choose('story')} data-testid="as-tab-story">{L('Story', '经过')}</button>}
+      {shownStage === 'running' && !isOld && <button role="tab" aria-selected={tab === 'story'} onClick={() => choose('story')} data-testid="as-tab-story">{L('Story', '经过')}</button>}
       <button role="tab" aria-selected={tab === 'scene'} onClick={() => choose('scene')} data-testid="as-tab-scene">{L('Scene', '场景')}</button>
       <button role="tab" aria-selected={tab === 'interactions'} onClick={() => choose('interactions')} disabled={!plan.interactions?.steps?.length} data-testid="as-tab-interactions">{L('Interactions', '交互')}{plan.interactions?.steps?.length ? <span>{plan.interactions.steps.length}</span> : null}</button>
       <button role="tab" aria-selected={tab === 'changes'} onClick={() => choose('changes')} data-testid="as-tab-changes">{L('Changes', '变更')}{plan.diff_previous ? <span>{plan.diff_previous.added.length + plan.diff_previous.changed.length + plan.diff_previous.removed.length}</span> : null}</button>
@@ -211,7 +215,7 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
             {!runId&&<span className="hint">{L('Select a run in Records to ask about its results.','请在记录中选择一次运行，再询问其结果。')} <a className="wb-btn small ghost" href={sectionHref(undefined,true)}>{L('Open Records','打开记录')}</a></span>}
           </div>}
         </>
-        : stage === 'proposed' ? <>
+        : shownStage === 'proposed' ? <>
           <Validation plan={plan} busy={busy}
             onFix={operation => ask(operation
               ? L(`Revise operation ${operation.op_id ?? ''}: fix the problem with ${operation.field ?? 'its parameters'} — ${bi(operation.message,zh)}`.replace(/\s+/g, ' ').trim(), `修改操作 ${operation.op_id ?? ''}：解决 ${operation.field ?? '其参数'} 的问题 —— ${bi(operation.message,zh)}`.replace(/\s+/g, ' ').trim())

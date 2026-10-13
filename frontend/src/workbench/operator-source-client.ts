@@ -2,10 +2,9 @@ import type { RunsApi } from '../feeds/http';
 import type { OperatorSourceControl, OperatorSourceOptions } from './operator-source';
 
 export type OperatorSourceRequest =
-  | { kind: 'start'; base: string; runId: string; following: boolean; acknowledged?: string }
+  | { kind: 'start'; base: string; runId: string; acknowledged?: string }
   | { kind: 'hold'; id: number }
-  | { kind: 'resume' }
-  | { kind: 'following'; value: boolean };
+  | { kind: 'resume' };
 export type OperatorSourceReply =
   | { kind: 'held'; id: number }
   | { kind: 'receipt'; ns: string }
@@ -37,7 +36,7 @@ export function createOperatorSource(api: RunsApi, runId: string, options: Opera
     else failure('Unexpected operator source message');
   });
   const send = (message: OperatorSourceRequest) => worker.postMessage(message);
-  send({ kind: 'start', base: api.base, runId, following: options.following, acknowledged: options.acknowledged });
+  send({ kind: 'start', base: api.base, runId, acknowledged: options.acknowledged });
   return {
     hold: () => {
       if (disposed) return Promise.reject(new Error('Operator source session was detached'));
@@ -47,7 +46,6 @@ export function createOperatorSource(api: RunsApi, runId: string, options: Opera
       send({ kind: 'hold', id }); return promise;
     },
     resume: () => { if (!disposed && !failed) send({ kind: 'resume' }); },
-    setFollowing: value => { if (!disposed && !failed) send({ kind: 'following', value }); },
     dispose: () => {
       disposed = true; worker.terminate();
       pending.forEach(wait => wait.reject(new Error('Operator source session was detached'))); pending.clear();

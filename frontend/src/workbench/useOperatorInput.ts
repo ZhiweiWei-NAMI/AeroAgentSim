@@ -12,15 +12,12 @@ export interface OperatorInput {
 }
 
 /** The live session owns its source; scene rendering cannot stall production. */
-export function useOperatorInput(api: RunsApi, runId: string | undefined, mode: 'live' | 'replay', followingLive = mode === 'live'): OperatorInput {
-  // One queue per session: a stable identity lets the follow effect observe the
-  // source created by the lifecycle effect, on mount and after every mode flip.
+export function useOperatorInput(api: RunsApi, runId: string | undefined, mode: 'live' | 'replay'): OperatorInput {
+  // One queue per session orders explicit controls and event admissions with
+  // the input write already in flight. Viewing history never enters this queue.
   const queueRef = useRef<{ tail: Promise<unknown>; source?: OperatorSourceControl }>();
   if (!queueRef.current) queueRef.current = { tail: Promise.resolve() };
   const queue = queueRef.current;
-  // A history pause retains the producer. followingLive prevents new writes;
-  // serialize waits for the last issued write before the real pause control.
-  const allowed = useRef(followingLive); allowed.current = followingLive;
   const [error, setError] = useState<string>();
   const serialize = useCallback(<T,>(action: () => Promise<T>): Promise<T> => {
     const execute = async () => {
@@ -38,7 +35,6 @@ export function useOperatorInput(api: RunsApi, runId: string | undefined, mode: 
     try {
       const saved = localStorage.getItem(receiptKey);
       source = createOperatorSource(api, runId, {
-        following: allowed.current,
         acknowledged: saved === null ? undefined : exactNanos(saved, 'Acknowledged operator watermark').toString(),
         onReceipt: ns => localStorage.setItem(receiptKey, exactNanos(ns, 'Acknowledged operator watermark').toString()),
         onError: setError,
@@ -47,8 +43,5 @@ export function useOperatorInput(api: RunsApi, runId: string | undefined, mode: 
     } catch (problem) { setError(String(problem)); return; }
     return () => { if (queue.source === source) queue.source = undefined; source.dispose(); };
   }, [api, runId, mode, queue]);
-  // Declared after the lifecycle effect so the follow pass observes the source
-  // it created — on mount and on every later live/replay transition.
-  useEffect(() => { queue.source?.setFollowing(mode === 'live' && followingLive); }, [queue, mode, followingLive]);
   return { serialize, error };
 }

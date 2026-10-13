@@ -73,6 +73,7 @@ FIELD_LABELS = {
     "params": ("Event parameters", "事件参数"), "gusts": ("Wind gusts", "阵风"),
     "zones": ("Airspace zones", "空域区域"), "effects": ("Effects", "影响"),
     "plugin": ("Algorithm", "算法"), "config": ("Parameters", "参数"),
+    "engines": ("Engines", "引擎"),
     "wind_speed": ("Wind speed", "风速"), "wind_limit": ("Wind limit", "风速上限"),
     "order_rate": ("Order rate", "订单速率"), "fleet_size": ("Fleet size", "机群规模"),
 }

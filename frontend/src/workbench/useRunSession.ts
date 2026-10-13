@@ -31,8 +31,8 @@ export interface RunSession {
 
 /**
  * One recorded or live run: the journal feed, its temporal store and the playback clock.
- * An active live run pauses before history browsing; returning to live resumes
- * only the pause requested by this session. Recorded replay never sends controls.
+ * History and playback change only the viewed journal position. The live input
+ * source and simulation controls remain independent of the viewing cursor.
  */
 export function useRunSession(apiBase: string, runId: string | undefined, mode: 'live' | 'replay', initialCut?: number): RunSession | undefined {
   const { locale } = useI18n(), L = (en: string, zh: string) => locale === 'zh-CN' ? zh : en;
@@ -43,38 +43,18 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
   const [journalComplete, setJournalComplete] = useState(false);
   const [error, setError] = useState<string>(), [transportError, setTransportError] = useState<string>();
   const [seekError, setSeekError] = useState<string>();
-  const [controlError, setControlError] = useState<string>();
   const [cut, setCut] = useState<number>(), cutRef = useRef<number>();
   const [pendingCut, setPendingCut] = useState<number>(), requestedCut = useRef<number>();
   const [revision, setRevision] = useState(0);
   const follow = useRef(mode === 'live' && initialCut === undefined);
   const statusRef = useRef('loading');
-  const historyControl = useRef({ pausedByHistory: false, pending: false, failed: undefined as boolean | undefined });
-  const historyKey = runId ? `aas-history-pause:${encodeURIComponent(apiBase)}/${runId}` : undefined;
-  const rememberHistory = () => {
-    if (!historyKey || !historyControl.current.pausedByHistory) return;
-    try { sessionStorage.setItem(historyKey,JSON.stringify({cut:requestedCut.current ?? cutRef.current})); }
-    catch (problem) { setControlError(L('Could not retain the history position: ','无法保留历史位置：')+String(problem)); }
-  };
   const tick = () => setRevision(value => value + 1);
 
   useEffect(() => {
-    setState(undefined); setError(undefined); setSeekError(undefined); setControlError(undefined); setTransportError(undefined); setCut(undefined); cutRef.current = undefined;
-    let restoredCut: number | undefined, restoredHistory = false;
-    if (mode === 'live' && historyKey) {
-      try {
-        const saved = sessionStorage.getItem(historyKey);
-        if(saved!==null){
-          const value=JSON.parse(saved);
-          if(!value || typeof value!=='object' || value.cut!==undefined && (!Number.isSafeInteger(value.cut)||value.cut<1))throw Error(L('Invalid history position','历史位置无效'));
-          restoredHistory=true;restoredCut=value.cut;
-        }
-      } catch(problem) {setControlError(String(problem));}
-    }
-    historyControl.current = { pausedByHistory: restoredHistory, pending: false, failed: undefined };
+    setState(undefined); setError(undefined); setSeekError(undefined); setTransportError(undefined); setCut(undefined); cutRef.current = undefined;
     setJournalComplete(false);
-    requestedCut.current = initialCut ?? restoredCut; setPendingCut(requestedCut.current);
-    setStatus('loading'); statusRef.current = 'loading'; setWaiting(undefined); setReportedBoundaryNs(undefined); follow.current = mode === 'live' && requestedCut.current === undefined && !restoredHistory;
+    requestedCut.current = initialCut; setPendingCut(requestedCut.current);
+    setStatus('loading'); statusRef.current = 'loading'; setWaiting(undefined); setReportedBoundaryNs(undefined); follow.current = mode === 'live' && requestedCut.current === undefined;
     if (!runId) return;
     const abort = new AbortController();
     let paint: number | undefined, activeStore: TemporalFeedStore | undefined;
@@ -97,7 +77,7 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
         header.scene.city.url = new URL(header.scene.city.url, apiBase + '/').href;
         if (header.scene.city.assetsBase) header.scene.city.assetsBase = new URL(header.scene.city.assetsBase, apiBase + '/').href;
       }
-      const store = new TemporalFeedStore(header), clock = new PlaybackClock(header.start.ns, header.end?.ns ?? header.start.ns);
+      const store = new TemporalFeedStore(header), clock = new PlaybackClock(header.start.ns, mode === 'live' ? header.start.ns : header.end?.ns ?? header.start.ns);
       activeStore = store; store.liveFollow = mode === 'live' && follow.current;
       setState({ store, clock });
       return feed.subscribe(0, commit => {
@@ -119,7 +99,7 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
         if (abort.signal.aborted) return;
         setJournalComplete(true);
         if (requestedCut.current !== undefined) {
-          setSeekError(`Journal cut ${requestedCut.current} is absent from the complete journal`);
+          setSeekError(L(`Journal cut ${requestedCut.current} is absent from the complete journal`, `完整日志中不存在记录位置 ${requestedCut.current}`));
           requestedCut.current = undefined; setPendingCut(undefined);
         }
       });
@@ -127,45 +107,10 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
     return () => { abort.abort(); if (paint !== undefined) cancelAnimationFrame(paint); };
   }, [runs, runId, mode]);
 
-  // Retain the source while paused so its queue can order history controls with
-  // the last input write. Stop advancing immediately, before the pause POST.
+  // Keep the source attached while paused so it can observe an explicit resume.
+  // Only the real run lifecycle governs production; seeking never holds it.
   const sourceLive = mode === 'live' && !TERMINAL.has(status);
-  const sourceFollowing = sourceLive && status !== 'paused' && follow.current && cut === undefined && pendingCut === undefined;
-  const inputSource = useOperatorInput(runs, runId, sourceLive ? 'live' : 'replay', sourceFollowing);
-  const browsingHistory = mode === 'live' && !follow.current;
-  useEffect(() => {
-    const control = historyControl.current;
-    // The lifecycle effect can restore a history cursor before this render's
-    // captured following flag changes. Use the current cursor and wait for an
-    // authoritative status; hydration must never issue an implicit resume.
-    const historical = mode === 'live' && !follow.current, currentStatus = statusRef.current;
-    if (control.failed !== undefined && control.failed !== historical) { control.failed = undefined; setControlError(undefined); }
-    if (!runId || mode !== 'live' || control.pending || control.failed === historical || !['running','waiting_for_input','paused'].includes(currentStatus)) return;
-    const action = historical && !control.pausedByHistory && ['running', 'waiting_for_input'].includes(currentStatus) ? 'pause'
-      : !historical && control.pausedByHistory ? 'resume' : undefined;
-    if (!action) return;
-    control.pending = true;
-    void inputSource.serialize(async () => {
-      if(historyControl.current!==control)return;
-      // A manual pause or a terminal transition may have arrived while queued.
-      if (TERMINAL.has(statusRef.current) || action === 'pause' && statusRef.current === 'paused') return;
-      const reply = await runs.request(`/v1/runs/${encodeURIComponent(runId)}/${action}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
-      });
-      if (!reply || typeof reply !== 'object' || !('status' in reply) || typeof reply.status !== 'string') {
-        throw Error(L('The run control response has no status.', '运行控制响应缺少状态。'));
-      }
-      if (historyControl.current !== control) return;
-      control.pausedByHistory = action === 'pause';
-      setStatus(reply.status); statusRef.current = reply.status;
-      if(action==='pause')rememberHistory();
-      else if(historyKey) {try{sessionStorage.removeItem(historyKey);}catch(problem){setControlError(String(problem));}}
-    }).catch(problem => {
-      if (historyControl.current === control) { control.failed = historical; setControlError(String(problem)); }
-    }).finally(() => {
-      if (historyControl.current === control) { control.pending = false; tick(); }
-    });
-  }, [runs, runId, mode, browsingHistory, status, revision, inputSource.serialize]);
+  const inputSource = useOperatorInput(runs, runId, sourceLive ? 'live' : 'replay');
   if (!state || !runId) return undefined;
   const { store, clock } = state;
   const liveAllowed = () => mode === 'live' && !TERMINAL.has(statusRef.current) && statusRef.current !== 'paused';
@@ -175,20 +120,18 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
     requestedCut.current = undefined; setPendingCut(undefined); setSeekError(undefined);
     follow.current = false; store.liveFollow = false; clock.pause(); clock.seek(commit.at.ns);
     cutRef.current = commit.commitIndex; setCut(commit.commitIndex); store.seek(clock.ns, commit.commitIndex); tick();
-    rememberHistory();
   };
   return {
-    store, clock, inputSource, status, waiting, reportedBoundaryNs, journalComplete, pendingCut, cut, error: error ?? seekError ?? controlError, transportError, revision,
+    store, clock, inputSource, status, waiting, reportedBoundaryNs, journalComplete, pendingCut, cut, error: error ?? seekError, transportError, revision,
     followingLive: mode === 'live' && follow.current && cut === undefined,
     seekOffset,
     seekCut: index => {
-      if (!Number.isSafeInteger(index) || index < 1) { setSeekError(`Invalid journal cut ${index}`); return; }
+      if (!Number.isSafeInteger(index) || index < 1) { setSeekError(L(`Invalid journal cut ${index}`, `记录位置 ${index} 无效`)); return; }
       const offset = store.commits.findIndex(commit => commit.commitIndex === index);
       if (offset >= 0) { seekOffset(offset); return; }
-      if (journalComplete) { setSeekError(`Journal cut ${index} is absent from the complete journal`); return; }
+      if (journalComplete) { setSeekError(L(`Journal cut ${index} is absent from the complete journal`, `完整日志中不存在记录位置 ${index}`)); return; }
       requestedCut.current = index; setPendingCut(index); setSeekError(undefined);
       follow.current = false; store.liveFollow = false; clock.pause(); tick();
-      rememberHistory();
     },
     togglePlayback: () => { requestedCut.current = undefined; setPendingCut(undefined); setCut(undefined); cutRef.current = undefined; follow.current = false; store.liveFollow = false; if (clock.playing) clock.pause(); else { if (BigInt(clock.ns) >= BigInt(clock.end)) clock.seek(store.header.start.ns); clock.play(); } tick(); },
     backToLive: () => { requestedCut.current = undefined; setPendingCut(undefined); follow.current = mode === 'live'; store.liveFollow = liveAllowed(); setCut(undefined); cutRef.current = undefined; clock.pause(); clock.seek(clock.end); store.seek(clock.ns); tick(); },

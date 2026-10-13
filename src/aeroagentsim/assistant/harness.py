@@ -44,6 +44,20 @@ def split_suggestions(content: str) -> tuple[str, list[str]]:
     return content[:match.start()].strip(), suggestions
 
 
+def without_state_assertions(text: str, *, expanded: bool = False) -> str:
+    """State and experiment identities are rendered from current records, not model assertions."""
+    state = re.compile(
+        r"\b(?:validat\w*|pending)\b|wait.*confirm|before confirming|校验|验证|等待.*确认"
+        r"|\b(?:project|workspace|saved)\s+(?:version\b|v\d)|\bplan\s+(?:(?:revision|version)\s+)?v?\d"
+        r"|(?:项目|工作区)(?:的)?版本|(?:方案|计划)(?:修订|版本)?\s*v?\d"
+        r"|\brun\b.*\bversion\b|(?:运行|仿真).*版本"
+        r"|\b(?:can|ready to|may)\b.*\b(?:initializ\w*|start|run)\b|(?:可|能够).*?(?:初始化|启动|运行)", re.I)
+    components = re.compile(r"\b(?:engines?|components?)\b|引擎|组件", re.I)
+    sentences = re.split(r"(?<=[。！？])|(?<=[.!?])\s+|\n", text)
+    return "\n".join(sentence.strip() for sentence in sentences if sentence.strip() and
+                     not state.search(sentence) and not (expanded and components.search(sentence)))
+
+
 def run_evidence(tools: ToolRunner, identifier: str, context: dict[str, Any] | None) -> dict[str, Any] | None:
     """A question asked from a run carries that run's recorded story, so answers start from evidence, not recall."""
     run_id = (context or {}).get("run_id")
@@ -205,10 +219,21 @@ class Harness:
         if plan is not None and not (used_grounded_facts and evidence is not None):
             # Validation can finish while the provider is writing its completion.
             # Render status from the store, replacing the provider's status prose.
-            if not used_grounded_facts and evidence is None:
-                sentences = re.split(r"(?<=[。！？])|(?<=[.!?])\s+|\n", text)
-                text = "\n".join(s.strip() for s in sentences if s.strip() and not re.search(r"\b(?:validat\w*|pending)\b|wait.*confirm|before confirming|校验|验证|等待.*确认", s, re.I))
-            status = plan_status(session, plan, zh=str((context or {}).get("locale", session["locale"])).startswith("zh"))
+            # New plans retain the original model prose only for audit. Legacy
+            # plans are recognized by a prerequisite missing from their recipe.
+            expanded = "_model_prose" in plan or any(op["op"] == "add_lowalt_components" and
+                not any(requested["op"] == "add_lowalt_components" for requested in plan["operations"])
+                for op in plan["compile"].get("operations", []))
+            if not used_grounded_facts:
+                text = without_state_assertions(text, expanded=expanded)
+            zh = str((context or {}).get("locale", session["locale"])).startswith("zh")
+            unapplied = not any(record["plan_version"] == plan["version"] for record in session["applied"])
+            if expanded and unapplied and plan.get("what_changes"):
+                key = "text_zh" if zh else "text"
+                effects = ("实际变更：\n" if zh else "What this changes:\n") + "\n".join("- " + row[key] for row in plan["what_changes"])
+                text = (text + "\n\n" if text else "") + effects
+            workspace = self.tools.workspace_state(identifier) if isinstance(self.tools, ToolRunner) else None
+            status = plan_status(session, plan, workspace=workspace, evidence=evidence, zh=zh)
             text = (text + "\n\n" if text else "") + status
         self.sessions.append(identifier, {"role": "assistant", "content": text + ("\nSuggestions: " + " | ".join(suggestions) if suggestions else "")})
         self.sessions.emit(identifier, "assistant", text=text, suggestions=suggestions)
@@ -220,7 +245,8 @@ class Harness:
         plan = session["plans"].get(str(session["plan_version"]))
         if plan is None:
             return "这一轮还没有形成方案，请再发一条消息继续。" if zh else "No proposal was finished in this turn; send another message to continue."
-        return plan_status(session, plan, zh=zh)
+        workspace = self.tools.workspace_state(identifier) if isinstance(self.tools, ToolRunner) else None
+        return plan_status(session, plan, workspace=workspace, zh=zh)
 
     def run_turn(self, identifier: str, turn: int, context: dict[str, Any] | None = None) -> None:
         started = time.monotonic()

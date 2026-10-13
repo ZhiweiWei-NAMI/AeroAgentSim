@@ -131,7 +131,7 @@ it('labels an applied plan as applied and never resurrects it as a draft', async
     canInitialize={false} onInitialize={() => {}} onApplied={() => {}} onHover={() => {}} onStep={() => {}}
     onContract={() => {}} onSeek={() => {}} viewing={undefined} onViewVersion={() => {}} onClose={() => {}} /></I18nProvider>);
   // Stage 'proposed' from the workbench must not win over the server's apply record.
-  expect(await screen.findByTestId('as-plan-state')).toHaveTextContent(/Applied as version 3|已应用为版本 3/);
+  expect(await screen.findByTestId('as-plan-state')).toHaveTextContent(/Applied as project version 3|已应用为项目版本 3/);
   expect(screen.getByTestId('as-apply-report')).toBeVisible();
   expect(screen.queryByTestId('as-confirm')).toBeNull();
   // Initialize remains the only forward action, and only when the workbench allows it.
@@ -147,7 +147,7 @@ it('marks a superseded applied plan and hides Initialize for it', async () => {
   render(<I18nProvider><PlanBoard api={api} assistant={supersededAssistant} stage="configured" terminal={false} initializing={false}
     canInitialize onInitialize={() => {}} onApplied={() => {}} onHover={() => {}} onStep={() => {}}
     onContract={() => {}} onSeek={() => {}} viewing={undefined} onViewVersion={() => {}} onClose={() => {}} /></I18nProvider>);
-  expect(await screen.findByTestId('as-plan-state')).toHaveTextContent(/Superseded · v6|已被取代 · v6/);
+  expect(await screen.findByTestId('as-plan-state')).toHaveTextContent(/Superseded plan · v6|已被取代的方案 · v6/);
   expect(screen.queryByTestId('as-initialize')).toBeNull();
   expect(screen.getByText(/the project now uses version 4|项目现在使用版本 4/)).toBeVisible();
 });
@@ -240,7 +240,7 @@ it('T2-AS-007: explains actual capacity and position changes next to the histori
   expect(notice).toHaveTextContent('Draft changed since this plan');
   expect(notice).toHaveTextContent('pad-central');
   expect(notice).toHaveTextContent('2 → 4');expect(notice).toHaveTextContent('0, 0, 0 → 50, 0, 0');
-  expect(screen.getByTestId('as-plan-state')).toHaveTextContent('Applied as version 3');
+  expect(screen.getByTestId('as-plan-state')).toHaveTextContent('Applied as project version 3');
   expect(screen.getByTestId('as-initialize')).toHaveTextContent('Initialize version 4');
 });
 
@@ -262,4 +262,49 @@ it('T2-R2-011: revision summaries show the real arrangement rather than operatio
   expect(summary).toHaveTextContent(/Charging power \(W\)\s*5000/);expect(summary).toHaveTextContent(/Count\s*3/);
   expect(summary).toHaveTextContent('Meal courier');
   expect(summary).not.toHaveTextContent(/add_place|add_fleet|op-1|\{/);
+});
+
+it('T2-R3-001: confirms a validated new revision without changing the selected completed run',async()=>{
+  const revision=plan(7);
+  const agent={...assistant,plan:revision,applied:undefined,session:{...session,plan:revision,applied}};
+  const record={...applied[0],plan_version:7,version:4};
+  vi.mocked(agent.apply).mockResolvedValueOnce(record);
+  const onApplied=vi.fn();
+  board(agent,{stage:'running',terminal:true,runId:'run-project-v3',onApplied});
+  expect(screen.getByTestId('as-plan-board')).toHaveAttribute('data-stage','proposed');
+  expect(screen.getByTestId('as-confirm')).toBeEnabled();
+  expect(screen.queryByTestId('as-tab-story')).toBeNull();
+  expect(screen.getByTestId('as-pinned-run-notice')).toHaveTextContent('Run run-project-v3 keeps its fixed version');
+  fireEvent.click(screen.getByTestId('as-confirm'));
+  await waitFor(()=>expect(onApplied).toHaveBeenCalledWith(record));
+  expect(agent.apply).toHaveBeenCalledWith(7);
+  expect(agent.session.applied).toEqual(applied);
+});
+
+it.each(['pending','invalid'] as const)('T2-R3-001: the run context cannot bypass %s proposal validation',state=>{
+  const revision={...plan(7),validation:{state}};
+  board({...assistant,plan:revision,applied:undefined,session:{...session,plan:revision,applied}},{stage:'running',terminal:true,runId:'older-run'});
+  expect(screen.getByTestId('as-plan-board')).toHaveAttribute('data-stage','proposed');
+  expect(screen.getByTestId('as-confirm')).toBeDisabled();
+});
+
+it.each(['en-US','zh-CN'])('T4-R3-002: replaces legacy pre-compilation prose with the real expanded changes in %s',locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  const operations=[{id:'pad',op:'add_place',params:{id:'qa-pad',role:'charging_pad',at:'center',power_w:6000}}];
+  const revision:PlanVersion={...plan(7),operations,
+    summary:'No simulation components beyond that.',assumptions:['No lowalt engines, drones, fleets, or orders are added, as requested.'],
+    compile:{ok:true,errors:[],warnings:[],operations:[{id:'auto-lowalt-components',op:'add_lowalt_components',params:{}},...operations]},
+    diff_base:{added:[{kind:'components',id:'lowalt_components',label:'6 required drone scene engines',label_zh:'6 个必需的无人机场景引擎',
+      fields:[{name:'engines',before:[],after:['airspace','behaviour','energy','environment','motion','tasks'],label:'Engines',label_zh:'引擎',
+        before_text:'Empty',before_text_zh:'空',after_text:'airspace, behaviour, energy, environment, motion, tasks',after_text_zh:'airspace, behaviour, energy, environment, motion, tasks'}]},
+      {kind:'place',id:'qa-pad',label:'qa-pad'}],changed:[],removed:[]}};
+  board({...assistant,plan:revision,session:{...session,plan:revision}});
+  const changes=screen.getByTestId('as-compiled-changes');
+  expect(changes).toHaveTextContent(locale==='en-US'?'What this changes':'实际变更');
+  expect(changes).toHaveTextContent(locale==='en-US'?'6 required drone scene engines':'6 个必需的无人机场景引擎');
+  expect(changes).toHaveTextContent('airspace, behaviour, energy, environment, motion, tasks');
+  expect(changes).toHaveTextContent('qa-pad');
+  expect(screen.getByTestId('as-arrangement')).toHaveTextContent(locale==='en-US'?'Add the drone scene components':'添加无人机场景组件');
+  expect(screen.getByTestId('as-plan-board')).not.toHaveTextContent(/No simulation components|No lowalt engines/);
+  expect(screen.queryByText(/Assumptions \(/)).toBeNull();
 });

@@ -53,7 +53,7 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
   // edits. Field differences below distinguish it from the current draft.
   const plan = assistant.plan, applied = assistant.applied;
   const configured = !!applied && project?.id === applied.workspace_id;
-  const stage: Stage = runId && (workspaceVersion === undefined || !applied || workspaceVersion >= applied.version) && assistant.session?.applied.length ? 'running' : configured ? 'configured' : 'proposed';
+  const stage: Stage = runId && configured && applied && (workspaceVersion === undefined || workspaceVersion >= applied.version) ? 'running' : configured ? 'configured' : 'proposed';
 
   // The board: open for each new plan version until the user closes it.
   const [boardClosed, setBoardClosed] = useState<number>();

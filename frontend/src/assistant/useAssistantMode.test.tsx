@@ -5,10 +5,10 @@ import type { AssistantSession } from './useAssistant';
 import type { PlanPreview,PlanVersion,Session } from './api';
 import type { Project } from '../workbench/api';
 
-const server=vi.hoisted(()=>({preview:vi.fn(),plan:vi.fn(),assistant:undefined as unknown as AssistantSession}));
-vi.mock('./api',async importOriginal=>({...await importOriginal<typeof import('./api')>(),AssistantApi:class{preview=server.preview;plan=server.plan;}}));
+const server=vi.hoisted(()=>({preview:vi.fn(),plan:vi.fn(),story:vi.fn(),assistant:undefined as unknown as AssistantSession}));
+vi.mock('./api',async importOriginal=>({...await importOriginal<typeof import('./api')>(),AssistantApi:class{preview=server.preview;plan=server.plan;story=server.story;}}));
 vi.mock('./useAssistant',()=>({useAssistantSession:()=>server.assistant,useConnection:()=>({})}));
-beforeEach(()=>{server.preview.mockReset();server.plan.mockReset();});
+beforeEach(()=>{server.preview.mockReset();server.plan.mockReset();server.story.mockReset().mockResolvedValue({run_id:'run-project-v1',expectations:[],events:[]});});
 afterEach(cleanup);
 const plan:PlanVersion={version:1,created_at:'',note:'',base:{workspace:'w',revision:1},title:'Plan',summary:'',operations:[],assumptions:[],open_questions:[],compile:{ok:true,errors:[],warnings:[]},validation:{state:'valid'},scene:{}};
 const applied={plan_version:1,workspace_id:'w',version:1,revision:2,applied_at:'',report:{created:[],changed:[],removed:[]}};
@@ -55,4 +55,26 @@ it('shows a real preview failure instead of silently leaving an old preview on s
   await waitFor(()=>expect(result.current.assistant.draftState?.error).toContain('Preview unavailable'));
   expect(result.current.assistant.draftState?.changes).toBeUndefined();
   expect(result.current.previewWorkspace).toBeUndefined();
+});
+
+it.each([false,true])('T2-R3-001: an unapplied revision keeps its proposal stage with an older run (terminal=%s)',async terminal=>{
+  agent();
+  const revision={...plan,version:3};
+  server.assistant={...server.assistant,plan:revision,applied:undefined,session:{...session,plan:revision}};
+  server.preview.mockResolvedValue({name:'Revised plan',scenario:original});
+  const {result}=renderHook(()=>useAssistantMode({...args,project:project(),runId:'run-project-v1',workspaceVersion:1,terminal}));
+  await waitFor(()=>expect(result.current.assistant.planPreview?.version).toBe(3));
+  expect(result.current.stage).toBe('proposed');
+  expect(result.current.previewWorkspace).toBeDefined();
+  expect(result.current.assistant.session?.applied).toEqual([applied]);
+  expect(server.story).not.toHaveBeenCalled();
+});
+
+it('keeps the pinned run stage for the plan actually applied to that run',async()=>{
+  agent();
+  server.preview.mockResolvedValue({name:'Applied plan',scenario:original});
+  const {result}=renderHook(()=>useAssistantMode({...args,project:project(),runId:'run-project-v1',workspaceVersion:1,terminal:true}));
+  await waitFor(()=>expect(result.current.story?.run_id).toBe('run-project-v1'));
+  await waitFor(()=>expect(result.current.assistant.planPreview?.version).toBe(1));
+  expect(result.current.stage).toBe('running');
 });

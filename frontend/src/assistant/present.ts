@@ -78,10 +78,10 @@ export function constraintTexts(policy: Policy | undefined, L: Lang): string[] {
   return out;
 }
 
-export function valueText(value: unknown, unit?: string): string {
+export function valueText(value: unknown, unit?: string, precision?: number): string {
   if (typeof value === 'boolean') return value ? '✓' : '✗';
-  if (typeof value === 'number') return `${Number.isInteger(value) ? value : value.toFixed(value < 10 ? 2 : 1)}${unit ? ` ${unit}` : ''}`;
-  if (Array.isArray(value)) return value.map(item => valueText(item)).join(', ');
+  if (typeof value === 'number') return `${precision !== undefined ? value.toFixed(precision) : Number.isInteger(value) ? value : value.toFixed(value < 10 ? 2 : 1)}${unit ? ` ${unit}` : ''}`;
+  if (Array.isArray(value)) return value.map(item => valueText(item,unit,precision)).join(', ');
   if (value && typeof value === 'object') return Object.entries(value).map(([key,item])=>`${key.replace(/_/g,' ')}: ${valueText(item)}`).join('; ');
   return value === undefined || value === null ? '—' : String(value);
 }

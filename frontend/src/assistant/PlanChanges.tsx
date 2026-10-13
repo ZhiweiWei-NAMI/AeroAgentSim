@@ -2,8 +2,8 @@ import { useState, type CSSProperties } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { Diff, DiffItem, Operation, PlanVersion } from './api';
 import { Icon } from './icons';
-import { bi, pick, valueText } from './present';
-import { operationName, operationParams, parameterName, parameterValue } from './OperationSummary';
+import { bi, pick } from './present';
+import { effectiveOperations, operationName, operationParams, parameterName, parameterValue } from './OperationSummary';
 
 const KIND: Record<string, [string, string, string]> = {
   fleet: ['drone', 'fleet', '机队'], vehicle: ['drone', 'UAV', '无人机'], place: ['customer', 'place', '地点'], workload: ['parcel', 'tasks', '任务'], task: ['parcel', 'task', '任务'],
@@ -13,14 +13,23 @@ const KIND: Record<string, [string, string, string]> = {
 };
 
 function Items({ items, sign, onHover }: { items: DiffItem[]; sign: '+' | '~' | '−'; onHover?: (id: string | undefined) => void }) {
-  const { locale } = useI18n(), zh = locale === 'zh-CN';
+  const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   return <>{items.map((item, index) => { const kind = KIND[item.kind]; return <li key={`${sign}${item.id}`} className={`as-delta is-${sign === '+' ? 'add' : sign === '~' ? 'change' : 'remove'}`} style={{ '--i': index } as CSSProperties}
     onMouseEnter={() => onHover?.(item.id)} onMouseLeave={() => onHover?.(undefined)} data-testid="as-delta">
     <span className="as-delta-sign wb-mono">{sign}</span><Icon name={kind?.[0] ?? 'dot'} size={12} />
-    <div><small>{kind ? (zh ? kind[2] : kind[1]) : item.kind}</small> <code className="wb-mono">{item.id}</code> <span>{pick(item,zh)}</span>
-      {item.fields?.length ? <dl>{item.fields.map(field => <div key={field.name}><dt>{field.name.split('.').map(part => parameterName(part,(en,cn)=>zh?cn:en)).join(' › ')}</dt><dd className="wb-mono"><s>{valueText(field.before)}</s> → <b>{valueText(field.after)}</b></dd></div>)}</dl> : null}
+    <div className="as-delta-body"><div className="as-delta-heading"><small>{(zh ? item.kind_label_zh : item.kind_label) ?? (kind ? L(kind[1],kind[2]) : item.kind)}</small><span>{pick(item,zh)}</span><code className="wb-mono" title={item.id}>{item.id}</code></div>
+      {item.fields?.length ? <dl>{item.fields.map(field => <div key={field.name}><dt>{pick(field,zh) || field.name.split('.').map(part => parameterName(part,L)).join(' › ')}:</dt><dd className="wb-mono"><s>{bi((zh ? field.before_text_zh : field.before_text) ?? parameterValue(field.name.split('.').slice(-1)[0],field.before,undefined,zh,L),zh)}</s> → <b>{bi((zh ? field.after_text_zh : field.after_text) ?? parameterValue(field.name.split('.').slice(-1)[0],field.after,undefined,zh,L),zh)}</b></dd></div>)}</dl> : null}
     </div>
   </li>; })}</>;
+}
+
+export function CompiledChanges({plan,onHover}: {plan: PlanVersion; onHover?: (id: string | undefined)=>void}) {
+  const {locale}=useI18n(),L=(en: string,zh: string)=>locale==='zh-CN'?zh:en;
+  return <section className="wb-form-card" data-testid="as-compiled-changes">
+    <h5 className="wb-form-card-title">{L('What this changes','实际变更')}</h5>
+    <p className="wb-form-card-sub hint">{L('The required drone scene components are included in these changes.','这些变更包含必需的无人机场景组件。')}</p>
+    <DiffList diff={plan.diff_base} onHover={onHover} empty={L('No scene changes.','没有场景变更。')}/>
+  </section>;
 }
 
 export function DiffList({ diff, onHover, empty }: { diff?: Diff | null; onHover?: (id: string | undefined) => void; empty: string }) {
@@ -43,7 +52,7 @@ export function PlanChanges({ plan, onHover }: { plan: PlanVersion; onHover?: (i
     </div>
     <DiffList diff={diff} onHover={onHover} empty={since === 'previous' ? L('Nothing changed in the scene since the previous version.', '与上一版相比场景没有变化。') : L('This plan leaves the scene as it is.', '此方案不改变场景。')} />
     <h5 className="as-subhead">{L('How the plan is built', '方案如何构成')}<small>{L('Places, participants, tasks and settings in this plan','此方案中的地点、参与者、任务与设置')}</small></h5>
-    <ol className="as-ops">{plan.operations.map(op => <Op key={op.id} op={op} issue={plan.compile.errors.find(error => error.op_id === op.id)?.message} />)}</ol>
+    <ol className="as-ops">{effectiveOperations(plan).map(op => <Op key={op.id} op={op} issue={plan.compile.errors.find(error => error.op_id === op.id)?.message} />)}</ol>
   </div>;
 }
 
