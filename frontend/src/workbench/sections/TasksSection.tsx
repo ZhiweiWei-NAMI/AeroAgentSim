@@ -26,8 +26,12 @@ export function TasksSection({ project, studioApi, draft, edit, replaceDraft, fo
     <p className="hint">{L('What work appears and the rules that decide what is allowed: order streams, cooperation, predicates with parameters, and event chains.', '会出现哪些工作，以及决定允许做什么的规则：订单流、协同、带参数的谓词与事件链。')}</p>
     {config?.generators && <><h4>{L('Order streams', '订单流')}</h4>
       <OrderStreams config={config} draft={draft} edit={edit} focus={focus} L={L} /></>}
+    {!config?.generators && <><h4>{L('Order streams', '订单流')}</h4>
+      <div className="wb-empty">{L('Needs the tasks engine (lowalt_tasks) to define order streams; this form cannot create engines yet. Start from a template in the gallery, or add the engine in File (YAML).', '需要任务引擎（lowalt_tasks）才能定义订单流；此表单尚不能创建引擎。可从图库的模板开始，或在“文件”（YAML）中添加引擎。')}</div></>}
     {config && tasks && <><h4>{L('Cooperation', '协同')}</h4>
       <CooperationEditor config={config} engineName={tasks.name} draft={draft} edit={edit} focus={focus} L={L} replaceDraft={replaceDraft} /></>}
+    {!config && <><h4>{L('Cooperation', '协同')}</h4>
+      <div className="wb-empty">{L('Needs the tasks engine (lowalt_tasks) to configure cooperation; this form cannot create engines yet. Start from a template in the gallery, or add the engine in File (YAML).', '需要任务引擎（lowalt_tasks）才能配置协同；此表单尚不能创建引擎。可从图库的模板开始，或在“文件”（YAML）中添加引擎。')}</div></>}
     {behaviours.map((behaviour, b) => <div key={b}>
       <h4>{L('Rules', '规则')} · <span className="wb-mono">{behaviour.id ?? b}</span></h4>
       {Object.entries(behaviour.predicates ?? {}).map(([name, predicate]: [string, any]) => <details key={name} open><summary><b>{name}</b></summary>

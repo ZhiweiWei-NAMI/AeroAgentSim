@@ -10,14 +10,20 @@ export function ComponentsSection({ draft, edit, focus, L }: SectionProps) {
   const tasks = engineOf(draft, 'lowalt_tasks') ?? ((draft.engines as Record<string, any> | undefined)?.tasks ? { name: 'tasks', engine: (draft.engines as Record<string, any>).tasks as Record<string, any> } : undefined);
   const config = taskConfig(draft);
   const sumo = Object.entries((draft.engines ?? {}) as Record<string, any>).some(([, engine]) => engine?.plugin === 'sumo');
+  const hasTrafficEngine = Object.entries((draft.engines ?? {}) as Record<string, any>).some(([, engine]) => engine?.plugin === 'sumo' || engine?.plugin === 'traffic_road_motion');
   return <>
     <p className="hint">{L('Engines that compute state, and which engine owns (writes) which fields.', '计算状态的引擎，以及哪个引擎拥有（写入）哪些字段。')}</p>
     {environment && <><h4>{L('Weather & traffic', '天气与交通')}</h4>
       <WeatherBlock environmentName={environment.name} environment={environment.engine} draft={draft} edit={edit} focus={focus} L={L} />
       <TrafficBlock draft={draft} edit={edit} focus={focus} L={L} />
       {config && tasks && <IncidentsBlock config={config} engineName={tasks.name} edit={edit} focus={focus} L={L} />}
-      {!sumo && <p className="hint">{L('No SUMO engine is configured, so road traffic here (if any) is scripted or decorative, never a SUMO simulation.', '未配置 SUMO 引擎，因此这里的道路交通（如有）是脚本或装饰性的，绝不是 SUMO 仿真。')}</p>}
+      {!sumo && hasTrafficEngine && <p className="hint">{L('No SUMO engine is configured, so road traffic here (if any) is scripted or decorative, never a SUMO simulation.', '未配置 SUMO 引擎，因此这里的道路交通（如有）是脚本或装饰性的，绝不是 SUMO 仿真。')}</p>}
     </>}
+    {!environment && <><h4>{L('Weather & traffic', '天气与交通')}</h4>
+      <div className="wb-empty">
+        {L('Needs the environment engine for wind and gusts (and the tasks engine lowalt_tasks for incidents); this form cannot create engines yet. Start from a template in the gallery, or add the engine in File (YAML).', '需要 environment 引擎提供风与阵风（事件还需要任务引擎 lowalt_tasks）；此表单尚不能创建引擎。可从图库的模板开始，或在“文件”（YAML）中添加引擎。')}
+        {!sumo && !hasTrafficEngine && ` ${L('No SUMO or road/traffic engine is configured either, so there is no ground traffic to configure here — and if any appears, it is scripted or decorative, never a SUMO simulation.', '同时也没有配置 SUMO 或道路/交通引擎，因此这里没有可配置的地面交通——即使出现，也是脚本或装饰性的，绝不是 SUMO 仿真。')}`}
+      </div></>}
     {'engines' in draft && <div><h4 className="wb-mono">engines</h4>
       {Object.entries(draft.engines as Record<string, any>).map(([name, engine]) => <details key={name} open={focus?.startsWith(pointer('engines', name) + '/')}><summary><b>{name}</b> <span className="wb-tag wb-mono">{engine.plugin}</span></summary>
         {JSON.stringify(engine.config ?? {}).length > 6000

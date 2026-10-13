@@ -13,7 +13,8 @@ export { originShiftM } from './model';
 export const m = (value: number, digits = 1) => `${value.toFixed(digits)} m`;
 export const coord = (value: number) => value.toFixed(6).replace(/\.?0+$/, '');
 
-const emptyDraft = (): RegionDraft => ({ extract: '', west: '', south: '', east: '', north: '', alt: '', level: '' });
+// Visible, editable modelling defaults: the form never starts with required fields empty.
+const emptyDraft = (): RegionDraft => ({ extract: '', west: '', south: '', east: '', north: '', alt: '0', level: '3.5' });
 
 /**
  * Region stage: pick a configured local OSM extract, confirm WGS84 bounds and modelling
@@ -46,9 +47,12 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   }, [form.extract, extracts]);
 
   const extractBounds = extracts?.find(item => item.id === form.extract)?.bounds;
+  const [edited, setEdited] = useState<Partial<Record<keyof RegionDraft, boolean>>>({});
   const { errors, body } = validateRegion(form, extractBounds);
+  // Errors only once the user has actually edited that field (bounds errors likewise after edit).
+  const shownErrors = Object.fromEntries(Object.entries(errors).filter(([key]) => edited[key as keyof RegionDraft])) as typeof errors;
   const invalid = Object.keys(errors).length > 0 || !body;
-  const setField = (key: keyof RegionDraft) => (value: string) => setForm(previous => ({ ...previous, [key]: value }));
+  const setField = (key: keyof RegionDraft) => (value: string) => { setEdited(previous => ({ ...previous, [key]: true })); setForm(previous => ({ ...previous, [key]: value })); };
 
   const needsConfirm = !!preview && (preview.origin_shift_m === null || preview.origin_shift_m > 0 || preview.affected_entities.length > 0 || preview.network_invalidated);
   const doPreview = async () => {
@@ -90,10 +94,10 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   const heights = compiled ? heightSummary(compiled.scene) : undefined;
   const fieldRow = (key: 'west' | 'south' | 'east' | 'north' | 'alt' | 'level', label: string, hint: string) => <label className="wb-region-field">
     <span>{label}</span>
-    <input className="wb-search" inputMode="decimal" value={form[key]} aria-label={label} aria-invalid={!!errors[key]}
-      aria-describedby={errors[key] ? `${fieldId}-${key}-error` : undefined} placeholder={hint}
+    <input className="wb-search" inputMode="decimal" value={form[key]} aria-label={label} aria-invalid={shownErrors[key] ? true : undefined}
+      aria-describedby={shownErrors[key] ? `${fieldId}-${key}-error` : undefined} placeholder={hint}
       onChange={event => setField(key)(event.target.value)} />
-    {errors[key] && <span id={`${fieldId}-${key}-error`} className="wb-field-error" role="alert">{errors[key]}</span>}
+    {shownErrors[key] && <span id={`${fieldId}-${key}-error`} className="wb-field-error" role="alert">{shownErrors[key]}</span>}
   </label>;
 
   return <section className="wb-region" aria-label={L('Region', '区域')}>
@@ -143,9 +147,10 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
       {fieldRow('south', L('South (°)', '南纬（°）'), '31.30')}
       {fieldRow('east', L('East (°)', '东经（°）'), '121.52')}
       {fieldRow('north', L('North (°)', '北纬（°）'), '31.31')}
-      {fieldRow('alt', L('Ground altitude (m)', '地面海拔（m）'), '20')}
+      {fieldRow('alt', L('Ground altitude (m)', '地面海拔（m）'), '0')}
       {fieldRow('level', L('Level height (m)', '层高（m）'), '3.5')}
     </div>
+    <p className="hint">{L('Defaults are modelling assumptions — edit them for your site.', '默认值是建模假设——请按你的场地修改。')}</p>
 
     <div className="wb-region-actions">
       <button className="wb-btn" disabled={invalid || previewing} onClick={() => void doPreview()}>{previewing ? L('Previewing…', '预演中…') : L('Preview region', '预览区域')}</button>

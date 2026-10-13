@@ -329,10 +329,11 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   // Schematic plane vs real geography must be distinguishable at a glance (QA GEO-008).
   const hasGeography = !!city || !!workspace.scene;
   const objectCount = authoredPositions(workspace.scenario ?? {}).length;
+  // Sits just above the "Fit scene" chip, in the same visual language.
   const planeNote = !hasGeography && <div className="scene-preview-plane-note" data-testid="plane-note" role="note">
-    <div><strong>{zh ? '本地 ENU 平面' : 'Local ENU plane'}</strong>
-      <span>{zh ? '示意图，并非真实地理（东/北/天单位为米）。' : 'Schematic, not geography (east/north/up in metres).'}</span>
-      <span>{zh ? '选择真实区域：配置面板 → 空间 → 区域。' : 'Pick a real region: Config panel → Space → Region.'}</span>
+    <div>
+      <span><strong>{zh ? '本地 ENU 平面' : 'Local ENU plane'}</strong>{zh ? ' — 示意图，并非真实地理（东/北/天，单位米）。' : ' — schematic, not geography (east/north/up, m)'}</span>
+      <span>{zh ? '选择真实区域：配置面板 › 空间 › 区域。' : 'Choose a real region: Configure › Scene & space › Region'}</span>
     </div>
   </div>;
   const noObjects = hasGeography && objectCount === 0 && <div className="scene-preview-no-objects" data-testid="no-objects" role="status">{zh ? '暂无对象' : 'No objects yet'}</div>;

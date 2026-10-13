@@ -10,7 +10,7 @@ export function TrafficBlock({ draft, edit, focus, L }: { draft: Draft; edit: Se
   const procedural = Object.entries(engines).filter(([, engine]) => engine?.plugin === 'traffic_road_motion');
   const assessment = Object.entries(engines).filter(([, engine]) => engine?.plugin === 'traffic_assessment');
   return <div className="wb-traffic" data-testid="wb-traffic">
-    {!sumo && !procedural.length && <div className="wb-empty">{L('No road/traffic engine in this scenario; there is no ground traffic to configure.', '该场景没有道路/交通引擎；没有可配置的地面交通。')}</div>}
+    {!sumo && !procedural.length && <div className="wb-empty">{L('No SUMO or road/traffic engine is configured in this scenario, so there is no ground traffic to configure — and if any appears, it is scripted or decorative, never a SUMO simulation.', '该场景没有配置 SUMO 或道路/交通引擎，因此没有可配置的地面交通——即使出现，也是脚本或装饰性的，绝不是 SUMO 仿真。')}</div>}
     {sumo && <details open><summary>SUMO <span className="wb-tag wb-mono">{sumo[0]}</span></summary>
       <p className="hint">{L('Real SUMO network traffic. Vehicle counts, arrival rates and routes are set in the SUMO configuration/network, not here; this draft only holds the engine contract.', '真实 SUMO 路网交通。车辆数量、到达率与路线在 SUMO 配置/路网中设置，不在这里；此草稿只保存引擎契约。')}</p>
       <TreeForm value={sumo[1].config ?? {}} path={pointer('engines', sumo[0], 'config')} onChange={edit} focus={focus} depth={1} />

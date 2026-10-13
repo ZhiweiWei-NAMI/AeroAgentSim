@@ -39,7 +39,7 @@ describe('ScenePreview geography empty states', () => {
     const view = render(<ScenePreview workspace={blank} api="/api" layers={['ground', 'buildings']} />);
     expect(view.getByTestId('plane-note')).toBeTruthy();
     expect(view.getByTestId('plane-note').textContent).toContain('not geography');
-    expect(view.getByTestId('plane-note').textContent).toContain('Space');
+    expect(view.getByTestId('plane-note').textContent).toContain('Region');
     expect(view.queryByTestId('no-objects')).toBeNull();
   });
 

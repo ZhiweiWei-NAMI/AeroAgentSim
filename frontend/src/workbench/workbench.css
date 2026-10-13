@@ -359,3 +359,13 @@
 @keyframes wb-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .wb-loading::before, .wb-status i { animation: none; } }
 .wb .entity-label { width: max-content; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+
+/* ScenePreview empty-state overlays (schematic plane note, no-objects chip). */
+/* Stacked just above the "Fit scene" chip, in the same light-glass language. */
+.scene-preview-plane-note { position: absolute; left: 24px; bottom: calc(var(--wb-dock) + 70px); max-width: min(340px, calc(100% - 24px)); pointer-events: none; text-align: left; }
+.scene-preview-plane-note > div { display: flex; flex-direction: column; gap: 2px; padding: 7px 10px; border-radius: 8px;
+  background: rgba(250,252,255,.88); color: var(--wb-ink, #1c2733); font-size: 12px; line-height: 1.4;
+  backdrop-filter: blur(6px); box-shadow: 0 1px 4px rgba(11,19,31,.14); transition: opacity .18s; }
+.scene-preview-plane-note strong { color: var(--wb-ink, #1c2733); font-size: 12px; }
+.scene-preview-no-objects { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--wb-dock, 92px) + 64px); padding: 5px 12px; border-radius: 999px;
+  background: rgba(11,19,31,.72); color: #e7eef7; font-size: 12px; pointer-events: none; white-space: nowrap; }

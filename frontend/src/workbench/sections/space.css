@@ -16,11 +16,3 @@
 .wb-region-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .wb-field-error { color: var(--wb-bad); font-size: 12px; }
 @media (prefers-reduced-motion: reduce) { .wb-region *, .scene-preview-plane-note, .scene-preview-no-objects { transition: none !important; animation: none !important; } }
-
-/* ScenePreview empty-state overlays (schematic plane note, no-objects chip). */
-.scene-preview-plane-note { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; text-align: center; }
-.scene-preview-plane-note > div { display: flex; flex-direction: column; gap: 8px; align-items: center; max-width: 420px; padding: 14px 18px; border-radius: var(--wb-radius, 14px);
-  background: rgba(11,19,31,.62); color: #e7eef7; font-size: 12.5px; backdrop-filter: blur(8px); transition: opacity .18s; }
-.scene-preview-plane-note strong { color: #fff; font-size: 14px; }
-.scene-preview-no-objects { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--wb-dock, 92px) + 64px); padding: 5px 12px; border-radius: 999px;
-  background: rgba(11,19,31,.72); color: #e7eef7; font-size: 12px; pointer-events: none; white-space: nowrap; }
