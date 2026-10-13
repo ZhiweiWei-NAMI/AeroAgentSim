@@ -12,9 +12,18 @@ def snapshot_template_scene(
     template_id: str, document: dict[str, Any], run: Path
 ) -> None:
     """Attach the shipped city used by the template's actual camera renderer."""
-    if template_id != "traffic-accident" or document.get("city") != "huangpu" or (run / "studio-scene.json").is_file():
+    if (
+        template_id != "traffic-accident"
+        or ("city" in document and document["city"] != "huangpu")
+        or (run / "studio-scene.json").is_file()
+    ):
         return
-    renderer = document["engines"]["capture"]["config"]["renderer"]
+    # Legacy traffic documents select the shared city through their renderer.
+    # An absent city declaration alone must not discard that rendered scene.
+    engines = document.get("engines", {})
+    if "capture" not in engines:
+        return
+    renderer = engines["capture"]["config"]["renderer"]
     if renderer["mode"] != "traffic_browser":
         return
     from aeroagentsim.authoring.demo import city_presentation

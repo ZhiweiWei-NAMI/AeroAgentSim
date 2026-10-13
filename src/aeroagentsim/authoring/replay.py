@@ -78,7 +78,11 @@ def attach(run: Path, draft: dict[str, Any], directory: Path) -> None:
             json.dumps(scene, allow_nan=False),
             encoding="utf-8",
         )
-        (run / "scene-source.json").write_text(json.dumps({"kind": "fixed-city", "id": "huangpu", "attribution": scene["attribution"]}), encoding="utf-8")
+        identity = {"kind": "fixed-city", "id": "huangpu"}
+        # Source metadata is additive; legacy scene payloads need no attribution.
+        if "attribution" in scene:
+            identity["attribution"] = scene["attribution"]
+        (run / "scene-source.json").write_text(json.dumps(identity, allow_nan=False), encoding="utf-8")
     else:
         (run / "console-scene.json").unlink(missing_ok=True)
         (run / "scene-source.json").unlink(missing_ok=True)

@@ -53,6 +53,9 @@ def set_wind(document: dict[str, Any], index: int, value: float) -> None:
         raise ValueError("Edit gust intervals before selecting constant wind / 请先编辑阵风区间，再选择恒定风速")
     authored = copy.deepcopy(profile["value"])
     vector = authored if row is None else authored[row]
+    # Applying the declared default must preserve the authored weather profile.
+    if vector[index] == value:
+        return
     vector[index] = float(value)
     profile.update(mode="constant", value=authored)
     entity = next(entity for entity in document["entities"] if entity["id"] == entity_id)
