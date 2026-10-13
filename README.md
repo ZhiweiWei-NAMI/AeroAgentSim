@@ -9,7 +9,7 @@
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
 </p>
 
-<p align="center"><a href="docs/demos/deepseek-chinese-instruction/demo.mp4"><img src="docs/demos/deepseek-chinese-instruction/demo-poster.jpg" alt="Play the 58-second demo: DeepSeek turns one Chinese instruction into a food-delivery scenario; the user confirms, the run finishes with all 6 orders delivered" width="900"></a></p>
+https://github.com/user-attachments/assets/31cc139f-df4a-4ad1-9811-1c7c3758fd31
 
 <p align="center"><i>One Chinese instruction → DeepSeek drafts the scenario → the user confirms → 6 of 6 orders delivered through a wind gust.</i><br><a href="docs/demos/deepseek-chinese-instruction/demo.mp4">Play the 58 s demo (MP4)</a> · <a href="docs/demos/deepseek-chinese-instruction/recording-full.mp4">Unedited 4.5 min recording</a> · <a href="docs/demos/deepseek-chinese-instruction/README.md">Transcript and logs</a></p>
 
