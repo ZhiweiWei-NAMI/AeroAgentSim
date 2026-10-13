@@ -934,6 +934,22 @@ def _schedule_event(document: dict, p: dict, directory: Path) -> None:
     document["bindings"].setdefault("commands", []).append({"schema": "aas.runtime.inject_event", "target": "behaviour", "at_ns": round(p["at_s"] * SECOND), "payload": {"injection_point": point_id, "payload": payload}})
 
 
+def _places_first(operations: list[dict]) -> list[int]:
+    """Application order: new places before the operations that use them.
+
+    Models often list the orders first and the customers they deliver to after. A new place
+    depends on nothing else in the plan, so it is applied first unless an earlier operation
+    moves or removes a place with the same id."""
+    def early(i: int) -> bool:
+        operation = operations[i]
+        if not isinstance(operation, dict) or operation.get("op") != "add_place" or not isinstance(operation.get("params"), dict):
+            return False
+        identity = operation["params"].get("id")
+        return not any(isinstance(o, dict) and o.get("op") in {"update_place", "remove_place"}
+                       and isinstance(o.get("params"), dict) and o["params"].get("id") == identity for o in operations[:i])
+    return sorted(range(len(operations)), key=lambda i: not early(i))
+
+
 def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_dir: Path) -> CompileResult:
     from .scene import diff, expectations, interactions, summarize
     out_dir = Path(out_dir)
@@ -993,7 +1009,8 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         seen: set[str] = set()
         if not isinstance(operations, list):
             _fail("operations", "Operations must be a list", "操作必须为列表")
-        for i, operation in enumerate(operations):
+        for i in _places_first(operations):
+            operation = operations[i]
             op_id = operation.get("id", f"op-{i + 1}") if isinstance(operation, dict) else f"op-{i + 1}"
             candidate, candidate_controls = copy.deepcopy(document), copy.deepcopy(scene.controls)
             warning_count = len(warnings)

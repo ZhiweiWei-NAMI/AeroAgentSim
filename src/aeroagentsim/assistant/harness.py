@@ -125,6 +125,18 @@ class Harness:
         self.sessions.append(identifier, {"role": "assistant", "content": content})
         self.sessions.emit(identifier, "assistant", text=text, suggestions=suggestions)
 
+    def _closing(self, identifier: str) -> str:
+        """A grounded closing line from the session's current plan, for a turn the model did not close."""
+        zh = str(self.sessions.get(identifier).get("locale", "")).startswith("zh")
+        try:
+            plan = self.sessions.plan(identifier)
+        except FileNotFoundError:
+            return "这一轮还没有形成方案，请再发一条消息继续。" if zh else "No proposal was finished in this turn; send another message to continue."
+        questions = len(plan.get("open_questions") or [])
+        if zh:
+            return f"方案 v{plan['version']}「{plan['title']}」已准备好：{plan['summary']}" + (f" 还有 {questions} 个待确认问题，可直接选择或使用默认值。" if questions else "") + " 请在方案板中查看，确认无误后点击“确认并应用”。"
+        return f"Plan v{plan['version']} \"{plan['title']}\" is ready: {plan['summary']}" + (f" {questions} open question(s) remain; pick an answer or use the default." if questions else "") + " Review it on the plan board and press Confirm and apply when it looks right."
+
     def run_turn(self, identifier: str, turn: int, context: dict[str, Any] | None = None) -> None:
         started = time.monotonic()
         model_calls, tokens, usage_seen = 0, 0, False
@@ -156,6 +168,10 @@ class Harness:
                     self._answer(identifier, message)
                     break
                 if exhausted:
+                    # Some models keep asking for tools even when none are offered; the turn still
+                    # ends with an answer, the model's own text if it gave any, else the plan's state.
+                    content = message.get("content")
+                    self._answer(identifier, {"role": "assistant", "content": content if isinstance(content, str) and content.strip() else self._closing(identifier)})
                     self.sessions.emit(identifier, "notice", text="The model exhausted this turn's tool budget; review the latest proposal or send another message / 模型已用尽本轮工具预算；请查看最新方案或发送下一条消息")
                     break
                 if not isinstance(calls, list) or len(calls) > 12:

@@ -144,6 +144,18 @@ def test_changed_plan_files_cannot_apply(context: CompileContext, tmp_path: Path
 COOP_INSTALLED = importlib.util.find_spec("aeroagentsim.packs.lowalt.cooperation") is not None
 
 
+
+def test_new_places_apply_before_the_orders_that_use_them(context: CompileContext, tmp_path: Path) -> None:
+    # Models often list the orders first and the new customers after them.
+    result = compile_ops(context, tmp_path, [
+        op("add_orders", id="lunch", kind="food", count=2, **{"from": ["restaurant-west"], "to": ["customer-1", "late-customer"]}, release={"mode": "scheduled", "times_s": [0, 30]}),
+        op("add_place", id="late-customer", role="customer", at="clinic")])
+    assert result.ok, result.errors
+    assert any(e["id"] == "late-customer" for e in result.document["entities"])
+    # Re-adding an id after removing it keeps that order.
+    readded = compile_ops(context, tmp_path, [op("add_place", id="spare", role="customer", at="plaza"), op("remove_place", id="spare"), op("add_place", id="spare", role="customer", at="clinic")])
+    assert readded.ok, readded.errors
+
 @pytest.mark.skipif(not COOP_INSTALLED, reason="Cooperation module is supplied by the parallel capability area; integrate it before this test")
 @pytest.mark.parametrize("template", ["food-delivery", "city-day"])
 def test_flagship_food_parcel_incident_handoff(context: CompileContext, tmp_path: Path, template: str) -> None:

@@ -147,3 +147,14 @@ def test_questions_from_a_run_carry_its_recorded_story(tmp_path: Path, monkeypat
     evidence = json.loads(next(line for line in state.splitlines() if line.startswith("run_evidence: "))[len("run_evidence: "):])
     assert evidence["expectations"][0]["status"] == "missed" and evidence["expectations"][0]["recorded"] == "Closest recorded watcher approach: 210 m"
     assert evidence["events"] == [{"schema": "lowalt.task.completed", "text": "Meal 1 delivered", "at_ns": 5}]
+
+
+def test_exhausted_turn_still_closes_with_an_answer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Some models keep calling tools after the budget ends; the user still gets a closing reply.
+    agent, provider, tools, identifier = harness(tmp_path, monkeypatch, [call(), call()], max_calls=1)
+    turn = agent.sessions.begin_turn(identifier, "Draft")
+    agent.run_turn(identifier, turn["turn"])
+    events = agent.sessions.get(identifier)["events"]
+    reply = next(e for e in events if e["kind"] == "assistant")
+    assert "No proposal" in reply["text"] and len(tools.executed) == 1
+    assert any(e["kind"] == "notice" for e in events) and events[-1]["kind"] == "turn_finished"
