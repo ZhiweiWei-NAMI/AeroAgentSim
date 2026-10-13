@@ -1,0 +1,15 @@
+Huangpu lite OSM map extract
+
+© OpenStreetMap contributors, ODbL 1.0
+https://www.openstreetmap.org/copyright
+https://opendatacommons.org/licenses/odbl/1-0/
+
+Source: https://api.openstreetmap.org/api/0.6/map?bbox=121.4794284,31.2258728,121.4845353,31.2298517
+Fetched UTC: 2026-10-13T16:03:14.076777+00:00
+Bounds [west, south, east, north]: [121.4794284, 31.2258728, 121.4845353, 31.2298517]
+Raw response bytes: 679343
+SHA-256: 28b02674b23422080fde79f1cdd202be6bc6a431d3c72c5a5ddff1387d84675f
+
+huangpu-lite.osm.xml is the unmodified XML response from the OSM map API.
+Whole intersecting ways and their source nodes are retained, including nodes
+outside the requested bounds. No geometry has been generated or substituted.

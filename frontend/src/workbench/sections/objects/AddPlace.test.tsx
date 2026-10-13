@@ -30,15 +30,15 @@ it('defaults to exactly one selected role and a unique editable id without initi
   const roles = within(screen.getByRole('group', { name: 'Place role' }));
   expect(roles.getAllByRole('button', { pressed: true })).toHaveLength(1);
   expect(roles.getByRole('button', { name: 'Charging pad' })).toHaveAttribute('aria-pressed', 'true');
-  expect(screen.getByLabelText('id')).toHaveValue('charging-pad-2');
+  expect(screen.getByLabelText('Id')).toHaveValue('charging-pad-2');
   expect(screen.queryByRole('alert')).toBeNull();
   fireEvent.click(roles.getByRole('button', { name: 'Restaurant (kitchen)' }));
-  expect(screen.getByLabelText('id')).toHaveValue('kitchen-1');
-  fireEvent.change(screen.getByLabelText('id'), { target: { value: 'my-place' } });
+  expect(screen.getByLabelText('Id')).toHaveValue('kitchen-1');
+  fireEvent.change(screen.getByLabelText('Id'), { target: { value: 'my-place' } });
   fireEvent.click(roles.getByRole('button', { name: 'Customer' }));
-  expect(screen.getByLabelText('id')).toHaveValue('my-place');
+  expect(screen.getByLabelText('Id')).toHaveValue('my-place');
   expect(roles.getAllByRole('button', { pressed: true })).toHaveLength(1);
-  fireEvent.change(screen.getByLabelText('id'), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText('Id'), { target: { value: '' } });
   expect(screen.getByRole('alert')).toHaveTextContent('Enter a unique id');
   expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
 });
@@ -92,13 +92,14 @@ it('keeps the current picker mounted after a click and follows typed coordinates
   const { api } = setup({ id: 'kitchen', role: 'kitchen', position: [100, 0, 10], preparation_s: 3 }, en, {
     project_detail: { region: { extract: 'test', bounds: [121, 31, 122, 32], alt: 0, level_height_m: 3.5 }, scene: { origin: { lat: 31.5, lon: 121.5, alt: 0 } } },
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Pick on map' }));
+  expect(screen.getByTestId('wb-place-picker')).toBeTruthy();
+  expect(screen.getByText('Click the map to place it')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Map click' }));
-  expect(screen.getByLabelText('east (m)')).toHaveValue('80.0');
-  expect(screen.getByLabelText('north (m)')).toHaveValue('-25.0');
-  expect(screen.getByLabelText('up (m)')).toHaveValue('10');
+  expect(screen.getByLabelText('East (m)')).toHaveValue('80.0');
+  expect(screen.getByLabelText('North (m)')).toHaveValue('-25.0');
+  expect(screen.getByLabelText('Height (m)')).toHaveValue('10');
   expect(screen.getByLabelText('Map marker')).toHaveTextContent('[80,-25]');
-  fireEvent.change(screen.getByLabelText('east (m)'), { target: { value: '90' } });
+  fireEvent.change(screen.getByLabelText('East (m)'), { target: { value: '90' } });
   expect(screen.getByLabelText('Map marker')).toHaveTextContent('[90,-25]');
   fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
   await screen.findByRole('button', { name: 'Apply' });

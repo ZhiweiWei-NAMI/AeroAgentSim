@@ -14,6 +14,7 @@ from typing import Any
 from aeroagentsim.services.narratives import TASK_NOUN, TASK_NOUN_ZH, _chinese_label
 
 from .operations import PLACE_TYPES, ROLES
+from .diff_display import enrich_diff
 
 SECOND = 1_000_000_000
 RULE_LABELS = {
@@ -442,13 +443,13 @@ def diff(before: dict, after: dict) -> dict:
         old = {r["id"]: r for r in before.get(section, [])}
         new = {r["id"]: r for r in after.get(section, [])}
         for identity in sorted(new.keys() - old.keys()):
-            result["added"].append({"kind": kind, "id": identity, "label": new[identity]["label"], **({"label_zh": new[identity]["label_zh"]} if "label_zh" in new[identity] else {})})
+            result["added"].append({"kind": kind, "id": identity, "label": new[identity].get("label", identity), **({"label_zh": new[identity]["label_zh"]} if "label_zh" in new[identity] else {})})
         for identity in sorted(old.keys() - new.keys()):
-            result["removed"].append({"kind": kind, "id": identity, "label": old[identity]["label"], **({"label_zh": old[identity]["label_zh"]} if "label_zh" in old[identity] else {})})
+            result["removed"].append({"kind": kind, "id": identity, "label": old[identity].get("label", identity), **({"label_zh": old[identity]["label_zh"]} if "label_zh" in old[identity] else {})})
         for identity in sorted(old.keys() & new.keys()):
             fields = [{"name": k, "before": old[identity].get(k), "after": new[identity].get(k)} for k in sorted(old[identity].keys() | new[identity].keys()) if old[identity].get(k) != new[identity].get(k)]
             if fields:
-                result["changed"].append({"kind": kind, "id": identity, "label": new[identity]["label"], **({"label_zh": new[identity]["label_zh"]} if "label_zh" in new[identity] else {}), "fields": fields})
+                result["changed"].append({"kind": kind, "id": identity, "label": new[identity].get("label", identity), **({"label_zh": new[identity]["label_zh"]} if "label_zh" in new[identity] else {}), "fields": fields})
     for section in ("title", "city", "duration_s", "run_mode", "environment", "algorithms", "cooperation", "controls", "origin"):
         old_value, new_value = before.get(section), after.get(section)
         if old_value == new_value:
@@ -469,7 +470,7 @@ def diff(before: dict, after: dict) -> dict:
     result["entities"]["added"] = sorted(new_ids - old_ids)
     result["entities"]["removed"] = sorted(old_ids - new_ids)
     result["entities"]["changed"] = sorted(identity for identity in old_ids & new_ids if before.get("entity_facts", {}).get(identity) != after.get("entity_facts", {}).get(identity))
-    return result
+    return enrich_diff(result)
 
 
 def _precheck(ok: bool, en: str, zh: str) -> dict:

@@ -11,6 +11,9 @@
 .wb-region-meta { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; font-size: 12px; margin: 0; }
 .wb-region-meta dt { color: var(--wb-muted); white-space: nowrap; }
 .wb-region-meta dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.wb-region-details summary { cursor: pointer; font-size: 12px; color: var(--wb-muted); padding: 2px 0; }
+.wb-region-details[open] summary { margin-bottom: 4px; }
+.wb-region-details .wb-region-meta { margin: 0 0 4px; }
 .wb-region-diag { margin: 0; padding-left: 16px; color: var(--wb-muted); font-size: 11.5px; }
 .wb-region-warn { display: flex; gap: 6px; align-items: flex-start; padding: 6px 8px; border-radius: 8px; background: rgba(232,163,23,.12); border: 1px solid rgba(232,163,23,.35); color: #7a5600; font-size: 12px; margin: 0; }
 .wb-region-confirm { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--wb-ink); }

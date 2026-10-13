@@ -14,7 +14,7 @@ export function ComponentsSection({ api, project, draft, edit, focus, zh, L, onP
   const installOperations = useMemo(() => [operation('add_lowalt_components', {})], []);
   const opProps = { api, project, onProject, saveDraft, zh, goTo };
   return <div className="wb-form-section">
-    <p className="hint">{L('Choose the engines that drive motion, tasks, energy and weather.', '配置驱动运动、任务、能耗与天气的引擎。')}</p>
+    <p className="hint">{L('Engines that move drones, run tasks, use energy and make weather.', '驱动飞行、任务、能耗与天气的引擎。')}</p>
     {!engineOf(draft, 'lowalt_tasks') && <div className="wb-empty" data-testid="wb-lowalt-missing">
       <strong>{L('Start with standard low-altitude components', '添加标准低空组件')}</strong>
       <p className="hint">{L('Adds the wind engine, task engine and execution components a drone scene needs. Review the changes before applying.', '添加无人机场景所需的风场引擎、任务引擎与执行组件，应用前请核对变更。')}</p>

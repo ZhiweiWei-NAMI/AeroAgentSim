@@ -40,6 +40,26 @@
 .wb-project { display: flex; flex-direction: column; min-width: 0; max-width: 300px; }
 .wb-project button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 650; font-size: 14px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wb-project small { color: #9fb2c8; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Shared form system (Configure panel) */
+.wb-form-field { display: grid; gap: 4px; min-width: 0; }
+.wb-form-field > .wb-label, .wb-form-field > label > .wb-label { font-size: 12px; font-weight: 600; color: var(--wb-ink); letter-spacing: .01em; }
+.wb-form-field input:not([type=checkbox]):not([type=radio]), .wb-form-field select { height: 32px; padding: 0 10px; border: 1px solid var(--wb-line); border-radius: 8px; background: rgba(255,255,255,.9); font: inherit; font-size: 13px; color: var(--wb-ink); width: 100%; min-width: 0; box-sizing: border-box; }
+.wb-form-field input:focus-visible, .wb-form-field select:focus-visible { outline: 2px solid rgba(31,122,224,.35); outline-offset: 1px; border-color: var(--wb-accent); }
+.wb-form-field input::placeholder { color: rgba(91,107,125,.65); font-style: italic; }
+.wb-form-field .wb-help { font-size: 12px; color: var(--wb-muted); }
+.wb-form-field .wb-field-error { font-size: 12px; color: var(--wb-bad); }
+.wb-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px 12px; align-items: start; }
+.wb-form-card { border: 1px solid var(--wb-line); border-radius: 12px; background: rgba(255,255,255,.55); padding: 12px 14px; display: grid; gap: 12px; margin: 0; min-width: 0; }
+.wb-form-card > .wb-form-card-title { font-size: 13px; font-weight: 650; color: var(--wb-ink); margin: 0; padding: 0; }
+.wb-form-card > .wb-form-card-sub { font-size: 12px; color: var(--wb-muted); margin-top: -8px; }
+.wb-form-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.wb-form-prerequisite { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: #9a6a00; background: rgba(232,163,23,.10); border: 1px solid rgba(232,163,23,.28); border-radius: 8px; padding: 6px 10px; }
+.wb-choice-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.wb-choice { all: unset; cursor: pointer; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--wb-line); color: var(--wb-ink); background: rgba(255,255,255,.8); transition: background 120ms, border-color 120ms, color 120ms; }
+.wb-choice:hover { border-color: var(--wb-accent); }
+.wb-choice[aria-pressed=true] { background: var(--wb-accent); border-color: var(--wb-accent); color: #fff; }
+.wb-choice:focus-visible { outline: 2px solid rgba(31,122,224,.35); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) { .wb-choice { transition: none; } }
 .wb-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 999px; font-size: 12px; white-space: nowrap;
   background: rgba(255,255,255,.08); border: 1px solid var(--wb-night-line); color: #dce6f2; }
 .wb-chip.is-dirty { color: #ffd88a; border-color: rgba(232,163,23,.5); }
@@ -374,8 +394,8 @@
   background: rgba(250,252,255,.88); color: var(--wb-ink, #1c2733); font-size: 12px; line-height: 1.4;
   backdrop-filter: blur(6px); box-shadow: 0 1px 4px rgba(11,19,31,.14); transition: opacity .18s; }
 .scene-preview-plane-note strong { color: var(--wb-ink, #1c2733); font-size: 12px; }
-.scene-preview-no-objects { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--wb-dock, 92px) + 64px); padding: 5px 12px; border-radius: 999px;
-  background: rgba(11,19,31,.72); color: #e7eef7; font-size: 12px; pointer-events: none; white-space: nowrap; }
+.scene-preview-no-objects { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--wb-dock, 92px) + 64px); padding: 4px 8px; border-radius: 6px;
+  background: rgba(250,252,255,.88); border: 1px solid var(--wb-line); color: var(--wb-ink); font-size: 11px; pointer-events: none; white-space: nowrap; backdrop-filter: blur(6px); }
 
 /* T3-006: inspector leads with operating state; everything else is collapsed. */
 .wb-operating { margin: 0 0 10px; padding: 8px 10px; border: 1px solid var(--wb-line); border-radius: 10px; background: rgba(255,255,255,.62); }

@@ -113,6 +113,7 @@ describe('RegionBlock preview and apply', () => {
     expect(request).toHaveBeenCalledWith('/v1/studio/workspaces/w1/region', { body: { ...previewBody, dry_run: true } });
     expect(screen.getByText(/222\.1 m/)).toBeTruthy();
     expect(screen.getByText(/marker-1/)).toBeTruthy();
+    expect(screen.getByText('1 building has no height data — shown as footprints')).toBeTruthy();
     expect(screen.getByText(/road network becomes stale and must be regenerated/)).toBeVisible();
     const apply = screen.getByRole('button', { name: 'Apply region' });
     expect(apply).toBeDisabled(); // shift > 0 without acknowledgement
@@ -329,7 +330,9 @@ describe('round 2 Region form and review regressions', () => {
     expect(first.lng).toBeCloseTo(WGS_RINGS[0][0][0], 10);
     expect(first.lat).toBeCloseTo(WGS_RINGS[0][0][1], 10);
     expect(screen.getByText(/Preview truncated/)).toBeVisible();
-    expect(screen.getByText('OSM height; building levels')).toBeVisible();
+    // jsdom does not re-render details on programmatic clicks; assert presence and locale only.
+    expect(screen.getAllByText('OSM height; building levels')[0]).toBeTruthy();
+    expect(screen.getByText('1 building has no height data — shown as footprints')).toBeVisible();
     expect(screen.queryByText(/OSM 高度；建筑层数/)).toBeNull();
   });
 

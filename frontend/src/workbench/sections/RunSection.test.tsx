@@ -26,7 +26,7 @@ const api = { save } as unknown as WorkbenchApi;
 const props = { api, studioApi: {} as never, project, edit, zh: false, locale: 'en-US' as const, L, issues: [], onProject, saveDraft, reportValidity: vi.fn(), replaceDraft: vi.fn(), draft };
 const element = (override: Partial<typeof props> = {}) => <I18nProvider><RunSection {...props} {...override} /></I18nProvider>;
 const durationForm = () => screen.getByLabelText('Duration (s)').closest('fieldset') as HTMLElement;
-const settingsForm = () => screen.getByLabelText('Random seed').closest('fieldset') as HTMLElement;
+const settingsForm = () => screen.getByLabelText('Random seed').closest('fieldset') as HTMLElement; // same card: Run timing
 beforeEach(() => {
   window.localStorage.setItem('aeroagentsim.locale', 'en-US');
   edit.mockClear(); onProject.mockClear(); previewOperations.mockClear(); applyOperations.mockClear(); save.mockClear(); saveDraft.mockClear();
@@ -46,7 +46,7 @@ it('prefills duration, step and seed in seconds and hides raw settings in Advanc
 it('keeps duration Confirm after an identical parent rerender and marks an actual edit stale (P0)', async () => {
   const view = render(element());
   fireEvent.change(screen.getByLabelText('Duration (s)'), { target: { value: '480' } });
-  fireEvent.click(within(durationForm()).getByRole('button', { name: 'Preview' }));
+  fireEvent.click(within(durationForm()).getByRole('button', { name: 'Preview duration' }));
   await within(durationForm()).findByRole('button', { name: 'Confirm' });
   view.rerender(element({ draft: structuredClone(draft), project: { ...project } }));
   expect(within(durationForm()).getByRole('button', { name: 'Confirm' })).toBeEnabled();
@@ -69,7 +69,7 @@ it('preserves fractional duration and step text while typing (T4-R2-003 numeric 
     fireEvent.change(screen.getByLabelText(label), { target: { value } });
     expect(screen.getByLabelText(label)).toHaveValue(value);
   }
-  fireEvent.click(within(durationForm()).getByRole('button', { name: 'Preview' }));
+  fireEvent.click(within(durationForm()).getByRole('button', { name: 'Preview duration' }));
   await within(durationForm()).findByRole('button', { name: 'Confirm' });
   expect(previewOperations.mock.calls[0][2][0].params.seconds).toBe(1.5);
 });
@@ -78,7 +78,7 @@ it('reviews step and seed together and saves the confirmed server revision, reta
   const view = render(element());
   fireEvent.change(screen.getByLabelText('Step (s)'), { target: { value: '2.5' } });
   fireEvent.change(screen.getByLabelText('Random seed'), { target: { value: '7' } });
-  fireEvent.click(within(settingsForm()).getByRole('button', { name: 'Preview' }));
+  fireEvent.click(within(settingsForm()).getByRole('button', { name: 'Preview step & seed' }));
   await within(settingsForm()).findByRole('button', { name: 'Confirm' });
   expect(save).not.toHaveBeenCalled();
   view.rerender(element({ project: { ...project }, draft: structuredClone(draft) }));
@@ -92,7 +92,7 @@ it('reviews step and seed together and saves the confirmed server revision, reta
 
 it('expires a step/seed review on a real value or base revision change', async () => {
   const view = render(element());
-  fireEvent.click(within(settingsForm()).getByRole('button', { name: 'Preview' }));
+  fireEvent.click(within(settingsForm()).getByRole('button', { name: 'Preview step & seed' }));
   await within(settingsForm()).findByRole('button', { name: 'Confirm' });
   fireEvent.change(screen.getByLabelText('Random seed'), { target: { value: '43' } });
   expect(within(settingsForm()).getByRole('status')).toHaveTextContent('Out of date');
@@ -108,6 +108,7 @@ it.each([['Duration (s)', '0'], ['Duration (s)', ''], ['Step (s)', 'abc'], ['Ste
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
   const form = label === 'Duration (s)' ? durationForm() : settingsForm();
   expect(within(form).getByRole('alert')).toBeTruthy();
-  expect(within(form).getByRole('button', { name: 'Preview' })).toBeDisabled();
+  const preview = label === 'Duration (s)' ? 'Preview duration' : 'Preview step & seed';
+  expect(within(form).getByRole('button', { name: preview })).toBeDisabled();
   expect(save).not.toHaveBeenCalled(); expect(previewOperations).not.toHaveBeenCalled();
 });

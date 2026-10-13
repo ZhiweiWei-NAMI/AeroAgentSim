@@ -13,6 +13,16 @@ import { validWgs84Bounds } from '../../geo';
 
 export { originShiftM } from './model';
 
+
+/** One-line summary of buildings without height data, from the preview geometry. */
+function heightSummaryFromPreview(preview: RegionPreview['preview']): string | undefined {
+  const features = preview.geometry?.buildings.features.filter(feature => feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon') ?? [];
+  const missing = features.filter(feature => typeof feature.properties?.height_source !== 'string').length;
+  return missing > 0
+    ? `${missing} building${missing === 1 ? ' has' : 's have'} no height data — shown as footprints`
+    : undefined;
+}
+
 /** Number formatter for review figures. */
 export const m = (value: number, digits = 1) => `${value.toFixed(digits)} m`;
 export const coord = (value: number) => value.toFixed(6).replace(/\.?0+$/, '');
@@ -195,15 +205,22 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
       <h4>{L('Applied region', '已应用区域')} <span className="wb-tag ok">{L('saved', '已保存')}</span></h4>
       <dl className="wb-region-meta">
         <dt>{L('Source', '数据源')}</dt><dd className="wb-mono">{compiled.region.extract}{compiled.scene?.attribution ? ` · ${compiled.scene.attribution}` : ''}</dd>
-        <dt>{L('Bounds (WGS84)', '范围（WGS84）')}</dt><dd className="wb-mono">{compiled.region.bounds.map(coord).join(', ')}</dd>
-        {compiled.scene?.origin && <><dt>{L('ENU origin', 'ENU 原点')}</dt><dd className="wb-mono">{coord(compiled.scene.origin.lat)}, {coord(compiled.scene.origin.lon)} · {L('altitude', '海拔')} {m(compiled.scene.origin.alt, 0)}</dd></>}
-        {compiled.scene?.ground && <><dt>{L('Ground extent', '地面范围')}</dt><dd className="wb-mono">{m(compiled.scene.ground.width_m)} × {m(compiled.scene.ground.depth_m)}</dd></>}
+        <dt>{L('Area (W, S, E, N)', '范围（西、南、东、北）')}</dt><dd className="wb-mono">{compiled.region.bounds.map(value => value.toFixed(5)).join(', ')}</dd>
         {compiled.scene?.roads && <><dt>{L('Roads', '道路')}</dt><dd>{compiled.scene.roads.length}</dd></>}
+        {compiled.scene?.attribution && <><dt>{L('Attribution', '来源署名')}</dt><dd>{compiled.scene.attribution}</dd></>}
       </dl>
-      {heights && <p className="hint">{L(
-        `Heights: ${heights.sourced} from OSM height, ${heights.estimated} estimated from building:levels × level height, ${heights.missing} kept as 2D footprints without a volume.`,
-        `高度：${heights.sourced} 个来自 OSM 高度，${heights.estimated} 个按建筑层数 × 层高估算，${heights.missing} 个保留为二维轮廓。`)}</p>}
-      {!!compiled.scene?.diagnostics?.length && <ul className="wb-region-diag">{compiled.scene.diagnostics.map((line, index) => <li key={index} className="wb-mono">{serverText(line, L)}</li>)}</ul>}
+      {(compiled.scene?.origin || compiled.scene?.ground || heights || !!compiled.scene?.diagnostics?.length) && <details className="wb-region-details">
+        <summary>{L('Details', '详情')}</summary>
+        {compiled.scene?.origin && <dl className="wb-region-meta">
+          <dt>{L('Height source', '高度来源')}</dt><dd>{L('per-building OSM heights and estimates', '逐栋 OSM 高度与估算')}</dd>
+          {compiled.scene?.ground && <><dt>{L('ENU origin', 'ENU 原点')}</dt><dd className="wb-mono">{coord(compiled.scene.origin.lat)}, {coord(compiled.scene.origin.lon)} · {L('altitude', '海拔')} {m(compiled.scene.origin.alt, 0)}</dd></>}
+          {compiled.scene?.ground && <><dt>{L('Ground extent', '地面范围')}</dt><dd className="wb-mono">{m(compiled.scene.ground.width_m)} × {m(compiled.scene.ground.depth_m)}</dd></>}
+        </dl>}
+        {heights && <p className="hint">{L(
+          `Heights: ${heights.sourced} from OSM height, ${heights.estimated} estimated from building:levels × level height, ${heights.missing} kept as 2D footprints without a volume.`,
+          `高度：${heights.sourced} 个来自 OSM 高度，${heights.estimated} 个按建筑层数 × 层高估算，${heights.missing} 个保留为二维轮廓。`)}</p>}
+        {!!compiled.scene?.diagnostics?.length && <ul className="wb-region-diag">{compiled.scene.diagnostics.map((line, index) => <li key={index} className="wb-mono">{serverText(line, L)}</li>)}</ul>}
+      </details>}
     </div>}
 
     <div className="wb-region-card" data-testid="network-summary">
@@ -285,20 +302,26 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
       <h4>{L('Review before applying', '应用前评审')}{stale && <span className="wb-tag warn">{L('Out of date — preview again', '已失效——请重新预览')}</span>}</h4>
       <dl className="wb-region-meta">
         <dt>{L('Extract', '提取数据')}</dt><dd className="wb-mono">{preview.extract}</dd>
-        <dt>{L('Bounds (WGS84)', '范围（WGS84）')}</dt><dd className="wb-mono">{preview.bounds.map(coord).join(', ')}</dd>
-        <dt>{L('ENU origin', 'ENU 原点')}</dt><dd className="wb-mono">{coord(preview.origin.lat)}, {coord(preview.origin.lon)} · {L('altitude', '海拔')} {m(preview.origin.alt, 0)}</dd>
+        <dt>{L('Area (W, S, E, N)', '范围（西、南、东、北）')}</dt><dd className="wb-mono">{preview.bounds.map(value => value.toFixed(5)).join(', ')}</dd>
         <dt>{L('Buildings', '建筑物')}</dt><dd className="wb-mono">{preview.buildings}</dd>
-        <dt>{L('Roads', '道路')}</dt><dd className="wb-mono">{preview.roads}</dd>
+        <dt>{L('Roads', '道路')}</dt><dd>{preview.roads}</dd>
         <dt>{L('Attribution', '来源署名')}</dt><dd>{preview.attribution || L('unknown', '未知')}</dd>
-        <dt>{L('Height source', '高度来源')}</dt><dd className="wb-mono">{preview.height_source ? serverText(preview.height_source, L) : L('Not provided', '未提供')}</dd>
       </dl>
-      {!!preview.previous_origin && <p className="hint">{L(
-        `Origin moves ${preview.origin_shift_m == null ? L('by an unknown distance', '未知距离') : m(preview.origin_shift_m)}; affected objects ${preview.affected_entities.length ? preview.affected_entities.join(', ') : L('none', '无')} keep their ENU coordinates, so their geographic position changes with the origin.`,
-        `原点移动 ${preview.origin_shift_m == null ? '未知距离' : m(preview.origin_shift_m)}；受影响对象 ${preview.affected_entities.length ? preview.affected_entities.join('、') : '无'} 的 ENU 坐标不变，其地理位置随原点改变。`)}</p>}
+      {(preview.origin || preview.height_source || !!preview.previous_origin || !!preview.diagnostics.length) && <details className="wb-region-details">
+        <summary>{L('Details', '详情')}</summary>
+        <dl className="wb-region-meta">
+          <dt>{L('ENU origin', 'ENU 原点')}</dt><dd className="wb-mono">{coord(preview.origin.lat)}, {coord(preview.origin.lon)} · {L('altitude', '海拔')} {m(preview.origin.alt, 0)}</dd>
+          <dt>{L('Height source', '高度来源')}</dt><dd className="wb-mono">{preview.height_source ? serverText(preview.height_source, L) : L('Not provided', '未提供')}</dd>
+        </dl>
+        {!!preview.previous_origin && <p className="hint">{L(
+          `Origin moves ${preview.origin_shift_m == null ? L('by an unknown distance', '未知距离') : m(preview.origin_shift_m)}; affected objects ${preview.affected_entities.length ? preview.affected_entities.join(', ') : L('none', '无')} keep their ENU coordinates, so their geographic position changes with the origin.`,
+          `原点移动 ${preview.origin_shift_m == null ? '未知距离' : m(preview.origin_shift_m)}；受影响对象 ${preview.affected_entities.length ? preview.affected_entities.join('、') : '无'} 的 ENU 坐标不变，其地理位置随原点改变。`)}</p>}
+        {!!preview.diagnostics.length && <ul className="wb-region-diag">{preview.diagnostics.map((line, index) => <li key={index} className="wb-mono">{serverText(line, L)}</li>)}</ul>}
+      </details>}
+      {heightSummaryFromPreview(preview) && <p className="hint" role="status">{heightSummaryFromPreview(preview)}</p>}
       {preview.network_invalidated && <p className="wb-region-warn" role="status">⚠ {L('Applying replaces the region, so the previously generated road network becomes stale and must be regenerated.', '应用会替换区域，已生成的路网将失效，需要重新生成。')}</p>}
       {preview.city_conflict && <p className="wb-region-warn" role="status">⚠ {L('A fixed city is also configured. The run must use one source; clear the city below or skip the region.', '同时配置了固定城市。运行只能使用一个数据源：请在下方清除城市，或放弃该区域。')}</p>}
       {!preview.geometry && <p className="wb-region-warn" role="status">{L('The preview contains no building or road geometry; update the server to review the map before applying.', '预览未提供建筑或道路几何；请更新服务器以便在应用前查看地图。')}</p>}
-      {!!preview.diagnostics.length && <ul className="wb-region-diag">{preview.diagnostics.map((line, index) => <li key={index} className="wb-mono">{serverText(line, L)}</li>)}</ul>}
       {needsConfirm && <label className="wb-region-confirm">
         <input type="checkbox" checked={acknowledged} onChange={event => setAcknowledged(event.target.checked)} />
         {L('I understand the origin shift, affected objects and stale road network described above.', '我已理解上述原点位移、受影响对象与失效路网。')}

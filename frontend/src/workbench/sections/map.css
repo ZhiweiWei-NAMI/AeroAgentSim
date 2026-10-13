@@ -26,19 +26,22 @@
   color: var(--wb-muted, #5b6b7d); padding: 0 6px; }
 .wb-map-leaflet .leaflet-control-attribution a { color: var(--wb-muted, #5b6b7d); }
 
-/* Toolbar row inside the map frame. */
-.wb-map-toolbar { position: absolute; inset: 0 0 auto 0; display: flex; align-items: center; gap: 6px;
-  padding: 6px 8px; pointer-events: none; z-index: 500; }
+/* Toolbar row inside the map frame: a compact glass pill row pinned to the top-left. */
+.wb-map-toolbar { position: absolute; top: 6px; left: 6px; max-width: calc(100% - 44px); display: flex;
+  align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; background: rgba(255,255,255,.9);
+  border: 1px solid var(--wb-line, rgba(20,32,46,.12)); pointer-events: none; z-index: 500;
+  overflow: visible; flex-wrap: wrap; }
 .wb-map-toolbar > * { pointer-events: auto; }
 .wb-map-toolbar .wb-map-spacer { flex: 1; pointer-events: none; }
+.wb-map-toolbar .wb-map-chip, .wb-map-toolbar .wb-btn { font-size: 11px; border-radius: 6px; }
 .wb-map-expand { position: absolute; top: 6px; right: 6px; z-index: 520; width: 26px; padding: 0;
   font-size: 13px; line-height: 1; }
 
 /* Chips (size, hints, offline notice) — glass tags in the workbench language. */
 .wb-map-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; line-height: 1.4;
-  padding: 2px 8px; border-radius: 999px; background: var(--wb-glass-strong, rgba(250, 252, 255, .94));
+  padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,.9);
   border: 1px solid var(--wb-line, rgba(20, 32, 46, .12)); color: var(--wb-ink, #14202e);
-  max-width: 100%; }
+  max-width: 100%; white-space: nowrap; }
 .wb-map-chip.warn { border-color: rgba(232, 163, 23, .45); background: rgba(232, 163, 23, .12); color: #7a5600; }
 .wb-map-chip.live { border-color: rgba(31, 174, 107, .4); background: rgba(31, 174, 107, .12); color: #138152; }
 

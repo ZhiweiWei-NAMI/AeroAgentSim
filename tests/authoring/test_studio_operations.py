@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 
 import pytest
@@ -11,12 +12,14 @@ from fastapi.testclient import TestClient
 
 from aeroagentsim.assistant.compiler import CompileContext, _rebase, compile_plan
 from aeroagentsim.assistant.operations import operation_catalogue, validate_operation
+from aeroagentsim.assistant.scene import diff
 from aeroagentsim.authoring.api import create_router
 from aeroagentsim.authoring.scene import extract_bounds
 from aeroagentsim.authoring.templates import TemplateRegistry
 from aeroagentsim.authoring.workspace import WorkspaceStore
 from aeroagentsim.platform.simulation import Simulation
 from aeroagentsim.scenario import load_scenario
+from aeroagentsim.services.algorithm_catalog import discover_algorithm_catalog
 
 SOURCE = Path(__file__).parent / "fixtures/wujiaochang.osm.xml"
 
@@ -323,4 +326,139 @@ def test_fixed_city_capability_comes_from_resolved_city_assets(api) -> None:
     response = client.post(f"/v1/studio/workspaces/{draft['id']}", json={"scenario": scenario})
     assert response.status_code == 200
     assert client.get(f"/v1/studio/workspaces/{draft['id']}").json()["capabilities"]["city"] is True
+
+
+def test_operation_preview_fields_have_readable_labels_values_and_units(api) -> None:
+    store, _, client = api
+    draft = store.create("Readable review")
+    path = f"/v1/studio/workspaces/{draft['id']}"
+    baseline = client.post(path + "/operations", json={"operations": [
+        op("pad", "add_place", id="pad", role="charging_pad", at="center", label="West charger", label_zh="西侧充电站", power_w=5000),
+        op("unused", "add_place", id="unused", role="depot", at=[20, 0, 0]),
+        op("wind", "set_wind", speed_mps=2),
+        op("duration", "set_duration", seconds=300),
+        op("algorithm", "set_algorithm", slot="allocation", value="nearest"),
+        op("reserve", "set_rule", rule="battery_reserve_pct", value=30),
+    ]})
+    assert baseline.status_code == 200, baseline.text
+    saved = store.get(draft["id"])
+    before_files = files(store.root)
+    response = client.post(path + "/operations", json={"revision": saved["revision"], "dry_run": True, "operations": [
+        op("wind", "set_wind", speed_mps=5.5),
+        op("duration", "set_duration", seconds=900),
+        op("algorithm", "set_algorithm", slot="allocation", value="auction"),
+        op("reserve", "set_rule", rule="battery_reserve_pct", value=35),
+        op("move", "update_place", id="pad", at=[-20, 10, 0], capacity=3, power_w=7500),
+        op("add", "add_place", id="new", role="depot", at=[30, 0, 0], label="East depot", label_zh="东侧仓库"),
+        op("remove", "remove_place", id="unused"),
+    ]})
+    assert response.status_code == 200, response.text
+    difference = response.json()["diff"]
+    changed = {row["id"]: {field["name"]: field for field in row["fields"]} for row in difference["changed"]}
+    wind = changed["environment"]["wind.speed_mps"]
+    assert wind["before"] == 2 and wind["after"] == 5.5
+    assert wind["label"] == "Wind speed (m/s)" and wind["label_zh"] == "风速（米/秒）"
+    assert wind["before_text"] == "2 m/s" and wind["after_text"] == "5.5 m/s"
+    assert wind["after_text_zh"] == "5.5 米/秒"
+    duration = changed["duration_s"]["duration_s"]
+    assert duration["before_text"] == "300 s" and duration["after_text"] == "900 s"
+    allocation = changed["algorithms"]["allocation"]
+    catalog = {row["id"]: row for row in discover_algorithm_catalog()["allocation"]}
+    assert allocation["label"] == "Allocation algorithm" and allocation["label_zh"] == "分配算法"
+    assert allocation["before_text"] == catalog["nearest"]["label"]
+    assert allocation["after_text"] == catalog["auction"]["label"]
+    assert allocation["after_text_zh"] == catalog["auction"]["label_zh"]
+    assert changed["battery_reserve_pct"]["value"]["after_text"] == "35 %"
+    assert changed["pad"]["position"]["after_text"] == "(-20, 10, 0) m"
+    assert "7500 W" in changed["pad"]["details"]["after_text"]
+    for group in difference.values():
+        for row in group:
+            assert row["label"] and row["label_zh"] and row["kind_label"] and row["kind_label_zh"]
+            for field in row.get("fields", []):
+                assert all(isinstance(field[key], str) and field[key] for key in ("label", "label_zh", "before_text", "after_text"))
+    assert next(r for r in difference["added"] if r["id"] == "new")["kind_label_zh"] == "设施"
+    assert next(r for r in difference["removed"] if r["id"] == "unused")["kind_label"] == "Facility"
+    assert files(store.root) == before_files and store.get(draft["id"]) == saved
+
+
+def test_readable_diff_preserves_null_zero_false_and_uses_ids_for_missing_labels() -> None:
+    difference = diff(
+        {"environment": {"wind": {"speed_mps": None}}, "rules": [{"id": "medical_preemption", "value": None}], "places": [{"id": "old"}], "origin": {"lon": 121.4794284}},
+        {"environment": {"wind": {"speed_mps": 0}}, "rules": [{"id": "medical_preemption", "value": False}], "places": [{"id": "new"}], "origin": {"lon": 121.4845353}},
+    )
+    for group, identity in (("added", "new"), ("removed", "old")):
+        row = next(r for r in difference[group] if r["id"] == identity)
+        assert row["label"] == row["label_zh"] == identity
+        assert row["kind"] == "place" and row["kind_label"] == "Facility" and row["kind_label_zh"] == "设施"
+    fields = {r["id"]: r["fields"][0] for r in difference["changed"]}
+    wind = fields["environment"]
+    assert wind["before"] is None and wind["after"] == 0
+    assert wind["before_text"] == "—" and wind["after_text"] == "0 m/s"
+    preemption = fields["medical_preemption"]
+    assert preemption["before"] is None and preemption["after"] is False
+    assert preemption["before_text"] == "—" and preemption["after_text"] == "Off"
+    assert preemption["after_text_zh"] == "关闭"
+    assert fields["origin"]["before_text"] == "121.4794284 °" and fields["origin"]["after_text"] == "121.4845353 °"
+
+
+def test_algorithm_diff_uses_slot_catalog_for_plugin_names_and_config_units(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
+
+    def catalog():
+        calls.append(True)
+        return {"allocation": [
+            {"id": "nearest", "label": "Installed nearest", "label_zh": "已安装就近分配"},
+            {"id": "auction", "label": "Installed auction", "label_zh": "已安装竞价分配"},
+        ]}
+
+    monkeypatch.setattr("aeroagentsim.services.algorithm_catalog.discover_algorithm_catalog", catalog)
+    difference = diff({"algorithms": {"allocation": {"plugin": "nearest", "config": {"distance_m": 2}}}},
+                      {"algorithms": {"allocation": {"plugin": "auction", "config": {"distance_m": 4}}}})
+    fields = {f["name"]: f for f in difference["changed"][0]["fields"]}
+    plugin = fields["allocation.plugin"]
+    assert plugin["label"] == "Allocation algorithm" and plugin["label_zh"] == "分配算法"
+    assert plugin["before_text"] == "Installed nearest" and plugin["after_text"] == "Installed auction"
+    assert plugin["after_text_zh"] == "已安装竞价分配"
+    assert fields["allocation.config.distance_m"]["after_text"] == "4 m"
+    assert len(calls) == 1
+
+
+def test_assistant_region_append_and_component_rows_get_readable_metadata(api, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    store, templates, _ = api
+    monkeypatch.setenv("AEROAGENTSIM_OSM_EXTRACTS", json.dumps({"fixture": str(SOURCE.resolve())}))
+    draft = store.create("Readable geographic preview")
+    ctx = CompileContext(store, templates, None, allow_region=True)
+    result = compile_plan(ctx, {"workspace": draft["id"]}, [
+        op("region", "set_region", extract="fixture", bounds=extract_bounds(SOURCE), alt=20, level_height_m=3.5),
+        op("pad", "add_place", id="pad", role="charging_pad", at="center"),
+    ], tmp_path / "plan")
+    assert result.ok, result.errors
+    component = next(r for r in result.diff_base["added"] if r["kind"] == "components")
+    assert component["kind_label"] == "Execution components" and component["kind_label_zh"] == "执行组件"
+    region = next(r for r in result.diff_base["changed"] if r["id"] == "region")
+    fields = {f["name"]: f for f in region["fields"]}
+    assert fields["bounds"]["label"] == "Region bounds (°)" and fields["bounds"]["before_text"] == "—"
+    assert fields["origin"]["before"] is None and fields["origin"]["before_text"] == "—"
+    assert "Altitude: 20 m" in fields["origin"]["after_text"]
+    preview = json.loads((result.files_dir / "region.plan.json").read_text())["preview"]
+    assert preview["warnings_summary"] == {"missing_height": 1, "other": 1}
+    assert len(preview["diagnostics"]) == 2
+
+
+def test_fleet_removal_dependency_rows_have_labels_and_readable_kinds(api) -> None:
+    store, _, client = api
+    draft = store.create("Readable removals")
+    path = f"/v1/studio/workspaces/{draft['id']}"
+    added = client.post(path + "/operations", json={"operations": [
+        op("fleet", "add_fleet", id="logistics", role="parcel_drone", count=2, start="center"),
+    ]})
+    assert added.status_code == 200, added.text
+    response = client.post(path + "/operations", json={"dry_run": True, "operations": [op("remove", "remove_fleet", fleet="logistics")]})
+    assert response.status_code == 200, response.text
+    removed = response.json()["diff"]["removed"]
+    assert any("path" in r for r in removed)
+    for row in removed:
+        assert row["label"] and row["label_zh"] and row["kind_label"] and row["kind_label_zh"]
+        if "path" in row:
+            assert row["label_zh"] == row["id"]
 

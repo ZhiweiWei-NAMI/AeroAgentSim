@@ -65,6 +65,7 @@ def preview(ctx, document: dict, params: dict, files: Path) -> dict:
                          "previous_origin": record["previous_origin"], "network_invalidated": network_invalidated,
                          "buildings": sum(f["geometry"]["type"] in {"Polygon", "MultiPolygon"} for f in scene["geojson"]["features"]),
                          "roads": len(scene["roads"]), "attribution": scene["attribution"], "diagnostics": scene["diagnostics"],
+                         "warnings_summary": scene["warnings_summary"],
                          "geometry": preview_geometry(scene)}
     (files / "region.plan.json").write_text(json.dumps(record, ensure_ascii=False, allow_nan=False))
     document["origin"] = result["scenario"]["origin"]

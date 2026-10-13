@@ -129,7 +129,19 @@ def _read(path: Path) -> tuple[ET.Element, dict[str, Point]]:
 
 
 def extract_bounds(path: Path) -> Bounds:
-    _, nodes = _read(path)
+    root, nodes = _read(path)
+    return _coverage(root, nodes)
+
+
+def _coverage(root: ET.Element, nodes: dict[str, Point]) -> Bounds:
+    # Map API ways include all their nodes beyond the requested box. Those
+    # nodes preserve topology; they do not declare additional map coverage.
+    declared = root.find("bounds")
+    if declared is not None:
+        try:
+            return _bounds([declared.attrib[key] for key in ("minlon", "minlat", "maxlon", "maxlat")])
+        except KeyError as exc:
+            raise ValueError(f"OSM bounds: missing {exc.args[0]}") from exc
     return _bounds(
         [
             min(p[0] for p in nodes.values()),
@@ -197,20 +209,15 @@ def _selected(
     return selected
 
 
-def _source_bounds(nodes: dict[str, Point], box: Bounds) -> None:
-    extent = [
-        min(p[0] for p in nodes.values()),
-        min(p[1] for p in nodes.values()),
-        max(p[0] for p in nodes.values()),
-        max(p[1] for p in nodes.values()),
-    ]
+def _source_bounds(root: ET.Element, nodes: dict[str, Point], box: Bounds) -> None:
+    extent = _coverage(root, nodes)
     if (
         box[0] < extent[0]
         or box[1] < extent[1]
         or box[2] > extent[2]
         or box[3] > extent[3]
     ):
-        raise ValueError("region bounds: outside local extract's coordinate coverage")
+        raise ValueError("region bounds: outside local extract's coverage")
 
 
 def _rings(parts: list[list[str]], relation: str) -> list[list[str]]:
@@ -302,7 +309,7 @@ def compile_scene(
     if level <= 0:
         raise ValueError("level_height_m: positive explicit assumption required")
     root, nodes = _read(path)
-    _source_bounds(nodes, box)
+    _source_bounds(root, nodes, box)
     lon0, lat0 = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
     east, north = enu_scales({"lat": lat0})
     features: list[dict[str, Any]] = []
@@ -310,6 +317,7 @@ def compile_scene(
     diagnostics = [
         "Intersecting OSM ways are retained whole beyond crop boundaries; ground is the authored planar ENU surface."
     ]
+    missing_height = 0
     geometry: list[
         tuple[ET.Element, list[Point], dict[str, str], list[list[Point]]]
     ] = [(way, points, tags, []) for way, points, tags in _selected(root, nodes, box)]
@@ -367,6 +375,7 @@ def compile_scene(
                     level_height_m=level,
                 )
             else:
+                missing_height += 1
                 diagnostics.append(
                     f"{identifier}: missing height and building:levels; footprint retained without a volume"
                 )
@@ -401,6 +410,7 @@ def compile_scene(
             "depth_m": (box[3] - box[1]) * north,
         },
         "diagnostics": diagnostics,
+        "warnings_summary": {"missing_height": missing_height, "other": len(diagnostics) - missing_height},
         "attribution": "© OpenStreetMap contributors · ODbL",
     }
 
@@ -408,7 +418,7 @@ def compile_scene(
 def crop_osm(path: Path, bounds: Bounds, output: Path) -> None:
     root, nodes = _read(path)
     box = _bounds(bounds)
-    _source_bounds(nodes, box)
+    _source_bounds(root, nodes, box)
     ways = _selected(root, nodes, box)
     relation_ids = {
         entry[0].attrib["studio_id"].split("/")[1]

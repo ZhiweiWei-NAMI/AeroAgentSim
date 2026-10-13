@@ -28,7 +28,7 @@ export function TasksSection({ api, studioApi, project, draft, edit, replaceDraf
   const lowaltMissing = !tasks;
   const opProps = { api, project, onProject, saveDraft, zh, goTo };
   return <>
-    <p className="hint">{L('What work appears and the rules that decide what is allowed: order streams, cooperation, predicates with parameters, and event chains.', '会出现哪些工作，以及决定允许做什么的规则：订单流、协同、带参数的谓词与事件链。')}</p>
+    <p className="hint">{L('Orders, cooperation and rules that drive the work.', '订单、协同与规则——驱动任务的部分。')}</p>
     {lowaltMissing && <div className="wb-empty" data-testid="wb-lowalt-missing">
       {L('This scenario has no low-altitude components (tasks engine, places, fleets), so order streams and cooperation have nothing to attach to.', '该场景没有低空组件（任务引擎、设施、机群），订单流与协同没有可依附的对象。')}
       <OpApply api={api} project={project} onProject={onProject} saveDraft={saveDraft}

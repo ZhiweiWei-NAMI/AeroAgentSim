@@ -88,50 +88,59 @@ function OrdersForm({ draft, stream, identity, existingIds = [], ...props }: Ope
     return [operation(stream ? 'set_orders' : 'add_orders', params)];
   }, [invalid, canonicalJson(fields), !!stream]);
   const picker = (key: 'from' | 'to', label: string, options: string[]) => <label className="wb-form-field">{label}
-    <select className="wb-search" multiple={!!stream} aria-label={label} disabled={!options.length} value={stream ? fields[key] : fields[key][0] ?? ''}
+    <select multiple={!!stream} aria-label={label} disabled={!options.length} value={stream ? fields[key] : fields[key][0] ?? ''}
       onChange={event => set(key, Array.from(event.target.selectedOptions).map(option => option.value).filter(Boolean))}>
       {!stream && <option value="">{L('Pick a facility…', '选择设施…')}</option>}
       {fields[key].filter(id => !options.includes(id)).map(id => <option key={id} value={id}>{id} ({L('unavailable', '不可用')})</option>)}
       {options.map(id => <option key={id} value={id}>{id}</option>)}
     </select>
   </label>;
-  return <div className="wb-form-stack wb-order-add">
+  return <fieldset className="wb-form-card wb-order-add">
+    <legend className="wb-form-card-title">{L(stream ? 'Edit order stream' : 'Add order stream', stream ? '编辑订单流' : '添加订单流')}</legend>
     <label className="wb-form-field">{L('Order stream ID', '订单流标识')}
-      <input className="wb-search" aria-label={L('New order stream ID', '新订单流标识')} readOnly={!!stream} placeholder={L('e.g. parcel-rush', '例如 parcel-rush')} value={fields.id} onChange={event => set('id', event.target.value)} />
+      <input aria-label={L('New order stream ID', '新订单流标识')} readOnly={!!stream} placeholder={L('e.g. parcel-rush', '例如 parcel-rush')} value={fields.id} onChange={event => set('id', event.target.value)} />
       {touched.has('id') && (!fields.id.trim() || idTaken) && <span className="hint wb-field-error" role="alert">{idTaken ? L('This stream ID is already used.', '该订单流标识已被使用。') : L('Required.', '必填。')}</span>}
     </label>
-    <label className="wb-form-field">{L('Kind', '任务类型')}
-      <select className="wb-search" aria-label={L('New order kind', '新订单类型')} value={fields.kind} disabled={!!stream} onChange={event => set('kind', event.target.value)}>
-        {!TASK_KINDS_C11.includes(fields.kind as never) && <option value={fields.kind}>{L('Unsupported kind', '不支持的类型')}</option>}
-        {TASK_KINDS_C11.map(kind => <option key={kind} value={kind}>{taskKindLabel(kind, L)}</option>)}
-      </select>
-    </label>
-    <StagedNumber label={L('Task count', '任务数')} value={fields.count} min={1} max={1000} integer onChange={value => set('count', value)} />
-    {picker('from', L('From facility', '起点设施'), origins)}
-    {picker('to', L('To facility', '终点设施'), places)}
-    {!places.length && <Prerequisite goTo={goTo} section="objects" focus="add-place" action={L('Add place', '添加设施')}>{L('No depot or customer places yet — open Objects → Add place.', '还没有仓库或客户设施——请打开“对象”→“添加设施”。')}</Prerequisite>}
+    <div className="wb-form-grid">
+      <label className="wb-form-field">{L('Kind', '任务类型')}
+        <select aria-label={L('New order kind', '新订单类型')} value={fields.kind} disabled={!!stream} onChange={event => set('kind', event.target.value)}>
+          {!TASK_KINDS_C11.includes(fields.kind as never) && <option value={fields.kind}>{L('Unsupported kind', '不支持的类型')}</option>}
+          {TASK_KINDS_C11.map(kind => <option key={kind} value={kind}>{taskKindLabel(kind, L)}</option>)}
+        </select>
+      </label>
+      <StagedNumber label={L('Task count', '任务数')} value={fields.count} min={1} max={1000} integer onChange={value => set('count', value)} />
+    </div>
+    <div className="wb-form-grid">
+      {picker('from', L('From facility', '起点设施'), origins)}
+      {picker('to', L('To facility', '终点设施'), places)}
+    </div>
+    {!places.length && <Prerequisite goTo={goTo} section="objects" focus="add-place" action={L('Add place', '添加设施')}>{L('No depot or customer places yet', '还没有仓库或客户设施')}</Prerequisite>}
     <label className="wb-form-field">{L('Release schedule', '释放时间表')}
-      <select className="wb-search" aria-label={L('Release mode', '释放模式')} value={fields.mode} onChange={event => set('mode', event.target.value)}>
+      <select aria-label={L('Release mode', '释放模式')} value={fields.mode} onChange={event => set('mode', event.target.value)}>
         {!['scheduled', 'poisson'].includes(fields.mode) && <option value={fields.mode}>{L('Choose a release schedule', '请选择释放时间表')}</option>}
         <option value="poisson">{L('Rate (Poisson)', '按速率（泊松）')}</option><option value="scheduled">{L('Scheduled times', '按时间表')}</option>
       </select>
     </label>
     {fields.mode === 'poisson' ? <>
-      <StagedNumber label={`${L('Rate', '速率')} (1/min)`} value={fields.rate} exclusiveMin={0} onChange={value => set('rate', value)} />
-      <StagedNumber label={`${L('Start', '开始')} (s)`} value={fields.start} min={0} allowEmpty={!!stream} onChange={value => set('start', value)} />
-      <StagedNumber label={`${L('End', '结束')} (s)`} value={fields.end} exclusiveMin={0} allowEmpty={!!stream} onChange={value => set('end', value)} />
+      <div className="wb-form-grid">
+        <StagedNumber label={`${L('Rate', '速率')} (1/min)`} value={fields.rate} exclusiveMin={0} onChange={value => set('rate', value)} />
+        <StagedNumber label={`${L('Start', '开始')} (s)`} value={fields.start} min={0} allowEmpty={!!stream} onChange={value => set('start', value)} />
+        <StagedNumber label={`${L('End', '结束')} (s)`} value={fields.end} exclusiveMin={0} allowEmpty={!!stream} onChange={value => set('end', value)} />
+      </div>
       {windowProblem && (touched.has('start') || touched.has('end')) && <p role="alert" className="hint wb-field-error">{windowProblem}</p>}
       {fields.burst !== '' && <StagedNumber label={L('Burst size', '批量大小')} value={fields.burst} min={1} max={1000} integer onChange={value => set('burst', value)} />}
     </> : fields.mode === 'scheduled' && <label className="wb-form-field">{L('Release times (s, one per task)', '释放时间（秒，每个任务一个）')}
       <textarea className="wb-json" aria-label={L('Release times in seconds, one per line', '释放时间（秒），每行一个')} value={fields.times} onChange={event => set('times', event.target.value)} />
       {timesProblem && touched.has('times') && <span role="alert" className="hint wb-field-error">{timesProblem}</span>}
     </label>}
-    <StagedNumber label={L('Priority', '优先级')} value={fields.priority} min={0} integer allowEmpty onChange={value => set('priority', value)} />
-    <StagedNumber label={`${L('Payload', '载荷')} (kg)`} value={fields.payload} min={0} allowEmpty onChange={value => set('payload', value)} />
+    <div className="wb-form-grid">
+      <StagedNumber label={L('Priority', '优先级')} value={fields.priority} min={0} integer allowEmpty onChange={value => set('priority', value)} />
+      <StagedNumber label={`${L('Payload', '载荷')} (kg)`} value={fields.payload} min={0} allowEmpty onChange={value => set('payload', value)} />
+    </div>
     {fields.kind === 'food' && <StagedNumber label={`${L('Delivery window', '配送时间窗')} (s)`} value={fields.window} exclusiveMin={0} allowEmpty onChange={value => set('window', value)} />}
     <OpApply {...props} operations={operations} missing={missing} label={L('Preview', '预览')} primary small
       onApplied={() => { setChanges({}); setTouched(new Set()); }} />
-  </div>;
+  </fieldset>;
 }
 
 export function OrderStreamRow({ stream, index, draft, identity, onRemove, ...props }: OperationProps & { stream: Draft; index: number; draft: Draft; identity?: string; onRemove: () => void }) {

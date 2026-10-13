@@ -43,6 +43,23 @@ function kindLabel(kind: string | undefined, L: Localize) {
   return pair ? L(...pair) : kind ?? '—';
 }
 
+/** Human field label: a row-provided label wins, else a known field, else a humanised name. */
+function fieldLabel(name: string, L: Localize) {
+  const labels: Record<string, [string, string]> = {
+    'wind.speed_mps': ['Wind speed (m/s)', '风速（m/s）'], 'allocation': ['Allocation', '分配'],
+    'count': ['Count', '数量'], 'capacity': ['Capacity', '容量'], 'battery_pct': ['Battery (%)', '电量 (%)'],
+    'start': ['Start place', '起点'], 'speed_mps': ['Speed (m/s)', '速度（m/s）'],
+  };
+  const pair = labels[name];
+  return pair ? L(...pair) : name.replace(/[._]/g, ' ').replace(/^./, character => character.toUpperCase());
+}
+
+/** Values read as prose: null is an em dash and strings carry no quotes. */
+function fieldValue(value: unknown, L: Localize) {
+  if (value === null || value === undefined) return L('—', '—');
+  return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
 function rowLabel(row: DiffRow, L: Localize) {
   if (!row.label_zh && row.label) {
     const gust = /^Wind gust: (.+) m\/s$/.exec(row.label);
@@ -71,16 +88,18 @@ export function OperationDiff({ diff, notes = [], stale = false, L, entities }: 
   ];
   return <div className="wb-operation-diff" role="group" aria-label={L('Review changes', '查看变更')}>
     {stale && <p className="hint wb-preview-stale">{L('Inputs or draft changed — preview again before applying.', '输入或草稿已变化，请重新预览后再应用。')}</p>}
-    {groups.map(group => <section key={group.key} aria-label={group.title}>
+    {groups.filter(group => group.rows.length > 0).map(group => <section key={group.key} aria-label={group.title}>
       <h5>{group.title} <span className="wb-tag">{group.rows.length}</span></h5>
       <ul className="wb-diff-list">
         {group.rows.map((row, index) => <li key={`${row.kind}:${row.id}:${index}`}>
           <div className="wb-diff-row">
-            <span aria-hidden>{group.sign}</span><span>{kindLabel(row.kind, L)}</span>
-            <span className="wb-mono">{row.id ?? '—'}</span><span>{rowLabel(row, L)}</span>
+            <span className={`wb-diff-sign wb-diff-sign-${group.key}`} aria-hidden>{group.sign}</span>
+            <strong>{rowLabel(row, L)}</strong>
+            <span className="wb-tag">{kindLabel(row.kind, L)}</span>
+            <span className="wb-mono wb-diff-id" title={row.id}>{row.id ?? '—'}</span>
           </div>
-          {row.fields?.map(field => <div key={field.name} className="wb-diff-field wb-mono">
-            {field.name}: {field.before === undefined ? L('Not set', '未设置') : JSON.stringify(field.before)} → {field.after === undefined ? L('Not set', '未设置') : JSON.stringify(field.after)}
+          {row.fields?.map(field => <div key={field.name} className="wb-diff-field">
+            {fieldLabel(field.name, L)} <span aria-hidden>—</span> {fieldValue(field.before, L)} → {fieldValue(field.after, L)}
           </div>)}
         </li>)}
       </ul>

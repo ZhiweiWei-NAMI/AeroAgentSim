@@ -767,6 +767,7 @@ class WorkspaceStore:
                     "roads": len(scene["roads"]), "attribution": scene["attribution"],
                     "height_source": region_source(region, scene)["height_source"],
                     "diagnostics": scene["diagnostics"],
+                    "warnings_summary": scene["warnings_summary"],
                     "geometry": preview_geometry(scene),
                     "affected_entities": [
                         entity["id"] for entity in document["entities"]

@@ -13,14 +13,14 @@ export function SpaceSection(props: SectionProps) {
   return <>
     <p className="hint">{L('Geographic scope, city assets and how types are drawn in the scene.', '地理范围、城市素材以及类型在场景中的呈现方式。')}</p>
     <RegionBlock {...props} />
-    <label className="wb-field" data-path="/city">
-      <span>{L('City', '城市')}</span>
-      <select className="wb-search" value={(draft.city as string | undefined) ?? 'none'} aria-label={L('City', '城市')}
+    <label className="wb-form-field" data-path="/city" style={{ maxWidth: 420 }}>
+      <span className="wb-label">{L('City', '城市')}</span>
+      <select value={(draft.city as string | undefined) ?? 'none'} aria-label={L('City', '城市')}
         onChange={event => edit('/city', event.target.value === 'none' ? undefined : event.target.value)}>
-        <option value="huangpu">{L('huangpu — use the bundled Huangpu city model', 'huangpu — 使用内置黄浦城市模型')}</option>
-        <option value="none">{L('none — use the region you selected above', 'none — 使用上方选择的区域')}</option>
+        <option value="none">{L('Selected region', '所选区域')}</option>
+        <option value="huangpu">{L('Huangpu city model', '黄浦城市模型')}</option>
       </select>
-      <small className="hint">{L(
+      <small className="wb-help">{L(
         'Choose the applied region above or the bundled Huangpu city model for the scene.',
         '为场景选择上方已应用的区域或内置黄浦城市模型。')}</small>
     </label>

@@ -108,12 +108,12 @@ it('prefills current start and battery, and count-only resizing sends no start o
     ...[1, 2].map(index => ({ id: `couriers-${index}`, type: 'lowalt:UAV', facts: { 'lowalt.position': [100, 0, 0], 'lowalt.soc': 0.15 } })),
   ] });
   fireEvent.click(within(screen.getByTestId('wb-fleet')).getByRole('button', { name: 'Edit' }));
-  expect(screen.getByLabelText('start')).toHaveValue('enu');
+  expect(screen.getByLabelText('Start place')).toHaveValue('enu');
   expect(screen.getByLabelText('east (m)')).toHaveValue('100');
   expect(screen.getByLabelText('north (m)')).toHaveValue('0');
   expect(screen.getByLabelText('up (m)')).toHaveValue('0');
-  expect(screen.getByLabelText('initial battery (%)')).toHaveValue('15');
-  fireEvent.change(screen.getByLabelText('count (drones)'), { target: { value: '3' } });
+  expect(screen.getByLabelText('Battery (%)')).toHaveValue('15');
+  fireEvent.change(screen.getByLabelText('Count'), { target: { value: '3' } });
   fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Apply' }));
   await waitFor(() => expect(applyOperations).toHaveBeenCalled());
@@ -128,9 +128,9 @@ it('preserves different per-member starts and batteries during a count-only edit
     { id: 'couriers-2', type: 'lowalt:UAV', facts: { 'lowalt.position': [200, 0, 0], 'lowalt.soc': 0.25 } },
   ] });
   fireEvent.click(within(screen.getByTestId('wb-fleet')).getByRole('button', { name: 'Edit' }));
-  expect(screen.getByLabelText('start')).toHaveValue('keep');
-  expect(screen.getByLabelText('initial battery (%)')).toHaveValue('');
-  fireEvent.change(screen.getByLabelText('count (drones)'), { target: { value: '3' } });
+  expect(screen.getByLabelText('Start place')).toHaveValue('keep');
+  expect(screen.getByLabelText('Battery (%)')).toHaveValue('');
+  fireEvent.change(screen.getByLabelText('Count'), { target: { value: '3' } });
   fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
   await screen.findByRole('button', { name: 'Confirm resize' });
   expect(previewOperations.mock.calls[0][2][0].params).toEqual({ fleet: 'couriers', count: 3 });
@@ -139,7 +139,7 @@ it('preserves different per-member starts and batteries during a count-only edit
 it('sends only an explicitly changed battery for set_fleet', async () => {
   renderFleets({ entities: [1, 2].map(index => ({ id: `couriers-${index}`, type: 'lowalt:UAV', facts: { 'lowalt.position': [10, 20, 30], 'lowalt.soc': 0.15 } })) });
   fireEvent.click(within(screen.getByTestId('wb-fleet')).getByRole('button', { name: 'Edit' }));
-  fireEvent.change(screen.getByLabelText('initial battery (%)'), { target: { value: '25' } });
+  fireEvent.change(screen.getByLabelText('Battery (%)'), { target: { value: '25' } });
   fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
   await screen.findByRole('button', { name: 'Confirm resize' });
   expect(previewOperations.mock.calls[0][2][0].params).toEqual({ fleet: 'couriers', battery_pct: 25 });

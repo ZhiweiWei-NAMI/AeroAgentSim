@@ -77,40 +77,42 @@ export function AddFleet({ api, project, draft, onProject, L, onClose, editing, 
   const apply = async () => { if (!canPreview) return; const updated = await review.apply(); if (updated) { onProject(updated); onClose(); } };
   const removesMembers = !!review.preview && operationChanges(review.preview.diff, entities as Array<{ id: string }>).removed.length > 0;
 
-  return <div className="wb-object-form" data-testid="wb-add-fleet">
-    <h4>{isUpdate ? L('Edit fleet', '编辑机群') : L('Add fleet', '添加机群')}</h4>
+  return <div className="wb-object-form wb-form-card" data-testid="wb-add-fleet">
+    <h4 className="wb-form-card-title">{isUpdate ? L('Edit fleet', '编辑机群') : L('Add fleet', '添加机群')}</h4>
     {isUpdate && <p className="hint">{L(`Members: ${members.join(', ')}. Unchanged settings are preserved.`, `成员：${members.join('、')}。未修改的设置会保留。`)}</p>}
-    {!isUpdate && <div className="wb-role-choices" role="group" aria-label={L('Fleet role', '机群角色')}>
-      {FLEET_ROLES.map(row => <button type="button" key={row.role} aria-pressed={role === row.role} className={`wb-btn small${role === row.role ? ' primary' : ''}`}
+    {!isUpdate && <div className="wb-choice-group" role="group" aria-label={L('Fleet role', '机群角色')}>
+      {FLEET_ROLES.map(row => <button type="button" key={row.role} aria-pressed={role === row.role} className="wb-choice"
         onClick={() => { setRole(row.role); if (!touched.has('id')) setIdText(nextRoleId(row.role, entities.map(entity => entity.id))); }}>{L(row.en, row.zh)}</button>)}
     </div>}
-    <div className="wb-add-grid">
-      <label className="wb-field"><span>{L('fleet id', '机群 id')}</span><input className="wb-mono" value={idText} readOnly={isUpdate} aria-invalid={touched.has('id') && idBad}
+    <div className="wb-form-grid">
+      <label className="wb-form-field" style={{ gridColumn: '1 / -1' }}><span className="wb-label">{L('fleet id', '机群 id')}</span><input className="wb-mono" value={idText} readOnly={isUpdate} aria-invalid={touched.has('id') && idBad}
         onChange={event => { setIdText(event.target.value); mark('id'); }} /></label>
-      <label className="wb-field"><span>{L('count (drones)', '数量（架）')}</span><input inputMode="numeric" value={count} aria-invalid={touched.has('count') && countInvalid}
+      <label className="wb-form-field"><span className="wb-label">{L('Count', '数量')}</span><input inputMode="numeric" value={count} aria-invalid={touched.has('count') && countInvalid}
         onChange={event => { setCount(event.target.value); mark('count'); }} /></label>
-      <label className="wb-field"><span>{L('start', '起点')}</span><select value={startMode} onChange={event => { setStartMode(event.target.value as typeof startMode); mark('start'); }}>
+      <label className="wb-form-field"><span className="wb-label">{L('Battery (%)', '电量 (%)')}</span><input inputMode="decimal" value={battery} aria-invalid={touched.has('battery') && batteryInvalid}
+        placeholder={isUpdate ? L('Keep each member’s battery', '保留各成员电量') : L('Use the default battery', '使用默认电量')}
+        onChange={event => { setBattery(event.target.value); mark('battery'); }} /></label>
+      <label className="wb-form-field"><span className="wb-label">{L('Start place', '起点')}</span><select value={startMode} onChange={event => { setStartMode(event.target.value as typeof startMode); mark('start'); }}>
         {isUpdate && <option value="keep">{L('Keep member starts', '保留各成员起点')}</option>}
-        <option value="centre">{L('Map centre (ENU origin)', '地图中心（ENU 原点）')}</option>
-        <option value="facility" disabled={!facilities.length}>{L('An existing facility', '已有设施')}</option>
-        <option value="enu">{L('ENU metres (east, north, up)', 'ENU 米（东、北、天）')}</option>
+        <option value="centre">{L('Map centre', '地图中心')}</option>
+        <option value="facility" disabled={!facilities.length}>{L('An existing place', '已有设施')}</option>
+        <option value="enu">{L('Typed (east, north, up)', '手动输入（东、北、天）')}</option>
       </select></label>
-      {startMode === 'facility' && <label className="wb-field"><span>{L('start facility', '起点设施')}</span><select value={facilityId} disabled={!facilities.length} aria-invalid={touched.has('start') && startInvalid}
+      {startMode === 'facility' && <label className="wb-form-field" style={{ gridColumn: '1 / -1' }}><span className="wb-label">{L('start facility', '起点设施')}</span><select value={facilityId} disabled={!facilities.length} aria-invalid={touched.has('start') && startInvalid}
         onChange={event => { setFacilityId(event.target.value); mark('start'); }}>
         <option value="">{L('Choose…', '选择…')}</option>{facilities.map(entity => <option key={entity.id} value={entity.id}>{L(entity.label ?? entity.id, entity.label_zh ?? entity.label ?? entity.id)}</option>)}
       </select></label>}
-      {startMode === 'enu' && [L('east (m)', '东向 (m)'), L('north (m)', '北向 (m)'), L('up (m)', '天向 (m)')].map((label, index) => <label className="wb-field" key={index}>
-        <span>{label}</span><input inputMode="decimal" value={coordinates[index]} aria-invalid={touched.has('start') && vector[index] === undefined}
-          onChange={event => { setCoordinates(previous => previous.map((value, axis) => axis === index ? event.target.value : value)); mark('start'); }} />
-      </label>)}
-      <label className="wb-field"><span>{L('initial battery (%)', '初始电量 (%)')}</span><input inputMode="decimal" value={battery} aria-invalid={touched.has('battery') && batteryInvalid}
-        placeholder={isUpdate ? L('Keep each member’s battery', '保留各成员电量') : L('Use the default battery', '使用默认电量')}
-        onChange={event => { setBattery(event.target.value); mark('battery'); }} /></label>
-      {!isUpdate && <label className="wb-field"><span>{L('payload capacity (kg)', '载荷容量 (kg)')}</span><input inputMode="decimal" value={payload} aria-invalid={touched.has('payload') && payloadInvalid}
+      {startMode === 'enu' && <div className="wb-form-grid" style={{ gridColumn: '1 / -1' }}>
+        {[L('east (m)', '东向 (m)'), L('north (m)', '北向 (m)'), L('up (m)', '天向 (m)')].map((label, index) => <label className="wb-form-field" key={index}>
+          <span className="wb-label">{label}</span><input inputMode="decimal" value={coordinates[index]} aria-invalid={touched.has('start') && vector[index] === undefined}
+            onChange={event => { setCoordinates(previous => previous.map((value, axis) => axis === index ? event.target.value : value)); mark('start'); }} />
+        </label>)}
+      </div>}
+      {!isUpdate && <label className="wb-form-field"><span className="wb-label">{L('payload capacity (kg)', '载荷容量 (kg)')}</span><input inputMode="decimal" value={payload} aria-invalid={touched.has('payload') && payloadInvalid}
         placeholder={L('Use the default capacity', '使用默认容量')} onChange={event => { setPayload(event.target.value); mark('payload'); }} /></label>}
     </div>
-    {!facilities.length && <p className="hint">{L('No places yet. Add a place to use it as the fleet start.', '还没有设施。添加设施后可将其用作机群起点。')}
-      {onAddPlace && <> <button className="wb-btn small" onClick={onAddPlace}>{L('Add place', '添加设施')}</button></>}</p>}
+    {!facilities.length && <p className="wb-form-prerequisite">{L('No depot or customer places yet — add a place to use as the fleet start.', '还没有仓库或客户设施——请添加一个作为机群起点。')}
+      {onAddPlace && <button type="button" className="wb-btn small" onClick={onAddPlace}>{L('Add place', '添加设施')}</button>}</p>}
     {idBad && touched.has('id') && <p className="wb-field-error" role="alert">{L('Enter a unique fleet id without spaces.', '请输入唯一且不含空格的机群 id。')}</p>}
     {countInvalid && touched.has('count') && <p className="wb-field-error" role="alert">{L('Count must be a whole number from 1 to 1000.', '数量必须是 1 到 1000 之间的整数。')}</p>}
     {batteryInvalid && touched.has('battery') && <p className="wb-field-error" role="alert">{L('Battery must be a number between 0 and 100.', '电量必须是 0 到 100 之间的数字。')}</p>}
@@ -118,11 +120,11 @@ export function AddFleet({ api, project, draft, onProject, L, onClose, editing, 
     {startInvalid && touched.has('start') && <p className="wb-field-error" role="alert">{L('Choose a facility or enter three finite coordinates.', '请选择设施或输入三个有限坐标。')}</p>}
     {review.preview && <OperationDiff {...review.preview} entities={entities as Array<{ id: string }>} stale={review.stale} L={L} />}
     {review.problem && <p className="wb-field-error" role="alert">{review.problem.field && <span className="wb-mono">{review.problem.field}: </span>}{operationText(review.problem.message, L)}</p>}
-    <div className="wb-object-actions">
+    <div className="wb-form-actions wb-object-actions">
       <button className="wb-btn" disabled={!canPreview || !!review.busy} onClick={() => void review.load()}>{review.busy === 'preview' ? L('Previewing…', '预览中…') : review.preview ? L('Preview again', '重新预览') : L('Preview', '预览')}</button>
       {review.preview && <button className="wb-btn primary" disabled={!canPreview || review.stale || !!review.busy} onClick={() => void apply()}>
         {review.busy === 'apply' ? L('Applying…', '应用中…') : removesMembers ? L('Confirm resize', '确认调整规模') : L('Apply', '应用')}</button>}
-      <button className="wb-btn ghost" disabled={!!review.busy} onClick={onClose}>{L('Close', '关闭')}</button>
+      <button className="wb-btn" disabled={!!review.busy} onClick={onClose}>{L('Close', '关闭')}</button>
     </div>
   </div>;
 }

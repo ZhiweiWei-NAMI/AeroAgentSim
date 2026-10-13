@@ -14,19 +14,14 @@
 .wb-wind-row { display: grid; gap: 4px; }
 .wb-form-section { min-width: 0; padding-block-end: 1.5rem; }
 .wb-form-stack { display: grid; gap: .5rem; min-width: 0; }
-.wb-form-field { display: grid; gap: .25rem; width: 100%; min-width: 0; color: var(--wb-ink); font-size: inherit; }
-.wb-form-field input, .wb-form-field select, .wb-form-field textarea { width: 100%; min-width: 0; box-sizing: border-box; font: inherit; }
-.wb-form-field input::placeholder, .wb-form-field textarea::placeholder { color: var(--wb-muted); }
 .wb-form-field select[multiple] { height: auto; }
-.wb-form-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .wb-op-apply { margin-block: .5rem; min-width: 0; }
 .wb-operation-review, .wb-incident-edit { border: 1px solid var(--wb-line); border-radius: 9px; padding: .75rem; margin-block: .5rem; min-width: 0; overflow-wrap: anywhere; }
 .wb-operation-review.is-danger { border-color: var(--wb-bad); }
 .wb-diff-list, .wb-diff-fields { list-style: none; padding: 0; margin-block: .25rem; text-align: left; }
 .wb-diff-fields { padding-inline-start: 1rem; }
 .wb-operation-diff .hint { margin-block: .25rem; }
-.wb-preview-note, .wb-form-prerequisite { color: var(--wb-warn); }
-.wb-form-prerequisite { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.wb-preview-note { color: var(--wb-warn); }
 .wb-field-error { color: var(--wb-bad); }
 @keyframes wb-tasks-in { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .wb-row-toggle[aria-expanded='true'] + .wb-order-body { animation: none; } }

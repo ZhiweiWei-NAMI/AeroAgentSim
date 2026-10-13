@@ -1151,6 +1151,7 @@ def _time_bounds(document: dict, operations: list[dict], errors: list[dict], war
 
 def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_dir: Path, *, resolved: BaseScene | None = None) -> CompileResult:
     from .scene import diff, expectations, interactions, summarize
+    from .diff_display import enrich_diff
     out_dir = Path(out_dir)
     files = out_dir / "files"
     errors: list[dict] = []
@@ -1315,6 +1316,8 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
                                                       {"name": "origin", "before": region_record["previous_origin"], "after": region_record["scene"]["origin"]}]})
         if region_record["network_invalidated"]:
             result.diff_base["removed"].append({"kind": "network", "id": "network.net.xml", "label": "Previous road network", "label_zh": "原道路网络"})
+    if result.ok:
+        enrich_diff(result.diff_base)
     _write(out_dir / "scenario.json", document)
     _write(out_dir / "compile.json", {**result.to_data(), "base": base, "base_revision": scene.revision if scene else None,
                                       "template_id": scene.template_id if scene else None, "controls": scene.controls if scene else {}})

@@ -53,7 +53,7 @@ it('AddPlace sends an add_place operation with role-specific fields only, after 
   const preview = screen.getByRole('button', { name: 'Preview' });
   expect(preview).toBeEnabled();
   expect(screen.getByRole('button', { name: 'Charging pad' })).toHaveAttribute('aria-pressed', 'true');
-  fireEvent.change(screen.getByLabelText(/^id$/), { target: { value: 'pad-1' } });
+  fireEvent.change(screen.getByLabelText('Id'), { target: { value: 'pad-1' } });
   expect(preview).toBeEnabled();
   fireEvent.change(screen.getByLabelText('charging power (W)'), { target: { value: 'abc' } });
   expect(preview).toBeDisabled(); // invalid input blocks the operation visibly
@@ -86,7 +86,7 @@ it('AddFleet previews a set_fleet shrink and names exactly the members to be rem
     onProject={onProject} L={L} onClose={() => undefined}
     editing={{ id: 'couriers', count: 3 }} /></I18nProvider>);
   expect(screen.getByText(/Members: couriers-1, couriers-2, couriers-3/)).toBeTruthy();
-  fireEvent.change(screen.getByLabelText('count (drones)'), { target: { value: '1' } });
+  fireEvent.change(screen.getByLabelText('Count'), { target: { value: '1' } });
   fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
   await waitFor(() => expect(api.request).toHaveBeenCalled());
   const [, init] = (api.request as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -155,7 +155,7 @@ it('groups every review by Added/Changed/Removed counts, with kind, id and activ
   expect(screen.getByText('查看后再应用')).toBeTruthy();
   expect(screen.getByText('厨房已就绪')).toBeTruthy();
   expect(screen.queryByText(/Kitchen ready/)).toBeNull();
-  expect(screen.getByText('count: 2 → 3')).toBeTruthy();
+  expect(screen.getByText((_, element) => element?.className === 'wb-diff-field' && element.textContent === '数量 — 2 → 3')).toBeTruthy();
 });
 
 it('does not split coordinate-unit prose when choosing a bilingual backend message', () => {

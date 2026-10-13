@@ -67,7 +67,7 @@ export function IncidentsBlock({ config, api, project, onProject, saveDraft, dur
     else setEditing(previous => previous ? { ...previous, [key]: value } : previous);
   };
   const position = (scope: 'new' | 'edit', at: string) => <label className="wb-form-field">{L('Place ID or east, north, up (m)', '设施标识或东、北、上坐标（米）')}
-    <input className="wb-search" aria-label={L('Incident position', '事件位置')} placeholder={L('e.g. street-east or 20,40,0', '例如 street-east 或 20,40,0')} value={at} onChange={event => update(scope, 'at', event.target.value)} />
+    <input aria-label={L('Incident position', '事件位置')} placeholder={L('e.g. street-east or 20,40,0', '例如 street-east 或 20,40,0')} value={at} onChange={event => update(scope, 'at', event.target.value)} />
     {touched.has(`${scope}.at`) && parseIncidentPosition(at) === undefined && <span role="alert" className="hint wb-field-error">{L('Enter a place ID or three finite coordinates.', '请输入设施标识或三个有限坐标。')}</span>}
   </label>;
   const wiring = api && project && onProject && saveDraft ? { api, project, onProject, saveDraft } : undefined;
@@ -91,20 +91,21 @@ export function IncidentsBlock({ config, api, project, onProject, saveDraft, dur
         </>}
       </div>;
     })}
-    {editing && wiring && <div className="wb-form-stack wb-incident-edit" data-testid="wb-incident-edit">
+    {editing && wiring && <div className="wb-form-card wb-form-stack wb-incident-edit" data-testid="wb-incident-edit">
       <p className="hint">{L(`Change incident "${editing.id}". Review the changes before applying.`, `修改事件“${editing.id}”，应用前请核对变更。`)}</p>
       {position('edit', editing.at)}
       <StagedNumber label={`${L('Time', '时间')} (s)`} value={editing.time} min={0} max={duration_s} onChange={value => update('edit', 'time', value)} />
       <OpApply {...wiring} operations={editOperations} label={L('Preview', '预览')} primary small onApplied={() => setEditing(undefined)} />
     </div>}
-    {wiring && <div className="wb-form-stack">
+    {wiring && <fieldset className="wb-form-card wb-form-stack">
+      <legend className="wb-form-card-title">{L('Add incident', '添加事件')}</legend>
       <label className="wb-form-field">{L('Incident ID', '事件标识')}
-        <input className="wb-search" aria-label={L('Incident ID', '事件标识')} placeholder={L('e.g. fall-east', '例如 fall-east')} value={newFields.id} onChange={event => update('new', 'id', event.target.value)} />
+        <input aria-label={L('Incident ID', '事件标识')} placeholder={L('e.g. fall-east', '例如 fall-east')} value={newFields.id} onChange={event => update('new', 'id', event.target.value)} />
         {touched.has('new.id') && !newFields.id.trim() && <span role="alert" className="hint wb-field-error">{L('Required.', '必填。')}</span>}
       </label>
       {position('new', newFields.at)}
       <StagedNumber label={`${L('Time', '时间')} (s)`} value={time} min={0} max={duration_s} onChange={value => update('new', 'time', value)} />
       <OpApply {...wiring} operations={newOperations} label={L('Preview', '预览')} primary small onApplied={() => { setNewFields({ id: '', at: '', time: '' }); setTouched(new Set()); }} />
-    </div>}
+    </fieldset>}
   </div>;
 }

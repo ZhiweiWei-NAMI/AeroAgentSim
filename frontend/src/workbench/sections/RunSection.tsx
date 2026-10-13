@@ -66,15 +66,15 @@ export function RunSection({ api, project, draft, edit, focus, zh, L, onProject,
   };
   return <div className="wb-form-section">
     <p className="hint">{L('Set the run duration, time step and random seed.', '设置运行时长、时间步长与随机种子。')}</p>
-    <fieldset className="wb-form-stack"><legend>{L('Duration', '运行时长')}</legend>
-      <StagedNumber label={`${L('Duration', '运行时长')} (s)`} value={durationText} exclusiveMin={0} problem={durationProblem} onChange={setSeconds} />
+    <fieldset className="wb-form-card"><legend className="wb-form-card-title">{L('Run timing', '运行时长')}</legend>
+      <div className="wb-form-grid">
+        <StagedNumber label={`${L('Duration', '运行时长')} (s)`} value={durationText} exclusiveMin={0} problem={durationProblem} onChange={setSeconds} />
+        <StagedNumber label={`${L('Step', '步长')} (s)`} value={stepText} exclusiveMin={0} problem={stepProblem} allowEmpty={step === undefined && settings.step === undefined} onChange={value => setSettings(previous => ({ ...previous, step: value }))} />
+        <StagedNumber label={L('Random seed', '随机种子')} value={seedText} min={0} integer problem={seedProblem} allowEmpty={run.seed === undefined && settings.seed === undefined} onChange={value => setSettings(previous => ({ ...previous, seed: value }))} />
+      </div>
       <OpApply api={api} project={project} onProject={onProject} saveDraft={saveDraft} operations={durationOperations}
-        label={L('Preview', '预览')} primary small onApplied={() => setSeconds(undefined)} />
-    </fieldset>
-    <fieldset className="wb-form-stack"><legend>{L('Step & random seed', '步长与随机种子')}</legend>
-      <StagedNumber label={`${L('Step', '步长')} (s)`} value={stepText} exclusiveMin={0} problem={stepProblem} allowEmpty={step === undefined && settings.step === undefined} onChange={value => setSettings(previous => ({ ...previous, step: value }))} />
-      <StagedNumber label={L('Random seed', '随机种子')} value={seedText} min={0} integer problem={seedProblem} allowEmpty={run.seed === undefined && settings.seed === undefined} onChange={value => setSettings(previous => ({ ...previous, seed: value }))} />
-      {!review && <button type="button" className="wb-btn small primary" disabled={busy || !settingsValid} onClick={previewSettings}>{busy ? L('Checking…', '正在预览…') : L('Preview', '预览')}</button>}
+        label={L('Preview duration', '预览时长')} primary small onApplied={() => setSeconds(undefined)} />
+      {!review && <button type="button" className="wb-btn small primary" disabled={busy || !settingsValid} onClick={previewSettings}>{busy ? L('Checking…', '正在预览…') : L('Preview step & seed', '预览步长与种子')}</button>}
       {error !== undefined && <p className="hint wb-field-error" role="alert">{problemMessage(error, zh)}</p>}
       {review && <div className="wb-operation-review" role="group" aria-label={L('Preview of run settings', '运行设置预览')}>
         <DiffPreview preview={review.data} L={L} zh={zh} />

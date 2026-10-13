@@ -2,6 +2,8 @@
 
 import copy
 import math
+import shutil
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +12,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from aeroagentsim.authoring.api import create_router
-from aeroagentsim.authoring.scene import compile_scene, extract_bounds, origin_distance, preview_geometry
+from aeroagentsim.authoring.inputs import configured_extracts
+from aeroagentsim.authoring.scene import compile_scene, crop_osm, extract_bounds, origin_distance, preview_geometry
 from aeroagentsim.authoring.workspace import WorkspaceStore
 
 SOURCE = Path(__file__).parent / "fixtures/wujiaochang.osm.xml"
@@ -32,7 +35,7 @@ def test_preview_exact_shape_unknown_origin_and_no_files_written(tmp_path: Path)
     compiled = compile_scene(SOURCE, extract_bounds(SOURCE), alt=20.0, level_height_m=3.5)
     assert set(preview) == {
         "extract", "bounds", "origin", "previous_origin", "origin_shift_m", "buildings", "roads",
-        "attribution", "height_source", "diagnostics", "geometry", "affected_entities", "network_invalidated", "city_conflict",
+        "attribution", "height_source", "diagnostics", "warnings_summary", "geometry", "affected_entities", "network_invalidated", "city_conflict",
     }
     assert preview["origin"] == compiled["origin"]
     assert preview["bounds"] == compiled["bounds"]
@@ -40,6 +43,7 @@ def test_preview_exact_shape_unknown_origin_and_no_files_written(tmp_path: Path)
     assert preview["buildings"] == 3 and preview["roads"] == len(compiled["roads"]) == 1
     assert preview["attribution"] == compiled["attribution"]
     assert preview["diagnostics"] == compiled["diagnostics"]
+    assert preview["warnings_summary"] == {"missing_height": 1, "other": 1}
     assert "missing" in preview["height_source"]
     assert preview["affected_entities"] == []
     assert preview["network_invalidated"] is False and preview["city_conflict"] is False
@@ -107,9 +111,80 @@ def test_catalog_and_region_rest_contracts(tmp_path: Path) -> None:
                              "bounds": extract_bounds(SOURCE), "buildings": 3, "roads": 1}]
         response = client.post(f"/v1/studio/workspaces/{draft['id']}/region", json=region(dry_run=True))
         assert response.status_code == 200 and response.json()["preview"]["buildings"] == 3
+        assert response.json()["preview"]["warnings_summary"] == {"missing_height": 1, "other": 1}
         invalid = client.post(f"/v1/studio/workspaces/{draft['id']}/region", json=region(dry_run=True, extract="missing"))
         assert invalid.status_code == 422
     assert store.get(draft["id"]) == draft
+
+
+def test_default_huangpu_catalog_reports_real_map_counts_and_declared_coverage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AEROAGENTSIM_OSM_EXTRACTS", raising=False)
+    source = configured_extracts()["huangpu-lite"]
+    root = ET.parse(source).getroot()
+    declared = root.find("bounds").attrib
+    bounds = [float(declared[k]) for k in ("minlon", "minlat", "maxlon", "maxlat")]
+    assert bounds == [121.4794284, 31.2258728, 121.4845353, 31.2298517]
+    assert extract_bounds(source) == bounds
+    compiled = compile_scene(source, bounds, alt=0, level_height_m=3)
+    app = FastAPI()
+    app.include_router(create_router(WorkspaceStore(tmp_path / "workspaces", None)))
+    with TestClient(app) as client:
+        catalog = client.get("/v1/studio/catalog").json()
+    row = next(row for row in catalog["extracts"] if row["id"] == "huangpu-lite")
+    assert catalog["default_extract"] == "huangpu-lite" and row["default"]
+    assert row["bounds"] == bounds
+    assert row["buildings"] == sum(f["geometry"]["type"] in {"Polygon", "MultiPolygon"} for f in compiled["geojson"]["features"]) == 60
+    assert row["roads"] == len(compiled["roads"]) == 36
+    # Whole source ways include outside nodes without enlarging map coverage.
+    nodes = root.findall("node")
+    coordinate_extent = [min(float(n.get("lon")) for n in nodes), min(float(n.get("lat")) for n in nodes),
+                         max(float(n.get("lon")) for n in nodes), max(float(n.get("lat")) for n in nodes)]
+    assert coordinate_extent != bounds
+    with pytest.raises(ValueError, match="outside local extract's coverage"):
+        compile_scene(source, coordinate_extent, alt=0, level_height_m=3)
+    with pytest.raises(ValueError, match="outside local extract's coverage"):
+        crop_osm(source, coordinate_extent, tmp_path / "outside.osm.xml")
+
+
+@pytest.mark.skipif(shutil.which("netconvert") is None, reason="SUMO netconvert is not installed")
+def test_apply_default_huangpu_and_generate_real_road_network_via_ui_endpoints(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AEROAGENTSIM_OSM_EXTRACTS", raising=False)
+    store = WorkspaceStore(tmp_path / "workspaces", None)
+    draft = store.create("Huangpu real roads")
+    app = FastAPI()
+    app.include_router(create_router(store))
+    path = f"/v1/studio/workspaces/{draft['id']}"
+    with TestClient(app) as client:
+        catalog = client.get("/v1/studio/catalog").json()
+        extract = next(row for row in catalog["extracts"] if row["id"] == catalog["default_extract"])
+        assert extract["id"] == "huangpu-lite" and extract["roads"] > 0
+        applied = client.post(path + "/region", json={"extract": extract["id"], "bounds": extract["bounds"], "alt": 0, "level_height_m": 3})
+        assert applied.status_code == 200, applied.text
+        generated = client.post(path + "/network")
+        assert generated.status_code == 200, generated.text
+        result = generated.json()
+        assert result["command"][0] == "netconvert"
+        assert result["status"] == "generated" and result["edge_count"] > 0 and result["lane_count"] > 0
+        network = ET.parse(store.directory(draft["id"]) / "network.net.xml").getroot()
+        edges = [e for e in network.findall("edge") if e.get("function") != "internal"]
+        assert result["edge_count"] == len(edges)
+        assert result["lane_count"] == sum(len(e.findall("lane")) for e in edges)
+        assert client.get(path).json()["capabilities"]["network"] is True
+
+
+def test_region_warning_summary_distinguishes_missing_and_invalid_height(tmp_path: Path) -> None:
+    root = ET.parse(SOURCE).getroot()
+    height = next(tag for way in root.findall("way") for tag in way.findall("tag") if tag.get("k") == "height")
+    height.set("v", "invalid height")
+    source = tmp_path / "height.osm.xml"
+    ET.ElementTree(root).write(source, encoding="utf-8", xml_declaration=True)
+    store = WorkspaceStore(tmp_path / "workspaces", None)
+    draft = store.create("Height warnings")
+    preview = store.region(draft["id"], region(dry_run=True), source)["preview"]
+    assert preview["warnings_summary"] == {"missing_height": 1, "other": 2}
+    assert len(preview["diagnostics"]) == 3
+    assert any("height must use metres" in message for message in preview["diagnostics"])
+    assert any("missing height and building:levels" in message for message in preview["diagnostics"])
 
 
 def test_catalog_keeps_unknown_bounds_absent_with_an_explicit_diagnostic(tmp_path: Path) -> None:

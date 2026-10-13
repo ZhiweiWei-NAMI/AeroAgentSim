@@ -1,17 +1,33 @@
+/* Objects section: shared form system is defined in workbench.css (wb-form-card, wb-form-field,
+   wb-form-grid, wb-choice); these rules cover the operation review diff and object-specific bits. */
+/* Legacy form scaffolding still used by AddObjects / RemoveEntity / PositionField. */
 .wb-add-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 4px 12px; margin: 6px 0; }
-.wb-add-grid .wb-field, .wb-config-body .wb-add-grid .wb-field { grid-template-columns: minmax(0, 1fr); align-items: start; margin: 0; }
+.wb-add-grid .wb-field { grid-template-columns: minmax(0, 1fr); align-items: start; margin: 0; }
 .wb-object-form { border: 1px solid var(--wb-line); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; }
 .wb-object-form h4 { margin: 2px 0 4px; }
 .wb-role-choices, .wb-object-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
 .wb-position-field { border: 0; padding: 0; min-width: 0; }
 .wb-lowalt-start, .wb-operation-diff { text-align: left; }
 .wb-operation-diff { margin: 6px 0; }
-.wb-operation-diff h5 { margin: 6px 0 2px; font: inherit; font-weight: 600; }
-.wb-diff-list { list-style: none; padding: 0; margin: 0; }
-.wb-diff-row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.wb-diff-field { color: var(--wb-muted); overflow-wrap: anywhere; }
+.wb-operation-diff h5 { margin: 8px 0 2px; font: inherit; font-size: 12px; font-weight: 650; color: var(--wb-ink); }
+.wb-diff-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
+.wb-diff-row { display: grid; grid-template-columns: 14px auto auto minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.wb-diff-sign { font-weight: 700; }
+.wb-diff-sign-added { color: var(--wb-ok); }
+.wb-diff-sign-changed { color: var(--wb-warn); }
+.wb-diff-sign-removed { color: var(--wb-bad); }
+.wb-diff-id { color: var(--wb-muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; justify-self: end; }
+.wb-diff-field { color: var(--wb-muted); font-size: 12px; overflow-wrap: anywhere; padding-left: 22px; }
+.wb-diff-subheading { margin: 4px 0 0; font-size: 12px; color: var(--wb-muted); }
 .wb-preview-stale { color: var(--wb-warn); }
 .wb-add-note { margin: 2px 0 6px; font-size: 11.5px; color: var(--wb-muted); }
+.wb-objects-count { font-size: 12px; color: var(--wb-muted); margin: 0; }
+/* Add place: picker map with an overlaid hint, open by default. */
+.wb-place-picker { position: relative; margin: 8px 0; }
+.wb-place-picker .wb-map { height: 220px; }
+.wb-place-picker-hint { position: absolute; top: 6px; left: 6px; z-index: 520; font-size: 11px;
+  padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,.9); border: 1px solid var(--wb-line);
+  color: var(--wb-ink); pointer-events: none; }
 .wb-cat-list { margin: 6px 0; max-height: 190px; overflow: auto; border: 1px solid var(--wb-line); border-radius: 9px; }
 .wb-cat-row { display: flex; width: 100%; gap: 8px; align-items: baseline; padding: 5px 9px; background: none; border: 0; border-bottom: 1px solid var(--wb-line); text-align: left; cursor: pointer; font: inherit; }
 .wb-cat-row:last-child { border-bottom: 0; }

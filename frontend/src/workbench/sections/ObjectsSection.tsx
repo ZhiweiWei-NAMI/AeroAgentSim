@@ -50,14 +50,11 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
   if (!lowalt && !entities.length && generated === 0) return <>{bootstrap}{genericForm}</>;
   return <>
     {!lowalt && bootstrap}
-    <p className="hint">{L('Concrete instances in this world. Each has an identity, a contract type, an initial state and a visual binding.', '世界中的具体实例：每个都有身份、契约类型、初始状态和视觉绑定。')}</p>
-    <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 8 }}>
-      <span className="wb-tag">{L(`Explicit instances ${entities.length}`, `显式实例 ${entities.length}`)}</span>
-      {generated === undefined ? <span className="wb-tag warn">{L('Generation count is incomplete', '生成数量不完整')}</span> : <>
-        <span className="wb-tag warn">{L(`Will generate ${generated}`, `将生成 ${generated}`)}</span>
-        <span className="wb-tag info">{L(`Expected total at t=0 ${entities.length + generated}`, `t=0 预期总数 ${entities.length + generated}`)}</span>
-      </>}
-    </div>
+    <p className="hint">{L('Places, fleets and other objects in this world.', '这个世界中的地点、机队与其他对象。')}</p>
+    <p className="wb-objects-count">
+      {generated === undefined ? L('Generation count is incomplete', '生成数量不完整')
+        : L(`${entities.length} object${entities.length === 1 ? '' : 's'} · ${generated} generated at start`, `${entities.length} 个对象 · 开始时生成 ${generated} 个`)}
+    </p>
     {lowalt && !entities.length && generated === 0 && !adding && <div className="wb-empty" data-testid="wb-objects-empty">
       <strong>{L('The world has no objects yet', '世界还没有任何对象')}</strong>
       {L('Add a place, fleet or object to start.', '添加设施、机群或对象以开始。')}
@@ -66,7 +63,7 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
       <button className="wb-btn primary" aria-expanded={addingPlace} aria-pressed={addingPlace}
         onClick={() => { setAddingPlace(value => !value); setEditingPlace(undefined); }}>
         {addingPlace && !editingPlace ? L('Close add place', '收起添加设施') : L('Add place', '添加设施')}</button>
-      <button className="wb-btn" aria-expanded={adding} aria-pressed={adding} onClick={() => setAdding(value => !value)}>{adding ? L('Close add objects', '收起添加对象') : L('Add objects', '添加对象')}</button>
+      <button className="wb-btn" aria-expanded={adding} aria-pressed={adding} onClick={() => setAdding(value => !value)}>{adding ? L('Close add objects', '收起添加对象') : L('Add objects (advanced)', '添加对象（高级）')}</button>
     </div>}
     {lowalt && addingPlace && !editingPlace && <AddPlace api={api} project={project} draft={draft} project_detail={project as never} onProject={onProject} L={L} onClose={() => setAddingPlace(false)} />}
     {lowalt && editingPlace && <AddPlace key={editingPlace.id} api={api} project={project} draft={draft} project_detail={project} onProject={onProject} L={L}

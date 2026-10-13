@@ -45,23 +45,27 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
   if (!slots.length) return <div className="wb-empty">{L('No wind profile is configured. Add the standard low-altitude components in Objects.', '尚未配置风场，请在“对象”中添加标准低空组件。')}</div>;
   return <div className="wb-weather wb-form-section" data-testid="wb-weather">
     <p className="hint">{L('Background wind and short gusts. Gust times must fall inside the run duration.', '设置背景风与短时阵风，阵风时段必须处于运行时长之内。')}</p>
-    <fieldset className="wb-form-stack"><legend>{L('Background wind', '背景风')}</legend>
-      <StagedNumber label={`${L('Background speed', '背景风速')} (m/s)`} value={backgroundText} min={0} onChange={setBackground} />
+    <fieldset className="wb-form-card"><legend className="wb-form-card-title">{L('Background wind', '背景风')}</legend>
+      <div className="wb-form-grid">
+        <StagedNumber label={`${L('Background speed', '背景风速')} (m/s)`} value={backgroundText} min={0} onChange={setBackground} />
+        <OpApply {...opProps} operations={windOperations} label={L('Preview', '预览')} primary small onApplied={() => setBackground(undefined)} />
+      </div>
       {commonSpeed === undefined && <p className="hint">{L('Enter a speed to apply to all configured wind profiles.', '请输入要应用到所有风场的风速。')}</p>}
-      <OpApply {...opProps} operations={windOperations} label={L('Preview', '预览')} primary small onApplied={() => setBackground(undefined)} />
     </fieldset>
-    <fieldset className="wb-form-stack wb-gust-add"><legend>{L('Add gust', '添加阵风')}</legend>
+    <fieldset className="wb-form-card wb-gust-add"><legend className="wb-form-card-title">{L('Add gust', '添加阵风')}</legend>
       {(missingDuration || shortDuration) && <Prerequisite goTo={goTo} section="run" action={L('Run & recording', '运行与记录')}>
         {missingDuration ? L('Set a run duration in Run & recording.', '请在“运行与记录”中设置运行时长。')
           : L(`Run duration is ${duration_s} s — lengthen it on Run & recording.`, `运行时长为 ${duration_s} 秒——请在“运行与记录”中延长。`)}
       </Prerequisite>}
-      <StagedNumber label={`${L('Start', '开始')} (s)`} value={start} min={0} problem={errors?.start_s} onChange={text => setGust(previous => ({ ...previous, start: text }))} />
-      <StagedNumber label={`${L('End', '结束')} (s)`} value={end} min={0} problem={endProblem} showError={gust.start !== undefined || gust.end !== undefined} onChange={text => setGust(previous => ({ ...previous, end: text }))} />
-      <StagedNumber label={`${L('Speed', '风速')} (m/s)`} value={speed} min={0} problem={errors?.speed_mps} onChange={text => setGust(previous => ({ ...previous, speed: text }))} />
+      <div className="wb-form-grid">
+        <StagedNumber label={`${L('Start', '开始')} (s)`} value={start} min={0} problem={errors?.start_s} onChange={text => setGust(previous => ({ ...previous, start: text }))} />
+        <StagedNumber label={`${L('End', '结束')} (s)`} value={end} min={0} problem={endProblem} showError={gust.start !== undefined || gust.end !== undefined} onChange={text => setGust(previous => ({ ...previous, end: text }))} />
+        <StagedNumber label={`${L('Speed', '风速')} (m/s)`} value={speed} min={0} problem={errors?.speed_mps} onChange={text => setGust(previous => ({ ...previous, speed: text }))} />
+        <OpApply {...opProps} operations={gustOperations} label={L('Preview', '预览')} primary small onApplied={() => setGust({})} />
+      </div>
       {intervalProblem && !Object.keys(gust).length && <p className="hint wb-form-prerequisite">{intervalProblem}</p>}
-      <OpApply {...opProps} operations={gustOperations} label={L('Preview', '预览')} primary small onApplied={() => setGust({})} />
     </fieldset>
-    <details><summary>{L('Configured gusts', '已配置阵风')}</summary>
+    <details open={slots.some(({ wind }) => Array.isArray(wind.gusts) && wind.gusts.length)}><summary>{L('Configured gusts', '已配置阵风')}</summary>
       {slots.map(({ entity, key, wind }) => <div key={`${entity}:${key}`}>
         <span className="wb-mono">{entity}</span>
         {!Array.isArray(wind.gusts) || !wind.gusts.length ? <p className="hint">{L('No gusts.', '没有阵风。')}</p>

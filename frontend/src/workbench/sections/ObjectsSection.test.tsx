@@ -39,24 +39,20 @@ it('opens with the low-altitude install flow when capabilities.lowalt is false (
   expect(screen.queryByText('Add place')).toBeNull(); // gated until the components exist
   expect(screen.queryByTestId('wb-objects-empty')).toBeNull();
   expect(screen.queryByText(/No fleets yet/)).toBeNull();
-  expect(screen.getAllByRole('button', { name: 'Add objects' })).toHaveLength(1);
+  expect(screen.getAllByRole('button', { name: 'Add objects (advanced)' })).toHaveLength(1);
 });
 
 it('shows zero counts and a real add entry point on a blank project, inventing nothing', () => {
   setup({});
   expect(screen.getByText('The world has no objects yet')).toBeTruthy();
   expect(screen.getByText('Add a place, fleet or object to start.')).toBeTruthy();
-  expect(screen.getAllByRole('button', { name: 'Add objects' }).length).toBeGreaterThanOrEqual(1);
-  expect(screen.getByText('Explicit instances 0')).toBeTruthy();
-  expect(screen.getByText('Will generate 0')).toBeTruthy();
-  expect(screen.getByText('Expected total at t=0 0')).toBeTruthy();
+  expect(screen.getAllByRole('button', { name: 'Add objects (advanced)' }).length).toBeGreaterThanOrEqual(1);
+  expect(screen.getByText((_, element) => element?.textContent === '0 objects · 0 generated at start')).toBeTruthy();
 });
 
 it('separates explicit instances from generator members in the counts', () => {
   setup({ entities: [{ id: 'a', type: 't', facts: {} }, { id: 'b', type: 't', facts: {} }], generators: { fleet: { count: 2, type: 't' } } });
-  expect(screen.getByText('Explicit instances 2')).toBeTruthy();
-  expect(screen.getByText('Will generate 2')).toBeTruthy();
-  expect(screen.getByText('Expected total at t=0 4')).toBeTruthy();
+  expect(screen.getByText((_, element) => element?.textContent === '2 objects · 2 generated at start')).toBeTruthy();
 });
 
 it('edits a generic position as three numeric inputs and keeps its strict vector (T1-019)', () => {
@@ -95,10 +91,9 @@ it('opens the place editor at the saved ENU position instead of moving it to the
   setup({ entities: [{ id: 'pad-west', type: 'lowalt:ChargingPad', facts: { 'lowalt.site_position': [-25, 40, 10], 'lowalt.pad_power_w': 5000 } }] });
   fireEvent.click(within(screen.getAllByRole('table')[0]).getByRole('button', { name: 'Edit' }));
   const editor = within(screen.getByTestId('wb-add-place'));
-  expect(editor.getByLabelText('position')).toHaveValue('enu');
-  expect(editor.getByLabelText('east (m)')).toHaveValue('-25');
-  expect(editor.getByLabelText('north (m)')).toHaveValue('40');
-  expect(editor.getByLabelText('up (m)')).toHaveValue('10');
+  expect(editor.getByLabelText('East (m)')).toHaveValue('-25');
+  expect(editor.getByLabelText('North (m)')).toHaveValue('40');
+  expect(editor.getByLabelText('Height (m)')).toHaveValue('10');
   expect(editor.getByLabelText('charging power (W)')).toHaveValue('5000');
 });
 
@@ -108,11 +103,11 @@ it('keeps Add objects available after the first generic object without installin
     studioApi: { request: vi.fn().mockResolvedValue({ types: [{ id: 'aas:StudioFacility', parents: [], abstract: false }] }) },
   } as unknown as SectionProps;
   const view = render(<I18nProvider><ObjectsSection {...props} /></I18nProvider>);
-  fireEvent.click(screen.getByRole('button', { name: 'Add objects' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add objects (advanced)' }));
   expect(await screen.findByRole('option', { name: 'aas:StudioFacility' })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Close add objects' }));
   view.rerender(<I18nProvider><ObjectsSection {...props} project={{ ...props.project, revision: 3 }} /></I18nProvider>);
-  expect(screen.getByRole('button', { name: 'Add objects' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Add objects (advanced)' })).toBeEnabled();
   expect(screen.queryByTestId('wb-objects-empty')).toBeNull();
 });
 
@@ -145,7 +140,7 @@ it('routes lowalt instance position edits through update_place, without adding a
   const editor = within(screen.getByTestId('wb-add-place'));
   expect(editor.getByLabelText('capacity (parallel slots)')).toHaveValue('2');
   expect(editor.getByLabelText('charging power (W)')).toHaveValue('5000');
-  for (const [label, value] of [['east (m)', '12'], ['north (m)', '34'], ['up (m)', '56']]) fireEvent.change(editor.getByLabelText(label), { target: { value } });
+  for (const [label, value] of [['East (m)', '12'], ['North (m)', '34'], ['Height (m)', '56']]) fireEvent.change(editor.getByLabelText(label), { target: { value } });
   fireEvent.click(editor.getByRole('button', { name: 'Preview' }));
   const apply = await editor.findByRole('button', { name: 'Apply' });
   expect(api.request.mock.calls[0][1].body.operations[0]).toMatchObject({ op: 'update_place', params: { id: 'pad', at: [12, 34, 56] } });
