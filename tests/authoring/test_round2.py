@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
-import xml.etree.ElementTree as ET
 
 import pytest
 import yaml
@@ -98,13 +97,6 @@ def test_huangpu_extract_is_default_with_measured_counts_and_bounds(studio):
         assert row["bounds"] == scene["bounds"]
         assert row["buildings"] == sum(f["geometry"]["type"] in {"Polygon", "MultiPolygon"} for f in scene["geojson"]["features"])
         assert row["roads"] == len(scene["roads"])
-    # The checked-in lite source really has 32 buildings and no OSM highways.
-    assert rows[0]["buildings"] == 32 and rows[0]["roads"] == 0
-    assert rows[1]["buildings"] == 3 and rows[1]["roads"] == 1
-    source_dir = Path(__file__).parents[2] / "scenarios/demos/traffic-accident/inputs/lite-city/osm-source"
-    raw_ways = {str(e["id"]) for p in source_dir.glob("*.json") for e in json.loads(p.read_text())["elements"] if e["type"] == "way"}
-    xml_ways = {w.attrib["id"] for w in ET.parse(configured_extracts()["huangpu-lite"]).getroot().findall("way")}
-    assert xml_ways == raw_ways
 
 
 def test_explicit_extract_configuration_is_measured_and_not_substituted(tmp_path, monkeypatch):

@@ -6,9 +6,12 @@ preserves OSM topology at crop boundaries rather than inventing clipped ways.
 
 from __future__ import annotations
 
-import math
 import copy
+import importlib.util
+import math
+import os
 import re
+import shutil
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
@@ -460,11 +463,47 @@ def crop_osm(path: Path, bounds: Bounds, output: Path) -> None:
     pending.replace(output)
 
 
+def _sumo_home(netconvert: str) -> Path:
+    """Find installed OSM types without relying on netconvert's built-in map."""
+    typemap = Path("data/typemap/osmNetconvert.typ.xml")
+    configured = os.environ.get("SUMO_HOME")
+    if configured:
+        home = Path(configured).expanduser().resolve()
+        if (home / typemap).is_file():
+            return home
+
+    executable = shutil.which(netconvert)
+    if executable:
+        # Support both the binary's installation and a bin-directory symlink.
+        for binary in (Path(executable).resolve(), Path(executable).absolute()):
+            home = binary.parent.parent / "share" / "sumo"
+            if (home / typemap).is_file():
+                return home.resolve()
+
+    # Inspect the wheel's location without importing it: sumo's __init__
+    # modifies the parent process's environment on import.
+    package = importlib.util.find_spec("sumo")
+    if package is not None and package.submodule_search_locations is not None:
+        for directory in package.submodule_search_locations:
+            home = Path(directory).resolve()
+            if (home / typemap).is_file():
+                return home
+
+    raise ValueError(
+        "SUMO: cannot find data/typemap/osmNetconvert.typ.xml. "
+        "Set SUMO_HOME to the SUMO installation directory containing that file "
+        "(for example /usr/share/sumo), or install the SUMO data files."
+    )
+
+
 def generate_sumo(
     osm: Path, output: Path, netconvert: str = "netconvert"
 ) -> dict[str, Any]:
     if not osm.is_file():
         raise ValueError("SUMO: compile the region OSM first")
+    home = _sumo_home(netconvert)
+    environment = os.environ.copy()
+    environment["SUMO_HOME"] = str(home)
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         dir=output.parent, prefix="netconvert-"
@@ -476,10 +515,17 @@ def generate_sumo(
             str(osm.resolve()),
             "--output-file",
             str(pending),
+            "--type-files",
+            str(home / "data/typemap/osmNetconvert.typ.xml"),
         ]
         try:
             process = subprocess.run(
-                command, capture_output=True, text=True, timeout=120, check=False
+                command,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+                env=environment,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise ValueError(f"SUMO netconvert: {exc}") from exc

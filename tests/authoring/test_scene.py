@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
+import xml.etree.ElementTree as ET
+from importlib.util import spec_from_file_location
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +71,11 @@ def test_precompiled_network_checked_and_failures_preserve_output(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture = FIXTURE.with_name("wujiaochang.net.xml")
+    home = tmp_path / "sumo"
+    typemap = home / "data/typemap/osmNetconvert.typ.xml"
+    typemap.parent.mkdir(parents=True)
+    typemap.write_text("<types/>")
+    monkeypatch.setenv("SUMO_HOME", str(home))
 
     def converter(
         command: list[str], **kwargs: Any
@@ -86,6 +94,102 @@ def test_precompiled_network_checked_and_failures_preserve_output(
         lambda *a, **k: subprocess.CompletedProcess(a[0], 2, "", "bad network"),
     )
     with pytest.raises(ValueError, match="bad network"):
+        generate_sumo(FIXTURE, output)
+    assert output.read_bytes() == fixture.read_bytes()
+
+
+@pytest.mark.skipif(
+    shutil.which("netconvert") is None, reason="SUMO netconvert is not installed"
+)
+def test_real_network_generation_without_sumo_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("SUMO_HOME", raising=False)
+    output = tmp_path / "network.net.xml"
+    result = generate_sumo(FIXTURE, output)
+    assert result["edge_count"] > 0 and result["lane_count"] > 0
+    network = ET.parse(output).getroot()
+    edges = [
+        edge for edge in network.findall("edge") if edge.get("function") != "internal"
+    ]
+    assert result["edge_count"] == len(edges)
+    assert result["lane_count"] == sum(len(edge.findall("lane")) for edge in edges)
+    assert "--type-files" in result["command"]
+    assert "SUMO_HOME" not in os.environ
+    assert "SUMO_HOME is not set" not in result["stderr"]
+
+
+@pytest.mark.parametrize("source", ["environment", "prefix", "symlink", "package"])
+def test_sumo_home_resolution_order_and_subprocess_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, source: str
+) -> None:
+    homes = {
+        "environment": tmp_path / "configured-sumo",
+        "prefix": tmp_path / "installation/share/sumo",
+        "symlink": tmp_path / "linked/share/sumo",
+        "package": tmp_path / "site-packages/sumo",
+    }
+    typemap = Path("data/typemap/osmNetconvert.typ.xml")
+    for home in homes.values():
+        (home / typemap).parent.mkdir(parents=True)
+        (home / typemap).write_text("<types/>")
+    # Remove higher-priority data while leaving SUMO_HOME configured, so an
+    # incomplete installation cannot hide a later usable source.
+    for key in homes:
+        if key == source:
+            break
+        (homes[key] / typemap).unlink()
+    monkeypatch.setenv("SUMO_HOME", str(homes["environment"]))
+    monkeypatch.setenv("AAS_SUMO_TEST_ENV", "preserved")
+    binary = tmp_path / "installation/bin/netconvert"
+    binary.parent.mkdir(parents=True)
+    binary.touch()
+    linked = tmp_path / "linked/bin/netconvert"
+    linked.parent.mkdir(parents=True)
+    linked.symlink_to(binary)
+    monkeypatch.setattr(
+        "aeroagentsim.authoring.scene.shutil.which", lambda _: str(linked)
+    )
+    package_init = homes["package"] / "__init__.py"
+    package_init.write_text("raise AssertionError('package must not be imported')")
+    package = spec_from_file_location("sumo", package_init)
+    monkeypatch.setattr(
+        "aeroagentsim.authoring.scene.importlib.util.find_spec", lambda _: package
+    )
+
+    def converter(
+        command: list[str], **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        assert kwargs["env"]["SUMO_HOME"] == str(homes[source])
+        assert kwargs["env"]["AAS_SUMO_TEST_ENV"] == "preserved"
+        assert command[command.index("--type-files") + 1] == str(homes[source] / typemap)
+        shutil.copyfile(
+            FIXTURE.with_name("wujiaochang.net.xml"),
+            command[command.index("--output-file") + 1],
+        )
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", converter)
+    result = generate_sumo(FIXTURE, tmp_path / "network.net.xml")
+    assert result["edge_count"] > 0
+    assert os.environ["SUMO_HOME"] == str(homes["environment"])
+
+
+def test_missing_sumo_typemap_names_sumo_home_and_preserves_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("SUMO_HOME", raising=False)
+    monkeypatch.setattr(
+        "aeroagentsim.authoring.scene.shutil.which",
+        lambda _: str(tmp_path / "bin/netconvert"),
+    )
+    monkeypatch.setattr(
+        "aeroagentsim.authoring.scene.importlib.util.find_spec", lambda _: None
+    )
+    output = tmp_path / "network.net.xml"
+    fixture = FIXTURE.with_name("wujiaochang.net.xml")
+    shutil.copyfile(fixture, output)
+    with pytest.raises(ValueError, match="Set SUMO_HOME.*installation directory"):
         generate_sumo(FIXTURE, output)
     assert output.read_bytes() == fixture.read_bytes()
 
