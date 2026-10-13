@@ -61,7 +61,7 @@ function fieldLabel(name: string, L: Localize) {
 }
 
 /** Values read as prose: none/empty render as an em dash and lists join with ", ". */
-function fieldValue(value: unknown, L: Localize) {
+function fieldValue(value: unknown, L: Localize): string {
   if (value === null || value === undefined) return L('—', '—');
   if (typeof value === 'string') return value.trim() === '' || value.toLowerCase() === 'empty' ? L('—', '—') : value;
   if (Array.isArray(value)) return value.length === 0 ? L('—', '—') : value.map(item => fieldValue(item, L)).join(L(', ', '，'));

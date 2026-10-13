@@ -229,6 +229,7 @@ class Coverage:
     goal's z, so a task drives both the survey height and the return point.
     """
 
+    label = "Area sweep"
     label_zh, description_zh = BUILTIN_COPY_ZH["coverage"]
     description = "Fly spaced boustrophedon rows over the configured survey box."
 
@@ -291,6 +292,7 @@ class SurveyRoute:
     waypoint in order and ends exactly at the goal.
     """
 
+    label = "Inspection waypoints"
     label_zh, description_zh = BUILTIN_COPY_ZH["survey"]
     description = "Visit each configured asset waypoint in order, then reach the goal."
 
@@ -334,6 +336,7 @@ class PatrolRoute:
     is complete) and ``clearance_m``.
     """
 
+    label = "Patrol loop"
     label_zh, description_zh = BUILTIN_COPY_ZH["patrol"]
     description = "Fly one complete circuit of the configured patrol loop."
 

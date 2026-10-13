@@ -78,6 +78,7 @@ def _reserve(config: dict[str, Any], name: str) -> float:
 
 
 class Nearest:
+    label = "Nearest available drone"
     label_zh, description_zh = BUILTIN_COPY_ZH["nearest"]
     description = (
         "Greedy baseline: highest priority first, each task takes the closest "
@@ -106,6 +107,7 @@ class Nearest:
 
 
 class Auction:
+    label = "Auction bids"
     label_zh, description_zh = BUILTIN_COPY_ZH["auction"]
     description = (
         "Drones bid their estimated completion time, inflated when the trip "
@@ -197,6 +199,7 @@ def hungarian(cost: list[list[float]]) -> tuple[int, ...]:
 
 
 class Hungarian:
+    label = "Match tasks and drones"
     label_zh, description_zh = BUILTIN_COPY_ZH["hungarian"]
     description = (
         "Minimise the total estimated completion time of the whole batch "
@@ -249,6 +252,7 @@ class Hungarian:
 
 
 class Straight:
+    label = "Straight line"
     label_zh, description_zh = BUILTIN_COPY_ZH["straight"]
     description = "Propose one direct segment between the requested endpoints."
 
@@ -261,6 +265,7 @@ class Straight:
 
 
 class CorridorAstar:
+    label = "Corridor A*"
     label_zh, description_zh = BUILTIN_COPY_ZH["corridor_astar"]
     description = (
         "A* over obstacle corners and corridor points, avoiding active no-fly boxes."
@@ -325,6 +330,7 @@ class CorridorAstar:
 
 
 class AltitudeLayers:
+    label = "Separate flying heights"
     label_zh, description_zh = BUILTIN_COPY_ZH["altitude_layers"]
     description = "Move conflicting drones to deterministic separate altitude layers."
 
@@ -362,6 +368,7 @@ class AltitudeLayers:
 
 
 class HoldAndGo:
+    label = "Wait, then go"
     label_zh, description_zh = BUILTIN_COPY_ZH["hold_and_go"]
     description = "Hold the later drone in each pair while the earlier one moves."
 
@@ -390,6 +397,7 @@ class HoldAndGo:
 
 
 class ThresholdReturn:
+    label = "Return before battery runs low"
     label_zh, description_zh = BUILTIN_COPY_ZH["threshold_return"]
     description = "Return low-battery drones to the nearest free charging pad, or queue at a busy pad."
 

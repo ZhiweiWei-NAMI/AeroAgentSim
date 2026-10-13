@@ -86,6 +86,19 @@ def draft(api: dict[str, Any], identifier: str) -> dict[str, Any]:
     return api["tools"].draft_plan(identifier, base={"template": "fixture"}, title="Fixture / 测试", summary="Fixture / 测试", operations=[{"op": "set_duration", "params": {"seconds": 300}}], assumptions=[], open_questions=[], note="Initial / 初始")
 
 
+def pin_scenario(directory: Path) -> None:
+    """Story reads weather from a run's fixed input, independently of the plan."""
+    document = {
+        "id": "fixture", "entities": [], "run": {"until_ns": 300_000_000_000},
+        "engines": {"weather": {"plugin": "environment", "config": {
+            "profiles": {"world": {"lowalt.wind": {
+                "mode": "constant", "value": [5, 0, 0],
+            }}},
+        }}},
+    }
+    (directory / "scenario.json").write_text(json.dumps(document))
+
+
 def test_connection_masking_and_session_wire_shape(api: dict[str, Any]) -> None:
     client = api["client"]
     assert not client.get("/v1/assistant/connection").json()["configured"]
@@ -180,6 +193,7 @@ def test_story_reads_applied_version_and_recorded_run(api: dict[str, Any], monke
     run_id = "run-" + "a" * 32
     directory = api["root"] / run_id
     directory.mkdir()
+    pin_scenario(directory)
     (directory / "manifest.json").write_text(json.dumps({"id": run_id, "studio_workspace": "fixture-project", "workspace_version": 1, "status": "completed"}))
     called: list[Any] = []
 
@@ -191,6 +205,7 @@ def test_story_reads_applied_version_and_recorded_run(api: dict[str, Any], monke
     monkeypatch.setattr(story, "pinned_expectations", lambda run_dir: [{"schema": "fixture.incident"}])
     response = client.get(f"/v1/assistant/sessions/{identifier}/story/{run_id}")
     assert response.status_code == 200 and response.json()["plan_version"] == 1
+    assert response.json()["wind"]["speed_mps"] == 5
     assert response.json()["steps"][0]["status"] == "not_happened"
     assert called == [(directory, [{"schema": "fixture.incident"}], "en")]
     localized = client.get(f"/v1/assistant/sessions/{identifier}/story/{run_id}?locale=zh-CN")
@@ -231,6 +246,7 @@ def test_unbound_session_can_read_explicit_completed_form_run(api, monkeypatch):
     run_id = "run-" + "c" * 32
     directory = api["root"] / run_id
     directory.mkdir()
+    pin_scenario(directory)
     (directory / "manifest.json").write_text(json.dumps({"id": run_id, "studio_workspace": "fixture-project", "workspace_version": 2, "status": "completed"}))
     calls = []
     monkeypatch.setattr(story, "pinned_expectations", lambda path: [{"id": "pinned-version-2"}])
@@ -240,6 +256,9 @@ def test_unbound_session_can_read_explicit_completed_form_run(api, monkeypatch):
     monkeypatch.setattr(story, "run_story", recorded)
     response = api["client"].get(f"/v1/assistant/sessions/{identifier}/story/{run_id}?locale=en")
     assert response.status_code == 200, response.text
+    assert response.json()["wind"]["profiles"]["weather.world.lowalt.wind"]["vectors"] == [
+        {"east_mps": 5, "north_mps": 0, "up_mps": 0, "direction_deg": 0},
+    ]
     assert response.json()["status"] == "completed" and response.json()["workspace_version"] == 2 and response.json()["plan_version"] is None
     assert response.json()["coverage"]["recorded_events"] == 9211 and response.json()["locale"] == "en"
     assert calls == [(directory, [{"id": "pinned-version-2"}], "en")]

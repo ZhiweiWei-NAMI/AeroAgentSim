@@ -38,7 +38,17 @@ def test_complete_scene_shapes_are_grounded(compiled) -> None:
     assert summary["workloads"][0]["kind"] == "food"
     for row in expectations(loaded.document, summary):
         assert {"id", "text", "text_zh", "layer", "match", "approx_s", "precheck", "depends_on"} <= row.keys() <= {"id", "text", "text_zh", "layer", "match", "approx_s", "precheck", "depends_on", "alternatives"}
-        assert {"schema", "where"} <= row["match"].keys() <= {"schema", "where", "count", "released_schema"}
+        match = row["match"]
+        workload = next((work for work in summary["workloads"]
+                         if match["where"].get("task") == {"$in": work["tasks"]}), None)
+        if workload is not None and workload["release"]["mode"] == "poisson":
+            assert set(match) == {"schema", "where", "count", "released_schema", "count_basis", "demand"}
+            assert match["count_basis"] == "released"
+            assert match["count"] == len(workload["tasks"])
+            assert match["released_schema"] == "lowalt.task.created"
+            assert match["demand"] == workload["release"]
+        else:
+            assert {"schema", "where"} <= match.keys() <= {"schema", "where", "count", "released_schema"}
     diagram = interactions(summary)
     lane_ids = {r["id"] for r in diagram["lanes"]}
     for step in diagram["steps"]:

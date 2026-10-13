@@ -33,7 +33,7 @@ BUILTIN_COPY: dict[str, tuple[str, str]] = {
     ),
     "straight": ("Straight line", "Fly directly between the requested places."),
     "corridor_astar": (
-        "Safe corridor route",
+        "Corridor A*",
         "Find a route around active no-fly areas.",
     ),
     "coverage": ("Area sweep", "Cover the declared area in parallel rows."),

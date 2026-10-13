@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from aeroagentsim.algorithms import BUILTINS
 from aeroagentsim.services.algorithm_catalog import (
+    BUILTIN_COPY,
     discover_algorithm_catalog,
     mount_algorithm_catalog,
 )
@@ -134,15 +135,20 @@ def test_all_builtin_algorithms_translate_with_or_without_entry_points(
     for slot, rows in catalog.items():
         assert {row["id"] for row in rows} == set(BUILTINS[slot])
         for row in rows:
+            assert row["label"] == BUILTIN_COPY[row["id"]][0]
             for field in ("label_zh", "description_zh"):
                 assert row[field].strip()
                 assert any("\u4e00" <= char <= "\u9fff" for char in row[field])
             if installed:
                 entry = next(e for e in entries if e.name == f"{slot}.{row['id']}")
                 factory = entry.load()
+                assert row["label"] == factory.label
                 assert row["label_zh"] == factory.label_zh
                 assert row["description_zh"] == factory.description_zh
     hungarian = next(row for row in catalog["allocation"] if row["id"] == "hungarian")
+    corridor = next(row for row in catalog["path_planning"] if row["id"] == "corridor_astar")
+    assert corridor["label"] == "Corridor A*"
+    assert corridor["label_zh"] == "安全走廊航线"
     assert "完成时间" in hungarian["description_zh"]
     if not installed:
         assert "estimated completion time" in hungarian["description"]
