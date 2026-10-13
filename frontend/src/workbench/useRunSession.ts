@@ -16,6 +16,8 @@ export interface RunSession {
   journalComplete: boolean;
   /** A requested photo/trace moment still being delivered by the real journal. */
   pendingCut?: number;
+  /** A URL time whose recorded state has not arrived yet. */
+  pendingTimeNs?: string;
   /** Last engine-reported input boundary, retained when pausing or stopping there. */
   reportedBoundaryNs?: string;
   /** Exact journal cut being viewed; undefined means "the live head / clock position". */
@@ -34,7 +36,7 @@ export interface RunSession {
  * History and playback change only the viewed journal position. The live input
  * source and simulation controls remain independent of the viewing cursor.
  */
-export function useRunSession(apiBase: string, runId: string | undefined, mode: 'live' | 'replay', initialCut?: number): RunSession | undefined {
+export function useRunSession(apiBase: string, runId: string | undefined, mode: 'live' | 'replay', initialCut?: number, initialTimeNs?: string): RunSession | undefined {
   const { locale } = useI18n(), L = (en: string, zh: string) => locale === 'zh-CN' ? zh : en;
   const runs = useMemo(() => new RunsApi(apiBase), [apiBase]);
   const [state, setState] = useState<{ store: TemporalFeedStore; clock: PlaybackClock }>();
@@ -45,8 +47,9 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
   const [seekError, setSeekError] = useState<string>();
   const [cut, setCut] = useState<number>(), cutRef = useRef<number>();
   const [pendingCut, setPendingCut] = useState<number>(), requestedCut = useRef<number>();
+  const [pendingTimeNs, setPendingTimeNs] = useState<string>(), requestedTime = useRef<string>();
   const [revision, setRevision] = useState(0);
-  const follow = useRef(mode === 'live' && initialCut === undefined);
+  const follow = useRef(mode === 'live' && initialCut === undefined && initialTimeNs === undefined);
   const statusRef = useRef('loading');
   const tick = () => setRevision(value => value + 1);
 
@@ -54,7 +57,10 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
     setState(undefined); setError(undefined); setSeekError(undefined); setTransportError(undefined); setCut(undefined); cutRef.current = undefined;
     setJournalComplete(false);
     requestedCut.current = initialCut; setPendingCut(requestedCut.current);
-    setStatus('loading'); statusRef.current = 'loading'; setWaiting(undefined); setReportedBoundaryNs(undefined); follow.current = mode === 'live' && requestedCut.current === undefined;
+    requestedTime.current = initialTimeNs !== undefined && /^-?\d+$/.test(initialTimeNs) ? BigInt(initialTimeNs).toString() : undefined;
+    setPendingTimeNs(requestedTime.current);
+    if (initialTimeNs !== undefined && requestedTime.current === undefined) setSeekError(L(`Invalid recorded time ${initialTimeNs}`, `记录时间 ${initialTimeNs} 无效`));
+    setStatus('loading'); statusRef.current = 'loading'; setWaiting(undefined); setReportedBoundaryNs(undefined); follow.current = mode === 'live' && initialCut === undefined && initialTimeNs === undefined;
     if (!runId) return;
     const abort = new AbortController();
     let paint: number | undefined, activeStore: TemporalFeedStore | undefined;
@@ -80,15 +86,42 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
       const store = new TemporalFeedStore(header), clock = new PlaybackClock(header.start.ns, mode === 'live' ? header.start.ns : header.end?.ns ?? header.start.ns);
       activeStore = store; store.liveFollow = mode === 'live' && follow.current;
       setState({ store, clock });
+      const timeProblem = () => {
+        setSeekError(L(`Recorded time ${requestedTime.current} is outside the journal`, `记录时间 ${requestedTime.current} 超出日志范围`));
+        requestedTime.current = undefined; setPendingTimeNs(undefined);
+        requestedCut.current = undefined; setPendingCut(undefined);
+      };
+      if (requestedTime.current !== undefined && (BigInt(requestedTime.current) < BigInt(header.start.ns)
+        || header.end !== undefined && BigInt(requestedTime.current) > BigInt(header.end.ns))) timeProblem();
+      // A time-only link restores the last recorded cut at that time. Wait for
+      // the next timestamp (or journal completion) to include same-time commits.
+      const restoreTime = (complete = false) => {
+        if (requestedTime.current === undefined || requestedCut.current !== undefined) return;
+        const target = BigInt(requestedTime.current), head = store.commits.at(-1);
+        if (!head || BigInt(head.at.ns) < target) { if (complete) timeProblem(); return; }
+        let offset = store.commits.length - 1;
+        while (offset >= 0 && BigInt(store.commits[offset].at.ns) > target) offset--;
+        if (offset < 0) { timeProblem(); return; }
+        const commit = store.commits[offset];
+        follow.current = false; store.liveFollow = false; clock.pause(); clock.seek(requestedTime.current);
+        cutRef.current = commit.commitIndex; setCut(commit.commitIndex); setPendingTimeNs(undefined);
+        if (complete || BigInt(head.at.ns) > target) requestedTime.current = undefined;
+      };
       return feed.subscribe(0, commit => {
         if(abort.signal.aborted)return;
         store.ingest(commit);
         if (BigInt(commit.at.ns) > BigInt(clock.end)) clock.end = commit.at.ns;
         if (mode === 'live' && follow.current) clock.seek(clock.end);
         if (requestedCut.current === commit.commitIndex) {
-          follow.current = false; store.liveFollow = false; clock.pause(); clock.seek(commit.at.ns); cutRef.current = commit.commitIndex; setCut(commit.commitIndex);
+          if (requestedTime.current !== undefined && requestedTime.current !== commit.at.ns) {
+            setSeekError(L('The recorded time and journal cut disagree.', '记录时间与日志位置不一致。'));
+          } else {
+            follow.current = false; store.liveFollow = false; clock.pause(); clock.seek(commit.at.ns); cutRef.current = commit.commitIndex; setCut(commit.commitIndex);
+          }
           requestedCut.current = undefined; setPendingCut(undefined);
+          requestedTime.current = undefined; setPendingTimeNs(undefined);
         }
+        restoreTime();
         // Many commits arrive per chunk: retain each, project once per frame.
         if (paint === undefined) paint = requestAnimationFrame(() => {
           paint = undefined;
@@ -101,7 +134,9 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
         if (requestedCut.current !== undefined) {
           setSeekError(L(`Journal cut ${requestedCut.current} is absent from the complete journal`, `完整日志中不存在记录位置 ${requestedCut.current}`));
           requestedCut.current = undefined; setPendingCut(undefined);
+          requestedTime.current = undefined; setPendingTimeNs(undefined);
         }
+        restoreTime(true);
       });
     }).catch(problem => { if (!abort.signal.aborted) setError(String(problem)); });
     return () => { abort.abort(); if (paint !== undefined) cancelAnimationFrame(paint); };
@@ -118,11 +153,12 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
     const commit = store.commits[offset];
     if (!commit) return;
     requestedCut.current = undefined; setPendingCut(undefined); setSeekError(undefined);
+    requestedTime.current = undefined; setPendingTimeNs(undefined);
     follow.current = false; store.liveFollow = false; clock.pause(); clock.seek(commit.at.ns);
     cutRef.current = commit.commitIndex; setCut(commit.commitIndex); store.seek(clock.ns, commit.commitIndex); tick();
   };
   return {
-    store, clock, inputSource, status, waiting, reportedBoundaryNs, journalComplete, pendingCut, cut, error: error ?? seekError, transportError, revision,
+    store, clock, inputSource, status, waiting, reportedBoundaryNs, journalComplete, pendingCut, pendingTimeNs, cut, error: error ?? seekError, transportError, revision,
     followingLive: mode === 'live' && follow.current && cut === undefined,
     seekOffset,
     seekCut: index => {
@@ -131,10 +167,11 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
       if (offset >= 0) { seekOffset(offset); return; }
       if (journalComplete) { setSeekError(L(`Journal cut ${index} is absent from the complete journal`, `完整日志中不存在记录位置 ${index}`)); return; }
       requestedCut.current = index; setPendingCut(index); setSeekError(undefined);
+      requestedTime.current = undefined; setPendingTimeNs(undefined);
       follow.current = false; store.liveFollow = false; clock.pause(); tick();
     },
-    togglePlayback: () => { requestedCut.current = undefined; setPendingCut(undefined); setCut(undefined); cutRef.current = undefined; follow.current = false; store.liveFollow = false; if (clock.playing) clock.pause(); else { if (BigInt(clock.ns) >= BigInt(clock.end)) clock.seek(store.header.start.ns); clock.play(); } tick(); },
-    backToLive: () => { requestedCut.current = undefined; setPendingCut(undefined); follow.current = mode === 'live'; store.liveFollow = liveAllowed(); setCut(undefined); cutRef.current = undefined; clock.pause(); clock.seek(clock.end); store.seek(clock.ns); tick(); },
+    togglePlayback: () => { requestedCut.current = undefined; setPendingCut(undefined); requestedTime.current = undefined; setPendingTimeNs(undefined); setSeekError(undefined); setCut(undefined); cutRef.current = undefined; follow.current = false; store.liveFollow = false; if (clock.playing) clock.pause(); else { if (BigInt(clock.ns) >= BigInt(clock.end)) clock.seek(store.header.start.ns); clock.play(); } tick(); },
+    backToLive: () => { requestedCut.current = undefined; setPendingCut(undefined); requestedTime.current = undefined; setPendingTimeNs(undefined); setSeekError(undefined); follow.current = mode === 'live'; store.liveFollow = liveAllowed(); setCut(undefined); cutRef.current = undefined; clock.pause(); clock.seek(clock.end); store.seek(clock.ns); tick(); },
     setSpeed: speed => { clock.setSpeed(speed); tick(); },
   };
 }

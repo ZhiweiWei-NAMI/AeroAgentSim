@@ -1,25 +1,26 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { TemplateApi } from '../newcomers/api';
 import Workbench from './Workbench';
 import { WorkbenchApi, type Project, type RunRecord } from './api';
-import type { Session } from '../assistant/api';
+import type { ApplyRecord, Session } from '../assistant/api';
 import { emptyCommit, fixtureHeader } from '../behaviours/extension-fixture';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { PlaybackClock } from '../viewport/clock';
 import type { RunSession } from './useRunSession';
 
-const mocks = vi.hoisted(() => ({ panelRender: vi.fn(), session: undefined as Session | undefined, runSession: undefined as RunSession | undefined }));
+const mocks = vi.hoisted(() => ({ panelRender: vi.fn(), apply: vi.fn(), readSession: vi.fn(), session: undefined as Session | undefined, runSession: undefined as RunSession | undefined }));
 vi.mock('../assistant/AssistantPanel', () => ({ AssistantPanel: () => { mocks.panelRender(); return <input aria-label="Search objects" />; } }));
 vi.mock('../assistant/motion/NeuralGlyph', () => ({ NeuralGlyph: () => null }));
 vi.mock('../studio/ScenePreview', () => ({ ScenePreview: () => null }));
 vi.mock('../viewport/NonspatialViews', () => ({ NonspatialViews: () => null }));
-vi.mock('./useRunSession', async original => ({ ...await original<object>(), useRunSession: () => mocks.runSession }));
+vi.mock('./useRunSession', async original => ({ ...await original<object>(), useRunSession: (...args: unknown[]) => { mocks.readSession(...args); return mocks.runSession; } }));
 vi.mock('../assistant/useAssistantMode', () => ({ useAssistantMode: () => ({
-  api: {}, assistant: { session: mocks.session, plan: mocks.session?.plan, applied: mocks.session?.applied.at(-1), busy: false, send: vi.fn(), apply: vi.fn() },
-  connection: { connection: {}, save: vi.fn(), test: vi.fn() }, stage: 'configured', board: true,
+  api: {}, assistant: { session: mocks.session, plan: mocks.session?.plan, applied: mocks.session?.applied.at(-1), busy: false, send: vi.fn(), apply: mocks.apply },
+  connection: { connection: {}, save: vi.fn(), test: vi.fn() }, stage: mocks.session?.applied.length ? 'configured' : 'proposed', board: true,
   lastSection: { current: 'run' }, setFocus: vi.fn(), setViewing: vi.fn(), closeBoard: vi.fn(), openBoard: vi.fn(), switchMode: vi.fn(), applyDone: vi.fn(),
 }) }));
 
@@ -28,6 +29,7 @@ const project: Project = { id: 'project', name: 'Project', revision: 4, updated_
 const run = { id: 'initialized-run', status: 'initialized', scenario: 'project', studio_workspace: 'project', workspace_version: 1 } as RunRecord;
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear(); mocks.panelRender.mockClear();
+  mocks.apply.mockReset(); mocks.readSession.mockClear();
   mocks.runSession = undefined;
   const plan = { version: 1, created_at: '', note: '', base: {}, base_label: 'Project', title: 'Plan', summary: '', operations: [], assumptions: [], open_questions: [],
     compile: { ok: true, errors: [], warnings: [] }, validation: { state: 'valid' }, expectations: [], diff_base: { added: [], changed: [], removed: [] } };
@@ -37,10 +39,11 @@ beforeEach(() => {
   vi.spyOn(WorkbenchApi.prototype, 'runs').mockResolvedValue([]);
   vi.spyOn(WorkbenchApi.prototype, 'initialize').mockResolvedValue(run);
   vi.spyOn(WorkbenchApi.prototype, 'speed').mockResolvedValue({ id: run.id, factor: 1 });
-  vi.spyOn(TemplateApi.prototype, 'kpis').mockResolvedValue({ values: {}, series: [] } as never);
+  vi.spyOn(TemplateApi.prototype, 'kpis').mockResolvedValue({ run_id: run.id, final: {}, series: [] });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
-function setup(entry = '/w/project?panel=assistant') { return render(<I18nProvider><MemoryRouter initialEntries={[entry]}><Workbench /></MemoryRouter></I18nProvider>); }
+function LocationProbe() { const location = useLocation(); return <output data-testid="current-url">{location.pathname}{location.search}</output>; }
+function setup(entry = '/w/project?panel=assistant') { return render(<I18nProvider><MemoryRouter initialEntries={[entry]}><Workbench /><LocationProbe /></MemoryRouter></I18nProvider>); }
 
 it('T2-R2-004: the assistant button names and initializes the latest server v2 after a Form save', async () => {
   setup();
@@ -64,7 +67,8 @@ it('the shell initializer names and requests the latest saved server version', a
 it.each(['keyboard', 'button'])('T4-07: Esc restores focus to the %s palette invoker, including after Tab', async invoker => {
   setup();
   await screen.findByTestId('wb-version-chip');
-  const control = invoker === 'keyboard' ? screen.getByLabelText('Search objects') : screen.getByTitle('Search objects and actions');
+  const control = invoker === 'keyboard' ? screen.getByTestId('workbench') : screen.getByTitle('Search objects and actions');
+  if (invoker === 'keyboard') control.tabIndex = -1;
   control.focus();
   if (invoker === 'keyboard') fireEvent.keyDown(control, { key: 'k', ctrlKey: true });
   else fireEvent.click(control);
@@ -75,6 +79,124 @@ it.each(['keyboard', 'button'])('T4-07: Esc restores focus to the %s palette inv
   fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(control).toHaveFocus();
+});
+
+it('T2-R4-001: fast Confirm refreshes the applied workspace before its initial load, and an older load cannot overwrite it', async () => {
+  let finishInitial!: (value: Project) => void;
+  const stale = { ...project, latest_version: null, dirty: true, revision: 4 };
+  const fresh = { ...project, revision: 6, latest_version: { ...project.latest_version!, version: 1, revision: 6 } };
+  const record: ApplyRecord = { plan_version: 1, workspace_id: 'project', version: 1, revision: 6, applied_at: '', report: { created: [], changed: [], removed: [] } };
+  vi.mocked(WorkbenchApi.prototype.project).mockReset()
+    .mockImplementationOnce(() => new Promise<Project>(resolve => { finishInitial = resolve; }))
+    .mockResolvedValue(fresh);
+  mocks.session!.applied = [];
+  mocks.apply.mockImplementation(async () => { mocks.session = { ...mocks.session!, applied: [record] }; return record; });
+  setup();
+  fireEvent.click(await screen.findByTestId('as-confirm'));
+  await waitFor(() => expect(screen.getByTestId('wb-version-chip')).toHaveTextContent('v1'));
+  const initialize = screen.getByTestId('as-initialize');
+  expect(initialize).toHaveTextContent('Initialize version 1'); expect(initialize).toBeEnabled();
+  expect(WorkbenchApi.prototype.project).toHaveBeenCalledTimes(2);
+  await act(async () => finishInitial(stale));
+  expect(screen.getByTestId('wb-version-chip')).toHaveTextContent('v1');
+  expect(screen.getByTestId('wb-init')).toHaveTextContent('Initialize v1');
+  fireEvent.click(initialize);
+  await waitFor(() => expect(WorkbenchApi.prototype.initialize).toHaveBeenCalledWith('project', 1));
+});
+
+function recorded(mode: 'live' | 'replay' = 'replay') {
+  const store = new TemporalFeedStore({ ...fixtureHeader, presentation: [], end: { ns: '14000000000', microstep: 0 } });
+  [emptyCommit(1), emptyCommit(2, '7000000000'), emptyCommit(3, '14000000000')].forEach(commit => store.ingest(commit));
+  const clock = new PlaybackClock('0', '14000000000'); clock.seek(clock.end); store.seek(clock.ns);
+  const session: RunSession = {
+    store, clock, status: mode === 'live' ? 'running' : 'completed', journalComplete: mode === 'replay', followingLive: mode === 'live', revision: 1,
+    inputSource: { serialize: vi.fn() },
+    seekOffset: vi.fn((offset: number) => {
+      const commit = store.commits[offset]; if (!commit) return;
+      clock.seek(commit.at.ns); session.cut = commit.commitIndex; session.followingLive = false; store.seek(clock.ns, session.cut);
+    }),
+    seekCut: vi.fn((index: number) => session.seekOffset(store.commits.findIndex(commit => commit.commitIndex === index))),
+    togglePlayback: vi.fn(() => { if (clock.playing) clock.pause(); else clock.play(); session.cut = undefined; session.followingLive = false; }),
+    backToLive: vi.fn(() => { clock.pause(); clock.seek(clock.end); session.cut = undefined; session.followingLive = mode === 'live'; store.seek(clock.ns); }),
+    setSpeed: vi.fn(),
+  };
+  mocks.runSession = session;
+  vi.mocked(WorkbenchApi.prototype.runs).mockResolvedValue([{ ...run, status: session.status, until_ns: '14000000000' }]);
+  return session;
+}
+
+it.each(['live', 'replay'] as const)('T1-R4-004 / T3-R4-001: %s timeline persists nanoseconds and cut, restores the URL, and preserves selection', async mode => {
+  const session = recorded(mode);
+  const control = vi.spyOn(WorkbenchApi.prototype, 'control');
+  const view = setup(`/w/project?run=${run.id}&mode=${mode}&sel=vehicle&panel=assistant`);
+  fireEvent.change(await screen.findByLabelText('Recorded timeline'), { target: { value: '1' } });
+  await waitFor(() => expect(screen.getByTestId('current-url')).toHaveTextContent('t=7000000000'));
+  const url = screen.getByTestId('current-url').textContent!;
+  expect(url).toContain('cut=2'); expect(url).toContain('sel=vehicle');
+  expect(session.seekOffset).toHaveBeenCalledWith(1);
+  view.unmount();
+  setup(url);
+  expect(mocks.readSession).toHaveBeenLastCalledWith(window.location.origin, run.id, mode, 2, '7000000000');
+  fireEvent.click(await screen.findByTestId('wb-back-live'));
+  await waitFor(() => expect(screen.getByTestId('current-url').textContent).not.toContain('cut='));
+  const returned = new URL(screen.getByTestId('current-url').textContent!, 'http://api');
+  expect(returned.searchParams.get('t')).toBe(mode === 'live' ? null : '14000000000');
+  expect(returned.searchParams.get('sel')).toBe('vehicle');
+  expect(control).not.toHaveBeenCalled(); expect(session.inputSource.serialize).not.toHaveBeenCalled();
+});
+
+it('T1-R4-004: a live URL without t keeps following the live head', async () => {
+  const session = recorded('live'); setup(`/w/project?run=${run.id}&mode=live&panel=assistant`);
+  await screen.findByTestId('wb-version-chip');
+  expect(session.followingLive).toBe(true);
+  expect(screen.getByTestId('current-url').textContent).not.toContain('t=');
+  expect(mocks.readSession).toHaveBeenLastCalledWith(window.location.origin, run.id, 'live', undefined, undefined);
+});
+
+it('T1-R4-004: refresh during playback records the current nanosecond position', async () => {
+  const session = recorded(); setup(`/w/project?run=${run.id}&mode=replay&panel=assistant`);
+  fireEvent.click(await screen.findByTestId('wb-playback'));
+  session.clock.seek('9000000001');
+  fireEvent(window, new Event('beforeunload'));
+  expect(screen.getByTestId('current-url')).toHaveTextContent('t=9000000001');
+  expect(screen.getByTestId('current-url').textContent).not.toContain('cut=');
+});
+
+it('T4-R4-003: Space activates the focused Records button and leaves playback stopped', async () => {
+  const session = recorded(); setup(`/w/project?run=${run.id}&mode=replay&panel=assistant`);
+  const button = await screen.findByTestId('wb-records-toggle'); button.focus();
+  await userEvent.setup().keyboard(' ');
+  expect(screen.getByTestId('current-url')).toHaveTextContent('records=1');
+  expect(session.togglePlayback).not.toHaveBeenCalled(); expect(session.clock.playing).toBe(false);
+});
+
+it.each(['button', 'range', 'checkbox', 'input', 'select', 'textarea', 'editable', 'role-button'])('T4-R4-003: global shortcuts ignore a %s and its descendants', async kind => {
+  const session = recorded(); setup(`/w/project?run=${run.id}&mode=replay&panel=assistant`);
+  await screen.findByTestId('wb-version-chip');
+  const element = document.createElement(kind === 'editable' || kind === 'role-button' ? 'div' : kind === 'range' || kind === 'checkbox' ? 'input' : kind);
+  if (kind === 'range' || kind === 'checkbox') (element as HTMLInputElement).type = kind;
+  if (kind === 'editable') element.setAttribute('contenteditable', 'true');
+  if (kind === 'role-button') element.setAttribute('role', 'button');
+  document.body.append(element);
+  const child = ['button', 'editable', 'role-button'].includes(kind) ? element.appendChild(document.createElement('span')) : element;
+  try {
+    for (const key of [' ', 'r', 'g', 'l', 'k']) fireEvent.keyDown(child, { key, ctrlKey: key === 'k' });
+    expect(session.togglePlayback).not.toHaveBeenCalled(); expect(session.backToLive).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByTestId('current-url').textContent).not.toContain('records=1');
+  } finally { element.remove(); }
+});
+
+it('T4-R4-003: a local defaultPrevented event stays local, while Space on the observation surface controls playback', async () => {
+  const session = recorded(); setup(`/w/project?run=${run.id}&mode=replay&panel=assistant`);
+  await screen.findByTestId('wb-version-chip');
+  const surface = document.createElement('div'); document.body.append(surface);
+  const consume = (event: KeyboardEvent) => event.preventDefault(); surface.addEventListener('keydown', consume);
+  try {
+    fireEvent.keyDown(surface, { key: ' ' }); expect(session.togglePlayback).not.toHaveBeenCalled();
+    surface.removeEventListener('keydown', consume);
+    fireEvent.keyDown(surface, { key: ' ' }); expect(session.togglePlayback).toHaveBeenCalledOnce();
+  } finally { surface.remove(); }
 });
 
 it('the five-second records poll skips unchanged data and still renders actual record changes', async () => {

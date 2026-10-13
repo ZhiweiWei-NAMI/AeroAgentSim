@@ -21,12 +21,68 @@ vi.mock('../feeds/http', () => ({
 }));
 beforeEach(() => { stream.deliver = undefined; stream.finish = undefined; stream.status=undefined; control.request.mockReset();control.serialize.mockClear();control.source.mockClear();sessionStorage.clear(); });
 afterEach(cleanup);
-async function loaded(mode:'live'|'replay'='replay', initialCut?:number) {
-  const hook = renderHook(() => useRunSession('http://api', 'run', mode, initialCut));
+async function loaded(mode:'live'|'replay'='replay', initialCut?:number, initialTimeNs?:string) {
+  const hook = renderHook(() => useRunSession('http://api', 'run', mode, initialCut, initialTimeNs));
   await waitFor(() => expect(hook.result.current).toBeDefined());
   act(() => stream.deliver!(fixtureCommits[0]));
   return hook;
 }
+
+it.each(['live', 'replay'] as const)('T1-R4-004 / T3-R4-001: refresh restores the exact %s URL cut, including commits at the same timestamp', async mode => {
+  const first = await loaded(mode);
+  act(() => fixtureCommits.slice(1).forEach(commit => stream.deliver!(commit)));
+  act(() => first.result.current!.seekCut(2));
+  const ns = first.result.current!.clock.ns, cut = first.result.current!.cut;
+  expect(ns).toBe('10'); expect(cut).toBe(2);
+  first.unmount();
+  const second = await loaded(mode, cut, ns);
+  expect(second.result.current!.followingLive).toBe(false);
+  act(() => { fixtureCommits.slice(1).forEach(commit => stream.deliver!(commit)); stream.finish!(); });
+  await waitFor(() => expect(second.result.current!.store.viewCursor?.knownAt).toBe(2));
+  expect(second.result.current!.clock.ns).toBe(ns); expect(second.result.current!.cut).toBe(2);
+  expect(second.result.current!.pendingCut).toBeUndefined(); expect(second.result.current!.pendingTimeNs).toBeUndefined();
+  expect(second.result.current!.error).toBeUndefined();
+  expect(control.request).not.toHaveBeenCalled(); expect(control.serialize).not.toHaveBeenCalled();
+});
+
+it('T1-R4-004: time-only links restore the last same-time cut and remain there as live inputs advance', async () => {
+  const { result } = await loaded('live', undefined, '10');
+  expect(result.current!.pendingTimeNs).toBe('10');
+  act(() => { stream.status!('running'); fixtureCommits.slice(1).forEach(commit => stream.deliver!(commit)); });
+  await waitFor(() => expect(result.current!.store.viewCursor?.knownAt).toBe(3));
+  expect(result.current!.clock.ns).toBe('10'); expect(result.current!.cut).toBe(3);
+  expect(result.current!.followingLive).toBe(false); expect(result.current!.pendingTimeNs).toBeUndefined();
+  expect(control.source).toHaveBeenLastCalledWith(expect.anything(), 'run', 'live');
+  expect(control.request).not.toHaveBeenCalled(); expect(control.serialize).not.toHaveBeenCalled();
+});
+
+it('T1-R4-004: restores nanoseconds beyond Number.MAX_SAFE_INTEGER without rounding', async () => {
+  const { result } = await loaded('replay', undefined, '9007199254740993');
+  act(() => { fixtureCommits.slice(1).forEach(commit => stream.deliver!(commit)); stream.finish!(); });
+  await waitFor(() => expect(result.current!.store.viewCursor?.knownAt).toBe(4));
+  expect(result.current!.clock.ns).toBe('9007199254740993'); expect(result.current!.error).toBeUndefined();
+});
+
+it('T1-R4-004: a playback time between commits keeps its exact time and uses only the preceding recorded state', async () => {
+  const { result } = await loaded('replay', undefined, '11');
+  act(() => { fixtureCommits.slice(1).forEach(commit => stream.deliver!(commit)); stream.finish!(); });
+  await waitFor(() => expect(result.current!.store.viewCursor).toMatchObject({ validAt: { ns: '11' }, knownAt: 3 }));
+  expect(result.current!.clock.ns).toBe('11'); expect(result.current!.error).toBeUndefined();
+});
+
+it.each(['NaN', '', '-1', '9007199254740994'])('T1-R4-004: invalid URL time %s is visibly rejected instead of becoming live head', async ns => {
+  const { result } = await loaded('live', undefined, ns);
+  expect(result.current!.error).toMatch(/Invalid recorded time|outside the journal/);
+  expect(result.current!.followingLive).toBe(false);
+  expect(control.request).not.toHaveBeenCalled();
+});
+
+it('T1-R4-004: a mismatched time and cut are visibly rejected', async () => {
+  const { result } = await loaded('replay', 2, '11');
+  act(() => fixtureCommits.slice(1).forEach(commit => stream.deliver!(commit)));
+  expect(result.current!.error).toContain('time and journal cut disagree');
+  expect(result.current!.cut).toBeUndefined(); expect(result.current!.followingLive).toBe(false);
+});
 
 it('waits for the actual photo cut, preserving the displayed moment until its journal arrives', async () => {
   const { result } = await loaded();

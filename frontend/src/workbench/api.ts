@@ -35,19 +35,28 @@ export class WorkbenchApi {
       try { const value = JSON.parse(text).detail; detail = typeof value === 'string' ? value : JSON.stringify(value); } catch { /* Keep the raw server text. */ }
       throw new ApiError(response.status, detail);
     }
-    return parseAuthoringJson(text) as T;
+    const result = parseAuthoringJson(text) as T;
+    // These writes return legacy draft records as well as summaries. Only GET
+    // owns the displayed version, validation, capabilities and authored scene.
+    const workspace = /^\/v1\/studio\/workspaces\/([^/?]+)\/(knobs|import|place|remove)$/.exec(path);
+    const body = init?.body as { dry_run?: boolean } | undefined;
+    if (workspace && (init?.method ?? (init?.body === undefined ? 'GET' : 'POST')) !== 'GET' && body?.dry_run !== true) {
+      return await this.project(decodeURIComponent(workspace[1]), init?.signal) as T;
+    }
+    return result;
   }
   // Projects (studio workspaces) and their versions.
   projects(signal?: AbortSignal) { return this.request<Project[]>('/v1/studio/workspaces', { signal }); }
   createProject(name: string) { return this.request<{ id: string }>('/v1/studio/workspaces', { body: { name } }); }
   project(id: string, signal?: AbortSignal) { return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}`, { signal }); }
   async save(id: string, scenario: Record<string, unknown>, revision: number, name?: string) {
-    // Both the legacy save record and the newer summary response are supported.
-    // GET owns the authoritative version, validation and dirty state after the mutation.
     await this.request<unknown>(`/v1/studio/workspaces/${encodeURIComponent(id)}`, { body: { scenario, revision, ...(name ? { name } : {}) } });
     return this.project(id);
   }
-  rename(id: string, name: string, revision: number) { return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}`, { body: { name, revision } }); }
+  async rename(id: string, name: string, revision: number) {
+    await this.request<unknown>(`/v1/studio/workspaces/${encodeURIComponent(id)}`, { body: { name, revision } });
+    return this.project(id);
+  }
   validate(id: string, revision: number) { return this.request<Validation>(`/v1/studio/workspaces/${encodeURIComponent(id)}/validate`, { body: { revision } }); }
   knobs(id: string, knobs: Record<string, KnobValue>, revision: number) { return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}/knobs`, { body: { knobs, revision } }); }
   versions(id: string, signal?: AbortSignal) { return this.request<VersionInfo[]>(`/v1/studio/workspaces/${encodeURIComponent(id)}/versions`, { signal }); }

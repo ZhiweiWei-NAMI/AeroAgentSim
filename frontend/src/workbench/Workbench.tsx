@@ -55,7 +55,7 @@ type Camera = 'orbit' | 'follow' | 'chase';
 
 /**
  * The one scene. A fixed 3D world fills the screen; every tool hovers over it.
- * URL query carries context: run, mode, cut, sel, panel, records, compare, graph, gallery, contract.
+ * URL query carries context: run, mode, t (nanoseconds), cut, sel, panel, records, compare, graph, gallery, contract.
  */
 /** The run record is authoritative, but the live stream may already be further
  *  along the lifecycle (e.g. running right after Start) than the last poll. */
@@ -84,12 +84,16 @@ export default function Workbench() {
   const panel = query.get('panel') ?? undefined;
   const assistantOpen = panel === 'assistant';
   const graph = query.get('graph');
+  const navigation = useRef({ pathname: location.pathname, search: location.search });
+  navigation.current = { pathname: location.pathname, search: location.search };
   const update = useCallback((patch: Record<string, string | undefined>, push = false, path?: string) => {
-    const next = new URLSearchParams(location.search);
+    const current = navigation.current, next = new URLSearchParams(current.search);
     for (const [key, value] of Object.entries(patch)) { if (value === undefined) next.delete(key); else next.set(key, value); }
+    if ('run' in patch && !('t' in patch)) next.delete('t');
     const search = next.toString();
-    navigate(`${path ?? location.pathname}${search ? `?${search}` : ''}`, { replace: !push });
-  }, [location.pathname, location.search, navigate]);
+    navigation.current = { pathname: path ?? current.pathname, search: search ? `?${search}` : '' };
+    navigate(`${navigation.current.pathname}${navigation.current.search}`, { replace: !push });
+  }, [navigate]);
 
   // Toasts
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -101,11 +105,21 @@ export default function Workbench() {
   const previewChanged = useCallback((id: string, scenario: Record<string, unknown>, dirty: boolean) => setPreviewDraft({ id, scenario: scenario as Project['scenario'], dirty }), []);
   const [inspectorCompact, setInspectorCompact] = useState(true);
   const [project, setProject] = useState<Project>(), [projectError, setProjectError] = useState<string>();
+  const projectRequest = useRef(0);
+  const receiveProject = useCallback((saved: Project) => {
+    if (saved.id !== decodeURIComponent(/^\/w\/([^/?]+)/.exec(navigation.current.pathname)?.[1] ?? '')) return;
+    // A mutation's GET supersedes any initial load still in flight.
+    projectRequest.current++;
+    setProject(saved); setProjectError(undefined);
+  }, []);
   useEffect(() => {
+    const request = ++projectRequest.current;
     setProject(undefined); setProjectError(undefined);
     if (!projectId) return;
     const abort = new AbortController();
-    void api.project(decodeURIComponent(projectId), abort.signal).then(setProject).catch(problem => { if (!abort.signal.aborted) setProjectError(problemText(problem)); });
+    void api.project(decodeURIComponent(projectId), abort.signal).then(saved => {
+      if (!abort.signal.aborted && request === projectRequest.current) receiveProject(saved);
+    }).catch(problem => { if (!abort.signal.aborted && request === projectRequest.current) setProjectError(problemText(problem)); });
     return () => abort.abort();
   }, [api, projectId]);
 
@@ -143,7 +157,42 @@ export default function Workbench() {
   const requestedMode = query.get('mode');
   const mode: 'live' | 'replay' | undefined = requestedMode === 'live' || requestedMode === 'replay' ? requestedMode : record ? (TERMINAL.has(record.status) ? 'replay' : 'live') : undefined;
   const initialCut = query.get('cut') ? Number(query.get('cut')) : undefined;
-  const session = useRunSession(apiBase, runId && mode ? runId : undefined, mode ?? 'replay', Number.isSafeInteger(initialCut) ? initialCut : undefined);
+  const recordedSession = useRunSession(apiBase, runId && mode ? runId : undefined, mode ?? 'replay', Number.isSafeInteger(initialCut) ? initialCut : undefined, query.get('t') ?? undefined);
+  // All observation entry points share URL persistence: timeline, trace,
+  // graph, photos, inspector, event feed and keyboard.
+  const session = recordedSession && {
+    ...recordedSession,
+    seekOffset: (offset: number) => {
+      recordedSession.seekOffset(offset);
+      const commit = recordedSession.store.commits[offset];
+      if (commit) update({ t: commit.at.ns, cut: String(commit.commitIndex) });
+    },
+    seekCut: (index: number) => {
+      recordedSession.seekCut(index);
+      const commit = recordedSession.store.commits.find(row => row.commitIndex === index);
+      if (Number.isSafeInteger(index) && index >= 1 && (commit || !recordedSession.journalComplete)) update({ t: commit?.at.ns, cut: String(index) });
+    },
+    togglePlayback: () => { recordedSession.togglePlayback(); update({ t: recordedSession.clock.ns, cut: undefined }); },
+    backToLive: () => { recordedSession.backToLive(); update({ t: mode === 'live' ? undefined : recordedSession.clock.ns, cut: undefined }); },
+  };
+  useEffect(() => {
+    if (recordedSession?.cut === undefined || recordedSession.pendingCut !== undefined) return;
+    const commit = recordedSession.store.commits.find(row => row.commitIndex === recordedSession.cut);
+    const ns = recordedSession.clock.ns, cut = commit?.at.ns === ns ? String(recordedSession.cut) : undefined;
+    if (query.get('t') !== ns || (query.get('cut') ?? undefined) !== cut) update({ t: ns, cut });
+  }, [recordedSession?.cut, recordedSession?.pendingCut]);
+  useEffect(() => {
+    const clock = recordedSession?.clock;
+    if (!clock?.playing) return;
+    const remember = () => {
+      if (clock.playing && new URLSearchParams(navigation.current.search).get('t') !== clock.ns) update({ t: clock.ns, cut: undefined });
+    };
+    // Keep playback links useful without navigating on every animation frame;
+    // refresh records the exact clock position synchronously before unloading.
+    const timer = setInterval(remember, 500);
+    addEventListener('beforeunload', remember);
+    return () => { clearInterval(timer); removeEventListener('beforeunload', remember); };
+  }, [recordedSession?.clock, recordedSession?.clock.playing, update]);
   // Runtime metadata drives simulation controls; the journal can arrive later.
   const status = runStatus(!recordsError ? record?.status : undefined, session?.status);
   // C6: a terminal status with still-aggregating KPIs/Story is not finished yet.
@@ -369,9 +418,16 @@ export default function Workbench() {
   // The assistant's Confirm wrote a draft and saved a version: show the real project.
   const applied = async (applyRecord: ApplyRecord) => {
     assistant.applyDone(applyRecord);
-    toast('success', L(`Applied. Version ${applyRecord.version} is saved and ready to initialize.`, `已应用。版本 ${applyRecord.version} 已保存，可以初始化。`));
-    if (applyRecord.workspace_id !== project?.id) { update({ panel: 'assistant', gallery: undefined }, true, `/w/${encodeURIComponent(applyRecord.workspace_id)}`); return; }
-    try { setPreviewDraft(undefined); setProject(await api.project(project.id)); } catch (problem) { toast('error', problemText(problem)); }
+    if (applyRecord.workspace_id !== decodeURIComponent(projectId ?? '')) update({ panel: 'assistant', gallery: undefined }, true, `/w/${encodeURIComponent(applyRecord.workspace_id)}`);
+    const request = ++projectRequest.current;
+    try {
+      const saved = await api.project(applyRecord.workspace_id);
+      if (request === projectRequest.current) { setPreviewDraft(undefined); receiveProject(saved); }
+      toast('success', L(`Applied. Version ${applyRecord.version} is saved and ready to initialize.`, `已应用。版本 ${applyRecord.version} 已保存，可以初始化。`));
+    } catch (problem) {
+      if (request === projectRequest.current) { setProject(undefined); setProjectError(problemText(problem)); }
+      toast('error', problemText(problem));
+    }
   };
 
   // Projects and templates
@@ -392,19 +448,18 @@ export default function Workbench() {
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if (event.repeat || event.defaultPrevented) return;
-      const target = event.target as HTMLElement | null;
+      const target = event.target instanceof Element ? event.target : undefined;
+      if (target?.closest('button, input, select, textarea, [role="button"], [contenteditable]:not([contenteditable="false"])')) return;
       // T4-07: any open overlay/dialog owns the keyboard — palette, compare,
       // contract, gallery veil. Background shortcuts stop until it closes.
       const overlayOpen = palette || !!query.get('compare') || contractType !== undefined || query.has('gallery')
         || !!document.querySelector('[role="dialog"][aria-modal="true"], [role="alertdialog"]');
       // A photo or technical-details dialog owns its keyboard and focus.
       if (target?.closest('[role="dialog"], [role="alertdialog"]')) return;
-      const editing = target && (target.isContentEditable || /^(TEXTAREA|SELECT)$/.test(target.tagName) ||
-        target.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes((target as HTMLInputElement).type));
       if (overlayOpen) {
         // Only Escape (closing the overlay) and the palette toggle stay live.
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); if (palette) closePalette(); else openPalette(); return; }
-        if (event.key === 'Escape' && !editing) {
+        if (event.key === 'Escape') {
           if (palette) closePalette();
           else if (query.get('compare')) update({ compare: undefined });
           else if (contractType !== undefined) update({ contract: undefined, type: undefined });
@@ -412,9 +467,6 @@ export default function Workbench() {
         }
         return;
       }
-      if (editing && event.key !== 'Escape' && !((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k')) return;
-      // Escape first leaves the field being edited; a second Escape closes the panel.
-      if (editing && event.key === 'Escape') { target.blur(); return; }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openPalette(); return; }
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === ' ' && session) { event.preventDefault(); event.stopPropagation(); session.togglePlayback(); }
@@ -427,8 +479,8 @@ export default function Workbench() {
       else if (event.key === 'l' && session) session.backToLive();
       else if (event.key === 'Escape') { if (palette) closePalette(); else if (query.get('compare')) update({ compare: undefined }); else if (query.get('contract')) update({ contract: undefined, type: undefined }); else if (query.get('graph')) update({ graph: undefined }); else if (query.get('records')) update({ records: undefined }); else if (query.get('panel')) update({ panel: undefined }); else if (selected) select(undefined); }
     };
-    // Claim playback before nested operation components receive the same Space.
-    addEventListener('keydown', key, true); return () => removeEventListener('keydown', key, true);
+    // Local controls may consume an event before the observation shortcuts.
+    addEventListener('keydown', key); return () => removeEventListener('keydown', key);
   });
 
   // The run is spatial when any entity has a position binding OR the header
@@ -499,6 +551,7 @@ export default function Workbench() {
       <span className={`wb-status s-${status ?? 'none'}`} data-testid="wb-status"><i />{status ? finalizing ? L('Finalizing results…', '结果汇总中…') : status === 'initialized' ? L('Initialized · t = 0', '已初始化 · t = 0') : runStatusLabel(status, locale) : L('No run', '无运行')}{mode === 'replay' && !finalizing && <span className="wb-tag" style={{ marginLeft: 6 }}>{L('replay', '回放')}</span>}</span>
       {session && !session.error && (mode === 'live' && status !== session.status || !session.journalComplete && (mode === 'replay' || TERMINAL.has(status ?? ''))) && <span className="wb-tag" role="status" data-testid="wb-catching-up">{L('Scene updating…', '场景更新中…')}</span>}
       {session?.pendingCut !== undefined && <span className="wb-tag" role="status" data-testid="wb-seeking">{L(`Loading moment #${session.pendingCut}…`, `正在加载时刻 #${session.pendingCut}…`)}</span>}
+      {session?.pendingTimeNs !== undefined && session.pendingCut === undefined && <span className="wb-tag" role="status">{L('Loading the selected recorded moment…', '正在加载选定的记录时刻…')}</span>}
       <div className="wb-clock"><small>{mode === 'replay' ? L('Replay time', '回放时间') : L('Simulation time', '仿真时间')}</small><time className="wb-mono">{session ? displayTime(runClockTime(mode ?? 'replay', { ...session, waiting, reportedBoundaryNs: metadataBoundary && metadataBoundary.runId === runId && (!session.reportedBoundaryNs || BigInt(metadataBoundary.ns) > BigInt(session.reportedBoundaryNs)) ? metadataBoundary.ns : session.reportedBoundaryNs }), session.store.header.start.ns) : '--:--.-'}</time></div>
       <div className="wb-controls" aria-label={L('Simulation control', '仿真控制')}>
         {(!runId || TERMINAL.has(status ?? '') || mode === 'replay') && project && <button className="wb-btn primary" data-testid="wb-init" disabled={!project.latest_version || initializing} title={project.latest_version ? L('Create a run of the latest saved version, held at t = 0', '以最新保存的版本创建运行，停在 t = 0') : L('Validate and save a version first', '请先校验并保存版本')} onClick={() => { if (project.latest_version) void initialize(project.latest_version.version); }}>{initializing ? L('Initializing…', '初始化中…') : project.latest_version ? L(`Initialize v${project.latest_version.version}`, `初始化 v${project.latest_version.version}`) : L('Initialize', '初始化')}</button>}
@@ -557,7 +610,7 @@ export default function Workbench() {
         selected={selected ? { id: selected.id, label: entityNames.get(selected.id) ?? selected.id } : undefined} runId={runId} onClearSelected={() => select(undefined)}
         onClose={() => update({ panel: undefined })} onSwitch={project ? (mode, origin) => assistant.switchMode(mode, origin) : undefined} switching={!!assistant.morph} morph={morphOf('chat')}
         onShowPlan={version => { assistant.openBoard(); assistant.setViewing(version === assistant.assistant.plan?.version ? undefined : version); }} onShowChanges={() => { assistant.openBoard(); assistant.setViewing(undefined); }} />}</Suspense>
-    <Suspense fallback={null}>{project && panel && (!assistantOpen || assistant.morph?.from === 'form') ? <ConfigPanel key={project.id} api={api} project={project} onProject={setProject} onDraft={previewChanged} onInitialize={version => void initialize(version)} initializing={initializing}
+    <Suspense fallback={null}>{project && panel && (!assistantOpen || assistant.morph?.from === 'form') ? <ConfigPanel key={project.id} api={api} project={project} onProject={receiveProject} onDraft={previewChanged} onInitialize={version => void initialize(version)} initializing={initializing}
         section={assistantOpen ? assistant.lastSection.current : panel} onSection={section => update({ panel: section })} onClose={() => update({ panel: undefined })}
         onInspectContract={type => update({ contract: panel, type, workspace: project.id })}
         activeRunVersion={record?.studio_workspace === project.id ? record.workspace_version : undefined}

@@ -68,6 +68,22 @@ export function controlValue(value: unknown): KnobValue | undefined {
 /** Read the setting the draft will actually run, including declared compound controls. */
 export function controlSource(knob: ScenarioTemplate['knobs'][number], draft: Scenario, authored: Record<string, KnobValue> | undefined): KnobValue | undefined {
   if (knob.pointer) return controlValue(getAt(draft, knob.pointer));
+  if (knob.apply === 'traffic.wind_east' || knob.apply === 'traffic.wind_north') {
+    const motion = getAt(draft, '/engines/air_motion') as Record<string, any> | undefined;
+    const consumer = motion?.config?.consumption_model;
+    if (motion?.plugin !== 'kinematic' || consumer?.plugin !== 'wind') return undefined;
+    const source = consumer.config;
+    if (typeof source?.entity !== 'string' || typeof source.field !== 'string') return undefined;
+    const profiles = Object.values((draft.engines ?? {}) as Record<string, Record<string, any>>)
+      .filter(engine => engine.plugin === 'environment')
+      .map(engine => engine.config?.profiles?.[source.entity]?.[source.field]).filter(profile => profile !== undefined);
+    if (profiles.length !== 1) return undefined;
+    const profile = profiles[0], row = source.vector_index;
+    if (!['calm', 'constant'].includes(profile?.mode) || row !== undefined && (!Number.isSafeInteger(row) || row < 0)) return undefined;
+    const vector = row === undefined ? profile.value : profile.value?.[row];
+    if (!Array.isArray(vector) || ![2, 3].includes(vector.length) || vector.some(value => typeof controlValue(value) !== 'number')) return undefined;
+    return controlValue(vector[knob.apply === 'traffic.wind_east' ? 0 : 1]);
+  }
   if (knob.apply === 'traffic.physics_hz') {
     const road = controlValue(getAt(draft, '/engines/road_motion/config/step_ns'));
     const air = controlValue(getAt(draft, '/engines/air_motion/config/step_ns'));
@@ -116,7 +132,13 @@ export function ConfigPanel({ api, project: suppliedProject, onProject, onInitia
   const [merge, setMerge] = useState<{ server: Project; choices: Record<string, 'mine' | 'server'> }>();
   useEffect(() => { onDraft?.(project.id, draft, local); }, [project.id, draft, local, onDraft]);
   const [catalogError, setCatalogError] = useState<string>();
-  const studioApi = useMemo(() => new StudioApi(api.base), [api.base]);
+  // Generic removal uses the studio transport too; route its writes through
+  // the same authoritative project read as placement and scenario controls.
+  const studioApi = useMemo(() => new class extends StudioApi {
+    override request<T>(path: string, body?: unknown): Promise<T> {
+      return body === undefined ? super.request<T>(path) : api.request<T>(path, { body });
+    }
+  }(api.base), [api]);
   const destination = requested ?? (project.template ? 'controls' : 'space');
   const separator = destination.indexOf(':');
   const asked = (separator < 0 ? destination : destination.slice(0, separator)) as Section;

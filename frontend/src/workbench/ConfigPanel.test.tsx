@@ -10,7 +10,7 @@ vi.mock('../newcomers/api', async original => ({ ...await original<object>(), Te
 vi.mock('../studio/BehavioursPanel', () => ({ BehavioursPanel: () => null }));
 const project: Project = { id: 'test-project', name: 'Project', revision: 2, updated_at: '', dirty: true, latest_version: null, scenario: { entities: [{ id: 'restaurant', type: 'lowalt:Restaurant', facts: { capacity: 2 } }], run: { until_ns: 360000000000 } } };
 beforeEach(() => { localStorage.clear(); sessionStorage.clear(); catalog.algorithms.mockResolvedValue([]); Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { value: vi.fn(), configurable: true }); });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView'); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView'); });
 function LanguageSwitch() { const { locale, setLocale } = useI18n(); return <button onClick={()=>setLocale(locale==='zh-CN'?'en-US':'zh-CN')}>Switch language</button>; }
 function setup(initial = project, section = 'run', extra: Record<string, unknown> = {}) {
   const api = { base: '/api', save: vi.fn().mockImplementation(async (_id, scenario, revision) => ({ ...initial, scenario, revision: revision + 1 })), exportYaml: vi.fn().mockResolvedValue('run:\n  until_ns: 360000000000\n'), validate: vi.fn(), ...extra } as unknown as WorkbenchApi;
@@ -37,6 +37,108 @@ it('reads compound physics frequency from actual engine periods, preserving the 
  expect(controlSource(knob,scenario,{physics_hz:1})).toBe(15);expect(scenario.engines.road_motion.config.step_ns).toBe(66666667);
  expect(controlSource(knob,{engines:{road_motion:{config:{step_ns:1e9}},air_motion:{config:{step_ns:1e9}}}},{physics_hz:15})).toBe(1);
  expect(controlSource(knob,{engines:{road_motion:{config:{step_ns:1e9}},air_motion:{config:{step_ns:5e8}}}},{physics_hz:1})).toBeUndefined();
+});
+
+const trafficWind = (value: unknown = [[5, 2]], vectorIndex: number | null = 0) => ({
+  engines: {
+    air_motion: { plugin: 'kinematic', config: { consumption_model: { plugin: 'wind', config: { entity: 'wind.region', field: 'oo:digital_twin.wind.horizontalVelocity', ...(vectorIndex === null ? {} : { vector_index: vectorIndex }) } } } },
+    weather: { plugin: 'environment', config: { profiles: { 'wind.region': { 'oo:digital_twin.wind.horizontalVelocity': { mode: 'constant', value } } } } },
+  },
+});
+
+it('T2-R4-004 / D5: reads both traffic wind components from the runtime consumer, including tagged numbers and a flat vector', () => {
+  const east = { id: 'wind_east_mps', label: 'Eastward wind (m/s)', type: 'number' as const, default: 3, apply: 'traffic.wind_east' };
+  const north = { ...east, id: 'wind_north_mps', apply: 'traffic.wind_north' };
+  expect(controlSource(east, trafficWind(), { wind_east_mps: 3 })).toBe(5);
+  expect(controlSource(north, trafficWind(), { wind_north_mps: 0 })).toBe(2);
+  expect(controlSource(east, trafficWind([[{ $number: '5.0' }, 2]]), { wind_east_mps: 3 })).toBe(5);
+  expect(controlSource(north, trafficWind([5, 2, 0], null), { wind_north_mps: 0 })).toBe(2);
+  for (const value of [{}, null, [[null, 2]], [[5]], [['invalid', 2]]]) {
+    expect(controlSource(east, trafficWind(value), { wind_east_mps: 3 })).toBeUndefined();
+  }
+  expect(controlSource(east, {}, { wind_east_mps: 3 })).toBeUndefined();
+});
+
+it('T2-R4-004: displays 5 m/s after generic edits and sends only the unrelated edited control', async () => {
+  catalog.template.mockResolvedValue({ id: 'traffic', knobs: [
+    { id: 'wind_east_mps', label: 'Eastward wind (m/s)', type: 'number', default: 3, apply: 'traffic.wind_east' },
+    { id: 'accident_time_s', label: 'Accident time (seconds)', type: 'number', default: 20, pointer: '/accident_time_s' },
+  ] });
+  const initial = { ...project, template: { id: 'traffic', knobs: { wind_east_mps: 3, accident_time_s: 20 } }, scenario: { ...trafficWind(), accident_time_s: 20 } };
+  const knobs = vi.fn().mockResolvedValue({ ...initial, revision: 3, scenario: { ...initial.scenario, accident_time_s: 25 } });
+  setup(initial, 'controls', { knobs });
+  const wind = await screen.findByRole('spinbutton', { name: 'Eastward wind (m/s)' });
+  expect(Number((wind as HTMLInputElement).value)).toBe(5);
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'Accident time (seconds)' }), { target: { value: '25' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Apply controls to draft' }));
+  await screen.findByText('Controls applied to the draft.');
+  expect(knobs).toHaveBeenCalledWith(initial.id, { accident_time_s: 25 }, initial.revision);
+  expect(Number((wind as HTMLInputElement).value)).toBe(5);
+});
+
+it('T3-R4-002: partial knob responses cannot hide existing place and fleet forms or the saved version', async () => {
+  catalog.template.mockResolvedValue({ id: 'example', knobs: [{ id: 'rate', label: 'Rate', type: 'number', pointer: '/rate', default: 1 }] });
+  const initial = { ...project, template: { id: 'example', knobs: { rate: 1 } }, capabilities: { lowalt: true, region: false, network: false, city: false },
+    latest_version: { version: 1, revision: 2, digest: 'saved', created_at: '', validation: { valid: true, revision: 2, errors: [] } }, scenario: { entities: [], rate: 1 } };
+  const fresh = { ...initial, revision: 3, scenario: { entities: [], rate: 2 } };
+  let read!: (value: Response) => void;
+  const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ id: initial.id, revision: 3, scenario: fresh.scenario })))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { read = resolve; }));
+  vi.stubGlobal('fetch', fetch);
+  const api = new WorkbenchApi('/api');
+  function Harness() {
+    const [current, setCurrent] = useState<Project>(initial), [section, setSection] = useState('controls');
+    return <ConfigPanel api={api} project={current} onProject={setCurrent} section={section} onSection={setSection} onClose={vi.fn()} onInitialize={vi.fn()} initializing={false} />;
+  }
+  render(<I18nProvider><Harness /></I18nProvider>);
+  fireEvent.change(await screen.findByRole('spinbutton', { name: 'Rate' }), { target: { value: '2' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Apply controls to draft' }));
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  expect(screen.getByRole('button', { name: 'Applying controls…' })).toBeDisabled();
+  expect(screen.queryByText('Controls applied to the draft.')).toBeNull();
+  await act(async () => read(new Response(JSON.stringify(fresh))));
+  await screen.findByText('Controls applied to the draft.');
+  expect(screen.getByTestId('wb-initialize')).toHaveTextContent('Initialize v1');
+  fireEvent.click(screen.getByRole('button', { name: 'Objects' }));
+  expect(screen.getByRole('button', { name: 'Add place' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Add fleet' })).toBeVisible();
+  expect(screen.queryByText('Start with standard low-altitude components')).toBeNull();
+});
+
+it('T1-R4-005: advanced creation keeps the real saved version and installed components after a partial placement response', async () => {
+  const initial = { ...project, capabilities: { lowalt: true, region: false, network: false, city: false },
+    latest_version: { version: 1, revision: 2, digest: 'saved', created_at: '', validation: { valid: true, revision: 2, errors: [] } } };
+  let server: Project & { capabilities: typeof initial.capabilities } = initial;
+  const fetch = vi.fn(async (input: RequestInfo | URL, options?: RequestInit) => {
+    const path = new URL(String(input), 'http://api').pathname;
+    if (path === '/api/v1/studio/types') return new Response(JSON.stringify({ types: [{ id: 'aas:StudioFacility', parents: [], abstract: false, kind: 'facility', engine: 'workflow' }], fields: [] }));
+    if (path === '/api/v1/studio/types/aas%3AStudioFacility') return new Response(JSON.stringify({ id: 'aas:StudioFacility', parents: [], abstract: false, fields: [] }));
+    if (path === '/api/v1/studio/workspaces/test-project/place' && options?.method === 'POST') {
+      const body = JSON.parse(String(options.body));
+      server = { ...initial, revision: 3, scenario: { ...initial.scenario, entities: [...initial.scenario.entities, { id: body.id, type: body.type, facts: {} }] } };
+      return new Response(JSON.stringify({ id: server.id, revision: server.revision, scenario: server.scenario }));
+    }
+    if (path === '/api/v1/studio/workspaces/test-project' && options?.method === 'GET') return new Response(JSON.stringify(server));
+    throw Error(`Unexpected request ${path}`);
+  });
+  vi.stubGlobal('fetch', fetch);
+  const api = new WorkbenchApi('/api');
+  function Harness() {
+    const [current, setCurrent] = useState<Project>(initial);
+    return <ConfigPanel api={api} project={current} onProject={setCurrent} section="objects" onSection={vi.fn()} onClose={vi.fn()} onInitialize={vi.fn()} initializing={false} />;
+  }
+  render(<I18nProvider><Harness /></I18nProvider>);
+  fireEvent.click(screen.getByRole('button', { name: 'Add objects (advanced)' }));
+  fireEvent.click(await screen.findByRole('option', { name: /aas:StudioFacility/ }));
+  fireEvent.change(await screen.findByLabelText('id (or id prefix)'), { target: { value: 'research-static' } });
+  const create = screen.getByRole('button', { name: 'Create 1 objects' });
+  await waitFor(() => expect(create).toBeEnabled()); fireEvent.click(create);
+  await waitFor(() => expect(screen.getByText('Draft revision 3')).toBeVisible());
+  expect(screen.getByTestId('wb-initialize')).toHaveTextContent('Initialize v1');
+  expect(screen.getByText('latest version v1 (earlier revision)', { exact: false })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Add place' })).toBeVisible(); expect(screen.getByRole('button', { name: 'Add fleet' })).toBeVisible();
+  expect(screen.queryByText('Start with standard low-altitude components')).toBeNull();
+  expect(server.scenario.entities).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'research-static' })]));
 });
 it('jumps a validation issue to its field even when the objects filter excludes it', async () => {
   setup({ ...project, validation: { valid: false, revision: 2, errors: ['bad'], issues: [{ source: 'scenario', path: '/entities/0/facts/capacity', section: 'objects', message: 'bad' }] } }, 'objects');
