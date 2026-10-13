@@ -50,8 +50,8 @@ function setup(section = 'objects', overrides: Partial<WorkbenchApi> = {}) {
 it('T1-007: rebases unsaved edits onto an object mutation and saves against the fresh revision', async () => {
   sectionState.mutation = { ...initial, revision: 4, scenario: { ...initial.scenario, entities: [...initial.scenario.entities, { id: 'qa-point', type: 'aas:Point' }] } };
   const { api, onDraft } = setup();
-  fireEvent.click(screen.getByRole('button', { name: 'Clear city locally' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Edit seed locally' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Clear city locally' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit seed locally' }));
   fireEvent.click(screen.getByRole('button', { name: 'Receive object mutation' }));
   const expected = { entities: sectionState.mutation.scenario.entities, run: { seed: 43 } };
   await waitFor(() => expect(onDraft).toHaveBeenLastCalledWith('project', expected, true));
@@ -65,7 +65,7 @@ it('T1-007: rebases unsaved edits onto an object mutation and saves against the 
 
 it('adopts an object flow that already saved the local edits and clears only its own recovery', async () => {
   const { onDraft } = setup();
-  fireEvent.click(screen.getByRole('button', { name: 'Clear city locally' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Clear city locally' }));
   sectionState.mutation = { ...initial, revision: 4, scenario: { run: initial.scenario.run, entities: [...initial.scenario.entities, { id: 'qa-point' }] } };
   fireEvent.click(screen.getByRole('button', { name: 'Receive object mutation' }));
   await waitFor(() => expect(onDraft).toHaveBeenLastCalledWith('project', sectionState.mutation!.scenario, false));
@@ -78,7 +78,7 @@ it('T3-R2-005 / T4-R2-010: shows both seed values, explicit unselected choices a
   const save = vi.fn().mockRejectedValueOnce(new ApiError(409, 'revision conflict'))
     .mockImplementation(async (_id, scenario, revision) => ({ ...server, scenario, revision: revision + 1 }));
   setup('run', { save, project: vi.fn().mockResolvedValue(server) });
-  fireEvent.click(screen.getByRole('button', { name: 'Edit seed locally' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit seed locally' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
   await screen.findByTestId('wb-merge');
   const run = within(screen.getByTestId('wb-merge-run')), city = within(screen.getByTestId('wb-merge-city'));
@@ -100,30 +100,30 @@ it('T1-R2-008: contains a section crash, keeps sibling edits and lets Retry reco
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
   sectionState.broken = true;
   setup('run');
-  fireEvent.change(screen.getByLabelText('run pending form'), { target: { value: '600' } });
+  fireEvent.change(await screen.findByLabelText('run pending form'), { target: { value: '600' } });
   fireEvent.click(screen.getByRole('button', { name: 'Scene & space' }));
-  expect(screen.getByRole('alert')).toHaveTextContent('Map initialization failed');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Map initialization failed');
   expect(screen.getByTestId('wb-config')).toBeVisible();
   expect(screen.getByRole('button', { name: 'Run & recording' })).toBeEnabled();
   sectionState.broken = false;
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   expect(await screen.findByLabelText('space pending form')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Run & recording' }));
-  expect(screen.getByLabelText('run pending form')).toHaveValue('600');
+  expect(await screen.findByLabelText('run pending form')).toHaveValue('600');
   expect(consoleError).toHaveBeenCalled();
 });
 
 it('D6: goTo switches to the requested section, preserves the full focus path and leaves prior inputs mounted', async () => {
   setup('run');
-  fireEvent.change(screen.getByLabelText('run pending form'), { target: { value: '600' } });
+  fireEvent.change(await screen.findByLabelText('run pending form'), { target: { value: '600' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add place jump' }));
   expect(await screen.findByLabelText('objects pending form')).toBeVisible();
   await waitFor(() => expect(screen.getByTestId('objects-focus')).toHaveTextContent('/entities/0/facts/lowalt:site'));
   fireEvent.click(screen.getByRole('button', { name: 'Run & recording' }));
-  expect(screen.getByLabelText('run pending form')).toHaveValue('600');
+  expect(await screen.findByLabelText('run pending form')).toHaveValue('600');
 });
 
-it('keeps staged inputs through Close, Conversation and a full panel remount, with unload protection while closed (T1-R3-003 / T2-R3-003)', () => {
+it('keeps staged inputs through Close, Conversation and a full panel remount, with unload protection while closed (T1-R3-003 / T2-R3-003)', async () => {
   function Harness() {
     const [open, setOpen] = useState(true);
     return <>{open ? <ConfigPanel api={{ base: '/api' } as WorkbenchApi} project={initial} onProject={vi.fn()} section="run" onSection={vi.fn()}
@@ -131,22 +131,22 @@ it('keeps staged inputs through Close, Conversation and a full panel remount, wi
       : <button onClick={() => setOpen(true)}>Open form</button>}</>;
   }
   const first = render(<I18nProvider><Harness /></I18nProvider>);
-  fireEvent.change(screen.getByLabelText('run pending form'), { target: { value: 'research-input' } });
+  fireEvent.change(await screen.findByLabelText('run pending form'), { target: { value: 'research-input' } });
   expect(screen.getByText('Unconfirmed form inputs')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Close configuration' }));
   const leaving = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(leaving);
   expect(leaving.defaultPrevented).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Open form' }));
-  expect(screen.getByLabelText('run pending form')).toHaveValue('research-input');
+  expect(await screen.findByLabelText('run pending form')).toHaveValue('research-input');
   expect(screen.getByText('Restored unsaved inputs')).toBeVisible();
   fireEvent.click(screen.getByRole('tab', { name: 'Conversation' }));
   fireEvent.click(screen.getByRole('button', { name: 'Open form' }));
-  expect(screen.getByLabelText('run pending form')).toHaveValue('research-input');
+  expect(await screen.findByLabelText('run pending form')).toHaveValue('research-input');
   first.unmount();
   render(<I18nProvider><Harness /></I18nProvider>);
-  expect(screen.getByLabelText('run pending form')).toHaveValue('research-input');
+  expect(await screen.findByLabelText('run pending form')).toHaveValue('research-input');
   fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
-  expect(screen.getByLabelText('run pending form')).toHaveValue('');
+  expect(await screen.findByLabelText('run pending form')).toHaveValue('');
   expect(screen.queryByText('Unconfirmed form inputs')).toBeNull();
 });
 
@@ -155,12 +155,12 @@ it('gates all section forms during a mutation while section navigation remains a
   let finish!: (value: Project) => void;
   let applying!: Promise<Project>;
   act(() => { applying = mutateWorkspace(initial, () => new Promise<Project>(resolve => { finish = resolve; })); });
-  expect(screen.getByLabelText('run pending form')).toBeDisabled();
+  expect(await screen.findByLabelText('run pending form')).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Edit seed locally' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Objects' })).toBeEnabled();
   fireEvent.click(screen.getByRole('button', { name: 'Objects' }));
-  expect(screen.getByLabelText('objects pending form')).toBeDisabled();
+  expect(await screen.findByLabelText('objects pending form')).toBeDisabled();
   await act(async () => { finish({ ...initial, revision: 3 }); await applying; });
-  expect(screen.getByLabelText('objects pending form')).toBeEnabled();
+  expect(await screen.findByLabelText('objects pending form')).toBeEnabled();
   expect(screen.getByText('Draft revision 3')).toBeVisible();
 });

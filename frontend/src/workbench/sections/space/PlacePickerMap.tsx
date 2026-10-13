@@ -3,7 +3,7 @@ import { ApiError, type WorkbenchApi } from '../../api';
 import { validEnuOrigin, validWgs84Bounds } from '../../geo';
 import type { Scenario, SectionProps } from '../types';
 import { regionMapObjects } from '../objects/RegionMapSupport';
-import { RegionMap } from './RegionMap';
+import { RegionMap } from '../../LazyRegionMap';
 import { catalogBasemap, fetchMapCatalog, readRegion, sceneMapGeometry, type MapCatalog } from './model';
 
 export interface PlacePickerMapProps {

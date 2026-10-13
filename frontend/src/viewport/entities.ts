@@ -401,12 +401,12 @@ export class EntityLayer {
         ring = new T.Mesh(new T.TorusGeometry(1.1, 0.09, 8, 48), new T.MeshBasicMaterial({ color: '#ff8a1f', depthTest: false, transparent: true, opacity: 0.95 }));
         ring.rotation.x = -Math.PI / 2; ring.renderOrder = 5; this.root.add(ring); this.highlightRings.push(ring);
       }
-      ring.visible = true; ring.position.copy(spot).add(new T.Vector3(0,-0.2,0)); ring.scale.setScalar(Math.max(1.6,spot.distanceTo(camera.position)*0.022)); ringed++;
+      ring.visible = true; ring.position.copy(spot); ring.position.y -= 0.2; ring.scale.setScalar(Math.max(1.6,spot.distanceTo(camera.position)*0.022)); ringed++;
     }
     for (let i = ringed; i < this.highlightRings.length; i++) this.highlightRings[i].visible = false;
     this.highlightedShown = ringed;
     const focus=selected?this.positions.get(entityId(selected)):undefined;
-    this.ring.visible=!!focus;if(focus){this.ring.position.copy(focus).add(new T.Vector3(0,-0.2,0));this.ring.scale.setScalar(Math.max(1,focus.distanceTo(camera.position)*0.012));}
+    this.ring.visible=!!focus;if(focus){this.ring.position.copy(focus);this.ring.position.y-=0.2;this.ring.scale.setScalar(Math.max(1,focus.distanceTo(camera.position)*0.012));}
     const stamp=`${selected?entityId(selected):''}/${ns}/${renderOrigin.toArray()}/${showTrails}`;
     this.trail.visible=!!showTrails&&!!selected&&!!focus;
     if(this.trail.visible&&stamp!==this.lastTrail){

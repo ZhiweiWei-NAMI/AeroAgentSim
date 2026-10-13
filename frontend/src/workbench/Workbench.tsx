@@ -15,23 +15,20 @@ import { subscribeCauseTrace } from '../trace/bus';
 import { explain, type CauseRef } from '../trace/cause-trace';
 import { entityId, resolveBinding } from '../viewport/bindings';
 import { displayName } from '../viewport/semantic';
-import { worldPosition } from '../viewport/coordinates';
+import { enuPosition } from '../viewport/position';
 import type { Viewport } from '../viewport/viewport';
 import { ApiError, sameRunRecords, TERMINAL, WorkbenchApi, type Project, type RunRecord } from './api';
-import { ConfigPanel } from './ConfigPanel';
+import { sameDraftValue } from './merge-draft';
 import { Dock, type DockTab } from './Dock';
 import { Gallery } from './Gallery';
 import { InspectorPanel } from './InspectorPanel';
 import { ObjectsPanel } from './ObjectsPanel';
-import { RecordsPanel } from './RecordsPanel';
 import { runClockTime, sameEntity, useRunSession } from './useRunSession';
 import { WaitingBanner } from '../pages/WaitingBanner';
 import type { ApplyRecord } from '../assistant/api';
-import { AssistantPanel } from '../assistant/AssistantPanel';
 import type { EditMode } from '../assistant/ModeSwitch';
 import { NeuralGlyph } from '../assistant/motion/NeuralGlyph';
 import { StageEmpty } from '../assistant/motion/StageEmpty';
-import { PlanBoard } from '../assistant/PlanBoard';
 import { Contained } from '../assistant/Contained';
 import { useAssistantMode } from '../assistant/useAssistantMode';
 import '../assistant/motion/motion.css';
@@ -41,6 +38,10 @@ import '../pages/inspect.css';
 import './workbench.css';
 import './run-status.css';
 
+const ConfigPanel = lazy(() => import('./ConfigPanel').then(module => ({ default: module.ConfigPanel })));
+const RecordsPanel = lazy(() => import('./RecordsPanel').then(module => ({ default: module.RecordsPanel })));
+const AssistantPanel = lazy(() => import('../assistant/AssistantPanel').then(module => ({ default: module.AssistantPanel })));
+const PlanBoard = lazy(() => import('../assistant/PlanBoard').then(module => ({ default: module.PlanBoard })));
 const ViewportView = lazy(() => import('../viewport/ViewportView').then(module => ({ default: module.ViewportView })));
 const ScenePreview = lazy(() => import('../studio/ScenePreview').then(module => ({ default: module.ScenePreview })));
 const BehaviourRunGraph = lazy(() => import('../behaviours/BehaviourRunGraph').then(module => ({ default: module.BehaviourRunGraph })));
@@ -258,9 +259,9 @@ export default function Workbench() {
     if (!binding) return;
     const value = store.sample(selected, binding.positionField, clock.ns);
     if (!Array.isArray(value)) return;
-    const position = worldPosition(value, binding.frame, store.header.origin);
+    const position = enuPosition(value, binding.frame, store.header.origin);
     setDirectorPaused(true); setCamera('orbit');
-    setFocus(previous => ({ position: [position.x, -position.z, position.y], revision: (previous?.revision ?? 0) + 1 }));
+    setFocus(previous => ({ position, revision: (previous?.revision ?? 0) + 1 }));
   };
 
   // Business projection: events and KPIs at the viewed moment.
@@ -271,16 +272,20 @@ export default function Workbench() {
   const templateId = project?.template?.id ?? record?.template_id;
   useEffect(() => { if (!templateId) { setTemplate(undefined); return; } const abort = new AbortController(); void templateApi.template(templateId, abort.signal).then(setTemplate).catch(() => setTemplate(undefined)); return () => abort.abort(); }, [templateApi, templateId]);
   const [apiKpis, setApiKpis] = useState<RunKpis>(), [kpisError, setKpisError] = useState<string>();
-  const hasKpiFeed = !!store?.commits.some(commit => commit.kpis !== undefined);
+  const apiKpisRef = useRef<RunKpis>();
+  const hasKpiFeed = useMemo(() => !!store?.commits.some(commit => commit.kpis !== undefined), [store, store?.commits.length]);
   useEffect(() => {
-    setApiKpis(undefined); setKpisError(undefined);
+    apiKpisRef.current = undefined; setApiKpis(undefined); setKpisError(undefined);
     if (!runId || hasKpiFeed) return;
     const abort = new AbortController();
     let loading = false;
     const load = async () => {
       if (loading || abort.signal.aborted) return;
       loading = true;
-      try { const result = await templateApi.kpis(runId, abort.signal); if (!abort.signal.aborted) { setApiKpis(result); setKpisError(undefined); } }
+      try { const result = await templateApi.kpis(runId, abort.signal); if (!abort.signal.aborted) {
+        if (!sameDraftValue(apiKpisRef.current, result)) { apiKpisRef.current = result; setApiKpis(result); }
+        setKpisError(undefined);
+      } }
       catch (problem) { if (!abort.signal.aborted) setKpisError(problemText(problem)); }
       finally { loading = false; }
     };
@@ -288,7 +293,7 @@ export default function Workbench() {
     return () => { abort.abort(); clearInterval(timer); };
   }, [templateApi, runId, hasKpiFeed]);
   const atEnd = !!store && !!clock && knownAt === store.commits.at(-1)?.commitIndex && BigInt(clock.ns) >= BigInt(clock.end) && TERMINAL.has(status ?? '') && !finalizing;
-  const fromApi = clock ? resultsAt(apiKpis, clock.ns, atEnd, knownAt) : { values: {}, series: [] };
+  const fromApi = useMemo(() => clock ? resultsAt(apiKpis, clock.ns, atEnd, knownAt) : { values: {}, series: [] }, [apiKpis, clock?.ns, atEnd, knownAt]);
   const kpis = hasKpiFeed && projected ? projected.values : fromApi.values;
   const series = hasKpiFeed && projected ? projected.series : fromApi.series;
   const kpiIds = template?.kpis ?? Object.keys(kpis);
@@ -535,7 +540,7 @@ export default function Workbench() {
     {session?.inputSource.error && <div className="wb-history" role="alert" data-testid="wb-input-error">{L('Operator input source unavailable', '操作员输入源暂不可用')} · {session.inputSource.error}</div>}
 
     {/* Left: objects or records */}
-    {query.get('records') ? <RecordsPanel api={api} projectId={project?.id} current={runId} refreshKey={recordsKey}
+    <Suspense fallback={null}>{query.get('records') ? <RecordsPanel api={api} projectId={project?.id} current={runId} refreshKey={recordsKey}
         onOpen={run => update({ run: run.id, mode: TERMINAL.has(run.status) ? 'replay' : 'live', cut: undefined, sel: undefined, records: undefined }, true, run.studio_workspace ? `/w/${encodeURIComponent(run.studio_workspace)}` : location.pathname)}
         onCompare={ids => update({ compare: ids.join(',') })} onDerive={derive} onClose={() => update({ records: undefined })} />
       : boardOpen ? <Contained resetKey={`${assistant.assistant.plan?.version}-${assistant.viewing}`} fallback={retry => <aside className="as-board wb-panel wb-glass" data-testid="as-board-failed" role="alert"><p className="as-quiet">{L('This plan version could not be shown. The conversation and project are unaffected.', '无法显示此方案版本，对话和项目不受影响。')}</p><button className="wb-btn" onClick={retry}>{L('Try again', '重试')}</button></aside>}><PlanBoard api={assistant.api} assistant={assistant.assistant} stage={assistant.stage} waiting={status === 'initialized'} runId={runId} story={assistant.story} storyError={assistant.storyError}
@@ -543,16 +548,16 @@ export default function Workbench() {
           onApplied={record => void applied(record)} onHover={assistant.setFocus} onStep={assistant.setFocus} onContract={type => update({ contract: 'assistant', type, workspace: project?.id })}
           onSeek={cut => session?.seekCut(cut)} viewing={assistant.viewing} onViewVersion={assistant.setViewing} onClose={assistant.closeBoard} /></Contained>
       : session && store && (leftOpen ? <ObjectsPanel store={store} revision={session.revision} selected={selected} selectionOrigin={selectionOrigin} onSelect={(key, fly) => select(key, fly)} onClose={() => setLeftOpen(false)} />
-        : <button className="wb-collapsed-tab left wb-glass" onClick={() => setLeftOpen(true)}>☰ {L('Objects', '对象')}</button>)}
+        : <button className="wb-collapsed-tab left wb-glass" onClick={() => setLeftOpen(true)}>☰ {L('Objects', '对象')}</button>)}</Suspense>
     {assistantOpen && !boardOpen && assistant.assistant.plan && !query.get('records') && !(session && store && leftOpen) && <button className="wb-collapsed-tab left wb-glass as-board-tab" onClick={assistant.openBoard} data-testid="as-board-reopen">◇ {L(`Plan v${assistant.assistant.plan.version}`, `方案 v${assistant.assistant.plan.version}`)}</button>}
 
     {/* Right: configuration or inspector */}
-    {(assistantOpen || assistant.morph?.from === 'chat') && <AssistantPanel assistant={assistant.assistant} connection={assistant.connection.connection} connectionError={assistant.connection.error ?? assistant.error} connectionSaving={assistant.connection.saving}
+    <Suspense fallback={null}>{(assistantOpen || assistant.morph?.from === 'chat') && <AssistantPanel assistant={assistant.assistant} connection={assistant.connection.connection} connectionError={assistant.connection.error ?? assistant.error} connectionSaving={assistant.connection.saving}
         onConnect={assistant.connection.save} onTest={assistant.connection.test} project={project ? { id: project.id, name: title ?? project.name } : undefined}
         selected={selected ? { id: selected.id, label: entityNames.get(selected.id) ?? selected.id } : undefined} runId={runId} onClearSelected={() => select(undefined)}
         onClose={() => update({ panel: undefined })} onSwitch={project ? (mode, origin) => assistant.switchMode(mode, origin) : undefined} switching={!!assistant.morph} morph={morphOf('chat')}
-        onShowPlan={version => { assistant.openBoard(); assistant.setViewing(version === assistant.assistant.plan?.version ? undefined : version); }} onShowChanges={() => { assistant.openBoard(); assistant.setViewing(undefined); }} />}
-    {project && panel && (!assistantOpen || assistant.morph?.from === 'form') ? <ConfigPanel key={project.id} api={api} project={project} onProject={setProject} onDraft={previewChanged} onInitialize={version => void initialize(version)} initializing={initializing}
+        onShowPlan={version => { assistant.openBoard(); assistant.setViewing(version === assistant.assistant.plan?.version ? undefined : version); }} onShowChanges={() => { assistant.openBoard(); assistant.setViewing(undefined); }} />}</Suspense>
+    <Suspense fallback={null}>{project && panel && (!assistantOpen || assistant.morph?.from === 'form') ? <ConfigPanel key={project.id} api={api} project={project} onProject={setProject} onDraft={previewChanged} onInitialize={version => void initialize(version)} initializing={initializing}
         section={assistantOpen ? assistant.lastSection.current : panel} onSection={section => update({ panel: section })} onClose={() => update({ panel: undefined })}
         onInspectContract={type => update({ contract: panel, type, workspace: project.id })}
         activeRunVersion={record?.studio_workspace === project.id ? record.workspace_version : undefined}
@@ -561,7 +566,7 @@ export default function Workbench() {
           onSelect={key => select(key)} onSeekCut={session.seekCut} onTrace={ref => openTrace(ref)} following={following}
           onFocus={focusSelection} onFollow={() => { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }}
           onShowGraph={() => update({ graph: '1' })} onClose={() => setRightOpen(false)} />
-        : <button className="wb-collapsed-tab right wb-glass" onClick={() => setRightOpen(true)}>{L('Inspector', '检查器')} ☰</button>)}
+        : <button className="wb-collapsed-tab right wb-glass" onClick={() => setRightOpen(true)}>{L('Inspector', '检查器')} ☰</button>)}</Suspense>
 
     {/* Camera pad: display only */}
     {session && spatial && <div className="wb-camera wb-night" aria-label={L('Camera', '相机')} data-testid="wb-camera">
