@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import threading
+from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -179,6 +182,10 @@ def write_snapshot(compiled: CompiledRegistry, path: Path | str) -> None:
     compiled.write_snapshot(path)
 
 
+_SNAPSHOTS: OrderedDict[str, CompiledRegistry] = OrderedDict()
+_SNAPSHOT_LOCK = threading.RLock()
+
+
 def read_snapshot(path: Path | str) -> CompiledRegistry:
     """Load snapshot JSON; never consult the live ontology.
 
@@ -186,7 +193,26 @@ def read_snapshot(path: Path | str) -> CompiledRegistry:
     ``snapshot_id`` are accepted for compatibility; neither is verified and
     neither is retained.
     """
-    data = parse_json(Path(path).read_bytes())
+    # Workspace operations copy the same snapshot into temporary directories.
+    # Key immutable descriptors by current bytes, not path/mtime, so relocated
+    # copies share compilation and in-place edits are never hidden by the cache.
+    payload = Path(path).read_bytes()
+    digest = hashlib.sha256(payload).hexdigest()
+    with _SNAPSHOT_LOCK:
+        if digest in _SNAPSHOTS:
+            _SNAPSHOTS.move_to_end(digest)
+            return _SNAPSHOTS[digest]
+    compiled = _read_snapshot(payload)
+    with _SNAPSHOT_LOCK:
+        _SNAPSHOTS[digest] = compiled
+        _SNAPSHOTS.move_to_end(digest)
+        while len(_SNAPSHOTS) > 16:
+            _SNAPSHOTS.popitem(last=False)
+    return compiled
+
+
+def _read_snapshot(payload: bytes) -> CompiledRegistry:
+    data = parse_json(payload)
     if (
         not isinstance(data, dict)
         or not {"format", "compiler_version", "registry", "details"} <= set(data)
