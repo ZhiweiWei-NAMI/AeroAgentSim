@@ -387,9 +387,6 @@
 .console-toasts {position:fixed;right:24px;bottom:24px;z-index:1500;list-style:none;margin:0;padding:0;display:grid;gap:10px;width:min(380px,calc(100vw - 48px));pointer-events:none;font:14px var(--csl-font)}
 .console-toast {padding:14px 18px;border-radius:8px;border:1px solid var(--csl-border);background:var(--csl-surface);color:var(--csl-text);box-shadow:var(--csl-shadow);border-left:4px solid var(--csl-teal-500);overflow-wrap:anywhere}
 .console-toast-error {border-left-color:var(--csl-danger);background:var(--csl-danger-bg)}
-.console-shortcuts>div {display:flex;gap:20px;padding:12px 0;border-bottom:1px solid var(--csl-border)}
-.console-shortcuts dt {min-width:60px}.console-shortcuts dd {margin:0}
-.console-shortcuts kbd {padding:3px 8px;border:1px solid var(--csl-border);border-radius:4px;background:var(--csl-bg)}
 .console-details {display:inline-block;margin:4px 0}
 .ant-drawer-body pre {overflow-wrap:anywhere;white-space:pre-wrap;font-size:12px;background:var(--csl-bg);padding:12px;border-radius:6px}
 .ant-drawer-body textarea {width:100%;font-family:var(--csl-mono);min-height:80px}

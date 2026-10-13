@@ -3,7 +3,6 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { Details } from './Details';
 import { ConsoleNotifications, useConsoleNotice } from './Notifications';
-import { RunShortcuts, ShortcutsHelp } from './shortcuts';
 import ConsoleShell from './ConsoleShell';
 import { RecordFields } from './Details';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -30,16 +29,6 @@ it('T4-12: uses a glass dialog with structured fields and returns focus on Escap
  await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
  await waitFor(()=>expect(trigger).toHaveFocus());
  localStorage.clear();
-});
-it('guards shortcuts during typing, replay and dialogs, then invokes live controls',async()=>{
- const toggle=vi.fn(),inject=vi.fn();
- const {rerender}=render(<><input aria-label="Input"/><RunShortcuts enabled={false} onToggle={toggle} onInject={inject}/><ShortcutsHelp/></>);
- const replay=new KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true});document.body.dispatchEvent(replay);expect(replay.defaultPrevented).toBe(false);
- rerender(<><input aria-label="Input"/><RunShortcuts enabled onToggle={toggle} onInject={inject}/><ShortcutsHelp/></>);
- fireEvent.keyDown(screen.getByLabelText('Input'),{key:' '});expect(toggle).not.toHaveBeenCalled();
- fireEvent.keyDown(document.body,{key:'?'});await screen.findByRole('dialog');fireEvent.keyDown(document.body,{key:' '});expect(toggle).not.toHaveBeenCalled();
- fireEvent.click(screen.getByRole('button', { name: 'Close' }));await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
- fireEvent.keyDown(document.body,{key:' '});fireEvent.keyDown(document.body,{key:'i'});expect(toggle).toHaveBeenCalledTimes(1);expect(inject).toHaveBeenCalledTimes(1);
 });
 it('shows actual notices without extending their expiry as newer notices arrive',async()=>{
  vi.useFakeTimers();

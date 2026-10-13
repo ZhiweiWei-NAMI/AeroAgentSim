@@ -122,10 +122,3 @@ export function payloadProblem(schema:unknown, value:unknown, definitions:Draft=
   }
   return `${path}: unsupported schema (${String(schema.type)})`;
 }
-
-/** The waiting banner fires the prepared authored event through its typed form. */
-export function activateInjectionShortcut(controls: HTMLElement): void {
-  const button=controls.querySelector<HTMLButtonElement>('[data-injection-submit]');
-  if(button&&!button.disabled){button.click();return;}
-  controls.querySelector<HTMLElement>('input, select')?.focus();
-}

@@ -202,10 +202,6 @@ export function fieldWords(fieldId: string, locale = 'en-US'): string {
   const last = fieldId.slice(fieldId.lastIndexOf('.') + 1).replace(/_(?:enu_m|mps2|mps|deg|rad|ns|m|s|j|w)$/, '');
   return translate(locale, last.replace(/_/g, ' '));
 }
-export function fieldTitle(store: TemporalFeedStore, fieldId: string, locale = 'en-US'): string {
-  const parts = fieldId.split('.'); const owner = parts.length > 2 ? parts[parts.length - 2] : '';
-  void store; return owner ? `${readableLabel(owner, locale)} ${fieldWords(fieldId, locale)}` : fieldWords(fieldId, locale);
-}
 const isInstant = (value: unknown): value is { ns: unknown; microstep: unknown } => isObject(value) && 'ns' in value && 'microstep' in value && Object.keys(value).length === 2;
 export function showValue(store: TemporalFeedStore, value: unknown, max = 60, locale = 'en-US'): string {
   const raw = isObject(value) && typeof value.$number === 'string' ? Number(value.$number) : value;
@@ -691,4 +687,3 @@ export function changesFor(store: TemporalFeedStore, key: EntityKey, limitPerFie
 }
 
 /** Test hook: forget cached indexes (live runs rebuild automatically when commits arrive). */
-export function resetTraceIndex(store: TemporalFeedStore) { cache.delete(store); }
