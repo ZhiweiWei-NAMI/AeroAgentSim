@@ -60,10 +60,16 @@ function fieldLabel(name: string, L: Localize) {
   return pair ? L(...pair) : name.replace(/[._]/g, ' ').replace(/^./, character => character.toUpperCase());
 }
 
-/** Values read as prose: null is an em dash and strings carry no quotes. */
+/** Values read as prose: none/empty render as an em dash and lists join with ", ". */
 function fieldValue(value: unknown, L: Localize) {
   if (value === null || value === undefined) return L('—', '—');
-  return typeof value === 'string' ? value : JSON.stringify(value);
+  if (typeof value === 'string') return value.trim() === '' || value.toLowerCase() === 'empty' ? L('—', '—') : value;
+  if (Array.isArray(value)) return value.length === 0 ? L('—', '—') : value.map(item => fieldValue(item, L)).join(L(', ', '，'));
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).filter(([, item]) => item !== null && item !== undefined);
+    return entries.length === 0 ? L('—', '—') : entries.map(([key, item]) => `${key}: ${fieldValue(item, L)}`).join(L(', ', '，'));
+  }
+  return String(value);
 }
 
 /** "<label>: <before> → <after>", preferring the server-provided label and preformatted values. */
@@ -92,6 +98,22 @@ function rowLabel(row: DiffRow, L: Localize) {
 }
 
 /** Shared, left-aligned review for all Objects operations; exported for other form owners. */
+const MAX_FIELD_LINES = 3;
+
+function RowFields({ fields, L }: { fields: DiffField[]; L: Localize }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? fields : fields.slice(0, MAX_FIELD_LINES);
+  const hidden = fields.length - MAX_FIELD_LINES;
+  const toggle = hidden > 0 && (
+    <button type="button" className="wb-diff-more" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
+      {expanded ? L('Show less', '收起') : L(`+${hidden} more`, `还有 ${hidden} 项`)}
+    </button>);
+  return <>
+    {visible.map(field => <div key={field.name} className="wb-diff-field">{fieldLine(field, L)}</div>)}
+    {toggle}
+  </>;
+}
+
 export function OperationDiff({ diff, notes = [], stale = false, L, entities }: {
   diff: ObjectsDiff; notes?: OperationPreview['notes']; stale?: boolean; L: Localize; entities?: Array<{ id: string; label?: string; label_zh?: string }>;
 }) {
@@ -107,12 +129,12 @@ export function OperationDiff({ diff, notes = [], stale = false, L, entities }: 
       <h5>{group.title} <span className="wb-tag">{group.rows.length}</span></h5>
       <ul className="wb-diff-list">
         {group.rows.map((row, index) => <li key={`${row.kind}:${row.id}:${index}`}>
-          <div className="wb-diff-row">
+          <div className="wb-diff-row" title={row.id ?? undefined}>
             <span className={`wb-diff-sign wb-diff-sign-${group.key}`} aria-hidden>{group.sign}</span>
-            <strong className="wb-diff-label">{rowLabel(row, L)}</strong>
-            <span className="wb-diff-id" title={row.id}><span className="wb-tag">{kindLabel(row, L)}</span> <span className="wb-mono">{row.id ?? '—'}</span></span>
+            <span className="wb-diff-label"><strong>{rowLabel(row, L)}</strong>{' '}
+              <span className="wb-tag wb-diff-kind">{kindLabel(row, L)}</span></span>
           </div>
-          {row.fields?.map(field => <div key={field.name} className="wb-diff-field">{fieldLine(field, L)}</div>)}
+          {(row.fields?.length ?? 0) > 0 && <RowFields fields={row.fields!} L={L} />}
         </li>)}
       </ul>
     </section>)}

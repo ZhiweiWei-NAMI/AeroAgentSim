@@ -11,15 +11,17 @@
 .wb-operation-diff { margin: 6px 0; }
 .wb-operation-diff h5 { margin: 8px 0 2px; font: inherit; font-size: 12px; font-weight: 650; color: var(--wb-ink); }
 .wb-diff-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
-/* D11: sign | label (wraps) | id, so a long label never pushes into the id. */
-.wb-diff-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: baseline; }
+/* D16: sign | label + inline kind tag; the id lives in the row title, labels take the full width. */
+.wb-diff-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: baseline; }
 .wb-diff-sign { font-weight: 700; }
 .wb-diff-sign-added { color: var(--wb-ok); }
 .wb-diff-sign-changed { color: var(--wb-warn); }
 .wb-diff-sign-removed { color: var(--wb-bad); }
 .wb-diff-label { overflow-wrap: anywhere; min-width: 0; }
-.wb-diff-id { max-width: 40%; color: var(--wb-muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; justify-self: end; }
+.wb-diff-kind { font-size: 10.5px; white-space: nowrap; }
 .wb-diff-field { color: var(--wb-muted); font-size: 12px; overflow-wrap: anywhere; padding-left: 22px; }
+.wb-diff-more { background: none; border: 0; padding: 0 0 0 22px; margin: 1px 0; font: inherit; font-size: 12px;
+  color: var(--wb-muted); text-align: left; cursor: pointer; text-decoration: underline; }
 .wb-preview-stale { color: var(--wb-warn); }
 .wb-add-note { margin: 2px 0 6px; font-size: 11.5px; color: var(--wb-muted); }
 .wb-objects-count { font-size: 12px; color: var(--wb-muted); margin: 0; }

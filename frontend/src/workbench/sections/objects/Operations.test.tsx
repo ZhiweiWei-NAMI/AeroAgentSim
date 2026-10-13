@@ -92,8 +92,8 @@ it('AddFleet previews a set_fleet shrink and names exactly the members to be rem
   const [, init] = (api.request as ReturnType<typeof vi.fn>).mock.calls[0];
   expect(init.body.operations[0]).toMatchObject({ op: 'set_fleet', params: { fleet: 'couriers', count: 1 } });
   const removed = within(await screen.findByRole('region', { name: 'Removed' }));
-  expect(removed.getByText('couriers-2')).toBeTruthy();
-  expect(removed.getByText('couriers-3')).toBeTruthy();
+  expect(removed.getByText('Courier 2')).toBeTruthy(); // D16: labels replace the id column
+  expect(removed.getByText((_, el) => el?.className === 'wb-diff-row' && el.getAttribute('title') === 'couriers-3')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Confirm resize' })).toBeEnabled();
   expect(init.body.operations[0].params).toEqual({ fleet: 'couriers', count: 1 });
 });
@@ -149,7 +149,9 @@ it('groups every review by Added/Changed/Removed counts, with kind, id and activ
     changed: [{ kind: 'fleet', id: 'f', label: 'Couriers', label_zh: '送餐机群', fields: [{ name: 'count', before: 2, after: 3 }] }],
     removed: [{ kind: 'entity', id: 'old', label: 'Old object', label_zh: '旧对象' }] }} notes={[{ en: 'Review before applying', zh: '查看后再应用' }, 'Kitchen ready / 厨房已就绪']} />);
   for (const name of ['新增', '修改', '移除']) expect(within(screen.getByRole('region', { name })).getByText('1')).toBeTruthy();
-  expect(within(screen.getByRole('region', { name: '新增' })).getByText('p')).toBeTruthy();
+  // D16: the id is no longer a visible column; it moves into the row's title attribute.
+  expect(screen.queryByText('p')).toBeNull();
+  expect(screen.getByText('充电坪').closest('.wb-diff-row')).toHaveAttribute('title', 'p');
   expect(screen.getByText('充电坪')).toBeTruthy();
   expect(screen.queryByText('Charging pad')).toBeNull();
   expect(screen.getByText('查看后再应用')).toBeTruthy();
@@ -179,4 +181,29 @@ it('includes the exact removed members from C11 entity deltas and member-field c
   expect(changes.removed).toEqual([{ kind: 'entity', id: 'c-2', label: 'Courier 2', label_zh: '送餐机 2' }, { kind: 'entity', id: 'c-3', label: undefined, label_zh: undefined }]);
   render(<OperationDiff diff={diff} L={L} />);
   expect(within(screen.getByRole('region', { name: 'Removed' })).getByText('2')).toBeTruthy();
+});
+
+it('shows at most 3 field lines with a +N more disclosure (D16)', () => {
+  const fields = [1, 2, 3, 4, 5].map(index => ({ name: `f${index}`, before: 0, after: index }));
+  render(<OperationDiff L={L} diff={{ added: [], removed: [], changed: [{ kind: 'fleet', id: 'f', label: 'Fleet', fields }] }} notes={[]} />);
+  expect(screen.getByText('F1: 0 → 1')).toBeTruthy();
+  expect(screen.queryByText('F4: 0 → 4')).toBeNull();
+  const more = screen.getByRole('button', { name: '+2 more' });
+  expect(more).toHaveAttribute('aria-expanded', 'false');
+  fireEvent.click(more);
+  expect(screen.getByText('F4: 0 → 4')).toBeTruthy();
+  expect(screen.getByText('F5: 0 → 5')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Show less' })).toHaveAttribute('aria-expanded', 'true');
+});
+
+it('maps empty and none values to an em dash and joins lists with commas (D16)', () => {
+  render(<OperationDiff L={L} diff={{ added: [], removed: [], changed: [{ kind: 'binding', id: 'b', label: 'Binding',
+    fields: [
+      { name: 'a', before: null, after: '' },
+      { name: 'b', before: 'Empty', after: undefined },
+      { name: 'c', before: ['x', 'y'], after: [] },
+    ] }] }} notes={[]} />);
+  expect(screen.getByText((_, element) => element?.className === 'wb-diff-field' && element.textContent === 'A: — → —')).toBeTruthy();
+  expect(screen.getByText((_, element) => element?.className === 'wb-diff-field' && element.textContent === 'B: — → —')).toBeTruthy();
+  expect(screen.getByText((_, element) => element?.className === 'wb-diff-field' && element.textContent === 'C: x, y → —')).toBeTruthy();
 });
