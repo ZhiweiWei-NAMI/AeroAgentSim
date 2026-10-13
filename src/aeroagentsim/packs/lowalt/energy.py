@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import math
 from dataclasses import replace
 from typing import Any, cast
@@ -21,6 +22,8 @@ from .core import SNAPSHOT_FIELDS, SnapshotIndex, refs, snapshot
 PRODUCES = (
     "lowalt.soc",
     "lowalt.charging",
+    "lowalt.charging_waiting",
+    "lowalt.charging_pad",
     "lowalt.energy_used_j",
     "lowalt.distance_m",
     "lowalt.motion_energy_j",
@@ -28,6 +31,7 @@ PRODUCES = (
 RETURN_COMMAND = "lowalt.energy.return_to_pad"
 EVENTS = (
     "lowalt.energy.charging_started",
+    "lowalt.energy.charging_waiting",
     "lowalt.energy.charging_finished",
     "lowalt.control",
     "lowalt.energy.swap_started",
@@ -63,10 +67,12 @@ class LowaltEnergy(ContextEngine):
             ),
         )
         self.fleet = refs(build, "lowalt:UAV")
+        self.by_id = {ref.id: ref for ref in self.fleet}
         self.previous: dict[str, tuple[float, float, float]] = {}
         self.previous_ns = 0
         self.swap_ends: dict[str, int] = {}
         self.returns: dict[str, str] = {}
+        self.arrivals: dict[str, int] = {}
         # The reserve rule (a behaviour chain) asks for a return; the command
         # stays open until the aircraft has finished charging.
         self.waiting: dict[str, Command[dict[str, Any]]] = {}
@@ -90,8 +96,9 @@ class LowaltEnergy(ContextEngine):
         )
 
     def bootstrap(self, ctx: EngineContext) -> None:
+        initial = copy.deepcopy(self.build.initial)
         for ref in self.fleet:
-            facts = self.build.initial[ref.id]
+            facts = initial[ref.id]
             capacity = finite(facts["lowalt.capacity_j"], "battery capacity", 1e-9)
             soc = finite(facts["lowalt.soc"], "initial soc", 0)
             if soc > 1 or not math.isclose(
@@ -101,9 +108,23 @@ class LowaltEnergy(ContextEngine):
                 raise ValueError(
                     "initial SOC and battery energy must describe the same battery"
                 )
+            if facts["lowalt.charging"] is not False:
+                raise ValueError("initial charging requires a running charging session")
+            for field, value in (
+                ("lowalt.charging_waiting", False), ("lowalt.charging_pad", ""),
+            ):
+                if field in facts and (
+                    type(facts[field]) is not type(value) or facts[field] != value
+                ):
+                    raise ValueError(f"{field}: initial aircraft has no charging session")
+                # Empty reservations are the energy owner's initial state,
+                # rather than inferred replacements for authored pad inputs.
+                facts[field] = value
             self.previous[ref.id] = vec(facts["lowalt.position"])
+        for pad in refs(self.build, "lowalt:ChargingPad"):
+            ns(initial[pad.id]["lowalt.site_capacity"], "charging pad capacity", 1)
         self.previous_ns = ctx.now.ns
-        bootstrap_owned(ctx, self.build)
+        bootstrap_owned(ctx, replace(self.build, initial=initial))
         ctx.wake_at(ctx.now.ns + self.tick, {"lowalt_energy": "tick"})
 
     def _emit(self, ctx: EngineContext, schema: str, **payload: Any) -> None:
@@ -116,15 +137,47 @@ class LowaltEnergy(ContextEngine):
         self.previous_ns = ctx.now.ns
         state = snapshot(ctx, self.build, index=self.snapshot_index)
         pads = {p.id: p for p in state.pads}
+        vehicles = {vehicle.id: vehicle for vehicle in state.vehicles}
+        velocities = {
+            ref.id: vec(read(ctx, ref, "lowalt.velocity")) for ref in self.fleet
+        }
+        speeds = {
+            identity: math.sqrt(sum(v * v for v in velocity))
+            for identity, velocity in velocities.items()
+        }
+        occupied = {p.id: p.occupancy for p in state.pads}
+        charging_ids = {
+            ref.id for ref in self.fleet if read(ctx, ref, "lowalt.charging")
+        }
         for ref in self.fleet:
-            position = vec(read(ctx, ref, "lowalt.position"))
-            velocity = vec(read(ctx, ref, "lowalt.velocity"))
+            pad = pads[self.returns[ref.id]] if ref.id in self.returns else None
+            at_pad = (
+                pad is not None
+                and distance(vehicles[ref.id].position, pad.position) <= self.radius
+                and speeds[ref.id] <= 1e-6
+            )
+            if at_pad:
+                self.arrivals.setdefault(ref.id, ctx.now.ns)
+            else:
+                self.arrivals.pop(ref.id, None)
+        # Complete existing sessions first, then admit stopped arrivals in FIFO
+        # order. The local count includes writes not yet visible in ctx.view.
+        ordered = sorted(
+            self.fleet,
+            key=lambda ref: (
+                ref.id not in charging_ids,
+                self.arrivals.get(ref.id, ctx.now.ns), ref.id,
+            ),
+        )
+        for ref in ordered:
+            position = vehicles[ref.id].position
+            velocity = velocities[ref.id]
             moved = distance(position, self.previous[ref.id])
             self.previous[ref.id] = position
-            speed = math.sqrt(sum(v * v for v in velocity))
-            soc = finite(read(ctx, ref, "lowalt.soc"), "soc", 0)
+            speed = speeds[ref.id]
+            soc = vehicles[ref.id].soc
             capacity = finite(read(ctx, ref, "lowalt.capacity_j"), "capacity", 1e-9)
-            charging = read(ctx, ref, "lowalt.charging")
+            charging = ref.id in charging_ids
             pad = pads[self.returns[ref.id]] if ref.id in self.returns else None
             at_pad = (
                 pad is not None
@@ -133,7 +186,10 @@ class LowaltEnergy(ContextEngine):
             )
             if charging and not at_pad:
                 raise ValueError("charging vehicle moved away from its selected pad")
-            started = not charging and at_pad
+            started = (
+                not charging and at_pad and pad is not None
+                and occupied[pad.id] < pad.capacity
+            )
             if charging:
                 assert pad is not None
                 drain = 0.0
@@ -187,6 +243,14 @@ class LowaltEnergy(ContextEngine):
                 # Connection starts at this observed arrival, after the travel
                 # drain. Only subsequent intervals receive pad energy.
                 charging = True
+                occupied[pad.id] += 1
+            queued = at_pad and not charging
+            if queued and not read(ctx, ref, "lowalt.charging_waiting"):
+                assert pad is not None
+                self._emit(
+                    ctx, "lowalt.energy.charging_waiting", vehicle=ref.id,
+                    pad=pad.id, capacity=pad.capacity, occupancy=occupied[pad.id],
+                )
             if charging and next_soc >= self.target:
                 assert pad is not None
                 charging = False
@@ -205,14 +269,17 @@ class LowaltEnergy(ContextEngine):
                     reason="charging finished",
                 )
                 self.returns.pop(ref.id)
-                waiting = self.waiting.pop(ref.id, None)
-                if waiting is not None:
-                    ctx.succeed(
-                        waiting, {"vehicle": ref.id, "pad": pad.id, "soc": next_soc}
-                    )
+                self.arrivals.pop(ref.id, None)
+                occupied[pad.id] -= 1
+                ctx.set(ref, "lowalt.charging_pad", "")
+                waiting = self.waiting.pop(ref.id)
+                ctx.succeed(
+                    waiting, {"vehicle": ref.id, "pad": pad.id, "soc": next_soc}
+                )
             ctx.set(ref, "lowalt.soc", next_soc)
             ctx.set(ref, "lowalt.motion_energy_j", next_soc * capacity)
             ctx.set(ref, "lowalt.charging", charging)
+            ctx.set(ref, "lowalt.charging_waiting", queued)
             ctx.set(
                 ref,
                 "lowalt.energy_used_j",
@@ -237,6 +304,17 @@ class LowaltEnergy(ContextEngine):
             )
             return
         state = snapshot(ctx, self.build, index=self.snapshot_index)
+        state = replace(
+            state,
+            pads=tuple(
+                replace(
+                    pad,
+                    reserved=sum(p == pad.id for p in self.returns.values())
+                    - pad.occupancy,
+                )
+                for pad in state.pads
+            ),
+        )
         flagged = replace(
             state, vehicles=tuple(v for v in state.vehicles if v.id == identity)
         )
@@ -254,6 +332,7 @@ class LowaltEnergy(ContextEngine):
         ctx.accept(command)
         ctx.execute(command)
         self.returns[identity] = pad.id
+        ctx.set(self.by_id[identity], "lowalt.charging_pad", pad.id)
         self.waiting[identity] = command
         self._emit(
             ctx,

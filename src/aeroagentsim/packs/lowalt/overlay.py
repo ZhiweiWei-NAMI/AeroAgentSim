@@ -269,6 +269,14 @@ EVENT_NARRATIVES: dict[str, dict[str, Any]] = {
         "category": "energy",
         "severity": "info",
     },
+    "lowalt.energy.charging_waiting": {
+        "text": "{vehicle} is waiting at {pad}: {occupancy} of {capacity} charging slots occupied",
+        "text_zh": "{vehicle}在{pad}等候充电：{capacity}个充电位已有{occupancy}个占用",
+        "category": "energy",
+        "severity": "notice",
+        "entities": ["vehicle", "pad"],
+        "position": "pad",
+    },
     "lowalt.energy.charging_finished": {
         "text": "{vehicle} finished charging at {pad}",
         "text_zh": "{vehicle}在{pad}完成充电",
@@ -434,8 +442,9 @@ def overlay() -> dict[str, Any]:
     add("conflict_gap_m", "UAV", PAIR, "m")
     for name in ("membership", "conflicts", "breached_zones"):
         add(name, "UAV", STRINGS)
-    for name in ("weather_held", "charging", "returning_to_charge"):
+    for name in ("weather_held", "charging", "charging_waiting", "returning_to_charge"):
         add(name, "UAV", BOOL)
+    add("charging_pad", "UAV", STRING)
     add("site_position", "Site", VECTOR, "m")
     add("site_open", "Site", BOOL)
     add("site_capacity", "Site", INT)
@@ -587,6 +596,10 @@ def overlay() -> dict[str, Any]:
         "energy.low": ({"vehicle": STRING, "soc": NUMBER}, ()),
         "energy.charging_started": (
             {"vehicle": STRING, "pad": STRING, "soc": NUMBER},
+            (),
+        ),
+        "energy.charging_waiting": (
+            {"vehicle": STRING, "pad": STRING, "capacity": INT, "occupancy": INT},
             (),
         ),
         "energy.charging_finished": (

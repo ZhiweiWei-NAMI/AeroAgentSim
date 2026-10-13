@@ -538,7 +538,7 @@ def test_work_obligations_survive_charge_and_altitude_control(action: str) -> No
     # or completion; it isolates metadata preservation at the interrupt cut.
     ctx = SimpleNamespace(
         now=Instant(10 * 10**9),
-        get=lambda ref, field: (-240.0, -220.0, 50.0),
+        get=lambda ref, field: scenario.initial[ref.id][field],
         submit=requests.append,
     )
     tasks._control(

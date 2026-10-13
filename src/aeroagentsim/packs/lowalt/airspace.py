@@ -307,7 +307,10 @@ class LowaltAirspace(ContextEngine):
         conflicts = tuple(
             c
             for c in separation_conflicts(positions, self.horizontal, self.vertical)
-            if not (c.a in landed and c.b in landed)
+            # Airborne separation does not move aircraft parked on a facility
+            # apron, or prevent arrivals/departures beside them. Ground slots
+            # are accounted for by the facility's executing resource owner.
+            if c.a not in landed and c.b not in landed
         )
         pairs = {(c.a, c.b): c for c in conflicts}
         self.conflicts = pairs
@@ -407,14 +410,18 @@ class LowaltAirspace(ContextEngine):
             return
         state = snapshot(ctx, self.build, index=self.snapshot_index)
         positions = self._positions(ctx, state)
+        protected = set(self.external) | self._landed(ctx, positions)
         state = replace(
             state,
-            monitored_positions=tuple((i, positions[i]) for i in self.external),
+            monitored_positions=tuple((i, positions[i]) for i in sorted(protected)),
         )
         controlled = (
             ()
-            if conflict.a in self.external and conflict.b in self.external
-            else tuple(self.conflicts.values())
+            if conflict.a in protected and conflict.b in protected
+            else tuple(
+                c for c in self.conflicts.values()
+                if c.a not in protected or c.b not in protected
+            )
         )
         actions = self.resolution_actions if self.resolution_ns == ctx.now.ns else set()
         resolutions = (
@@ -446,10 +453,10 @@ class LowaltAirspace(ContextEngine):
             else:
                 raise ValueError("conflict resolver must propose altitude or hold")
             actions.add(resolution.action)
-            if resolution.vehicle in self.external:
+            if resolution.vehicle in protected:
                 # The traffic behaviour owns its responding UAV commands;
-                # move lowalt aircraft around that protected responder.
-                # Resolver proposals for external aircraft are not executed.
+                # stopped aircraft at real landing sites retain their pad or
+                # queue position. Move airborne aircraft around both groups.
                 continue
             self._emit(ctx, "lowalt.control", payload)
         self.pending[pair] = (

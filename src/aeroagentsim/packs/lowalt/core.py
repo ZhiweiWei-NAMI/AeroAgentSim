@@ -10,7 +10,7 @@ from aerokernel import EntityRef
 from aerokernel.sdk import EngineContext
 
 from aeroagentsim.algorithms.protocols import Pad, Snapshot, Task, Vehicle, Zone
-from aeroagentsim.packs.common import finite, read, vec
+from aeroagentsim.packs.common import finite, ns, read, vec
 from aeroagentsim.platform.plugins import EngineBuild
 
 
@@ -64,6 +64,8 @@ def snapshot(
     if index is not None and index.build is not build:
         raise ValueError("snapshot index belongs to a different engine build")
     select = index.select if index is not None else lambda kind: refs(build, kind)
+    uavs = select("lowalt:UAV")
+    charging = {r.id: read(ctx, r, "lowalt.charging") for r in uavs}
     vehicles = tuple(
         Vehicle(
             r.id,
@@ -71,11 +73,12 @@ def snapshot(
             finite(read(ctx, r, "lowalt.soc"), "soc", 0),
             finite(read(ctx, r, "lowalt.payload_kg"), "payload", 0),
             finite(read(ctx, r, "lowalt.payload_capacity_kg"), "payload capacity", 0),
-            not read(ctx, r, "lowalt.charging")
+            not charging[r.id]
+            and not read(ctx, r, "lowalt.charging_waiting")
             and not read(ctx, r, "lowalt.weather_held")
             and all(abs(v) <= 1e-6 for v in vec(read(ctx, r, "lowalt.velocity"))),
         )
-        for r in select("lowalt:UAV")
+        for r in uavs
     )
     sites = {
         r.id: vec(read(ctx, r, "lowalt.site_position")) for r in select("lowalt:Site")
@@ -102,11 +105,15 @@ def snapshot(
         )
         for r in select("lowalt:AirspaceZone")
     )
+    charging_pads = {r.id: read(ctx, r, "lowalt.charging_pad") for r in uavs}
     pads = tuple(
         Pad(
             r.id,
             sites[r.id],
             finite(read(ctx, r, "lowalt.pad_power_w"), "pad power", 0),
+            ns(read(ctx, r, "lowalt.site_capacity"), "charging pad capacity", 1),
+            sum(charging[i] and p == r.id for i, p in charging_pads.items()),
+            sum(not charging[i] and p == r.id for i, p in charging_pads.items()),
         )
         for r in select("lowalt:ChargingPad")
     )
@@ -124,8 +131,11 @@ SNAPSHOT_FIELDS = (
     "lowalt.payload_kg",
     "lowalt.payload_capacity_kg",
     "lowalt.charging",
+    "lowalt.charging_waiting",
+    "lowalt.charging_pad",
     "lowalt.weather_held",
     "lowalt.site_position",
+    "lowalt.site_capacity",
     "lowalt.pad_power_w",
     "lowalt.task_state",
     "lowalt.task_kind",

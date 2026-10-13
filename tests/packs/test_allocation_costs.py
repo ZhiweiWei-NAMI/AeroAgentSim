@@ -85,11 +85,11 @@ def test_energy_infeasible_pairs_are_excluded_by_every_allocator() -> None:
 
 def test_return_reserve_counts_the_flight_home() -> None:
     # Drop-off 100 m from the pad, battery for exactly the outbound leg only.
-    pad = Pad("pad", (0.0, 400.0, 50.0), 5000.0)
+    pad = Pad("pad", (0.0, 400.0, 50.0), 5000.0, 1, 0, 0)
     tight = Vehicle("tight", (0.0, 0.0, 50.0), 0.25, 0.0, 3.0, True, capacity_j=24000.0)
     task = order("t", 0)
     far_pad = Snapshot(0, (tight,), (task,), pads=(pad,))
-    near_pad = Snapshot(0, (tight,), (task,), pads=(Pad("p", (0, 100, 50), 1.0),))
+    near_pad = Snapshot(0, (tight,), (task,), pads=(Pad("p", (0, 100, 50), 1.0, 1, 0, 0),))
     assert pairs("nearest", far_pad) == {}
     assert pairs("nearest", near_pad) == {"t": "tight"}
 

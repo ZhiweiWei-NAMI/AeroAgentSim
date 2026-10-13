@@ -18,6 +18,7 @@ from aerokernel.state import StateView
 from aerokernel.values import freeze, thaw
 
 from aeroagentsim.packs.lowalt.tasks import Job, LowaltTasks
+from aeroagentsim.packs.lowalt.template import vehicle_facts
 from aeroagentsim.platform.plugins import EngineBuild
 from aeroagentsim.scenario import load_scenario
 
@@ -38,6 +39,14 @@ def patrol() -> tuple[LowaltTasks, dict[str, dict[str, Any]]]:
         scenario.manifest, scenario.manifest.entities, scenario.initial,
     ))
     facts = copy.deepcopy(scenario.initial)
+    # The fixture starts after idle battery-owner initialization, without a
+    # charging session. Declare the same observations as an authored UAV.
+    idle = vehicle_facts()
+    for identity in tasks.flights:
+        facts[identity].update({
+            field: idle[field]
+            for field in ("lowalt.charging_waiting", "lowalt.charging_pad")
+        })
     facts["weather"]["lowalt.wind"] = scenario.engines["environment"]["config"]["profiles"]["weather"]["lowalt.wind"]["value"]
     flight = tasks.flights["drone-1"]
     waypoints = tasks.cfg["work_routes"]["patrol"]["config"]["waypoints"]

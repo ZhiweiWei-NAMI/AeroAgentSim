@@ -2,12 +2,40 @@
 
 from pathlib import Path
 
+import pytest
+
 from aeroagentsim.packs.lowalt.template import parcel_document
 from aeroagentsim.platform import Simulation
 from aeroagentsim.scenario import load_scenario
 from aeroagentsim.services.projector import project
 
 BASE = Path(__file__).resolve().parents[2] / "scenarios/templates/parcel-delivery"
+
+
+@pytest.mark.parametrize("parked", [False, True])
+def test_airborne_separation_distinguishes_a_parked_pad_neighbor(parked: bool) -> None:
+    document = parcel_document(fleet_size=2)
+    altitude = 50.0 if parked else 60.0
+    document["generators"]["fleet"]["starts"] = [
+        [-240.0, -220.0, altitude], [-239.0, -220.0, altitude + 1.0],
+    ]
+    document["engines"]["tasks"]["config"]["generators"][0]["arrivals"]["start_ns"] = (
+        100_000_000_000
+    )
+    sim = Simulation(load_scenario(document, base=BASE))
+    try:
+        sim.start()
+        sim.run_until(3_000_000_000)
+        messages = [m for r in sim.kernel.iter_records() for m in project(r)["messages"]]
+        conflicts = [m for m in messages if m["schemaId"] == "lowalt.airspace.conflict"]
+        assert bool(conflicts) is not parked
+        if parked:
+            assert not any(
+                m["schemaId"] == "lowalt.control" and m["payload"]["action"] == "altitude"
+                for m in messages
+            )
+    finally:
+        sim.close()
 
 
 def test_zone_schedule_injection_weather_and_conflict_resolution() -> None:

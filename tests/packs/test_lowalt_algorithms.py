@@ -105,13 +105,49 @@ def test_charging_threshold_selects_nearest_pad() -> None:
         0,
         (vehicle("low", 0, soc=0.1), vehicle("healthy", 2)),
         pads=(
-            Pad("far", (100.0, 0.0, 50.0), 1000),
-            Pad("near", (1.0, 0.0, 50.0), 1000),
+            Pad("far", (100.0, 0.0, 50.0), 1000, 1, 0, 0),
+            Pad("near", (1.0, 0.0, 50.0), 1000, 1, 0, 0),
         ),
     )
     assert load_algorithm("charging", "threshold_return").charge(state) == (
         Charge("low", "near"),
     )
+
+
+@pytest.mark.parametrize("occupancy,reserved", [(1, 0), (0, 1)])
+def test_charging_uses_a_free_pad_before_an_occupied_or_reserved_pad(
+    occupancy: int, reserved: int,
+) -> None:
+    state = Snapshot(
+        0, (vehicle("low", 0, soc=0.1),),
+        pads=(
+            Pad("near", (1.0, 0.0, 50.0), 1000, 1, occupancy, reserved),
+            Pad("free", (100.0, 0.0, 50.0), 1000, 1, 0, 0),
+        ),
+    )
+    assert load_algorithm("charging", "threshold_return").charge(state) == (
+        Charge("low", "free"),
+    )
+
+
+def test_charging_batch_reserves_slots_and_queues_when_all_are_full() -> None:
+    state = Snapshot(
+        0, tuple(vehicle(identity, 0, soc=0.1) for identity in ("a", "b", "c", "d")),
+        pads=(
+            Pad("near", (1.0, 0.0, 50.0), 1000, 2, 1, 0),
+            Pad("far", (100.0, 0.0, 50.0), 1000, 1, 0, 0),
+        ),
+    )
+    assert load_algorithm("charging", "threshold_return").charge(state) == (
+        Charge("a", "near"), Charge("b", "far"),
+        Charge("c", "near"), Charge("d", "near"),
+    )
+
+
+@pytest.mark.parametrize("capacity", [None, 0, -1, 1.5, True])
+def test_charging_pad_requires_authored_integer_capacity(capacity: object) -> None:
+    with pytest.raises(ValueError, match="capacity"):
+        Pad("invalid", (0.0, 0.0, 0.0), 1000, capacity, 0, 0)  # type: ignore[arg-type]
 
 
 def test_module_and_entrypoint_loading(monkeypatch: pytest.MonkeyPatch) -> None:

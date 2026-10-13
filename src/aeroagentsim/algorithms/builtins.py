@@ -391,7 +391,7 @@ class HoldAndGo:
 
 class ThresholdReturn:
     label_zh, description_zh = BUILTIN_COPY_ZH["threshold_return"]
-    description = "Return low-battery drones to the nearest charging pad."
+    description = "Return low-battery drones to the nearest free charging pad, or queue at a busy pad."
 
     def __init__(self, threshold: float = 0.2) -> None:
         self.threshold = finite(threshold, "charging threshold", 0)
@@ -400,11 +400,16 @@ class ThresholdReturn:
 
     def charge(self, snapshot: Snapshot) -> tuple[Charge, ...]:
         result = []
+        reserved = {p.id: p.occupancy + p.reserved for p in snapshot.pads}
         for vehicle in sorted(snapshot.vehicles, key=lambda v: v.id):
             if vehicle.soc <= self.threshold and snapshot.pads:
+                free = tuple(p for p in snapshot.pads if reserved[p.id] < p.capacity)
+                # A full facility remains a real destination for waiting. The
+                # energy owner admits arrivals only when a slot becomes free.
                 pad = min(
-                    snapshot.pads,
+                    free or snapshot.pads,
                     key=lambda p: (distance(vehicle.position, p.position), p.id),
                 )
                 result.append(Charge(vehicle.id, pad.id))
+                reserved[pad.id] += 1
         return tuple(result)

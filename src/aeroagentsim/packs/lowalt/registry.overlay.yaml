@@ -204,6 +204,20 @@ fields:
     role: observation
     unit: '1'
     time_semantics: canonical computation; half-open validity
+- id: lowalt.charging_waiting
+  type: lowalt:UAV
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.charging_pad
+  type: lowalt:UAV
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
 - id: lowalt.site_position
   type: lowalt:Site
   schema: *id001
@@ -1214,6 +1228,25 @@ messages:
     - vehicle
     - pad
     - soc
+    extra: false
+  subjects:
+  - path:
+    - vehicle
+    type_id: lowalt:UAV
+- id: lowalt.energy.charging_waiting
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+      capacity: *id006
+      occupancy: *id006
+    required:
+    - vehicle
+    - pad
+    - capacity
+    - occupancy
     extra: false
   subjects:
   - path:

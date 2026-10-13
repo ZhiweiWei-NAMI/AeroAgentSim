@@ -48,6 +48,18 @@ class Pad:
     id: str
     position: Point
     power_w: float
+    capacity: int
+    occupancy: int
+    # Returning aircraft reserve a slot before arrival; surplus returns queue.
+    reserved: int
+
+    def __post_init__(self) -> None:
+        if type(self.capacity) is not int or self.capacity < 1:
+            raise ValueError("charging pad capacity must be a positive integer")
+        if type(self.occupancy) is not int or not 0 <= self.occupancy <= self.capacity:
+            raise ValueError("charging pad occupancy must fit its capacity")
+        if type(self.reserved) is not int or self.reserved < 0:
+            raise ValueError("charging pad reservations must be a nonnegative integer")
 
 
 @dataclass(frozen=True)

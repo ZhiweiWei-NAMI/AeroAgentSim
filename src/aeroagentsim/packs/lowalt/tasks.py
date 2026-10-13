@@ -130,6 +130,7 @@ class Flight:
     paused_route: tuple[tuple[float, float, float], ...] | None = None
     transit_resume: bool = False
     cruise_altitude_m: float | None = None
+    charging_goal: Point | None = None
     avoidance_resume_goal: tuple[float, float, float] | None = None
     avoidance_resume_purpose: str = "task"
     control_resume_purpose: str = "task"
@@ -660,6 +661,13 @@ class LowaltTasks(ContextEngine):
             self._brake(ctx, flight)
             return
         if action in {"return_to_pad", "altitude"}:
+            if action == "altitude" and (
+                read(ctx, flight.vehicle, "lowalt.charging")
+                or read(ctx, flight.vehicle, "lowalt.charging_waiting")
+            ):
+                # A control already in transit may arrive after connection or
+                # queuing. Separation moves the airborne partner instead.
+                return
             if action == "altitude" and flight.purpose == "charge":
                 # Avoidance must resume the physical charging trip, not mark
                 # the aircraft idle and leave the reserve recall open forever.
@@ -684,6 +692,8 @@ class LowaltTasks(ContextEngine):
                 flight.paused_route = None
                 flight.saved_goal = flight.goal
             target = vec(payload["target"])
+            if action == "return_to_pad":
+                flight.charging_goal = target
             if action == "altitude":
                 # Keep the assigned separation layer on subsequent transit
                 # legs, rather than immediately route back into the conflict.
@@ -710,6 +720,33 @@ class LowaltTasks(ContextEngine):
             raise ValueError(f"unsupported lowalt control {action}")
         flight.replan = True
         self._brake(ctx, flight)
+
+    def _restore_control(self, flight: Flight) -> None:
+        flight.purpose = flight.control_resume_purpose
+        flight.control_resume_purpose = "task"
+        flight.transit_resume = bool(flight.saved_route)
+        flight.goal, flight.route = flight.saved_goal, flight.saved_route
+        flight.saved_goal, flight.saved_route = None, ()
+        flight.replan = not bool(flight.route)
+
+    def _charging_finished(self, ctx: EngineContext, identity: str) -> None:
+        flight = self.flights[identity]
+        if flight.charging_goal is None:
+            raise ValueError("charging finished without a recalled flight")
+        flight.charging_goal = None
+        # Completion ends charging even if an altitude detour retained its
+        # destination, and even if the next energy sample has already drained
+        # the battery below the target. Only the energy owner completes it.
+        resume = flight.purpose == "charge" or (
+            flight.purpose == "avoidance"
+            and flight.avoidance_resume_purpose == "charge"
+        )
+        flight.avoidance_resume_goal = None
+        flight.avoidance_resume_purpose = "task"
+        if resume:
+            self._restore_control(flight)
+            if flight.pending or flight.command_id is not None:
+                self._brake(ctx, flight)
 
     def _brake(self, ctx: EngineContext, flight: Flight) -> None:
         if flight.pending:
@@ -813,6 +850,8 @@ class LowaltTasks(ContextEngine):
                     }, sources=(delivery.message.id,))
             elif delivery.message.schema_id == "lowalt.control":
                 self._control(ctx, payload)
+            elif delivery.message.schema_id == "lowalt.energy.charging_finished":
+                self._charging_finished(ctx, payload["vehicle"])
             elif delivery.message.schema_id == "lowalt.allocation.result":
                 self.llm_pending = False
                 rows = json.loads(payload["assignments_json"])
@@ -1776,7 +1815,10 @@ class LowaltTasks(ContextEngine):
                 flight.job.spray_hold_until_ns = None
             held = read(ctx, flight.vehicle, "lowalt.weather_held")
             charging = read(ctx, flight.vehicle, "lowalt.charging")
-            if held or charging or ctx.now.ns < flight.hold_until_ns:
+            if (
+                held or charging or read(ctx, flight.vehicle, "lowalt.charging_waiting")
+                or ctx.now.ns < flight.hold_until_ns
+            ):
                 continue
             if (
                 distance(
@@ -1797,32 +1839,23 @@ class LowaltTasks(ContextEngine):
                     )
                     <= self.radius
                 ):
-                    if (
-                        flight.purpose == "charge"
-                        and read(ctx, flight.vehicle, "lowalt.soc")
-                        < self.cfg["charging_resume_soc"]
-                    ):
+                    if flight.purpose == "charge":
+                        # Arrival is not completion: wait for the energy
+                        # owner's charging_finished event and command receipt.
                         continue
                     if (
                         flight.purpose == "avoidance"
                         and flight.avoidance_resume_purpose == "charge"
+                        and flight.charging_goal is not None
                     ):
                         flight.purpose = "charge"
-                        flight.goal = flight.avoidance_resume_goal
+                        flight.goal = flight.charging_goal
                         flight.route = ()
                         flight.avoidance_resume_goal = None
                         flight.avoidance_resume_purpose = "task"
                         flight.replan = True
                     else:
-                        flight.purpose = flight.control_resume_purpose
-                        flight.control_resume_purpose = "task"
-                        flight.transit_resume = bool(flight.saved_route)
-                        flight.goal, flight.route = (
-                            flight.saved_goal,
-                            flight.saved_route,
-                        )
-                        flight.saved_goal, flight.saved_route = None, ()
-                        flight.replan = not bool(flight.route)
+                        self._restore_control(flight)
             if self.cooperation is not None and self._coop_flight(ctx, flight):
                 continue
             if flight.job is None and flight.purpose == "task":

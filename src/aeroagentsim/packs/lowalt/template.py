@@ -37,6 +37,8 @@ def vehicle_facts() -> dict[str, Any]:
         "lowalt.conflicts": [],
         "lowalt.weather_held": False,
         "lowalt.charging": False,
+        "lowalt.charging_waiting": False,
+        "lowalt.charging_pad": "",
         "lowalt.energy_used_j": 0.0,
         "lowalt.distance_m": 0.0,
         "lowalt.wind_limit_mps": 12.0,
@@ -178,6 +180,25 @@ def expand(document: dict[str, Any]) -> None:
     marked by their authored prefix and recreated on load, including replay of
     a pinned scenario. No hidden defaults or external geometry is consulted.
     """
+    # New observations belong to the energy owner, including in previously
+    # saved scenes and in scenes whose component ids were remapped by Studio.
+    energy_ids = {
+        identity for identity, engine in document["engines"].items()
+        if engine["plugin"] == "lowalt_energy"
+    }
+    if energy_ids:
+        charging_fields = {"lowalt.charging_pad", "lowalt.charging_waiting"}
+        fields = document["registry"].setdefault("fields", [])
+        known_fields = {item["id"] for item in fields}
+        fields.extend(
+            copy.deepcopy(item) for item in overlay()["fields"]
+            if item["id"] in charging_fields - known_fields
+        )
+        for rule in document["bindings"]["rules"]:
+            if rule["writer"] in energy_ids and "lowalt.charging" in rule["fields"]:
+                rule["fields"] = list(dict.fromkeys(
+                    [*rule["fields"], *sorted(charging_fields)]
+                ))
     # Old pinned scenarios keep their business configuration while gaining the
     # optional journal-only lineage contract used by current task engines.
     messages = document["registry"].get("messages", [])
