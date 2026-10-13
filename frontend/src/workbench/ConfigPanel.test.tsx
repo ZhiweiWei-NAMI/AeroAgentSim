@@ -40,23 +40,23 @@ it('reads compound physics frequency from actual engine periods, preserving the 
 });
 it('jumps a validation issue to its field even when the objects filter excludes it', async () => {
   setup({ ...project, validation: { valid: false, revision: 2, errors: ['bad'], issues: [{ source: 'scenario', path: '/entities/0/facts/capacity', section: 'objects', message: 'bad' }] } }, 'objects');
-  fireEvent.change(screen.getByRole('textbox', { name: 'Filter instances' }), { target: { value: 'absent' } });
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Filter instances' }), { target: { value: 'absent' } });
   fireEvent.click(screen.getByTestId('wb-issues').querySelector('button')!);
   expect(await screen.findByLabelText('capacity')).toBeVisible();
   expect(screen.getByLabelText('capacity').closest('.wb-field')).toHaveClass('is-focus');
 });
 it('blocks saving and validation while a numeric input is invalid', async () => {
   const { api } = setup();
-  fireEvent.change(screen.getByRole('textbox', { name: /until_ns/ }), { target: { value: '' } });
+  fireEvent.change(await screen.findByRole('textbox', { name: /until_ns/ }), { target: { value: '' } });
   fireEvent.blur(screen.getByRole('textbox', { name: /until_ns/ }));
   await waitFor(() => expect(screen.getByTestId('wb-validate')).toBeDisabled());
   expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
   expect(api.save).not.toHaveBeenCalled();
 });
 
-it('recovers an unapplied duration on refresh, reports unconfirmed input, and leaves the server draft unchanged (T3-R3-003 / T4-R2-009)', () => {
+it('recovers an unapplied duration on refresh, reports unconfirmed input, and leaves the server draft unchanged (T3-R3-003 / T4-R2-009)', async () => {
   const first = setup();
-  fireEvent.change(screen.getByLabelText('Duration (s)'), { target: { value: '777' } });
+  fireEvent.change(await screen.findByLabelText('Duration (s)'), { target: { value: '777' } });
   expect(screen.getByText('Unconfirmed form inputs')).toBeVisible();
   expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
   expect(screen.getByRole('textbox', { name: /until_ns/ })).toHaveValue('360000000000');
@@ -126,8 +126,9 @@ it('edits large engine geometry without mounting thousands of hidden inputs or d
   const config = { scene: { points: Array.from({ length: 1000 }, (_, i) => [i, i + 0.5, 0]) } };
   const initial = { ...project, scenario: { engines: { capture: { plugin: 'capture', config } } } };
   const { api, view } = setup(initial, 'components');
+  const advanced = await screen.findByText('Advanced', { selector: 'summary' });
   expect(view.container.querySelectorAll('input')).toHaveLength(0);
-  fireEvent.click(screen.getByText('Advanced', { selector: 'summary' }));
+  fireEvent.click(advanced);
   fireEvent.click(screen.getByText('capture', { selector: 'b' }));
   const editor = screen.getByLabelText('capture configuration');
   const changed = { scene: { points: [...config.scene.points] } }; changed.scene.points[0] = [9, 0.5, 0];
@@ -217,7 +218,7 @@ it.each(['save record', 'project summary'])('T4-03: reloads the authoritative pr
     return <ConfigPanel api={api} project={current} onProject={setCurrent} section="run" onSection={vi.fn()} onInitialize={initialize} initializing={false} onClose={vi.fn()} />;
   }
   render(<I18nProvider><Harness /></I18nProvider>);
-  fireEvent.change(screen.getByRole('textbox', { name: /until_ns/ }), { target: { value: '600000000000' } });
+  fireEvent.change(await screen.findByRole('textbox', { name: /until_ns/ }), { target: { value: '600000000000' } });
   fireEvent.blur(screen.getByRole('textbox', { name: /until_ns/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
   await waitFor(() => expect(screen.getByTestId('wb-initialize')).toHaveTextContent('Initialize v1'));
@@ -255,7 +256,7 @@ it('T4-01: another tab cannot clear this tab’s recovery, and a conflicted edit
 it('a successful save clears only this tab’s buffer', async () => {
   localStorage.setItem('aas.draft.test-project', 'other tab recovery');
   setup();
-  fireEvent.change(screen.getByRole('textbox', { name: /until_ns/ }), { target: { value: '600000000000' } });
+  fireEvent.change(await screen.findByRole('textbox', { name: /until_ns/ }), { target: { value: '600000000000' } });
   fireEvent.blur(screen.getByRole('textbox', { name: /until_ns/ }));
   expect(sessionStorage.getItem('aas.draft.test-project')).toContain('600000000000');
   fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));

@@ -103,12 +103,12 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   // The shared city follows the draft's declared city (choosing none hides it).
   const cityScene = (ws: Workspace) => ws.scenario?.city === 'huangpu' ? ws.demo_console?.scene : undefined;
   const city = cityScene(workspace);
-  const sceneKey = JSON.stringify([workspace.id, api, city?.city?.kind ?? null, city?.city?.url ?? null, city?.camera ?? null,
-    workspace.scene?.ground ?? null, workspace.scene?.origin ?? null, workspace.proposal ?? false, workspace.proposal ? workspace.scene?.geojson : null]);
-  const roadsKey = JSON.stringify(workspace.scene?.roads ?? null);
-  const entitiesKey = JSON.stringify([workspace.scenario.entities, workspace.scenario.presentation ?? null, workspace.scenario.generators ?? null, workspace.scenario.registry?.types ?? null]);
+  const sceneKey = useMemo(() => JSON.stringify([workspace.id, api, city?.city?.kind ?? null, city?.city?.url ?? null, city?.camera ?? null,
+    workspace.scene?.ground ?? null, workspace.scene?.origin ?? null, workspace.proposal ?? false, workspace.proposal ? workspace.scene?.geojson : null]), [workspace.id, api, city, workspace.scene, workspace.proposal]);
+  const roadsKey = useMemo(() => JSON.stringify(workspace.scene?.roads ?? null), [workspace.scene?.roads]);
+  const entitiesKey = useMemo(() => JSON.stringify([workspace.scenario.entities, workspace.scenario.presentation ?? null, workspace.scenario.generators ?? null, workspace.scenario.registry?.types ?? null]), [workspace.scenario]);
   const layerKey = useMemo(() => LAYER_NAMES.map(name => layers.includes(name) ? 1 : 0).join(''), [layers]);
-  const overlayKey = JSON.stringify(overlay);
+  const overlayKey = useMemo(() => JSON.stringify(overlay), [overlay]);
 
   useEffect(() => {
     if (!root.current) return;

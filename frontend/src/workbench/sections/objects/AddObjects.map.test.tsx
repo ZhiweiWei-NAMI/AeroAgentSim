@@ -50,7 +50,7 @@ it('opens the inline pick map when a region is applied', async () => {
   const button = screen.getByRole('button', { name: 'Pick on map' });
   expect(button).toBeEnabled();
   fireEvent.click(button);
-  expect(screen.getByText('Click to place — east/north fill in automatically')).toBeTruthy();
+  expect(await screen.findByText('Click to place — east/north fill in automatically')).toBeTruthy();
   expect(button.getAttribute('aria-pressed')).toBe('true');
 });
 

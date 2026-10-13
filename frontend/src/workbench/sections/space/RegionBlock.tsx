@@ -7,7 +7,7 @@ import {
   catalogBasemap, extractLabel, fetchMapCatalog, previewMapGeometry, previewRegion, readRegion, regionDraft, sceneMapGeometry, validateRegion,
   type MapCatalog, type NetworkResult, type RegionDraft, type RegionPreview,
 } from './model';
-import { RegionMap } from './RegionMap';
+import { RegionMap } from '../../LazyRegionMap';
 import { regionMapObjects } from '../objects/RegionMapSupport';
 import { validWgs84Bounds } from '../../geo';
 

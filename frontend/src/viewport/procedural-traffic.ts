@@ -25,7 +25,7 @@ import type { PackedBatch, PackedObject, PackedRange } from './mesh-pack';
  * ("procedural:car" / "procedural:uav"); nothing is fetched for them.
  */
 
-export const LITE_CITY_FORMAT = 'traffic-city-lite/v1';
+const LITE_CITY_FORMAT = 'traffic-city-lite/v1';
 export const PROCEDURAL_ASSET_SCHEME = 'procedural:';
 
 export interface LiteCityBuilding {

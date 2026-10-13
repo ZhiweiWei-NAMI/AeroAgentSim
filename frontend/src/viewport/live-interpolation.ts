@@ -16,6 +16,7 @@ export class LiveFollowClock {
       this.previous = this.latest = undefined; this.display = undefined;
       this.observed = 0; this.active = true;
     }
+    if (this.observed === store.commits.length) return;
     // Polls can contain many event-only commits after the pose publication.
     // Record the last actual pose publication in the newly arrived batch.
     let pose: bigint | undefined;

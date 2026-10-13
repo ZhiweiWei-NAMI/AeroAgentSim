@@ -29,11 +29,10 @@ export function disposeObject(root: T.Object3D) {
 /** Page-session cache of parsed GLB scenes, keyed by URL. Views receive clones sharing geometry/materials. */
 const sharedModels = new Map<string, Promise<T.Object3D>>();
 const sharedImages = new Map<string, Promise<T.Texture>>();
-export function clearSharedModels() { sharedModels.clear(); sharedImages.clear(); }
 
 /** GLBs in the city pack repeat identical embedded PNGs. Share decoded Sources,
  * while each texture keeps its own sampler, colour space and UV transform. */
-export function shareImageSources(parser: GLTFParser) {
+function shareImageSources(parser: GLTFParser) {
   const load = parser.loadImageSource.bind(parser);
   let failure: unknown;
   parser.loadImageSource = async (index, loader) => {

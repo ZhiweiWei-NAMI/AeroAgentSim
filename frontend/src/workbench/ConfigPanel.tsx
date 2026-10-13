@@ -1,5 +1,5 @@
 import { ModeSwitch, type EditMode, type Origin } from '../assistant/ModeSwitch';
-import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { TemplateApi, type AlgorithmDescriptor, type KnobValue, type ScenarioTemplate } from '../newcomers/api';
 import { TemplateKnobControl } from '../newcomers/TemplateKnobControl';
 import { useI18n } from '../i18n/I18nProvider';
@@ -10,17 +10,17 @@ import { changedFields, changedSections, mergeSections, rebaseDraft, sameDraftVa
 import { StudioApi } from '../studio/api';
 import { SECTIONS, issuePointer, issueSection } from './sections/issues';
 import type { SectionProps } from './sections/types';
-import { SpaceSection } from './sections/SpaceSection';
-import { ObjectsSection } from './sections/ObjectsSection';
-import { RelationsSection } from './sections/RelationsSection';
-import { TasksSection } from './sections/TasksSection';
-import { ComponentsSection } from './sections/ComponentsSection';
-import { AlgorithmsSection } from './sections/AlgorithmsSection';
-import { RunSection } from './sections/RunSection';
+const SpaceSection = lazy(() => import('./sections/SpaceSection').then(module => ({ default: module.SpaceSection })));
+const ObjectsSection = lazy(() => import('./sections/ObjectsSection').then(module => ({ default: module.ObjectsSection })));
+const RelationsSection = lazy(() => import('./sections/RelationsSection').then(module => ({ default: module.RelationsSection })));
+const TasksSection = lazy(() => import('./sections/TasksSection').then(module => ({ default: module.TasksSection })));
+const ComponentsSection = lazy(() => import('./sections/ComponentsSection').then(module => ({ default: module.ComponentsSection })));
+const AlgorithmsSection = lazy(() => import('./sections/AlgorithmsSection').then(module => ({ default: module.AlgorithmsSection })));
+const RunSection = lazy(() => import('./sections/RunSection').then(module => ({ default: module.RunSection })));
 import { assertOperationsReady, currentOperationsProject, mutateWorkspace, operationText, useWorkspaceOperations } from './sections/operations';
 import { StagedFormWorkspace, useStagedFormStatus } from './sections/useStagedForm';
 
-const SECTION_BODIES: Record<SectionId, (props: SectionProps) => JSX.Element> = {
+const SECTION_BODIES: Record<SectionId, ComponentType<SectionProps>> = {
   space: SpaceSection, objects: ObjectsSection, relations: RelationsSection, tasks: TasksSection,
   components: ComponentsSection, algorithms: AlgorithmsSection, run: RunSection,
 };
@@ -305,7 +305,7 @@ export function ConfigPanel({ api, project: suppliedProject, onProject, onInitia
     const props: SectionProps = { api, studioApi, project, draft, edit, replaceDraft: scenario => { setDraft(scenario); setLocal(true); }, focus: target === section ? focus : undefined, zh, locale, L, issues, onProject: sectionProject, saveDraft, reportValidity, onInspectContract, algorithms, goTo };
     const Body = SECTION_BODIES[target as SectionId];
     if (!Body) throw Error(L(`Unknown configuration section: ${target}`, `未知配置分区：${target}`));
-    return <Body {...props} />;
+    return <Suspense fallback={null}><Body {...props} /></Suspense>;
   };
 
   return <StagedFormWorkspace.Provider value={{ id: project.id, revision: project.revision }}><FormValidity.Provider value={reportValidity}><aside className="wb-panel wb-right is-wide wb-glass" aria-label={L('Configure scenario', '配置场景')} data-testid="wb-config" data-morph={morph}>
