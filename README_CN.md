@@ -9,9 +9,9 @@
   <a href="LICENSE"><img alt="许可证：Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
 </p>
 
-<p align="center"><img src="docs/demos/deepseek-chinese-instruction/demo.gif" alt="DeepSeek 把一句中文指令搭建成外卖配送场景；用户确认后运行，6 单全部送达" width="900"></p>
+<p align="center"><a href="docs/demos/deepseek-chinese-instruction/demo.mp4"><img src="docs/demos/deepseek-chinese-instruction/demo-poster.jpg" alt="播放 58 秒演示：DeepSeek 把一句中文指令搭建成外卖配送场景，用户确认后运行，6 单全部送达" width="900"></a></p>
 
-<p align="center"><i>一句中文指令 → DeepSeek 起草场景 → 用户确认 → 经历阵风后 6 单全部送达。</i><br><a href="docs/demos/deepseek-chinese-instruction/README.md">完整录屏、对话记录与日志</a></p>
+<p align="center"><i>一句中文指令 → DeepSeek 起草场景 → 用户确认 → 经历阵风后 6 单全部送达。</i><br><a href="docs/demos/deepseek-chinese-instruction/demo.mp4">播放 58 秒演示（MP4）</a> · <a href="docs/demos/deepseek-chinese-instruction/recording-full.mp4">未剪辑的 4.5 分钟录屏</a> · <a href="docs/demos/deepseek-chinese-instruction/README.md">对话记录与日志</a></p>
 
 ## 它能做什么
 

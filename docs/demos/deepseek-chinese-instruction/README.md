@@ -2,9 +2,9 @@
 
 演示：一句中文指令，由 DeepSeek 配置场景，在 AeroAgentSim 中运行成功。
 
-<p align="center"><img src="demo.gif" alt="Connect DeepSeek, type one Chinese instruction, review and confirm the plan, run the simulation and read the result" width="900"></p>
+<p align="center"><a href="demo.mp4"><img src="demo-poster.jpg" alt="Play the 58-second demo: connect DeepSeek, type one Chinese instruction, review and confirm the plan, run the simulation and read the result" width="900"></a></p>
 
-[Full recording, real time, 4 min 31 s](recording-full.mp4) · [Highlights, sped up, 58 s](recording-highlights.mp4) · [Transcript](transcript.md) · [Screenshots](screenshots/)
+[Full recording, real time, 4 min 31 s](recording-full.mp4) · [Demo, sped up, 58 s](demo.mp4) · [Transcript](transcript.md) · [Screenshots](screenshots/)
 
 ## What happens
 
@@ -66,7 +66,7 @@ With DeepSeek's own API, use endpoint `https://api.deepseek.com/v1`, a DeepSeek 
 
 | Path | Contents |
 |---|---|
-| `demo.gif`, `recording-highlights.mp4`, `recording-full.mp4` | The recording: README GIF, 58 s cut, unedited 4 min 31 s |
+| `demo.mp4`, `recording-full.mp4`, `demo-poster.jpg` | The recording: 58 s sped-up cut at full 1600 × 1000, the unedited 4 min 31 s, and the README poster |
 | `screenshots/` | 16 frames, one per step |
 | `transcript.md` | Conversation, each plan version with its operations, assumptions and questions, and the result |
 | `logs/steps.jsonl`, `logs/recorder.log` | Recorder steps with timestamps |
