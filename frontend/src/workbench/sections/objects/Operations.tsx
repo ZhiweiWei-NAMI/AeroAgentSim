@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import type { Project, WorkbenchApi } from '../../api';
-import { applyOperations, operationProblem, previewOperations, type DiffRow, type Operation, type OperationPreview } from '../operations';
+import { applyOperations, operationProblem, previewOperations, type DiffField, type DiffRow, type Operation, type OperationPreview } from '../operations';
 
 type Localize = (en: string, zh: string) => string;
 
 /** C11 rows may carry their own kind label and preformatted field values; fall back only when absent. */
-export type DiffField = { name: string; before?: unknown; after?: unknown; label?: string; label_zh?: string; before_text?: string; after_text?: string };
-export type RichDiffRow = DiffRow & { kind_label?: string; kind_label_zh?: string; fields?: DiffField[] };
+export type { DiffField } from '../operations';
+export type RichDiffRow = DiffRow;
 export type ObjectsDiff = OperationPreview['diff'] & { entities?: { added: string[]; changed: string[]; removed: string[] } };
 
 /** C11 also reports explicit member deltas. Keep them in the review, including fleet shrinkage. */
@@ -69,7 +69,7 @@ function fieldValue(value: unknown, L: Localize) {
 /** "<label>: <before> → <after>", preferring the server-provided label and preformatted values. */
 function fieldLine(field: DiffField, L: Localize) {
   const provided = field.label ?? field.label_zh;
-  const label = provided ? operationText(L(provided, field.label_zh ?? field.label), L) : fieldLabel(field.name, L);
+  const label = provided ? operationText(L(provided, field.label_zh ?? provided), L) : fieldLabel(field.name, L);
   const before = field.before_text ?? fieldValue(field.before, L);
   const after = field.after_text ?? fieldValue(field.after, L);
   return `${label}: ${before} → ${after}`;

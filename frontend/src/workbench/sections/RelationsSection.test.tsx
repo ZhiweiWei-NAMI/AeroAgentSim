@@ -111,7 +111,7 @@ it('shows exact link removal before confirmation and retains shared write permis
   const pkg = { id: 'existing', predicates: {}, bootstrap_relations: { owner: 'rules', assertions: [{ id: 'link', relation: relation.id, source: expectedRef('kitchen', 'Restaurant'), target: expectedRef('customer', 'Customer') }] } };
   const bindings = { relations: [{ writer: 'rules', relation: relation.id, type: 'Restaurant', ids: 'kitchen' }] };
   const { replaceDraft } = setup({ ...draft, behaviours: [pkg], bindings });
-  fireEvent.click(screen.getByRole('button', { name: 'Remove', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
   expect(screen.getByText(/Remove initial link link: kitchen → customer/)).toBeVisible();
   expect(replaceDraft).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Confirm removal' }));

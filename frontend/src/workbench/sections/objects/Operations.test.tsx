@@ -63,7 +63,7 @@ it('AddPlace sends an add_place operation with role-specific fields only, after 
   await waitFor(() => expect(api.request).toHaveBeenCalled());
   const [, init] = (api.request as ReturnType<typeof vi.fn>).mock.calls[0];
   expect(init.body.dry_run).toBe(true);
-  expect(init.body.operations[0]).toMatchObject({ op: 'add_place', params: { id: 'pad-1', role: 'charging_pad', at: 'centre', power_w: 7000 } });
+  expect(init.body.operations[0]).toMatchObject({ op: 'add_place', params: { id: 'pad-1', role: 'charging_pad', at: [0, 0, 0], power_w: 7000 } });
   expect(init.body.operations[0].params).not.toHaveProperty('preparation_s');
   fireEvent.click(await screen.findByRole('button', { name: 'Apply' }));
   await waitFor(() => expect(onProject).toHaveBeenCalled());

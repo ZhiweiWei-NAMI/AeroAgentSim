@@ -28,6 +28,8 @@ it('localizes object groups and prominent state fields without changing identifi
  }
  expect(displayLabel(undefined, 'lowalt.charging', 'en-US')).toBe('Charging');
  expect(displayLabel('Charging', 'lowalt.charging', 'zh-CN')).toBe('充电中');
+ expect(displayLabel(undefined, 'lowalt.charging_waiting', 'zh-CN')).toBe('等待充电');
+ expect(displayLabel(undefined, 'lowalt.charging_pad', 'zh-CN')).toBe('充电坪');
  expect(displayLabel(undefined, 'traffic.actor.inside_zones', 'zh-CN')).toBe('所在区域');
 });
 

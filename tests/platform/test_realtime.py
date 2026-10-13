@@ -6,8 +6,10 @@ import copy
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from threading import get_ident
+from typing import Any, Iterator
 from unittest.mock import patch
 
 import pytest
@@ -44,6 +46,31 @@ def stamp(ns: int = 50_000_000) -> Stamp:
     return Stamp("sensor-clock", ns, 1, "sensor-ns")
 
 
+@contextmanager
+def forbid_replay_clock() -> Iterator[None]:
+    """Reject clocks in the replay caller without interrupting live services."""
+    replay_thread = get_ident()
+    monotonic = time.monotonic
+
+    def guarded_clock() -> float:
+        if get_ident() == replay_thread:
+            raise AssertionError("live clock called")
+        return monotonic()
+
+    with patch("time.monotonic", side_effect=guarded_clock):
+        yield
+
+
+def test_replay_clock_guard_preserves_background_service_clocks() -> None:
+    before = time.monotonic()
+    with ThreadPoolExecutor(max_workers=1) as service:
+        assert service.submit(get_ident).result(timeout=2) != get_ident()
+        with forbid_replay_clock():
+            assert service.submit(time.monotonic).result(timeout=2) >= before
+            with pytest.raises(AssertionError, match="live clock called"):
+                time.monotonic()
+
+
 def assert_replay(session: RunSession, directory: Path) -> None:
     before = session.simulation.kernel.records
     with (
@@ -55,7 +82,7 @@ def assert_replay(session: RunSession, directory: Path) -> None:
             "aeroagentsim.engines.telemetry.Telemetry.on_inputs",
             side_effect=AssertionError("engine invoked"),
         ),
-        patch("time.monotonic", side_effect=AssertionError("live clock called")),
+        forbid_replay_clock(),
     ):
         restored = replay(directory / "journal.jsonl")
     assert restored.records == before
@@ -357,7 +384,7 @@ def test_http_live_ingress_and_replay(realtime: dict[str, Any], tmp_path: Path) 
                 "aeroagentsim.platform.plugins.EngineCatalog.build",
                 side_effect=AssertionError("live factory called"),
             ),
-            patch("time.monotonic", side_effect=AssertionError("live clock called")),
+            forbid_replay_clock(),
         ):
             restored = replay(directory / "journal.jsonl")
         assert [r["index"] for r in restored.records] == [

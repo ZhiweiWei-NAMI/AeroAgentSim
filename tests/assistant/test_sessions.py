@@ -83,7 +83,7 @@ def runner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ToolRunner,
     def compile(ctx: Any, base: Any, operations: Any, directory: Path, *, resolved: Any = None) -> Any:
         directory.mkdir(parents=True)
         document = {"id": "test", "entities": [{"id": op["id"], "parameters": op["params"]} for op in operations]}
-        data = dict(ok=True, errors=[], warnings=[], notes=[], operations=operations, document=document, digest="fixture", summary={"fleets": [], "places": []}, diff_base={}, interactions=[], expectations=[{"schema": "fixture.event"}])
+        data = dict(ok=True, errors=[], warnings=[], notes=[], operations=operations, document=document, digest="fixture", summary={"fleets": [], "places": []}, diff_base={"added": [], "changed": [], "removed": []}, interactions=[], expectations=[{"schema": "fixture.event"}])
         return SimpleNamespace(**data, to_data=lambda: copy.deepcopy(data))
 
     monkeypatch.setattr(compiler, "compile_plan", compile)

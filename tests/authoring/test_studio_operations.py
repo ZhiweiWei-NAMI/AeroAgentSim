@@ -128,10 +128,17 @@ def test_dry_run_and_apply_identical_to_assistant_compile(api, tmp_path: Path) -
     baseline = files(store.root)
     expected = compile_plan(CompileContext(store, templates, None), {"workspace": draft["id"]}, operations, tmp_path / "assistant-plan")
     assert expected.ok, expected.errors
+    # C11 exposes compiler warnings alongside notes so automatic prerequisites
+    # stay visible in both the review and the saved workspace.
+    assert len(expected.warnings) == 1
+    warning = expected.warnings[0]
+    assert warning["op_id"] == "auto-lowalt-components" and warning["field"] == "operations"
+    assert warning["message"] not in expected.notes
+    expected_notes = expected.notes + [warning["message"]]
     preview = client.post(path + "/operations", json={"operations": operations, "revision": draft["revision"], "dry_run": True})
     assert preview.status_code == 200, preview.json()
     assert preview.json()["diff"] == {key: expected.diff_base[key] for key in ("added", "changed", "removed")}
-    assert preview.json()["notes"] == expected.notes
+    assert preview.json()["notes"] == expected_notes
     assert files(store.root) == baseline
     response = client.post(path + "/operations", json={"operations": operations, "revision": draft["revision"]})
     assert response.status_code == 200, response.json()
@@ -140,7 +147,7 @@ def test_dry_run_and_apply_identical_to_assistant_compile(api, tmp_path: Path) -
     assert saved["scenario"] == _rebase(expected.document, expected.files_dir, store.directory(draft["id"]))
     assert saved["revision"] == draft["revision"] + 1
     assert saved["capabilities"] == {"lowalt": True, "region": False, "network": False, "city": False}
-    assert saved["notes"] == expected.notes
+    assert saved["notes"] == expected_notes
     assert store.versions(draft["id"]) == []
     assert not list(store.directory(draft["id"]).glob("journal*"))
 

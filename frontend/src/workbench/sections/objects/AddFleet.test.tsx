@@ -38,6 +38,8 @@ it('restores fleet role, raw values and typed start after closing and reopening 
   expect(screen.getByLabelText('east (m)')).toHaveValue('42.');
   expect(screen.getByText('Restored unsaved inputs')).toBeTruthy();
   expect(second.api.request).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('east (m)'), { target: { value: '42.0' } });
   fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
   await screen.findByRole('button', { name: 'Apply' });
   expect(second.api.request.mock.calls[0][1].body).toMatchObject({ revision: 8, operations: [{ op: 'add_fleet', params: {

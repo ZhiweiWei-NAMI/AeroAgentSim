@@ -39,7 +39,7 @@ it.each([undefined, 1])('T3-001 / T2-R3-007 / T4-R3-003: history (initial cut %s
   let current = 93_000_000_000, commitIndex = 3;
   const writes: number[] = [];
   const request = vi.spyOn(RunsApi.prototype, 'request').mockImplementation(async (path, options) => {
-    if (path.endsWith('/configuration')) return { scenario: {
+    if (path.endsWith('/configuration')) return { service_run_id: 'run', kernel_run_id: fixtureHeader.runId, epoch: fixtureHeader.epoch, scenario: {
       run: { advance_ns: 1_000_000_000, until_ns: 360_000_000_000 },
       ingress_streams: [{ id: 'operator', initial_watermark_ns: 0 }],
     } };

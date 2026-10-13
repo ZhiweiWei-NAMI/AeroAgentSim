@@ -658,6 +658,7 @@ export default {
   'Vertiport': '起降场',
   'Charging pad': '充电坪',
   'Charging': '充电中',
+  'Charging Waiting': '等待充电',
   'Pad': '起降坪',
   'Depot': '基地',
   'Customer': '客户',

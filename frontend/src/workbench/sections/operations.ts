@@ -3,7 +3,8 @@ import { ApiError, type Project, type WorkbenchApi } from '../api';
 
 /** One edit in the vocabulary the assistant compiles; forms send the same operations (see GET /v1/studio/operations). */
 export interface Operation { id: string; op: string; params: Record<string, unknown> }
-export interface DiffRow { kind?: string; id?: string; label?: string; label_zh?: string; fields?: Array<{ name: string; before?: unknown; after?: unknown }> }
+export interface DiffField { name: string; before?: unknown; after?: unknown; label?: string; label_zh?: string; before_text?: string; after_text?: string }
+export interface DiffRow { kind?: string; kind_label?: string; kind_label_zh?: string; id?: string; label?: string; label_zh?: string; fields?: DiffField[] }
 export interface OperationPreview { diff: { added: DiffRow[]; changed: DiffRow[]; removed: DiffRow[] }; notes: Array<string | { en?: string; zh?: string; text?: string }> }
 export interface OperationSpec { op: string; topic?: string; label?: string; label_zh?: string; schema?: Record<string, unknown>; example?: Record<string, unknown> }
 export interface Capabilities { lowalt: boolean; region: boolean; network: boolean; city: boolean }

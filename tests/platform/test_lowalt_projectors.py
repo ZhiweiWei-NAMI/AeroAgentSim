@@ -180,6 +180,12 @@ def expected_schemas() -> dict[str, dict[str, object]]:
             "pad": "pad-1",
             "soc": 0.15,
         },
+        "lowalt.energy.charging_waiting": {
+            "vehicle": "drone-4",
+            "pad": "pad-1",
+            "capacity": 2,
+            "occupancy": 2,
+        },
         "lowalt.energy.charging_finished": {
             "vehicle": "drone-4",
             "pad": "pad-1",
@@ -310,6 +316,10 @@ def test_every_lowalt_schema_renders_plain_text(tmp_path: Path) -> None:
     assert "drone-1" in translated[1] and "customer-3" in translated[1]
     assert "central-no-fly" in translated[8]
     by_schema = dict(zip(payloads, events))
+    waiting = by_schema["lowalt.energy.charging_waiting"]
+    assert waiting["text"] == "drone-4 is waiting at pad-1: 2 of 2 charging slots occupied"
+    assert waiting["text_zh"] == "drone-4在pad-1等候充电：2个充电位已有2个占用"
+    assert waiting["entities"] == ["drone-4", "pad-1"]
     rejected = by_schema["lowalt.operator.rejected"]
     assert rejected["text"] == "Operator request change-dropoff rejected: task already completed"
     assert rejected["text_zh"] == "操作请求 change-dropoff 被拒绝：task already completed"

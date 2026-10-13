@@ -48,8 +48,12 @@ it('retains the actual newer source frontier when a background read arrives afte
   throw Error(path);
  });
  try {
-  render(<ConsoleNotifications><RunOperations api={api} runId="food" store={store} mode="live" onSelect={()=>{}} onSeek={()=>{}}/></ConsoleNotifications>);
-  fireEvent.change(await screen.findByLabelText('Payload.restaurant'), { target:{ value:'restaurant-east' } });
+  // Finish configuration and payload initialization before entering details;
+  // this regression exercises out-of-order progress reads after initialization.
+  await act(async () => {
+   render(<ConsoleNotifications><RunOperations api={api} runId="food" store={store} mode="live" onSelect={()=>{}} onSeek={()=>{}}/></ConsoleNotifications>);
+  });
+  fireEvent.change(screen.getByLabelText('Payload.restaurant'), { target:{ value:'restaurant-east' } });
   fireEvent.change(screen.getByLabelText('Payload.delay_s'), { target:{ value:'45' } });
   await waitFor(() => expect(screen.getByTestId('inject-restaurant_delay')).toBeEnabled());
   await waitFor(() => expect(reads).toBe(2), { timeout:3000 });

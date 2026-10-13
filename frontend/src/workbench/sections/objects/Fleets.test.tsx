@@ -39,6 +39,7 @@ const entities = [
 ];
 
 beforeEach(() => {
+  sessionStorage.clear();
   window.localStorage.setItem('aeroagentsim.locale', 'en-US');
   onProject.mockClear(); onRemoved.mockClear(); applyOperations.mockClear();
   previewOperations.mockClear(); studioRequest.mockClear();
