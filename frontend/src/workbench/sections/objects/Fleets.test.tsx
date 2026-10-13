@@ -1,0 +1,91 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { I18nProvider } from '../../../i18n/I18nProvider';
+import { Fleets } from './Fleets';
+import type { Operation, OperationPreview } from '../operations';
+
+const L = (en: string) => en;
+const onProject = vi.fn();
+const onRemoved = vi.fn();
+const applyOperations = vi.fn(async () => ({ id: 'w1', revision: 9, scenario: {} }));
+const previewOperations = vi.fn(async (_api: unknown, _project: { id: string; revision: number }, operations: Operation[]): Promise<OperationPreview> => ({
+  diff: {
+    added: [], changed: [],
+    removed: [
+      { kind: 'entity', id: 'couriers-1', label: 'Courier 1' },
+      { kind: 'entity', id: 'couriers-2', label: 'Courier 2' },
+      { kind: 'engine', id: 'motion', label: 'Motion facts of couriers-1' },
+    ],
+  },
+  notes: [],
+}));
+// A remove endpoint exists in the fallback path; it must never be called when C11 works.
+const studioRequest = vi.fn(async () => { throw new Error('fallback remove must not run'); });
+
+vi.mock('../operations', async (importOriginal: () => Promise<typeof import('../operations')>) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    previewOperations: (api: unknown, project: { id: string; revision: number }, operations: Operation[]) => previewOperations(api, project, operations),
+    applyOperations,
+  };
+});
+
+const api = { save: vi.fn(async () => ({ id: 'w1', revision: 8, scenario: {} })) } as never;
+const studioApi = { request: studioRequest };
+const entities = [
+  { id: 'couriers-1', type: 'lowalt:UAV' }, { id: 'couriers-2', type: 'lowalt:UAV' },
+  { id: 'kitchen-1', type: 'lowalt:Restaurant' },
+];
+
+beforeEach(() => {
+  window.localStorage.setItem('aeroagentsim.locale', 'en-US');
+  onProject.mockClear(); onRemoved.mockClear(); applyOperations.mockClear();
+  previewOperations.mockClear(); studioRequest.mockClear();
+});
+afterEach(cleanup);
+
+const renderFleets = (draft: Record<string, unknown> = { entities }) => render(
+  <I18nProvider><Fleets api={api} studioApi={studioApi} project={{ id: 'w1', revision: 8 } as never}
+    draft={draft as never} onProject={onProject} L={L} onRemoved={onRemoved} /></I18nProvider>,
+);
+
+it('removes a whole fleet through C11 remove_fleet: dry-run list → confirm → apply', async () => {
+  renderFleets();
+  fireEvent.click(screen.getByTestId('wb-fleet-remove'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Preview removal' }));
+  await waitFor(() => expect(previewOperations).toHaveBeenCalled());
+  expect(previewOperations.mock.calls[0][2][0]).toMatchObject({ op: 'remove_fleet', params: { fleet: 'couriers' } });
+  // The dry run lists exactly the members and dependents that disappear.
+  expect(screen.getByText(/·\s*3/)).toBeTruthy();
+  expect(screen.getByText('Courier 1')).toBeTruthy();
+  expect(screen.getByText('Motion facts of couriers-1')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm removal' }));
+  await waitFor(() => expect(applyOperations).toHaveBeenCalled());
+  expect(applyOperations.mock.calls[0][2][0].op).toBe('remove_fleet');
+  expect(onProject).toHaveBeenCalled();
+  expect(onRemoved).toHaveBeenCalled();
+  // The per-member fallback endpoint was never touched.
+  expect(studioRequest).not.toHaveBeenCalled();
+});
+
+it('falls back to the per-member dependency dialog when the server rejects remove_fleet with 422', async () => {
+  // vi.mock is module-wide, so route the 422 through this test via apply-time rejection:
+  previewOperations.mockRejectedValueOnce(new Error('HTTP 422: unknown operation remove_fleet'));
+  renderFleets();
+  fireEvent.click(screen.getByTestId('wb-fleet-remove'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Preview removal' }));
+  expect(await screen.findByTestId('wb-fleet-fallback')).toBeTruthy();
+  expect(screen.getByText(/does not support whole-fleet removal/)).toBeTruthy();
+  // The fallback loads the real C3 dependency preview for the first member through the server.
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+  await waitFor(() => expect(studioRequest).toHaveBeenCalled());
+  expect(String(studioRequest.mock.calls[0][0])).toContain('/remove');
+});
+
+it('never mutates the draft directly: no edit call can wipe the scenario', () => {
+  renderFleets({ entities, generators: { fleet: { prefix: 'fleet-', count: 2, type: 'lowalt:UAV' } } });
+  // Nothing in this section accepts a draft edit path; the generator list stays intact.
+  expect(screen.getByTestId('wb-fleet-generated').textContent).toContain('will generate 2');
+  expect(screen.getByTestId('wb-fleet').textContent).toContain('couriers');
+});

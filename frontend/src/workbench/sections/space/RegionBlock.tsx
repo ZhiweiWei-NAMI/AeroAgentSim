@@ -186,10 +186,17 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   };
 
   const network = compiled?.network ?? netResult;
-  // Design ④: state from the server — "Not generated" / "Generated · …" / "Out of date" (T1-003).
-  const networkState = !network
-    ? 'none'
-    : (caps && !caps.network ? 'stale' : (network.status ?? 'generated'));
+  // Design ④: state comes from the server. The workspace record's `network_state`
+  // ("none" | "generated" | "stale") is authoritative when present; only when the server does not
+  // send it yet do we fall back to the C13 capability inference (T1-003).
+  const serverNetworkState = typeof (project as { network_state?: unknown }).network_state === 'string'
+    ? (project as { network_state: string }).network_state
+    : undefined;
+  const networkState: 'none' | 'generated' | 'stale' = serverNetworkState === 'none' || serverNetworkState === 'generated' || serverNetworkState === 'stale'
+    ? serverNetworkState
+    : !network
+      ? 'none'
+      : caps && !caps.network ? 'stale' : (network.status === 'stale' ? 'stale' : 'generated');
   const heights = compiled ? heightSummary(compiled.scene) : undefined;
   const fieldRow = (key: 'west' | 'south' | 'east' | 'north' | 'alt' | 'level', label: string, hint: string) => <label className="wb-region-field">
     <span>{label}</span>
@@ -221,7 +228,7 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
     </div>}
 
     <div className="wb-region-card" data-testid="network-summary">
-      <h4>{L('Road network', '路网')} <span className="wb-tag info">{networkState === 'none' ? L('Not generated', '未生成') : networkState}</span></h4>
+      <h4>{L('Road network', '路网')} <span className="wb-tag info">{networkState === 'none' ? L('Not generated', '未生成') : networkState === 'stale' ? L('stale', '已失效') : networkState}</span></h4>
       {network && <dl className="wb-region-meta">
         {typeof network.edge_count === 'number' && <><dt>{L('Edges', '路段')}</dt><dd className="wb-mono">{network.edge_count}</dd></>}
         {typeof network.lane_count === 'number' && <><dt>{L('Lanes', '车道')}</dt><dd className="wb-mono">{network.lane_count}</dd></>}

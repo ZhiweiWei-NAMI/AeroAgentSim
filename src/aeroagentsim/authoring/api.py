@@ -388,7 +388,7 @@ def create_router(
                 )
                 result["source"] = store.network_source(draft, directory)
                 draft["network"] = result
-                draft["network_state"] = {"status": "generated"}
+                draft["network_state"] = "generated"
                 store._write(draft)
                 return result
 

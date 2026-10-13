@@ -102,7 +102,10 @@ export function SceneCards({ scene, diff, onHover, onContract, onMode, busy }: {
       <div className="as-env">
         {scene.city && <span><Icon name="globe" size={12} />{scene.city}</span>}
         {scene.duration_s !== undefined && <span><Icon name="clock" size={12} />{clock(scene.duration_s)}</span>}
-        {wind && <span><Icon name="wind" size={12} />{L(`${valueText(wind.speed_mps ?? 0)} m/s wind`, `风速 ${valueText(wind.speed_mps ?? 0)} 米/秒`)}</span>}
+        {/* An absent wind speed is unknown, not a 0 m/s calm: show "not set" honestly. */}
+        {wind && <span><Icon name="wind" size={12} />{typeof wind.speed_mps === 'number'
+          ? L(`${valueText(wind.speed_mps)} m/s wind`, `风速 ${valueText(wind.speed_mps)} 米/秒`)
+          : L('wind — speed not set', '风——风速未设置')}</span>}
         {wind?.gusts?.map((gust, index) => <span key={index} className={mark('wind') ? 'is-new' : ''}><Icon name="wind" size={12} />{L(`gust ${gust.speed_mps} m/s at ${clock(gust.start_s)}–${clock(gust.end_s)}`, `${clock(gust.start_s)}–${clock(gust.end_s)} 阵风 ${gust.speed_mps} 米/秒`)}</span>)}
         {scene.run_mode && <span><Icon name="play" size={12} />{scene.run_mode === 'interactive' ? L('interactive', '交互式') : L('scheduled', '按计划')}</span>}
       </div>

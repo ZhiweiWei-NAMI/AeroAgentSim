@@ -237,7 +237,7 @@ def test_saved_scenario_keeps_region_crop_and_network_can_use_it(api, monkeypatc
     assert response.status_code == 422 and "reapply" in response.json()["detail"]
     reopened = client.get(path).json()
     assert reopened["capabilities"]["network"] is False
-    assert reopened["network_state"] == {"status": "stale", "reason": "region_source_missing"}
+    assert reopened["network_state"] == "stale"
 
 
 def test_region_parameters_and_network_invalidation_are_authoritative_after_refresh(api, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -256,13 +256,13 @@ def test_region_parameters_and_network_invalidation_are_authoritative_after_refr
     monkeypatch.setattr("aeroagentsim.authoring.scene.generate_sumo", generate)
     response = client.post(url + "/network")
     assert response.status_code == 200, response.json()
-    assert client.get(url).json()["network_state"] == {"status": "generated"}
+    assert client.get(url).json()["network_state"] == "generated"
     updated = client.post(url + "/region", json={**params, "alt": 30})
     assert updated.status_code == 200, updated.json()
     reopened = WorkspaceStore(store.root, None).summary(draft["id"])
     assert reopened["region"] == {**params, "alt": 30}
     assert "network" not in reopened and reopened["capabilities"]["network"] is False
-    assert reopened["network_state"] == {"status": "stale", "reason": "region_changed"}
+    assert reopened["network_state"] == "stale"
     assert client.get(url + "/network.net.xml").status_code == 422
 
 

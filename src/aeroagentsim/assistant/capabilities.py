@@ -36,6 +36,7 @@ BRIEF = {
     "set_algorithm": ("Select installed algorithm", "选择已安装算法"), "add_place": ("Add facility", "添加设施"),
     "update_place": ("Edit facility", "修改设施"), "remove_place": ("Remove unused facility", "删除未用设施"),
     "add_fleet": ("Add UAV group", "添加无人机群"), "set_fleet": ("Adjust UAV group", "调整无人机群"),
+    "remove_fleet": ("Remove UAV group and references", "删除无人机群及引用"),
     "set_vehicle": ("Adjust one explicit UAV", "调整显式单机"), "add_orders": ("Add task workload", "添加任务工作量"),
     "set_orders": ("Edit workload", "修改工作量"), "set_task": ("Edit one task", "修改单个任务"),
     "remove_orders": ("Remove workload", "删除工作量"), "add_incident": ("Schedule point incident", "安排点状事件"),

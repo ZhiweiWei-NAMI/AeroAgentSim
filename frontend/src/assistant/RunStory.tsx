@@ -18,9 +18,16 @@ export function RunStory({ story, startNs, terminal, expectations, planVersion, 
   const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   if (error && !story) return <p className="as-note bad">{error}</p>;
   if (!story) return <div className="as-story is-loading" data-testid="as-story"><span className="as-spin" /> {L('Reading the recorded events…', '正在读取记录的事件…')}</div>;
-  const items = story.expectations, happened = items.filter(item => item.status === 'happened').length, missed = items.filter(item => item.status === 'missed').length;
+  const items = story.expectations,
+    // A check with no expected occurrences (expected count 0) cannot pass or fail: it is not evaluated,
+    // never a green success. The server marks it `status: 'not_evaluated'`; the progress.total===0 guard
+    // also covers servers that still answer 'happened' with an empty progress counter.
+    notEvaluated = (item: StoryItem) => item.status === 'not_evaluated' || (item.progress !== undefined && item.progress.total === 0),
+    happened = items.filter(item => item.status === 'happened' && !notEvaluated(item)).length,
+    missed = items.filter(item => item.status === 'missed').length,
+    unevaluated = items.filter(notEvaluated).length;
   // A conditional branch that was not taken is neither a success nor a failure: it leaves the score.
-  const skipped = items.filter(item => item.status === 'not_taken').length, total = items.length - skipped;
+  const skipped = items.filter(item => item.status === 'not_taken').length, total = items.length - skipped - unevaluated;
   const text = (item: StoryItem) => (zh ? item.text_zh : undefined) ?? item.text;
   const planned = new Map((expectations ?? []).map(row => [row.id, row]));
   const ended = story.terminal ?? terminal;
@@ -39,17 +46,19 @@ export function RunStory({ story, startNs, terminal, expectations, planVersion, 
           ? followsShown ? L(`Against plan v${recordedVersion}`, `对照方案 v${recordedVersion}`)
             : L(`This run followed plan v${recordedVersion}, not the v${planVersion} shown here.`, `这次运行遵循的是方案 v${recordedVersion}，而非当前显示的 v${planVersion}。`)
           : L('Compared with the plan’s expectations', '对照方案的预期')}</small>
-        <div className="as-story-bar" aria-hidden>{items.filter(item => item.status !== 'not_taken').map(item => <i key={item.id} className={`is-${item.status}`} />)}</div>
+        <div className="as-story-bar" aria-hidden>{items.filter(item => item.status !== 'not_taken' && !notEvaluated(item)).map(item => <i key={item.id} className={`is-${item.status}`} />)}</div>
         {skipped > 0 && <small className="as-story-skipped">{L(`${skipped} conditional branch${skipped === 1 ? '' : 'es'} not taken`, `${skipped} 个条件分支未触发`)}</small>}
+        {unevaluated > 0 && <small className="as-story-skipped" data-testid="as-story-unevaluated">{L(`${unevaluated} check${unevaluated === 1 ? '' : 's'} with nothing expected — not evaluated`, `${unevaluated} 项检查没有预期内容——未评估`)}</small>}
       </div>
     </div>
     <ol className="as-story-list">{ordered.map((item, index) => {
       const seconds = storySeconds(item.at_ns, startNs), plan = planned.get(item.id), approx = plan?.approx_s;
-      return <li key={item.id} className={`is-${item.status} is-${plan?.layer ?? 'behaviour'}`} style={{ '--i': index } as CSSProperties} data-testid={`as-story-${item.status}`}>
-        <span className="as-story-mark">{item.status === 'happened' ? <Icon name="check" size={11} /> : item.status === 'missed' ? <Icon name="cross" size={11} /> : item.status === 'not_taken' ? <Icon name="branch" size={12} /> : <span className="as-story-wait" />}</span>
+      const unevaluatedItem = notEvaluated(item);
+      return <li key={item.id} className={`is-${unevaluatedItem ? 'unevaluated' : item.status} is-${plan?.layer ?? 'behaviour'}`} style={{ '--i': index } as CSSProperties} data-testid={`as-story-${item.status}`}>
+        <span className="as-story-mark">{item.status === 'happened' && !unevaluatedItem ? <Icon name="check" size={11} /> : item.status === 'missed' ? <Icon name="cross" size={11} /> : item.status === 'not_taken' ? <Icon name="branch" size={12} /> : unevaluatedItem ? <Icon name="rule" size={11} /> : <span className="as-story-wait" />}</span>
         <time className="wb-mono">{seconds !== undefined ? clock(seconds) : approx !== undefined && approx !== null ? `≈${clock(approx)}` : '—'}</time>
         <div className="as-story-text">
-          <span>{text(item)}{item.status === 'not_taken' && <em className="as-story-tag">{L('branch not taken', '分支未触发')}</em>}</span>
+          <span>{text(item)}{item.status === 'not_taken' && <em className="as-story-tag">{L('branch not taken', '分支未触发')}</em>}{unevaluatedItem && <em className="as-story-tag">{L('not evaluated — nothing was expected', '未评估——无预期项')}</em>}</span>
           {item.progress && (item.status !== 'happened' || item.progress.configured) && <span className="as-story-progress" aria-label={L(`${item.progress.done} of ${item.progress.total}`, `${item.progress.done}/${item.progress.total}`)}>
             <i style={{ '--p': item.progress.done / Math.max(1, item.progress.total) } as CSSProperties} /><b className="wb-mono">{item.progress.done}/{item.progress.total}</b>
             {item.progress.configured ? <small>{L(`released · ${item.progress.configured} configured`, `已发布 · 共配置 ${item.progress.configured}`)}</small> : null}

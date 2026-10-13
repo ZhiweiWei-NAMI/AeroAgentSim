@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Any
 
@@ -338,4 +339,119 @@ class RemovalPlan:
                 token: Any = int(path[-1]) if isinstance(node, list) else path[-1]
                 if node[token] == expanded:
                     node[token] = original
+        return result, sorted(self.dependencies.values(), key=lambda row: (row["path"], row["detail"]))
+
+
+class FleetRemovalPlan(RemovalPlan):
+    """Remove fleet references together without cascading into shared engines or workloads."""
+
+    def __init__(self, document: dict[str, Any], members: set[str], root: Path, *, generated: bool = False) -> None:
+        super().__init__(document, sorted(members)[0], root)
+        self.members, self.generated = members, generated
+
+    def fleet_config(self, value: Any, path: tuple[str, ...]) -> Any:
+        if isinstance(value, str):
+            return _DROP if value in self.members else value
+        if isinstance(value, list):
+            kept = []
+            for i, row in enumerate(value):
+                location = (*path, str(i))
+                cleaned = self.fleet_config(row, location)
+                if cleaned is _DROP:
+                    self.add(location, "engine", self.members)
+                else:
+                    kept.append(cleaned)
+            return kept
+        if not isinstance(value, dict):
+            return value
+        if references(value.get("$ref"), self.members) or any(
+            references(value.get(key), self.members) for key in ("entity", "vehicle", "actor")
+        ):
+            return _DROP
+        result = {}
+        for key, child in value.items():
+            location = (*path, key)
+            if key in self.members and path[-1] in _MAPS | {"vehicle_task_kinds", "assignments"}:
+                self.add(location, "engine", self.members)
+                continue
+            cleaned = child if key in _DESCRIPTIVE else self.fleet_config(child, location)
+            if cleaned is _DROP:
+                self.add(location, "engine", self.members)
+            else:
+                result[key] = cleaned
+        return result
+
+    def build(self) -> tuple[dict[str, Any], list[dict[str, str]]]:
+        symbols: set[str] = set()
+        while True:
+            previous = len(symbols)
+            self.dependencies.clear()
+            result = copy.deepcopy(self.original)
+            survivors = [entity for entity in result["entities"] if entity["id"] not in self.members]
+            for i, entity in enumerate(result["entities"]):
+                location = ("entities", str(i))
+                if entity["id"] in self.members:
+                    self.add(location, "entity", self.members)
+                    self.dependencies[pointer(location)]["id"] = entity["id"]
+                    continue
+                for field, value in list(entity["facts"].items()):
+                    schema = self.fact_schemas.get(field, {})
+                    if isinstance(schema, dict) and schema.get("type") == "string" and field not in _STRING_ENTITY_FACTS:
+                        continue
+                    if references(value, self.members):
+                        path = (*location, "facts", field)
+                        if isinstance(value, list):
+                            entity["facts"][field] = self.rows(value, path, "relation", self.members)
+                        else:
+                            self.add(path, "assignment" if field == "lowalt.task_vehicle" else "relation", self.members)
+                            del entity["facts"][field]
+            result["entities"] = survivors
+            if self.generated:
+                self.add(("generators", "fleet"), "generator", self.members)
+                del result["generators"]["fleet"]
+                if not result["generators"]:
+                    del result["generators"]
+            for section, rows in result.get("bindings", {}).items():
+                if not isinstance(rows, list):
+                    result["bindings"][section] = self.fleet_config(rows, ("bindings", section))
+                    continue
+                kept = []
+                for i, row in enumerate(rows):
+                    # Engine/writer ids belong to a separate namespace.
+                    candidate = {key: value for key, value in row.items() if key not in {"writer", "controller", "target"}} if isinstance(row, dict) else row
+                    pattern = row.get("ids") if isinstance(row, dict) else None
+                    exclusive = isinstance(pattern, str) and any(fnmatchcase(member, pattern) for member in self.members) and not any(fnmatchcase(entity["id"], pattern) for entity in survivors)
+                    if exclusive or references(candidate, self.members):
+                        self.add(("bindings", section, str(i)), "binding", self.members)
+                    else:
+                        kept.append(row)
+                result["bindings"][section] = kept
+            for key, engine in result.get("engines", {}).items():
+                config = engine["config"]
+                other = {name: value for name, value in config.items() if name != "packages"}
+                cleaned = self.fleet_config(other, ("engines", key, "config"))
+                if cleaned is _DROP:
+                    raise ValueError(f"engines.{key}.config: fleet reference must be in a removable configuration entry")
+                engine["config"] = {**cleaned, **({"packages": config["packages"]} if "packages" in config else {})}
+                if engine.get("plugin") == "behaviour":
+                    for i, package in enumerate(config.get("packages", [])):
+                        self.behaviour(package, ("engines", key, "config", "packages", str(i)), self.members, symbols)
+            for i, package in enumerate(result.get("behaviours", [])):
+                self.behaviour(package, ("behaviours", str(i)), self.members, symbols)
+            if "presentation" in result:
+                result["presentation"] = self.rows(result["presentation"], ("presentation",), "presentation", self.members)
+            for section in ("relations", "resources", "tasks", "agents", "decisions"):
+                if section in result:
+                    result[section] = self.fleet_config(result[section], (section,))
+            if previous == len(symbols):
+                break
+        # Keep unchanged external packages as authored paths. Changed packages
+        # become inline documents, so old files cannot restore deleted references.
+        for path, original, expanded in self.packages:
+            node: Any = result
+            for token in path[:-1]:
+                node = node[int(token)] if isinstance(node, list) else node[token]
+            token = int(path[-1]) if isinstance(node, list) else path[-1]
+            if node[token] == expanded:
+                node[token] = original
         return result, sorted(self.dependencies.values(), key=lambda row: (row["path"], row["detail"]))

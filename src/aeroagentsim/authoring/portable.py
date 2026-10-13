@@ -87,11 +87,15 @@ def unpack(document: dict[str, Any]) -> tuple[dict[str, Any], dict[str, bytes], 
             raise TypeError(f"import.geography.{key}: mapping required")
     if "network" in geography and "region" not in geography:
         raise ValueError("import.geography: a network requires its applied region")
-    if "network_state" in geography and (
-        not isinstance(geography["network_state"], dict)
-        or geography["network_state"].get("status") not in {"missing", "stale", "generated"}
-    ):
-        raise ValueError("import.geography.network_state: explicit missing/stale/generated status required")
+    geography = dict(geography)
+    if "network_state" in geography:
+        state = geography["network_state"]
+        # Existing BE-2 exports used a status object in this same field.
+        if isinstance(state, dict) and state.get("status") in {"missing", "stale", "generated"}:
+            state = "none" if state["status"] == "missing" else state["status"]
+        if not isinstance(state, str) or state not in {"none", "stale", "generated"}:
+            raise ValueError("import.geography.network_state: explicit none/stale/generated state required")
+        geography["network_state"] = state
     if "template" in document:
         template = document["template"]
         if not isinstance(template, dict) or set(template) != {"id", "knobs"} or not isinstance(template["id"], str) or not template["id"].strip() or not isinstance(template["knobs"], dict):

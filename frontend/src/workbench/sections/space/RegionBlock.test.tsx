@@ -237,4 +237,36 @@ describe('RegionBlock preview and apply', () => {
     expect(summary.textContent).toContain('not a traffic run');
     expect(request).toHaveBeenCalledWith('/v1/studio/workspaces/w1/network', { body: {} });
   });
+
+  it('prefers the server field network_state over the capability inference for the road-network step', () => {
+    // Server says stale even though the capability inference would call it generated.
+    const props = makeProps();
+    (props.project as any).region = { extract: 'wujiaochang', bounds: [0, 0, 1, 1], alt: 0, level_height_m: 3 };
+    (props.project as any).network = { status: 'generated', edge_count: 4, lane_count: 8 };
+    (props.project as any).network_state = 'stale';
+    (props.project as any).capabilities = { lowalt: false, region: true, network: true, city: false };
+    render(<RegionBlock {...props} />);
+    expect(screen.getByTestId('network-summary').textContent).toContain('stale');
+    expect(screen.getByTestId('network-summary').textContent).toContain('generate again');
+  });
+
+  it('falls back to the capability inference when network_state is absent', () => {
+    const props = makeProps();
+    (props.project as any).region = { extract: 'wujiaochang', bounds: [0, 0, 1, 1], alt: 0, level_height_m: 3 };
+    (props.project as any).network = { status: 'generated', edge_count: 4, lane_count: 8 };
+    (props.project as any).capabilities = { lowalt: false, region: true, network: true, city: false };
+    render(<RegionBlock {...props} />);
+    expect(screen.getByTestId('network-summary').textContent).toContain('generated');
+    expect(screen.queryByText(/generate again/)).toBeNull();
+  });
+
+  it('honours network_state "none" from the server even with leftover network data', () => {
+    const props = makeProps();
+    (props.project as any).region = { extract: 'wujiaochang', bounds: [0, 0, 1, 1], alt: 0, level_height_m: 3 };
+    (props.project as any).network = { status: 'generated', edge_count: 4 };
+    (props.project as any).network_state = 'none';
+    render(<RegionBlock {...props} />);
+    expect(screen.getByTestId('network-summary').textContent).toContain('Not generated');
+    expect(screen.queryByText(/generate again/)).toBeNull();
+  });
 });

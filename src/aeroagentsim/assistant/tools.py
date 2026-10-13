@@ -164,7 +164,7 @@ def workspace_operations(operations: list[dict[str, Any]], baseline: list[dict[s
     new = {op["id"]: op for op in operations}
     result = []
     replacements = {"add_place": ("update_place", "place"), "add_fleet": ("set_fleet", "fleet"), "add_orders": ("set_orders", "orders"), "add_incident": ("set_incident", "incident")}
-    removals = {"add_place": ("remove_place", "place"), "add_orders": ("remove_orders", "orders"), "add_incident": ("remove_incident", "incident"), "set_cooperation": ("remove_cooperation", None)}
+    removals = {"add_place": ("remove_place", "place"), "add_fleet": ("remove_fleet", "fleet"), "add_orders": ("remove_orders", "orders"), "add_incident": ("remove_incident", "incident"), "set_cooperation": ("remove_cooperation", None)}
 
     def translate(op: dict[str, Any], target: str, subject: str | None, changes: dict[str, Any]) -> dict[str, Any]:
         spec = OPERATIONS[target]

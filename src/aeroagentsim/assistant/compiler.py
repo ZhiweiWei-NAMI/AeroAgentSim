@@ -474,7 +474,7 @@ def _admit_task_kind(document: dict, kind: str) -> None:
 
 
 def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name: str, p: dict,
-                     directory: Path, warnings: list[dict], op_id: str) -> None:
+                     directory: Path, warnings: list[dict], op_id: str) -> list[dict] | None:
     if name == "set_region":
         if not ctx.allow_region:
             _fail("op", "set_region is an assistant proposal operation. Use the Region map's /region preview/apply endpoint for form edits / set_region 用于助手方案；表单请使用区域地图的 /region 预览和应用接口")
@@ -681,6 +681,19 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             document["entities"].append({"id": identity, "type": "lowalt:UAV", "label": f"{label} {i + 1}", "label_zh": f"{label_zh} {i + 1}", "vehicle_class": vehicle_class, "facts": facts})
             overrides[identity] = list(p.get("task_kinds", kinds))
         return
+    if name == "remove_fleet":
+        from aeroagentsim.authoring.removal import FleetRemovalPlan
+
+        fleet = document.get("generators", {}).get("fleet")
+        generated = fleet is not None and p["fleet"] in {"fleet", fleet["prefix"].rstrip("-.")}
+        members = ({fleet["prefix"] + str(i + 1) for i in range(fleet["count"])} if generated
+                   else {entity["id"] for entity in _fleet_entities(document, p["fleet"])})
+        if not members:
+            _fail("fleet", "Fleet does not exist; use its summary id", "机群不存在，请使用摘要中的标识")
+        cleaned, dependencies = FleetRemovalPlan(document, members, directory, generated=generated).build()
+        document.clear()
+        document.update(cleaned)
+        return [{**row, "id": row.get("id", row["path"]), "label": row["detail"], "op_id": op_id} for row in dependencies]
     if name in {"set_fleet", "set_vehicle"}:
         _, tasks = _engine(document, "lowalt_tasks")
         fleet = document.get("generators", {}).get("fleet")
@@ -1035,6 +1048,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
     base_summary: dict = {}
     notes: list[str] = []
     base_lowalt = False
+    removed_references: list[dict] = []
     try:
         scene = resolve_base(ctx, base) if resolved is None else resolved
         if out_dir.resolve().is_relative_to(scene.directory.resolve()) or scene.directory.resolve().is_relative_to(files.resolve()):
@@ -1089,7 +1103,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         if not isinstance(operations, list):
             _fail("operations", "Operations must be a list", "操作必须为列表")
         operations = copy.deepcopy(operations)
-        lowalt_names = {"add_place", "update_place", "remove_place", "add_fleet", "set_fleet", "set_vehicle", "add_orders", "set_orders", "remove_orders", "set_task", "set_rule", "set_algorithm", "set_cooperation", "remove_cooperation", "add_incident", "set_incident", "remove_incident"}
+        lowalt_names = {"add_place", "update_place", "remove_place", "add_fleet", "set_fleet", "remove_fleet", "set_vehicle", "add_orders", "set_orders", "remove_orders", "set_task", "set_rule", "set_algorithm", "set_cooperation", "remove_cooperation", "add_incident", "set_incident", "remove_incident"}
         needs_lowalt = any(isinstance(o, dict) and (o.get("op") in lowalt_names or o.get("op") in {"set_wind", "add_gust"} and not any(e.get("plugin") == "environment" for e in document["engines"].values()) or o.get("op") == "schedule_event" and str(o.get("params", {}).get("event", "")).startswith(("lowalt", "restaurant", "close_vertiport", "add_urgent", "change_dropoff", "prioritize_medical", "investigate"))) for o in operations)
         if needs_lowalt and not any(e.get("plugin") == "lowalt_tasks" for e in document["engines"].values()) and not any(isinstance(o, dict) and o.get("op") == "add_lowalt_components" for o in operations):
             used_ids = [o.get("id") for o in operations if isinstance(o, dict)]
@@ -1111,11 +1125,13 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
                     _fail("id", "Operation ids must be unique", "操作标识必须唯一")
                 seen.add(op_id)
                 name, params = validate_operation(operation)
-                _apply_operation(ctx, scene, candidate, name, params, files, warnings, op_id)
+                removals = _apply_operation(ctx, scene, candidate, name, params, files, warnings, op_id)
                 if "generators" in candidate:
                     _sync_base_fleet(candidate)
                     expand(candidate)
                 document = candidate
+                if removals:
+                    removed_references.extend(removals)
                 if name in {"add_place", "add_fleet", "add_orders", "add_incident"}:
                     created_by[params["id"]] = op_id
             except (OperationError, ValueError, TypeError, KeyError) as exc:
@@ -1162,6 +1178,8 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
                            expectations(document, summary) if not errors else [])
     result.notes = notes
     result.operations = copy.deepcopy(operations) if isinstance(operations, list) else []
+    if result.ok:
+        result.diff_base["removed"].extend(removed_references)
     if result.ok and not base_lowalt and has_lowalt_components(document):
         result.diff_base["added"].insert(0, {"kind": "components", "id": "lowalt_components", "label": "Standard lowalt engines, algorithm slots and rules", "label_zh": "标准低空引擎、算法槽和规则", "op": "add_lowalt_components"})
     region_plan = files / "region.plan.json"

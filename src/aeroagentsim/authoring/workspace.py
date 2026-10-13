@@ -229,6 +229,7 @@ class WorkspaceStore:
     def _write(self, draft: dict[str, Any]) -> dict[str, Any]:
         directory = self.directory(draft["id"])
         directory.mkdir(exist_ok=True)
+        draft["network_state"] = self.network_state(draft, directory)
         path = directory / "draft.json"
         stored = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
         metadata = {"revision", "updated_at", "validation", "behaviour_validation", "notes"}
@@ -295,6 +296,7 @@ class WorkspaceStore:
             "updated_at",
             datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(),
         )
+        draft["network_state"] = self.network_state(draft, path.parent)
         return draft
 
     @staticmethod
@@ -740,10 +742,10 @@ class WorkspaceStore:
                 source, region["bounds"], self.directory(identifier) / "region.osm.xml"
             )
             # A new crop invalidates the previous traffic network.
-            had_network = "network" in draft or (self.directory(identifier) / "network.net.xml").is_file()
+            had_network = draft["network_state"] != "none" or (self.directory(identifier) / "network.net.xml").is_file()
             (self.directory(identifier) / "network.net.xml").unlink(missing_ok=True)
             draft.pop("network", None)
-            draft["network_state"] = {"status": "stale", "reason": "region_changed"} if had_network else {"status": "missing"}
+            draft["network_state"] = "stale" if had_network else "none"
             draft["region"] = {key: copy.deepcopy(region[key]) for key in required}
             draft["scene"] = scene
             draft["scenario"]["origin"] = scene["origin"]
@@ -985,13 +987,10 @@ class WorkspaceStore:
         draft["dirty"] = latest is None or latest["revision"] != draft["revision"]
         from aeroagentsim.packs.lowalt.template import has_lowalt_components
 
-        draft["network_state"] = self.network_state(draft, self.directory(identifier))
-        if "network" in draft and draft["network_state"]["status"] != "generated":
-            draft["network"]["status"] = "stale"
         draft["capabilities"] = {
             "lowalt": has_lowalt_components(draft["scenario"]),
             "region": "region" in draft and "scene" in draft,
-            "network": draft["network_state"]["status"] == "generated",
+            "network": draft["network_state"] == "generated",
             "city": draft.get("scene_source", {}).get("kind") == "fixed-city" and draft.get("demo_console", {}).get("city_available") is True,
         }
         return draft
@@ -1002,17 +1001,20 @@ class WorkspaceStore:
                 "osm_sha256": hashlib.sha256((directory / "region.osm.xml").read_bytes()).hexdigest()}
 
     @classmethod
-    def network_state(cls, draft: dict[str, Any], directory: Path) -> dict[str, str]:
+    def network_state(cls, draft: dict[str, Any], directory: Path) -> str:
         if "network" not in draft:
-            previous = draft.get("network_state", {})
-            return dict(previous) if previous.get("status") == "stale" else {"status": "missing"}
+            previous = draft.get("network_state")
+            # Read BE-2 records through the same field; new records use strings.
+            if isinstance(previous, dict):
+                previous = previous["status"]
+            return "stale" if previous == "stale" else "none"
         if not (directory / "network.net.xml").is_file():
-            return {"status": "stale", "reason": "network_file_missing"}
+            return "stale"
         if "region" not in draft or not (directory / "region.osm.xml").is_file():
-            return {"status": "stale", "reason": "region_source_missing"}
+            return "stale"
         if draft["network"].get("source") != cls.network_source(draft, directory):
-            return {"status": "stale", "reason": "region_source_changed"}
-        return {"status": "generated"}
+            return "stale"
+        return "generated"
 
     def derive(self, run: Path, name: str | None, *, registry: Any = None) -> dict[str, Any]:
         """A new draft from a run's own configuration; the run is not changed."""
@@ -1063,8 +1065,7 @@ class WorkspaceStore:
         with self.lock:
             draft = self.get(identifier)
             if "network" in draft:
-                draft["network_state"] = self.network_state(draft, self.directory(identifier))
-                if draft["network_state"]["status"] != "generated":
+                if draft["network_state"] != "generated":
                     draft.pop("network")
             return yaml.safe_dump(pack(draft, self.directory(identifier)),
                                   allow_unicode=True, sort_keys=False)

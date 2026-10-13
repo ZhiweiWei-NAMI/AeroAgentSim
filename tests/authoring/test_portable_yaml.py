@@ -79,12 +79,12 @@ def test_region_roundtrip_preserves_parameters_geometry_crop_and_real_network(tm
         assert imported["scene_source"] == source["scene_source"]
         assert imported["capabilities"]["region"] is True
         assert imported["capabilities"]["network"] is True
-        assert imported["network_state"] == {"status": "generated"}
+        assert imported["network_state"] == "generated"
         assert client.get(target_url + "/network.net.xml").status_code == 200
     for name in ("region.osm.xml", "network.net.xml"):
         assert (store.directory(source["id"]) / name).read_bytes() == (target_store.directory(target["id"]) / name).read_bytes()
     reopened = WorkspaceStore(target_store.root, None).summary(target["id"])
-    assert reopened["region"] == params and reopened["network_state"] == {"status": "generated"}
+    assert reopened["region"] == params and reopened["network_state"] == "generated"
 
 
 @pytest.mark.parametrize("failure", ["path", "reserved", "digest", "missing_crop", "origin", "scenario"])

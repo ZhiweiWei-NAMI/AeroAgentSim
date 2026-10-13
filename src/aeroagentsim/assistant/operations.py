@@ -97,6 +97,7 @@ fleet = {"id": IDENTIFIER, "role": enum(ROLES), "count": COUNT, "start": AT,
          "battery_pct": number(0, 100), "payload_capacity_kg": number(exclusiveMinimum=0), "task_kinds": KINDS}
 _spec("add_fleet", "participants", "Add an explicit group of UAVs with separate task eligibility.", "添加具有独立任务资格的无人机群。", obj(fleet, ("id", "role", "count", "start")), {"id": "logistics", "role": "parcel_drone", "count": 2, "start": "plaza"})
 _spec("set_fleet", "participants", "Resize or adjust an existing UAV group.", "调整已有无人机群的数量或初始状态。", obj({"fleet": IDENTIFIER, **{k: fleet[k] for k in ("count", "battery_pct", "start")}}, ("fleet",)), {"fleet": "logistics", "count": 3})
+_spec("remove_fleet", "participants", "Remove a UAV group and its dependent references, preserving other fleets, places and workloads.", "删除无人机群及其依赖引用，保留其他机群、设施和工作量。", obj({"fleet": IDENTIFIER}, ("fleet",)), {"fleet": "logistics"})
 _spec("set_vehicle", "participants", "Adjust one UAV's battery or starting point.", "调整一架无人机的电量或起点。", obj({"vehicle": IDENTIFIER, **{k: fleet[k] for k in ("battery_pct", "start")}}, ("vehicle",)), {"vehicle": "logistics-1", "battery_pct": 22})
 orders = {"id": IDENTIFIER, "kind": enum(TASK_KINDS), "count": COUNT, "from": STRINGS, "to": STRINGS, "release": RELEASE,
           "priority": {"type": "integer", "minimum": 0, "default": 1}, "payload_kg": number(default=1), "delivery_window_s": number(exclusiveMinimum=0, default=240)}
