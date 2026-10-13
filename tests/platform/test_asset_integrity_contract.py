@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import urllib.error
 import zipfile
 from pathlib import Path
@@ -88,12 +89,86 @@ def test_changed_installed_files_invalidate_warm_catalog(tmp_path: Path, with_di
     pack = assets.install(pack_source(tmp_path, digests=with_digest))
     assert assets.selected() == pack
     file = Path(pack["directory"]) / "assets/scene.json"
+    before = file.stat()
     original = file.read_bytes()
     file.write_bytes(b"x" * len(original) if with_digest else original + b" ")
+    # Make the write observable even when filesystem timestamps share a tick.
+    os.utime(file, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000))
     with pytest.raises(ValueError, match="mismatch"):
         assets.selected()
     assert assets.remove() == 1
     assert assets.installed() == []
+
+
+def test_installed_queries_cache_digests_per_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    hashed: list[Path] = []
+    sha256 = assets._sha256
+
+    def digest(path: Path) -> str:
+        hashed.append(path)
+        return sha256(path)
+
+    monkeypatch.setattr(assets, "_sha256", digest)
+    pack = assets.install(pack_source(tmp_path))
+    assert sorted(path.name for path in hashed) == ["NOTICE.txt", "scene.json"]
+    hashed.clear()
+    assert assets.selected() == pack
+    assert sorted(path.name for path in hashed) == ["NOTICE.txt", "scene.json"]
+    hashed.clear()
+
+    assert assets.installed() == [pack]
+    assert assets.model_catalog() == {}
+    selected = assets.selected()
+    selected["files"][0]["bytes"] += 1
+    assert assets.selected() == pack
+    assert hashed == []
+
+    notice = Path(pack["directory"]) / "NOTICE.txt"
+    before = notice.stat()
+    notice.write_bytes(notice.read_bytes())
+    os.utime(notice, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000))
+    assert assets.selected() == pack
+    assert hashed == [notice]
+    hashed.clear()
+    assert assets.selected() == pack
+    assert hashed == []
+
+    # Explicit verification hashes all declared files even with a warm catalog.
+    root = Path(pack["directory"])
+    assert assets.read_pack(root, check_files=True) == json.loads((root / "pack.json").read_text())
+    assert sorted(path.name for path in hashed) == ["NOTICE.txt", "scene.json"]
+
+
+@pytest.mark.parametrize("change", ["missing", "file_symlink", "directory_symlink", "manifest"])
+def test_warm_catalog_detects_path_and_manifest_changes(tmp_path: Path, change: str) -> None:
+    pack = assets.install(pack_source(tmp_path))
+    assert assets.selected() == pack
+    root = Path(pack["directory"])
+    file = root / "assets/scene.json"
+    target = tmp_path / "moved"
+    if change == "missing":
+        file.unlink()
+    elif change == "file_symlink":
+        file.rename(target)
+        file.symlink_to(target)
+    elif change == "directory_symlink":
+        file.parent.rename(target)
+        file.parent.symlink_to(target, target_is_directory=True)
+    else:
+        manifest_path = root / "pack.json"
+        before = manifest_path.stat()
+        manifest = json.loads(manifest_path.read_text())
+        manifest["files"][0]["sha256"] = "0" * 64
+        manifest_path.write_text(json.dumps(manifest))
+        os.utime(manifest_path, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000))
+    if change == "missing":
+        with pytest.raises(FileNotFoundError):
+            assets.selected()
+    else:
+        with pytest.raises(ValueError, match="SHA-256 mismatch" if change == "manifest" else "escapes pack"):
+            assets.selected()
 
 
 @pytest.mark.parametrize("version", ["2.0.0", "1.2.0"])

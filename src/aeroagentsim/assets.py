@@ -11,6 +11,8 @@ import tempfile
 import urllib.error
 import urllib.request
 import zipfile
+from copy import deepcopy
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -38,6 +40,33 @@ def _sha256(path: Path) -> str:
         while block := stream.read(1024 * 1024):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _identity(path: Path) -> tuple[int, int, int, int, int]:
+    """Filesystem stat signature used to invalidate warm query caches."""
+    stat = path.lstat()
+    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
+
+
+@lru_cache(maxsize=4096)
+def _file_digest(path: Path, identity: tuple[int, int, int, int, int]) -> str:
+    return _sha256(path)
+
+
+def _check_file(root: Path, name: str, expected_size: int, expected_digest: str | None,
+                *, cache_digest: bool = False) -> None:
+    file = root / name
+    if not file.resolve().is_relative_to(root.resolve()) or file.is_symlink():
+        raise ValueError("asset pack: file escapes pack")
+    if not file.is_file():
+        raise FileNotFoundError(f"asset pack: missing {name}")
+    actual_size = file.stat().st_size
+    if actual_size != expected_size:
+        raise ValueError(localized(f"asset pack: {name} byte size mismatch; expected {expected_size}, actual {actual_size}", f"资产包：{name} 字节数不符；预期 {expected_size}，实际 {actual_size}"))
+    if expected_digest is not None:
+        actual_digest = _file_digest(file, _identity(file)) if cache_digest else _sha256(file)
+        if actual_digest != expected_digest:
+            raise ValueError(localized(f"asset pack: {name} SHA-256 mismatch; expected {expected_digest}, actual {actual_digest}", f"资产包：{name} SHA-256 不符；预期 {expected_digest}，实际 {actual_digest}"))
 
 
 def data_dir() -> Path:
@@ -87,6 +116,11 @@ def _model_catalog(value: Any, names: set[str]) -> dict[str, dict[str, Any]]:
 
 
 def read_pack(root: Path, *, check_files: bool = True) -> dict[str, Any]:
+    """Read a manifest and, by default, verify current file bytes without caches.
+
+    Installation and explicit verification use ``check_files=True`` to check
+    every declared file size and SHA-256 digest, regardless of stat signatures.
+    """
     if root.is_symlink() or (root / "pack.json").is_symlink():
         raise ValueError(localized("asset pack: symlinks are unsupported", "资产包：不支持符号链接"))
     pack: Any = json.loads((root / "pack.json").read_text())
@@ -113,18 +147,7 @@ def read_pack(root: Path, *, check_files: bool = True) -> dict[str, Any]:
             raise ValueError("asset pack: nonnegative file byte size required")
         expected_digest = _digest(row["sha256"]) if "sha256" in row else None
         if check_files:
-            file = root / name
-            if not file.resolve().is_relative_to(root.resolve()) or file.is_symlink():
-                raise ValueError("asset pack: file escapes pack")
-            if not file.is_file():
-                raise FileNotFoundError(f"asset pack: missing {name}")
-            actual_size = file.stat().st_size
-            if actual_size != row["bytes"]:
-                raise ValueError(localized(f"asset pack: {name} byte size mismatch; expected {row['bytes']}, actual {actual_size}", f"资产包：{name} 字节数不符；预期 {row['bytes']}，实际 {actual_size}"))
-            if expected_digest is not None:
-                actual_digest = _sha256(file)
-                if actual_digest != expected_digest:
-                    raise ValueError(localized(f"asset pack: {name} SHA-256 mismatch; expected {expected_digest}, actual {actual_digest}", f"资产包：{name} SHA-256 不符；预期 {expected_digest}，实际 {actual_digest}"))
+            _check_file(root, name, row["bytes"], expected_digest)
     if "assets/scene.json" not in names or "NOTICE.txt" not in names:
         raise ValueError("asset pack: scene and NOTICE.txt required")
     if "models" in pack:
@@ -132,7 +155,29 @@ def read_pack(root: Path, *, check_files: bool = True) -> dict[str, Any]:
     return dict(pack)
 
 
+@lru_cache(maxsize=16)
+def _manifest(root: Path, identity: tuple[int, int, int, int, int]) -> dict[str, Any]:
+    return read_pack(root, check_files=False)
+
+
+@lru_cache(maxsize=16)
+def _catalog(root: Path, identity: tuple[Any, ...]) -> dict[str, Any]:
+    pack = _manifest(root, identity[0])
+    for row in pack["files"]:
+        expected_digest = _digest(row["sha256"]) if "sha256" in row else None
+        _check_file(root, row["path"], row["bytes"], expected_digest, cache_digest=True)
+    return pack
+
+
 def installed() -> list[dict[str, Any]]:
+    """List packs, reusing validation while filesystem stat signatures match.
+
+    Signatures include device, inode, size, mtime_ns and ctime_ns for manifests,
+    files and parent directories. Filesystem timestamps can be coarse, so a
+    same-size rewrite with an unchanged signature may be missed. Installation
+    and explicit verification with ``read_pack(root, check_files=True)`` check
+    current bytes and all declared digests without using the warm caches.
+    """
     root = data_dir()
     if not root.is_dir():
         return []
@@ -142,13 +187,27 @@ def installed() -> list[dict[str, Any]]:
             continue
         if path.is_symlink() or path.parent.is_symlink() or path.parent.parent.is_symlink():
             raise ValueError(localized("asset pack: installed path is a symlink", "资产包：安装路径是符号链接"))
-        # Same-size writes can share filesystem timestamps; verify current bytes.
-        pack = read_pack(path.parent)
+        manifest_identity = _identity(path)
+        manifest = _manifest(path.parent, manifest_identity)
+        directories = {path.parent}
+        file_identities = []
+        for row in manifest["files"]:
+            file = path.parent / row["path"]
+            file_identities.append(_identity(file))
+            parent = file.parent
+            while parent not in directories:
+                directories.add(parent)
+                parent = parent.parent
+        # Warm queries invalidate on manifest and file stat signature changes.
+        # Directory stats also invalidate paths redirected through a parent symlink.
+        identity = (manifest_identity, tuple(file_identities),
+                    tuple(_identity(directory) for directory in sorted(directories)))
+        pack = _catalog(path.parent, identity)
         if (path.parent.name, path.parent.parent.name) != (pack["version"], pack["id"]):
             raise ValueError(localized("asset pack: installed directory differs from manifest identity", "资产包：安装目录与清单标识不一致"))
         receipt = path.parent / "installation.json"
         source = json.loads(receipt.read_text())["source"] if receipt.exists() else pack.get("source")
-        packs.append({**pack, "directory": str(path.parent), "source": source})
+        packs.append(deepcopy({**pack, "directory": str(path.parent), "source": source}))
     return packs
 
 
