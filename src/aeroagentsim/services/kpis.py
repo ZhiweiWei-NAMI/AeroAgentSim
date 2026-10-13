@@ -15,7 +15,6 @@ from aerokernel.operations import AssertEdge, FactWrite, RetractFact
 from aerokernel.registry import MemoryRegistry
 from aerokernel.values import FrozenValue, thaw
 
-from .storage import RunStorage
 
 METRICS = {
     "tasks_created": ("count", "Tasks created"),
@@ -558,20 +557,6 @@ class KPIProjector:
             name: {"value": values[name], "unit": unit, "label": label}
             for name, (unit, label) in METRICS.items()
         }
-
-
-def projection_context(path: Path, cursor: int) -> KPIProjector:
-    projector = KPIProjector.from_directory(path)
-    storage = RunStorage(path)
-    start = 1
-    while start < cursor:
-        records = storage.records(start, min(1024, cursor - start))
-        if not records:
-            break
-        for record in records:
-            projector.consume(record)
-        start = records[-1]["index"] + 1
-    return projector
 
 
 def project_run(path: Path, *, include_series: bool = True) -> dict[str, Any]:

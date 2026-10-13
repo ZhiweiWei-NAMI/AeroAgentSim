@@ -24,7 +24,6 @@ from aerokernel.operations import Create, FactWrite, Remove, RetractFact
 from aerokernel.registry import MemoryRegistry
 from aerokernel.values import thaw
 
-from .storage import RunStorage
 
 CATEGORIES = frozenset(
     {
@@ -881,18 +880,3 @@ def _plain(value: Any) -> str:
         rounded = round(value, 1)
         return str(int(rounded)) if rounded.is_integer() else str(rounded)
     return str(value)
-
-
-def projection_context(path: Path, cursor: int) -> NarrativeProjector:
-    """Restore actual narrative state from the committed prefix before cursor."""
-    projector = NarrativeProjector.from_directory(path)
-    storage = RunStorage(path)
-    start = 1
-    while start < cursor:
-        records = storage.records(start, min(1024, cursor - start))
-        if not records:
-            break
-        for record in records:
-            projector.consume(record)
-        start = records[-1]["index"] + 1
-    return projector
