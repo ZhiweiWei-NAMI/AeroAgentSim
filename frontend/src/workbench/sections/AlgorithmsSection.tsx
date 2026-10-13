@@ -11,7 +11,7 @@ export function AlgorithmsSection({ draft, edit, focus, zh, locale, algorithms, 
     <p className="hint">{L('Which method chooses plans. Changes affect the next run only — a running world keeps its pinned algorithms.', '用哪种方法选择方案。修改只影响下一次运行——正在运行的世界保持已固定的算法。')}</p>
     {Object.entries(slots).map(([slot, chosen]) => {
       const current = (algorithms ?? []).find(item => item.id === chosen && item.slot === slot);
-      const consumers = (current as unknown as { consumers?: Array<{ engine: string; plugin: string }> } | undefined)?.consumers;
+      const consumers = current?.consumers;
       return <div key={slot} style={{ marginBottom: 10 }}>
         <Leaf path={pointer('algorithms', slot)} label={algorithmSlotLabel(slot as never, locale)} value={chosen} options={(algorithms ?? []).filter(item => item.slot === slot).map(item => item.id)} onChange={edit} focus={focus} />
         {current && <p className="hint">{(zh ? current.description_zh : undefined) ?? current.description}</p>}

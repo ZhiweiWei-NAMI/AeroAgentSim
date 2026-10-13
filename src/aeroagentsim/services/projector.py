@@ -474,7 +474,13 @@ def header(directory: Path) -> dict[str, Any]:
                 ],
             }
         )
-    if scenario.get("city") == "huangpu":
+    # Frozen geometry has priority even for legacy versions authored before
+    # the city/region conflict diagnostic. Omitting city prevents the REST
+    # header adapter from replacing this scene with Huangpu again.
+    from aeroagentsim.authoring.replay import scene_header
+
+    result.update(scene_header(directory, ""))
+    if scenario.get("city") == "huangpu" and not (directory / "studio-scene.json").is_file():
         from aeroagentsim.assets import installed
         from aeroagentsim.authoring.demo import city_presentation, detailed_city
 
@@ -482,6 +488,7 @@ def header(directory: Path) -> dict[str, Any]:
         result["cityDetail"] = "detailed" if detailed_city() else "lite"
         result["assetPacks"] = [{"id": p["id"], "version": p["version"], "title": p["title"]} for p in installed()]
         result["scene"] = city_presentation()
+        result.setdefault("scene_source", {"kind": "fixed-city", "id": "huangpu", "attribution": result["scene"]["attribution"]})
         result["presentation"] = [dict(binding) for binding in result["presentation"]]
         for binding in result["presentation"]:
             model = {"aas:TrafficRoadVehicle": "car", "aas:TrafficUAV": "uav"}.get(binding["typeId"])

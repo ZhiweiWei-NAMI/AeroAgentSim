@@ -36,6 +36,8 @@ def client(
     """Test app with a mock installed entry point in the real registry group."""
 
     def fake_entry_points(*, group: str) -> list[EntryPoint]:
+        if group == "aeroagentsim.engines":
+            return []
         assert group == "aeroagentsim.algorithms"
         return [
             EntryPoint(
@@ -86,11 +88,18 @@ def test_catalog_lists_builtin_and_installed_entries(
     assert nearest["description"]  # friendly one-line builtin description
 
     # Every algorithm entry carries exactly the documented shape.
-    for slot in payload.values():
-        for algorithm in slot:
+    consumers = {
+        "allocation": [{"engine": "tasks", "plugin": "lowalt_tasks"}],
+        "path_planning": [{"engine": "tasks", "plugin": "lowalt_tasks"}],
+        "conflict_resolution": [{"engine": "airspace", "plugin": "lowalt_airspace"}],
+        "charging": [{"engine": "energy", "plugin": "lowalt_energy"}],
+    }
+    for slot, algorithms in payload.items():
+        for algorithm in algorithms:
             assert set(algorithm) == {
-                "id", "label", "description", "label_zh", "description_zh"
+                "id", "label", "description", "label_zh", "description_zh", "consumers"
             }
+            assert algorithm["consumers"] == consumers[slot]
             assert algorithm["label"] and algorithm["description"]
             for field in ("label_zh", "description_zh"):
                 assert any("\u4e00" <= char <= "\u9fff" for char in algorithm[field])

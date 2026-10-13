@@ -65,6 +65,7 @@ def _simple_polygon(points: list[list[float]]) -> bool:
 # Configuration sections of the product logic, keyed by scenario top-level key.
 SECTIONS = {
     "city": "space", "presentation": "space", "region": "space", "airspace": "space",
+    "origin": "space",
     "registry": "objects", "entities": "objects",
     "relations": "relations", "resources": "relations",
     "behaviours": "tasks", "generators": "tasks", "tasks": "tasks",
@@ -316,7 +317,50 @@ class WorkspaceStore:
                     self.catalog,
                     base=self._base(draft["scenario"], identifier),
                 )
+                self._resolve_city(draft)
             return self._write(draft)
+
+    @staticmethod
+    def _resolve_city(draft: dict[str, Any], *, require_assets: bool = True) -> None:
+        from .scene import region_source
+
+        if "scene" in draft:
+            draft["scene_source"] = region_source(draft.get("region", {}), draft["scene"])
+            # A conflict remains authored and is reported by validation; the
+            # preview must still use the compiled region, including in old drafts.
+            draft.pop("demo_console", None)
+        elif draft["scenario"].get("city") == "huangpu":
+            from .demo import city_file, city_presentation
+
+            asset_error = None
+            try:
+                city_file("scene.json")
+            except FileNotFoundError as exc:
+                if require_assets:
+                    raise
+                asset_error = f"City descriptor unavailable: {exc} / 城市资源描述不可用：{exc}"
+            scene = city_presentation()
+            draft["demo_console"] = {
+                **draft.get("demo_console", {}), "capture_mode": "city",
+                "city_available": asset_error is None, "scene": scene,
+            }
+            draft["demo_console"].pop("city_error", None)
+            if asset_error is not None:
+                draft["demo_console"]["city_error"] = asset_error
+            draft["scene_source"] = {"kind": "fixed-city", "id": "huangpu", "attribution": scene["attribution"]}
+        else:
+            draft.pop("demo_console", None)
+            draft.pop("scene_source", None)
+
+    @staticmethod
+    def _check_scene_source(draft: dict[str, Any], document: dict[str, Any] | None = None) -> None:
+        from aeroagentsim.scenario.loader import ScenarioError
+
+        authored = draft["scenario"] if document is None else document
+        if "scene" in draft and authored.get("city") is not None:
+            raise ScenarioError("city: fixed city conflicts with the compiled region; choose one source / 固定城市与已编译区域冲突，请选择一个来源")
+        if "scene" in draft and "origin" in draft["scene"] and authored.get("origin") != draft["scene"]["origin"]:
+            raise ScenarioError("origin: must match the compiled region origin; preview and apply a region change / 原点须与已编译区域一致，请预览并应用区域变更")
 
     def import_demo(
         self,
@@ -427,16 +471,7 @@ class WorkspaceStore:
                 "id": template_id,
                 "knobs": prepared.knobs,
             }
-            if document.get("city") == "huangpu":
-                # Templates that declare the shared city get the same scene
-                # descriptor as the traffic demo, so Studio previews the city.
-                from .demo import city_presentation
-
-                draft["demo_console"] = {
-                    "capture_mode": "city",
-                    "city_available": True,
-                    "scene": city_presentation(),
-                }
+            self._resolve_city(draft)
             self._base(document, draft["id"])
             self._write(draft)
             if document.get("behaviours"):
@@ -589,10 +624,13 @@ class WorkspaceStore:
     def region(
         self, identifier: str, region: dict[str, Any], source: Path
     ) -> dict[str, Any]:
-        from .scene import compile_scene, crop_osm
+        from .scene import compile_scene, crop_osm, origin_distance, region_source
 
-        if set(region) != {"extract", "bounds", "alt", "level_height_m"}:
+        required = {"extract", "bounds", "alt", "level_height_m"}
+        if required - region.keys() or region.keys() - required - {"dry_run"}:
             raise ValueError("region: extract/bounds/alt/level_height_m required")
+        if "dry_run" in region and type(region["dry_run"]) is not bool:
+            raise ValueError("region.dry_run: Boolean required / dry_run 须为布尔值")
         with self.lock:
             draft = self.get(identifier)
             scene = compile_scene(
@@ -601,15 +639,44 @@ class WorkspaceStore:
                 alt=region["alt"],
                 level_height_m=region["level_height_m"],
             )
+            if region.get("dry_run") is True:
+                document = draft["scenario"]
+                previous = document.get("origin", draft.get("scene", {}).get("origin"))
+                position_fields = {POS}
+                position_fields.update(row["positionField"] for row in document.get("presentation", []) if "positionField" in row)
+                position_fields.update(
+                    spec["config"]["position_field"] for spec in document.get("engines", {}).values()
+                    if "position_field" in spec.get("config", {})
+                )
+                position_fields.update(
+                    field["id"] for field in document["registry"].get("fields", [])
+                    if "position" in field["id"] and field.get("metadata", {}).get("frame") in {"enu", "ned", "wgs84"}
+                )
+                return {"preview": {
+                    "extract": region["extract"], "bounds": scene["bounds"], "origin": scene["origin"],
+                    "previous_origin": copy.deepcopy(previous),
+                    "origin_shift_m": origin_distance(previous, scene["origin"]) if previous is not None else None,
+                    "buildings": sum(feature["geometry"]["type"] in {"Polygon", "MultiPolygon"} for feature in scene["geojson"]["features"]),
+                    "roads": len(scene["roads"]), "attribution": scene["attribution"],
+                    "height_source": region_source(region, scene)["height_source"],
+                    "diagnostics": scene["diagnostics"],
+                    "affected_entities": [
+                        entity["id"] for entity in document["entities"]
+                        if any(isinstance(entity["facts"].get(field), list) and len(entity["facts"][field]) == 3 for field in position_fields)
+                    ],
+                    "network_invalidated": "network" in draft or (self.directory(identifier) / "network.net.xml").is_file(),
+                    "city_conflict": document.get("city") is not None,
+                }}
             crop_osm(
                 source, region["bounds"], self.directory(identifier) / "region.osm.xml"
             )
             # A new crop invalidates the previous traffic network.
             (self.directory(identifier) / "network.net.xml").unlink(missing_ok=True)
             draft.pop("network", None)
-            draft["region"] = copy.deepcopy(region)
+            draft["region"] = {key: copy.deepcopy(region[key]) for key in required}
             draft["scene"] = scene
             draft["scenario"]["origin"] = scene["origin"]
+            self._resolve_city(draft)
             draft.pop("validation", None)
             return self._write(draft)
 
@@ -688,6 +755,7 @@ class WorkspaceStore:
                 else self.get(identifier)
             )
             try:
+                self._check_scene_source(draft)
                 loaded = validate_configuration(
                     draft["scenario"], base=self._base(draft["scenario"], identifier),
                     directory=self.directory(identifier),
@@ -779,11 +847,13 @@ class WorkspaceStore:
         with self.lock:
             draft = self.get(identifier)
             self.check_revision(draft, revision)
+            self._resolve_city(draft)
             validation = draft.get("validation")
             if not validation or validation.get("revision") != revision:
                 raise ValueError("Validate this revision before saving it as a version")
             if not validation.get("valid"):
                 raise ValueError("This revision failed validation; fix the reported issues first")
+            self._check_scene_source(draft)
             directory = self.directory(identifier)
             existing = self.versions(identifier)
             latest = existing[0] if existing else None
@@ -807,8 +877,10 @@ class WorkspaceStore:
             text = json.dumps(draft["scenario"], ensure_ascii=False, allow_nan=False)
             text = text.replace(json.dumps(str(directory))[1:-1], json.dumps(str(files))[1:-1])
             scenario = json.loads(text)
+            geometry = {key: copy.deepcopy(draft[key]) for key in ("demo_console", "region", "scene", "scene_source", "network") if key in draft}
             digest = hashlib.sha256()
             digest.update(json.dumps(scenario, sort_keys=True, ensure_ascii=False).encode())
+            digest.update(json.dumps(geometry, sort_keys=True, ensure_ascii=False, allow_nan=False).encode())
             for path in sorted(p for p in (pending / "files").rglob("*") if p.is_file()):
                 digest.update(str(path.relative_to(pending / "files")).encode())
                 digest.update(path.read_bytes())
@@ -823,7 +895,7 @@ class WorkspaceStore:
                 **({"template": draft["template"]} if draft.get("template") else {}),
                 **({"derived_from": draft["derived_from"]} if draft.get("derived_from") else {}),
                 # Display geometry the run attaches; frozen with the version.
-                **{key: draft[key] for key in ("demo_console", "scene", "network") if key in draft},
+                **geometry,
             }
             (pending / "version.json").write_text(
                 json.dumps(record, ensure_ascii=False, allow_nan=False, indent=2), encoding="utf-8"
@@ -834,6 +906,7 @@ class WorkspaceStore:
     def summary(self, identifier: str) -> dict[str, Any]:
         """The draft plus its version state, as the console shows it."""
         draft = self.get(identifier)
+        self._resolve_city(draft, require_assets=False)
         versions = self.versions(identifier)
         latest = versions[0] if versions else None
         draft["latest_version"] = latest
@@ -861,8 +934,8 @@ class WorkspaceStore:
                 text = json.dumps(frozen["scenario"], ensure_ascii=False)
                 text = text.replace(json.dumps(str(files))[1:-1], json.dumps(str(directory))[1:-1])
                 draft["scenario"] = json.loads(text)
-                for key in ("template", "demo_console"):
-                    original = self.get(workspace_id).get(key)
+                for key in ("template", "demo_console", "region", "scene", "scene_source", "network"):
+                    original = frozen.get(key)
                     if original is not None:
                         draft[key] = original
                 draft["derived_from"] = source
@@ -1093,3 +1166,34 @@ class WorkspaceStore:
             load_scenario(document, base=self._base(document, identifier))
             draft.pop("validation", None)
             return self._write(draft)
+
+    def remove(self, identifier: str, payload: dict[str, Any]) -> dict[str, Any]:
+        from .removal import RemovalPlan
+
+        if not isinstance(payload, dict) or "id" not in payload or payload.keys() - {"id", "revision", "dry_run"}:
+            raise ValueError("remove: id and optional revision/dry_run required / 删除须提供 id，可选 revision 和 dry_run")
+        entity_id = payload["id"]
+        if not isinstance(entity_id, str) or not entity_id.strip():
+            raise ValueError("remove.id: nonempty entity id required / 须提供非空实体标识")
+        if "dry_run" in payload and type(payload["dry_run"]) is not bool:
+            raise ValueError("remove.dry_run: Boolean required / dry_run 须为布尔值")
+        with self.lock:
+            draft = self.get(identifier)
+            self.check_revision(draft, payload.get("revision"))
+            if not any(entity["id"] == entity_id for entity in draft["scenario"]["entities"]):
+                raise FileNotFoundError(f"Entity {entity_id!r} is not an explicit draft instance / 实体不是草稿中的显式实例")
+            base = self._base(draft["scenario"], identifier)
+            document, dependencies = RemovalPlan(draft["scenario"], entity_id, base).build()
+            if payload.get("dry_run") is True:
+                return {"dependencies": dependencies}
+            self._check_scene_source(draft, document)
+            # Fact schemas, field writers, engine and behaviour contracts all
+            # bind before the sole draft replacement. Failed plans change no files.
+            validate_configuration(document, base=self._base(document, identifier), directory=self.directory(identifier))
+            draft["scenario"] = document
+            draft.pop("validation", None)
+            draft.pop("behaviour_validation", None)
+            draft.pop("behaviour_layout", None)
+            self._resolve_city(draft)
+            self._write(draft)
+            return self.summary(identifier)

@@ -1,6 +1,7 @@
 """Optional pack lifecycle and shared city feed without external asset dependencies."""
 from __future__ import annotations
 
+import hashlib
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -49,6 +50,9 @@ def test_fetch_resumes_and_not_published_is_actionable(tmp_path: Path, monkeypat
     monkeypatch.setenv("AEROAGENTSIM_ASSETS_DIR", str(tmp_path / "installed"))
     monkeypatch.setenv("no_proxy", "127.0.0.1,localhost")
     content = pack(tmp_path).read_bytes()
+    digest = hashlib.sha256(content).hexdigest()
+    monkeypatch.setenv("AEROAGENTSIM_ASSET_PACK_SHA256", digest)
+    monkeypatch.delenv("AEROAGENTSIM_ASSET_PACK_INSECURE_SKIP_DIGEST", raising=False)
     ranges: list[str | None] = []
 
     class Handler(BaseHTTPRequestHandler):
@@ -78,7 +82,11 @@ def test_fetch_resumes_and_not_published_is_actionable(tmp_path: Path, monkeypat
         cache.mkdir(parents=True)
         (cache / "url.txt").write_text(url)
         (cache / "huangpu-city-v1.zip.part").write_bytes(content[:80])
-        assert assets.fetch(url)["id"] == "huangpu-city"
+        result = assets.fetch(url)
+        assert result["id"] == "huangpu-city"
+        assert result["source"]["archive_sha256"] == digest
+        assert result["source"]["expected_archive_sha256"] == digest
+        assert result["source"]["digest_verified"] is True
         assert ranges == ["bytes=80-"]
         with pytest.raises(RuntimeError, match="pack not published yet.*local file"):
             assets.fetch(url + "/missing")

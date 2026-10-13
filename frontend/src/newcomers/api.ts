@@ -12,7 +12,7 @@ export type KpiValues = Record<string,KpiValue>;
 export interface KpiSample {commitIndex?:number;at_ns:string;kpis:KpiValues}
 export interface RunKpis {format?:'aeroagentsim.kpi/v1';run_id:string;final:KpiValues;series:KpiSample[]}
 export type AlgorithmSlot = 'allocation'|'path_planning'|'conflict_resolution'|'charging';
-export interface AlgorithmDescriptor {id:string;slot:AlgorithmSlot;label:string;label_zh?:string;description:string;description_zh?:string}
+export interface AlgorithmDescriptor {id:string;slot:AlgorithmSlot;label:string;label_zh?:string;description:string;description_zh?:string;/** Components that read this slot at runtime; absent on older servers. */consumers?:Array<{engine:string;plugin:string}>}
 export interface ComparisonRun {id:string;title:string;title_zh?:string;template_id?:string;kpis:KpiValues;knobs:Record<string,KnobValue>;algorithms:Partial<Record<AlgorithmSlot,string>>}
 export interface RunComparison {runs:ComparisonRun[]}
 export class TemplateApi {

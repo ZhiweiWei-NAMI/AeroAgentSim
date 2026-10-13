@@ -45,10 +45,15 @@ def create_router(
 
     @lru_cache(maxsize=1)
     def source_catalog() -> list[dict[str, Any]]:
-        return [
-            {"id": key, "name": key, "bounds": extract_bounds(path)}
-            for key, path in sources.items()
-        ]
+        rows = []
+        for key, path in sources.items():
+            row: dict[str, Any] = {"id": key, "name": key, "label": key}
+            try:
+                row["bounds"] = extract_bounds(path)
+            except (ValueError, TypeError, KeyError, OSError) as exc:
+                row["diagnostics"] = [f"Bounds unavailable: {exc} / 无法确定范围：{exc}"]
+            rows.append(row)
+        return rows
 
     @router.get("/catalog")
     def catalog() -> dict[str, Any]:
@@ -305,6 +310,10 @@ def create_router(
     @router.post("/workspaces/{identifier}/place")
     def place(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
         return checked(lambda: store.place(identifier, body))
+
+    @router.post("/workspaces/{identifier}/remove")
+    def remove(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return checked(lambda: store.remove(identifier, body))
 
     @router.post("/workspaces/{identifier}/validate")
     def validate(identifier: str, body: dict[str, Any]) -> dict[str, Any]:

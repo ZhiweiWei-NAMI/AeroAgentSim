@@ -344,6 +344,18 @@ def _physics_hz(document: dict[str, Any], base: Path, value: Any) -> None:
     document["run"]["advance_ns"] = step_ns
 
 
+def _wind_east(document: dict[str, Any], base: Path, value: Any) -> None:
+    from aeroagentsim.packs.traffic_accident.knobs import set_wind
+
+    set_wind(document, 0, value)
+
+
+def _wind_north(document: dict[str, Any], base: Path, value: Any) -> None:
+    from aeroagentsim.packs.traffic_accident.knobs import set_wind
+
+    set_wind(document, 1, value)
+
+
 def _operator_mode(document: dict[str, Any], base: Path, value: Any) -> None:
     operator = next(
         stream for stream in document["ingress_streams"] if stream["id"] == "operator"
@@ -372,6 +384,8 @@ class TemplateRegistry:
             "traffic.accident_time": _accident_time,
             "traffic.decision_mode": _decision_mode,
             "traffic.physics_hz": _physics_hz,
+            "traffic.wind_east": _wind_east,
+            "traffic.wind_north": _wind_north,
             "lowalt.operator_mode": _operator_mode,
         }
         self._templates: dict[str, tuple[dict[str, Any], Path]] = {}
@@ -382,7 +396,27 @@ class TemplateRegistry:
             self._validate(data, manifest.parent.name)
             if data["id"] in self._templates:
                 raise ValueError(f"Duplicate template id: {data['id']}")
+            if data["id"] == "traffic-accident":
+                from aeroagentsim.packs.traffic_accident.knobs import weather_knobs
+
+                source = self._source(data, manifest.parent)
+                document = yaml.load(source.read_bytes(), Loader=UniqueLoader)
+                if not isinstance(document, dict):
+                    raise ValueError("template scenario must be a mapping / 模板场景须为映射")
+                declared = {knob["id"] for knob in data["knobs"]}
+                data["knobs"].extend(knob for knob in weather_knobs(document) if knob["id"] not in declared)
             self._templates[data["id"]] = (data, manifest.parent)
+
+    def _source(self, metadata: dict[str, Any], directory: Path) -> Path:
+        relative = Path(metadata["scenario"])
+        if relative.is_absolute():
+            raise ValueError("template scenario path must be relative")
+        if metadata["id"] == "traffic-accident" and metadata["scenario"] == "../../demos/traffic-accident/scenario.yaml":
+            return demo_source(metadata["id"]) / "scenario.yaml"
+        source = (directory / relative).resolve()
+        if not source.is_relative_to(self.root.parent):
+            raise ValueError("template scenario escapes configured registry scope")
+        return source
 
     @staticmethod
     def _validate(data: Any, identifier: str) -> None:
@@ -577,18 +611,7 @@ class TemplateRegistry:
         declared = {knob["id"]: knob for knob in metadata["knobs"]}
         if extra := overrides.keys() - declared.keys():
             raise ValueError(f"Unknown knobs: {', '.join(sorted(extra))}")
-        relative = Path(metadata["scenario"])
-        if relative.is_absolute():
-            raise ValueError("template scenario path must be relative")
-        source = (directory / relative).resolve()
-        # The legacy authoritative demo is deliberately shared by the new manifest.
-        if (
-            identifier == "traffic-accident"
-            and metadata["scenario"] == "../../demos/traffic-accident/scenario.yaml"
-        ):
-            source = demo_source(identifier) / "scenario.yaml"
-        elif not source.is_relative_to(self.root.parent):
-            raise ValueError("template scenario escapes configured registry scope")
+        source = self._source(metadata, directory)
         document = yaml.load(source.read_bytes(), Loader=UniqueLoader)
         if not isinstance(document, dict):
             raise ValueError("template scenario must be a mapping")

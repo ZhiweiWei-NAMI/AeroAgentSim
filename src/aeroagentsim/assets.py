@@ -11,7 +11,6 @@ import tempfile
 import urllib.error
 import urllib.request
 import zipfile
-from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -19,7 +18,7 @@ FORMAT = "aeroagentsim.asset-pack/v1"
 PACK_ID = "huangpu-city"
 VERSION = "1.1.0"
 DEFAULT_URL = "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/download/assets-huangpu-city-v1.1/huangpu-city-v1.1.zip"
-# No published archive digest is pinned in this checkout's release metadata.
+# Published archive digest pinned for the default release URL.
 DEFAULT_SHA256: str | None = "044ef338f893b29839c8aba326826cf295a293d685d49be61de939caea0850ff"  # GitHub Release asset digest, huangpu-city-v1.1.zip (129,165,236 bytes)
 
 
@@ -133,21 +132,6 @@ def read_pack(root: Path, *, check_files: bool = True) -> dict[str, Any]:
     return dict(pack)
 
 
-@lru_cache(maxsize=16)
-def _manifest(root: Path, identity: tuple[int, int, int, int, int]) -> dict[str, Any]:
-    return read_pack(root, check_files=False)
-
-
-def _identity(path: Path) -> tuple[int, int, int, int, int]:
-    stat = path.lstat()
-    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
-
-
-@lru_cache(maxsize=16)
-def _catalog(root: Path, identity: tuple[Any, ...]) -> dict[str, Any]:
-    return read_pack(root)
-
-
 def installed() -> list[dict[str, Any]]:
     root = data_dir()
     if not root.is_dir():
@@ -158,11 +142,8 @@ def installed() -> list[dict[str, Any]]:
             continue
         if path.is_symlink() or path.parent.is_symlink() or path.parent.parent.is_symlink():
             raise ValueError(localized("asset pack: installed path is a symlink", "资产包：安装路径是符号链接"))
-        manifest_identity = _identity(path)
-        manifest = _manifest(path.parent, manifest_identity)
-        # Rehash only after real files change; a warm catalog still checks stats.
-        identity = (manifest_identity, *(_identity(path.parent / row["path"]) for row in manifest["files"]))
-        pack = _catalog(path.parent, identity)
+        # Same-size writes can share filesystem timestamps; verify current bytes.
+        pack = read_pack(path.parent)
         if (path.parent.name, path.parent.parent.name) != (pack["version"], pack["id"]):
             raise ValueError(localized("asset pack: installed directory differs from manifest identity", "资产包：安装目录与清单标识不一致"))
         receipt = path.parent / "installation.json"

@@ -54,49 +54,60 @@ def snapshot_scene(
 
 def attach(run: Path, draft: dict[str, Any], directory: Path) -> None:
     """Copy the draft's (or frozen version's) display geometry into the run."""
-    # The shared city scene follows the draft's declared city; choosing no
-    # city in the configuration must not keep displaying it.
-    if (
-        draft.get("demo_console", {}).get("capture_mode") == "city"
-        and draft.get("scenario", {}).get("city") == "huangpu"
-    ):
+    from .scene import region_source
+
+    if "scene" in draft:
+        # Old versions may contain both sources. Never replace their frozen
+        # region with a template scene created earlier during run preparation.
+        (run / "console-scene.json").unlink(missing_ok=True)
+        scene = draft["scene"]
+        (run / "studio-scene.json").write_text(json.dumps(scene, allow_nan=False), encoding="utf-8")
+        (run / "studio-buildings.geojson").write_text(json.dumps(scene["geojson"], allow_nan=False), encoding="utf-8")
+        identity = region_source(draft.get("region", {}), scene)
+        if draft.get("scenario", {}).get("city") is not None:
+            identity["conflicting_city"] = draft["scenario"]["city"]
+        (run / "scene-source.json").write_text(json.dumps(identity, allow_nan=False), encoding="utf-8")
+        source = directory / "network.net.xml"
+        if "network" in draft and source.is_file():
+            shutil.copyfile(source, run / "studio-network.net.xml")
+    elif draft.get("scenario", {}).get("city") == "huangpu":
+        from .demo import city_presentation
+
+        scene = draft.get("demo_console", {}).get("scene") or city_presentation()
         (run / "console-scene.json").write_text(
-            json.dumps(draft["demo_console"]["scene"], allow_nan=False),
+            json.dumps(scene, allow_nan=False),
             encoding="utf-8",
         )
-        return
-    if "scene" not in draft:
-        return
-    (run / "studio-scene.json").write_text(
-        json.dumps(draft["scene"], allow_nan=False), encoding="utf-8"
-    )
-    (run / "studio-buildings.geojson").write_text(
-        json.dumps(draft["scene"]["geojson"], allow_nan=False), encoding="utf-8"
-    )
-    source = directory / "network.net.xml"
-    if "network" in draft and source.is_file():
-        shutil.copyfile(source, run / "studio-network.net.xml")
+        (run / "scene-source.json").write_text(json.dumps({"kind": "fixed-city", "id": "huangpu", "attribution": scene["attribution"]}), encoding="utf-8")
+    else:
+        (run / "console-scene.json").unlink(missing_ok=True)
+        (run / "scene-source.json").unlink(missing_ok=True)
 
 
 def scene_header(run: Path, base_url: str) -> dict[str, Any]:
-    if (run / "console-scene.json").is_file():
-        pinned = run / "scenario.json"
-        scenario = json.loads(pinned.read_bytes()) if pinned.is_file() else {}
-        if scenario.get("city") == "huangpu":
-            from .demo import city_presentation
-
-            return {"scene": city_presentation()}
-        return {"scene": json.loads((run / "console-scene.json").read_bytes())}
+    identity_path = run / "scene-source.json"
+    identity = json.loads(identity_path.read_bytes()) if identity_path.is_file() else None
     if not (run / "studio-scene.json").is_file():
+        if (run / "console-scene.json").is_file():
+            return {
+                "scene": json.loads((run / "console-scene.json").read_bytes()),
+                **({"scene_source": identity} if identity is not None else {}),
+            }
         return {}
     scene = json.loads((run / "studio-scene.json").read_text(encoding="utf-8"))
+    if identity is None or identity.get("kind") != "region":
+        from .scene import region_source
+
+        identity = region_source({}, scene)
     url = f"{base_url.rstrip('/')}/v1/studio/runs/{run.name}"
     # Road ENU preview is retained in the scene artifact. SUMO net geometry must
     # not be displayed in ENU until its projection/netOffset mapping is bound.
     return {
+        "scene_source": identity,
         "scene": {
             "id": run.name,
             "city": {"kind": "geojson", "url": url + "/buildings.geojson"},
             "attribution": scene["attribution"],
+            **{key: scene[key] for key in ("origin", "bounds", "ground") if key in scene},
         }
     }

@@ -19,6 +19,39 @@ Bounds = list[float]
 Point = tuple[float, float]
 
 
+def origin_distance(previous: dict[str, Any], current: dict[str, Any]) -> float:
+    """WGS84 ECEF displacement, whose norm is unchanged in the local ENU frame."""
+    def ecef(origin: dict[str, Any]) -> tuple[float, float, float]:
+        lat, lon, alt = (_number(origin[key], f"origin.{key}") for key in ("lat", "lon", "alt"))
+        if not -90 <= lat <= 90 or not -180 <= lon <= 180:
+            raise ValueError("origin: WGS84 coordinates required / 原点须使用 WGS84 坐标")
+        lat, lon = math.radians(lat), math.radians(lon)
+        a, e2 = 6378137.0, 6.69437999014e-3
+        radius = a / math.sqrt(1 - e2 * math.sin(lat) ** 2)
+        return (
+            (radius + alt) * math.cos(lat) * math.cos(lon),
+            (radius + alt) * math.cos(lat) * math.sin(lon),
+            (radius * (1 - e2) + alt) * math.sin(lat),
+        )
+
+    return math.dist(ecef(previous), ecef(current))
+
+
+def region_source(region: dict[str, Any], scene: dict[str, Any]) -> dict[str, Any]:
+    """Identity shared by draft, frozen version and run review."""
+    return {
+        "kind": "region",
+        "extract": region.get("extract"),
+        "bounds": scene.get("bounds"),
+        "origin": scene["origin"],
+        "attribution": scene["attribution"],
+        "height_source": (
+            "OSM height; building:levels × authored level_height_m; missing heights remain footprints / "
+            "OSM 高度；建筑层数 × 明确设定的层高；缺失高度保留为轮廓"
+        ),
+    }
+
+
 def _number(value: Any, label: str) -> float:
     if isinstance(value, bool):
         raise TypeError(f"{label}: finite number required")
