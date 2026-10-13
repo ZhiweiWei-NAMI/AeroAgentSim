@@ -3,12 +3,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RegionBlock } from './RegionBlock';
 import { originShiftM, validateRegion } from './model';
 import type { SectionProps } from '../types';
+import { ApiError, WorkbenchApi } from '../../api';
 
 const savedProject = { id: 'w1', revision: 7 } as any;
 
+function mockApi(request = vi.fn().mockResolvedValue({ extracts: [{ id: 'wujiaochang' }] })) {
+  // Keep project() forwarding through request(), as it does in the real API.
+  return Object.assign(new WorkbenchApi('http://api.test'), { request });
+}
+
 function makeProps(overrides: Partial<Record<keyof SectionProps, unknown>> = {}): SectionProps {
   return {
-    api: { request: vi.fn() } as any, studioApi: { request: vi.fn() } as any,
+    api: mockApi(), studioApi: { request: vi.fn() } as any,
     project: { id: 'w1', revision: 3, scenario: {} } as any,
     draft: {}, edit: vi.fn(), replaceDraft: vi.fn(), saveDraft: vi.fn(async () => savedProject),
     onProject: vi.fn(), reportValidity: vi.fn(), zh: false, locale: 'en-US', L: (en: string) => en,
@@ -17,19 +23,26 @@ function makeProps(overrides: Partial<Record<keyof SectionProps, unknown>> = {})
 }
 
 const fill = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
-const FIELDS = ['West (°)', 'South (°)', 'East (°)', 'North (°)', 'Ground altitude (m)', 'Level height (m)'];
+const FIELD_VALUES = [['West (°)', '121.50'], ['South (°)', '31.30'], ['East (°)', '121.52'], ['North (°)', '31.31'], ['Ground altitude (m)', '20'], ['Level height (m)', '3.5']] as const;
+const fillRegion = () => { for (const [label, value] of FIELD_VALUES) fill(label, value); };
+const selectExtract = async () => {
+  await screen.findByRole('option', { name: /^wujiaochang/ });
+  fireEvent.change(screen.getByLabelText('Extract'), { target: { value: 'wujiaochang' } });
+};
 
 afterEach(cleanup);
 
 describe('RegionBlock validation gating', () => {
-  it('keeps actions disabled until complete, ordered bounds are entered', () => {
+  it('keeps actions disabled until complete, ordered bounds are entered', async () => {
     render(<RegionBlock {...makeProps()} />);
-    for (const label of FIELDS) expect(screen.getByRole('button', { name: 'Preview region' })).toBeDisabled();
-    fill('West (°)', '121.50'); fill('South (°)', '31.30'); fill('East (°)', '121.52'); fill('North (°)', '31.31');
-    fill('Ground altitude (m)', '20'); fill('Level height (m)', '3.5');
+    expect(screen.getByRole('button', { name: 'Preview region' })).toBeDisabled();
+    for (const [label, value] of FIELD_VALUES) {
+      fill(label, value);
+      expect(screen.getByRole('button', { name: 'Preview region' })).toBeDisabled();
+    }
     // No extract selected yet: still disabled.
     expect(screen.getByRole('button', { name: 'Preview region' })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText('Extract'), { target: { value: 'wujiaochang' } });
+    await selectExtract();
     expect(screen.getByRole('button', { name: 'Preview region' })).toBeEnabled();
   });
 
@@ -63,45 +76,50 @@ describe('RegionBlock preview and apply', () => {
   };
 
   it('requires explicit confirmation when the origin shifts, then saves the draft before applying', async () => {
+    const appliedProject = { ...savedProject, region: previewBody, scene: { origin: preview.origin } };
     const request = vi.fn()
       .mockResolvedValueOnce({ extracts: [{ id: 'wujiaochang', bounds: previewBody.bounds }] }) // catalog
       .mockResolvedValueOnce({ preview }) // dry run
-      .mockResolvedValueOnce({ id: 'w1', region: previewBody, scene: { origin: preview.origin } }); // apply
+      .mockResolvedValueOnce(appliedProject) // apply
+      .mockResolvedValueOnce(appliedProject); // workspace refresh
     const saveDraft = vi.fn(async () => savedProject);
     const onProject = vi.fn();
-    const props = makeProps({ api: { request } as any, saveDraft, onProject });
+    const props = makeProps({ api: mockApi(request), saveDraft, onProject });
     render(<RegionBlock {...props} />);
-    fireEvent.change(screen.getByLabelText('Extract'), { target: { value: 'wujiaochang' } });
-    for (const [label, value] of [['West (°)', '121.50'], ['South (°)', '31.30'], ['East (°)', '121.52'], ['North (°)', '31.31'], ['Ground altitude (m)', '20'], ['Level height (m)', '3.5']]) fill(label as string, value as string);
+    await selectExtract();
+    fillRegion();
     fireEvent.click(screen.getByRole('button', { name: 'Preview region' }));
     await screen.findByTestId('region-review');
-    expect(request.mock.calls[1][1].body).toMatchObject({ dry_run: true });
+    expect(request).toHaveBeenNthCalledWith(2, '/v1/studio/workspaces/w1/region', { body: { ...previewBody, dry_run: true } });
     expect(screen.getByText(/222\.1 m/)).toBeTruthy();
     expect(screen.getByText(/marker-1/)).toBeTruthy();
-    expect(screen.getByText(/stale/)).toBeTruthy();
+    expect(screen.getByText(/road network becomes stale and must be regenerated/)).toBeVisible();
     const apply = screen.getByRole('button', { name: 'Apply region' });
     expect(apply).toBeDisabled(); // shift > 0 without acknowledgement
     fireEvent.click(screen.getByRole('checkbox'));
     expect(apply).toBeEnabled();
     fireEvent.click(apply);
-    await waitFor(() => expect(request.mock.calls[2][1].body).toMatchObject({ revision: 7 }));
-    expect(request.mock.calls[2][1].body).not.toHaveProperty('dry_run');
+    await waitFor(() => expect(onProject).toHaveBeenCalledWith(appliedProject));
+    // The region endpoint accepts these four fields; revision belongs to draft saving.
+    expect(request).toHaveBeenNthCalledWith(3, '/v1/studio/workspaces/w1/region', { body: previewBody });
     expect(saveDraft).toHaveBeenCalledTimes(1);
-    expect(onProject).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }));
+    expect(saveDraft.mock.invocationCallOrder[0]).toBeLessThan(request.mock.invocationCallOrder[2]);
+    expect(request).toHaveBeenNthCalledWith(4, '/v1/studio/workspaces/w1', { signal: undefined });
   });
 
   it('degrades with a clear message when the server has no preview capability', async () => {
-    const { ApiError } = await import('../../api');
     const request = vi.fn()
       .mockResolvedValueOnce({ extracts: [{ id: 'wujiaochang' }] })
       .mockRejectedValueOnce(new ApiError(404, 'not found'));
-    render(<RegionBlock {...makeProps({ api: { request } as any })} />);
-    fireEvent.change(screen.getByLabelText('Extract'), { target: { value: 'wujiaochang' } });
-    for (const [label, value] of [['West (°)', '121.50'], ['South (°)', '31.30'], ['East (°)', '121.52'], ['North (°)', '31.31'], ['Ground altitude (m)', '20'], ['Level height (m)', '3.5']]) fill(label as string, value as string);
+    render(<RegionBlock {...makeProps({ api: mockApi(request) })} />);
+    await selectExtract();
+    fillRegion();
     fireEvent.click(screen.getByRole('button', { name: 'Preview region' }));
     expect(await screen.findByText(/does not support region preview/)).toBeTruthy();
     // Cancellation path: no apply happened.
     expect(screen.queryByTestId('region-review')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Apply region' })).toBeDisabled();
+    expect(request).toHaveBeenCalledTimes(2);
   });
 
   it('shows the city conflict and clears the city on request', () => {
@@ -141,9 +159,10 @@ describe('RegionBlock preview and apply', () => {
       .mockResolvedValueOnce({ extracts: [{ id: 'wujiaochang' }] })
       .mockResolvedValueOnce({ status: 'generated', edge_count: 1, lane_count: 2, location: { projParameter: '+proj=tmerc' } })
       .mockResolvedValueOnce({ id: 'w1', network: { edge_count: 1 } });
-    const props = makeProps({ api: { request } as any });
+    const props = makeProps({ api: mockApi(request) });
     (props.project as any).region = { extract: 'wujiaochang', bounds: [0, 0, 1, 1], alt: 0, level_height_m: 3 };
     render(<RegionBlock {...props} />);
+    await selectExtract();
     fill('West (°)', '0'); fill('South (°)', '0'); fill('East (°)', '1'); fill('North (°)', '1'); fill('Ground altitude (m)', '0'); fill('Level height (m)', '3');
     fireEvent.click(screen.getByRole('button', { name: 'Generate road network' }));
     const summary = await screen.findByTestId('network-summary');

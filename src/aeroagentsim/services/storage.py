@@ -147,8 +147,10 @@ class RunStorage:
             "input_timeout",
         }:
             self.index()
+            prefix = committed_prefix(self.directory)
             result["final_cursor"] = max(
-                1, self.entries[-1]["index"] + 1 if self.entries else 1
+                1, prefix["index"] + 1 if prefix is not None
+                else self.entries[-1]["index"] + 1 if self.entries else 1
             )
         if error is not None:
             result["error"] = error

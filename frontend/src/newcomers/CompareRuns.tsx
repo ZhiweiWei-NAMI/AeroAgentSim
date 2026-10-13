@@ -36,31 +36,20 @@ export function comparisonConfiguration(value: unknown, ids?: string[]): Compari
 }
 
 /**
- * One compact summary table the beginner reads first: identity, recorded end,
- * differing key settings, and primary KPIs with deltas. Everything below is
- * detail; nothing here is clipped or hidden behind horizontal scrolling.
+ * Lead with run identity and recorded end. Settings, KPI values and changes
+ * appear only in the detailed sections below.
  */
-function SummaryTable({ runs, rows, more, configuration, templates, locale }: {
-  runs: ComparisonRun[]; rows: KpiRow[]; more: KpiRow[]; configuration?: ComparisonConfiguration;
+function SummaryTable({ runs, configuration, templates, locale }: {
+  runs: ComparisonRun[]; configuration?: ComparisonConfiguration;
   templates: Map<string, ScenarioTemplate>; locale: string;
 }) {
   const { t } = useI18n();
   const zh = locale === 'zh-CN';
-  const keyRows = useMemo(() => (runs ? differences(runs, templates, locale, []) : []), [runs, templates, locale]);
   const endOf = (id: string) => configuration?.recorded_ends[id];
-  // Change versus the column to the left, judged by the metric's known direction.
-  const delta = (row: KpiRow, index: number) => {
-    const before = row.values[index - 1], after = row.values[index];
-    if (index === 0 || row.direction === 'neutral' || before === null || after === null || !Number.isFinite(before) || !Number.isFinite(after)) return undefined;
-    const span = after - before;
-    if (!Number.isFinite(span) || span === 0) return undefined;
-    const better = row.direction === 'min' ? span < 0 : span > 0;
-    return `${span > 0 ? '+' : ''}${formatKpi(span, row.unit)}${better ? ' ✓' : ' ✕'}`;
-  };
   return <section className="newc-compare-summary" data-testid="comparison-summary" aria-label={zh ? '对比总览' : 'Comparison summary'}>
     <div style={{ maxHeight: 420, overflow: 'auto' }}>
       <table className="newc-compare-table newc-summary-table">
-        <caption>{zh ? '先看这里：每次运行的记录终点、关键设置与主要结果' : 'Start here: each run’s recorded end, key settings and primary results'}</caption>
+        <caption>{zh ? '先看这里：所选运行的场景模板与记录终点' : 'Start here: the selected runs’ scenario templates and recorded ends'}</caption>
         <thead><tr>
           <th scope="col" style={{ width: '32%' }}>{zh ? '项目' : 'Item'}</th>
           {runs.map((run, index) => <th key={run.id} scope="col" title={run.id}>{t('Run {number} · {title}', { number: index + 1, title: localized(run, 'title', locale) || humanize(run.id) })}</th>)}
@@ -81,29 +70,6 @@ function SummaryTable({ runs, rows, more, configuration, templates, locale }: {
                 : <span className="newc-config-absent">{zh ? '读取中…' : 'Loading…'}</span>}</td>;
             })}
           </tr>
-          {keyRows.map(row => <tr key={row.label}>
-            <th scope="row">{row.label}</th>
-            {row.values.map((value, index) => <td key={index} className="wb-mono">{value}</td>)}
-          </tr>)}
-          {rows.map(row => <tr key={row.id} className="newc-summary-kpi">
-            <th scope="row">
-              {metricLabel(row.id, row.label, locale, row.label_zh)}
-              {metricHelp(row.id, locale) !== undefined && <span className="newc-compare-help" title={metricHelp(row.id, locale)} aria-label={t('About {label}', { label: metricLabel(row.id, row.label, locale, row.label_zh) })} tabIndex={0}>?</span>}
-            </th>
-            {row.values.map((value, index) => {
-              const isBest = row.best !== undefined && value !== null && value === row.best;
-              return <td key={index} className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>
-                {formatKpi(value, row.unit)}
-                {index > 0 && delta(row, index) && <span className={`newc-summary-delta${delta(row, index)!.endsWith('✓') ? ' is-ok' : ' is-warn'}`} title={zh ? '相对左列的变化' : 'Change from the previous column'}>{delta(row, index)}</span>}
-              </td>;
-            })}
-          </tr>)}
-          {more.length > 0 && <tr><td colSpan={runs.length + 1}><details className="newc-kpi-more"><summary>{t('More metrics ({count})', { count: more.length })}</summary>
-            <ul className="newc-summary-more">{more.map(row => <li key={row.id}>
-              <span>{metricLabel(row.id, row.label, locale, row.label_zh)}</span>
-              {row.values.map((value, index) => <span key={index} className="wb-mono">{formatKpi(value, row.unit)}</span>)}
-            </li>)}</ul>
-          </details></td></tr>}
         </tbody>
       </table>
     </div>
@@ -156,11 +122,10 @@ function isBulk(value: unknown): value is Array<unknown> | Record<string, unknow
   return keys.length > 4;
 }
 /** Short human preview of a bulk value: kind and size, no content dump. */
-function bulkSummary(value: Array<unknown> | Record<string, unknown>): string {
-  const t = (en: string) => en;
-  if (Array.isArray(value)) return `${t('list')} · ${value.length}`;
+function bulkSummary(value: Array<unknown> | Record<string, unknown>, locale: string): string {
+  if (Array.isArray(value)) return `${translate(locale, 'list')} · ${value.length}`;
   const first = Object.keys(value).slice(0, 3).join(', ');
-  return `${t('object')} · ${Object.keys(value).length}${first ? ` — ${first}` : ''}`;
+  return `${translate(locale, 'object')} · ${Object.keys(value).length}${first ? ` — ${first}` : ''}`;
 }
 
 function formatKpi(value: number | null, unit: string): string {
@@ -179,6 +144,17 @@ interface KpiRow {
   direction: 'min' | 'max' | 'neutral';
   values: (number | null)[];
   best?: number | null;
+}
+
+/** Change from the previous run, judged by the metric's known direction. */
+function kpiDelta(row: KpiRow, index: number) {
+  const before = row.values[index - 1], after = row.values[index];
+  if (index === 0 || row.direction === 'neutral' || before === null || after === null || !Number.isFinite(before) || !Number.isFinite(after)) return undefined;
+  const span = after - before;
+  if (!Number.isFinite(span) || span === 0) return undefined;
+  const better = row.direction === 'min' ? span < 0 : span > 0;
+  return { text: `${span > 0 ? '+' : ''}${formatKpi(span, row.unit)}${better ? ' ✓' : ' ✕'}`,
+    className: better ? ' is-ok' : ' is-warn' };
 }
 
 /** Rows sorted best-first; best values are highlighted per direction, never by raw max alone. */
@@ -264,6 +240,7 @@ function Column({ run, rows, index, more, template }: { run: ComparisonRun; rows
           {rows.map(row => {
             const value = row.values.length ? row.values[index] : null;
             const isBest = row.best !== undefined && value !== null && value === row.best;
+            const change = kpiDelta(row, index);
             return (
               <tr key={row.id} className={isBest ? 'is-best' : undefined}>
                 <th scope="row">
@@ -274,6 +251,7 @@ function Column({ run, rows, index, more, template }: { run: ComparisonRun; rows
                 </th>
                 <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>
                   {formatKpi(value, row.unit)}
+                  {change && <span className={`newc-kpi-delta${change.className}`} title={locale === 'zh-CN' ? '相对左列的变化' : 'Change from the previous column'}>{change.text}</span>}
                   <Bar value={value} row={row} />
                 </td>
               </tr>
@@ -428,7 +406,7 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
       </header>
       <MixedNote runs={runs} />
       {catalogNote && <p className="newc-catalog-note" role="note">{t('Metric names and settings come from machine ids — template details are unavailable ({error}).', { error: catalogNote })}</p>}
-      <SummaryTable runs={runs} rows={primary} more={more} configuration={configuration} templates={templates} locale={locale} />
+      <SummaryTable runs={runs} configuration={configuration} templates={templates} locale={locale} />
       <section className="newc-compare-section" data-testid="comparison-configuration">
         <h4>{locale === 'zh-CN' ? '固定配置差异' : 'Pinned configuration differences'}</h4>
         {configurationError ? <p role="status">{locale === 'zh-CN' ? '无法读取固定配置差异：' : 'Could not read pinned configuration differences: '}{configurationError}</p>
@@ -446,13 +424,13 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
                   // first screen keeps showing key settings and results instead of raw JSON walls.
                   const text = exactText(value);
                   if (isBulk(value)) return <td key={run.id} className="newc-config-bulk"><details className="newc-config-details">
-                    <summary>{locale === 'zh-CN' ? '显示原始 JSON' : 'Show raw JSON'} · {bulkSummary(value)}</summary>
+                    <summary>{locale === 'zh-CN' ? '显示原始 JSON' : 'Show raw JSON'} · {bulkSummary(value, locale)}</summary>
                     <pre className="wb-mono newc-config-raw" tabIndex={0}>{text}</pre>
                   </details></td>;
-                  if (value === null) return <td key={run.id} className="newc-config-null"><span className="newc-config-tag">{locale === 'zh-CN' ? '空值' : 'null'}</span><code>null</code></td>;
+                  if (value === null) return <td key={run.id} className="newc-config-null"><code className="newc-config-tag" title={t('null')}>{t('null')}</code></td>;
                   if (row.path.endsWith('/source') && typeof value === 'string' && text.length > 96 && value.includes('/'))
                     return <td key={run.id}><details className="newc-config-details"><summary title={value}>{locale === 'zh-CN' ? '源位置' : 'Source location'} · {value.slice(value.lastIndexOf('/') + 1)}</summary><code>{text}</code></details></td>;
-                  return <td key={run.id}>{value === null ? <span className="newc-config-tag">{locale === 'zh-CN' ? '空值' : 'null'}</span> : null}<code className={typeof value === 'object' ? 'newc-config-raw' : undefined}>{text}</code></td>;
+                  return <td key={run.id}><code className={typeof value === 'object' ? 'newc-config-raw' : undefined}>{text}</code></td>;
                 })}</tr>)}</tbody>
               </table></div>}
           </>}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../../api';
 import type { SectionProps } from '../types';
 import {
@@ -21,6 +21,7 @@ const emptyDraft = (): RegionDraft => ({ extract: '', west: '', south: '', east:
  * offered — there is no online search (see tools/build_map.py to add one).
  */
 export function RegionBlock({ project, api, draft, edit, issues, onProject, saveDraft, L }: SectionProps) {
+  const fieldId = useId();
   const [extracts, setExtracts] = useState<ExtractInfo[]>(), [catalogError, setCatalogError] = useState<string>();
   const [form, setForm] = useState<RegionDraft>(emptyDraft);
   const [preview, setPreview] = useState<RegionPreview['preview']>(), [previewError, setPreviewError] = useState<string>(), [previewing, setPreviewing] = useState(false);
@@ -54,7 +55,7 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
     if (!body) return;
     setPreviewing(true); setPreviewError(undefined); setApplyError(undefined); setAcknowledged(false);
     try { setPreview(await previewRegion(api, project.id, body)); }
-    catch (problem) { setPreview(undefined); setPreviewError(problem instanceof ApiError && problem.unavailable ? L('This server does not support region preview (dry run). Apply is still possible but shows no impact review first.', '服务器不支持区域预演（dry run）。仍可直接应用，但不会先展示影响评审。') : String(problem)); }
+    catch (problem) { setPreview(undefined); setPreviewError(problem instanceof ApiError && problem.unavailable ? L('This server does not support region preview (dry run). The region was not applied.', '服务器不支持区域预演（dry run）。区域未应用。') : String(problem)); }
     finally { setPreviewing(false); }
   };
   const doApply = async () => {
@@ -89,9 +90,10 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   const heights = compiled ? heightSummary(compiled.scene) : undefined;
   const fieldRow = (key: 'west' | 'south' | 'east' | 'north' | 'alt' | 'level', label: string, hint: string) => <label className="wb-region-field">
     <span>{label}</span>
-    <input className="wb-search" inputMode="decimal" value={form[key]} aria-invalid={!!errors[key]} placeholder={hint}
+    <input className="wb-search" inputMode="decimal" value={form[key]} aria-label={label} aria-invalid={!!errors[key]}
+      aria-describedby={errors[key] ? `${fieldId}-${key}-error` : undefined} placeholder={hint}
       onChange={event => setField(key)(event.target.value)} />
-    {errors[key] && <span className="wb-field-error" role="alert">{errors[key]}</span>}
+    {errors[key] && <span id={`${fieldId}-${key}-error`} className="wb-field-error" role="alert">{errors[key]}</span>}
   </label>;
 
   return <section className="wb-region" aria-label={L('Region', '区域')}>

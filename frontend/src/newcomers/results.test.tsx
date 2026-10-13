@@ -82,6 +82,10 @@ describe('KpiPanel', () => {
 });
 
 describe('CompareRuns', () => {
+  const recorded_ends = {
+    r1: { at_ns: '300000000000', commit_index: 2, status: 'completed' },
+    r2: { at_ns: '300000000000', commit_index: 2, status: 'completed' },
+  };
   it('fetches a real comparison from the API and highlights the best value per metric direction', async () => {
     const comparison: RunComparison = {
       runs: [
@@ -131,7 +135,12 @@ describe('CompareRuns', () => {
       knobs: [{ id: 'allocator', label: 'Task allocation algorithm', type: 'choice', default: 'nearest', pointer: '/algorithms/allocation' }],
       kpis: ['tasks_completed'],
     }];
-    const api = { compare: vi.fn().mockResolvedValue(comparison), templates: vi.fn().mockResolvedValue(catalog) } as unknown as TemplateApi;
+    const api = {
+      request: vi.fn().mockResolvedValue({ alignment: 'recorded_run_end', recorded_ends, config_diff: [
+        { path: '/algorithms/allocation', values: { r1: 'nearest', r2: 'auction' }, present: { r1: true, r2: true } },
+      ] }),
+      compare: vi.fn().mockResolvedValue(comparison), templates: vi.fn().mockResolvedValue(catalog),
+    } as unknown as TemplateApi;
     render(<CompareRuns api={api} ids={['r1', 'r2']} />);
     await screen.findByRole('heading', { name: 'Run 1 · Nearest' });
     // Knob label from the catalog replaces the machine id…
@@ -172,7 +181,10 @@ describe('CompareRuns', () => {
       difficulty: 'beginner', duration_s: 300, scenario: 'scenario.yaml', observe: [], try: [],
       knobs: [], kpis: ['tasks_completed'],
     }];
-    const api = { compare: vi.fn().mockResolvedValue(comparison), templates: vi.fn().mockResolvedValue(catalog) } as unknown as TemplateApi;
+    const api = {
+      request: vi.fn().mockResolvedValue({ alignment: 'recorded_run_end', recorded_ends, config_diff: [] }),
+      compare: vi.fn().mockResolvedValue(comparison), templates: vi.fn().mockResolvedValue(catalog),
+    } as unknown as TemplateApi;
     render(<CompareRuns api={api} ids={['r1', 'r2']} />);
     await screen.findByRole('heading', { name: 'Run 1 · A' });
     expect(screen.getAllByText('Tasks completed').length).toBe(2);

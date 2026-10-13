@@ -280,6 +280,8 @@ def main() -> None:
     asset_sub.add_parser("list")
     asset_fetch = asset_sub.add_parser("fetch")
     asset_fetch.add_argument("--url", help="Download URL (or AEROAGENTSIM_ASSET_PACK_URL)")
+    asset_fetch.add_argument("--insecure-skip-digest", action="store_true",
+                            help="Explicitly skip archive SHA-256 verification / 明确跳过归档 SHA-256 校验")
     asset_install = asset_sub.add_parser("install")
     asset_install.add_argument("source", type=Path, metavar="ZIP-OR-DIR")
     asset_remove = asset_sub.add_parser("remove")
@@ -290,13 +292,13 @@ def main() -> None:
         from aeroagentsim import assets
 
         def summary(pack: dict[str, Any]) -> dict[str, Any]:
-            return {name: pack[name] for name in ("id", "version", "title", "directory")}
+            return {name: pack[name] for name in ("id", "version", "directory", "source")} | ({"title": pack["title"]} if "title" in pack else {})
 
         try:
             if args.asset_command == "list":
                 result: Any = [summary(pack) for pack in assets.installed()]
             elif args.asset_command == "fetch":
-                result = summary(assets.fetch(args.url))
+                result = summary(assets.fetch(args.url, insecure_skip_digest=args.insecure_skip_digest))
             elif args.asset_command == "install":
                 result = summary(assets.install(args.source))
             else:

@@ -89,7 +89,15 @@ it('uses Chinese feed narratives and enum labels, with safe identity replacement
 
 it('uses additive titles and choice labels throughout a comparison without altering compared settings', async () => {
   const runs = [{id: 'r-1', title: 'Normal run', title_zh: '普通配送', template_id: 'bilingual', kpis: {tasks_completed: {value: 4, unit: 'count', label: 'Tasks completed'}}, knobs: {mode: 'normal'}, algorithms: {}}, {id: 'r-2', title: 'Rush run', title_zh: '加急配送', template_id: 'bilingual', kpis: {tasks_completed: {value: 5, unit: 'count', label: 'Tasks completed'}}, knobs: {mode: 'rush'}, algorithms: {}}];
-  const fetchMock = mockFetch({'/v1/runs/compare?ids=r-1,r-2': {runs}, '/v1/templates': [template], '/v1/algorithms': catalog});
+  const fetchMock = mockFetch({
+    '/v1/runs/compare?ids=r-1,r-2': {runs},
+    '/v1/runs/compare?ids=r-1,r-2&include_kpis=false': {
+      alignment: 'recorded_run_end',
+      recorded_ends: {'r-1': {at_ns: '120000000000', commit_index: 2, status: 'completed'}, 'r-2': {at_ns: '120000000000', commit_index: 2, status: 'completed'}},
+      config_diff: [{path: '/knobs/mode', values: {'r-1': 'normal', 'r-2': 'rush'}, present: {'r-1': true, 'r-2': true}}],
+    },
+    '/v1/templates': [template], '/v1/algorithms': catalog,
+  });
   renderLocalized(<CompareRuns api={new TemplateApi('http://api.test')} ids={['r-1', 'r-2']} />);
   expect(await screen.findByRole('heading', {name: '运行 1 · 普通配送'})).toBeInTheDocument();
   expect(screen.getByRole('heading', {name: '运行 2 · 加急配送'})).toBeInTheDocument();

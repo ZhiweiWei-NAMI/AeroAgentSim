@@ -9,10 +9,6 @@
 .newc-compare-summary { min-width: 0; }
 
 .newc-summary-table th, .newc-summary-table td { vertical-align: top; }
-.newc-summary-table td.wb-mono,
-.newc-summary-table .newc-kpi-cell { font-family: var(--csl-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-
-.newc-summary-table .newc-summary-kpi th { color: var(--csl-text); }
 .newc-summary-table caption {
   text-align: left;
   font-size: var(--csl-fs-xs);
@@ -20,21 +16,16 @@
   padding: 0 0 var(--csl-sp-1);
 }
 
-/* delta chip after the last column's KPI value */
-.newc-summary-delta {
+/* KPI change compared with the column to the left */
+.newc-kpi-delta {
   display: inline-block;
   margin-left: 6px;
   font-size: var(--csl-fs-xs);
   font-weight: 600;
   color: var(--csl-text-muted);
 }
-.newc-summary-delta.is-ok { color: var(--csl-teal-600); }
-.newc-summary-delta.is-warn { color: #a3541d; }
-
-.newc-summary-more { margin: 0; padding: 0; list-style: none; font-size: var(--csl-fs-xs); }
-.newc-summary-more li { display: flex; gap: var(--csl-sp-3); padding: 2px 0; }
-.newc-summary-more li > span:first-child { flex: 1 1 auto; min-width: 0; }
-.newc-summary-more li > span + span { font-family: var(--csl-mono); min-width: 5ch; text-align: right; }
+.newc-kpi-delta.is-ok { color: var(--csl-teal-600); }
+.newc-kpi-delta.is-warn { color: #a3541d; }
 
 /* ---- exact raw values kept out of the first screen ---- */
 

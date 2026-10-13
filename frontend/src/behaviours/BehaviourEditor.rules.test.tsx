@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { MatchEditor, TypedParameters } from './BehaviourEditor';
@@ -25,10 +26,16 @@ it('MatchEditor edits entity type, entity id and field constraints of a selector
 
 it('TypedParameters edits predicate parameters as typed fields with add/remove', () => {
   const onChange = vi.fn();
-  render(<I18nProvider><TypedParameters label="parameters" value={{ reserve_percent: 20 }} onChange={onChange} /></I18nProvider>);
+  function Parameters() {
+    const [value, setValue] = useState<unknown>({ reserve_percent: 20 });
+    return <I18nProvider><TypedParameters label="parameters" value={value} onChange={next => { onChange(next); setValue(next); }} /></I18nProvider>;
+  }
+  render(<Parameters />);
   fireEvent.change(screen.getByLabelText('parameters reserve_percent type'), { target: { value: 'string' } });
   expect(onChange).toHaveBeenLastCalledWith({ reserve_percent: '' });
   fireEvent.change(screen.getByLabelText('parameters new parameter'), { target: { value: 'horizontal_m' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add parameter' }));
   expect(onChange).toHaveBeenLastCalledWith({ reserve_percent: '', horizontal_m: 0 });
+  fireEvent.click(screen.getAllByRole('button', { name: 'Remove parameter' })[1]);
+  expect(onChange).toHaveBeenLastCalledWith({ reserve_percent: '' });
 });

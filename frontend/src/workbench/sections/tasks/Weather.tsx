@@ -49,7 +49,7 @@ export function WeatherBlock({ environmentName, environment, draft, edit, focus,
             <label>{L('End', '结束')} (s) <input aria-label={L('Gust end seconds', '阵风结束秒')} value={end} onChange={event => setEnd(event.target.value)} /></label>
             <label>{L('Speed', '风速')} (m/s) <input aria-label={L('Gust speed m/s', '阵风速度 m/s')} value={speed} onChange={event => setSpeed(event.target.value)} /></label>
             <label>{L('Direction', '方向')} (°) <input aria-label={L('Gust direction degrees', '阵风方向度')} value={direction} onChange={event => setDirection(event.target.value)} /></label>
-            <button className="wb-btn small" onClick={() => addButton(entity)}>Add gust</button>
+            <button className="wb-btn small" onClick={() => addButton(entity)}>{L('Add gust', '添加阵风')}</button>
             {Number(end) <= Number(start) && <p role="alert" className="hint" style={{ color: 'var(--wb-bad)' }}>{L('End must be after start.', '结束必须晚于开始。')}</p>}
           </div>
           <datalist id="weather-vehicles">{vehicles.map(id => <option key={id} value={id} />)}</datalist>

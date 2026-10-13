@@ -2,6 +2,9 @@
 // stay stable; additive catalog fields supply authored Chinese descriptions.
 export default {
   'Installed': '已安装',
+  'list': '列表',
+  'object': '对象',
+  'null': '空值',
 
   'Draft changed while saving. Save the latest edits before continuing.': '保存期间草稿又有修改，请先保存最新内容再继续。',
 

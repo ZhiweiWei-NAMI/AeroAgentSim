@@ -44,12 +44,21 @@ it('explains rather than deleting locally when the server lacks removal', async 
 });
 
 it('removes atomically on confirmation', async () => {
+  const updated = { id: 'w', revision: 4, scenario: { entities: [] } };
   const request = vi.fn()
     .mockResolvedValueOnce({ dependencies: [{ path: '/bindings/exact/0', kind: 'binding', detail: 'position' }] })
-    .mockResolvedValueOnce({ id: 'w', revision: 3, scenario: { entities: [] } });
-  const { onProject } = setup(request);
+    .mockResolvedValueOnce(updated);
+  const { api, onProject } = setup(request);
+  api.save.mockResolvedValueOnce({ id: 'w', revision: 2, scenario: { entities: [{ id: 'uav-1', type: 'oo:UAV', facts: {} }] } })
+    .mockResolvedValueOnce({ id: 'w', revision: 3, scenario: { entities: [{ id: 'uav-1', type: 'oo:UAV', facts: {} }] } });
   fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Confirm removal' }));
-  await waitFor(() => expect(onProject).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(onProject).toHaveBeenLastCalledWith(updated));
+  expect(api.save).toHaveBeenCalledTimes(2);
+  expect(request.mock.calls).toEqual([
+    ['/v1/studio/workspaces/w/remove', { id: 'uav-1', revision: 2, dry_run: true }],
+    ['/v1/studio/workspaces/w/remove', { id: 'uav-1', revision: 3 }],
+  ]);
+  expect(api.save.mock.invocationCallOrder[1]).toBeLessThan(request.mock.invocationCallOrder[1]);
   expect(screen.getByText(/Removed uav-1/)).toBeTruthy();
 });

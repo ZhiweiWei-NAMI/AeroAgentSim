@@ -5,10 +5,13 @@ import { OrderStreams } from './OrderStreams';
 import { CooperationEditor } from './Cooperation';
 import { WeatherBlock } from './Weather';
 
-beforeEach(() => window.localStorage.setItem('aeroagentsim.locale', 'en-US'));
 const L = (en: string, _zh: string) => en;
 const edit = vi.fn();
 const replaceDraft = vi.fn();
+beforeEach(() => {
+  window.localStorage.setItem('aeroagentsim.locale', 'en-US');
+  edit.mockClear(); replaceDraft.mockClear();
+});
 const draft = {
   run: { until_ns: 360_000_000_000 },
   entities: [
@@ -55,16 +58,22 @@ it('cooperation adds with the compiler skeleton and removes cleanly', () => {
 
 it('weather lists gusts with units and adds a gust into the environment profile', () => {
   const environment = { config: { profiles: { weather: { 'lowalt.wind': { mode: 'constant', value: [2, 0, 0] } } } } };
-  render(<I18nProvider><WeatherBlock environmentName="weather" environment={environment} draft={draft} edit={edit} L={L} /></I18nProvider>);
-  expect(screen.getByText('2 m/s')).toBeTruthy();
+  const { rerender } = render(<I18nProvider><WeatherBlock environmentName="weather" environment={environment} draft={draft} edit={edit} L={L} /></I18nProvider>);
+  expect(screen.getByLabelText('Background speed (m/s)')).toHaveValue('2');
   fireEvent.change(screen.getByLabelText('Gust start seconds'), { target: { value: '170' } });
   fireEvent.change(screen.getByLabelText('Gust end seconds'), { target: { value: '200' } });
   fireEvent.change(screen.getByLabelText('Gust speed m/s'), { target: { value: '14' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add gust' }));
   expect(edit).toHaveBeenCalledWith('/engines/weather/config/profiles/weather/lowalt.wind', expect.objectContaining({
     mode: 'gust',
+    value: [2, 0, 0],
     gusts: [expect.objectContaining({ start_ns: 170_000_000_000, end_ns: 200_000_000_000, value: [0, 14, 0] })],
   }));
+  const updated = { config: { profiles: { weather: { 'lowalt.wind': edit.mock.calls[0][1] } } } };
+  rerender(<I18nProvider><WeatherBlock environmentName="weather" environment={updated} draft={draft} edit={edit} L={L} /></I18nProvider>);
+  expect(screen.getByText('170–200 s')).toBeTruthy();
+  expect(screen.getByText('14 m/s')).toBeTruthy();
+  expect(screen.getByText('90°')).toBeTruthy();
 });
 
 it('refuses an inverted gust window instead of writing it', () => {

@@ -22,14 +22,14 @@ export async function fetchExtracts(api: WorkbenchApi, signal?: AbortSignal): Pr
 export function regionEndpoint(id: string) { return `/v1/studio/workspaces/${encodeURIComponent(id)}/region`; }
 export function networkEndpoint(id: string) { return `/v1/studio/workspaces/${encodeURIComponent(id)}/network`; }
 
-/** Server answer for C1 with dry_run=true. `null` when the endpoint is absent. */
+/** Server answer for C1 with dry_run=true; unavailable endpoints reject. */
 export async function previewRegion(api: WorkbenchApi, id: string, body: { extract: string; bounds: number[]; alt: number; level_height_m: number }): Promise<RegionPreview['preview']> {
   const answer = await api.request<RegionPreview | Workspace>(regionEndpoint(id), { body: { ...body, dry_run: true } });
   if (answer && typeof answer === 'object' && 'preview' in answer && answer.preview) return (answer as RegionPreview).preview;
   throw new TypeError('preview: server returned no preview object');
 }
 
-export function applyRegion(api: WorkbenchApi, id: string, body: { extract: string; bounds: number[]; alt: number; level_height_m: number; revision?: number }) {
+export function applyRegion(api: WorkbenchApi, id: string, body: { extract: string; bounds: number[]; alt: number; level_height_m: number }) {
   return api.request<Workspace>(regionEndpoint(id), { body });
 }
 export function generateNetwork(api: WorkbenchApi, id: string) {

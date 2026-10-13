@@ -143,15 +143,21 @@ describe('decorateBuildings display attributes', () => {
     const wall = geometry.getAttribute('displayWallColor') as T.BufferAttribute;
     const roof = geometry.getAttribute('displayRoofColor') as T.BufferAttribute;
     const style = geometry.getAttribute('displayFacadeStyle') as T.BufferAttribute;
+    const dayWall = geometry.getAttribute('displayDayWall') as T.BufferAttribute;
+    const dayRoof = geometry.getAttribute('displayDayRoof') as T.BufferAttribute;
 
     for (let vertex = 0; vertex < 3; vertex++) {
       expectSameColor(colorAt(wall, vertex), tinted('#2f6f4f', style.getZ(vertex)));
       // Roof finish keeps the tagged colour verbatim (no per-building tint multiplier).
       expectSameColor(colorAt(roof, vertex), new T.Color('#7a3b2e'));
+      expectSameColor(colorAt(dayWall, vertex), new T.Color('#2f6f4f'));
+      expectSameColor(colorAt(dayRoof, vertex), new T.Color('#7a3b2e'));
     }
     for (let vertex = 3; vertex < 6; vertex++) {
       expectSameColor(colorAt(wall, vertex), tinted('#123456', style.getZ(vertex)));
-      expectSameColor(colorAt(roof, vertex), new T.Color('#777f83').multiplyScalar(0.97)); // no roof:colour tag -> slightly contrast-darkened fallback
+      expectSameColor(colorAt(roof, vertex), new T.Color('#777f83')); // original dusk fallback
+      expectSameColor(colorAt(dayWall, vertex), new T.Color('#123456'));
+      expectSameColor(colorAt(dayRoof, vertex), new T.Color('#e8e1d3').multiplyScalar(0.97));
     }
   });
 
@@ -215,6 +221,8 @@ describe('decorateBuildings display attributes', () => {
     const wall = geometry.getAttribute('displayWallColor') as T.BufferAttribute;
     const roof = geometry.getAttribute('displayRoofColor') as T.BufferAttribute;
     const style = geometry.getAttribute('displayFacadeStyle') as T.BufferAttribute;
+    const dayWall = geometry.getAttribute('displayDayWall') as T.BufferAttribute;
+    const dayRoof = geometry.getAttribute('displayDayRoof') as T.BufferAttribute;
     for (let vertex = 0; vertex < 6; vertex++) {
       const variation = style.getZ(vertex);
       expect(variation).toBeGreaterThanOrEqual(0);
@@ -224,8 +232,11 @@ describe('decorateBuildings display attributes', () => {
       const glass = style.getX(vertex) === 1;
       const fallback = glass ? '#788a96' : variation > 0.5 ? '#c0bdb5' : '#b3b6b4';
       expectSameColor(colorAt(wall, vertex), tinted(fallback, variation));
-      // ...and roofs to the contrast-darkened fallback, exactly.
-      expectSameColor(colorAt(roof, vertex), new T.Color('#e8e1d3').multiplyScalar(0.94 * 0.97));
+      // Dusk retains the original fallback; only the daytime palette gains contrast.
+      expectSameColor(colorAt(roof, vertex), new T.Color('#777f83'));
+      const stones = ['#e8e4d9', '#d5c8b4', '#f1eee5', '#cbd8d8', '#ddcfbc'];
+      expectSameColor(colorAt(dayWall, vertex), new T.Color(stones[Math.floor(variation * 5)]).multiplyScalar(0.96 * (0.94 + variation * 0.12)));
+      expectSameColor(colorAt(dayRoof, vertex), new T.Color('#e8e1d3').multiplyScalar(0.97));
       expect(style.getY(vertex)).toBeGreaterThanOrEqual(1.8);
       expect(style.getW(vertex)).toBe(0);
       // Procedural estimate still fires: the tall block gets glazing, the low one not.

@@ -27,6 +27,7 @@ from .subjects import SubjectProjection
 
 FORMAT = "aeroagentsim.viewer-index/v1"
 FILENAME = "viewer-index.sqlite3"
+TERMINAL = {"completed", "stopped", "faulted", "interrupted", "input_timeout"}
 _LOCK = threading.RLock()
 _PATH_LOCKS: dict[Path, threading.RLock] = {}
 
@@ -95,6 +96,10 @@ def _connect(path: Path) -> sqlite3.Connection:
         "CREATE TABLE IF NOT EXISTS checkpoint "
         "(id INTEGER PRIMARY KEY CHECK(id=1), data BLOB NOT NULL)"
     )
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS projection_progress "
+        "(id INTEGER PRIMARY KEY CHECK(id=1), next INTEGER NOT NULL, signature TEXT NOT NULL)"
+    )
     return connection
 
 
@@ -106,6 +111,42 @@ def _encode(value: Any) -> bytes:
 
 def _decode(value: bytes) -> Any:
     return json.loads(zlib.decompress(value))
+
+
+def _results_state(path: Path, metadata: dict[str, Any], checkpoint: dict[str, Any] | None) -> dict[str, Any]:
+    final_cursor = metadata.get("final_cursor")
+    cursor = checkpoint["next"] if checkpoint is not None else None
+    prefix = committed_prefix(path)
+    final = (
+        metadata["status"] in TERMINAL
+        and type(final_cursor) is int and final_cursor >= 1
+        and cursor == final_cursor
+        and (prefix is None or prefix["index"] + 1 == final_cursor)
+    )
+    return {"results_final": final, "results_cursor": cursor,
+            "final_commit_index": final_cursor - 1 if type(final_cursor) is int else None}
+
+
+def results_state(path: Path, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Read the committed KPI/Story checkpoint without starting aggregation.
+
+    Both projectors and cuts are published in the same SQLite transaction.
+    A missing or obsolete cache is unfinished, never evidence of final results.
+    """
+    path = path.resolve()
+    metadata = RunStorage(path).metadata() if metadata is None else metadata
+    checkpoint = None
+    database_path = path / FILENAME
+    if database_path.exists():
+        with closing(sqlite3.connect(database_path.as_uri() + "?mode=ro", uri=True)) as database:
+            exists = database.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='projection_progress'"
+            ).fetchone()
+            row = database.execute("SELECT next, signature FROM projection_progress WHERE id=1").fetchone() if exists else None
+            if row is not None:
+                if json.loads(row[1]) == _signature(path):
+                    checkpoint = {"next": row[0]}
+    return _results_state(path, metadata, checkpoint)
 
 
 def update(
@@ -174,6 +215,9 @@ def _update_batch(path: Path, requested_target: int) -> bool:
             bool(state) and state["signature"] == signature and state["next"] <= target
         )
         if valid and state["next"] >= min(target, requested_target):
+            progress = (state["next"], json.dumps(signature, separators=(",", ":")))
+            if database.execute("SELECT next, signature FROM projection_progress WHERE id=1").fetchone() != progress:
+                database.execute("INSERT OR REPLACE INTO projection_progress VALUES (1, ?, ?)", progress)
             if cached is not None:
                 _retain(path, cached)
             return True
@@ -238,6 +282,10 @@ def _update_batch(path: Path, requested_target: int) -> bool:
         database.execute(
             "INSERT OR REPLACE INTO checkpoint VALUES (1, ?)", (checkpoint,)
         )
+        # Status polls read this small coordinate instead of inflating the full
+        # subject/KPI/narrative checkpoint. Publish it in the same transaction.
+        database.execute("INSERT OR REPLACE INTO projection_progress VALUES (1, ?, ?)",
+                         (cursor, json.dumps(signature, separators=(",", ":"))))
         database.commit()
         _retain(
             path, _Projection(checkpoint, signature, cursor, subjects, kpis, narratives, storage)
@@ -296,10 +344,12 @@ def page(path: Path, start: int = 1, limit: int = 256) -> list[dict[str, Any]]:
 def kpi_result(path: Path, *, include_series: bool = True) -> dict[str, Any]:
     update(path)
     with closing(_connect(path)) as database, database:
+        database.execute("BEGIN")
         row = database.execute("SELECT data FROM checkpoint WHERE id=1").fetchone()
         if row is None:
             raise ValueError("Viewer index: checkpoint missing after update")
-        final = _decode(row[0])["final"]
+        checkpoint = _decode(row[0])
+        final = checkpoint["final"]
         series = (
             [
                 {"commitIndex": idx, "at_ns": at_ns, "kpis": json.loads(kpis)}
@@ -310,4 +360,5 @@ def kpi_result(path: Path, *, include_series: bool = True) -> dict[str, Any]:
             if include_series
             else []
         )
-        return {"contract": "aeroagentsim.kpi/v1", "final": final, "series": series}
+        return {"contract": "aeroagentsim.kpi/v1", "final": final, "series": series,
+                **_results_state(path, RunStorage(path).metadata(), checkpoint)}

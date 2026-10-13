@@ -370,10 +370,15 @@ def execute(
         if session is not None:
             try:
                 session.close()
-                publish_committed(force=True)
             except Exception as exc:  # noqa: BLE001 - retain actual cleanup failure
                 outcome = "faulted"
                 error = f"{error + '; ' if error else ''}cleanup: {type(exc).__name__}: {exc}"
+            try:
+                # Cleanup can fail after committing a real fault/terminal tail.
+                publish_committed(force=True)
+            except Exception as exc:  # noqa: BLE001 - retain publication failure
+                outcome = "faulted"
+                error = f"{error + '; ' if error else ''}publication / 发布: {type(exc).__name__}: {exc}"
             # Publish the closed kernel's real source frontier before its
             # terminal status. Keep progress RPC alive throughout cleanup.
             storage._atomic("input-progress.json", {

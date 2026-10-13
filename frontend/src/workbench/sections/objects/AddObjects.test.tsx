@@ -36,54 +36,75 @@ function setup(apiOverrides: Record<string, unknown> = {}, entities: Array<Recor
   return { api, onProject, studioApi };
 }
 
+async function chooseUav() {
+  fireEvent.click(await screen.findByRole('option', { name: /^oo:UAV(?:\s|$)/ }));
+  await screen.findByText('aas.studio.velocity_enu_m_s');
+}
+
 it('shows abstract types as disabled with a reason and cannot create them', async () => {
-  setup();
-  expect(await screen.findByRole('option', { name: /oo:Aircraft/ })).toBeDisabled();
+  const { api } = setup();
+  const option = await screen.findByRole('option', { name: /^oo:Aircraft(?:\s|$)/ });
+  expect(option).toBeDisabled();
   expect(screen.getByText(/abstract — cannot be instantiated/)).toBeTruthy();
+  fireEvent.click(option);
+  expect(screen.queryByLabelText('id (or id prefix)')).toBeNull();
+  expect(api.request).not.toHaveBeenCalled();
 });
 
 it('rejects ids outside the authoring identifier pattern', async () => {
-  setup();
-  await screen.findByRole('option', { name: /^oo:UAV/ });
-  fireEvent.click(screen.getByRole('option', { name: /^oo:UAV/ }));
+  const { api } = setup();
+  await chooseUav();
   fireEvent.change(screen.getByLabelText('id (or id prefix)'), { target: { value: 'bad id' } });
-  expect(screen.getByRole('button', { name: /Create 1 objects/ })).toBeDisabled();
+  const create = screen.getByRole('button', { name: 'Create 0 objects' });
+  expect(create).toBeDisabled();
+  fireEvent.click(create);
+  expect(api.save).not.toHaveBeenCalled();
+  expect(api.request).not.toHaveBeenCalled();
 });
 
 it('flags a duplicate id instead of silently sending a second placement', async () => {
-  setup({}, [{ id: 'uav-1', type: 'oo:UAV', facts: {} }]);
-  await screen.findByRole('option', { name: /^oo:UAV/ });
-  fireEvent.click(screen.getByRole('option', { name: /^oo:UAV/ }));
+  const { api } = setup({}, [{ id: 'uav-1', type: 'oo:UAV', facts: {} }]);
+  await chooseUav();
   fireEvent.change(screen.getByLabelText('id (or id prefix)'), { target: { value: 'uav-1' } });
   expect(screen.getByText(/an instance already uses uav-1/)).toBeTruthy();
-  expect(screen.getByRole('button', { name: /Create 1 objects/ })).toBeDisabled();
+  const create = screen.getByRole('button', { name: 'Create 0 objects' });
+  expect(create).toBeDisabled();
+  fireEvent.click(create);
+  expect(api.save).not.toHaveBeenCalled();
+  expect(api.request).not.toHaveBeenCalled();
 });
 
 it('places each reviewed instance and adopts the updated workspace', async () => {
-  const { api, onProject } = setup();
-  await screen.findByRole('option', { name: /^oo:UAV/ });
-  fireEvent.click(screen.getByRole('option', { name: /^oo:UAV/ }));
+  const firstPlaced = { id: 'w', revision: 3, scenario: { entities: [{ id: 'uav-1' }] } };
+  const allPlaced = { id: 'w', revision: 4, scenario: { entities: [{ id: 'uav-1' }, { id: 'uav-2' }] } };
+  const request = vi.fn().mockResolvedValueOnce(firstPlaced).mockResolvedValueOnce(allPlaced);
+  const { api, onProject } = setup({ request });
+  await chooseUav();
   fireEvent.change(screen.getByLabelText('id (or id prefix)'), { target: { value: 'uav' } });
   fireEvent.change(screen.getByLabelText('count'), { target: { value: '2' } });
   fireEvent.change(screen.getByLabelText('east (m)'), { target: { value: '10' } });
   fireEvent.change(screen.getByLabelText('spacing along east (m)'), { target: { value: '5' } });
   await waitFor(() => expect(screen.getByText('uav-2')).toBeTruthy());
   fireEvent.click(screen.getByRole('button', { name: /Create 2 objects/ }));
-  await waitFor(() => expect(api.request).toHaveBeenCalledTimes(2));
-  const first = JSON.stringify((api.request as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
-  expect(first).toContain('"id":"uav-1"');
-  expect(JSON.stringify((api.request as ReturnType<typeof vi.fn>).mock.calls[1][1].body)).toContain('[10,0,0]');
-  expect(onProject).toHaveBeenCalled();
+  expect(await screen.findByText('Created: uav-1, uav-2')).toBeTruthy();
+  expect(api.save).toHaveBeenCalledWith('w', { entities: [] }, 1);
+  expect(api.save.mock.invocationCallOrder[0]).toBeLessThan(request.mock.invocationCallOrder[0]);
+  expect(request.mock.calls).toEqual([
+    ['/v1/studio/workspaces/w/place', { body: { id: 'uav-1', type: 'oo:UAV', kind: 'entity', engine: 'kinematic', position: [10, 0, 0] } }],
+    ['/v1/studio/workspaces/w/place', { body: { id: 'uav-2', type: 'oo:UAV', kind: 'entity', engine: 'kinematic', position: [15, 0, 0] } }],
+  ]);
+  expect(onProject).toHaveBeenCalledWith(firstPlaced);
+  expect(onProject).toHaveBeenLastCalledWith(allPlaced);
 });
 
 it('reports which instances failed and still lists the created ones', async () => {
   const { api } = setup({ request: vi.fn().mockRejectedValueOnce(Object.assign(Error('HTTP 422: bad'), { status: 422 })).mockResolvedValue({ id: 'w', revision: 3, scenario: {} }) });
-  await screen.findByRole('option', { name: /^oo:UAV/ });
-  fireEvent.click(screen.getByRole('option', { name: /^oo:UAV/ }));
+  await chooseUav();
   fireEvent.change(screen.getByLabelText('id (or id prefix)'), { target: { value: 'uav' } });
   fireEvent.change(screen.getByLabelText('count'), { target: { value: '2' } });
   await waitFor(() => expect(screen.getByText('uav-2')).toBeTruthy());
   fireEvent.click(screen.getByRole('button', { name: /Create 2 objects/ }));
   expect(await screen.findByText(/Created: uav-2/)).toBeTruthy();
   expect(screen.getByText(/Failed on uav-1/)).toBeTruthy();
+  expect(api.request).toHaveBeenCalledTimes(2);
 });

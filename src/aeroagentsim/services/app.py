@@ -94,6 +94,15 @@ def create_app(
     from .algorithm_catalog import mount_algorithm_catalog
 
     mount_algorithm_catalog(app)
+
+    @app.get("/v1/assets/packs")
+    def asset_packs() -> list[dict[str, Any]]:
+        from aeroagentsim.assets import installed
+
+        try:
+            return installed()
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            raise HTTPException(503, str(error)) from error
     console_origin = os.environ.get("AEROAGENTSIM_CONSOLE_URL")
     app.add_middleware(RequestBoundary, console_origin=console_origin)
     app.add_middleware(
@@ -341,13 +350,16 @@ def create_app(
 
     def run_summary(path: Path, *, include_kpis: bool = True) -> dict[str, Any]:
         from .feed_index import kpi_result as project_run
+        from .feed_index import results_state
         from .storage import summary_configuration
 
         metadata = json.loads((path / "manifest.json").read_text())
         document = summary_configuration(path)
         template = metadata.get("template")
+        kpis = project_run(path, include_series=False) if include_kpis else None
         return {
             **metadata,
+            **results_state(path, metadata),
             "title": template["title"] if template else document["id"],
             **(
                 {
@@ -360,8 +372,8 @@ def create_app(
             "knobs": template["knobs"] if template else {},
             "algorithms": document.get("algorithms", {}),
             **(
-                {"kpis": project_run(path, include_series=False)["final"]}
-                if include_kpis
+                {"kpis": kpis["final"]}
+                if kpis is not None
                 else {}
             ),
             **(
@@ -400,6 +412,7 @@ def create_app(
         recorded_ends = {}
         for run_id, path in paths.items():
             storage = RunStorage(path)
+            storage.refresh_committed()
             if not storage.entries or storage.entries[-1]["index"] == 0:
                 raise HTTPException(409, f"Run {run_id} has not committed a world state yet")
             record = storage.records(storage.entries[-1]["index"], 1)[0]
@@ -422,6 +435,16 @@ def create_app(
             return {**compare_runs(rows), **configuration}
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
+
+    @app.get("/v1/runs/{run_id}")
+    def run_record(run_id: str, include_kpis: bool = False) -> dict[str, Any]:
+        return run_summary(directory(run_id), include_kpis=include_kpis)
+
+    @app.get("/v1/runs/{run_id}/admissions")
+    def run_admissions(run_id: str) -> list[dict[str, Any]]:
+        from .admissions import admissions
+
+        return admissions(directory(run_id))
 
     @app.post("/v1/runs/{run_id}/derive-workspace", status_code=201)
     async def derive_workspace(run_id: str, request: Request) -> dict[str, Any]:
@@ -655,11 +678,12 @@ def create_app(
     ) -> dict[str, Any]:
         path = directory(run_id)
         metadata = json.loads((path / "manifest.json").read_text())
-        from .feed_index import page
+        from .feed_index import page, results_state
 
         result = page(path, max(1, from_index), limit)
         return {
             "commits": result,
+            **results_state(path, metadata),
             "next": result[-1]["commitIndex"] + 1 if result else max(1, from_index),
             "status": metadata["status"],
             **({"waiting": metadata["waiting"]} if "waiting" in metadata else {}),
@@ -683,7 +707,7 @@ def create_app(
 
         async def tail() -> AsyncIterator[str]:
             nonlocal cursor
-            from .feed_index import stream_page
+            from .feed_index import results_state, stream_page
 
             last_status: tuple[str, str] | None = None
             def projected_frames(start: int) -> list[tuple[int, str]]:
@@ -712,6 +736,7 @@ def create_app(
                         status = metadata["status"]
                         state = {
                             "status": status,
+                            **await asyncio.to_thread(results_state, path, metadata),
                             **({"waiting": metadata["waiting"]} if "waiting" in metadata else {}),
                         }
                         state_key = (status, json.dumps(state, sort_keys=True))
@@ -731,6 +756,7 @@ def create_app(
                     if not records and status in TERMINAL:
                         final_cursor = metadata["final_cursor"]
                         if cursor >= final_cursor:
+                            state.update(await asyncio.to_thread(results_state, path, metadata))
                             yield f"event: end\ndata: {json.dumps({**state, 'finalCursor': final_cursor})}\n\n"
                             return
                     if not records:

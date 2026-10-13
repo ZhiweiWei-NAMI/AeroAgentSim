@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 
 from aeroagentsim.algorithms import BUILTINS, METHODS
+from aeroagentsim.algorithms.consumers import slot_consumers
 from aeroagentsim.algorithms.metadata import BUILTIN_COPY_ZH
 
 ENTRY_POINT_GROUP = "aeroagentsim.algorithms"
@@ -65,7 +66,7 @@ def _plugin_entry(name: str, factory: Any) -> dict[str, str]:
     return row
 
 
-def discover_algorithm_catalog() -> dict[str, list[dict[str, str]]]:
+def discover_algorithm_catalog() -> dict[str, list[dict[str, Any]]]:
     """Mirror qualified-entry → unqualified-entry → builtin lookup precedence.
 
     A slot-qualified factory can advertise its slot without construction.
@@ -104,7 +105,8 @@ def discover_algorithm_catalog() -> dict[str, list[dict[str, str]]]:
             previous = classified[slot].get(identity)
             if previous is None or entry.name == f"{slot}.{identity}":
                 classified[slot][identity] = (entry.name, factory)
-    catalog: dict[str, list[dict[str, str]]] = {}
+    consumers = slot_consumers()
+    catalog: dict[str, list[dict[str, Any]]] = {}
     for slot, builtins in BUILTINS.items():
         rows = []
         for identity in sorted(set(builtins) | classified[slot].keys()):
@@ -123,13 +125,13 @@ def discover_algorithm_catalog() -> dict[str, list[dict[str, str]]]:
                         "description_zh": description_zh,
                     }
                 )
-        catalog[slot] = rows
+        catalog[slot] = [{**row, "consumers": [dict(reader) for reader in consumers.get(slot, [])]} for row in rows]
     return catalog
 
 
 def mount_algorithm_catalog(app: FastAPI) -> None:
     @app.get("/v1/algorithms")
-    async def algorithm_catalog() -> dict[str, list[dict[str, str]]]:
+    async def algorithm_catalog() -> dict[str, list[dict[str, Any]]]:
         try:
             return await asyncio.to_thread(discover_algorithm_catalog)
         except ValueError as error:
