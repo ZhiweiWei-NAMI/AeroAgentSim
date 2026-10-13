@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import type { EntityKey } from '../contracts/viewer-feed';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
-import { awaitRunConfiguration, RunsApi, isTerminalStatus } from '../feeds/http';
+import { awaitRunConfiguration, RunsApi, isTerminalStatus, type AdmissionReceipt } from '../feeds/http';
 import { stringifyLossless } from '../feeds/lossless-json';
 import { Details } from '../console/Details';
 import { useConsoleNotice } from '../console/Notifications';
@@ -63,7 +63,7 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
   const copy=(en:string,zh:string)=>locale==='zh-CN'?zh:en;
   const notify=useConsoleNotice();
   const pointInitialized=useRef(false);
-  const [fields,setFields]=useState(emptyTransport()),[payload,setPayload]=useState<unknown>({}),[point,setPoint]=useState(''),[points,setPoints]=useState<Draft[]>([]),[error,setError]=useState(''),[admissions,setAdmissions]=useState<unknown[]>([]),[busy,setBusy]=useState(false),[effective,setEffective]=useState<string>();
+  const [fields,setFields]=useState(emptyTransport()),[payload,setPayload]=useState<unknown>({}),[point,setPoint]=useState(''),[points,setPoints]=useState<Draft[]>([]),[error,setError]=useState(''),[admissions,setAdmissions]=useState<any[]>([]),[busy,setBusy]=useState(false),[effective,setEffective]=useState<string>();
   const [operator,setOperator]=useState(false),[horizon,setHorizon]=useState<string>(),[scheduledOnly,setScheduledOnly]=useState(false);
   const [progressError,setProgressError]=useState('');
   const [authoredMessages,setAuthoredMessages]=useState<Draft[]>([]);
@@ -154,6 +154,29 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
     const recorded=recordedAccidentPayload(store);if(recorded)setPayload((previous:unknown)=>({...(mapping(previous)?previous:{}),...recorded}));
   },[point,payload,store,store.viewCursor?.knownAt]);
   useEffect(()=>{setEffective(undefined);setProgressError('');},[api,runId,store,mode]);
+  // RUN-008: admissions are journaled server-side, so reload them on mount and
+  // refresh, then merge live receipts by id — a refresh must not lose or
+  // duplicate an admitted operation, and a journaled outcome updates the same row.
+  useEffect(()=>{
+    const abort=new AbortController();
+    const load=()=>{void api.admissions(runId,abort.signal).then(rows=>{
+      if(abort.signal.aborted)return;
+      setAdmissions(previous=>{
+        // Live POST receipts carry no id; journaled rows win by id, live rows stay.
+        const live=previous.filter(row=>!mapping(row)||typeof row.id!=='string');
+        const merged=[...rows.map(stored=>({id:stored.id,status:stored.status,disposition:stored.status,submitted_at:stored.submitted_at,target_cut:stored.target_cut,kind:stored.kind,detail:stored.detail,stored:true})),...live];
+        const seen=new Set<string>(),unique=merged.filter(row=>{
+          const key=typeof row.id==='string'?row.id:`live-${seen.size}`;
+          if(typeof row.id==='string'&&seen.has(key))return false;
+          seen.add(key);return true;
+        });
+        return unique;
+      });
+    }).catch(() => { /* An unavailable admission query degrades to live receipts only; operations are unaffected. */ });};
+    load();
+    const timer=setInterval(load,5000);
+    return()=>{abort.abort();clearInterval(timer);};
+  },[api,runId]);
   useEffect(()=>{
     const abort=new AbortController();let timer:ReturnType<typeof setTimeout>;
     const poll=async()=>{
@@ -205,6 +228,9 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
       case 'accepted':return t('accepted');
       case 'delayed':return t('delayed');
       case 'rejected':return t('rejected');
+      case 'applied':return t('applied');
+      case 'failed':return t('failed');
+      case 'admitted':return t('admitted');
       default:return status;
     }
   };
@@ -241,12 +267,21 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
   const eventTarget=injection?targetSummary(injection):undefined;
   const admissionSummary=(receipt:unknown)=>{
     if(!mapping(receipt))return t('Receipt could not be interpreted; read the raw record below.');
+    // A journaled admission without a terminal disposition is "awaiting execution",
+    // never success and never failure.
+    if(receipt.stored===true&&!['succeeded','rejected','failed'].includes(String(receipt.status)))return t('Admitted and awaiting execution. The execution receipts show what happened next.');
     switch(receipt.disposition){
       case 'accepted':return t('Event accepted for processing. The execution receipts show what happened next.');
       case 'delayed':return t('Event scheduled for later. Check its execution receipt after it runs.');
       case 'rejected':return t('Event rejected ({code}): it was not executed.',{code:String(receipt.code??t('no code'))});
       default:return t('Receipt without an admission disposition; read the raw record below.');
     }
+  };
+  const admissionTitle=(receipt:unknown)=>{
+    const parts=[mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):''];
+    if(mapping(receipt)&&typeof receipt.submitted_at==='string')parts.push(String(receipt.submitted_at));
+    if(mapping(receipt)&&typeof receipt.target_cut==='number')parts.push(t('target cut {cut}',{cut:receipt.target_cut}));
+    return parts.filter(Boolean).join(' · ');
   };
   return <section className="run-operations" aria-label={t('Run operations')} aria-busy={busy}>
     {operationHint&&<p>{operationHint}</p>}
@@ -271,7 +306,7 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
     {error&&<p role="alert">{error}</p>}
     {progressError&&<p role="alert">{progressError}</p>}
     <h3>{copy('Recorded input and execution','已记录的输入与执行')}</h3>
-    <details open={admissions.length>0}><summary>{t('Admission receipts · {count}',{count:admissions.length})}</summary>{!admissions.length&&<p>{t('No admission receipts yet.')}</p>}{admissions.map((receipt,index)=><article key={index}>{t('Admission #{number}',{number:index+1})}{mapping(receipt)&&typeof receipt.status==='string'&&` · ${statusLabel(receipt.status)}`}<p className="receipt-help">{admissionSummary(receipt)}</p><Details title={t('Admission receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
+    <details open={admissions.length>0}><summary>{t('Admission receipts · {count}',{count:admissions.length})}</summary>{!admissions.length&&<p>{t('No admission receipts yet.')}</p>}{admissions.map((receipt,index)=><article key={mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):index} data-admission-id={mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):undefined}>{t('Admission #{number}',{number:index+1})}{mapping(receipt)&&typeof receipt.status==='string'&&` · ${statusLabel(receipt.status)}`}{admissionTitle(receipt)&&<small style={{display:'block'}}>{admissionTitle(receipt)}</small>}<p className="receipt-help">{admissionSummary(receipt)}</p><Details title={t('Admission receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
     <details><summary>{t('Execution receipts at this cut · {count}',{count:store.receipts.length})}</summary>{!store.receipts.length&&<p>{t('No execution receipts at this cut.')}</p>}{store.receipts.length>100&&<p>{t('Latest 100 of {count} execution receipts. All records are retained in the journal.',{count:store.receipts.length})}</p>}{store.receipts.slice(-100).map((receipt,index)=><article key={index}>{t('Execution #{number}',{number:Math.max(0,store.receipts.length-100)+index+1})} <Details title={t('Execution receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
     <details><summary>{t('Decision / LangGraph and typed event records at this cut')}</summary>
       <label><input type="checkbox" checked={showInternal} onChange={event=>{setShowInternal(event.target.checked);setRecordPage(0);}}/>{t('Include internal runtime records')}</label>

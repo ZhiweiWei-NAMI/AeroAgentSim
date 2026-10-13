@@ -12,6 +12,8 @@ export type Json = null | boolean | number | string | Json[] | { [key: string]: 
 const escape = (part: string) => part.replace(/~/g, '~0').replace(/\//g, '~1');
 const unescape = (part: string) => part.replace(/~1/g, '/').replace(/~0/g, '~');
 export const pointer = (...parts: Array<string | number>) => parts.map(part => '/' + escape(String(part))).join('');
+/** Extend an existing JSON pointer with unescaped parts. */
+export const under = (base: string, ...parts: Array<string | number>) => base + pointer(...parts);
 export function getAt(root: unknown, path: string): unknown {
   if (!path) return root;
   return path.split('/').slice(1).map(unescape).reduce<unknown>((node, key) => node == null ? undefined : (node as Record<string, unknown>)[key], root);

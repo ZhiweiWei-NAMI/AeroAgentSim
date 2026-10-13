@@ -39,6 +39,7 @@ import '../assistant/assistant.css';
 import '../viewport/viewer.css';
 import '../pages/inspect.css';
 import './workbench.css';
+import './run-status.css';
 
 const ViewportView = lazy(() => import('../viewport/ViewportView').then(module => ({ default: module.ViewportView })));
 const ScenePreview = lazy(() => import('../studio/ScenePreview').then(module => ({ default: module.ScenePreview })));
@@ -61,6 +62,11 @@ export function runStatus(recorded?: string, streamed?: string): string | undefi
   const stage = (value?: string) => value === undefined || value === 'loading' ? -1 : value === 'initialized' ? 0 : TERMINAL.has(value) ? 2 : 1;
   if (recorded === undefined) return streamed;
   return stage(streamed) > stage(recorded) ? streamed : recorded;
+}
+
+/** C6: terminal status but KPIs/Story still aggregating — not finished yet. */
+export function resultsPending(status: string | undefined, record: { results_final?: boolean } | undefined): boolean {
+  return !!status && TERMINAL.has(status) && record?.results_final === false;
 }
 
 export default function Workbench() {
@@ -131,7 +137,9 @@ export default function Workbench() {
   const session = useRunSession(apiBase, runId && mode ? runId : undefined, mode ?? 'replay', Number.isSafeInteger(initialCut) ? initialCut : undefined);
   // Runtime metadata drives simulation controls; the journal can arrive later.
   const status = runStatus(!recordsError ? record?.status : undefined, session?.status);
-  useEffect(() => { setRecordsKey(value => value + 1); }, [session?.status]);
+  // C6: a terminal status with still-aggregating KPIs/Story is not finished yet.
+  const finalizing = resultsPending(status, record);
+  useEffect(() => { setRecordsKey(value => value + 1); }, [session?.status, finalizing]);
   const waiting = !recordsError && record ? record.waiting : session?.waiting;
   const assistant = useAssistantMode({ apiBase, open: assistantOpen, sessionId: query.get('assistant') ?? undefined, projectId, project, locale, runId,
     terminal: TERMINAL.has(status ?? ''), workspaceVersion: record?.workspace_version, update });
@@ -267,7 +275,7 @@ export default function Workbench() {
     load(); const timer = setInterval(() => { if (!TERMINAL.has(status ?? '')) load(); }, 3000);
     return () => { abort.abort(); clearInterval(timer); };
   }, [templateApi, runId, hasKpiFeed]);
-  const atEnd = !!store && !!clock && knownAt === store.commits.at(-1)?.commitIndex && BigInt(clock.ns) >= BigInt(clock.end) && TERMINAL.has(status ?? '');
+  const atEnd = !!store && !!clock && knownAt === store.commits.at(-1)?.commitIndex && BigInt(clock.ns) >= BigInt(clock.end) && TERMINAL.has(status ?? '') && !finalizing;
   const fromApi = clock ? resultsAt(apiKpis, clock.ns, atEnd, knownAt) : { values: {}, series: [] };
   const kpis = hasKpiFeed && projected ? projected.values : fromApi.values;
   const series = hasKpiFeed && projected ? projected.series : fromApi.series;
@@ -391,7 +399,11 @@ export default function Workbench() {
     addEventListener('keydown', key, true); return () => removeEventListener('keydown', key, true);
   });
 
-  const spatial = !!store && (store.entities.size ? [...store.entities.values()].some(entity => resolveBinding(store.header, entity.typeId)) : store.header.presentation.length > 0);
+  // The run is spatial when any entity has a position binding OR the header
+  // declares a real city: GEO-013 — a GeoJSON/real city with zero objects must
+  // still show the 3D city view, not collapse to the relation-only view.
+  const spatial = !!store && (store.header.presentation.length > 0 || !!store.header.scene?.city ||
+    [...store.entities.values()].some(entity => resolveBinding(store.header, entity.typeId)));
   const live = mode === 'live' && !!status && !TERMINAL.has(status);
   // Only an active run has a live moment to return to.
   const history = !!session && mode === 'live' && !session.followingLive && !TERMINAL.has(status ?? '');
@@ -421,6 +433,7 @@ export default function Workbench() {
           onDirectorPause={() => setDirectorPaused(true)} onDirectorSubject={key => { if (!directorPause.current) { setSelectionOrigin('director'); setSelected(key); store.select(key); } }}
           onCameraMode={value => { if (value !== 'cinematic') setCamera(value); }}
           onSelect={key => select(key)} onTick={tick} onError={problem => toast('error', String(problem))} onQuality={() => undefined}
+          onChangeSource={() => { setRightOpen(false); update({ panel: 'space' }); }}
           onSeekCommit={(_, index) => session.seekCut(index)} />}
         {session && store && !spatial && <div className="wb-glass" style={{ position: 'absolute', inset: 'calc(var(--wb-top) + 36px) calc(var(--wb-right) + 36px) calc(var(--wb-dock) + 36px) calc(var(--wb-left) + 36px)', overflow: 'auto', padding: 12 }}>
           <p className="hint">{L('This world has no spatial objects; it is shown as relations and state.', '这个世界没有空间对象，以关系和状态的形式展示。')}</p>
@@ -447,7 +460,7 @@ export default function Workbench() {
       {record?.workspace_version !== undefined && <span className="wb-chip" title={record.workspace_digest}>{L('run of', '运行版本')} v{record.workspace_version}</span>}
       </div>
       <div className="wb-simulation">
-      <span className={`wb-status s-${status ?? 'none'}`} data-testid="wb-status"><i />{status ? (status === 'initialized' ? L('Initialized · t = 0', '已初始化 · t = 0') : runStatusLabel(status, locale)) : L('No run', '无运行')}{mode === 'replay' && <span className="wb-tag" style={{ marginLeft: 6 }}>{L('replay', '回放')}</span>}</span>
+      <span className={`wb-status s-${status ?? 'none'}`} data-testid="wb-status"><i />{status ? finalizing ? L('Finalizing results…', '结果汇总中…') : status === 'initialized' ? L('Initialized · t = 0', '已初始化 · t = 0') : runStatusLabel(status, locale) : L('No run', '无运行')}{mode === 'replay' && !finalizing && <span className="wb-tag" style={{ marginLeft: 6 }}>{L('replay', '回放')}</span>}</span>
       {session && !session.error && (mode === 'live' && status !== session.status || !session.journalComplete && (mode === 'replay' || TERMINAL.has(status ?? ''))) && <span className="wb-tag" role="status" data-testid="wb-catching-up">{L('Scene updating…', '场景更新中…')}</span>}
       {session?.pendingCut !== undefined && <span className="wb-tag" role="status" data-testid="wb-seeking">{L(`Loading moment #${session.pendingCut}…`, `正在加载时刻 #${session.pendingCut}…`)}</span>}
       <div className="wb-clock"><small>{mode === 'replay' ? L('Replay time', '回放时间') : L('Simulation time', '仿真时间')}</small><time className="wb-mono">{session ? displayTime(runClockTime(mode ?? 'replay', { ...session, waiting, reportedBoundaryNs: metadataBoundary && metadataBoundary.runId === runId && (!session.reportedBoundaryNs || BigInt(metadataBoundary.ns) > BigInt(session.reportedBoundaryNs)) ? metadataBoundary.ns : session.reportedBoundaryNs }), session.store.header.start.ns) : '--:--.-'}</time></div>
@@ -476,12 +489,15 @@ export default function Workbench() {
 
     {/* KPI cards */}
     {session && kpiIds.length > 0 && <div ref={kpiPanel} className="wb-kpis" data-testid="wb-kpis">
-      {kpiIds.slice(0, 5).map(id => { const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh); return <div key={id} className="wb-kpi wb-glass" title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, id].filter(Boolean).join(' · ')}><small>{label}</small><strong className="wb-mono">{kpi?.value == null ? '—' : kpi.unit === 'ratio' ? Math.round(kpi.value * 100) : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1)}</strong><em>{kpi?.unit === 'count' ? '' : kpi?.unit === 'ratio' ? '%' : kpi?.unit}</em></div>; })}
+      {kpiIds.slice(0, 5).map(id => { const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh); return <div key={id} className="wb-kpi wb-glass" data-final={finalizing ? 'aggregating' : 'yes'} title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, finalizing ? L('Results are still being aggregated; this value is not final yet.', '结果仍在汇总中，此数值尚非最终值。') : undefined, id].filter(Boolean).join(' · ')}><small>{label}</small><strong className="wb-mono">{kpi?.value == null ? '—' : kpi.unit === 'ratio' ? Math.round(kpi.value * 100) : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1)}</strong><em>{kpi?.unit === 'count' ? '' : kpi?.unit === 'ratio' ? '%' : kpi?.unit}</em></div>; })}
     </div>}
 
     {earlier && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing an earlier moment', '正在查看较早时刻')} · <span className="wb-mono">{store && clock ? displayTime(clock.ns, store.header.start.ns) : ''}</span><button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Jump to the end', '跳到结束时刻')} <span className="wb-kbd">L</span></button></div>}
     {history && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing history', '正在查看历史时刻')} · <span className="wb-mono">{store && clock ? displayTime(clock.ns, store.header.start.ns) : ''}</span><button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Back to live', '返回实时')} <span className="wb-kbd">L</span></button></div>}
     {session && (status === 'input_timeout' || canOperate && status === 'waiting_for_input') && <div className="wb-waiting wb-glass" data-testid="wb-waiting"><WaitingBanner waiting={waiting} terminal={status === 'input_timeout'} onInject={() => { session.backToLive(); update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }} /></div>}
+    {finalizing && <div className="wb-history wb-finalizing" role="status" data-testid="wb-finalizing" style={{ background: 'rgba(31,122,224,.92)' }}>
+      <span aria-hidden>◌</span> {L('Finalizing results… KPIs and story are still being aggregated from the final journal.', '结果汇总中…指标与经历仍在从最终日志聚合。')}
+    </div>}
     {session?.error && <div className="wb-history" role="alert" style={{ background: 'rgba(190,40,30,.92)' }}>{session.error}</div>}
     {session?.transportError && !session.error && <div className="wb-history" role="status" style={{ background: 'rgba(160,110,0,.92)' }}>{L('Reconnecting to the journal stream…', '正在重新连接日志流…')} {session.transportError}</div>}
 
@@ -521,10 +537,14 @@ export default function Workbench() {
       <button className="wb-btn" title={L('Zoom out', '缩小')} onClick={() => { setDirectorPaused(true); setCamera('orbit'); viewport.current?.zoom(1.4); }}>－</button>
       <button className="wb-btn" title={L('Rotate 45°', '旋转 45°')} onClick={() => { setDirectorPaused(true); setCamera('orbit'); viewport.current?.orbitBy(Math.PI / 4); }}>⟳</button>
       <button className="wb-btn" title={L('Reset view', '重置视角')} onClick={() => { setDirectorPaused(true); setCamera('orbit'); viewport.current?.resetView(); }}>⌂</button>
+      <button className="wb-btn" title={L('Frame the whole region: city and objects together', '框选整个区域：城市与对象一起')} onClick={() => { setDirectorPaused(true); setCamera('orbit'); viewport.current?.fitRegion(); }}>⤢</button>
       <hr />
       <button className="wb-btn" aria-pressed={following} disabled={!selectedSpatial} title={L('Follow selection (F)', '跟随所选对象（F）')} onClick={() => { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }}>◎</button>
       <button className="wb-btn" aria-pressed={director && !directorPaused} title={L('Event director: the camera visits what is happening', '事件导播：镜头自动跟随正在发生的事件')} onClick={() => { if (director && !directorPaused) setDirector(false); else { setDirector(true); setDirectorPaused(false); } }}>🎬</button>
     </div>}
+
+    {/* Fit whole region is also offered from the camera pad title; the dock-level
+        affordance keeps GEO-014 discoverable without opening the pad. */}
 
     {/* Floating relation graph: summoned, expandable, selection flies the camera */}
     {session && store && graph && <section ref={graphWindow} className={`wb-graph wb-glass${graph === '2' ? ' is-expanded' : ''}`} style={graph !== '2' && graphPosition ? { left: graphPosition.x, top: graphPosition.y } : undefined} aria-label={L('Relation graph', '运行关系图')} data-testid="wb-graph">

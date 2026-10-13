@@ -168,7 +168,7 @@ provider calls, replies, validated proposals and failures use its existing WAL
 records. The default provider is explicitly scripted (1000 named replies), with
 no network calls. It chooses one task and feasible vehicle per invocation by
 rank. Exhausted or invalid replies produce a real decision failure; they never
-fall back to another allocator. Install `.[langgraph]` to use this slot. For a
+fall back to another allocator. Install `.[agents]` to use this slot. For a
 live named provider profile, set the task engine's allocation configuration:
 
 ```yaml

@@ -11,6 +11,7 @@ import { initialActionFraming } from './action-framing';
 import { entityId } from './bindings';
 import { useI18n } from '../i18n/I18nProvider';
 import '../scene/presentation';
+import '../workbench/run-status.css';
 import {BusinessDirector,directorTarget,type DirectorTarget} from './business-director';
 import type {RecordedBusinessEvent} from '../newcomers/projection';
 interface Props {
@@ -32,6 +33,8 @@ interface Props {
   onViewport?: (viewport: Viewport | undefined) => void;
   /** Hide built-in toolbars and overlays; the owner provides its own panels. */
   bare?: boolean;
+  /** Owner action for "Change source…" on a persistent city-load failure (e.g. open Configure > Space). */
+  onChangeSource?: () => void;
 }
 interface LegendEntry { label: string; color: string }
 export function ViewportView(props: Props) {
@@ -43,6 +46,11 @@ export function ViewportView(props: Props) {
   });
   const [quality,setQuality]=useState<Quality>(props.quality),[fps,setFps]=useState<number>(),[status,setStatus]=useState(''),[collapsed,setCollapsed]=useState(false);
   const [cityProgress,setCityProgress]=useState<CityProgress>();
+  // A failed city must stay visible: the asset issues live in the viewport's
+  // own `data-asset-status`, so mirror them into React state for an alert.
+  const [cityIssue,setCityIssue]=useState<string>();
+  const [hintDismissed,setHintDismissed]=useState(false);
+  const sceneHint=(props.store.header.scene as {hint?:string}|undefined)?.hint;
   const [dusk,setDusk]=useState(new URLSearchParams(location.search).get('lighting')==='dusk');
   const activeMode=useRef(mode ?? props.mode);activeMode.current=mode ?? props.mode;
   const previousMode=useRef(props.mode);
@@ -65,6 +73,7 @@ export function ViewportView(props: Props) {
     try{
       viewport.current=new Viewport(root.current!,props.store.header,{
         quality:props.quality,locale,onSelect:key=>current.current.onSelect(key),onError:error=>current.current.onError(error),onStatus:setStatus,onCityProgress:setCityProgress,
+        onCityIssue:setCityIssue,
         onQuality:(quality,fps)=>{setQuality(quality);setFps(fps);current.current.onQuality(quality,fps);},
         onCameraInteraction:()=>{
           interacted=true;director.pauseOnInteraction();autoActive=false;
@@ -140,6 +149,18 @@ export function ViewportView(props: Props) {
       <strong>{cityProgress.phase==='roads'?(locale.startsWith('zh')?'正在构建道路':'Preparing roads'):`${cityProgress.loaded} / ${cityProgress.total} ${locale.startsWith('zh')?'栋建筑':'buildings'}`}</strong>
       <progress aria-label={locale.startsWith('zh')?'城市资源加载进度':'City asset loading progress'} max={cityProgress.total||1} value={cityProgress.total?cityProgress.loaded:undefined}/>
       <small>{locale.startsWith('zh')?'场景逐步加载，运行控制可用':'Scene loads progressively; run controls are available'}</small>
+    </div>}
+    {cityIssue&&<div className="viewport-city-alert" role="alert" data-testid="city-load-alert">
+      <strong>{locale.startsWith('zh')?'城市加载失败':'City failed to load'}</strong>
+      <p>{cityIssue}</p>
+      <div className="viewport-city-alert-actions">
+        <button type="button" onClick={()=>{setCityIssue(undefined);location.reload();}}>{locale.startsWith('zh')?'重试':'Retry'}</button>
+        {props.onChangeSource&&<button type="button" onClick={props.onChangeSource}>{locale.startsWith('zh')?'更改数据源…':'Change source…'}</button>}
+      </div>
+    </div>}
+    {sceneHint&&!hintDismissed&&<div className="viewport-scene-hint" role="note" data-testid="scene-hint">
+      <span>{sceneHint}</span>
+      <button type="button" aria-label={locale.startsWith('zh')?'关闭提示':'Dismiss hint'} onClick={()=>setHintDismissed(true)}>✕</button>
     </div>}
     {!props.simple&&!props.bare&&<div className="director-toolbar">
       <select aria-label={t('View camera')} value={mode ?? props.mode} onChange={event=>{const next=event.target.value as CameraMode;setMode(next);props.onCameraMode?.(next);}}>

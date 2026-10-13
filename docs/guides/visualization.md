@@ -34,6 +34,12 @@ version** freezes the validated draft. **Initialize** creates a run from that
 version: the world is loaded at t=0 and does not move until **Start**. The
 browser never evaluates predicates or simulates behaviour — the server does.
 
+For manual creation, use [the blank-project tutorial](blank-project-tutorial.md)
+([中文](blank-project-tutorial.zh-CN.md)): Region preview/apply, Add objects,
+Add relation, Add order stream, rules, Weather & traffic, algorithms and the
+same validation/version/run sequence. Templates prefill these inputs;
+region geometry alone does not produce a complete simulation.
+
 ## Operating a run
 
 - **Simulation control** (top bar): start, pause, resume, stop and simulation
@@ -60,6 +66,37 @@ readiness is reused for the same camera resources; preparation creates no PNG
 or journal event. Frame acquisition still uses the smaller of the renderer and
 request timeouts and verifies the exact source cut, camera and assets. Failure
 in any phase remains an explicit capture failure and never produces a photo.
+
+## Workbench shortcuts
+
+These are the bindings in `workbench/Workbench.tsx`. Letter keys below mean
+unshifted lowercase key presses; use the language button for English/Chinese.
+工作台字母快捷键不按 Shift；语言通过按钮切换。
+
+| Key / 按键 | Action / 操作 | Context / 条件 |
+| --- | --- | --- |
+| `Ctrl+K` / `⌘K` | Command palette / 命令面板 | Also available while typing, outside dialogs / 对话框之外，输入时也可用 |
+| `C` | Configure / 配置 | Project open / 已打开项目 |
+| `A` | Assistant / 助手 | Toggle assistant / 切换助手 |
+| `R` | Records / 运行记录 | Toggle records / 切换记录 |
+| `G` | Relation graph / 关系图 | Run session loaded / 已加载运行 |
+| `F` | Follow / 跟随 | Selected entity has a spatial binding; toggles orbit/follow / 已选实体有空间绑定，切换环绕／跟随 |
+| `I` | Operate / 操作 | Following live, live mode, status running/paused/waiting_for_input / 实时模式跟随当前运行，状态为运行／暂停／等待输入 |
+| `L` | Back to live / 返回实时 | Run session loaded; not a language toggle / 已加载运行，不切换语言 |
+| `Space` | Play/pause recorded playback / 播放或暂停记录回放 | Run session loaded; leaves live following, does not pause the simulation / 已加载运行，离开实时跟随，不暂停仿真 |
+| `Esc` | Close overlay or clear selection / 关闭浮层或取消选择 | First leaves an edited field; dialogs own their keys / 先离开编辑字段，对话框使用自己的键盘操作 |
+
+Use top-bar Pause/Resume for the simulation. Other shortcuts are inactive while
+entering text. Workbench does not bind
+`D`, `W` or `?` globally. The older `console/shortcuts.tsx` Simple-view bindings
+(`D` Director, `C` cinema, `W` Why?, `L` language, `?` help) describe that
+component, not the main workbench. Use the workbench camera controls and
+recorded-event Why? action instead.
+
+暂停／恢复仿真使用顶部按钮。输入文字时其他快捷键不触发。主工作台未全局绑定
+`D`、`W`、`?`；旧 Simple 组件
+的导播／影院／解释／语言／帮助绑定不能当作工作台绑定。工作台使用相机控件和
+记录事件的“为什么”入口。
 
 ## Feed contract
 
@@ -96,9 +133,15 @@ it does not move entities, change flight paths or add obstacle physics.
 
 Without an installed pack, the viewer and photo camera render the committed lite
 city. `aeroagentsim assets fetch` adds the detailed city for every Huangpu template.
-Reload the viewer after installation or removal. The viewer header advertises
-`cityDetail` (`lite` or `detailed`) and `assetPacks`; the lightweight view shows a
-small download hint. An explicitly configured asset root has priority.
+Reload the viewer after installation or removal. The viewer header records
+`cityDetail` (`lite` or `detailed`) and `assetPacks`; these are header metadata,
+not proof that geometry loaded or that every frontend displays an install hint.
+Use `aeroagentsim assets list` for installed id/version/directory and
+[asset verification and licences](../../ASSETS.md) for SHA-256, manifest sizes,
+offline installation and NOTICE. An explicitly configured asset root has priority.
+
+查看器头记录轻量／精细身份与资源包信息，但元数据不证明几何载入成功，也不保证
+所有前端显示下载提示。用 `assets list` 查看真实安装版本与目录；详见资产说明。
 
 The lite bundle covers a smaller central excerpt, while the detailed scene spans
 approximately ±540 m. Template site placement must be checked against actual

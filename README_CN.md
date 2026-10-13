@@ -23,13 +23,17 @@
 
 需要 Python 3.10+、Node.js 22 和 npm，无需 GPU、Docker 或账户。
 
+**城市资源：**公开仓库自带真实的 OSM 黄浦轻量城市，基础安装和九个模板都不需要另行下载。需要精细建筑与展示模型时，安装后可选运行 `aeroagentsim assets fetch`，再用 `aeroagentsim assets list` 查看并重新加载视图。资源包 `huangpu-city` **1.1.0** 来自 Release [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1)（`huangpu-city-v1.1.zip`，约 123.2 MiB）。下载会校验归档 SHA-256，安装会核对清单文件大小。资源保存在 Git 仓库之外的 `$XDG_DATA_HOME/aeroagentsim/assets`，默认 `~/.local/share/aeroagentsim/assets`，可用 `AEROAGENTSIM_ASSETS_DIR` 更改。OSM 数据署名为 © OpenStreetMap contributors，采用 ODbL 1.0；建筑网格、纹理和展示模型的许可以资源包 `NOTICE.txt` 为准。详见[资源校验与许可](ASSETS.md)和[安装后验收](INSTALL.md#post-install-acceptance)。
+
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git && cd AeroAgentSim
 python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./aerokernel -e '.[server]'
 (cd frontend && npm ci && npm run build) && aeroagentsim serve --frontend frontend/dist
 ```
 
-打开 <http://127.0.0.1:8002>。[安装指南](docs/getting-started/install.md) 包含 Windows 设置和拍摄所需的 Chromium 配置。[English](README.md)
+打开 <http://127.0.0.1:8002>。[安装指南](INSTALL.md) 包含 Windows 的两种终端、拍摄所需的 Chromium 配置与安装后验收。[English](README.md)
+
+从自己的区域和对象开始，阅读[空白项目 → 区域 → 运行教程](docs/guides/blank-project-tutorial.zh-CN.md)，其中包含 [OSM 地图编译工具](tools/build_map.py)与区域 API 的入口。模板预先配置了示例快照、坐标、对象、规则和引擎；任意 OSM 地图不会自动成为完整仿真。
 
 ## 连接 DeepSeek，试一句话
 
@@ -110,7 +114,7 @@ aeroagentsim experiment parcel-delivery --vary allocator=nearest,auction,hungari
 
 **自动导播（Director）** 自动跟随业务活动，**影院模式（Cinema）** 让城市画面和事件字幕占据屏幕。选中一架无人机，即可查看任务、下一站、电量和近期历程。状态说明会解释它*为什么*正在等待、绕行或返回充电；点击说明可查看记录中的原因。回放支持 0.5–8 倍速，关系图与城市画面始终使用同一条时间线。
 
-控件、模板说明和事件流均可切换 **中文 / English**。在简洁视图中，按 `D` 切换自动导播，`C` 进入影院模式，`W` 解释所选实体的最近事件，`L` 切换语言；按 `?` 查看全部快捷键。
+用 **中文 / English** 按钮切换控件、模板说明和事件流的语言。工作台快捷键（不按 Shift）：`Ctrl+K` / `⌘K` 打开命令面板，`C` 配置，`A` 助手，`R` 运行记录，`G` 关系图，`F` 跟随选中的空间实体，`I` 操作当前实时运行，`L` 返回实时，`Space` 播放／暂停记录回放。在实时视图按 `Space` 会进入回放；暂停／恢复仿真使用顶部按钮。`Esc` 关闭当前浮层或取消选择；编辑时第一次 `Esc` 离开输入框。输入文字和使用对话框时，快捷键受限。详见[快捷键说明](docs/guides/visualization.md#workbench-shortcuts)。
 
 
 ## 工作原理
@@ -136,10 +140,10 @@ flowchart LR
 
 ---
 
-[文档](docs/README.md) · [快速开始](docs/getting-started/quickstart.md) · [命令行](docs/reference/cli.md) · [容器](docs/guides/containers.md) · [更新日志](CHANGELOG.md) · [English](README.md)
+[文档](docs/README.md) · [指南索引](docs/guides/README.md) · [快速开始](docs/getting-started/quickstart.md) · [命令行](docs/reference/cli.md) · [容器](docs/guides/containers.md) · [更新日志](CHANGELOG.md) · [English](README.md)
 
 欢迎贡献场景、算法或插件，详见[贡献指南](CONTRIBUTING.md)。代码采用 [Apache-2.0](LICENSE) 许可证；城市数据署名为 © OpenStreetMap contributors，采用 **ODbL 1.0** 许可（[署名说明](scenarios/demos/traffic-accident/inputs/lite-city/ATTRIBUTION.txt)）。
 
-项目已包含轻量城市。需要精细建筑与展示模型时，运行 `aeroagentsim assets fetch`，从发布标签 [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1) 安装黄浦城市资源包 1.1，然后重新加载视图。资源包附有独立的 `NOTICE.txt`，详见[资源条款与来源](ASSETS.md)。
+“开始”中的精细资源包为可选安装，详见[资源条款与来源](ASSETS.md)。
 
 早期 AirFogSim 代码保留在 [`archive/airfogsim`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/tree/archive/airfogsim) 分支；此前发布的软件包仍可从 PyPI 获取：[1.1.1](https://pypi.org/project/aeroagentsim/1.1.1/)。

@@ -6,17 +6,70 @@ repository rules. Update it when a contract changes.
 
 ## Repository rules
 
-- One checkout (`/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim`), one development
-  branch (`dev/lowalt`), one web app (the workbench). No extra worktrees, clones,
-  symlinks, alternative pages or feature flags.
+- Work in the task's assigned git worktree and edit only owned files. Keep
+  one web app (the workbench); no alternative pages or feature flags.
 - Agents do not commit, branch, push or stash. The integrator reviews and commits.
-  Parallel agents get disjoint file ownership, their own port and a `/tmp` scratch
-  directory; they never write into `frontend/dist`.
-- The server on port 18923 is the user's. Integration dev server: port 18931.
+  Use additional agents only when the current task explicitly authorizes them;
+  parallel assignments must have disjoint file ownership. Do not write generated
+  builds into `frontend/dist` during a source-only task.
+- Existing servers belong to their operators. This documentation assignment
+  does not start servers, builds, tests, typechecks or browsers.
 - No fabricated state: missing capability, failed call, waiting and unknown are shown
   as such. No demo data presented as run results. No silent fallbacks.
 
-## Status against the product logic (2026-10-10)
+## Documentation integration (2026-10-13)
+
+INT-08, INT-09 and the documentation part of FE-10 are addressed through
+[installation and acceptance](../../INSTALL.md), [asset guidance](../../ASSETS.md),
+the English/Chinese README entries and the
+[blank-project tutorial](../guides/blank-project-tutorial.md)
+([中文](../guides/blank-project-tutorial.zh-CN.md)). The
+[guide index](../guides/README.md) exposes the tutorial, `tools/build_map.py`
+and region API. Documentation changes are not runtime acceptance evidence.
+安装、资产、快捷键、失败语义及空白项目教程已更新；文档交付不等于运行验收。
+
+Integration assumptions supplied with this task (not a claim that every old
+server implements them):
+
+- Asset fetch verifies the pinned archive SHA-256, with
+  `AEROAGENTSIM_ASSET_PACK_SHA256` override; installation checks manifest sizes.
+  Pack NOTICE contents remain unverified until the actual archive is inspected.
+- `GET /v1/studio/catalog` supplies configured extract ids and known bounds.
+  Region POST accepts `dry_run:true` and returns the C1 `preview` without writes;
+  application keeps its existing updated-workspace response. The region contract
+  has no revision argument. Applying changes the origin and invalidates the old
+  network; positioned entities are not silently translated. City/region conflict
+  validation reports section `space`, path `/city` (C5).
+- Removal preview supplies dependencies (C3); confirmation removes the instance
+  and dependent references atomically, with revision conflict reported as 409.
+- Run records expose `results_final` (C6); false means aggregation remains pending,
+  absence means unknown. Algorithm `consumers` (C8) identify real readers; absence
+  or an empty list is not evidence of applicability.
+- Beginner frontend labels are **Region**, **Preview region**, **Apply region**,
+  **Generate road network**, **Add objects**, **Remove**, **Add relation**,
+  **Add order stream**, **Add cooperation**, **Weather & traffic**, **Add gust**.
+  Missing controls/404/422 are reported as unavailable or invalid, not success.
+
+Remaining edits outside this assignment's ownership:
+
+- `docs/README.md`: add the tutorial (both languages), guide index, map builder
+  and region API to Get started/Guides.
+- `docs/getting-started/install.md`: link the root INSTALL acceptance block,
+  distinguish Windows shells, and replace its stale checksum/licensing guidance
+  with ASSETS. Quickstart should link the blank-project tutorial.
+- `docs/reference/http-api.md`: document C1 preview and C2/C3/C5/C6/C8 additions.
+- `docs/product/workbench-logic.md` (read-only here): consider making the five-way
+  distinction explicit by adding LLM as an optional decision implementation to
+  its four-concept table; specify region preview/no-write, origin-change impact,
+  dependent-reference removal, decision failure/re-decision and final aggregation
+  boundaries. Preserve its existing explicit initialize-at-t=0/start contract.
+- If a dedicated health endpoint is required, it needs an app-route change;
+  the existing `/v1/templates` GET is documented as a limited HTTP readiness probe.
+  Native Windows service support needs a replacement for the `fork` context.
+
+上述未归属文件的修改需由集成者完成；主产品逻辑、QA 和演示文件未在此修改。
+
+## Historical status against the product logic (2026-10-10)
 
 | Logic | Status |
 |---|---|

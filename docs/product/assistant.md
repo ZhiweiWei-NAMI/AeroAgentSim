@@ -116,18 +116,37 @@ replay never calls the model):
   the connected model (LangGraph engine, `lowalt.coop.decision_request` →
   `lowalt.coop.decision_result`) with the goal, the vehicle's state, the
   allowed options and the plain-language constraints; the engine re-checks the
-  reply. An invalid reply or a model failure falls back to the prescribed
-  order, and the decision record says so. Event: `lowalt.incident.decision`
-  `{incident, vehicle, mode, choice, reason, allowed, blocked}`.
+  reply against current allowed options. A valid choice records
+  `lowalt.incident.decision`
+  `{incident, vehicle, mode, choice, reason, allowed, blocked}`. An invalid
+  reply or model failure records `lowalt.incident.decision_failed`
+  `{incident, vehicle, role, mode, reason}`; a responder failure clears the
+  choice and sets the incident state to `decision_failed`. It never chooses a
+  prescribed action on behalf of a failed agent. A helper failure is retained
+  as a failed offer, not an acceptance or ordinary refusal.
+  无效回复或模型失败会记录决策失败；响应者事件状态为 `decision_failed`，
+  不会自动采用预设动作。协助者失败保留为失败的 offer，不冒充接受或普通拒绝。
 * `request_handoff`: candidates are helper vehicles within `ask_radius_m` of
   the requester, with payload capacity and battery ≥ the helpers'
   `min_battery_pct`. All candidates are asked at once
   (`lowalt.handoff.requested`); each replies (`lowalt.handoff.offer`
   `{helper, accepted, reason, mode}`; prescribed: `idle` accepts only without a
   task and not charging, `always` accepts). With acceptances, `selection`
-  picks one (`lowalt.handoff.accepted {helper, point, others}`); otherwise
-  `lowalt.handoff.declined {reason}` and the requester takes its next allowed
-  option after `request_handoff` (never the abandoned delivery).
+  picks one (`lowalt.handoff.accepted {helper, point, others}`), after checking
+  eligibility again. Without an eligible acceptance, or if requester/point
+  checks fail, handoff state becomes `failed` when any helper decision failed,
+  otherwise `declined`; the corresponding `lowalt.handoff.failed` or
+  `lowalt.handoff.declined` event records the reason. A valid eligible
+  acceptance can still be selected if another helper failed. After an
+  unsuccessful handoff, prescribed responder mode takes the next allowed
+  option after `request_handoff`; agent mode emits a new
+  `lowalt.coop.decision_request` and queries the model against current state.
+  The failed/declined handoff now blocks another `request_handoff`. This is a
+  new decision, not an automatic model retry or a conversion of failure into
+  success; the original delivery is not silently discarded.
+  无合格接受者或状态复核失败时，有协助者决策失败则交接为 `failed`，否则为
+  `declined`；另一个协助者的有效接受仍可能被选中。失败交接之后，预设模式采用
+  后续允许选项，智能体模式重新发出决策请求并真实询问模型；再次交接已被阻止。
 * Accepted handoff of a picked-up task: the requester flies to the nearest
   handoff point and leaves the parcel (`lowalt.handoff.dropped`; task state
   `awaiting_transfer`); the helper is assigned the task with the handoff point
@@ -146,11 +165,11 @@ replay never calls the model):
   current task completes, if the incident is still unattended.
 * Entities and contracts. `lowalt:Incident` (parent AeroGraph `oo:Incident`):
   `lowalt.incident_kind`, `lowalt.incident_position` (ENU m),
-  `lowalt.incident_state` (`pending|occurred|noticed|responding|photographed|reported`),
+  `lowalt.incident_state` (`pending|occurred|noticed|responding|photographed|reported|decision_failed`),
   `lowalt.incident_time_ns`, `lowalt.incident_noticed_by`,
   `lowalt.incident_responder`. `lowalt:Handoff` record (parent AeroGraph
   `oo:CargoTransferReport`, nonspatial): `lowalt.handoff_state`
-  (`idle|requested|accepted|declined|dropped|transferred`),
+  (`idle|requested|accepted|declined|failed|dropped|transferred`),
   `lowalt.handoff_task`, `lowalt.handoff_from`, `lowalt.handoff_to`,
   `lowalt.handoff_point`. `lowalt:HandoffPoint` (parent `lowalt:Site`). The
   AeroGraph ancestors are frozen in `packs/lowalt/cooperation.snapshot.json`
@@ -211,8 +230,12 @@ Derived from the compiled scenario (never from model prose):
 **Story** for a run of an applied plan: expected steps marked happened (with
 time and seek offset) / not happened / pending; a missing step is explained
 from recorded events (declined offer and its reason, decision options blocked
-by battery or protected task, no watcher within radius with the closest
-recorded approach, run ended first).
+by battery or protected task, recorded decision failure, no watcher within
+radius with the closest recorded approach, run ended first). Failure narratives
+are declared in both languages (`lowalt.incident.decision_failed` and
+`lowalt.handoff.failed`); Story reads those records and never invents successful
+handoff or response events. 决策失败与交接失败都有中英文事件叙述；Story 根据记录
+解释未发生的步骤，不生成成功结果。
 
 ## 4. The harness
 

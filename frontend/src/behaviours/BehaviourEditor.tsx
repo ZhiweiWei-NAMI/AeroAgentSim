@@ -114,8 +114,34 @@ function Actions({ value, onChange, label, roles, types, fields, capabilities }:
   </fieldset>;
 }
 
+/** Predicate parameters as typed fields (number / string / boolean / array); unknown shapes stay JSON. */
+export function TypedParameters({ value, onChange, label }: { value: unknown; onChange: (next: unknown) => void; label: string }) {
+  const { locale } = useI18n();
+  const L = (en: string, zh: string) => locale === 'zh-CN' ? zh : en;
+  if (!mapping(value)) return <Json label={label} value={value} onChange={onChange}/>;
+  const entries = Object.entries(value);
+  const set = (key: string, next: unknown) => onChange({ ...value, [key]: next });
+  const [newKey, setNewKey] = useState('');
+  return <fieldset><legend>{label}</legend>
+    {!entries.length && <p>{L('No parameters.', '无参数。')}</p>}
+    {entries.map(([key, parameter]) => <div key={key}>
+      <label>{key} <select aria-label={L(`${label} ${key} type`, `${label} ${key} 类型`)} value={typeof parameter === 'number' ? 'number' : typeof parameter === 'boolean' ? 'boolean' : Array.isArray(parameter) ? 'array' : mapping(parameter) ? 'record' : 'string'} onChange={event => {
+        const kind = event.target.value;
+        set(key, kind === 'number' ? 0 : kind === 'boolean' ? true : kind === 'array' ? [] : kind === 'record' ? {} : '');
+      }}>
+        <option value="number">{L('Number', '数字')}</option><option value="string">{L('String', '字符串')}</option><option value="boolean">{L('Boolean', '布尔')}</option><option value="array">{L('Array', '数组')}</option><option value="record">{L('Record', '记录')}</option>
+      </select></label>
+      <ExpressionControl label={`${label}.${key}`} value={parameter} onChange={next => set(key, next)}/>
+      <button type="button" className="authored-error" onClick={() => { const next = { ...value }; delete next[key]; onChange(next); }}>{L('Remove parameter', '移除参数')}</button>
+    </div>)}
+    <label>{L('New parameter', '新参数')} <input aria-label={L(`${label} new parameter`, `${label} 新参数`)} value={newKey} onChange={event => setNewKey(event.target.value)}/></label>
+    <button type="button" disabled={!newKey || newKey in value} onClick={() => { onChange({ ...value, [newKey]: 0 }); setNewKey(''); }}>{L('Add parameter', '添加参数')}</button>
+  </fieldset>;
+}
+
 function Declarations({ section, value, onChange, types }: { section: string; value: unknown; onChange: (value: unknown) => void; types: AuthorType[] }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const Ld = (en: string, zh: string) => locale === 'zh-CN' ? zh : en;
   const sectionLabel = section === 'bindings' ? t('bindings') : section === 'conflicts' ? t('conflicts') : t('Injection points');
   if (!Array.isArray(value)) return <Json label={t('{section} typed declarations JSON', { section: sectionLabel })} value={value} onChange={onChange}/>;
   const keys = section === 'bindings' ? ['id', 'chain', 'multiplicity', 'on_unbind', 'episode_field'] : section === 'conflicts' ? ['id', 'predicate', 'edge', 'emits', 'topic'] : ['id', 'stream_id', 'command', 'target', 'emits', 'topic'];
@@ -123,9 +149,38 @@ function Declarations({ section, value, onChange, types }: { section: string; va
   const options: Record<string, string[]> = { multiplicity: ['once_per_entity', 'once_per_relation', 'once_per_task_episode'], on_unbind: ['close_after_cleanup', 'retain_until_terminal'], edge: ['entered', 'exited', 'while'] };
   const optionLabels: Record<string, string> = { once_per_entity: t('Once per entity'), once_per_relation: t('Once per relation'), once_per_task_episode: t('Once per task episode'), close_after_cleanup: t('Close after cleanup'), retain_until_terminal: t('Retain until terminal state'), entered: t('entered'), exited: t('exited'), while: t('while') };
   return <div>{value.map((row, index) => mapping(row) ? <fieldset key={index}><legend>{sectionLabel}[{index}]</legend>{keys.map(key => <label key={key}>{keyLabels[key]}{options[key] ? <select aria-label={t('{section} {index} {field}', { section: sectionLabel, index, field: keyLabels[key] })} value={String(row[key] ?? '')} onChange={event => onChange(value.map((item, i) => i === index ? { ...row, [key]: event.target.value } : item))}><option value="">{t('Unset')}</option>{options[key].map(item => <option key={item} value={item}>{optionLabels[item]}</option>)}</select> : <input aria-label={t('{section} {index} {field}', { section: sectionLabel, index, field: keyLabels[key] })} value={typeof row[key] === 'string' ? row[key] as string : ''} onChange={event => onChange(value.map((item, i) => i === index ? { ...row, [key]: event.target.value } : item))}/>}</label>)}
-    {section === 'conflicts' && <Roles value={row.roles} onChange={next => onChange(value.map((item, i) => i === index ? { ...row, roles: next } : item))} types={types} label={t('conflicts {index} roles', { index })}/>}
+    {section === 'bindings' && <MatchEditor row={row} index={index} onChange={next => onChange(value.map((item, i) => i === index ? { ...row, match: next } : item))} types={types}/>}
+    {section === 'conflicts' && <Roles value={row.roles ?? {}} onChange={next => onChange(value.map((item, i) => i === index ? { ...row, roles: next } : item))} types={types} label={`${section}[${index}].roles`}/>}
     <ExpressionControl label={t('{section} {index} complete declaration', { section: sectionLabel, index })} value={row} onChange={next => onChange(value.map((item, i) => i === index ? next : item))}/>
-  </fieldset> : <Json key={index} label={t('{section} {index} unsupported declaration', { section: sectionLabel, index })} value={row} onChange={next => onChange(value.map((item, i) => i === index ? next : item))}/>)}<button type="button" onClick={() => onChange([...value, { id: '' }])}>{section === 'bindings' ? t('Add binding declaration') : section === 'conflicts' ? t('Add conflict declaration') : t('Add injection point declaration')}</button></div>;
+    <button type="button" className="authored-error" onClick={() => onChange(value.filter((_, i) => i !== index))}>{Ld('Remove declaration', '删除声明')}</button>
+  </fieldset> : <Json key={index} label={t('{section} {index} unsupported declaration', { section: sectionLabel, index })} value={row} onChange={next => onChange(value.map((item, i) => i === index ? next : item))}/>)}<button type="button" onClick={() => onChange([...value, section === 'bindings' ? { id: '', chain: '', match: {} } : { id: '', roles: {} }])}>{section === 'bindings' ? t('Add binding declaration') : section === 'conflicts' ? t('Add conflict declaration') : t('Add injection point declaration')}</button></div>;
+}
+
+/** Start-rule role matching: the compiler requires `match`, and each chain role needs a selector
+ *  (entity type refinement, explicit entity id, or a field-value constraint). */
+export function MatchEditor({ row, index, onChange, types }: { row: Draft; index: number; onChange: (next: unknown) => void; types: AuthorType[] }) {
+  const { locale } = useI18n();
+  const L = (en: string, zh: string) => locale === 'zh-CN' ? zh : en;
+  const chain = typeof row.chain === 'string' ? row.chain : undefined;
+  const match = mapping(row.match) ? row.match : {};
+  const [newRole, setNewRole] = useState('');
+  const set = (role: string, next: Draft) => onChange({ ...match, [role]: next });
+  return <fieldset><legend>{L('Match (how roles bind to entities)', '匹配（角色如何绑定实体）')}</legend>
+    <p>{L('Each chain role needs a selector so the runtime can find matching entities: an entity type, an explicit id, or a field value.', '每个链角色需要一个选择器，运行时据此找到匹配实体：实体类型、明确 ID 或字段值。')}</p>
+    {!Object.keys(match).length && <p className="authored-error">{L('No match yet — the server rejects a binding without match.', '尚无匹配——服务器会拒绝缺少 match 的绑定。')}</p>}
+    {Object.entries(match).map(([role, selector]) => mapping(selector) ? <fieldset key={role}><legend>{role}</legend>
+      <label>{L('Entity type (is_a)', '实体类型 (is_a)')} <input aria-label={L(`binding ${index} match ${role} is_a`, `绑定 ${index} 匹配 ${role} is_a`)} list={`binding-${index}-types`} value={typeof selector.is_a === 'string' ? selector.is_a : ''} onChange={event => set(role, { ...selector, is_a: event.target.value })}/></label>
+      <datalist id={`binding-${index}-types`}>{types.map(type => <option key={type.id} value={type.id}>{type.parents.join(', ')}</option>)}</datalist>
+      <label>{L('Entity ID', '实体 ID')} <input aria-label={L(`binding ${index} match ${role} entity`, `绑定 ${index} 匹配 ${role} entity`)} value={typeof selector.entity === 'string' ? selector.entity : ''} onChange={event => set(role, { ...selector, entity: event.target.value })}/></label>
+      <label>{L('Field', '字段')} <input aria-label={L(`binding ${index} match ${role} field`, `绑定 ${index} 匹配 ${role} field`)} value={typeof selector.field === 'string' ? selector.field : ''} onChange={event => set(role, { ...selector, field: event.target.value })}/></label>
+      {'field' in selector && <label>{L('Field equals', '字段等于')} <ExpressionControl label={L(`binding ${index} match ${role} equals`, `绑定 ${index} 匹配 ${role} equals`)} value={selector.equals} onChange={next => set(role, { ...selector, equals: next })}/></label>}
+      <ExpressionControl label={L(`${role} complete selector`, `${role} 完整选择器`)} value={selector} onChange={next => set(role, next as Draft)}/>
+      <button type="button" className="authored-error" onClick={() => { const next = { ...match }; delete next[role]; onChange(next); }}>{L('Remove role', '移除角色')}</button>
+    </fieldset> : <Json key={role} label={L(`${role} unsupported selector`, `${role} 不支持的选择器`)} value={selector} onChange={next => set(role, next as Draft)}/>)}
+    <label>{L('Add role', '添加角色')} <input aria-label={L(`binding ${index} new match role`, `绑定 ${index} 新匹配角色`)} value={newRole} onChange={event => setNewRole(event.target.value)}/></label>
+    <button type="button" disabled={!newRole || newRole in match} onClick={() => { if (newRole && !(newRole in match)) { set(newRole, {}); setNewRole(''); } }}>{L('Add match role', '添加匹配角色')}</button>
+    {chain && <p className="hint">{L(`Roles usually mirror the chain "${chain}" roles; extra roles stay but may not bind.`, `角色通常对应链“${chain}”的角色；多余角色会保留，但可能无法绑定。`)}</p>}
+  </fieldset>;
 }
 
 export function BehaviourEditor({ value, onChange, types = [], fields = [], relations = [], errors = [], capabilities = [], events = [], onValidate, onImportYaml, onExportYaml, onValidityChange, initialTab }: Props) {
@@ -155,7 +210,15 @@ export function BehaviourEditor({ value, onChange, types = [], fields = [], rela
   return <RelationCatalog.Provider value={relations}><AuthoringValidity.Provider value={report}><div className="behaviour-editor">
     <label>{t('Package ID')} <input aria-label={t('Package ID')} value={typeof value.id === 'string' ? value.id : ''} onChange={event => update(['id'], event.target.value)}/></label>
     {onValidate && <button type="button" disabled={!valid} onClick={onValidate}>{t('Validate package on server')}</button>}
-    {errors.map((item, index) => <button type="button" className="authored-error" key={index} onClick={() => { if (item.path.includes('.chains.')) { setTab('chains'); setSelected(Object.keys(chains).find(name => item.path.includes(`.chains.${name}`)) ?? ''); } else if (item.path.includes('.predicates.')) { setTab('predicates'); setSelected(Object.keys(predicates).find(name => item.path.includes(`.predicates.${name}`)) ?? ''); } else setTab('raw'); document.getElementById(`authored-${item.path}`)?.scrollIntoView?.(); }}>{t('Validation error at {path}: {message}', { path: item.path, message: item.message })}</button>)}
+    {errors.map((item, index) => <button type="button" className="authored-error" key={index} onClick={() => {
+      const path = item.path ?? '';
+      if (/\.bindings\[(\d+)\]/.test(path)) setTab('bindings');
+      else if (/\.conflicts\[(\d+)\]/.test(path)) setTab('conflicts');
+      else if (path.includes('.chains.')) { setTab('chains'); setSelected(Object.keys(chains).find(name => path.includes(`.chains.${name}`)) ?? ''); }
+      else if (path.includes('.predicates.')) { setTab('predicates'); setSelected(Object.keys(predicates).find(name => path.includes(`.predicates.${name}`)) ?? ''); }
+      else setTab('raw');
+      document.getElementById(`authored-${item.path}`)?.scrollIntoView?.();
+    }}>{t('Validation error at {path}: {message}', { path: item.path, message: item.message })}</button>)}
     <nav>{['predicates', 'chains', 'bindings', 'conflicts', 'injection_points', 'raw'].map(name => <button type="button" key={name} title={tabDescriptions[name]} aria-pressed={tab === name} onClick={() => { setTab(name); setSelected(''); }}>{tabLabels[name]}</button>)}</nav>
     {['predicates', 'chains'].includes(tab) && <><label>{t('Authored element')} <select aria-label={t('Authored element')} value={id ?? ''} onChange={event => setSelected(event.target.value)}>{ids.map(name => <option key={name}>{name}</option>)}</select></label>
       <input aria-label={t('New element ID')} value={newId} onChange={event => setNewId(event.target.value)}/><button type="button" disabled={!newId || ids.includes(newId)} onClick={() => { const section = tab === 'chains' ? chains : predicates; update([tab], { ...section, [newId]: tab === 'chains' ? { roles: {}, trigger: {}, preconditions: [], initial: 'waiting', terminal: ['done'], states: ['waiting', 'done'], transitions: [] } : { profile: 'committed_reactive/v1', roles: {}, expression: { literal: null } } }); setSelected(newId); setNewId(''); }}>{tab === 'chains' ? t('Add chain') : t('Add predicate')}</button>
@@ -163,6 +226,7 @@ export function BehaviourEditor({ value, onChange, types = [], fields = [], rela
       {!row && <p>{t('Choose an element or edit its unsupported section in raw JSON.')}</p>}
       {row && <div key={`${tab}/${id}`} id={`authored-$.${tab}.${id}`}><Roles value={row.roles} onChange={next => update([tab, id, 'roles'], next)} types={types} label={`${tab}.${id}.roles`}/>
         {tab === 'predicates' ? <><label>{t('Evaluation profile')} <select aria-label={t('Predicate profile')} value={String(row.profile ?? '')} onChange={event => update(['predicates', id, 'profile'], event.target.value)}><option value="">{t('Unset')}</option><option value="committed_reactive/v1">{t('When committed state changes')}</option><option value="aerograph_sampled/v1">{t('At simulation sample times')}</option></select></label>
+          <TypedParameters label={`predicates.${id}.parameters`} value={row.parameters ?? {}} onChange={next => update(['predicates', id, 'parameters'], next)}/>
           <Ast node={row.expression} onChange={next => update(['predicates', id, 'expression'], next)} path={`predicates.${id}.expression`} roles={mapping(row.roles) ? row.roles : {}} types={types} fields={fields}/></> : <>
           <Trigger events={events} initial value={row.trigger} onChange={next => update(['chains', id, 'trigger'], next)} label={`chains.${id}.trigger`} predicates={Object.keys(predicates)}/>
           <ExpressionControl label={t('Chain preconditions')} value={row.preconditions ?? []} onChange={next => update(['chains', id, 'preconditions'], next)}/>

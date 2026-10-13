@@ -43,6 +43,7 @@ export function RecordsPanel({ api, projectId, current, onOpen, onCompare, onDer
           <small className="wb-mono">{run.id}</small>
           <div className="wb-card-meta" style={{ marginTop: 4 }}>
             <span className={`wb-tag ${tone(run.status)}`}>{runStatusLabel(run.status, locale)}</span>
+            {TERMINAL.has(run.status) && run.results_final === false && <span className="wb-tag warn" title={L('KPIs and story are still being aggregated; values shown are not final yet.', '指标与经历仍在汇总中，显示的数值尚非最终值。')}>{L('finalizing…', '汇总中…')}</span>}
             {run.workspace_version !== undefined && <span className="wb-tag info">v{run.workspace_version}</span>}
             {run.derived_from && <span className="wb-tag" title={run.derived_from.run_id}>{L('derived', '派生')}</span>}
             {run.knobs && Object.entries(run.knobs).slice(0, 3).map(([key, value]) => <span key={key} className="wb-tag">{key}={String(value)}</span>)}

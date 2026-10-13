@@ -1,0 +1,62 @@
+/* Persistent run-level status: city-load failure, finalizing results, scene hint.
+   Glass workbench palette only — no new visual language. */
+
+/* City load failure: persistent, unlike the disappearing toast (DOC-014). */
+.wb .viewport-city-alert,
+.viewport-city-alert {
+  position: absolute;
+  z-index: 18;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(var(--wb-top, 120px) + var(--wb-kpi-height, 0px) + var(--wb-notice-height, 0px) + 96px);
+  max-width: min(480px, calc(100vw - 48px));
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--wb-bad, #e0453a) 55%, transparent);
+  border-radius: 12px;
+  background: var(--wb-glass-strong, rgba(250, 252, 255, .94));
+  color: var(--wb-ink, #17222e);
+  box-shadow: 0 10px 30px rgba(23, 34, 46, .18);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.viewport-city-alert strong { display: block; color: var(--wb-bad, #e0453a); margin-bottom: 2px; }
+.viewport-city-alert p { margin: 2px 0 8px; overflow-wrap: anywhere; color: var(--wb-ink, #17222e); }
+.viewport-city-alert-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Quiet scene hint (e.g. `aeroagentsim assets fetch`), dismissible (DOC-012). */
+.viewport-scene-hint {
+  position: absolute;
+  z-index: 17;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--wb-dock, 92px) + 12px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, calc(100vw - 48px));
+  padding: 6px 10px;
+  border: 1px solid var(--wb-line, rgba(23, 34, 46, .12));
+  border-radius: 999px;
+  background: var(--wb-glass, rgba(250, 252, 255, .84));
+  color: var(--wb-muted, #5c6b7a);
+  font-size: 11.5px;
+  box-shadow: 0 6px 18px rgba(23, 34, 46, .10);
+}
+.viewport-scene-hint span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viewport-scene-hint button {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--wb-muted, #5c6b7a);
+  cursor: pointer;
+  font: inherit;
+  padding: 0 2px;
+}
+.viewport-scene-hint button:hover { color: var(--wb-ink, #17222e); }
+
+/* Aggregation in progress after a terminal status (INT-06 / AST-022). */
+.wb-finalizing { font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .viewport-city-alert, .viewport-scene-hint { transition: none; }
+}

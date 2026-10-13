@@ -38,6 +38,8 @@ export interface ViewportOptions extends AssetOptions {
   onQuality?: (quality: Quality, fps?: number) => void;
   onStatus?: (status: string) => void;
   onCityProgress?: (progress?: CityProgress) => void;
+  /** A city/asset load failed; the owner must show it persistently, not as a toast. */
+  onCityIssue?: (issue: string | undefined) => void;
   onCameraInteraction?: () => void;
   /** Newcomer semantic overlay: friendly labels, zones and site markers. */
   semantic?: boolean;
@@ -134,8 +136,8 @@ export class Viewport {
       if(presentation.city)this.options.onCityProgress?.({phase:'roads',loaded:0,total:0});
       if(presentation.attribution)this.setAttribution(presentation.attribution);
       if(presentation.city?.kind==='osm2world')this.setAttribution('© OpenStreetMap contributors · ODbL · Procedural display materials');
-      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;if(object.parent!==this.staticRoot)this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);if(object.name==='city'&&object.userData.geometryRevision!==undefined&&object.userData.geometryRevision!==this.cityGeometryRevision){this.cityGeometryRevision=object.userData.geometryRevision;this.occlusion.setObjects(this.staticRoot.children);}else this.occlusion.addObjects([object]);this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city=object.userData.loading?'loading':'loaded';container.dataset.cityProgress=JSON.stringify(object.userData.progress??{});this.options.onCityProgress?.(object.userData.loading?object.userData.progress:undefined);container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});}},this.status)
-        .catch(error=>{if(!this.disposed){this.options.onCityProgress?.(undefined);this.status(String(error));options.onError?.(error);}});
+      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;if(object.parent!==this.staticRoot)this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);if(object.name==='city'&&object.userData.geometryRevision!==undefined&&object.userData.geometryRevision!==this.cityGeometryRevision){this.cityGeometryRevision=object.userData.geometryRevision;this.occlusion.setObjects(this.staticRoot.children);}else this.occlusion.addObjects([object]);this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city=object.userData.loading?'loading':'loaded';container.dataset.cityProgress=JSON.stringify(object.userData.progress??{});this.options.onCityProgress?.(object.userData.loading?object.userData.progress:undefined);container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});this.options.onCityIssue?.(undefined);}},this.status)
+        .catch(error=>{if(!this.disposed){this.options.onCityProgress?.(undefined);this.status(String(error));if(presentation?.city)this.options.onCityIssue?.(String(error));options.onError?.(error);}});
       if(presentation.hdri)void this.assets.hdri(presentation.hdri,this.renderer).then(environment=>{
         if(this.disposed){environment.dispose();return;}this.environment=environment;this.scene.environment=environment.texture;this.revision++;container.dataset.ibl='hdri';
       }).catch(error=>{if(!this.disposed){container.dataset.ibl='analytic-sky';this.status(`HDRI unavailable: ${String(error)} · analytic sky IBL active`);}});
@@ -247,6 +249,18 @@ export class Viewport {
   resetView() {
     if(!this.home)return;
     this.setCameraMode('orbit');this.cameraTransition={position:this.home.position.clone().sub(this.origin),target:this.home.target.clone().sub(this.origin)};this.revision++;
+  }
+  /** Frame the city geometry and all live entities together — not only the objects. */
+  fitRegion() {
+    const bounds=new T.Box3();
+    const city=new T.Box3().setFromObject(this.staticRoot);
+    if(!city.isEmpty())bounds.union(city);
+    if(this.layer.positions.size)for(const position of this.layer.positions.values())bounds.expandByPoint(position.clone().add(this.origin));
+    if(bounds.isEmpty())return;
+    const center=bounds.getCenter(new T.Vector3()),span=Math.max(120,bounds.getSize(new T.Vector3()).length());
+    this.setCameraMode('orbit');
+    this.cameraTransition={position:center.clone().add(new T.Vector3(0.7,0.55,0.9).multiplyScalar(span*1.15)),target:center.clone().sub(this.origin)};
+    this.authoredCamera=true;this.revision++;
   }
   setQuality(quality: Quality, manual = false) {
     if(manual)this.manualQuality=true;

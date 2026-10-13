@@ -137,6 +137,40 @@ exact prompts, tools, model and output budget, raw replies, provider usage,
 validation reasons and correlated command receipts. Missing token usage is an
 explicit `USAGE_MISSING` failure, never a silent zero.
 
+## Cooperation failure and re-decision
+
+The low-altitude cooperation model records an invalid or failed model decision
+as `lowalt.incident.decision_failed`, with incident, vehicle, role, mode and
+reason. Responder failure clears its choice and sets incident state to
+`decision_failed`. A failed helper offer is not an acceptance or a refusal.
+After all offers resolve, an eligible acceptance can still be selected; when
+handoff cannot proceed, its state/event is `failed` / `lowalt.handoff.failed`
+if any helper decision failed, otherwise `declined` / `lowalt.handoff.declined`.
+
+After that unsuccessful handoff, prescribed responder mode chooses the next
+allowed action after `request_handoff` in its configured order. Agent mode
+instead emits a fresh `lowalt.coop.decision_request` using the actual current
+state and queries the model again. Another handoff is blocked. The earlier
+failure remains recorded: this business-triggered re-decision is different
+from automatic transport retry or prescribed takeover after model failure.
+
+低空协作中的无效回复或模型失败记录为 `lowalt.incident.decision_failed`，
+响应者事件状态变为 `decision_failed`。协助者决策失败不是接受或拒绝；其他协助者
+仍可提供有效接受。交接不能继续时，有协助者失败则记录 `lowalt.handoff.failed`
+及 `failed` 状态，否则为 `declined`。此后预设响应者采用后续允许选项；智能体
+响应者会根据当前状态重新请求模型决策，不再请求同一次交接。原失败记录保留，
+不因重新决策被改写为成功，也不会由预设规则接管失败模型。
+
+The generic `decision`/`langgraph` engines also journal typed failures
+(transport, wall/budget limits, invalid calls, missing usage); those records
+are not successful action receipts. Story explains missing expected steps
+from recorded failures and refusals. Replay makes no fresh model calls.
+通用决策引擎也记录类型化失败，不冒充动作成功回执；Story 根据实际记录解释
+未完成步骤，回放不会重新调用模型。
+
+See [cooperation contract](../product/assistant.md#2-simulation-capability-cooperative-incident-response-with-handoff)
+and [manual authoring](blank-project-tutorial.md).
+
 ## Limits
 
 - Session scopes are fixed per scenario (granted entity IDs and fields);

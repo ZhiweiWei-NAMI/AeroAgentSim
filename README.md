@@ -23,13 +23,17 @@ https://github.com/user-attachments/assets/31cc139f-df4a-4ad1-9811-1c7c3758fd31
 
 Python 3.10+ and Node.js 22 with npm. No GPU, Docker or account needed.
 
+**Assets:** the public clone bundles a real lightweight OSM Huangpu city; the base installation and all nine templates need no separate asset download. For detailed buildings and display models, optionally run `aeroagentsim assets fetch` after installation, then `aeroagentsim assets list` and reload the viewer. Pack `huangpu-city` **1.1.0** comes from Release [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1) (`huangpu-city-v1.1.zip`, about 123.2 MiB). Fetch verifies the archive SHA-256 and installation checks manifest file sizes. Packs live outside Git in `$XDG_DATA_HOME/aeroagentsim/assets`, default `~/.local/share/aeroagentsim/assets`; `AEROAGENTSIM_ASSETS_DIR` overrides it. OSM data is © OpenStreetMap contributors, ODbL 1.0; building mesh, texture and model terms come from the pack's `NOTICE.txt`. See [asset verification and licences](ASSETS.md) and [post-install checks](INSTALL.md#post-install-acceptance).
+
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git && cd AeroAgentSim
 python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./aerokernel -e '.[server]'
 (cd frontend && npm ci && npm run build) && aeroagentsim serve --frontend frontend/dist
 ```
 
-Open <http://127.0.0.1:8002>. [Install](docs/getting-started/install.md) covers Windows and the Chromium needed for camera capture. [中文](README_CN.md)
+Open <http://127.0.0.1:8002>. [Install](INSTALL.md) covers Windows shells, Chromium for camera capture and acceptance checks. [中文](README_CN.md)
+
+To create your own region and objects, follow [Blank project → region → run](docs/guides/blank-project-tutorial.md). It links the [OSM map builder](tools/build_map.py) and the region API. Templates prefill example snapshots, coordinates, objects, rules and engines; arbitrary OSM data does not automatically create a complete simulation.
 
 ## Connect DeepSeek and try one sentence
 
@@ -110,7 +114,7 @@ In **city-day**, parcel and medical deliveries, power line inspections, air taxi
 
 **Director** follows activity automatically; **Cinema** fills the view with the city and an event ticker. Select a drone for its task, next stop, battery and recent journey. Its status explains *why* it is holding, rerouting or returning to charge; click the explanation to inspect the recorded cause. Replay runs at 0.5–8× speed, with graph and city views on the same timeline.
 
-Switch the controls, template descriptions and event feed between **中文 / English**. In Simple view, use `D` for Director, `C` for cinema, `W` for the selected entity's latest event explanation and `L` for language; `?` shows all shortcuts.
+Switch the controls, template descriptions and event feed with the **中文 / English** button. Workbench keys (without Shift): `Ctrl+K` / `⌘K` opens the command palette, `C` Configure, `A` Assistant, `R` Records, `G` relation graph, `F` follow the selected spatial entity, `I` Operate on an active live run, `L` Back to live, and `Space` play/pause recorded playback. From a live view, `Space` enters playback; use the top-bar Pause/Resume buttons to control the simulation. `Esc` closes the active overlay or selection; while editing, the first `Esc` leaves the field. Shortcuts respect text entry and dialogs. [Shortcut details](docs/guides/visualization.md#workbench-shortcuts).
 
 
 ## How it works
@@ -136,10 +140,10 @@ The [repo map](docs/repo-map.md) connects scenarios, algorithms, rules, services
 
 ---
 
-[Docs](docs/README.md) · [Quickstart](docs/getting-started/quickstart.md) · [CLI](docs/reference/cli.md) · [Containers](docs/guides/containers.md) · [Changelog](CHANGELOG.md) · [中文](README_CN.md)
+[Docs](docs/README.md) · [Guides](docs/guides/README.md) · [Quickstart](docs/getting-started/quickstart.md) · [CLI](docs/reference/cli.md) · [Containers](docs/guides/containers.md) · [Changelog](CHANGELOG.md) · [中文](README_CN.md)
 
 Contribute a scenario, algorithm or plugin: [Contributing](CONTRIBUTING.md). Code is licensed under [Apache-2.0](LICENSE); city data is © OpenStreetMap contributors, **ODbL 1.0** ([attribution](scenarios/demos/traffic-accident/inputs/lite-city/ATTRIBUTION.txt)).
 
-The lightweight city is included. For detailed buildings and display models, run `aeroagentsim assets fetch` to install Huangpu city pack 1.1 from release tag [`assets-huangpu-city-v1.1`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/releases/tag/assets-huangpu-city-v1.1), then reload the viewer. The pack has its own `NOTICE.txt`; see [asset terms and provenance](ASSETS.md).
+See [asset terms and provenance](ASSETS.md) for the optional detailed pack described under Start.
 
 Earlier AirFogSim code is preserved on [`archive/airfogsim`](https://github.com/ZhiweiWei-NAMI/AeroAgentSim/tree/archive/airfogsim); the earlier public package remains on PyPI as [1.1.1](https://pypi.org/project/aeroagentsim/1.1.1/).

@@ -53,8 +53,12 @@ export function decorateBuildings(geometry: T.BufferGeometry, batch: PackedBatch
         const glazing = ['#78aaa9', '#8ab5c6', '#68989e', '#a2bdc8', '#80b5ad'];
         const paletteIndex = Math.min(4, Math.floor(variation * 5));
         const dayColor = tagColor(tags?.['building:colour'] ?? tags?.colour, dayGlass ? glazing[paletteIndex] : brick ? '#c6a98d' : stones[paletteIndex]);
+        // Slightly stronger value contrast against the pale ground so buildings
+        // stay discernible at a whole-region distance; tag colours still win.
+        if (!tags?.['building:colour'] && !tags?.colour) dayColor.multiplyScalar(0.96);
         dayColor.multiplyScalar(0.94 + variation * .12);
         const dayRoofColor = tagColor(tags?.['roof:colour'], dayGlass ? '#cbd9d9' : '#e8e1d3');
+        if (!tags?.['roof:colour']) dayRoofColor.multiplyScalar(0.97);
         const pitched = tags?.['roof:shape'] !== undefined && tags['roof:shape'] !== 'flat';
         for (let i = start; i < end; i++) {
             wallColor.toArray(wall, i * 3);

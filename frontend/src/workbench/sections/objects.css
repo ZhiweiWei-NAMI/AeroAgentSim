@@ -1,0 +1,13 @@
+.wb-add-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 4px 12px; margin: 6px 0; }
+.wb-add-grid .wb-field { margin: 0; }
+.wb-add-note { margin: 2px 0 6px; font-size: 11.5px; color: var(--wb-muted); }
+.wb-cat-list { margin: 6px 0; max-height: 190px; overflow: auto; border: 1px solid var(--wb-line); border-radius: 9px; }
+.wb-cat-row { display: flex; width: 100%; gap: 8px; align-items: baseline; padding: 5px 9px; background: none; border: 0; border-bottom: 1px solid var(--wb-line); text-align: left; cursor: pointer; font: inherit; }
+.wb-cat-row:last-child { border-bottom: 0; }
+.wb-cat-row:hover { background: rgba(56, 198, 244, .08); }
+.wb-cat-row[aria-pressed='true'] { background: #e7f1fd; }
+.wb-night .wb-cat-row[aria-pressed='true'] { background: rgba(56,198,244,.2); }
+.wb-cat-row:disabled { opacity: .55; cursor: not-allowed; }
+.wb-cat-row b { font-size: 12.5px; }
+.wb-review { max-height: 220px; overflow: auto; }
+@media (prefers-reduced-motion: reduce) { .wb-cat-row, .wb-btn { transition: none !important; } }

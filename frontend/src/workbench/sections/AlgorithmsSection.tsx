@@ -3,18 +3,21 @@ import { Leaf, pointer, TreeForm } from '../form';
 import { keysPresent } from './KeyTrees';
 import type { SectionProps } from './types';
 
-export function AlgorithmsSection({ draft, edit, focus, L, zh, locale, algorithms }: SectionProps) {
+/** C8 contract: algorithm descriptors may carry `consumers: [{engine, plugin}]` naming the components
+ *  that actually read that slot at runtime. Absent consumers means unknown, never "everything". */
+export function AlgorithmsSection({ draft, edit, focus, zh, locale, algorithms, L }: SectionProps) {
   const slots = (draft.algorithms ?? {}) as Record<string, string>;
   return <>
-    <p className="hint">{L('Which method chooses plans. Each slot is used by the components listed with it. Changing a slot changes the next run, never a running world.', '用哪种方法选择方案。每个插槽作用于对应的组件。修改只影响下一次运行，不会改变正在运行的世界。')}</p>
+    <p className="hint">{L('Which method chooses plans. Changes affect the next run only — a running world keeps its pinned algorithms.', '用哪种方法选择方案。修改只影响下一次运行——正在运行的世界保持已固定的算法。')}</p>
     {Object.entries(slots).map(([slot, chosen]) => {
-      const options = (algorithms ?? []).filter(item => item.slot === slot);
-      const users = Object.entries((draft.engines ?? {}) as Record<string, any>).filter(([, engine]) => engine?.config?.algorithm_config !== undefined || JSON.stringify(engine?.config ?? {}).includes(slot)).map(([name]) => name);
-      const current = options.find(item => item.id === chosen);
+      const current = (algorithms ?? []).find(item => item.id === chosen && item.slot === slot);
+      const consumers = (current as unknown as { consumers?: Array<{ engine: string; plugin: string }> } | undefined)?.consumers;
       return <div key={slot} style={{ marginBottom: 10 }}>
-        <Leaf path={pointer('algorithms', slot)} label={algorithmSlotLabel(slot as never, locale)} value={chosen} options={options.map(item => item.id)} onChange={edit} focus={focus} />
+        <Leaf path={pointer('algorithms', slot)} label={algorithmSlotLabel(slot as never, locale)} value={chosen} options={(algorithms ?? []).filter(item => item.slot === slot).map(item => item.id)} onChange={edit} focus={focus} />
         {current && <p className="hint">{(zh ? current.description_zh : undefined) ?? current.description}</p>}
-        {users.length > 0 && <div className="wb-card-meta">{users.map(user => <span key={user} className="wb-tag">{L('used by', '作用于')} {user}</span>)}</div>}
+        {consumers
+          ? consumers.length > 0 && <div className="wb-card-meta">{consumers.map(consumer => <span key={`${consumer.engine}/${consumer.plugin}`} className="wb-tag">{L('used by', '作用于')} <span className="wb-mono">{consumer.engine}</span> ({consumer.plugin})</span>)}</div>
+          : <p className="hint">{L('Scope unknown for this algorithm; the catalog does not say which components consume it.', '该算法的作用范围未知；目录未说明哪些组件会使用它。')}</p>}
       </div>;
     })}
     {!Object.keys(slots).length && <div className="wb-empty">{L('This scenario declares no algorithm slots.', '该场景未声明算法插槽。')}</div>}

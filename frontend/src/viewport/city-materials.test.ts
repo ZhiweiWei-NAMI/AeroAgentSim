@@ -151,7 +151,7 @@ describe('decorateBuildings display attributes', () => {
     }
     for (let vertex = 3; vertex < 6; vertex++) {
       expectSameColor(colorAt(wall, vertex), tinted('#123456', style.getZ(vertex)));
-      expectSameColor(colorAt(roof, vertex), new T.Color('#777f83')); // no roof:colour tag -> fallback
+      expectSameColor(colorAt(roof, vertex), new T.Color('#777f83').multiplyScalar(0.97)); // no roof:colour tag -> slightly contrast-darkened fallback
     }
   });
 
@@ -224,8 +224,8 @@ describe('decorateBuildings display attributes', () => {
       const glass = style.getX(vertex) === 1;
       const fallback = glass ? '#788a96' : variation > 0.5 ? '#c0bdb5' : '#b3b6b4';
       expectSameColor(colorAt(wall, vertex), tinted(fallback, variation));
-      // ...and roofs to the plain fallback, exactly.
-      expectSameColor(colorAt(roof, vertex), new T.Color('#777f83'));
+      // ...and roofs to the contrast-darkened fallback, exactly.
+      expectSameColor(colorAt(roof, vertex), new T.Color('#e8e1d3').multiplyScalar(0.94 * 0.97));
       expect(style.getY(vertex)).toBeGreaterThanOrEqual(1.8);
       expect(style.getW(vertex)).toBe(0);
       // Procedural estimate still fires: the tall block gets glazing, the low one not.

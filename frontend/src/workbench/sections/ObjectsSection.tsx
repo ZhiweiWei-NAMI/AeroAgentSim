@@ -1,25 +1,46 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Leaf, pointer, TreeForm } from '../form';
 import type { SectionProps } from './types';
+import './objects.css';
+import { AddObjects } from './objects/AddObjects';
+import { Fleets } from './objects/Fleets';
+import { RemoveEntity } from './objects/RemoveEntity';
+import { STUDIO_POS, STUDIO_VEL } from './objects/model';
 
-export function ObjectsSection({ draft, edit, focus, L, onInspectContract }: SectionProps) {
+/** The field ids a studio placement's engines write; shown read-only as ownership. */
+const WRITER_FIELD_HINT = (L: (en: string, zh: string) => string) => ({
+  [STUDIO_POS]: L('written by the motion/operations engine each step', '由运动/操作引擎每步写入'),
+  [STUDIO_VEL]: L('written by the motion engine (kinematic)', '由运动引擎写入（kinematic）'),
+  'aas.studio.energy_j': L('written by the motion engine energy model', '由运动引擎的能量模型写入'),
+  'aas.studio.state': L('written by the operations engine lifecycle', '由操作引擎的生命周期写入'),
+});
+
+export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L, onProject, onInspectContract }: SectionProps) {
   const entities = (Array.isArray(draft.entities) ? draft.entities : []) as Array<Record<string, any>>;
   const [entityFilter, setEntityFilter] = useState('');
   const shownEntities = useMemo(() => entities.map((entity, index) => ({ entity, index })).filter(({ entity }) => !entityFilter || `${entity.id} ${entity.label ?? ''} ${entity.type}`.toLowerCase().includes(entityFilter.toLowerCase())), [entities, entityFilter]);
   const [openEntity, setOpenEntity] = useState<number>();
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState<string>();
   // A jump to an instance clears the filter so the row is visible, and opens it.
   useEffect(() => { const match = /^\/entities\/(\d+)/.exec(focus ?? ''); if (match) { setEntityFilter(''); setOpenEntity(Number(match[1])); } }, [focus]);
+  const generated = Object.values((draft.generators ?? {}) as Record<string, { count?: number }>).reduce((total, generator) => total + (typeof generator.count === 'number' ? generator.count : 0), 0);
+  const writerHint = WRITER_FIELD_HINT(L);
   return <>
     <p className="hint">{L('Concrete instances in this world. Each has an identity, a contract type, an initial state and a visual binding.', '世界中的具体实例：每个都有身份、契约类型、初始状态和视觉绑定。')}</p>
-    {draft.generators && typeof draft.generators === 'object' && <><h4>{L('Generated fleets', '批量生成的机队')}</h4>
-      {Object.entries(draft.generators as Record<string, any>).map(([name, generator]) => <div key={name}>
-        <Leaf path={pointer('generators', name, 'count')} label={`${name} · ${L('count', '数量')}`} value={generator.count} onChange={edit} focus={focus} />
-        <Leaf path={pointer('generators', name, 'type')} label={`${name} · ${L('type', '类型')}`} value={generator.type} onChange={edit} focus={focus} readOnly />
-        <details open={focus?.startsWith(pointer('generators', name))}><summary>{L('Initial state & positions', '初始状态与位置')}</summary>
-          <TreeForm value={Object.fromEntries(Object.entries(generator).filter(([key]) => key !== 'count' && key !== 'type'))} path={pointer('generators', name)} onChange={edit} focus={focus} />
-        </details>
-        {onInspectContract && <button className="wb-btn small ghost" onClick={() => onInspectContract(generator.type)}>{L('Inspect type contract', '查看类型契约')}</button>}
-      </div>)}</>}
+    <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 8 }}>
+      <span className="wb-tag">{L(`Explicit instances ${entities.length}`, `显式实例 ${entities.length}`)}</span>
+      <span className="wb-tag warn">{L(`Will generate ${generated}`, `将生成 ${generated}`)}</span>
+      <span className="wb-tag info">{L(`Expected total at t=0 ${entities.length + generated}`, `t=0 预期总数 ${entities.length + generated}`)}</span>
+    </div>
+    {!entities.length && !generated && !adding && <div className="wb-empty" data-testid="wb-objects-empty">
+      <strong>{L('The world has no objects yet', '世界还没有任何对象')}</strong>
+      {L('Zero objects is a valid world. Add the first one below — nothing is invented for you.', '零对象也是合法的世界。请在下方添加第一个对象——不会为你虚构任何数据。')}
+      <div style={{ marginTop: 8 }}><button className="wb-btn primary" onClick={() => setAdding(true)}>{L('Add objects', '添加对象')}</button></div>
+    </div>}
+    <div style={{ margin: '6px 0' }}><button className="wb-btn" aria-pressed={adding} onClick={() => setAdding(value => !value)}>{adding ? L('Close add objects', '收起添加对象') : L('Add objects', '添加对象')}</button></div>
+    {adding && <AddObjects api={api} studioApi={studioApi} project={project} draft={draft} onProject={onProject} L={L} onClose={() => setAdding(false)} />}
+    <Fleets draft={draft} edit={edit} L={L} />
     <h4>{L('Instances', '实例')} <span className="wb-tag">{entities.length}</span></h4>
     <input className="wb-search" aria-label={L('Filter instances', '筛选实例')} placeholder={L('Filter by id, label or type', '按 id、名称或类型筛选')} value={entityFilter} onChange={event => setEntityFilter(event.target.value)} />
     <table className="wb-table" style={{ marginTop: 8 }}><thead><tr><th>{L('Instance', '实例')}</th><th>{L('Type', '类型')}</th><th /></tr></thead><tbody>
@@ -27,10 +48,21 @@ export function ObjectsSection({ draft, edit, focus, L, onInspectContract }: Sec
         <tr data-path={pointer('entities', index)} style={focus?.startsWith(pointer('entities', index)) ? { background: 'rgba(224,69,58,.08)' } : undefined}>
           <td><b>{entity.label ?? entity.id}</b><div className="wb-mono" style={{ fontSize: 11, color: 'var(--wb-muted)' }}>{entity.id}</div></td>
           <td className="wb-mono" style={{ fontSize: 11 }}>{entity.type}</td>
-          <td><button className="wb-btn small" onClick={() => setOpenEntity(openEntity === index ? undefined : index)}>{openEntity === index ? L('Close', '收起') : L('Edit', '编辑')}</button></td>
+          <td><button className="wb-btn small" onClick={() => { setOpenEntity(openEntity === index ? undefined : index); setRemoving(undefined); }}>{openEntity === index ? L('Close', '收起') : L('Edit', '编辑')}</button>
+            {' '}<button className="wb-btn small danger" onClick={() => { setRemoving(entity.id); setOpenEntity(undefined); }}>{L('Remove', '移除')}</button></td>
         </tr>
-        {openEntity === index && <tr><td colSpan={3}><TreeForm value={entity} path={pointer('entities', index)} onChange={edit} focus={focus} />
-          {onInspectContract && <button className="wb-btn small ghost" onClick={() => onInspectContract(entity.type)}>{L('Inspect type contract', '查看类型契约')}</button>}</td></tr>}
+        {removing === entity.id && <tr><td colSpan={3}><RemoveEntity api={api} studioApi={studioApi} project={project} draft={draft} onProject={onProject} L={L} entityId={entity.id} onDone={() => setRemoving(undefined)} /></td></tr>}
+        {openEntity === index && <tr><td colSpan={3}>
+          <p className="hint">{L('position is a local ENU metre vector [east, north, up] relative to the workspace origin.', 'position 是相对工作区原点的本地 ENU 米制向量 [东, 北, 天]。')}</p>
+          <TreeForm value={{ ...entity, facts: Object.fromEntries(Object.entries(entity.facts ?? {}).filter(([key]) => key !== STUDIO_POS)) }} path={pointer('entities', index)} onChange={edit} focus={focus} />
+          <Leaf path={pointer('entities', index, 'facts', STUDIO_POS)} label={L('position ENU [east, north, up] (m)', '位置 ENU [东, 北, 天]（米）')} value={entity.facts?.[STUDIO_POS] ?? []} onChange={edit} focus={focus} />
+          <p className="hint" style={{ margin: '4px 0' }}>{L('Field ownership (who writes each value at run time):', '字段所有权（运行时由谁写入）：')}</p>
+          {Object.entries(entity.facts ?? {}).map(([key, value]) => <div key={key} style={{ fontSize: 11.5 }}>
+            <span className="wb-mono">{key}</span> <span className="wb-tag">{(writerHint as Record<string, string>)[key] ?? L('authored initial value', '作者提供的初始值')}</span>
+            {value !== null && typeof value === 'object' && <span className="wb-tag wb-mono">{JSON.stringify(value).slice(0, 60)}</span>}
+          </div>)}
+          {onInspectContract && <button className="wb-btn small ghost" onClick={() => onInspectContract(entity.type)}>{L('Inspect type contract', '查看类型契约')}</button>}
+        </td></tr>}
       </Fragment>)}
     </tbody></table>
     {shownEntities.length > 400 && <p className="hint">{L(`Showing 400 of ${shownEntities.length}; filter to find others.`, `显示前 400 个（共 ${shownEntities.length} 个），请筛选查找其余。`)}</p>}

@@ -3,8 +3,12 @@ import { BehavioursPanel } from '../../studio/BehavioursPanel';
 import type { TypeRow, Workspace } from '../../studio/api';
 import { issueSection } from './issues';
 import type { Project } from '../api';
-import { Leaf, pointer, TreeForm } from '../form';
+import { Leaf, pointer } from '../form';
 import type { SectionProps } from './types';
+import { engineOf, taskConfig } from './tasks/model';
+import { OrderStreams } from './tasks/OrderStreams';
+import { CooperationEditor } from './tasks/Cooperation';
+import './tasks.css';
 
 type Catalog = { types: TypeRow[]; fields: Record<string, unknown>[]; relations: Record<string, unknown>[] };
 
@@ -16,10 +20,14 @@ export function TasksSection({ project, studioApi, draft, edit, replaceDraft, fo
   useEffect(() => { if (!ruleEditor || catalog) return; setRuleError(undefined); void studioApi.request<Catalog>(`/v1/studio/types?workspace=${encodeURIComponent(project.id)}`).then(setCatalog).catch(problem => setRuleError(String(problem))); }, [ruleEditor, project.id]);
   useEffect(() => { if (ruleEditor && catalog) ruleRoot.current?.scrollIntoView({ block: 'start' }); }, [ruleEditor, catalog]);
   const behaviours = (Array.isArray(draft.behaviours) ? draft.behaviours : []) as Array<Record<string, any>>;
-  const taskConfig = (draft.engines as Record<string, any> | undefined)?.tasks?.config;
+  const tasks = engineOf(draft, 'lowalt_tasks') ?? ((draft.engines as Record<string, any> | undefined)?.tasks ? { name: 'tasks', engine: (draft.engines as Record<string, any>).tasks as Record<string, any> } : undefined);
+  const config = taskConfig(draft);
   return <>
-    <p className="hint">{L('What work appears and the rules that decide what is allowed: predicates with parameters, and event chains.', '会出现哪些工作，以及决定允许做什么的规则：带参数的谓词与事件链。')}</p>
-    {taskConfig?.generators && <><h4>{L('Task arrivals', '任务到达')}</h4><TreeForm value={taskConfig.generators} path={pointer('engines', 'tasks', 'config', 'generators')} onChange={edit} focus={focus} /></>}
+    <p className="hint">{L('What work appears and the rules that decide what is allowed: order streams, cooperation, predicates with parameters, and event chains.', '会出现哪些工作，以及决定允许做什么的规则：订单流、协同、带参数的谓词与事件链。')}</p>
+    {config?.generators && <><h4>{L('Order streams', '订单流')}</h4>
+      <OrderStreams config={config} draft={draft} edit={edit} focus={focus} L={L} /></>}
+    {config && tasks && <><h4>{L('Cooperation', '协同')}</h4>
+      <CooperationEditor config={config} engineName={tasks.name} draft={draft} edit={edit} focus={focus} L={L} replaceDraft={replaceDraft} /></>}
     {behaviours.map((behaviour, b) => <div key={b}>
       <h4>{L('Rules', '规则')} · <span className="wb-mono">{behaviour.id ?? b}</span></h4>
       {Object.entries(behaviour.predicates ?? {}).map(([name, predicate]: [string, any]) => <details key={name} open><summary><b>{name}</b></summary>
@@ -32,6 +40,6 @@ export function TasksSection({ project, studioApi, draft, edit, replaceDraft, fo
         onChange={replaceDraft} onApply={workspace => onProject(workspace as unknown as Project)}
         save={async () => { const saved = await saveDraft(); if (!saved) throw Error(L('Save failed', '保存失败')); return saved as unknown as Workspace; }} onValidityChange={reportRuleValidity}
         issues={issues.filter(issue => issueSection(issue) === 'tasks')} /></div> : <p className="hint" role={ruleError ? 'alert' : 'status'}>{ruleError ?? L('Loading the contract catalog…', '正在加载契约目录…')}</p>)}
-    {!behaviours.length && !taskConfig && <div className="wb-empty">{L('No task or behaviour definitions.', '没有任务或行为定义。')}</div>}
+    {!behaviours.length && !config && <div className="wb-empty">{L('No task or behaviour definitions.', '没有任务或行为定义。')}</div>}
   </>;
 }

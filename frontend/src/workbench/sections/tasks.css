@@ -1,0 +1,18 @@
+/* Workbench additions for the Tasks/Components structured editors. Keeps the glass-workbench
+   language: same radii, spacing and colour vars as workbench.css. Motion is opacity/transform only. */
+.wb-order-row, .wb-coop, .wb-weather, .wb-traffic, .wb-order-add, .wb-gust-add, .wb-wind-row { min-width: 0; }
+.wb-order-row { border: 1px solid var(--wb-line, rgba(20,32,46,.12)); border-radius: 9px; padding: 6px 8px; margin: 6px 0; }
+.wb-row-toggle { all: unset; cursor: pointer; display: flex; gap: 8px; align-items: center; width: 100%; box-sizing: border-box; }
+.wb-row-toggle:hover { color: var(--wb-accent, #1f7ae0); }
+.wb-row-toggle[aria-expanded='true'] + .wb-order-body { animation: wb-tasks-in 160ms ease-out; }
+.wb-order-body { display: grid; gap: 6px; padding: 8px 2px 2px; }
+.wb-order-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 10px; }
+.wb-order-add input, .wb-order-add select, .wb-gust-add input { height: 26px; border-radius: 7px; border: 1px solid var(--wb-line, rgba(20,32,46,.18)); padding: 0 8px; font-size: 12px; background: transparent; color: inherit; }
+.wb-gust-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 3px 0; }
+.wb-gust-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 6px; }
+.wb-gust-add label { display: grid; gap: 2px; font-size: 11px; color: var(--wb-muted); }
+.wb-coop details, .wb-weather details, .wb-traffic details { margin: 4px 0; }
+.wb-coop summary, .wb-weather summary, .wb-traffic summary, .wb-order-row summary { cursor: pointer; }
+.wb-wind-row { display: grid; gap: 4px; }
+@keyframes wb-tasks-in { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .wb-row-toggle[aria-expanded='true'] + .wb-order-body { animation: none; } }

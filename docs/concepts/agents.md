@@ -45,19 +45,21 @@ submitted/accepted/executing/terminal receipts.
 
 ## Model providers and the live-llm profile
 
-`OpenAIProvider.from_config` accepts `base_url`, `model`, `api_key_env`
-(`src/aeroagentsim/agents/provider.py`). A total wall deadline covers DNS,
+`OpenAIProvider.from_config` accepts a named operator-resolved `profile`
+(`src/aeroagentsim/agents/provider.py`); scenarios cannot supply provider URLs,
+model settings or credential-variable selectors. A total wall deadline covers DNS,
 connection, headers and body; expiry records `WALL_TIMEOUT` and a late reply
 cannot publish. Transport failures are never auto-retried into success, and
 missing usage is an explicit failure.
 
 Two configuration layers exist:
 
-1. Scenario engines (`decision`, `langgraph`) read `AAS_LLM_BASE_URL`,
-   `AAS_LLM_MODEL` and `AAS_LLM_API_KEY` for the credential by default; an explicit scenario
-   setting takes precedence. The model must be provided explicitly — there is
-   no implicit default model; the base URL defaults to
-   `http://127.0.0.1:8788/v1`.
+1. Scenario engines (`decision`, `langgraph`) select `provider: {profile: default}`
+   or another server-configured profile. The default profile reads
+   `AAS_LLM_BASE_URL`, `AAS_LLM_MODEL` and `AAS_LLM_API_KEY`. Other profiles
+   come from `AEROAGENTSIM_PROVIDER_PROFILES` or `AEROAGENTSIM_PROVIDER_CONFIG`;
+   see the [provider guide](../guides/agents.md#the-provider). The model must be
+   provided explicitly; the default base URL is `http://127.0.0.1:8788/v1`.
 2. The shipped demo's `live-llm` profile (`src/aeroagentsim/services/demo.py`)
    instead requires the environment variables `AEROAGENTSIM_LLM_BASE_URL`,
    `AEROAGENTSIM_LLM_MODEL` and `AEROAGENTSIM_LLM_API_KEY_ENV`, where the
@@ -75,6 +77,18 @@ aeroagentsim demo traffic-accident --profile live-llm
 Recorded/stub decision mode is an explicit, selected alternative — never an
 automatic fallback when a live model is unavailable. Responses and prompts
 are recorded without credentials; the resolved model name is recorded.
+
+For low-altitude cooperation, invalid/failed agent replies record
+`lowalt.incident.decision_failed`; responder incident state is `decision_failed`.
+An unsuccessful handoff is `failed` when a helper decision failed, otherwise
+`declined`. Prescribed mode then selects its next allowed ordered action;
+agent mode asks the model anew against current state. These are separate
+recorded outcomes, not a prescribed-success fallback.
+[Failure and re-decision guide](../guides/agents.md#cooperation-failure-and-re-decision).
+
+低空协作的模型失败记录为决策失败，不自动转成预设成功。没有有效交接接受者时，
+协助者决策失败对应 `failed`，否则为 `declined`；之后预设模式选择后续允许动作，
+智能体模式根据当前状态重新询问模型，保留原失败记录。
 
 ## Budgets, ordering and replay
 
