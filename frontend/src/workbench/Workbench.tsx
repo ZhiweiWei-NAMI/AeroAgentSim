@@ -472,7 +472,7 @@ export default function Workbench() {
 
     {/* KPI cards */}
     {session && kpiIds.length > 0 && <div ref={kpiPanel} className="wb-kpis" data-testid="wb-kpis">
-      {kpiIds.slice(0, 5).map(id => { const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh); return <div key={id} className="wb-kpi wb-glass" title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, id].filter(Boolean).join(' · ')}><small>{label}</small><strong className="wb-mono">{kpi?.value == null ? '—' : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1)}</strong><em>{kpi?.unit === 'count' || kpi?.unit === 'ratio' ? '' : kpi?.unit}</em></div>; })}
+      {kpiIds.slice(0, 5).map(id => { const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh); return <div key={id} className="wb-kpi wb-glass" title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, id].filter(Boolean).join(' · ')}><small>{label}</small><strong className="wb-mono">{kpi?.value == null ? '—' : kpi.unit === 'ratio' ? Math.round(kpi.value * 100) : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1)}</strong><em>{kpi?.unit === 'count' ? '' : kpi?.unit === 'ratio' ? '%' : kpi?.unit}</em></div>; })}
     </div>}
 
     {earlier && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing an earlier moment', '正在查看较早时刻')} · <span className="wb-mono">{store && clock ? displayTime(clock.ns, store.header.start.ns) : ''}</span><button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Jump to the end', '跳到结束时刻')} <span className="wb-kbd">L</span></button></div>}

@@ -73,7 +73,11 @@ describe('semantic identity and business style from actual fields', () => {
   });
   it('derives business style from the vehicle class or current task, never both forged', () => {
     const drone = entity('uav-3', 0, 'lowalt:UAV', { 'lowalt.vehicle_class': 'parcel', 'lowalt.soc': 0.42 });
-    expect(businessStyle(semanticVehicle(drone))).toMatchObject({ glyph: 'package', color: '#e69f00', label: 'Parcel' });
+    expect(businessStyle(semanticVehicle(drone))).toMatchObject({ glyph: 'package', color: '#e69f00', label: 'Delivery' });
+    const parcelTask = entity('task-8', 0, 'lowalt:Task', { 'lowalt.task_kind': 'parcel' });
+    expect(businessStyle(semanticVehicle(drone, parcelTask)).label).toBe('Parcel');
+    const mealTask = entity('task-7', 0, 'lowalt:Task', { 'lowalt.task_kind': 'food' });
+    expect(businessStyle(semanticVehicle(drone, mealTask)).label).toBe('Food');
     const medicalTask = entity('task-9', 0, 'lowalt:Task', { 'lowalt.task_kind': 'medical' });
     const plainDrone = entity('uav-4', 0, 'lowalt:UAV', { 'lowalt.vehicle_class': 'parcel' });
     expect(businessStyle(semanticVehicle(plainDrone, medicalTask)).label).toBe('Medical');

@@ -659,6 +659,7 @@ export default {
   'West': '西',
   'Central': '中心',
   'Parcel': '包裹运输',
+  'Delivery': '配送',
   'Food': '外卖配送',
   'food': '外卖配送',
   'Restaurant': '餐厅',

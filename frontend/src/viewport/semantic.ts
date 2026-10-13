@@ -247,6 +247,8 @@ export interface BusinessStyle { glyph: 'package' | 'cross' | 'eye' | 'person' |
  */
 export function businessStyle(vehicle: SemanticVehicle, locale = 'en-US'): BusinessStyle {
   const kind = vehicle.taskKind ?? vehicle.vehicleClass;
+  // The parcel airframe also flies meals; without a current task its class says "delivery", not which kind.
+  if (!vehicle.taskKind && kind === 'parcel') return { glyph: 'package', color: '#e69f00', label: translate(locale, 'Delivery') };
   switch (kind) {
     case 'parcel': return { glyph: 'package', color: '#e69f00', label: translate(locale, 'Parcel') };
     case 'food': return { glyph: 'package', color: '#d55e00', label: translate(locale, 'Food') };

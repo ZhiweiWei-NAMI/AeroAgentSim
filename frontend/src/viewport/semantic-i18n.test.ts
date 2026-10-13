@@ -26,14 +26,14 @@ function fixture() {
 describe('locale-aware imperative viewport labels', () => {
   it('translates generated business/charge labels while leaving authored identity and committed facts exact', () => {
     const store = fixture(), entity = store.entities.get('uav-7:0')!;
-    expect(semanticLabel(entity, undefined, header)).toBe('Courier 7 · Parcel · Charging · SoC 42%');
+    expect(semanticLabel(entity, undefined, header)).toBe('Courier 7 · Delivery · Charging · SoC 42%');
     const text = semanticLabel(entity, undefined, header, 'zh-CN');
     expect(text).toContain('Courier 7');
-    expect(text).toContain(translate('zh-CN', 'Parcel'));
+    expect(text).toContain(translate('zh-CN', 'Delivery'));
     expect(text).toContain(translate('zh-CN', 'Charging'));
     expect(text).toContain('电量 42%');
-    expect(text).not.toMatch(/\bParcel\b|\bCharging\b|\bSoC\b/);
-    expect(businessStyle(semanticVehicle(entity), 'zh-CN')).toMatchObject({ glyph: 'package', color: '#e69f00', label: translate('zh-CN', 'Parcel') });
+    expect(text).not.toMatch(/\bDelivery\b|\bCharging\b|\bSoC\b/);
+    expect(businessStyle(semanticVehicle(entity), 'zh-CN')).toMatchObject({ glyph: 'package', color: '#e69f00', label: translate('zh-CN', 'Delivery') });
     expect(displayName(entity, header, 'zh-CN')).toBe('Courier 7');
     expect(entity.fields.get('lowalt.vehicle_class')!.value).toBe('parcel');
     expect(entity.fields.get('lowalt.soc')!.value).toBe(0.42);
@@ -55,10 +55,10 @@ describe('locale-aware imperative viewport labels', () => {
     layer.semantic = true;
     const camera = new T.PerspectiveCamera(48, 2); camera.position.set(0, 10, 30); camera.lookAt(0, 0, 0);
     layer.update(store, '0', camera, key, false);
-    expect(overlay.querySelector('button')).toHaveTextContent('Courier 7 · Parcel');
+    expect(overlay.querySelector('button')).toHaveTextContent('Courier 7 · Delivery');
     layer.locale = 'zh-CN'; layer.update(store, '0', camera, key, false);
-    expect(overlay.querySelector('button')).toHaveTextContent(translate('zh-CN', 'Parcel'));
-    expect(layer.businessLegend(store)).toContainEqual([translate('zh-CN', 'Parcel'), '#e69f00']);
+    expect(overlay.querySelector('button')).toHaveTextContent(translate('zh-CN', 'Delivery'));
+    expect(layer.businessLegend(store)).toContainEqual([translate('zh-CN', 'Delivery'), '#e69f00']);
     layer.semantic = false; layer.update(store, '0', camera, key, false);
     expect(overlay.querySelector('button')).toHaveTextContent('uav-7');
     expect(overlay.querySelector('button')).not.toHaveAttribute('data-glyph');
