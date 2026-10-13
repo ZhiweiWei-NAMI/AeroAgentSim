@@ -1,0 +1,120 @@
+import { useState } from 'react';
+import type { Project, WorkbenchApi } from '../../api';
+import { applyOperations, operationProblem, previewOperations, type DiffRow, type Operation, type OperationPreview } from '../operations';
+
+type Localize = (en: string, zh: string) => string;
+export type ObjectsDiff = OperationPreview['diff'] & { entities?: { added: string[]; changed: string[]; removed: string[] } };
+
+/** C11 also reports explicit member deltas. Keep them in the review, including fleet shrinkage. */
+export function operationChanges(diff: ObjectsDiff, entities: Array<{ id: string; label?: string; label_zh?: string }> = []): OperationPreview['diff'] {
+  const changes = { added: [...diff.added], changed: [...diff.changed], removed: [...diff.removed] };
+  const append = (group: keyof typeof changes, id: string) => {
+    if (changes[group].some(row => row.kind === 'entity' && row.id === id)) return;
+    const entity = entities.find(row => row.id === id);
+    changes[group].push({ kind: 'entity', id, label: entity?.label, label_zh: entity?.label_zh });
+  };
+  for (const group of ['added', 'changed', 'removed'] as const) for (const id of diff.entities?.[group] ?? []) append(group, id);
+  for (const row of diff.changed) for (const field of row.fields ?? []) {
+    if (field.name !== 'members' || !Array.isArray(field.before) || !Array.isArray(field.after)) continue;
+    for (const id of field.before) if (typeof id === 'string' && !field.after.includes(id)) append('removed', id);
+    for (const id of field.after) if (typeof id === 'string' && !field.before.includes(id)) append('added', id);
+  }
+  return changes;
+}
+
+/** Select the active language from the backend's legacy bilingual messages. */
+export function operationText(text: string, L: Localize): string {
+  const split = text.search(/\s\/\s(?=[\u3400-\u9fff])/);
+  return split < 0 ? text : L(text.slice(0, split), text.slice(split + 3));
+}
+
+function kindLabel(kind: string | undefined, L: Localize) {
+  const labels: Record<string, [string, string]> = {
+    entity: ['Object', '对象'], place: ['Place', '设施'], facility: ['Place', '设施'],
+    fleet: ['Fleet', '机群'], participant: ['Participant', '参与者'], engine: ['Engine', '引擎'],
+    components: ['Components', '组件'], control: ['Setting', '设置'], binding: ['Binding', '绑定'],
+    presentation: ['Visual binding', '视觉绑定'], relation: ['Relation', '关系'],
+    behaviour: ['Behaviour', '行为'], generator: ['Generator', '生成器'], other: ['Reference', '引用'],
+    workload: ['Orders', '订单'], task: ['Task', '任务'], event: ['Event', '事件'],
+    region: ['Region', '区域'], environment: ['Environment', '环境'], algorithm: ['Algorithm', '算法'],
+    scene: ['Scene', '场景'], network: ['Road network', '道路网络'], rule: ['Rule', '规则'],
+  };
+  const pair = kind && labels[kind];
+  return pair ? L(...pair) : kind ?? '—';
+}
+
+function rowLabel(row: DiffRow, L: Localize) {
+  return operationText(L(row.label ?? row.id ?? '—', row.label_zh ?? row.label ?? row.id ?? '—'), L);
+}
+
+/** Shared, left-aligned review for all Objects operations; exported for other form owners. */
+export function OperationDiff({ diff, notes = [], stale = false, L, entities }: {
+  diff: ObjectsDiff; notes?: OperationPreview['notes']; stale?: boolean; L: Localize; entities?: Array<{ id: string; label?: string; label_zh?: string }>;
+}) {
+  const changes = operationChanges(diff, entities);
+  const groups = [
+    { key: 'added', rows: changes.added, sign: '+', title: L('Added', '新增') },
+    { key: 'changed', rows: changes.changed, sign: '~', title: L('Changed', '修改') },
+    { key: 'removed', rows: changes.removed, sign: '−', title: L('Removed', '移除') },
+  ];
+  return <div className="wb-operation-diff" role="status" aria-label={L('Review changes', '查看变更')}>
+    {stale && <p className="hint wb-preview-stale">{L('Inputs or draft changed — preview again before applying.', '输入或草稿已变化，请重新预览后再应用。')}</p>}
+    {groups.map(group => <section key={group.key} aria-label={group.title}>
+      <h5>{group.title} <span className="wb-tag">{group.rows.length}</span></h5>
+      <ul className="wb-diff-list">
+        {group.rows.map((row, index) => <li key={`${row.kind}:${row.id}:${index}`}>
+          <div className="wb-diff-row">
+            <span aria-hidden>{group.sign}</span><span>{kindLabel(row.kind, L)}</span>
+            <span className="wb-mono">{row.id ?? '—'}</span><span>{rowLabel(row, L)}</span>
+          </div>
+          {row.fields?.map(field => <div key={field.name} className="wb-diff-field wb-mono">
+            {field.name}: {field.before === undefined ? L('Not set', '未设置') : JSON.stringify(field.before)} → {field.after === undefined ? L('Not set', '未设置') : JSON.stringify(field.after)}
+          </div>)}
+        </li>)}
+      </ul>
+    </section>)}
+    {groups.every(group => group.rows.length === 0) && <p className="hint">{L('No draft changes for these inputs.', '这些输入不会更改草稿。')}</p>}
+    {notes.map((note, index) => <p key={index} className="hint">{typeof note === 'string' ? operationText(note, L)
+      : operationText(L(note.en ?? note.text ?? note.zh ?? '', note.zh ?? note.text ?? note.en ?? ''), L)}</p>)}
+  </div>;
+}
+
+/** Stable by research values, including nested keys; transient operation ids are excluded. */
+export function operationKey(project: Pick<Project, 'id' | 'revision'>, operations: Operation[]): string {
+  const sorted = (value: unknown): unknown => Array.isArray(value) ? value.map(sorted)
+    : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, child]) => [key, sorted(child)])) : value;
+  return JSON.stringify([project.id, project.revision, operations.map(({ op, params }) => ({ op, params: sorted(params) }))]);
+}
+
+/** A confirmation uses the exact operations and base revision that produced its review. */
+export function useOperationsReview(api: WorkbenchApi, project: Project, operations: Operation[]) {
+  const key = operationKey(project, operations);
+  const [receipt, setReceipt] = useState<{ preview: OperationPreview; key: string; base: Project; operations: Operation[] }>();
+  const [rejected, setRejected] = useState(false);
+  const [busy, setBusy] = useState<'preview' | 'apply'>();
+  const [problem, setProblem] = useState<ReturnType<typeof operationProblem>>();
+  const [failure, setFailure] = useState<unknown>();
+  const stale = !!receipt && (receipt.key !== key || rejected);
+  const load = async () => {
+    if (busy) return;
+    const snapshot = JSON.parse(JSON.stringify(operations)) as Operation[];
+    const base = { ...project };
+    setBusy('preview'); setProblem(undefined); setFailure(undefined);
+    try {
+      const preview = await previewOperations(api, base, snapshot);
+      setReceipt({ preview, key, base, operations: snapshot }); setRejected(false);
+    } catch (failure) { setFailure(failure); setProblem(operationProblem(failure)); setReceipt(undefined); }
+    finally { setBusy(undefined); }
+  };
+  const apply = async () => {
+    if (!receipt || stale || busy) return;
+    setBusy('apply'); setProblem(undefined); setFailure(undefined);
+    try {
+      const updated = await applyOperations(api, receipt.base, receipt.operations);
+      setReceipt(undefined);
+      return updated;
+    } catch (failure) { setFailure(failure); setProblem(operationProblem(failure)); setRejected(true); }
+    finally { setBusy(undefined); }
+  };
+  return { preview: receipt?.preview, stale, busy, problem, failure, load, apply, clear: () => { setReceipt(undefined); setProblem(undefined); setFailure(undefined); } };
+}

@@ -1,7 +1,7 @@
 import type { AlgorithmDescriptor } from '../../newcomers/api';
 import type { StudioApi } from '../../studio/api';
 import type { useI18n } from '../../i18n/I18nProvider';
-import type { Project, ValidationIssue, WorkbenchApi } from '../api';
+import type { Project, SectionId, ValidationIssue, WorkbenchApi } from '../api';
 
 export type Scenario = Record<string, unknown>;
 
@@ -13,4 +13,7 @@ export interface SectionProps {
   issues: ValidationIssue[]; onProject: (project: Project) => void; saveDraft: () => Promise<Project | undefined>;
   reportValidity: (path: string, valid: boolean) => void; onInspectContract?: (typeId: string, field?: string) => void;
   algorithms?: AlgorithmDescriptor[];
+  /** Jump to another section without unmounting existing forms. `focus` is passed to that section,
+   * e.g. goTo('objects', 'add-place') for its Add place flow or a JSON pointer for an authored field. */
+  goTo?: (section: SectionId, focus?: string) => void;
 }

@@ -1,5 +1,16 @@
-.wb-add-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 4px 12px; margin: 6px 0; }
-.wb-add-grid .wb-field { margin: 0; }
+.wb-add-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 4px 12px; margin: 6px 0; }
+.wb-add-grid .wb-field, .wb-config-body .wb-add-grid .wb-field { grid-template-columns: minmax(0, 1fr); align-items: start; margin: 0; }
+.wb-object-form { border: 1px solid var(--wb-line); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; }
+.wb-object-form h4 { margin: 2px 0 4px; }
+.wb-role-choices, .wb-object-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.wb-position-field { border: 0; padding: 0; min-width: 0; }
+.wb-lowalt-start, .wb-operation-diff { text-align: left; }
+.wb-operation-diff { margin: 6px 0; }
+.wb-operation-diff h5 { margin: 6px 0 2px; font: inherit; font-weight: 600; }
+.wb-diff-list { list-style: none; padding: 0; margin: 0; }
+.wb-diff-row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.wb-diff-field { color: var(--wb-muted); overflow-wrap: anywhere; }
+.wb-preview-stale { color: var(--wb-warn); }
 .wb-add-note { margin: 2px 0 6px; font-size: 11.5px; color: var(--wb-muted); }
 .wb-cat-list { margin: 6px 0; max-height: 190px; overflow: auto; border: 1px solid var(--wb-line); border-radius: 9px; }
 .wb-cat-row { display: flex; width: 100%; gap: 8px; align-items: baseline; padding: 5px 9px; background: none; border: 0; border-bottom: 1px solid var(--wb-line); text-align: left; cursor: pointer; font: inherit; }

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import { localized } from '../i18n/translate';
 import { runStatusLabel } from '../newcomers/presentation';
-import { TERMINAL, type RunRecord, type WorkbenchApi } from './api';
+import { sameRunRecords, TERMINAL, type RunRecord, type WorkbenchApi } from './api';
 
 const tone = (status: string) => status === 'completed' ? 'ok' : status === 'stopped' ? 'warn' : TERMINAL.has(status) ? 'bad' : status === 'initialized' ? 'info' : 'live';
 
@@ -14,10 +14,27 @@ export function RecordsPanel({ api, projectId, current, onOpen, onCompare, onDer
   const { locale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const [runs, setRuns] = useState<RunRecord[]>(), [error, setError] = useState<string>();
+  const runsRef = useRef<RunRecord[]>();
+  const errorRef = useRef<string>();
   const [scope, setScope] = useState<'project' | 'all'>(projectId ? 'project' : 'all'), [chosen, setChosen] = useState<string[]>([]), [busy, setBusy] = useState<string>();
   useEffect(() => {
     const abort = new AbortController();
-    const load = () => void api.runs(abort.signal).then(rows => { setRuns(rows.reverse()); setError(undefined); }).catch(problem => { if (!abort.signal.aborted) setError(String(problem)); });
+    let loading = false;
+    const load = async () => {
+      if (loading || abort.signal.aborted) return;
+      loading = true;
+      try {
+        const rows = [...await api.runs(abort.signal)].reverse();
+        if (!abort.signal.aborted) {
+          if (!sameRunRecords(runsRef.current, rows)) { runsRef.current = rows; setRuns(rows); }
+          if (errorRef.current !== undefined) { errorRef.current = undefined; setError(undefined); }
+        }
+      } catch (problem) {
+        const message = String(problem);
+        if (!abort.signal.aborted && errorRef.current !== message) { errorRef.current = message; setError(message); }
+      }
+      finally { loading = false; }
+    };
     load(); const timer = setInterval(load, 4000);
     return () => { abort.abort(); clearInterval(timer); };
   }, [api, refreshKey]);

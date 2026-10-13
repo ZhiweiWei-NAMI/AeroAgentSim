@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { Profiler } from 'react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { RecordsPanel } from './RecordsPanel';
 import type { WorkbenchApi } from './api';
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 it('limits comparison to four without silently replacing a selected run', async () => {
   const compare = vi.fn();
   const rows = Array.from({ length: 5 }, (_, i) => ({ id: `run-${i}`, status: 'stopped', scenario: 'food-delivery', studio_workspace: 'project' }));
@@ -21,4 +22,23 @@ it('shows loading and actual request failures instead of an empty run list', asy
   reject(Error('records unavailable'));
   expect(await screen.findByRole('alert')).toHaveTextContent('records unavailable');
   expect(screen.queryByText('No runs yet')).toBeNull();
+});
+it('keeps record order immutable and skips unchanged polls while showing real finalization changes', async () => {
+  vi.useFakeTimers();
+  const source = [{ id: 'older', status: 'completed', scenario: 'food' }, { id: 'newer', status: 'completed', scenario: 'food', results_final: false }];
+  const runs = vi.fn(async () => source.map(row => ({ ...row }))), commits = vi.fn();
+  await act(async () => {
+    render(<Profiler id="records" onRender={commits}><RecordsPanel api={{ runs } as unknown as WorkbenchApi} refreshKey={0}
+      onOpen={vi.fn()} onCompare={vi.fn()} onDerive={vi.fn()} onClose={vi.fn()} /></Profiler>);
+  });
+  expect(screen.getAllByRole('checkbox')[0]).toHaveAccessibleName('Select newer for comparison');
+  expect(source.map(row => row.id)).toEqual(['older', 'newer']);
+  expect(screen.getByText('finalizing…')).toBeVisible();
+  const count = commits.mock.calls.length;
+  await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+  expect(commits).toHaveBeenCalledTimes(count);
+  source[1].results_final = true;
+  await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+  expect(screen.queryByText('finalizing…')).toBeNull();
+  expect(commits.mock.calls.length).toBeGreaterThan(count);
 });

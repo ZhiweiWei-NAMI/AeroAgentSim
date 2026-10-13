@@ -88,4 +88,23 @@ describe('draft form values', () => {
     await waitFor(() => expect(input).toHaveValue(''));
     expect(input).toHaveAttribute('aria-invalid', 'true');
   });
+  it('retains unconfirmed JSON when a parent refresh supplies equal content', () => {
+    const apply = vi.fn();
+    const view = render(<JsonEditor label="settings" value={{ seed: 42, step: 1 }} onApply={apply} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '{"seed":45,"step":1}' } });
+    view.rerender(<JsonEditor label="settings" value={{ step: 1, seed: 42 }} onApply={apply} />);
+    expect(screen.getByRole('textbox')).toHaveValue('{"seed":45,"step":1}');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply JSON' }));
+    expect(apply).toHaveBeenCalledWith({ seed: 45, step: 1 });
+  });
+  it('retains invalid vector text across an equal server refresh', () => {
+    const change = vi.fn();
+    const view = render(<TreeForm value={[1, 2, 3]} path="/position" label="position" onChange={change} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '-, 2, 3' } });
+    fireEvent.blur(screen.getByRole('textbox'));
+    view.rerender(<TreeForm value={[1, 2, 3]} path="/position" label="position" onChange={change} />);
+    expect(screen.getByRole('textbox')).toHaveValue('-, 2, 3');
+    expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true');
+    expect(change).not.toHaveBeenCalled();
+  });
 });

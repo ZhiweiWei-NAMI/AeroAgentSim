@@ -41,8 +41,11 @@ export class WorkbenchApi {
   projects(signal?: AbortSignal) { return this.request<Project[]>('/v1/studio/workspaces', { signal }); }
   createProject(name: string) { return this.request<{ id: string }>('/v1/studio/workspaces', { body: { name } }); }
   project(id: string, signal?: AbortSignal) { return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}`, { signal }); }
-  save(id: string, scenario: Record<string, unknown>, revision: number, name?: string) {
-    return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}`, { body: { scenario, revision, ...(name ? { name } : {}) } });
+  async save(id: string, scenario: Record<string, unknown>, revision: number, name?: string) {
+    // Both the legacy save record and the newer summary response are supported.
+    // GET owns the authoritative version, validation and dirty state after the mutation.
+    await this.request<unknown>(`/v1/studio/workspaces/${encodeURIComponent(id)}`, { body: { scenario, revision, ...(name ? { name } : {}) } });
+    return this.project(id);
   }
   rename(id: string, name: string, revision: number) { return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}`, { body: { name, revision } }); }
   validate(id: string, revision: number) { return this.request<Validation>(`/v1/studio/workspaces/${encodeURIComponent(id)}/validate`, { body: { revision } }); }
@@ -66,3 +69,8 @@ export class WorkbenchApi {
 
 /** Run statuses after which nothing can change. */
 export const TERMINAL = new Set(['completed', 'stopped', 'faulted', 'interrupted', 'input_timeout']);
+
+/** Preserve record consumers when polling returned the same authoritative data. */
+export function sameRunRecords(previous: RunRecord[] | undefined, next: RunRecord[]): boolean {
+  return previous !== undefined && JSON.stringify(previous) === JSON.stringify(next);
+}

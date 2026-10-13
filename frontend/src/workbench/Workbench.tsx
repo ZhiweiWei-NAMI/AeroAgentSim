@@ -17,7 +17,7 @@ import { entityId, resolveBinding } from '../viewport/bindings';
 import { displayName } from '../viewport/semantic';
 import { worldPosition } from '../viewport/coordinates';
 import type { Viewport } from '../viewport/viewport';
-import { ApiError, TERMINAL, WorkbenchApi, type Project, type RunRecord } from './api';
+import { ApiError, sameRunRecords, TERMINAL, WorkbenchApi, type Project, type RunRecord } from './api';
 import { ConfigPanel } from './ConfigPanel';
 import { Dock, type DockTab } from './Dock';
 import { Gallery } from './Gallery';
@@ -110,14 +110,22 @@ export default function Workbench() {
 
   // Runs of this project: the attached run's record, and recovery of an active run after refresh.
   const [records, setRecords] = useState<RunRecord[]>(), [recordsKey, setRecordsKey] = useState(0), [recordsError, setRecordsError] = useState<string>();
+  const recordsRef = useRef<RunRecord[]>();
+  const recordsErrorRef = useRef<string>();
   useEffect(() => {
     const abort = new AbortController();
     let loading = false;
     const load = async () => {
       if (loading || abort.signal.aborted) return;
       loading = true;
-      try { const result = await api.runs(abort.signal); if (!abort.signal.aborted) { setRecords(result); setRecordsError(undefined); } }
-      catch (problem) { if (!abort.signal.aborted) setRecordsError(problemText(problem)); }
+      try { const result = await api.runs(abort.signal); if (!abort.signal.aborted) {
+        if (!sameRunRecords(recordsRef.current, result)) { recordsRef.current = result; setRecords(result); }
+        if (recordsErrorRef.current !== undefined) { recordsErrorRef.current = undefined; setRecordsError(undefined); }
+      } }
+      catch (problem) {
+        const message = problemText(problem);
+        if (!abort.signal.aborted && recordsErrorRef.current !== message) { recordsErrorRef.current = message; setRecordsError(message); }
+      }
       finally { loading = false; }
     };
     load(); const timer = setInterval(load, 5000);
@@ -189,6 +197,10 @@ export default function Workbench() {
   const [leftOpen, setLeftOpen] = useState(true), [rightOpen, setRightOpen] = useState(true);
   const [dockOpen, setDockOpen] = useState(false), [dockTab, setDockTab] = useState<DockTab>('events');
   const [palette, setPalette] = useState(false), [initializing, setInitializing] = useState(false), [pending, setPending] = useState<string>();
+  const paletteInvoker = useRef<HTMLElement | null>(null);
+  const openPalette = () => { paletteInvoker.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setPalette(true); };
+  const closePalette = () => setPalette(false);
+  useLayoutEffect(() => { if (!palette && paletteInvoker.current?.isConnected) { paletteInvoker.current.focus(); paletteInvoker.current = null; } }, [palette]);
   useEffect(() => {
     if (!pending) return;
     if (TERMINAL.has(status ?? '') || pending === 'pause' && status === 'paused' ||
@@ -323,15 +335,15 @@ export default function Workbench() {
   };
 
   // Simulation control (never playback)
-  const initialize = async () => {
-    if (!project?.latest_version) return;
+  const initialize = async (version: number) => {
+    if (!project || initializing) return;
     setInitializing(true);
     try {
-      const run = await api.initialize(project.id, project.latest_version.version);
+      const run = await api.initialize(project.id, version);
       // A scenario authored "as fast as possible" starts at a watchable 5×; the selector shows and changes it.
       try { const current = await api.speed(run.id); setSpeedState(current.factor === null ? (await api.setSpeed(run.id, 5)).factor : current.factor); }
       catch (problem) { toast('error', `${L('Simulation speed could not be loaded.', '无法读取仿真速度。')} ${problemText(problem)}`); }
-      toast('success', L(`Initialized version ${project.latest_version.version}. The world is held at t = 0 — press Start to run it.`, `已初始化版本 ${project.latest_version.version}。世界停在 t = 0，按“启动”开始运行。`));
+      toast('success', L(`Initialized version ${version}. The world is held at t = 0 — press Start to run it.`, `已初始化版本 ${version}。世界停在 t = 0，按“启动”开始运行。`));
       setRecordsKey(value => value + 1);
       update({ run: run.id, mode: 'live', cut: undefined, sel: undefined, panel: assistantOpen ? 'assistant' : undefined }, true);
     } catch (problem) { toast('error', problemText(problem)); } finally { setInitializing(false); }
@@ -386,9 +398,9 @@ export default function Workbench() {
         target.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes((target as HTMLInputElement).type));
       if (overlayOpen) {
         // Only Escape (closing the overlay) and the palette toggle stay live.
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setPalette(value => !value); return; }
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); if (palette) closePalette(); else openPalette(); return; }
         if (event.key === 'Escape' && !editing) {
-          if (palette) setPalette(false);
+          if (palette) closePalette();
           else if (query.get('compare')) update({ compare: undefined });
           else if (contractType !== undefined) update({ contract: undefined, type: undefined });
           else if (query.has('gallery') && projectId) update({ gallery: undefined });
@@ -398,7 +410,7 @@ export default function Workbench() {
       if (editing && event.key !== 'Escape' && !((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k')) return;
       // Escape first leaves the field being edited; a second Escape closes the panel.
       if (editing && event.key === 'Escape') { target.blur(); return; }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setPalette(value => !value); return; }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openPalette(); return; }
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === ' ' && session) { event.preventDefault(); event.stopPropagation(); session.togglePlayback(); }
       else if (event.key === 'i' && session?.followingLive && mode === 'live' && ['running', 'paused', 'waiting_for_input'].includes(status ?? '')) { update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }
@@ -408,7 +420,7 @@ export default function Workbench() {
       else if (event.key === 'r') update({ records: query.get('records') ? undefined : '1' });
       else if (event.key === 'f' && selected && store && resolveBinding(store.header, store.entities.get(entityId(selected))?.typeId ?? '')) { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }
       else if (event.key === 'l' && session) session.backToLive();
-      else if (event.key === 'Escape') { if (palette) setPalette(false); else if (query.get('compare')) update({ compare: undefined }); else if (query.get('contract')) update({ contract: undefined, type: undefined }); else if (query.get('graph')) update({ graph: undefined }); else if (query.get('records')) update({ records: undefined }); else if (query.get('panel')) update({ panel: undefined }); else if (selected) select(undefined); }
+      else if (event.key === 'Escape') { if (palette) closePalette(); else if (query.get('compare')) update({ compare: undefined }); else if (query.get('contract')) update({ contract: undefined, type: undefined }); else if (query.get('graph')) update({ graph: undefined }); else if (query.get('records')) update({ records: undefined }); else if (query.get('panel')) update({ panel: undefined }); else if (selected) select(undefined); }
     };
     // Claim playback before nested operation components receive the same Space.
     addEventListener('keydown', key, true); return () => removeEventListener('keydown', key, true);
@@ -432,6 +444,9 @@ export default function Workbench() {
   const following = camera === 'follow' && selectedSpatial;
   // Keep the usable scene and panel bounds tied to the panels actually on screen.
   const boardOpen = assistantOpen && assistant.board && !query.get('records');
+  // Until PlanBoard accepts the project's latest_version, its label names the version
+  // applied by the shown plan. Execute that exact version instead of a newer Form save.
+  const boardVersion = assistant.assistant.session?.applied.filter(row => row.plan_version === assistant.assistant.plan?.version && row.workspace_id === project?.id).at(-1)?.version;
   const layout = { '--wb-left-space': query.get('records') ? 'calc(var(--wb-left) + 60px)' : boardOpen ? 'var(--as-board-width)' : leftOpen ? 'var(--wb-left)' : '0px',
     '--wb-right-space': panel ? assistantOpen ? 'var(--as-chat-width)' : 'var(--wb-config-width)' : rightOpen && !inspectorCompact ? 'var(--wb-right)' : '0px',
     '--wb-overlay-right-space': !panel && rightOpen && inspectorCompact ? '250px' : 'var(--wb-right-space)',
@@ -484,7 +499,7 @@ export default function Workbench() {
       {session?.pendingCut !== undefined && <span className="wb-tag" role="status" data-testid="wb-seeking">{L(`Loading moment #${session.pendingCut}…`, `正在加载时刻 #${session.pendingCut}…`)}</span>}
       <div className="wb-clock"><small>{mode === 'replay' ? L('Replay time', '回放时间') : L('Simulation time', '仿真时间')}</small><time className="wb-mono">{session ? displayTime(runClockTime(mode ?? 'replay', { ...session, waiting, reportedBoundaryNs: metadataBoundary && metadataBoundary.runId === runId && (!session.reportedBoundaryNs || BigInt(metadataBoundary.ns) > BigInt(session.reportedBoundaryNs)) ? metadataBoundary.ns : session.reportedBoundaryNs }), session.store.header.start.ns) : '--:--.-'}</time></div>
       <div className="wb-controls" aria-label={L('Simulation control', '仿真控制')}>
-        {(!runId || TERMINAL.has(status ?? '') || mode === 'replay') && project && <button className="wb-btn primary" data-testid="wb-init" disabled={!project.latest_version || initializing} title={project.latest_version ? L('Create a run of the latest saved version, held at t = 0', '以最新保存的版本创建运行，停在 t = 0') : L('Validate and save a version first', '请先校验并保存版本')} onClick={() => void initialize()}>{initializing ? L('Initializing…', '初始化中…') : project.latest_version ? L(`Initialize v${project.latest_version.version}`, `初始化 v${project.latest_version.version}`) : L('Initialize', '初始化')}</button>}
+        {(!runId || TERMINAL.has(status ?? '') || mode === 'replay') && project && <button className="wb-btn primary" data-testid="wb-init" disabled={!project.latest_version || initializing} title={project.latest_version ? L('Create a run of the latest saved version, held at t = 0', '以最新保存的版本创建运行，停在 t = 0') : L('Validate and save a version first', '请先校验并保存版本')} onClick={() => { if (project.latest_version) void initialize(project.latest_version.version); }}>{initializing ? L('Initializing…', '初始化中…') : project.latest_version ? L(`Initialize v${project.latest_version.version}`, `初始化 v${project.latest_version.version}`) : L('Initialize', '初始化')}</button>}
         {mode === 'live' && status === 'initialized' && <button className="wb-btn go" data-testid="wb-start" disabled={!!pending} onClick={() => void control('start')}>▶ {pending === 'start' ? L('Starting…', '启动中…') : L('Start', '启动')}</button>}
         {mode === 'live' && ['running', 'waiting_for_input'].includes(status ?? '') && <button className="wb-btn" data-testid="wb-pause" disabled={!!pending} onClick={() => void control('pause')}>❚❚ {pending === 'pause' ? L('Pausing…', '暂停中…') : L('Pause', '暂停')}</button>}
         {mode === 'live' && status === 'paused' && <button className="wb-btn go" data-testid="wb-resume" disabled={!!pending} onClick={() => void control('resume')}>▶ {pending === 'resume' ? L('Resuming…', '恢复中…') : L('Resume', '恢复')}</button>}
@@ -497,7 +512,7 @@ export default function Workbench() {
       </div>
       </div>
       <div className="wb-tools">
-      <button className="wb-btn ghost" onClick={() => setPalette(true)} title={L('Search objects and actions', '搜索对象与操作')}>⌕ <span className="wb-kbd">⌘K</span></button>
+      <button className="wb-btn ghost" onClick={openPalette} title={L('Search objects and actions', '搜索对象与操作')}>⌕ <span className="wb-kbd">⌘K</span></button>
       {session && <button className="wb-btn" aria-pressed={!!graph} onClick={() => update({ graph: graph ? undefined : '1' })} data-testid="wb-graph-toggle">{L('Graph', '关系图')} <span className="wb-kbd">G</span></button>}
       <button className={`wb-btn as-top-btn${assistantOpen ? ' is-on' : ''}`} aria-pressed={assistantOpen} onClick={toggleAssistant} data-testid="wb-assistant-toggle" title={L('Build or change the scene by describing it', '用描述来搭建或修改场景')}><NeuralGlyph state={assistantOpen && assistant.assistant.busy ? 'thinking' : 'idle'} size={16} title="" />{L('Assistant', '助手')} <span className="wb-kbd">A</span></button>
       {project && <button className="wb-btn" aria-pressed={!!panel && !assistantOpen} onClick={openForm} data-testid="wb-configure">{L('Configure', '配置')} <span className="wb-kbd">C</span></button>}
@@ -527,7 +542,7 @@ export default function Workbench() {
         onOpen={run => update({ run: run.id, mode: TERMINAL.has(run.status) ? 'replay' : 'live', cut: undefined, sel: undefined, records: undefined }, true, run.studio_workspace ? `/w/${encodeURIComponent(run.studio_workspace)}` : location.pathname)}
         onCompare={ids => update({ compare: ids.join(',') })} onDerive={derive} onClose={() => update({ records: undefined })} />
       : boardOpen ? <Contained resetKey={`${assistant.assistant.plan?.version}-${assistant.viewing}`} fallback={retry => <aside className="as-board wb-panel wb-glass" data-testid="as-board-failed" role="alert"><p className="as-quiet">{L('This plan version could not be shown. The conversation and project are unaffected.', '无法显示此方案版本，对话和项目不受影响。')}</p><button className="wb-btn" onClick={retry}>{L('Try again', '重试')}</button></aside>}><PlanBoard api={assistant.api} assistant={assistant.assistant} stage={assistant.stage} waiting={status === 'initialized'} runId={runId} story={assistant.story} storyError={assistant.storyError}
-          startNs={store?.header.start.ns} terminal={TERMINAL.has(status ?? '')} initializing={initializing} canInitialize={!!project?.latest_version} onInitialize={() => void initialize()}
+          startNs={store?.header.start.ns} terminal={TERMINAL.has(status ?? '')} initializing={initializing} canInitialize={!!project?.latest_version && boardVersion !== undefined} onInitialize={() => { if (boardVersion !== undefined) void initialize(boardVersion); }}
           onApplied={record => void applied(record)} onHover={assistant.setFocus} onStep={assistant.setFocus} onContract={type => update({ contract: 'assistant', type, workspace: project?.id })}
           onSeek={cut => session?.seekCut(cut)} viewing={assistant.viewing} onViewVersion={assistant.setViewing} onClose={assistant.closeBoard} /></Contained>
       : session && store && (leftOpen ? <ObjectsPanel store={store} revision={session.revision} selected={selected} selectionOrigin={selectionOrigin} onSelect={(key, fly) => select(key, fly)} onClose={() => setLeftOpen(false)} />
@@ -540,7 +555,7 @@ export default function Workbench() {
         selected={selected ? { id: selected.id, label: entityNames.get(selected.id) ?? selected.id } : undefined} runId={runId} onClearSelected={() => select(undefined)}
         onClose={() => update({ panel: undefined })} onSwitch={project ? (mode, origin) => assistant.switchMode(mode, origin) : undefined} switching={!!assistant.morph} morph={morphOf('chat')}
         onShowPlan={version => { assistant.openBoard(); assistant.setViewing(version === assistant.assistant.plan?.version ? undefined : version); }} onShowChanges={() => { assistant.openBoard(); assistant.setViewing(undefined); }} />}
-    {project && panel && (!assistantOpen || assistant.morph?.from === 'form') ? <ConfigPanel key={project.id} api={api} project={project} onProject={setProject} onDraft={previewChanged} onInitialize={() => void initialize()} initializing={initializing}
+    {project && panel && (!assistantOpen || assistant.morph?.from === 'form') ? <ConfigPanel key={project.id} api={api} project={project} onProject={setProject} onDraft={previewChanged} onInitialize={version => void initialize(version)} initializing={initializing}
         section={assistantOpen ? assistant.lastSection.current : panel} onSection={section => update({ panel: section })} onClose={() => update({ panel: undefined })}
         onInspectContract={type => update({ contract: panel, type, workspace: project.id })}
         activeRunVersion={record?.studio_workspace === project.id ? record.workspace_version : undefined}
@@ -594,7 +609,7 @@ export default function Workbench() {
     {contractType !== undefined && <div className="wb-overlay" onClick={event => { if (event.target === event.currentTarget) update({ contract: undefined, type: undefined, workspace: undefined, panel: query.get('contract') ?? panel }); }}><div className="wb-overlay-card wb-glass">
       <div className="wb-hero"><div style={{ flex: 1 }}><h1>{L('Type contract', '类型契约')}</h1><p className="wb-mono">{contractType?.split(',')[0] || L('AeroGraph types, fields, relations and events', 'AeroGraph 类型、字段、关系与事件')}</p></div><button className="wb-btn primary" onClick={() => update({ contract: undefined, type: undefined, workspace: undefined, panel: query.get('contract') ?? panel })}>← {L('Back to the field you were editing', '返回正在编辑的字段')}</button></div>
       <Suspense fallback={null}><AeroGraphPage /></Suspense></div></div>}
-    {palette && <Palette onClose={() => setPalette(false)} items={[
+    {palette && <Palette onClose={closePalette} items={[
       ...(store ? [...store.entities.values()].map(entity => ({ id: `e:${entityId(entity.key)}`, label: displayName(entity, store.header, locale), hint: entity.typeId, run: () => select(entity.key, true) })) : []),
       ...(project ? [{ id: 'a:config', label: L('Configure scenario', '配置场景'), hint: 'C', run: () => update({ panel: 'controls' }) }] : []),
       { id: 'a:records', label: L('Run records', '运行记录'), hint: 'R', run: () => update({ records: '1' }) },
@@ -617,6 +632,7 @@ function Palette({ items, onClose, placeholder }: { items: Array<{ id: string; l
   const choose = (item?: { run: () => void }) => { if (item) { item.run(); onClose(); } };
   // T4-07: Tab cycles inside the palette; focus cannot escape while it is open.
   const trap = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape' || (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); event.stopPropagation(); onClose(); return; }
     if (event.key !== 'Tab') return;
     const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('input, button:not(:disabled)');
     if (!focusable?.length) return;
@@ -627,7 +643,7 @@ function Palette({ items, onClose, placeholder }: { items: Array<{ id: string; l
   return <div className="wb-overlay" style={{ alignItems: 'flex-start' }} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
     <div className="wb-palette wb-glass" role="dialog" aria-modal="true" aria-label={placeholder} ref={dialogRef} onKeyDown={trap}>
       <input autoFocus value={query} placeholder={placeholder} onChange={event => { setQuery(event.target.value); setIndex(0); }}
-        onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setIndex(value => Math.min(shown.length - 1, value + 1)); } else if (event.key === 'ArrowUp') { event.preventDefault(); setIndex(value => Math.max(0, value - 1)); } else if (event.key === 'Enter') choose(shown[index]); else if (event.key === 'Escape') onClose(); }} />
+        onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setIndex(value => Math.min(shown.length - 1, value + 1)); } else if (event.key === 'ArrowUp') { event.preventDefault(); setIndex(value => Math.max(0, value - 1)); } else if (event.key === 'Enter') choose(shown[index]); }} />
       <ul>{shown.map((item, position) => <li key={item.id}><button aria-selected={position === index} onMouseEnter={() => setIndex(position)} onClick={() => choose(item)}><span style={{ flex: 1 }}>{item.label}</span><span className="wb-tag wb-mono">{item.hint}</span></button></li>)}</ul>
     </div>
   </div>;

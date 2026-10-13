@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import { parseAuthoringJson, stringifyLossless } from '../feeds/lossless-json';
+import { sameDraftValue } from './merge-draft';
 
 export const FormValidity = createContext<(path: string, valid: boolean) => void>(() => undefined);
 function useFieldValidity(path: string, valid: boolean) {
@@ -71,7 +72,7 @@ export function Leaf({ path, label, value, onChange, focus, readOnly, options }:
   // equal contents, and resetting on every render would clear an error the user is correcting.
   const committed = useRef(value);
   useEffect(() => {
-    if (committed.current === value) return;
+    if (sameDraftValue(committed.current, value)) return;
     committed.current = value;
     setText(isTagged(value) ? tagText(value) : value == null ? '' : String(value));
     setBad(false);
@@ -108,7 +109,7 @@ function VectorField({ value, path, label, onChange, focus }: { value: number[];
   // Same committed-value guard as Leaf: equal contents in a new array must not reset the field.
   const committed = useRef(value);
   useEffect(() => {
-    if (committed.current === value) return;
+    if (sameDraftValue(committed.current, value)) return;
     committed.current = value;
     setText(value.join(', '));
     setBad(false);
@@ -175,7 +176,8 @@ export function JsonEditor({ value, onApply, label, path, focus }: { value: unkn
   const format = (source: unknown) => JSON.stringify(source, null, 2).replace(/\{\s*"\$(number|integer)": "([^"\\]+)"\s*\}/g, (_, kind, token) => stringifyLossless({ [`$${kind}`]: token }));
   const [text, setText] = useState(() => format(value));
   const [error, setError] = useState<string>();
-  useEffect(() => { setText(format(value)); setError(undefined); }, [value]);
+  const committed = useRef(value);
+  useEffect(() => { if (!sameDraftValue(committed.current, value)) { committed.current = value; setText(format(value)); setError(undefined); } }, [value]);
   useEffect(() => { if (focused) { root.current?.scrollIntoView({ block: 'center' }); root.current?.querySelector('textarea')?.focus(); } }, [focused]);
   return <div ref={root} data-path={path} className={focused ? 'wb-json-focus' : undefined}>
     <textarea aria-label={label} className={`wb-json${error ? ' is-bad' : ''}`} value={text} spellCheck={false} onChange={event => setText(event.target.value)} />

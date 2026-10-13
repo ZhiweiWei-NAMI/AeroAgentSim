@@ -2,15 +2,15 @@ import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ConfigPanel, controlSource, controlValue, issuePointer, issueSection } from './ConfigPanel';
-import { ApiError, type Project, type WorkbenchApi } from './api';
+import { ApiError, type Project, WorkbenchApi } from './api';
 import { I18nProvider, useI18n } from '../i18n/I18nProvider';
 import { within } from '@testing-library/react';
 const catalog = vi.hoisted(() => ({ template: vi.fn(), algorithms: vi.fn() }));
 vi.mock('../newcomers/api', async original => ({ ...await original<object>(), TemplateApi: class { template = catalog.template; algorithms = catalog.algorithms; } }));
 vi.mock('../studio/BehavioursPanel', () => ({ BehavioursPanel: () => null }));
 const project: Project = { id: 'test-project', name: 'Project', revision: 2, updated_at: '', dirty: true, latest_version: null, scenario: { entities: [{ id: 'restaurant', type: 'lowalt:Restaurant', facts: { capacity: 2 } }], run: { until_ns: 360000000000 } } };
-beforeEach(() => { localStorage.clear(); catalog.algorithms.mockResolvedValue([]); Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { value: vi.fn(), configurable: true }); });
-afterEach(() => { cleanup(); Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView'); });
+beforeEach(() => { localStorage.clear(); sessionStorage.clear(); catalog.algorithms.mockResolvedValue([]); Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { value: vi.fn(), configurable: true }); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView'); });
 function LanguageSwitch() { const { locale, setLocale } = useI18n(); return <button onClick={()=>setLocale(locale==='zh-CN'?'en-US':'zh-CN')}>Switch language</button>; }
 function setup(initial = project, section = 'run', extra: Record<string, unknown> = {}) {
   const api = { base: '/api', save: vi.fn().mockImplementation(async (_id, scenario, revision) => ({ ...initial, scenario, revision: revision + 1 })), exportYaml: vi.fn().mockResolvedValue('run:\n  until_ns: 360000000000\n'), validate: vi.fn(), ...extra } as unknown as WorkbenchApi;
@@ -54,10 +54,10 @@ it('blocks saving and validation while a numeric input is invalid', async () => 
   expect(api.save).not.toHaveBeenCalled();
 });
 it('recovers edits against an older revision without deleting them', async () => {
-  localStorage.setItem('aas.draft.test-project', JSON.stringify({ revision: 1, scenario: { run: { until_ns: 123 } } }));
+  sessionStorage.setItem('aas.draft.test-project', JSON.stringify({ revision: 1, scenario: { run: { until_ns: 123 } } }));
   setup();
   expect(await screen.findByRole('textbox', { name: /until_ns/ })).toHaveValue('123');
-  expect(localStorage.getItem('aas.draft.test-project')).toContain('123');
+  expect(sessionStorage.getItem('aas.draft.test-project')).toContain('123');
   expect(screen.getByText(/The server draft changed/)).toBeVisible();
 });
 it('reads controls from the actual draft and applies only the changed knob', async () => {
@@ -176,4 +176,80 @@ it('an invalid saved draft can still be exported and repaired in the file editor
   expect(screen.getByRole('button', { name: 'Reload' })).toBeEnabled();
   // The export shows the saved draft even while unsaved form edits exist.
   expect(yaml).toHaveValue('run:\n  until_ns: 360000000000\n');
+});
+
+it.each(['save record', 'project summary'])('T4-03: reloads the authoritative project after a %s response and keeps v1 available', async responseShape => {
+  const version = { version: 1, revision: 2, digest: 'v1', created_at: '', validation: { valid: true, revision: 2, errors: [] } };
+  const initial: Project = { ...project, latest_version: version, dirty: false };
+  let server = initial;
+  const api = new WorkbenchApi('/api');
+  const request = vi.spyOn(api, 'request').mockImplementation(async (_path, init) => {
+    if (init?.body) {
+      const body = init.body as { scenario: Project['scenario']; revision: number };
+      server = { ...initial, scenario: body.scenario, revision: body.revision + 1, dirty: true };
+      return responseShape === 'save record' ? { id: server.id, scenario: server.scenario, revision: server.revision } : server;
+    }
+    return server;
+  });
+  const initialize = vi.fn();
+  function Harness() {
+    const [current, setCurrent] = useState(initial);
+    return <ConfigPanel api={api} project={current} onProject={setCurrent} section="run" onSection={vi.fn()} onInitialize={initialize} initializing={false} onClose={vi.fn()} />;
+  }
+  render(<I18nProvider><Harness /></I18nProvider>);
+  fireEvent.change(screen.getByRole('textbox', { name: /until_ns/ }), { target: { value: '600000000000' } });
+  fireEvent.blur(screen.getByRole('textbox', { name: /until_ns/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+  await waitFor(() => expect(screen.getByTestId('wb-initialize')).toHaveTextContent('Initialize v1'));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled());
+  expect(request).toHaveBeenCalledTimes(2);
+  expect(request).toHaveBeenLastCalledWith('/v1/studio/workspaces/test-project', { signal: undefined });
+  expect(screen.getByText(/latest version v1 \(earlier revision\)/)).toBeVisible();
+  expect(screen.getByTestId('wb-initialize')).toBeEnabled();
+  fireEvent.click(screen.getByTestId('wb-initialize'));
+  expect(initialize).toHaveBeenCalledWith(1);
+});
+
+it('T4-01: another tab cannot clear this tab’s recovery, and a conflicted edit survives refresh', async () => {
+  const initial = { ...project, scenario: { ...project.scenario, run: { until_ns: 360000000000, seed: 46 } } };
+  const server = { ...initial, revision: 3, scenario: { ...initial.scenario, run: { until_ns: 360000000000, seed: 48 } } };
+  const { view } = setup(initial, 'run', { save: vi.fn().mockRejectedValue(new ApiError(409, 'revision conflict')), project: vi.fn().mockResolvedValue(server) });
+  fireEvent.change(screen.getByLabelText('Random seed'), { target: { value: '47' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Apply seed to draft' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+  await screen.findByTestId('wb-merge');
+  const key = 'aas.draft.test-project';
+  expect(sessionStorage.getItem(key)).toContain('47');
+  // A different browsing context changes shared localStorage, not this tab's sessionStorage.
+  localStorage.setItem(key, JSON.stringify({ revision: 3, scenario: server.scenario }));
+  localStorage.removeItem(key);
+  view.unmount();
+  setup(server);
+  expect(await screen.findByLabelText('Random seed')).toHaveValue('47');
+  expect(screen.getByText('Unsaved edits were restored from this browser.')).toBeVisible();
+  expect(sessionStorage.getItem(key)).toContain('47');
+  expect(screen.getByText(/The server draft changed/)).toBeVisible();
+});
+
+it('a successful save clears only this tab’s buffer', async () => {
+  localStorage.setItem('aas.draft.test-project', 'other tab recovery');
+  setup();
+  fireEvent.change(screen.getByRole('textbox', { name: /until_ns/ }), { target: { value: '600000000000' } });
+  fireEvent.blur(screen.getByRole('textbox', { name: /until_ns/ }));
+  expect(sessionStorage.getItem('aas.draft.test-project')).toContain('600000000000');
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+  await waitFor(() => expect(sessionStorage.getItem('aas.draft.test-project')).toBeNull());
+  expect(localStorage.getItem('aas.draft.test-project')).toBe('other tab recovery');
+});
+
+it('T4-R2-009: keeps the real Run duration form and unconfirmed JSON mounted across section switches', async () => {
+  const { api } = setup({ ...project, scenario: { run: { until_ns: 2000000000, seed: 42 } } });
+  const duration = screen.getByLabelText('Duration (s)');
+  fireEvent.change(duration, { target: { value: '600' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Objects' }));
+  expect(duration).not.toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Run & recording' }));
+  expect(screen.getByLabelText('Duration (s)')).toBe(duration);
+  expect(duration).toHaveValue('600');
+  expect(api.save).not.toHaveBeenCalled();
 });
