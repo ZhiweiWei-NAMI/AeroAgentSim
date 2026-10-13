@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -12,6 +13,11 @@ import { TemporalFeedStore } from '../feeds/temporal-store';
 import { PlaybackClock } from '../viewport/clock';
 import type { RunSession } from './useRunSession';
 import { Details } from '../console/Details';
+// Vitest disables CSS transforms here, including ?raw imports. Read the real
+// styles so layer/flow assertions exercise the shipped layout declarations.
+const workbenchStyles=readFileSync(new URL('./workbench.css',import.meta.url),'utf8');
+const detailsStyles=readFileSync(new URL('../console/details.css',import.meta.url),'utf8');
+const runStatusStyles=readFileSync(new URL('./run-status.css',import.meta.url),'utf8');
 
 const mocks = vi.hoisted(() => ({ panelRender: vi.fn(), apply: vi.fn(), readSession: vi.fn(), session: undefined as Session | undefined, runSession: undefined as RunSession | undefined }));
 vi.mock('../assistant/AssistantPanel', () => ({ AssistantPanel: () => { mocks.panelRender(); return <input aria-label="Search objects" />; } }));
@@ -29,6 +35,7 @@ const project: Project = { id: 'project', name: 'Project', revision: 4, updated_
   latest_version: { version: 2, revision: 4, digest: 'v2', created_at: '', validation: { valid: true, revision: 4, errors: [] } } };
 const run = { id: 'initialized-run', status: 'initialized', scenario: 'project', studio_workspace: 'project', workspace_version: 1 } as RunRecord;
 beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
   localStorage.clear(); sessionStorage.clear(); mocks.panelRender.mockClear();
   mocks.apply.mockReset(); mocks.readSession.mockClear();
   mocks.runSession = undefined;
@@ -42,7 +49,7 @@ beforeEach(() => {
   vi.spyOn(WorkbenchApi.prototype, 'speed').mockResolvedValue({ id: run.id, factor: 1 });
   vi.spyOn(TemplateApi.prototype, 'kpis').mockResolvedValue({ run_id: run.id, final: {}, series: [] });
 });
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function LocationProbe() { const location = useLocation(); return <output data-testid="current-url">{location.pathname}{location.search}</output>; }
 function setup(entry = '/w/project?panel=assistant') { return render(<I18nProvider><MemoryRouter initialEntries={[entry]}><Workbench /><LocationProbe /></MemoryRouter></I18nProvider>); }
 
@@ -227,6 +234,70 @@ it('T4-R5-001: Escape closes the active details dialog before Records', async ()
   expect(screen.getByTestId('current-url')).toHaveTextContent('records=1');
   fireEvent.keyDown(records, { key: 'Escape' });
   expect(screen.getByTestId('current-url')).not.toHaveTextContent('records=1');
+});
+
+it.each(['en-US','zh-CN'])('T4-R6-001: search opens above Details, traps Tab, and Escape closes only the top layer in %s',async locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  setup();
+  const records=await screen.findByTestId('wb-records-toggle');
+  fireEvent.click(records);
+  render(<I18nProvider><Details title="Admission receipt"><button>Recorded field</button></Details></I18nProvider>);
+  const trigger=screen.getByTestId('details-trigger');
+  fireEvent.click(trigger);
+  const details=screen.getByRole('dialog');
+  const invoker=within(details).getByRole('button',{name:locale==='en-US'?'Close':'关闭'});
+  invoker.focus();
+  fireEvent.keyDown(invoker,{key:'k',ctrlKey:true});
+  const palette=screen.getAllByRole('dialog').find(node=>node.classList.contains('wb-palette'))!;
+  expect(palette.parentElement).toHaveClass('wb-search-layer');
+  const searchZ=Number(/\.wb-overlay\.wb-search-layer\s*\{[^}]*z-index:\s*(\d+)/.exec(workbenchStyles)?.[1]);
+  const detailsZ=Number(/\.wb-details-layer\s*\{[^}]*z-index:\s*(\d+)/.exec(detailsStyles)?.[1]);
+  expect(searchZ).toBeGreaterThan(detailsZ);
+  expect(palette).toContainElement(document.activeElement as HTMLElement);
+  await userEvent.setup().tab({shift:true});
+  expect(palette).toContainElement(document.activeElement as HTMLElement);
+  await userEvent.setup().tab();
+  expect(palette).toContainElement(document.activeElement as HTMLElement);
+  fireEvent.keyDown(document.body,{key:'Escape'});
+  expect(screen.getByRole('dialog')).toBe(details);
+  expect(details).toBeVisible();expect(invoker).toHaveFocus();
+  expect(screen.getByTestId('current-url')).toHaveTextContent('records=1');
+  fireEvent.keyDown(invoker,{key:'Escape'});
+  expect(screen.queryByRole('dialog')).toBeNull();
+  await waitFor(()=>expect(trigger).toHaveFocus());
+  expect(screen.getByTestId('current-url')).toHaveTextContent('records=1');
+});
+
+it.each([['Linux x86_64','Ctrl+K'],['Win32','Ctrl+K'],['MacIntel','⌘K']])('T4-R6-002: shows the %s search shortcut',async(platform,shortcut)=>{
+  vi.spyOn(navigator,'platform','get').mockReturnValue(platform);
+  setup();
+  await screen.findByTestId('wb-version-chip');
+  expect(screen.getByTitle('Search objects and actions')).toHaveTextContent(shortcut);
+});
+
+it('T4-R6-003: Modify & retry persists the Chinese default name through the derive request',async()=>{
+  localStorage.setItem('aeroagentsim.locale','zh-CN');
+  const source={...run,status:'completed',workspace_name:'Restaurant meal delivery',template_title:'Restaurant meal delivery',template_title_zh:'餐厅外卖配送'};
+  vi.mocked(WorkbenchApi.prototype.runs).mockResolvedValue([source]);
+  const derive=vi.spyOn(WorkbenchApi.prototype,'derive').mockResolvedValue({workspace_id:'variant',derived_from:{run_id:run.id}});
+  setup('/w/project?records=1');
+  fireEvent.click(await screen.findByRole('button',{name:'修改后再试'}));
+  await waitFor(()=>expect(derive).toHaveBeenCalledWith(run.id,'餐厅外卖配送 · 变体'));
+  expect(await screen.findByTestId('current-url')).toHaveTextContent('/w/variant');
+});
+
+it.each(['en-US','zh-CN'])('T4-R6-004: historical and finalizing notices occupy separate flow rows in %s',async locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  const session=recorded();session.seekOffset(1);
+  vi.mocked(WorkbenchApi.prototype.runs).mockResolvedValue([{...run,status:'completed',results_final:false}]);
+  setup(`/w/project?run=${run.id}&mode=replay&cut=2&panel=assistant`);
+  const finalizing=await screen.findByTestId('wb-finalizing');
+  const history=screen.getByTestId('wb-history');
+  expect(history).toBeVisible();expect(finalizing).toBeVisible();
+  expect(history.parentElement).toBe(screen.getByTestId('wb-notices'));
+  expect(finalizing.parentElement).toBe(history.parentElement);
+  expect(runStatusStyles).toMatch(/\.wb-notices\s*\{[^}]*flex-direction:\s*column/s);
+  expect(runStatusStyles).toMatch(/\.wb-notices\s*>\s*\.wb-history\s*\{[^}]*position:\s*static/s);
 });
 
 it('T4-R4-003: a local defaultPrevented event stays local, while Space on the observation surface controls playback', async () => {

@@ -55,6 +55,15 @@ type Translator = (key: string, vars?: Record<string, string | number>) => strin
 const english: Translator = (key, vars) => translate('en-US', key, vars);
 const problemMessage = (problem: unknown) => problem instanceof Error ? problem.message : String(problem);
 
+async function readAdmissionHistory(api: RunsApi, runId: string, after: number, signal: AbortSignal, malformed: string) {
+  const page = await api.request(`/v1/runs/${encodeURIComponent(runId)}/admissions?after=${after}`, { signal });
+  if (!mapping(page) || !Number.isSafeInteger(page.cursor) || Number(page.cursor) < after || !Array.isArray(page.receipts)
+    || !page.receipts.every(row => mapping(row) && typeof row.id === 'string' && typeof row.status === 'string')) {
+    throw Error(malformed);
+  }
+  return { cursor: Number(page.cursor), receipts: page.receipts as Draft[] };
+}
+
 export function advertisedMessages(store:TemporalFeedStore, t:Translator=english):Draft[] {
   const registry=store.header.runtimeRegistry;const rows=store.header.messages??(mapping(registry)?registry.messages:undefined);
   if(rows===undefined)return [];
@@ -92,13 +101,20 @@ export function recordedAccidentPayload(store:TemporalFeedStore):Draft|undefined
 }
 export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSeek,mode,interactive=true,onInjections,inputSource}:Props) {
   const { t, locale } = useI18n();
-  const copy=(en:string,zh:string)=>locale==='zh-CN'?zh:en;
+  const L=(en:string,zh:string)=>locale==='zh-CN'?zh:en;
+  const copy=L;
   const notify=useConsoleNotice();
   const pointInitialized=useRef(false);
-  const [fields,setFields]=useState(emptyTransport()),[payload,setPayload]=useState<unknown>({}),[point,setPoint]=useState(''),[points,setPoints]=useState<Draft[]>([]),[error,setError]=useState(''),[admissions,setAdmissions]=useState<any[]>([]),[busy,setBusy]=useState(false),[effective,setEffective]=useState<string>();
+  const [fields,setFields]=useState(emptyTransport()),[payload,setPayload]=useState<unknown>({}),[point,setPoint]=useState(''),[points,setPoints]=useState<Draft[]>([]),[error,setError]=useState(''),[admissionRows,setAdmissions]=useState<any[]>([]),[busy,setBusy]=useState(false),[effective,setEffective]=useState<string>();
   const [operator,setOperator]=useState(false),[horizon,setHorizon]=useState<string>(),[scheduledOnly,setScheduledOnly]=useState(false);
   const [progressError,setProgressError]=useState('');
-  const [admissionError,setAdmissionError]=useState('');
+  const [historyError,setAdmissionError]=useState('');
+  const [historyLoaded,setAdmissionsLoaded]=useState(false),[historyLoading,setAdmissionsLoading]=useState(true);
+  const [historySource,setHistorySource]=useState({api,runId});
+  const currentHistory=historySource.api===api&&historySource.runId===runId;
+  const admissions=currentHistory?admissionRows:[],admissionsLoaded=currentHistory&&historyLoaded;
+  const admissionError=currentHistory?historyError:'',admissionsLoading=!currentHistory||historyLoading;
+  const retryAdmissions=useRef<()=>void>();
   const [authoredMessages,setAuthoredMessages]=useState<Draft[]>([]);
   const operatorNs=useRef<bigint>(), operatorEnd=useRef<bigint>(), operations=useRef<Promise<unknown>>(Promise.resolve());
   const serialized=inputSource?.serialize??((action:()=>Promise<unknown>)=>{const result=operations.current.then(action,action);operations.current=result;return result;});
@@ -192,19 +208,32 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
   // duplicate an admitted operation, and a journaled outcome updates the same row.
   useEffect(()=>{
     const abort=new AbortController();
-    let requested = 0, completed = 0;
-    setAdmissions([]); setAdmissionError('');
-    const load=()=>{const sequence = ++requested; void api.admissions(runId,abort.signal).then(rows=>{
-      if(abort.signal.aborted || sequence < completed)return;
-      completed = sequence;
-      setAdmissionError('');
-      setAdmissions(previous=>mergeAdmissionReceipts(previous, rows.map(stored=>({...stored,stored:true}))));
-    }).catch(problem => { if(!abort.signal.aborted && sequence >= completed){ completed = sequence; setAdmissionError(String(problem).includes('HTTP 404')
-      ? copy('Saved admission receipts are unavailable on this server.','此服务器不提供已保存的受理回执。')
-      : problemMessage(problem)); } });};
-    load();
-    const timer=setInterval(load,5000);
-    return()=>{abort.abort();clearInterval(timer);};
+    let cursor=0, loading=false, timer:ReturnType<typeof setTimeout>;
+    setHistorySource({api,runId});setAdmissions([]); setAdmissionError(''); setAdmissionsLoaded(false); setAdmissionsLoading(true);
+    const schedule=()=>{clearTimeout(timer);if(!abort.signal.aborted)timer=setTimeout(()=>void load(),document.hidden?30000:5000);};
+    const load=async()=>{
+      if(loading||abort.signal.aborted)return;
+      clearTimeout(timer);loading=true;setAdmissionsLoading(true);setAdmissionError('');
+      try {
+        const page=await readAdmissionHistory(api,runId,cursor,abort.signal,L('Command history response is malformed.','命令历史响应格式不正确。'));
+        if(abort.signal.aborted)return;
+        cursor=page.cursor;
+        setAdmissionsLoaded(true);
+        setAdmissions(previous=>mergeAdmissionReceipts(previous,page.receipts.map(stored=>({...stored,stored:true}))));
+      } catch(problem) {
+        if(!abort.signal.aborted)setAdmissionError(String(problem).includes('HTTP 404')
+          ? copy('Saved admission receipts are unavailable on this server.','此服务器不提供已保存的受理回执。')
+          : problemMessage(problem));
+      } finally {
+        loading=false;
+        if(!abort.signal.aborted){setAdmissionsLoading(false);schedule();}
+      }
+    };
+    const visibility=()=>{if(document.hidden)schedule();else void load();};
+    retryAdmissions.current=()=>void load();
+    document.addEventListener('visibilitychange',visibility);
+    void load();
+    return()=>{abort.abort();clearTimeout(timer);retryAdmissions.current=undefined;document.removeEventListener('visibilitychange',visibility);};
   },[api,runId]);
   useEffect(()=>{
     const abort=new AbortController();let timer:ReturnType<typeof setTimeout>;
@@ -371,9 +400,10 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
     {error&&<p role="alert">{error}</p>}
     {progressError&&<p role="alert">{progressError}</p>}
     <h3>{copy('Recorded input and execution','已记录的输入与执行')}</h3>
-    <details open={admissions.length>0||!!admissionError}><summary>{t('Admission receipts · {count}',{count:admissions.length})}</summary>
-      {admissionError&&<p className="wb-issues" role="alert">{admissionError}</p>}
-      {!admissions.length&&!admissionError&&<p>{t('No admission receipts yet.')}</p>}
+    <details open><summary>{admissionsLoaded?t('Admission receipts · {count}',{count:admissions.length}):L('Admission receipts','受理回执')}</summary>
+      {!admissionsLoaded&&!admissionError&&<p role="status">{L('Loading command history…','正在加载命令历史…')}</p>}
+      {admissionError&&<div className="wb-issues" role="alert"><p>{admissionError}</p><button type="button" className="wb-btn small" disabled={admissionsLoading} onClick={()=>retryAdmissions.current?.()}>{L('Retry','重试')}</button></div>}
+      {admissionsLoaded&&!admissions.length&&!admissionError&&<p>{t('No admission receipts yet.')}</p>}
       {admissions.map((receipt,index)=>{
         const id=mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):undefined;
         const cuts=receiptCuts(receipt);

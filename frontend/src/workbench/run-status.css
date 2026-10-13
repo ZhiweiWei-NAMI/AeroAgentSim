@@ -57,6 +57,26 @@
 /* Aggregation in progress after a terminal status (INT-06 / AST-022). */
 .wb-finalizing { font-weight: 600; }
 
+/* Each run notice occupies its own row; measured height reserves scene space. */
+.wb-notices {
+  position: absolute;
+  z-index: 31;
+  top: calc(var(--wb-top) + var(--wb-kpi-height) + 36px);
+  left: calc(var(--wb-left-space, var(--wb-left)) + 24px);
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+.wb-notices > .wb-history {
+  position: static;
+  transform: none;
+  max-width: 100%;
+  pointer-events: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .viewport-city-alert, .viewport-scene-hint { transition: none; }
 }

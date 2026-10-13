@@ -18,6 +18,7 @@ from aeroagentsim.platform import RunSession, Simulation
 from aeroagentsim.scenario import load_scenario
 from aeroagentsim.services.admissions import admissions
 from aeroagentsim.services.app import create_app
+from aeroagentsim.services.storage import RunStorage
 
 
 @pytest.fixture
@@ -58,8 +59,14 @@ def test_admitted_unexecuted_command_survives_terminal_refresh(
         assert row["boundary_ns"] == receipt.boundary_ns and row["activation_ns"] == receipt.activation_ns
         assert row["journal_index"] == receipt.journal_index
         assert row["kind"] == "aas.telemetry.observe"
+        initial_page = admissions(path, after=0)
     session.storage.publish_prefix(*session.simulation.kernel.acknowledged_prefix)
     session.storage.status("stopped")
+    # The terminal disclosure is a real change even if no new WAL record exists.
+    terminal_page = admissions(path, after=initial_page["cursor"])
+    assert terminal_page["cursor"] > initial_page["cursor"]
+    assert len(terminal_page["receipts"]) == 1
+    assert "no terminal execution receipt" in terminal_page["receipts"][0]["detail"]
     rows[0]["detail"] = "Admitted; no terminal execution receipt observed / 已受理，未观察到执行终态回执"
     before = {name: (path / name).read_bytes() for name in ("journal.jsonl", "index.json", "manifest.json")}
 
@@ -100,8 +107,28 @@ def test_execution_outcomes_join_the_same_admission(
         session.start()
         receipt = session.submit_live("sensor", request("observed"), Stamp("sensor-clock", 50_000_000, 1, "sensor-ns"))
         assert admissions(path)[0]["status"] == "admitted"
+        initial = admissions(path, after=0)
+        assert len(initial["receipts"]) == 1
+        reads: list[int] = []
+        real_records = RunStorage.records
+
+        def tracked_records(self: RunStorage, start: int = 0, limit: int = 1000) -> list[dict[str, Any]]:
+            reads.append(start)
+            return real_records(self, start, limit)
+
+        monkeypatch.setattr(RunStorage, "records", tracked_records)
+        assert admissions(path, after=initial["cursor"]) == {"cursor": initial["cursor"], "receipts": []}
+        assert reads == []
         session.advance_watermark(100_000_000)
         session.run_until(100_000_000)
+        updated = admissions(path, after=initial["cursor"])
+        assert updated["cursor"] > initial["cursor"]
+        assert len(updated["receipts"]) == 1
+        assert updated["receipts"][0]["id"] == receipt.command_id
+        assert reads and min(reads) > initial["cursor"] // 2
+        reads.clear()
+        assert admissions(path, after=updated["cursor"]) == {"cursor": updated["cursor"], "receipts": []}
+        assert reads == []
         rows = admissions(path)
         assert len(rows) == 1 and rows[0]["id"] == receipt.command_id
         assert rows[0]["execution_status"] == outcome
@@ -124,6 +151,49 @@ def test_late_rejection_has_stable_journal_identity(realtime: dict[str, Any], tm
         assert rows[0]["status"] == "rejected" and rows[0]["detail"] == "LATE_INGRESS"
         assert rows[0]["target_cut"] is None and rows[0]["command_id"] is None
         assert rows[0]["idempotency_key"] == "late"
+
+
+def test_incremental_new_receipts_and_cursor_survive_projection_restart(
+    realtime: dict[str, Any], tmp_path: Path
+) -> None:
+    from aeroagentsim.services.admissions import _history
+
+    path = tmp_path / "run-incremental"
+    with RunSession(load_scenario(realtime), path) as session:
+        session.start()
+        empty = admissions(path, after=0)
+        assert empty["receipts"] == []
+        receipt = session.submit_live("sensor", request("new"), Stamp("sensor-clock", 50_000_000, 1, "sensor-ns"))
+        first = admissions(path, after=empty["cursor"])
+        assert [row["id"] for row in first["receipts"]] == [receipt.command_id]
+        session.advance_watermark(100_000_000)
+        session.run_until(100_000_000)
+        executed = admissions(path, after=first["cursor"])
+        assert executed["receipts"][0]["execution_status"] == "succeeded"
+        late = session.submit_live("sensor", request("new-late"), Stamp("sensor-clock", 50_000_000, 1, "sensor-ns"))
+        assert late.command_id is None
+        new = admissions(path, after=executed["cursor"])
+        assert len(new["receipts"]) == 1 and new["receipts"][0]["idempotency_key"] == "new-late"
+        assert new["receipts"][0]["status"] == "rejected"
+        _history.cache_clear()
+        assert admissions(path, after=new["cursor"]) == {"cursor": new["cursor"], "receipts": []}
+        assert len(admissions(path)) == 2
+
+
+def test_incremental_endpoint_rejects_invalid_cursors_without_defaulting(tmp_path: Path) -> None:
+    path = tmp_path / "run-empty"
+    path.mkdir()
+    (path / "manifest.json").write_text(json.dumps({"id": path.name, "status": "completed"}))
+    (path / "index.json").write_text("[]")
+    with TestClient(create_app(tmp_path), base_url="http://localhost") as client:
+        endpoint = f"/v1/runs/{path.name}/admissions"
+        assert client.get(endpoint).json() == []
+        page = client.get(endpoint, params={"after": 0})
+        assert page.status_code == 200 and page.json() == {"cursor": 1, "receipts": []}
+        for invalid in ("-1", "abc", "1.5", "true", "99"):
+            rejected = client.get(endpoint, params={"after": invalid})
+            assert rejected.status_code == 422 and rejected.json()["detail"]
+        assert client.get("/v1/runs/missing/admissions?after=0").status_code == 404
 
 
 def test_food_injection_is_recovered_by_its_real_command_id(tmp_path: Path) -> None:

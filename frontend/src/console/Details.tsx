@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../i18n/I18nProvider';
 import { readableLabel } from '../pages/inspection-format';
+import { isTopModalLayer, registerModalLayer } from './modal-layers';
 import './details.css';
 
 export interface DetailsProps {
@@ -35,11 +36,16 @@ export function Details({ title = 'Details', buttonLabel = 'Details', children }
     requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
 
+  useLayoutEffect(() => {
+    if (open && dialogRef.current) return registerModalLayer(dialogRef.current);
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     closeRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); }
+      if (event.defaultPrevented || !isTopModalLayer(dialogRef.current)) return;
+      if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); close(); }
       if (event.key === 'Tab') {
         const fields = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], summary, [tabindex="0"]') ?? [])].filter(node => {
           const disclosure=node.closest('details:not([open])');

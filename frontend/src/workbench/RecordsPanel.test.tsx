@@ -2,8 +2,9 @@ import { Profiler } from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { RecordsPanel } from './RecordsPanel';
+import { I18nProvider } from '../i18n/I18nProvider';
 import type { WorkbenchApi } from './api';
-afterEach(() => { cleanup(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); localStorage.clear(); });
 it('limits comparison to four without silently replacing a selected run', async () => {
   const compare = vi.fn();
   const rows = Array.from({ length: 5 }, (_, i) => ({ id: `run-${i}`, status: 'stopped', scenario: 'food-delivery', studio_workspace: 'project' }));
@@ -41,4 +42,19 @@ it('keeps record order immutable and skips unchanged polls while showing real fi
   await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
   expect(screen.queryByText('finalizing…')).toBeNull();
   expect(commits.mock.calls.length).toBeGreaterThan(count);
+});
+
+it.each([
+  ['zh-CN','Restaurant meal delivery','餐厅外卖配送 · 变体'],
+  ['en-US','Restaurant meal delivery','Restaurant meal delivery · variant'],
+  ['zh-CN','My authored project','My authored project · 变体'],
+])('T4-R6-003: derives a localized default while preserving authored names (%s / %s)',async(locale,name,expected)=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  const source={id:'source',status:'completed',scenario:'food-delivery',workspace_name:name,template_title:'Restaurant meal delivery',template_title_zh:'餐厅外卖配送'};
+  const derive=vi.fn().mockResolvedValue(undefined);
+  render(<I18nProvider><RecordsPanel api={{runs:vi.fn().mockResolvedValue([source])} as unknown as WorkbenchApi} refreshKey={0}
+    onOpen={vi.fn()} onCompare={vi.fn()} onDerive={derive} onClose={vi.fn()}/></I18nProvider>);
+  const button=await screen.findByRole('button',{name:locale==='zh-CN'?'修改后再试':'Modify & retry'});
+  await act(async()=>{fireEvent.click(button);});
+  expect(derive).toHaveBeenCalledWith(source,expected);
 });

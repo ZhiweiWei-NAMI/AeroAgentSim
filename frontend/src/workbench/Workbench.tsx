@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import type { EntityKey } from '../contracts/viewer-feed';
 import { RunsApi } from '../feeds/http';
 import { useI18n } from '../i18n/I18nProvider';
+import { registerModalLayer } from '../console/modal-layers';
 import { localized } from '../i18n/translate';
 import { TemplateApi, type RunKpis, type ScenarioTemplate } from '../newcomers/api';
 import { businessProjection, resultsAt, type RecordedBusinessEvent } from '../newcomers/projection';
@@ -252,6 +253,21 @@ export default function Workbench() {
   const openPalette = () => { paletteInvoker.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setPalette(true); };
   const closePalette = () => setPalette(false);
   useLayoutEffect(() => { if (!palette && paletteInvoker.current?.isConnected) { paletteInvoker.current.focus(); paletteInvoker.current = null; } }, [palette]);
+  // Install once, before dialogs open, so the top search layer handles its keys
+  // before an underlying dialog's document/window capture listener can close it.
+  const searchKeyboard = useRef<(event: KeyboardEvent) => void>();
+  searchKeyboard.current = event => {
+    if (event.repeat || event.defaultPrevented) return;
+    const searchKey = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
+    if (!searchKey && !(palette && event.key === 'Escape')) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (palette) closePalette(); else openPalette();
+  };
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => searchKeyboard.current?.(event);
+    window.addEventListener('keydown', key, true);
+    return () => window.removeEventListener('keydown', key, true);
+  }, []);
   useEffect(() => {
     if (!pending) return;
     if (TERMINAL.has(status ?? '') || pending === 'pause' && status === 'paused' ||
@@ -348,6 +364,14 @@ export default function Workbench() {
   const series = hasKpiFeed && projected ? projected.series : fromApi.series;
   const kpiIds = template?.kpis ?? Object.keys(kpis);
   const kpiPanel = useRef<HTMLDivElement>(null), [kpiHeight, setKpiHeight] = useState(0);
+  const noticePanel = useRef<HTMLDivElement>(null), [noticeHeight, setNoticeHeight] = useState(0);
+  useLayoutEffect(() => {
+    const node = noticePanel.current;
+    if (!node) return;
+    const measure = () => setNoticeHeight(node.getBoundingClientRect().height);
+    measure(); const observer = new ResizeObserver(measure); observer.observe(node);
+    return () => observer.disconnect();
+  }, [!!session]);
   useLayoutEffect(() => {
     const node = kpiPanel.current;
     if (!node) { setKpiHeight(0); return; }
@@ -440,8 +464,8 @@ export default function Workbench() {
     try { const created = await api.createFromTemplate(template.id); update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: 'controls' }, true, `/w/${encodeURIComponent(created.workspace_id)}`); }
     catch (problem) { toast('error', problemText(problem)); }
   };
-  const derive = async (run: RunRecord) => {
-    try { const created = await api.derive(run.id); toast('success', L('New draft created from that run. The original run is kept.', '已从该运行新建草稿，原运行保留。')); update({ records: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, compare: undefined, panel: 'controls' }, true, `/w/${encodeURIComponent(created.workspace_id)}`); }
+  const derive = async (run: RunRecord, name: string) => {
+    try { const created = await api.derive(run.id, name); toast('success', L('New draft created from that run. The original run is kept.', '已从该运行新建草稿，原运行保留。')); update({ records: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, compare: undefined, panel: 'controls' }, true, `/w/${encodeURIComponent(created.workspace_id)}`); }
     catch (problem) { toast('error', problemText(problem)); }
   };
 
@@ -512,7 +536,7 @@ export default function Workbench() {
   const layout = { '--wb-left-space': query.get('records') ? 'calc(var(--wb-left) + 60px)' : boardOpen ? 'var(--as-board-width)' : leftOpen ? 'var(--wb-left)' : '0px',
     '--wb-right-space': panel ? assistantOpen ? 'var(--as-chat-width)' : 'var(--wb-config-width)' : rightOpen && !inspectorCompact ? 'var(--wb-right)' : '0px',
     '--wb-overlay-right-space': !panel && rightOpen && inspectorCompact ? '250px' : 'var(--wb-right-space)',
-    '--wb-dock': dockOpen ? dockTab === 'photos' ? 'min(52vh, 560px)' : 'min(38vh, 360px)' : '92px', '--wb-kpi-height': `${kpiHeight}px`, '--wb-notice-height': history || session?.error || session?.transportError || session?.inputSource.error ? '58px' : '0px' } as CSSProperties;
+    '--wb-dock': dockOpen ? dockTab === 'photos' ? 'min(52vh, 560px)' : 'min(38vh, 360px)' : '92px', '--wb-kpi-height': `${kpiHeight}px`, '--wb-notice-height': `${noticeHeight ? noticeHeight + 12 : 0}px` } as CSSProperties;
 
   return <div className="wb" style={layout} data-testid="workbench" data-run={runId ?? ''} data-status={status ?? 'none'} data-mode={mode ?? ''} data-cut={session?.cut ?? ''}>
     {/* Stage: the one 3D world */}
@@ -575,7 +599,7 @@ export default function Workbench() {
       </div>
       </div>
       <div className="wb-tools">
-      <button className="wb-btn ghost" onClick={openPalette} title={L('Search objects and actions', '搜索对象与操作')}>⌕ <span className="wb-kbd">⌘K</span></button>
+      <button className="wb-btn ghost" onClick={openPalette} title={L('Search objects and actions', '搜索对象与操作')}>⌕ <span className="wb-kbd">{/Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘K' : 'Ctrl+K'}</span></button>
       {session && <button className="wb-btn" aria-pressed={!!graph} onClick={() => update({ graph: graph ? undefined : '1' })} data-testid="wb-graph-toggle">{L('Graph', '关系图')} <span className="wb-kbd">G</span></button>}
       <button className={`wb-btn as-top-btn${assistantOpen ? ' is-on' : ''}`} aria-pressed={assistantOpen} onClick={toggleAssistant} data-testid="wb-assistant-toggle" title={L('Build or change the scene by describing it', '用描述来搭建或修改场景')}><NeuralGlyph state={assistantOpen && assistant.assistant.busy ? 'thinking' : 'idle'} size={16} title="" />{L('Assistant', '助手')} <span className="wb-kbd">A</span></button>
       {project && <button className="wb-btn" aria-pressed={!!panel && !assistantOpen} onClick={openForm} data-testid="wb-configure">{L('Configure', '配置')} <span className="wb-kbd">C</span></button>}
@@ -589,9 +613,9 @@ export default function Workbench() {
       {kpiIds.slice(0, 5).map(id => { const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh); return <div key={id} className="wb-kpi wb-glass" data-final={finalizing ? 'aggregating' : 'yes'} title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, finalizing ? L('Results are still being aggregated; this value is not final yet.', '结果仍在汇总中，此数值尚非最终值。') : undefined, id].filter(Boolean).join(' · ')}><small>{label}</small><strong className="wb-mono">{kpi?.value == null ? '—' : kpi.unit === 'ratio' ? Math.round(kpi.value * 100) : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1)}</strong><em>{kpi?.unit === 'count' ? '' : kpi?.unit === 'ratio' ? '%' : kpi?.unit}</em></div>; })}
     </div>}
 
+    <div ref={noticePanel} className="wb-notices" data-testid="wb-notices">
     {earlier && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing an earlier moment', '正在查看较早时刻')} · <span className="wb-mono">{store && clock ? displayTime(clock.ns, store.header.start.ns) : ''}</span><button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Jump to the end', '跳到结束时刻')} <span className="wb-kbd">L</span></button></div>}
     {history && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing history — the simulation keeps running.', '正在查看历史——仿真仍在运行。')} <button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Back to live', '返回实时')} <span className="wb-kbd">(L)</span></button></div>}
-    {session && (status === 'input_timeout' || canOperate && status === 'waiting_for_input') && <div className="wb-waiting wb-glass" data-testid="wb-waiting"><WaitingBanner waiting={waiting} terminal={status === 'input_timeout'} onInject={() => { session.backToLive(); update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }} /></div>}
     {finalizing && <div className="wb-history wb-finalizing" role="status" data-testid="wb-finalizing" style={{ background: 'rgba(31,122,224,.92)' }}>
       <span aria-hidden>◌</span> {L('Finalizing results… KPIs and story are still being aggregated from the final journal.', '结果汇总中…指标与经历仍在从最终日志聚合。')}
     </div>}
@@ -599,6 +623,8 @@ export default function Workbench() {
     {session?.transportError && !session.error && <div className="wb-history" role="status" style={{ background: 'rgba(160,110,0,.92)' }}>{L('Reconnecting to the journal stream…', '正在重新连接日志流…')} {session.transportError}</div>}
 
     {session?.inputSource.error && <div className="wb-history" role="alert" data-testid="wb-input-error">{L('Operator input source unavailable', '操作员输入源暂不可用')} · {session.inputSource.error}</div>}
+    </div>
+    {session && (status === 'input_timeout' || canOperate && status === 'waiting_for_input') && <div className="wb-waiting wb-glass" data-testid="wb-waiting"><WaitingBanner waiting={waiting} terminal={status === 'input_timeout'} onInject={() => { session.backToLive(); update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }} /></div>}
 
     {/* Left: objects or records */}
     <Suspense fallback={null}>{query.get('records') ? <RecordsPanel api={api} projectId={project?.id} current={runId} refreshKey={recordsKey}
@@ -691,6 +717,7 @@ export default function Workbench() {
 function Palette({ items, onClose, placeholder }: { items: Array<{ id: string; label: string; hint: string; run: () => void }>; onClose: () => void; placeholder: string }) {
   const [query, setQuery] = useState(''), [index, setIndex] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => { if (dialogRef.current) return registerModalLayer(dialogRef.current); }, []);
   const shown = items.filter(item => `${item.label} ${item.hint}`.toLowerCase().includes(query.toLowerCase())).slice(0, 60);
   const choose = (item?: { run: () => void }) => { if (item) { item.run(); onClose(); } };
   // T4-07: Tab cycles inside the palette; focus cannot escape while it is open.
@@ -703,7 +730,7 @@ function Palette({ items, onClose, placeholder }: { items: Array<{ id: string; l
     const list = [...focusable], position = list.indexOf(document.activeElement as HTMLElement);
     list[event.shiftKey ? (position <= 0 ? list.length - 1 : position - 1) : (position === -1 || position === list.length - 1 ? 0 : position + 1)]?.focus();
   };
-  return <div className="wb-overlay" style={{ alignItems: 'flex-start' }} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+  return <div className="wb-overlay wb-search-layer" style={{ alignItems: 'flex-start' }} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
     <div className="wb-palette wb-glass" role="dialog" aria-modal="true" aria-label={placeholder} ref={dialogRef} onKeyDown={trap}>
       <input autoFocus value={query} placeholder={placeholder} onChange={event => { setQuery(event.target.value); setIndex(0); }}
         onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setIndex(value => Math.min(shown.length - 1, value + 1)); } else if (event.key === 'ArrowUp') { event.preventDefault(); setIndex(value => Math.max(0, value - 1)); } else if (event.key === 'Enter') choose(shown[index]); }} />

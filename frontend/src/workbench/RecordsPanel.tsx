@@ -6,10 +6,20 @@ import { sameRunRecords, TERMINAL, type RunRecord, type WorkbenchApi } from './a
 
 const tone = (status: string) => status === 'completed' ? 'ok' : status === 'stopped' ? 'warn' : TERMINAL.has(status) ? 'bad' : status === 'initialized' ? 'info' : 'live';
 
+/** Translate template defaults; preserve the spelling of an authored project name. */
+export function derivedProjectName(run: RunRecord, locale: string) {
+  const L = (en: string, zh: string) => locale === 'zh-CN' ? zh : en;
+  const templateName = localized(run, 'template_title', locale);
+  const sourceName = run.workspace_name;
+  const name = sourceName && sourceName !== run.template_title && sourceName !== run.template_title_zh
+    ? sourceName : templateName ?? sourceName ?? run.title ?? run.scenario;
+  return `${name} · ${L('variant', '变体')}`;
+}
+
 /** Run records: open one in replay, compare several, or derive a new draft from one. */
 export function RecordsPanel({ api, projectId, current, onOpen, onCompare, onDerive, onClose, refreshKey }: {
   api: WorkbenchApi; projectId?: string; current?: string; refreshKey: number;
-  onOpen: (run: RunRecord) => void; onCompare: (ids: string[]) => void; onDerive: (run: RunRecord) => Promise<void>; onClose: () => void;
+  onOpen: (run: RunRecord) => void; onCompare: (ids: string[]) => void; onDerive: (run: RunRecord, name: string) => Promise<void>; onClose: () => void;
 }) {
   const { locale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
@@ -67,7 +77,7 @@ export function RecordsPanel({ api, projectId, current, onOpen, onCompare, onDer
           </div>
           <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
             <button className="wb-btn small" onClick={() => onOpen(run)} data-testid="wb-open-run">{TERMINAL.has(run.status) ? L('Replay', '回放') : L('Open live', '打开实时')}</button>
-            <button className="wb-btn small" disabled={busy === run.id} title={L('Create a new draft from this run’s configuration; the run itself is kept', '以此次运行的配置新建草稿，原运行保留')} onClick={() => { setBusy(run.id); void onDerive(run).finally(() => setBusy(undefined)); }}>{busy === run.id ? L('Creating…', '创建中…') : L('Modify & retry', '修改后再试')}</button>
+            <button className="wb-btn small" disabled={busy === run.id} title={L('Create a new draft from this run’s configuration; the run itself is kept', '以此次运行的配置新建草稿，原运行保留')} onClick={() => { setBusy(run.id); void onDerive(run, derivedProjectName(run, locale)).finally(() => setBusy(undefined)); }}>{busy === run.id ? L('Creating…', '创建中…') : L('Modify & retry', '修改后再试')}</button>
           </div>
         </div>
       </div>)}

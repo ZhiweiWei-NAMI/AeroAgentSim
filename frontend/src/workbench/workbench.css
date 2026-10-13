@@ -253,6 +253,7 @@
 
 /* Search palette */
 .wb-palette { width: min(640px, 100%); padding: 12px; margin-top: 6vh; }
+.wb-overlay.wb-search-layer { z-index: 1600; }
 .wb-palette input { width: 100%; height: 42px; font-size: 16px; border: none; outline: none; background: transparent; padding: 0 6px; border-bottom: 1px solid var(--wb-line); }
 .wb-palette ul { list-style: none; margin: 6px 0 0; padding: 0; max-height: 52vh; overflow: auto; }
 .wb-palette li button { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 10px; align-items: center; width: 100%; padding: 8px 10px; border-radius: 8px; }
@@ -394,8 +395,9 @@
   background: rgba(250,252,255,.88); color: var(--wb-ink, #1c2733); font-size: 12px; line-height: 1.4;
   backdrop-filter: blur(6px); box-shadow: 0 1px 4px rgba(11,19,31,.14); transition: opacity .18s; }
 .scene-preview-plane-note strong { color: var(--wb-ink, #1c2733); font-size: 12px; }
-.scene-preview-no-objects { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--wb-dock, 92px) + 64px); padding: 4px 8px; border-radius: 6px;
-  background: rgba(250,252,255,.88); border: 1px solid var(--wb-line); color: var(--wb-ink); font-size: 11px; pointer-events: none; white-space: nowrap; backdrop-filter: blur(6px); }
+.scene-preview-no-objects { position: absolute; left: 24px; bottom: calc(var(--wb-dock, 92px) + 64px); max-width: calc(100% - 48px); padding: 4px 8px; border-radius: 6px;
+  background: rgba(250,252,255,.88); border: 1px solid var(--wb-line); color: var(--wb-ink); font-size: 11px; pointer-events: none; white-space: normal; backdrop-filter: blur(6px); }
+.wb .scene-preview-no-objects { left: calc(var(--wb-left-space, 0px) + 24px); max-width: max(0px, calc(100% - var(--wb-left-space, 0px) - var(--wb-right-space, 0px) - 100px)); }
 
 /* T3-006: inspector leads with operating state; everything else is collapsed. */
 .wb-operating { margin: 0 0 10px; padding: 8px 10px; border: 1px solid var(--wb-line); border-radius: 10px; background: rgba(255,255,255,.62); }

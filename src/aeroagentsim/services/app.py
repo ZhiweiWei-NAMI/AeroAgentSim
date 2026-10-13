@@ -537,10 +537,13 @@ def create_app(
         return run_summary(directory(run_id), include_kpis=include_kpis)
 
     @app.get("/v1/runs/{run_id}/admissions")
-    def run_admissions(run_id: str) -> list[dict[str, Any]]:
-        from .admissions import admissions
+    def run_admissions(run_id: str, after: int | None = Query(None, ge=0)) -> list[dict[str, Any]] | dict[str, Any]:
+        from .admissions import AdmissionCursorError, admissions
 
-        return admissions(directory(run_id))
+        try:
+            return admissions(directory(run_id), after)
+        except AdmissionCursorError as error:
+            raise HTTPException(422, str(error)) from error
 
     @app.post("/v1/runs/{run_id}/derive-workspace", status_code=201)
     async def derive_workspace(run_id: str, request: Request) -> dict[str, Any]:
