@@ -51,12 +51,14 @@ export function controlSource(knob: ScenarioTemplate['knobs'][number], draft: Sc
   return controlValue(authored?.[knob.id]);
 }
 
-export function ConfigPanel({ api, project, onProject, onInitialize, initializing, section: requested, onSection, onClose, onInspectContract, onDraft, onSwitch, switching, morph }: {
+export function ConfigPanel({ api, project, onProject, onInitialize, initializing, section: requested, onSection, onClose, onInspectContract, onDraft, onSwitch, switching, morph, activeRunVersion }: {
   api: WorkbenchApi; project: Project; onProject: (project: Project) => void;
   onInitialize: () => void; initializing: boolean; section?: string; onSection: (section: string) => void; onClose: () => void;
   onSwitch?: (mode: EditMode, origin: Origin) => void; switching?: boolean; morph?: 'in' | 'out';
   onDraft?: (id: string, scenario: Scenario, dirty: boolean) => void;
   onInspectContract?: (typeId: string, field?: string) => void;
+  /** Version of the run currently open in the workbench, if any; edits here never change it. */
+  activeRunVersion?: number;
 }) {
   const { locale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
@@ -77,7 +79,9 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   useEffect(() => { onDraft?.(project.id, draft, local); }, [project.id, draft, local, onDraft]);
   const [catalogError, setCatalogError] = useState<string>();
   const studioApi = useMemo(() => new StudioApi(api.base), [api.base]);
-  const [section, sectionPath] = (requested ?? (project.template ? 'controls' : 'objects')).split(':') as [Section, string | undefined];
+  const [asked, sectionPath] = (requested ?? (project.template ? 'controls' : 'space')).split(':') as [Section, string | undefined];
+  // Projects without a template have no scenario controls; open their first stage instead of waiting forever.
+  const section: Section = asked === 'controls' && !project.template ? 'space' : asked;
   useEffect(() => { if (sectionPath) setFocus(sectionPath); }, [sectionPath]);
 
   // A newer server draft replaces ours unless we hold unsaved local edits.
@@ -216,6 +220,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
         <div className="wb-config-state-copy">
         {local || controlsDirty || yamlDirty ? <b style={{ color: 'var(--wb-warn)' }}>{L('Unsaved edits', '有未保存的修改')}</b> : <b>{L(`Draft revision ${project.revision}`, `草稿修订 ${project.revision}`)}</b>}
         {' · '}{project.latest_version ? L(`latest version ${project.latest_version.version}${versioned ? ' (this draft)' : ''}`, `最新版本 ${project.latest_version.version}${versioned ? '（即当前草稿）' : ''}`) : L('no saved version yet', '尚无保存的版本')}
+        {activeRunVersion !== undefined && <div className="hint">{L(`Edits here go into the draft and a new version; the open run of v${activeRunVersion} is not affected.`, `此处修改写入草稿和新版本，不会影响已打开的 v${activeRunVersion} 运行。`)}</div>}
         {message && <div style={{ color: message.kind === 'error' ? 'var(--wb-bad)' : 'var(--wb-ok)' }}>{zh && message.textZh ? message.textZh : message.text}</div>}
         </div>
         {(section === 'controls' || controlsDirty) && <button className="wb-btn primary" disabled={!!busy || !controlsDirty || controlsMissing || !!invalid.size} onClick={() => void applyKnobs()}>{busy === 'knobs' ? L('Applying controls…', '正在应用控制项…') : L('Apply controls to draft', '应用到草稿')}</button>}
