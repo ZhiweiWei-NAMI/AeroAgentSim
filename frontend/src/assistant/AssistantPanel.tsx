@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import { Markdown } from '../workbench/Markdown';
-import type { AssistantEvent, Connection, MessageContext } from './api';
+import { issueOf, type AssistantEvent, type Connection, type MessageContext, type PlanIssue } from './api';
 import { ConnectModel } from './ConnectModel';
 import { Icon } from './icons';
 import { bi } from './present';
@@ -15,7 +15,7 @@ type Item =
   | { type: 'work'; key: string; tools: ToolEvent[]; open: boolean }
   | { type: 'assistant'; key: string; text: string; meta?: string }
   | { type: 'plan'; key: string; version: number; note: string; variant?: string | null; versions?: number[] }
-  | { type: 'validated'; key: string; version: number; valid: boolean; errors?: string[] }
+  | { type: 'validated'; key: string; version: number; valid: boolean; errors?: PlanIssue[] }
   | { type: 'applied'; key: string; version: number; planVersion: number; created: number; changed: number; removed: number }
   | { type: 'notice'; key: string; text: string }
   | { type: 'error'; key: string; text: string };
@@ -126,7 +126,7 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
         <span className="as-plan-note">{item.versions && item.versions.length > 1 ? L(`${item.versions.length} options to compare`, `${item.versions.length} 个方案可对比`) : bi(item.note, zh) || L('Plan updated', '方案已更新')}</span>
         <span className="as-plan-go">{L('View', '查看')} →</span>
       </button>;
-      case 'validated': return <div className="as-note bad" role="status"><Icon name="cross" size={13} /><span>{L(`Plan v${item.version} does not pass the simulator's checks yet`, `方案 v${item.version} 尚未通过仿真器校验`)}{item.errors?.[0] ? ` — ${item.errors[0]}` : ''}</span></div>;
+      case 'validated': return <div className="as-note bad" role="status"><Icon name="cross" size={13} /><span>{L(`Plan v${item.version} does not pass the simulator's checks yet`, `方案 v${item.version} 尚未通过仿真器校验`)}{item.errors?.[0] ? ` — ${bi(issueOf(item.errors[0]).message,zh)}` : ''}</span></div>;
       case 'applied': return <div className="as-applied" data-testid="as-applied-card"><span className="as-applied-icon"><Icon name="check" size={14} /></span><div><b>{L(`Applied plan v${item.planVersion} as project version ${item.version}`, `方案 v${item.planVersion} 已应用为项目版本 ${item.version}`)}</b><small className="wb-mono">{L(`${item.created} created · ${item.changed} changed · ${item.removed} removed`, `新增 ${item.created} · 修改 ${item.changed} · 移除 ${item.removed}`)}</small></div><button className="wb-btn small" onClick={onShowChanges}>{L('What changed', '查看改动')}</button></div>;
       case 'notice': return <div className="as-note"><Icon name="dot" size={12} /><span>{bi(item.text, zh)}</span></div>;
       case 'error': return <div className="as-note bad" role="alert"><Icon name="cross" size={13} /><span>{bi(item.text, zh)}</span></div>;

@@ -6,7 +6,8 @@ import type { EditMode, Origin } from './ModeSwitch';
 import { rewire } from './motion/rewire';
 import { planOverlay, revealOrder, type PreviewOverlay } from './overlay';
 import type { Stage } from './PlanBoard';
-import { useAssistantSession, useConnection } from './useAssistant';
+import { useAssistantSession, useConnection, type AssistantSession } from './useAssistant';
+import { draftChanges, proposalWorkspace } from './draftChanges';
 
 const problemText = (problem: unknown) => problem instanceof ApiError ? problem.detail : String(problem);
 const PALETTE = { form: '#38c6f4', chat: '#8a7dff' };
@@ -48,9 +49,10 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
     if (open && bound && project && bound !== project.id) update({ assistant: undefined });
   }, [open, assistant.session?.workspace_id, project?.id]);
 
-  // Stage: proposed until Confirm; configured while the applied version is the project's latest; running with a run attached.
+  // An applied plan remains historical evidence of configuration after Form
+  // edits. Field differences below distinguish it from the current draft.
   const plan = assistant.plan, applied = assistant.applied;
-  const configured = !!applied && !!project?.latest_version && project.latest_version.version === applied.version && !project.dirty;
+  const configured = !!applied && project?.id === applied.workspace_id;
   const stage: Stage = runId && (workspaceVersion === undefined || !applied || workspaceVersion >= applied.version) && assistant.session?.applied.length ? 'running' : configured ? 'configured' : 'proposed';
 
   // The board: open for each new plan version until the user closes it.
@@ -60,20 +62,24 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
   useEffect(() => { setViewing(undefined); }, [plan?.version]);
   const viewedVersion = viewing ?? plan?.version;
 
-  // The proposed scene, compiled by the platform, shown in the 3D preview.
-  const [preview, setPreview] = useState<PlanPreview & { version: number }>(), [previewPlan, setPreviewPlan] = useState<PlanVersion>();
+  // The immutable compiled scene supplies both proposal geometry and the
+  // baseline for comparing an applied plan with subsequent Form edits.
+  const [preview, setPreview] = useState<PlanPreview & { version: number }>(), [previewPlan, setPreviewPlan] = useState<PlanVersion>(), [previewError,setPreviewError]=useState<string>();
   useEffect(() => {
-    if (!live || !sessionId || !plan || viewedVersion === undefined || stage !== 'proposed') { setPreview(undefined); return; }
+    setPreview(undefined); setPreviewPlan(undefined); setPreviewError(undefined);
+    if (!live || !sessionId || !plan || viewedVersion === undefined || viewedVersion===plan.version && !plan.compile.ok) return;
     const abort = new AbortController();
     void Promise.all([api.preview(sessionId, viewedVersion, abort.signal), viewedVersion === plan.version ? Promise.resolve(plan) : api.plan(sessionId, viewedVersion, abort.signal)])
-      .then(([value, version]) => { setPreview({ ...value, version: viewedVersion }); setPreviewPlan(version); })
-      .catch(() => { if (!abort.signal.aborted) setPreview(undefined); });
+      .then(([value, version]) => { if(!abort.signal.aborted) {setPreview({ ...value, version: viewedVersion }); setPreviewPlan(version);} })
+      .catch(problem => { if (!abort.signal.aborted) setPreviewError(problemText(problem)); });
     return () => abort.abort();
   }, [api, live, sessionId, viewedVersion, plan?.version, plan?.compile.ok, stage]);
 
   // Hover, sequence playback and reveal drive the 3D layer.
   const [focus, setFocus] = useState<string[]>([]);
   const [reveal, setReveal] = useState<{ key: string; version: number }>();
+  const changes = useMemo(() => applied && project && preview?.version===applied.plan_version
+    ? draftChanges(preview.scenario,project.scenario) : undefined,[applied,project?.scenario,preview]);
   const zh = locale === 'zh-CN';
   const overlay = useMemo<PreviewOverlay | undefined>(() => {
     if (!live || !board) return undefined;
@@ -81,14 +87,19 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
       const value = planOverlay(previewPlan.scene, preview.scenario, previewPlan.diff_base, 'proposed', zh);
       return { ...value, focus, frame: { key: `plan-${previewPlan.version}`, ids: revealOrder(value) } };
     }
-    if (stage === 'configured' && plan && project) {
+    // Changed draft objects are drawn from the current project. Historical
+    // marker positions and fleet counts must not overlay that current scene.
+    if (stage === 'configured' && plan && project && changes?.length===0) {
       const value = planOverlay(plan.scene, project.scenario as Record<string, any>, applied ? { added: applied.report.created, changed: applied.report.changed, removed: applied.report.removed, entities: applied.report.entities } : plan.diff_base, 'configured', zh);
       // The reveal also frames what changed, so the materialize sweep starts where the user is looking.
       return { ...value, focus, ...(reveal && reveal.version === applied?.version ? { reveal: { key: reveal.key, order: revealOrder(value) }, frame: { key: reveal.key, ids: revealOrder(value) } } : {}) };
     }
     return undefined;
-  }, [live, board, stage, preview, previewPlan, plan, project?.revision, applied, focus, reveal, zh]);
-  const previewWorkspace = stage === 'proposed' && preview && live && board ? (project ? { ...project, scenario: preview.scenario } : { id: `assistant-${sessionId}`, name: preview.name, scenario: preview.scenario, demo_console: preview.demo_console }) : undefined;
+  }, [live, board, stage, preview, previewPlan, plan, project?.revision, applied, focus, reveal, zh, changes]);
+  const previewWorkspace = stage === 'proposed' && preview && live && board && !applied && sessionId
+    ? proposalWorkspace(project,preview,sessionId,!!previewPlan?.operations.some(op=>op.op==='set_region')) : undefined;
+  const boardAssistant: AssistantSession = {...assistant,planPreview:preview,
+    ...(applied && project ? {draftState:{changes,error:previewError,dirty:project.dirty,latestVersion:project.latest_version?.version}} : {})};
 
   // After Confirm: the real project is reloaded by the workbench; the reveal plays once.
   const applyDone = useCallback((record: ApplyRecord) => {
@@ -131,7 +142,7 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
   }, [morph]);
 
   return {
-    api, connection, assistant, error, stage, board, closeBoard: () => setBoardClosed(plan?.version), openBoard: () => setBoardClosed(undefined),
+    api, connection, assistant:boardAssistant, error:error ?? previewError, stage, board, closeBoard: () => setBoardClosed(plan?.version), openBoard: () => setBoardClosed(undefined),
     live, viewing, setViewing, overlay, previewWorkspace, focus, setFocus, story, storyError, applyDone, morph, switchMode, lastSection,
   };
 }

@@ -1,8 +1,8 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { AlternativesCompare } from './AlternativesCompare';
 import type { AssistantApi, PlanVersion } from '../api';
-import { I18nProvider, STORAGE_KEY } from '../../i18n/I18nProvider';
+import { I18nProvider, STORAGE_KEY, useI18n } from '../../i18n/I18nProvider';
 
 afterEach(() => { cleanup(); localStorage.removeItem(STORAGE_KEY); });
 
@@ -24,6 +24,27 @@ it('marks which option is under review', async () => {
   expect(await screen.findByTestId('as-alt-active-5')).toHaveTextContent(/under review/);
   expect(screen.queryByTestId('as-alt-active-6')).toBeNull();
   expect(screen.getByTestId('as-alt-5')).toHaveClass('is-current');
+});
+
+it('T2-AS-014: switches every generated shared/difference label while the comparison stays open',async()=>{
+  const alternative=(version:number):PlanVersion=>({...plan(version,'West kitchen / 西侧厨房','西侧厨房'),
+    scene:{places:[{id:'kitchen',role:'kitchen',label:'West kitchen',label_zh:'西侧厨房'}],
+      fleets:[{id:'fleet',role:'meal_courier',label:'Meal courier',label_zh:'送餐无人机',count:2,members:[]}],
+      workloads:[{id:'meal',kind:'food',label:'Meal order',label_zh:'外卖订单',count:6,from:['kitchen'],to:[]}],
+      events:[{id:'gust',kind:'wind_gust',label:'Wind gust: 14 m/s',label_zh:'阵风：风速 14 米/秒',at_s:170}]},
+    diff_previous:{added:[],changed:[{id:'fleet',kind:'fleet',label:'送餐无人机',label_zh:'送餐无人机'}],removed:[]},
+  });
+  const currentApi={plan:vi.fn(async(_id:string,version:number)=>alternative(version))} as unknown as AssistantApi;
+  function Switch(){const {locale,setLocale}=useI18n();return <button onClick={()=>setLocale(locale==='en-US'?'zh-CN':'en-US')}>Switch locale</button>;}
+  localStorage.setItem(STORAGE_KEY,'zh-CN');
+  render(<I18nProvider><Switch/><AlternativesCompare api={currentApi} sessionId="s1" versions={[5,6]} current={5} onSelect={vi.fn()} onClose={vi.fn()}/></I18nProvider>);
+  await screen.findByTestId('as-alt-5');
+  const panel=screen.getByTestId('as-alternatives');
+  expect(panel).toHaveTextContent('送餐无人机');expect(panel).toHaveTextContent('外卖订单');
+  fireEvent.click(screen.getByText('Switch locale'));
+  expect(panel).toHaveTextContent('Meal courier');expect(panel).toHaveTextContent('Meal order');expect(panel).toHaveTextContent('Wind gust: 14 m/s');
+  expect(panel).not.toHaveTextContent(/送餐无人机|外卖订单|西侧厨房|阵风/);
+  expect(currentApi.plan).toHaveBeenCalledTimes(2);
 });
 
 it('shows shared items in the current locale, not always in Chinese', async () => {

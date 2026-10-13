@@ -1,13 +1,15 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import { PlanBoard } from './PlanBoard';
 import type { AssistantApi, PlanVersion, Session } from './api';
 import type { AssistantSession } from './useAssistant';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { RunStory } from './RunStory';
+import { draftChanges } from './draftChanges';
 
-afterEach(() => cleanup());
+beforeEach(()=>{vi.clearAllMocks();vi.mocked(assistant.send).mockResolvedValue(undefined);localStorage.setItem('aeroagentsim.locale','en-US');sessionStorage.clear();});
+afterEach(() => {cleanup();localStorage.clear();vi.restoreAllMocks();});
 
 const plan = (version: number, variant?: string): PlanVersion => ({
   version, created_at: '', note: variant ?? '', variant: variant ?? null, parent: version > 1 ? 1 : null,
@@ -115,7 +117,7 @@ it('shows per-operation errors with a Revise affordance and never crashes the bo
   expect(screen.getByTestId('as-confirm')).toBeDisabled();
   // Revise names the operation, field and problem to the assistant.
   fireEvent.click(within(errors).getAllByTestId('as-revise')[0]);
-  await waitFor(() => expect(reviseAssistant.send).toHaveBeenCalledWith(expect.stringContaining('op-2')));
+  await waitFor(() => expect(reviseAssistant.send).toHaveBeenCalledWith(expect.stringContaining('op-2'),{locale:'en-US'}));
   expect(String(vi.mocked(reviseAssistant.send).mock.calls[0][0])).toContain('speed_mps');
 });
 
@@ -157,4 +159,107 @@ it('labels which plan version the story follows', () => {
   // A run of another plan says so plainly instead of mixing the two up.
   rerender(<I18nProvider><RunStory {...base} story={{ run_id: 'r1', terminal: true, plan_version: 3, expectations: [], events: [] }} planVersion={6} /></I18nProvider>);
   expect(screen.getByTestId('as-story-plan')).toHaveTextContent(/followed plan v3/);
+});
+
+function board(agent:AssistantSession,props:Partial<Parameters<typeof PlanBoard>[0]>={}) {
+  return render(<I18nProvider><PlanBoard api={api} assistant={agent} stage="proposed" terminal={false} initializing={false} canInitialize={false}
+    onInitialize={vi.fn()} onApplied={vi.fn()} onHover={vi.fn()} onStep={vi.fn()} onContract={vi.fn()} onSeek={vi.fn()} onViewVersion={vi.fn()} onClose={vi.fn()} {...props}/></I18nProvider>);
+}
+const appliedAssistant=():AssistantSession=>({...assistant,session:{...session,applied},applied:applied[0]});
+
+it.each(['en-US','zh-CN'])('T2-AS-002/T3-R2-006: structured validation errors remain reviewable and localized in %s',async locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  const issue={op_id:'op-4',field:'mode',message:'Starting scene has no interactive ingress stream / 起点场景没有交互输入流'};
+  const failed:PlanVersion={...plan(7),compile:{ok:false,warnings:[],errors:[issue]},validation:{state:'invalid',errors:[issue]}};
+  const agent={...assistant,plan:failed,session:{...session,plan:failed}};
+  board(agent);
+  const errors=screen.getByTestId('as-op-errors');
+  expect(errors).toHaveTextContent('op-4');expect(errors).toHaveTextContent('mode');
+  expect(errors).toHaveTextContent(locale==='en-US'?'Starting scene has no interactive ingress stream':'起点场景没有交互输入流');
+  expect(errors).not.toHaveTextContent(locale==='en-US'?'起点场景没有交互输入流':'Starting scene has no interactive ingress stream');
+  expect(within(errors).getAllByTestId('as-revise')).toHaveLength(1);
+  expect(screen.getByTestId('as-confirm')).toBeDisabled();
+  fireEvent.click(within(errors).getByTestId('as-revise'));
+  await waitFor(()=>expect(agent.send).toHaveBeenCalledWith(expect.stringContaining('op-4'),{locale}));
+});
+
+it('T3-R2-006: reviewing an earlier failed revision retains its diagnostics and targeted repair',async()=>{
+  vi.mocked(api.plan).mockResolvedValueOnce({...rejectedPlan,version:5,scene:undefined});
+  board(assistant,{viewing:5});
+  const errors=await screen.findByTestId('as-op-errors');
+  expect(errors).toHaveTextContent('op-2');expect(errors).toHaveTextContent('speed_mps');
+  expect(screen.queryByTestId('as-confirm')).toBeNull();
+  fireEvent.click(within(errors).getAllByTestId('as-revise')[0]);
+  await waitFor(()=>expect(assistant.send).toHaveBeenCalledWith(expect.stringContaining('plan version 5, operation op-2'),{locale:'en-US'}));
+});
+
+it('T2-AS-002: contains an unexpected board render failure and leaves repair controls available',async()=>{
+  const log=vi.spyOn(console,'error').mockImplementation(()=>undefined);
+  const malformed={...plan(7),scene:{places:[null]}} as unknown as PlanVersion;
+  const agent={...assistant,plan:malformed,session:{...session,plan:malformed}};
+  render(<I18nProvider><p>Existing conversation</p><PlanBoard api={api} assistant={agent} stage="proposed" terminal={false} initializing={false} canInitialize={false}
+    onInitialize={vi.fn()} onApplied={vi.fn()} onHover={vi.fn()} onStep={vi.fn()} onContract={vi.fn()} onSeek={vi.fn()} onViewVersion={vi.fn()} onClose={vi.fn()}/></I18nProvider>);
+  expect(screen.getByTestId('as-board-failed')).toBeVisible();
+  expect(screen.getByText('Existing conversation')).toBeVisible();
+  expect(screen.queryByTestId('as-confirm')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Ask the assistant to fix it'}));
+  await waitFor(()=>expect(agent.send).toHaveBeenCalledWith('Fix the problems in this plan.',{locale:'en-US'}));
+  log.mockRestore();
+});
+
+it.each(['en-US','zh-CN'])('T2-R2-003/T2-AS-015: Summarise sends the selected run and current UI locale %s',async locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  const agent=appliedAssistant();agent.session!.locale=locale==='en-US'?'zh-CN':'en-US';
+  board(agent,{stage:'running',terminal:true,runId:'run-selected-not-a-plan'});
+  fireEvent.click(screen.getByRole('button',{name:locale==='en-US'?'Summarise the run':'总结运行'}));
+  await waitFor(()=>expect(agent.send).toHaveBeenCalledWith(locale==='en-US'?'Summarise what happened in this run compared with the plan.':'对照方案总结这次运行发生了什么。',{run_id:'run-selected-not-a-plan',locale}));
+});
+
+it('T2-R2-012: keeps What will I see after confirmation, with current locale context',async()=>{
+  const agent=appliedAssistant();
+  board(agent,{stage:'configured',canInitialize:true});
+  expect(screen.getByTestId('as-initialize')).toBeEnabled();
+  const button=screen.getByTestId('as-what-to-watch');expect(button).toBeVisible();fireEvent.click(button);
+  await waitFor(()=>expect(agent.send).toHaveBeenCalledWith('What should I watch for when I run it?',{locale:'en-US'}));
+});
+
+it('T2-R2-003: requires a selected run before a run summary can be requested',()=>{
+  board(appliedAssistant(),{stage:'running',terminal:true});
+  expect(screen.getByRole('button',{name:'Summarise the run'})).toBeDisabled();
+  expect(screen.getByText('Select a run in Records to ask about its results.')).toBeVisible();
+  expect(assistant.send).not.toHaveBeenCalled();
+});
+
+it('T2-AS-007: explains actual capacity and position changes next to the historical applied plan',()=>{
+  const agent=appliedAssistant();
+  agent.draftState={dirty:false,latestVersion:4,changes:draftChanges(
+    {entities:[{id:'pad-central',facts:{'lowalt.site_capacity':2,'lowalt.site_position':[0,0,0]}}]},
+    {entities:[{id:'pad-central',facts:{'lowalt.site_capacity':4,'lowalt.site_position':[50,0,0]}}]})};
+  board(agent,{stage:'configured',canInitialize:true});
+  const notice=screen.getByTestId('as-draft-changed');
+  expect(notice).toHaveTextContent('Draft changed since this plan');
+  expect(notice).toHaveTextContent('pad-central');
+  expect(notice).toHaveTextContent('2 → 4');expect(notice).toHaveTextContent('0, 0, 0 → 50, 0, 0');
+  expect(screen.getByTestId('as-plan-state')).toHaveTextContent('Applied as version 3');
+  expect(screen.getByTestId('as-initialize')).toHaveTextContent('Initialize version 4');
+});
+
+it('keeps initialization disabled while the changed draft still needs validation and saving',()=>{
+  const agent=appliedAssistant();agent.draftState={dirty:true,latestVersion:3,changes:[{path:['run','until_ns'],before:1000000000,after:600000000000}]};
+  board(agent,{stage:'configured',canInitialize:true});
+  expect(screen.getByTestId('as-initialize')).toBeDisabled();
+  expect(screen.getByText('Validate and save the changed draft as a version before initializing.')).toBeVisible();
+  expect(screen.getByTestId('as-what-to-watch')).toBeEnabled();
+});
+
+it('T2-R2-011: revision summaries show the real arrangement rather than operation JSON',()=>{
+  const operations=[{id:'op-1',op:'add_place',params:{id:'pad-central',role:'charging_pad',at:[0,0,0],capacity:2,power_w:5000}},
+    {id:'op-2',op:'add_fleet',params:{id:'fleet-extra',role:'meal_courier',count:3,start:'pad-central'}}];
+  const revision={...plan(7),operations,summary:operations.map(op=>`${op.id} ${op.op}: ${JSON.stringify(op.params)}`).join('; ')};
+  board({...assistant,plan:revision,session:{...session,plan:revision}});
+  const summary=screen.getByTestId('as-arrangement');
+  expect(summary).toHaveTextContent('Add a place');expect(summary).toHaveTextContent(/Capacity\s*2/);
+  expect(summary).toHaveTextContent(/Charging power \(W\)\s*5000/);expect(summary).toHaveTextContent(/Count\s*3/);
+  expect(summary).toHaveTextContent('Meal courier');
+  expect(summary).not.toHaveTextContent(/add_place|add_fleet|op-1|\{/);
 });

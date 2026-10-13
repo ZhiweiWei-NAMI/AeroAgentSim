@@ -3,6 +3,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import type { Contract, Diff, Fleet, Policy, SceneSummary } from './api';
 import { Icon } from './icons';
 import { clock, constraintTexts, kindNoun, optionText, pick, placeRole, releaseText, valueText, type Lang } from './present';
+import { parameterName } from './OperationSummary';
 
 export type Mark = 'new' | 'changed' | undefined;
 export function marks(diff: Diff | undefined) {
@@ -149,9 +150,20 @@ export function SceneCards({ scene, diff, onHover, onContract, onMode, busy }: {
 
     {((scene.rules?.length ?? 0) > 0 || algorithms.length > 0) && <Section title={L('Rules and decision methods', '规则与决策方法')} layer="behaviour" testid="as-rules">
       <dl className="as-rules">
-        {scene.rules?.map(rule => <div key={rule.id} className={mark(rule.id) ? `is-${mark(rule.id)}` : ''}><dt>{pick(rule, zh)}</dt><dd className="wb-mono">{valueText(rule.value, rule.unit)}</dd></div>)}
-        {algorithms.map(([slot, value]) => <div key={slot} className={mark(`algorithm:${slot}`) ? `is-${mark(`algorithm:${slot}`)}` : ''}><dt>{slot.replace(/_/g, ' ')}</dt><dd className="wb-mono">{value === 'llm' ? <><Icon name="spark" size={10} /> {L('agent (LLM)', '智能体（LLM）')}</> : value}</dd></div>)}
+        {scene.rules?.map(rule => <div key={rule.id} className={mark(rule.id) ? `is-${mark(rule.id)}` : ''}><dt>{pick(rule, zh)}</dt><dd><RuleValue value={rule.value} unit={rule.unit}/></dd></div>)}
+        {algorithms.map(([slot, value]) => <div key={slot} className={mark(`algorithm:${slot}`) ? `is-${mark(`algorithm:${slot}`)}` : ''}><dt>{parameterName(slot,L)}</dt><dd className="wb-mono">{value === 'llm' ? <><Icon name="spark" size={10} /> {L('agent (LLM)', '智能体（LLM）')}</> : methodName(value,L)}</dd></div>)}
       </dl>
     </Section>}
   </div>;
+}
+
+function methodName(value: string,L: Lang) {
+  const methods: Record<string,[string,string]>={nearest:['Nearest','最近优先'],corridor_astar:['Corridor A*','走廊 A*'],straight:['Straight line','直线'],priority:['Priority','优先级'],first_fit:['First fit','首个可用'],reserve:['Reserve','保留电量']};
+  return methods[value]?L(...methods[value]):value;
+}
+
+function RuleValue({value,unit}: {value: unknown;unit?: string}) {
+  const {locale}=useI18n(),L: Lang=(en,zh)=>locale==='zh-CN'?zh:en;
+  if(value && typeof value==='object' && !Array.isArray(value))return <dl className="as-rule-values">{Object.entries(value).map(([key,item])=><div key={key}><dt>{parameterName(key,L)}</dt><dd><RuleValue value={item} unit={unit}/></dd></div>)}</dl>;
+  return <span className="wb-mono">{typeof value==='boolean'?L(value?'Yes':'No',value?'是':'否'):valueText(value,unit)}</span>;
 }

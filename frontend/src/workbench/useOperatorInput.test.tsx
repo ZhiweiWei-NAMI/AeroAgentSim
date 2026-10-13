@@ -48,6 +48,32 @@ it('does not let a held informational read delay pause or publish its stale runn
   });
   expect(s.writes).toEqual([]); expect(view.result.current.error).toBeUndefined();
 });
+it('T3-001: settles an in-flight input before the history pause and holds production until the real resume',async()=>{
+  const s=source(0,0,100_000_000_000);s.status('waiting_for_input');s.speed(null);
+  const request=s.request.getMockImplementation()!;
+  let acknowledge!:()=>void,first=true;
+  s.request.mockImplementation(async(path,options)=>{
+    if(path.endsWith('/watermark')&&first){first=false;await new Promise<void>(resolve=>{acknowledge=resolve;});}
+    return request(path,options);
+  });
+  const view=renderHook(({following})=>useOperatorInput(s.api,'run','live',following),{initialProps:{following:true}});
+  await act(async()=>{await vi.advanceTimersByTimeAsync(10);});
+  expect(acknowledge).toBeTypeOf('function');
+  view.rerender({following:false});
+  let paused=false,pause:Promise<unknown>|undefined;
+  await act(async()=>{
+    pause=view.result.current.serialize(async()=>{paused=true;s.status('paused');s.pause(true);});
+    await Promise.resolve();
+  });
+  expect(paused).toBe(false);
+  await act(async()=>{acknowledge();await pause!;await vi.advanceTimersByTimeAsync(2000);});
+  expect(paused).toBe(true);expect(s.writes).toEqual([1_000_000_000]);
+  view.rerender({following:true});
+  await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
+  expect(s.writes).toEqual([1_000_000_000]);
+  await act(async()=>{await view.result.current.serialize(async()=>{s.status('waiting_for_input');s.pause(false);});await vi.advanceTimersByTimeAsync(40);});
+  expect(s.writes.length).toBeGreaterThan(1);
+});
 it('advances only a waiting live source using its acknowledged frontier, capped at the authored end', async () => {
   const s = source();
   await act(async () => { renderHook(() => useOperatorInput(s.api, 'run', 'live', true)); });

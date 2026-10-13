@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import type { EntityKey } from '../contracts/viewer-feed';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
-import { awaitRunConfiguration, RunsApi, isTerminalStatus, type AdmissionReceipt } from '../feeds/http';
+import { awaitRunConfiguration, RunsApi, isTerminalStatus } from '../feeds/http';
 import { stringifyLossless } from '../feeds/lossless-json';
-import { Details } from '../console/Details';
+import { Details, RecordFields } from '../console/Details';
 import { useConsoleNotice } from '../console/Notifications';
 import { displayTime } from '../pages/display-time';
 import { ConceptHelp } from '../console/ConceptHelp';
@@ -66,6 +66,7 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
   const [fields,setFields]=useState(emptyTransport()),[payload,setPayload]=useState<unknown>({}),[point,setPoint]=useState(''),[points,setPoints]=useState<Draft[]>([]),[error,setError]=useState(''),[admissions,setAdmissions]=useState<any[]>([]),[busy,setBusy]=useState(false),[effective,setEffective]=useState<string>();
   const [operator,setOperator]=useState(false),[horizon,setHorizon]=useState<string>(),[scheduledOnly,setScheduledOnly]=useState(false);
   const [progressError,setProgressError]=useState('');
+  const [admissionError,setAdmissionError]=useState('');
   const [authoredMessages,setAuthoredMessages]=useState<Draft[]>([]);
   const operatorNs=useRef<bigint>(), operatorEnd=useRef<bigint>(), operations=useRef<Promise<unknown>>(Promise.resolve());
   const serialized=inputSource?.serialize??((action:()=>Promise<unknown>)=>{const result=operations.current.then(action,action);operations.current=result;return result;});
@@ -159,13 +160,19 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
   // duplicate an admitted operation, and a journaled outcome updates the same row.
   useEffect(()=>{
     const abort=new AbortController();
-    const load=()=>{void api.admissions(runId,abort.signal).then(rows=>{
+    setAdmissions([]); setAdmissionError('');
+    // The older RunsApi.admissions projection discards execution fields and
+    // Instant timestamps. Read this endpoint losslessly, including new fields.
+    const load=()=>{void api.request(`/v1/runs/${encodeURIComponent(runId)}/admissions`,{signal:abort.signal}).then(value=>{
       if(abort.signal.aborted)return;
+      if(!Array.isArray(value)||!value.every(row=>mapping(row)&&typeof row.id==='string'&&typeof row.status==='string'))throw Error(copy('Admission records are malformed.','受理记录格式不正确。'));
+      const rows=value as Draft[];
+      setAdmissionError('');
       setAdmissions(previous=>{
         // A live receipt's command_id is the journaled row's id: keep only the journaled copy.
         const journaled=new Set(rows.map(stored=>stored.id));
         const live=previous.filter(row=>(!mapping(row)||typeof row.id!=='string')&&!(mapping(row)&&typeof row.command_id==='string'&&journaled.has(row.command_id)));
-        const merged=[...rows.map(stored=>({id:stored.id,status:stored.status,disposition:stored.status,submitted_at:stored.submitted_at,target_cut:stored.target_cut,kind:stored.kind,detail:stored.detail,stored:true})),...live];
+        const merged=[...rows.map(stored=>({...stored,stored:true})),...live];
         const seen=new Set<string>(),unique=merged.filter(row=>{
           const key=typeof row.id==='string'?row.id:`live-${seen.size}`;
           if(typeof row.id==='string'&&seen.has(key))return false;
@@ -173,7 +180,9 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
         });
         return unique;
       });
-    }).catch(() => { /* An unavailable admission query degrades to live receipts only; operations are unaffected. */ });};
+    }).catch(problem => { if(!abort.signal.aborted)setAdmissionError(String(problem).includes('HTTP 404')
+      ? copy('Saved admission receipts are unavailable on this server.','此服务器不提供已保存的受理回执。')
+      : problemMessage(problem)); });};
     load();
     const timer=setInterval(load,5000);
     return()=>{abort.abort();clearInterval(timer);};
@@ -231,6 +240,7 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
       case 'rejected':return t('rejected');
       case 'applied':return t('applied');
       case 'failed':return t('failed');
+      case 'succeeded':return copy('succeeded','成功');
       case 'admitted':return t('admitted');
       default:return status;
     }
@@ -271,11 +281,12 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
     // Status precedence: a journaled execution outcome (succeeded/failed/
     // rejected) outranks a mere "admitted"; admitted is never shown as success.
     if(receipt.stored===true){
-      const status=String(receipt.status);
+      const status=typeof receipt.execution_status==='string'?receipt.execution_status:String(receipt.status);
       if(status==='rejected')return t('Event rejected ({code}): it was not executed.',{code:String(receipt.code??t('no code'))});
       if(status==='failed')return t('Admitted but execution failed: {detail}',{detail:String(receipt.detail??t('no detail recorded'))});
-      if(status==='succeeded')return t('Executed. Its records appear in the timeline.');
-      return t('Admitted and awaiting execution. The execution receipts show what happened next.');
+      if(status==='succeeded'||status==='applied')return t('Executed. Its records appear in the timeline.');
+      if(['accepted','admitted','delayed'].includes(status))return t('Admitted and awaiting execution. The execution receipts show what happened next.');
+      return copy(`Unrecognised execution state: ${status}. Read the recorded details.`,`无法识别执行状态：${status}。请查看记录详情。`);
     }
     switch(receipt.disposition){
       case 'accepted':return t('Event accepted for processing. The execution receipts show what happened next.');
@@ -287,16 +298,27 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
   const admissionState=(receipt:unknown):'ok'|'bad'|'wait'|'info'=>{
     if(!mapping(receipt))return 'info';
     if(receipt.stored===true){
-      const status=String(receipt.status);
-      if(status==='succeeded')return 'ok';
+      const status=typeof receipt.execution_status==='string'?receipt.execution_status:String(receipt.status);
+      if(status==='succeeded'||status==='applied')return 'ok';
       if(status==='failed'||status==='rejected')return 'bad';
-      return 'wait';
+      return ['accepted','admitted','delayed'].includes(status)?'wait':'info';
     }
     return receipt.disposition==='accepted'||receipt.disposition==='delayed'?'wait':receipt.disposition==='rejected'?'bad':'info';
   };
   const admissionTitle=(receipt:unknown)=>{
     const parts=[mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):''];
-    if(mapping(receipt)&&typeof receipt.submitted_at==='string')parts.push(String(receipt.submitted_at));
+    if(mapping(receipt)&&receipt.submitted_at!==undefined){
+      if(typeof receipt.submitted_at==='string')parts.push(receipt.submitted_at);
+      else if(mapping(receipt.submitted_at)){
+        try{
+          const ns=exactNanos(receipt.submitted_at.ns,'submitted_at.ns');
+          const microstep=receipt.submitted_at.microstep;
+          if(typeof microstep!=='number'||!Number.isSafeInteger(microstep)||microstep<0)throw Error('submitted_at.microstep');
+          const seconds=`${ns/1_000_000_000n}${ns%1_000_000_000n?'.'+(ns%1_000_000_000n).toString().padStart(9,'0').replace(/0+$/,''):''}`;
+          parts.push(copy(`submitted at ${seconds} s · microstep ${microstep}`,`提交于 ${seconds} 秒 · 微步 ${microstep}`));
+        }catch{parts.push(copy('Invalid recorded submission time','记录的提交时间无效'));}
+      }else parts.push(copy('Invalid recorded submission time','记录的提交时间无效'));
+    }
     if(mapping(receipt)&&typeof receipt.target_cut==='number')parts.push(t('target cut {cut}',{cut:receipt.target_cut}));
     return parts.filter(Boolean).join(' · ');
   };
@@ -304,8 +326,8 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
   const receiptCuts=(receipt:unknown):number[]=>{
     const id=mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):undefined;
     if(!id)return [];
-    const target=mapping(receipt)&&typeof receipt.target_cut==='number'?[receipt.target_cut as number]:[];
-    return [...new Set([...store.commits.filter(commit=>commit.messages.some(message=>String(message.id).includes(id))).map(commit=>commit.commitIndex),...target])].sort((a,b)=>a-b);
+    const recorded=mapping(receipt)?[receipt.execution_cut,receipt.target_cut].filter((cut):cut is number=>typeof cut==='number'&&Number.isSafeInteger(cut)&&cut>0):[];
+    return [...new Set([...recorded,...store.commits.filter(commit=>commit.messages.some(message=>String(message.id).includes(id))).map(commit=>commit.commitIndex)])];
   };
   return <section className="run-operations" aria-label={t('Run operations')} aria-busy={busy}>
     {operationHint&&<p>{operationHint}</p>}
@@ -330,8 +352,9 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
     {error&&<p role="alert">{error}</p>}
     {progressError&&<p role="alert">{progressError}</p>}
     <h3>{copy('Recorded input and execution','已记录的输入与执行')}</h3>
-    <details open={admissions.length>0}><summary>{t('Admission receipts · {count}',{count:admissions.length})}</summary>
-      {!admissions.length&&<p>{t('No admission receipts yet.')}</p>}
+    <details open={admissions.length>0||!!admissionError}><summary>{t('Admission receipts · {count}',{count:admissions.length})}</summary>
+      {admissionError&&<p className="wb-issues" role="alert">{admissionError}</p>}
+      {!admissions.length&&!admissionError&&<p>{t('No admission receipts yet.')}</p>}
       {admissions.map((receipt,index)=>{
         const id=mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):undefined;
         const cuts=receiptCuts(receipt);
@@ -342,8 +365,10 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
           </header>
           {admissionTitle(receipt)&&<small className="wb-mono receipt-meta">{admissionTitle(receipt)}</small>}
           <p className="receipt-help">{admissionSummary(receipt)}</p>
+          {mapping(receipt)&&typeof receipt.execution_status==='string'&&<p className="receipt-correlate">{copy('Execution','执行')} · {statusLabel(receipt.execution_status)}</p>}
+          {mapping(receipt)&&receipt.execution_result!==undefined&&<section aria-label={copy('Execution result','执行结果')}><RecordFields record={receipt.execution_result} /></section>}
           {cuts.length>0&&<p className="receipt-correlate">{t('In the timeline:')} {cuts.slice(0,4).map(cut=><button type="button" key={cut} onClick={()=>onSeek(cut)}>{t('cut {cut}',{cut})}</button>)}</p>}
-          <Details title={t('Admission receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details>
+          <Details title={t('Admission receipt')} buttonLabel={t('Details')}><RecordFields record={receipt} /><details><summary>{copy('Raw record','原始记录')}</summary><pre className="wb-mono">{exactValue(receipt)}</pre></details></Details>
         </article>;
       })}
     </details>
@@ -363,7 +388,7 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
           {/* Precedence: the journaled execution outcome of the linked admission outranks "admitted". */}
           {receiptId&&admissions.some(row=>mapping(row)&&row.id===receiptId)&&<p className="receipt-correlate">{t('Response to admission {id}.',{id:receiptId})} {outcome==='succeeded'?t('Executed. Its records appear in the timeline.'):outcome?statusLabel(outcome):t('Admitted and awaiting execution. The execution receipts show what happened next.')}</p>}
           {receiptId&&<small className="wb-mono receipt-meta">{receiptId}</small>}
-          <Details title={t('Execution receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details>
+          <Details title={t('Execution receipt')} buttonLabel={t('Details')}><RecordFields record={receipt} /><details><summary>{copy('Raw record','原始记录')}</summary><pre className="wb-mono">{exactValue(receipt)}</pre></details></Details>
         </article>;
       })}
     </details>

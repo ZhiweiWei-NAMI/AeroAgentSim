@@ -5,6 +5,8 @@ import { Details } from './Details';
 import { ConsoleNotifications, useConsoleNotice } from './Notifications';
 import { RunShortcuts, ShortcutsHelp } from './shortcuts';
 import ConsoleShell from './ConsoleShell';
+import { RecordFields } from './Details';
+import { I18nProvider } from '../i18n/I18nProvider';
 afterEach(()=>{cleanup();vi.useRealTimers();});
 it('loads details on demand and retains an unfinished buffer across closing',async()=>{
  render(<Details title="Run details"><textarea aria-label="Raw buffer" defaultValue="kernel-run-payload" /></Details>);
@@ -14,6 +16,20 @@ it('loads details on demand and retains an unfinished buffer across closing',asy
  fireEvent.change(screen.getByLabelText('Raw buffer'),{target:{value:'{unfinished'}});
  fireEvent.click(screen.getByRole('button',{name:'Close'}));await waitFor(()=>expect(trigger).toHaveFocus());
  fireEvent.click(trigger);expect(screen.getByLabelText('Raw buffer')).toHaveValue('{unfinished');
+});
+it('T4-12: uses a glass dialog with structured fields and returns focus on Escape',async()=>{
+ localStorage.setItem('aeroagentsim.locale','en-US');
+ render(<I18nProvider><Details title="Admission receipt"><RecordFields record={{status:'applied',execution_status:'succeeded',execution_result:{injection_point:'restaurant_delay'}}}/></Details></I18nProvider>);
+ const trigger=screen.getByTestId('details-trigger');fireEvent.click(trigger);
+ const dialog=await screen.findByRole('dialog');
+ expect(dialog).toHaveClass('wb-glass');
+ expect(dialog.querySelector('.wb-record-fields')).toBeTruthy();
+ expect(dialog).toHaveTextContent('Execution result');expect(dialog).toHaveTextContent('Restaurant Delay');
+ expect(dialog.querySelector('.ant-drawer')).toBeNull();
+ fireEvent.keyDown(dialog,{key:'Escape'});
+ await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ await waitFor(()=>expect(trigger).toHaveFocus());
+ localStorage.clear();
 });
 it('guards shortcuts during typing, replay and dialogs, then invokes live controls',async()=>{
  const toggle=vi.fn(),inject=vi.fn();

@@ -18,9 +18,8 @@ export function useOperatorInput(api: RunsApi, runId: string | undefined, mode: 
   const queueRef = useRef<{ tail: Promise<unknown>; source?: OperatorSourceControl }>();
   if (!queueRef.current) queueRef.current = { tail: Promise.resolve() };
   const queue = queueRef.current;
-  // T3-001: seeking and history browsing change only what the view shows — they
-  // do not create or destroy the producer. `mode` owns the session lifecycle;
-  // `followingLive` gates only whether this live source advances the watermark.
+  // A history pause retains the producer. followingLive prevents new writes;
+  // serialize waits for the last issued write before the real pause control.
   const allowed = useRef(followingLive); allowed.current = followingLive;
   const [error, setError] = useState<string>();
   const serialize = useCallback(<T,>(action: () => Promise<T>): Promise<T> => {

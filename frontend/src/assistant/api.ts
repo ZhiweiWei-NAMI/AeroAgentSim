@@ -1,4 +1,5 @@
 import { WorkbenchApi } from '../workbench/api';
+import type { Workspace } from '../studio/api';
 
 /** Shapes of `/v1/assistant` (docs/product/assistant.md §3–4). */
 export interface Connection {
@@ -12,7 +13,7 @@ export type AssistantEvent = EventBase & (
   | { kind: 'assistant'; text: string; suggestions?: string[] }
   | { kind: 'tool'; call_id: string; name: string; status: 'running' | 'ok' | 'error'; label: string; label_zh?: string; detail?: string }
   | { kind: 'plan'; version: number; note: string; variant?: string | null; versions?: number[] }
-  | { kind: 'plan_validated'; version: number; valid: boolean; errors?: string[] }
+  | { kind: 'plan_validated'; version: number; valid: boolean; errors?: PlanIssue[] }
   | { kind: 'applied'; plan_version: number; workspace_id: string; version: number; report: ApplyReport }
   | { kind: 'error'; message: string; code?: string }
   | { kind: 'turn_started'; turn: number }
@@ -62,13 +63,15 @@ export interface Operation { id: string; op: string; explain?: string; [key: str
 /** Questions arrive as plain text or with suggested answers (assistant/tools.py QUESTIONS). */
 export type OpenQuestion = string | { question: string; options?: string[] };
 export const questionOf = (row: OpenQuestion) => typeof row === 'string' ? { question: row, options: [] as string[] } : { options: [] as string[], ...row };
-export interface CompileIssue { op_id?: string; field?: string; message: string }
+export interface CompileIssue { op_id?: string | null; field?: string | null; message: string }
+export type PlanIssue = string | CompileIssue;
+export const issueOf = (issue: PlanIssue): CompileIssue => typeof issue === 'string' ? { message: issue } : issue;
 export interface PlanVersion {
   version: number; created_at: string; note: string; variant?: string | null; parent?: number | null;
   base: Record<string, unknown>; base_label?: string; title: string; summary: string;
   operations: Operation[]; assumptions: string[]; open_questions: OpenQuestion[];
   compile: { ok: boolean; errors: CompileIssue[]; warnings: Array<string | CompileIssue> };
-  validation: { state: 'pending' | 'valid' | 'invalid'; errors?: string[] };
+  validation: { state: 'pending' | 'valid' | 'invalid'; errors?: PlanIssue[] };
   scene?: SceneSummary; diff_base?: Diff; diff_previous?: Diff | null; interactions?: Interactions; expectations?: Expectation[];
 }
 /** A draft that failed to compile is stored with empty scene parts; it has no scene, sequence or expectations to show. */
@@ -96,7 +99,15 @@ export interface Story {
   run_id: string; status?: string; terminal?: boolean; plan_version?: number | null; last_at_ns?: string | number | null;
   expectations: StoryItem[]; events: Array<{ schema: string; text: string; text_zh?: string; at_ns: string | number; cut?: number; entities?: string[] }>;
 }
-export interface PlanPreview { scenario: Record<string, any>; name: string; demo_console?: any }
+/** C10 geometry is already in the proposal's local east/north/up metres. */
+export interface RegionPreview {
+  origin: { lat: number; lon: number; alt: number }; bounds: number[];
+  geometry: { buildings: { type: string; features: any[] }; roads: Array<{ id: string; points: number[][] }>; truncated: boolean };
+}
+export interface PlanPreview {
+  scenario: Record<string, any>; name: string; demo_console?: Workspace['demo_console'];
+  region?: Workspace['region']; scene?: Workspace['scene']; region_preview?: RegionPreview;
+}
 
 export class AssistantApi {
   private readonly http: WorkbenchApi;

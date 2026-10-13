@@ -4,7 +4,8 @@ import type { RunsApi } from '../feeds/http';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
 import { useI18n } from '../i18n/I18nProvider';
 import { InspectionPanel } from '../pages/InspectionPanel';
-import { readableLabel } from '../pages/inspection-format';
+import { readableLabel, displayLabel, displayUnit, stateValue } from '../pages/inspection-format';
+import { exactValue } from '../feeds/format';
 import type { OperatorInput } from './useOperatorInput';
 import { RunOperations } from '../behaviours/RunOperations';
 import { ChangeList, MomentsList } from '../trace/EntityStory';
@@ -15,19 +16,17 @@ import { displayName } from '../viewport/semantic';
 type Tab = 'state' | 'story' | 'operate';
 
 /** T3-006: lead with the fields an operator actually needs, in this order. */
-const OPERATING_FIELDS: Array<{ match: RegExp; en: string; zh: string }> = [
-  { match: /status|state$|lifecycle/i, en: 'Status', zh: '状态' },
-  { match: /battery|charge|energy|soc/i, en: 'Battery', zh: '电量' },
-  { match: /^position$|location|coord/i, en: 'Position', zh: '位置' },
-  { match: /task|mission|order|assignment/i, en: 'Task', zh: '任务' },
-  { match: /speed|velocity/i, en: 'Speed', zh: '速度' },
-  { match: /altitude|height/i, en: 'Altitude', zh: '高度' },
+const OPERATING_FIELDS = [
+  /status|state$|lifecycle/i,
+  /battery|charg(?:e|ing)|energy|soc/i,
+  /(?:^|[.:])position(?:_enu_m)?$|location|coord/i,
+  /task|mission|order|assignment/i,
+  /speed|velocity/i,
+  /altitude|height/i,
 ];
-/** Fields that are identity/bookkeeping noise when empty — collapsed, not hidden. */
-const SECONDARY = /(?:digest|hash|generation|epoch|clock|producer|source|stamp|revision|_id$|^id$)/i;
 
-function operatingSplit(fields: Array<[string, unknown]>): { primary: Array<[string, unknown]>; secondary: Array<[string, unknown]> } {
-  const score = (id: string) => OPERATING_FIELDS.findIndex(row => row.match.test(id));
+function operatingFields(fields: Array<[string, unknown]>): Array<[string, unknown]> {
+  const score = (id: string) => OPERATING_FIELDS.findIndex(row => row.test(id));
   const sorted = [...fields].sort((a, b) => {
     const sa = score(a[0]), sb = score(b[0]);
     return (sa === -1 ? OPERATING_FIELDS.length : sa) - (sb === -1 ? OPERATING_FIELDS.length : sb);
@@ -36,10 +35,7 @@ function operatingSplit(fields: Array<[string, unknown]>): { primary: Array<[str
     const value = fact && typeof fact === 'object' && 'value' in (fact as Record<string, unknown>) ? (fact as Record<string, unknown>).value : fact;
     return value === undefined || value === null || value === '' || Array.isArray(value) && value.length === 0;
   };
-  return {
-    primary: sorted.filter(([id, value]) => score(id) !== -1 && !isEmpty(value)),
-    secondary: sorted.filter(([id, value]) => (score(id) === -1 || isEmpty(value)) && !SECONDARY.test(id)),
-  };
+  return sorted.filter(([id, value]) => score(id) !== -1 && !isEmpty(value));
 }
 
 /** The selected object: state at the viewed moment, its story, and the operations it admits. */
@@ -116,7 +112,9 @@ export function InspectorPanel({ api, runId, store, revision, selected, cut, mod
         onScroll={event => { if (!cancelScrollRestore.current) scrollPositions.current[tab] = event.currentTarget.scrollTop; }}>
         {tab === 'state' && <>
           <OperatingSummary store={store} selected={selected} />
-          <InspectionPanel store={store} selected={selected} onSeek={onSeekCut} onOpenTrace={ref => onTrace(ref)} />
+          <details className="wb-operating-more" data-testid="wb-all-fields"><summary>{L('All fields','全部字段')}</summary>
+            <InspectionPanel store={store} selected={selected} onSeek={onSeekCut} onOpenTrace={ref => onTrace(ref)} />
+          </details>
         </>}
         {tab === 'story' && entity && <>
           <MomentsList store={store} entity={entity.key} onOpen={(ref, at) => { onSeekCut(at); onTrace(ref); }} />
@@ -139,28 +137,22 @@ function OperatingSummary({ store, selected }: { store: TemporalFeedStore; selec
   const zh = locale === 'zh-CN', L = (en: string, zhText: string) => zh ? zhText : en;
   const entity = selected ? store.entities.get(entityId(selected)) : undefined;
   if (!entity) return null;
-  const { primary, secondary } = operatingSplit([...entity.fields]);
-  const label = (id: string) => OPERATING_FIELDS.find(row => row.match.test(id));
+  const primary = operatingFields([...entity.fields]);
   const factValue = (fact: unknown): unknown => fact && typeof fact === 'object' && 'value' in (fact as Record<string, unknown>) ? (fact as Record<string, unknown>).value : fact;
   const shortValue = (value: unknown): string => {
     const raw = factValue(value);
-    if (Array.isArray(raw)) return raw.map(item => typeof item === 'number' ? Number(item.toFixed(2)) : String(item)).join(', ');
-    if (raw && typeof raw === 'object') return '';
-    return raw === undefined || raw === null ? '' : String(raw);
+    return stateValue(raw,locale) ?? exactValue(raw);
   };
-  const rows = primary.map(([id, value]) => ({ id, title: label(id)!, value: shortValue(value) })).filter(row => row.value !== '');
-  if (!rows.length && !secondary.length) return null;
+  const rows = primary.map(([id,value]) => {
+    const field=store.header.fields.find(row=>row.fieldId===id);
+    const unit=displayUnit(field,locale) ?? (/(?:^|[.:])soc$/i.test(id) ? L('ratio','比例') : undefined);
+    return {id,title:displayLabel(field?.displayName,id,locale),unit,value:shortValue(value)};
+  });
+  if (!rows.length) return null;
   return <section className="wb-operating" data-testid="wb-operating" aria-label={L('Operating state', '运行状态')}>
     {rows.map(row => <div key={row.id} className="wb-operating-row">
-      <span className="wb-operating-label">{zh ? row.title.zh : row.title.en}</span>
+      <span className="wb-operating-label">{row.title}{row.unit && <small> ({row.unit})</small>}</span>
       <span className="wb-mono">{row.value}</span>
     </div>)}
-    {secondary.length > 0 && <details className="wb-operating-more">
-      <summary>{L(`Other state · ${secondary.length}`, `其他状态 · ${secondary.length}`)}</summary>
-      <dl className="wb-operating-secondary">{secondary.map(([id, value]) => {
-        const text = shortValue(value);
-        return <div key={id}><dt>{id}</dt><dd className="wb-mono">{text === '' ? '—' : text}</dd></div>;
-      })}</dl>
-    </details>}
   </section>;
 }

@@ -11,7 +11,7 @@ export function clock(seconds: number | null | undefined): string {
 
 export function pick(row: { label?: string; label_zh?: string; text?: string; text_zh?: string } | undefined, zh: boolean): string {
   if (!row) return '';
-  return (zh ? row.label_zh ?? row.text_zh : undefined) ?? row.label ?? row.text ?? '';
+  return bi((zh ? row.label_zh ?? row.text_zh : undefined) ?? row.label ?? row.text ?? '', zh);
 }
 
 const CJK = /[\u3400-\u9fff]/;
@@ -36,6 +36,7 @@ const KINDS: Record<string, [string, string, string, string]> = {
   parcel: ['parcel', 'parcels', '包裹', '包裹'], food: ['meal order', 'meal orders', '餐食订单', '餐食订单'], medical: ['medical delivery', 'medical deliveries', '医疗配送', '医疗配送'],
   inspection: ['inspection', 'inspections', '巡检', '巡检'], spraying: ['spraying job', 'spraying jobs', '喷洒作业', '喷洒作业'], passenger: ['passenger flight', 'passenger flights', '载客航班', '载客航班'],
   patrol: ['patrol', 'patrols', '巡逻', '巡逻'], incident_response: ['incident response', 'incident responses', '事件响应', '事件响应'],
+  survey: ['survey', 'surveys', '测绘', '测绘'],
 };
 export const kindNoun = (kind: string, count: number, L: Lang) => { const row = KINDS[kind]; return row ? L(count === 1 ? row[0] : row[1], row[2]) : kind.replace(/_/g, ' '); };
 
@@ -81,6 +82,6 @@ export function valueText(value: unknown, unit?: string): string {
   if (typeof value === 'boolean') return value ? '✓' : '✗';
   if (typeof value === 'number') return `${Number.isInteger(value) ? value : value.toFixed(value < 10 ? 2 : 1)}${unit ? ` ${unit}` : ''}`;
   if (Array.isArray(value)) return value.map(item => valueText(item)).join(', ');
-  if (value && typeof value === 'object') return JSON.stringify(value);
+  if (value && typeof value === 'object') return Object.entries(value).map(([key,item])=>`${key.replace(/_/g,' ')}: ${valueText(item)}`).join('; ');
   return value === undefined || value === null ? '—' : String(value);
 }
