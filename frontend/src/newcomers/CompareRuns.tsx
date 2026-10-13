@@ -6,7 +6,9 @@ import { useI18n } from '../i18n/I18nProvider';
 import { localized, translate } from '../i18n/translate';
 import { knobOptionLabel, runStatusLabel } from './presentation';
 import { displayTime } from '../pages/display-time';
+import { stringifyLossless } from '../feeds/lossless-json';
 import './results.css';
+import './compare-runs.css';
 
 export interface CompareRunsProps {
   api: TemplateApi;
@@ -33,6 +35,95 @@ export function comparisonConfiguration(value: unknown, ids?: string[]): Compari
   return data as ComparisonConfiguration;
 }
 
+/**
+ * One compact summary table the beginner reads first: identity, recorded end,
+ * differing key settings, and primary KPIs with deltas. Everything below is
+ * detail; nothing here is clipped or hidden behind horizontal scrolling.
+ */
+function SummaryTable({ runs, rows, more, configuration, templates, locale }: {
+  runs: ComparisonRun[]; rows: KpiRow[]; more: KpiRow[]; configuration?: ComparisonConfiguration;
+  templates: Map<string, ScenarioTemplate>; locale: string;
+}) {
+  const { t } = useI18n();
+  const zh = locale === 'zh-CN';
+  const keyRows = useMemo(() => (runs ? differences(runs, templates, locale, []) : []), [runs, templates, locale]);
+  const endOf = (id: string) => configuration?.recorded_ends[id];
+  // Change versus the column to the left, judged by the metric's known direction.
+  const delta = (row: KpiRow, index: number) => {
+    const before = row.values[index - 1], after = row.values[index];
+    if (index === 0 || row.direction === 'neutral' || before === null || after === null || !Number.isFinite(before) || !Number.isFinite(after)) return undefined;
+    const span = after - before;
+    if (!Number.isFinite(span) || span === 0) return undefined;
+    const better = row.direction === 'min' ? span < 0 : span > 0;
+    return `${span > 0 ? '+' : ''}${formatKpi(span, row.unit)}${better ? ' ✓' : ' ✕'}`;
+  };
+  return <section className="newc-compare-summary" data-testid="comparison-summary" aria-label={zh ? '对比总览' : 'Comparison summary'}>
+    <div style={{ maxHeight: 420, overflow: 'auto' }}>
+      <table className="newc-compare-table newc-summary-table">
+        <caption>{zh ? '先看这里：每次运行的记录终点、关键设置与主要结果' : 'Start here: each run’s recorded end, key settings and primary results'}</caption>
+        <thead><tr>
+          <th scope="col" style={{ width: '32%' }}>{zh ? '项目' : 'Item'}</th>
+          {runs.map((run, index) => <th key={run.id} scope="col" title={run.id}>{t('Run {number} · {title}', { number: index + 1, title: localized(run, 'title', locale) || humanize(run.id) })}</th>)}
+        </tr></thead>
+        <tbody>
+          <tr>
+            <th scope="row">{zh ? '场景模板' : 'Scenario template'}</th>
+            {runs.map(run => {
+              const template = run.template_id ? templates.get(run.template_id) : undefined;
+              return <td key={run.id}>{run.template_id ? (zh && template ? localized(template, 'title', locale) : humanize(run.template_id)) : <span className="newc-config-tag">{zh ? '未知' : 'Unknown'}</span>}</td>;
+            })}
+          </tr>
+          <tr>
+            <th scope="row">{zh ? '记录终点 · 状态' : 'Recorded end · status'}</th>
+            {runs.map(run => {
+              const end = endOf(run.id);
+              return <td key={run.id}>{end ? <>{displayTime(end.at_ns, '0')} · {runStatusLabel(end.status, locale)} · #{end.commit_index}</>
+                : <span className="newc-config-absent">{zh ? '读取中…' : 'Loading…'}</span>}</td>;
+            })}
+          </tr>
+          {keyRows.map(row => <tr key={row.label}>
+            <th scope="row">{row.label}</th>
+            {row.values.map((value, index) => <td key={index} className="wb-mono">{value}</td>)}
+          </tr>)}
+          {rows.map(row => <tr key={row.id} className="newc-summary-kpi">
+            <th scope="row">
+              {metricLabel(row.id, row.label, locale, row.label_zh)}
+              {metricHelp(row.id, locale) !== undefined && <span className="newc-compare-help" title={metricHelp(row.id, locale)} aria-label={t('About {label}', { label: metricLabel(row.id, row.label, locale, row.label_zh) })} tabIndex={0}>?</span>}
+            </th>
+            {row.values.map((value, index) => {
+              const isBest = row.best !== undefined && value !== null && value === row.best;
+              return <td key={index} className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>
+                {formatKpi(value, row.unit)}
+                {index > 0 && delta(row, index) && <span className={`newc-summary-delta${delta(row, index)!.endsWith('✓') ? ' is-ok' : ' is-warn'}`} title={zh ? '相对左列的变化' : 'Change from the previous column'}>{delta(row, index)}</span>}
+              </td>;
+            })}
+          </tr>)}
+          {more.length > 0 && <tr><td colSpan={runs.length + 1}><details className="newc-kpi-more"><summary>{t('More metrics ({count})', { count: more.length })}</summary>
+            <ul className="newc-summary-more">{more.map(row => <li key={row.id}>
+              <span>{metricLabel(row.id, row.label, locale, row.label_zh)}</span>
+              {row.values.map((value, index) => <span key={index} className="wb-mono">{formatKpi(value, row.unit)}</span>)}
+            </li>)}</ul>
+          </details></td></tr>}
+        </tbody>
+      </table>
+    </div>
+  </section>;
+}
+
+/** Names exactly which runs/versions (and templates) are being compared, and warns when metric definitions may not line up. */
+function MixedNote({ runs }: { runs: ComparisonRun[] }) {
+  const { locale } = useI18n();
+  const zh = locale === 'zh-CN';
+  const names = runs.map((run, index) => `${zh ? `运行 ${index + 1}` : `Run ${index + 1}`} · ${localized(run, 'title', locale) || run.id}${run.template_id ? ` (${run.template_id})` : ''}`);
+  const mixed = new Set(runs.map(run => run.template_id ?? '')).size > 1;
+  return <div className="newc-compare-mixed" data-testid="comparison-mixed">
+    <p>{zh ? `正在对比：${names.join('、')}` : `Comparing: ${names.join(', ')}`}</p>
+    {mixed && <p className="newc-compare-mixed-warn" role="note">{zh
+      ? '所选运行来自不同场景模板：各模板的指标定义可能不完全可比，缺失值显示为 “—”，绝不按最优值处理。原始数值原样保留。'
+      : 'These runs come from different scenario templates: metric definitions may not be directly comparable. Missing values show “—” and are never marked best. Exact raw values are preserved.'}</p>}
+  </div>;
+}
+
 /** Plain labels for known metric directions; anything unknown is treated as neutral. */
 const DIRECTIONS: Record<string, 'min' | 'max' | 'neutral'> = {
   tasks_completed: 'max', tasks_created: 'neutral',
@@ -46,8 +137,30 @@ function humanize(id: string): string {
   return id.replace(/[_-]+/g, ' ').replace(/\b\w/g, character => character.toUpperCase());
 }
 
+/** Exact lossless text of a recorded config value (integers above 2^53 included). */
+function exactText(value: unknown): string {
+  if (typeof value === 'bigint') return value.toString();
+  if (typeof value === 'object' && value !== null && '$integer' in (value as Record<string, unknown>)) return String((value as Record<string, unknown>).$integer);
+  try { return stringifyLossless(value); } catch { return JSON.stringify(value); }
+}
 function display(value: KnobValue | undefined): string {
   return value === undefined ? '—' : String(value);
+}
+
+/** True when a recorded value is a large object/array that should collapse behind a disclosure. */
+function isBulk(value: unknown): value is Array<unknown> | Record<string, unknown> {
+  if (Array.isArray(value)) return value.length > 4;
+  if (!value || typeof value !== 'object') return false;
+  const keys = Object.keys(value);
+  if (keys.length === 1 && (keys[0] === '$integer' || keys[0] === '$number')) return false;
+  return keys.length > 4;
+}
+/** Short human preview of a bulk value: kind and size, no content dump. */
+function bulkSummary(value: Array<unknown> | Record<string, unknown>): string {
+  const t = (en: string) => en;
+  if (Array.isArray(value)) return `${t('list')} · ${value.length}`;
+  const first = Object.keys(value).slice(0, 3).join(', ');
+  return `${t('object')} · ${Object.keys(value).length}${first ? ` — ${first}` : ''}`;
 }
 
 function formatKpi(value: number | null, unit: string): string {
@@ -94,9 +207,11 @@ function kpiRows(runs: ComparisonRun[], order: string[] = []): KpiRow[] {
 /** Knob / algorithm columns where the compared runs actually differ. */
 function differences(runs: ComparisonRun[], templates: Map<string, ScenarioTemplate>, locale: string, algorithms: AlgorithmDescriptor[]): { label: string; values: string[] }[] {
   const t = (key: string) => translate(locale, key);
+  if (!runs.length) return [];
   const keys: string[] = [];
   runs.forEach(run => Object.keys(run.knobs ?? {}).forEach(key => { if (!keys.includes(key)) keys.push(key); }));
   const relevant = [...templates.values()].filter(template => runs.some(run => run.template_id === template.id));
+  if (relevant.length && !runs.some(run => run.template_id && templates.has(run.template_id))) return [];
   const knobs = new Map<string, TemplateKnob>();
   const pointerSlot = new Map<string, string>();
   for (const template of relevant) for (const knob of template.knobs) {
@@ -311,7 +426,9 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
         <h2 className="newc-compare-title">{t('Comparing {count} runs', { count: runs.length })}</h2>
         {onBack && <button type="button" className="newc-button" onClick={onBack}>{t('Go back')}</button>}
       </header>
+      <MixedNote runs={runs} />
       {catalogNote && <p className="newc-catalog-note" role="note">{t('Metric names and settings come from machine ids — template details are unavailable ({error}).', { error: catalogNote })}</p>}
+      <SummaryTable runs={runs} rows={primary} more={more} configuration={configuration} templates={templates} locale={locale} />
       <section className="newc-compare-section" data-testid="comparison-configuration">
         <h4>{locale === 'zh-CN' ? '固定配置差异' : 'Pinned configuration differences'}</h4>
         {configurationError ? <p role="status">{locale === 'zh-CN' ? '无法读取固定配置差异：' : 'Could not read pinned configuration differences: '}{configurationError}</p>
@@ -324,10 +441,18 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
                 <thead><tr><th style={{ width: '34%' }}>{locale === 'zh-CN' ? '配置字段' : 'Configuration field'}</th>{runs.map((run, index) => <th key={run.id} title={run.id}>{t('Run {number} · {title}', { number: index + 1, title: localized(run, 'title', locale) || run.id })}</th>)}</tr></thead>
                 <tbody>{[...configuration.config_diff].sort((a, b) => Number(a.path.endsWith('/source')) - Number(b.path.endsWith('/source')) || a.path.localeCompare(b.path)).map(row => <tr key={row.path}><th scope="row"><code>{row.path}</code></th>{runs.map(run => {
                   const value = row.values[run.id];
-                  return <td key={run.id}>{!row.present[run.id] ? locale === 'zh-CN' ? '未设置' : 'Not set'
-                    : row.path.endsWith('/source') && typeof value === 'string' && value.length > 96 && value.includes('/')
-                      ? <details className="newc-config-source"><summary title={value}>{locale === 'zh-CN' ? '源位置' : 'Source location'} · {value.slice(value.lastIndexOf('/') + 1)}</summary><code>{JSON.stringify(value)}</code></details>
-                      : JSON.stringify(value)}</td>;
+                  if (!row.present[run.id]) return <td key={run.id} className="newc-config-absent">{locale === 'zh-CN' ? '未设置' : 'Not set'}</td>;
+                  // Exact lossless text is always available; bulk structures stay collapsed so the
+                  // first screen keeps showing key settings and results instead of raw JSON walls.
+                  const text = exactText(value);
+                  if (isBulk(value)) return <td key={run.id} className="newc-config-bulk"><details className="newc-config-details">
+                    <summary>{locale === 'zh-CN' ? '显示原始 JSON' : 'Show raw JSON'} · {bulkSummary(value)}</summary>
+                    <pre className="wb-mono newc-config-raw" tabIndex={0}>{text}</pre>
+                  </details></td>;
+                  if (value === null) return <td key={run.id} className="newc-config-null"><span className="newc-config-tag">{locale === 'zh-CN' ? '空值' : 'null'}</span><code>null</code></td>;
+                  if (row.path.endsWith('/source') && typeof value === 'string' && text.length > 96 && value.includes('/'))
+                    return <td key={run.id}><details className="newc-config-details"><summary title={value}>{locale === 'zh-CN' ? '源位置' : 'Source location'} · {value.slice(value.lastIndexOf('/') + 1)}</summary><code>{text}</code></details></td>;
+                  return <td key={run.id}>{value === null ? <span className="newc-config-tag">{locale === 'zh-CN' ? '空值' : 'null'}</span> : null}<code className={typeof value === 'object' ? 'newc-config-raw' : undefined}>{text}</code></td>;
                 })}</tr>)}</tbody>
               </table></div>}
           </>}

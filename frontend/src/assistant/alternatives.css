@@ -1,0 +1,45 @@
+/*
+ * Side-by-side alternative comparison (QA AST-015).
+ * Sits inside the plan board's glass sheet: same tokens, radii and motion
+ * language as assistant.css — no new visual vocabulary.
+ */
+
+.as-alt { border-top: 1px solid var(--as-hair); padding: 10px 2px 2px; display: flex; flex-direction: column; gap: 8px; }
+.as-alt-toggle.is-on { box-shadow: inset 0 0 0 1px var(--as-proposal-line); color: var(--as-proposal); }
+.as-alt-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.as-alt-head h4 { margin: 0; font-size: 12.5px; font-weight: 700; letter-spacing: -.005em; }
+
+.as-alt-grid { display: grid; grid-template-columns: repeat(var(--as-alt-n, 2), minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 720px) { .as-alt-grid { grid-template-columns: 1fr; } }
+
+.as-alt-col {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px; border-radius: 12px;
+  background: rgba(255, 255, 255, .62);
+  box-shadow: inset 0 0 0 1px var(--as-hair);
+  min-width: 0;
+  transition: box-shadow var(--as-t) var(--as-ease), transform var(--as-t) var(--as-ease), opacity var(--as-t);
+  animation: as-rise 260ms var(--as-ease) both;
+}
+.as-alt-col.is-current { box-shadow: inset 0 0 0 1px var(--as-proposal-line), 0 3px 12px rgba(138, 125, 255, .14); }
+.as-alt-col:hover { box-shadow: inset 0 0 0 1px var(--as-proposal-line); }
+
+.as-alt-col-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px; }
+.as-alt-col-head b { font-weight: 700; letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.as-alt-summary { margin: 0; font-size: 11.5px; color: var(--as-ink-2); }
+
+.as-alt-group h5 { margin: 0 0 3px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--wb-muted); }
+.as-alt-common { margin: 0; padding: 0 0 0 16px; font-size: 11.5px; color: var(--as-ink-2); display: flex; flex-direction: column; gap: 2px; }
+.as-alt-deltas { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.as-alt-deltas .as-delta { padding: 3px 6px; font-size: 11.5px; animation: none; }
+
+.as-alt-tag { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 600; box-shadow: inset 0 0 0 1px var(--as-hair); color: var(--wb-muted); }
+.as-alt-tag.is-valid { color: var(--wb-ok); box-shadow: inset 0 0 0 1px rgba(31, 174, 107, .35); }
+.as-alt-tag.is-invalid { color: var(--wb-bad); box-shadow: inset 0 0 0 1px rgba(224, 69, 58, .35); }
+
+.as-alt-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: auto; }
+.as-alt-foot .as-quiet { font-size: 10.5px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .as-alt-col { animation: none; transition: none; }
+}

@@ -8,6 +8,7 @@ import { DiffList, PlanChanges } from './PlanChanges';
 import { bi, clock } from './present';
 import { RunStory } from './RunStory';
 import { SceneCards } from './SceneCards';
+import { AlternativesCompare } from './alternatives/AlternativesCompare';
 import type { AssistantSession } from './useAssistant';
 import { draftMessage } from './AssistantPanel';
 
@@ -28,6 +29,7 @@ export function PlanBoard({ api, assistant, stage, waiting = false, runId, story
   const [answered, setAnswered] = useState<string[]>([]);
   useEffect(() => { try { setAnswered(JSON.parse(sessionStorage.getItem(`aas-answered:${session?.id}`) ?? '[]')); } catch { setAnswered([]); } }, [session?.id]);
   const [tab, setTab] = useState<Tab>(stage === 'running' ? 'story' : 'scene');
+  const [compareAlt, setCompareAlt] = useState(false);
   const [applying, setApplying] = useState(false), [applyError, setApplyError] = useState<string>();
   const scroller = useRef<HTMLDivElement>(null), tabsRef = useRef<HTMLElement>(null), openedAt = useRef(stage);
   // Choosing a tab brings its content up under the pinned tab bar.
@@ -93,6 +95,9 @@ export function PlanBoard({ api, assistant, stage, waiting = false, runId, story
           className={`${row.version === latest?.version ? 'is-latest' : ''} is-${row.validation_state}${alternatives.includes(row.version) ? ' is-alt' : ''}`}>
           {row.variant ? <b>{row.variant}</b> : null}v{row.version}
         </button>)}
+        {alternatives.length >= 2 && <button className={`wb-btn small ghost as-alt-toggle${compareAlt ? ' is-on' : ''}`} aria-pressed={compareAlt} data-testid="as-alt-compare" onClick={() => setCompareAlt(value => !value)}>
+          {L('Compare side by side', '并排对比')}
+        </button>}
       </div>}
       {isOld && <div className="as-old-note">
         <span>{bi(plan.note, zh) || L('An earlier version, shown for comparison.', '早期版本，仅供对比。')}</span>
@@ -100,6 +105,11 @@ export function PlanBoard({ api, assistant, stage, waiting = false, runId, story
           : <button className="wb-btn small" onClick={() => ask(L(`Go back to version ${plan.version}, keeping everything else the same.`, `回到版本 ${plan.version}，其余保持不变。`))} disabled={busy}>{L('Go back to this version', '回到此版本')}</button>}
         <button className="wb-btn small ghost" onClick={() => view(undefined)}>{L('Show latest', '查看最新')}</button>
       </div>}
+      {/* Read-only side-by-side review of the proposed alternatives (AST-015).
+          Selecting one only opens it for review; applying stays on the explicit confirm path. */}
+      {!isOld && compareAlt && alternatives.length >= 2 && session &&
+        <AlternativesCompare api={api} sessionId={session.id} versions={alternatives} current={viewing ?? latest?.version}
+          onSelect={version => view(version === latest?.version ? undefined : version)} onClose={() => setCompareAlt(false)} />}
     </div>
 
     {!isOld && stage === 'proposed' && (questions.length > 0 || plan.assumptions.length > 0) && <div className="as-asks as-rise">

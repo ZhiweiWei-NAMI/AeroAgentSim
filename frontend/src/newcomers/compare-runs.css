@@ -1,0 +1,92 @@
+/*
+ * Readable run-comparison layout (QA RUN-030 / FE-09).
+ * Extends the existing newc-compare styles: no new visual language, only a
+ * summary band that leads the page and collapsed raw-JSON disclosures.
+ */
+
+/* ---- lead summary table ---- */
+
+.newc-compare-summary { min-width: 0; }
+
+.newc-summary-table th, .newc-summary-table td { vertical-align: top; }
+.newc-summary-table td.wb-mono,
+.newc-summary-table .newc-kpi-cell { font-family: var(--csl-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.newc-summary-table .newc-summary-kpi th { color: var(--csl-text); }
+.newc-summary-table caption {
+  text-align: left;
+  font-size: var(--csl-fs-xs);
+  color: var(--csl-text-muted);
+  padding: 0 0 var(--csl-sp-1);
+}
+
+/* delta chip after the last column's KPI value */
+.newc-summary-delta {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: var(--csl-fs-xs);
+  font-weight: 600;
+  color: var(--csl-text-muted);
+}
+.newc-summary-delta.is-ok { color: var(--csl-teal-600); }
+.newc-summary-delta.is-warn { color: #a3541d; }
+
+.newc-summary-more { margin: 0; padding: 0; list-style: none; font-size: var(--csl-fs-xs); }
+.newc-summary-more li { display: flex; gap: var(--csl-sp-3); padding: 2px 0; }
+.newc-summary-more li > span:first-child { flex: 1 1 auto; min-width: 0; }
+.newc-summary-more li > span + span { font-family: var(--csl-mono); min-width: 5ch; text-align: right; }
+
+/* ---- exact raw values kept out of the first screen ---- */
+
+.newc-config-details > summary {
+  cursor: pointer;
+  font-size: var(--csl-fs-xs);
+  color: var(--csl-text-muted);
+  border-radius: 6px;
+  padding: 1px 4px;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+.newc-config-details > summary:hover { color: var(--csl-teal-600); }
+.newc-config-details[open] > summary { margin-bottom: 4px; }
+.newc-config-details code { overflow-wrap: anywhere; }
+
+.newc-config-raw {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--csl-surface);
+  border: 1px solid var(--csl-border);
+  font-size: var(--csl-fs-xs);
+  max-height: 240px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* null (recorded empty) vs absent (never recorded) read differently */
+.newc-config-tag {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: var(--csl-fs-xs);
+  font-weight: 600;
+  color: var(--csl-text-muted);
+  border: 1px dashed var(--csl-border-strong);
+}
+.newc-config-absent { color: var(--csl-text-faint); font-style: italic; }
+.newc-config-null .newc-config-tag { color: #a3541d; border-style: solid; }
+
+/* ---- which runs are compared / mixed-template comparability ---- */
+
+.newc-compare-mixed { margin: 0; font-size: var(--csl-fs-xs); color: var(--csl-text-muted); }
+.newc-compare-mixed p { margin: 0 0 2px; }
+.newc-compare-mixed-warn {
+  border-left: 2px solid var(--csl-teal-500);
+  padding: 2px 0 2px 8px;
+  color: var(--csl-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .newc-config-details > summary { transition: none; }
+}

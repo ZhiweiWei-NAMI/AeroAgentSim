@@ -56,3 +56,35 @@ it.each(['en-US','zh-CN'])('keeps long source locations compact and exposes thei
   const detail=full.closest('details')!;expect(within(detail).getByText(locale==='zh-CN'?'源位置 · files:$.behaviours[0]':'Source location · files:$.behaviours[0]')).toBeVisible();
   fireEvent.click(detail.querySelector('summary')!);expect(full).toBeVisible();expect(screen.getByText('43')).toBeVisible();
 });
+
+it('leads with a summary naming the compared runs and collapses bulk JSON values',async()=>{
+  const behaviours=[{id:'patrol',trigger:{at_ns:0}},{id:'climb',trigger:{at_ns:5}},{id:'descend',trigger:{at_ns:9}},{id:'hover',trigger:{at_ns:12}},{id:'land',trigger:{at_ns:20}}];
+  const api={request:vi.fn().mockResolvedValue({alignment:'recorded_run_end',recorded_ends,config_diff:[
+    {path:'/behaviours',values:{a:behaviours,b:[]},present:{a:true,b:true}},
+  ]}),compare:vi.fn().mockResolvedValue({runs}),templates:vi.fn().mockResolvedValue([])} as unknown as TemplateApi;
+  render(<I18nProvider><CompareRuns api={api} ids={['a','b']}/></I18nProvider>);
+  // The summary names every compared run up front.
+  expect(await screen.findByTestId('comparison-mixed')).toHaveTextContent('Comparing: Run 1 · a, Run 2 · b');
+  const summary=screen.getByTestId('comparison-summary');
+  // KPI summary exists before configuration differences.
+  expect(within(summary).getByText(/Start here/)).toBeVisible();
+  // Raw JSON wall stays collapsed behind a disclosure with a size summary.
+  const raw=screen.getByText(JSON.stringify(behaviours));
+  expect(raw).not.toBeVisible();
+  const bulk=raw.closest('details')!;
+  expect(within(bulk).getByText(/Show raw JSON · list · 5/)).toBeVisible();
+  fireEvent.click(bulk.querySelector('summary')!);expect(raw).toBeVisible();
+  expect(screen.queryByText(/metric definitions may not be directly comparable/)).toBeNull();
+});
+
+it('explains limited comparability when templates differ and keeps exact large integers',async()=>{
+  const mixed=[{id:'a',title:'a',template_id:'food-delivery',kpis:{},knobs:{},algorithms:{}},{id:'b',title:'b',template_id:'city-day',kpis:{},knobs:{},algorithms:{}}];
+  const api={request:vi.fn().mockResolvedValue({alignment:'recorded_run_end',recorded_ends,config_diff:[
+    {path:'/run/seed',values:{a:{'$integer':'9007199254740993'}},present:{a:true,b:false}},
+  ]}),compare:vi.fn().mockResolvedValue({runs:mixed}),templates:vi.fn().mockResolvedValue([])} as unknown as TemplateApi;
+  render(<I18nProvider><CompareRuns api={api} ids={['a','b']}/></I18nProvider>);
+  expect(await screen.findByTestId('comparison-mixed')).toHaveTextContent(/metric definitions may not be directly comparable/);
+  // Lossless integer survives; absent column stays visually distinct from null.
+  expect(await screen.findByText('9007199254740993')).toBeVisible();
+  expect(screen.getAllByText('Not set').length).toBeGreaterThan(0);
+});

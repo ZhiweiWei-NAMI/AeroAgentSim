@@ -326,7 +326,19 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   useEffect(() => { ctx.current?.setOverlay(latest.current.overlay); }, [sceneKey, overlayKey]);
 
   const status = loading && <div className="studio-preview-status" role="status">{t('Loading city geometry…')}{progress && progress.total > 0 && <span> {zh ? '建筑' : 'Buildings'} {progress.loaded} / {progress.total}</span>}</div>;
+  // Schematic plane vs real geography must be distinguishable at a glance (QA GEO-008).
+  const hasGeography = !!city || !!workspace.scene;
+  const objectCount = authoredPositions(workspace.scenario ?? {}).length;
+  const planeNote = !hasGeography && <div className="scene-preview-plane-note" data-testid="plane-note" role="note">
+    <div><strong>{zh ? '本地 ENU 平面' : 'Local ENU plane'}</strong>
+      <span>{zh ? '示意图，并非真实地理（东/北/天单位为米）。' : 'Schematic, not geography (east/north/up in metres).'}</span>
+      <span>{zh ? '选择真实区域：配置面板 → 空间 → 区域。' : 'Pick a real region: Config panel → Space → Region.'}</span>
+    </div>
+  </div>;
+  const noObjects = hasGeography && objectCount === 0 && <div className="scene-preview-no-objects" data-testid="no-objects" role="status">{zh ? '暂无对象' : 'No objects yet'}</div>;
   if (bare) return <div className="scene-preview-canvas" ref={root} aria-label={t('Scene preview')} aria-busy={loading} data-rendered={rendered} data-testid="draft-preview" data-overlay-state={overlay?.tone ?? 'none'} data-overlay-labels="[]">
+    {planeNote}
+    {noObjects}
     {status}
     <div className="studio-preview-fit"><button className="wb-btn" onClick={() => ctx.current?.fitView()}>{zh ? '查看完整场景' : 'Fit scene'}</button><span>{overlay ? overlay.tone === 'proposed' ? (zh ? '提议方案 · 尚未应用' : 'Proposed plan · not applied') : (zh ? '场景已配置 · 未运行' : 'Configured scene · not running') : (zh ? '标记显示配置位置与机队起点' : 'Markers show configured positions and fleet starts')}</span></div>
     {error && <div className="studio-preview-error" role="alert">{error.kind === 'descriptor' ? t('Studio city preview requires a traffic-city descriptor') : t('Scene preview could not load: {error}', { error: error.detail })}</div>}
@@ -334,6 +346,8 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   return <>
     <p id={hintId}>{t('Draft scene preview, not a live run. Drag to orbit, scroll to zoom, and use the layer controls to show or hide geometry. Entities need a position binding; airspace uses its own polygon.')}</p>
     <div className="studio-preview" ref={root} role="img" aria-label={t('Scene preview')} aria-describedby={hintId} aria-busy={loading} data-overlay-state={overlay?.tone ?? 'none'} data-overlay-labels="[]">
+      {planeNote}
+      {noObjects}
       {status}
       {error && <div className="studio-preview-error" role="alert">{error.kind === 'descriptor' ? t('Studio city preview requires a traffic-city descriptor') : t('Scene preview could not load: {error}', { error: error.detail })}</div>}
     </div>
