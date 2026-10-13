@@ -61,6 +61,15 @@ def _plan_status(session: dict[str, Any], plan: dict[str, Any] | None, workspace
         return identity + saved + (" 请先保存有效版本，再初始化。" if zh else " Save a valid version before initializing.")
     if not plan["compile"]["ok"]:
         return (f"方案修订 v{plan['version']} 编译失败，需要修复报告的错误后才能确认。" if zh else f"Plan revision v{plan['version']} did not compile; it cannot be confirmed until the reported errors are fixed.")
+    from .presentation import unchanged_plan
+
+    if unchanged_plan(plan):
+        status = (f"方案修订 v{plan['version']} 没有改变当前场景，无需确认。" if zh else
+                  f"Plan revision v{plan['version']} makes no changes to the current scene; there is nothing to confirm.")
+        if session.get("alternatives") and plan["version"] not in session["alternatives"]:
+            status += (" 请先比较备选方案，打开并选择你要的方案。" if zh else
+                       " Compare the alternatives, open one for review, and choose the option you want.")
+        return status
     state = plan["validation"]["state"]
     if state == "valid":
         return (f"方案修订 v{plan['version']} 校验通过，可在方案板中点击“确认并应用”，保存为新的项目版本。" if zh else f"Plan revision v{plan['version']} is validated; press Confirm on the plan board to save a new project version.")

@@ -20,7 +20,7 @@ const plan = (version: number, variant?: string): PlanVersion => ({
     places: [{ id: 'pad-west', role: 'origin', label: 'West pad' }, { id: 'tower', role: 'destination', label: 'Tower' }],
     fleets: [], workloads: [], events: [],
   },
-  diff_base: { added: [], changed: [], removed: [] },
+  diff_base: { added: [], changed: [{kind:'scene',id:'environment',label:'Background wind',fields:[{name:'wind.speed_mps',before:0,after:3}]}], removed: [] },
   diff_previous: version === 5 ? {
     added: [{ kind: 'cooperation', id: 'coop', label: 'Fixed handoff rule' }], changed: [], removed: [],
   } : {
@@ -307,4 +307,64 @@ it.each(['en-US','zh-CN'])('T4-R3-002: replaces legacy pre-compilation prose wit
   expect(screen.getByTestId('as-arrangement')).toHaveTextContent(locale==='en-US'?'Add the drone scene components':'添加无人机场景组件');
   expect(screen.getByTestId('as-plan-board')).not.toHaveTextContent(/No simulation components|No lowalt engines/);
   expect(screen.queryByText(/Assumptions \(/)).toBeNull();
+});
+
+it.each(['en-US','zh-CN'])('T2-R4-003: labels a legacy empty base unchanged and offers alternative selection in %s',locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  const unchanged:PlanVersion={...plan(1),base:{workspace:'w1',revision:1},title:'Central charging expansion',summary:'Adds a central charging station and two couriers',diff_base:{added:[],changed:[],removed:[]},diff_previous:null};
+  const agent={...assistant,plan:unchanged,session:{...session,plan:unchanged}};
+  board(agent);
+  expect(screen.getByRole('heading',{name:locale==='en-US'?'Unchanged scene':'场景未改变'})).toBeVisible();
+  expect(screen.getByTestId('as-confirm')).toBeDisabled();
+  expect(screen.getByText(locale==='en-US'?'This proposal makes no changes to the current scene.':'此提议没有改变当前场景。')).toBeVisible();
+  expect(screen.queryByText('Central charging expansion')).toBeNull();
+  expect(screen.queryByText('Adds a central charging station and two couriers')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:locale==='en-US'?'Choose an alternative':'选择备选方案'}));
+  expect(screen.getByTestId('as-alternatives')).toBeVisible();
+  expect(agent.apply).not.toHaveBeenCalled();
+});
+
+it('T2-R4-003: a same-value operation is still unchanged and cannot be confirmed',()=>{
+  const unchanged:PlanVersion={...plan(7),base:{workspace:'w1'},operations:[{id:'same-wind',op:'set_wind',params:{speed_mps:3}}],diff_base:{added:[],changed:[],removed:[]}};
+  board({...assistant,plan:unchanged,session:{...session,plan:unchanged}});
+  expect(screen.getByTestId('as-confirm')).toBeDisabled();
+  expect(screen.getByText('There are no changes to confirm.')).toBeVisible();
+});
+
+it('T2-R4-001: Confirm passes the authoritative apply record and waits for the shell refresh even before a project loads',async()=>{
+  const revision=plan(7);
+  const agent={...assistant,plan:revision,session:{...session,plan:revision}};
+  const record={...applied[0],plan_version:7,version:4,revision:6};
+  vi.mocked(agent.apply).mockResolvedValueOnce(record);
+  let finish!:()=>void;
+  const refresh=vi.fn(()=>new Promise<void>(resolve=>{finish=resolve;}));
+  const onApplied=vi.fn();
+  board(agent,{onApplied,onProjectChanged:refresh});
+  fireEvent.click(screen.getByTestId('as-confirm'));
+  await waitFor(()=>expect(refresh).toHaveBeenCalledTimes(1));
+  expect(onApplied).toHaveBeenCalledWith(record);
+  expect(screen.getByTestId('as-confirm')).toBeDisabled();
+  expect(screen.getByTestId('as-confirm')).toHaveTextContent('Applying…');
+  finish();
+  await waitFor(()=>expect(screen.getByTestId('as-confirm')).toHaveTextContent('Confirm and apply'));
+});
+
+it('T2-R4-001: awaits the existing onApplied refresh callback and displays a refresh failure',async()=>{
+  const revision=plan(7);
+  const agent={...assistant,plan:revision,session:{...session,plan:revision}};
+  vi.mocked(agent.apply).mockResolvedValueOnce({...applied[0],plan_version:7});
+  const onApplied=vi.fn().mockRejectedValue(Error('Project refresh failed'));
+  board(agent,{onApplied});
+  fireEvent.click(screen.getByTestId('as-confirm'));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Project refresh failed');
+});
+
+it('T2-R4-003: an unchanged alternative stays plainly labelled and cannot be chosen for application',async()=>{
+  const unchanged:PlanVersion={...plan(5,'Charging expansion'),base:{workspace:'w1'},summary:'Adds a charging station',diff_base:{added:[],changed:[],removed:[]}};
+  vi.mocked(api.plan).mockResolvedValueOnce(unchanged);
+  board(assistant,{viewing:5});
+  expect(await screen.findByRole('heading',{name:'Unchanged scene'})).toBeVisible();
+  expect(screen.getByTestId('as-choose')).toBeDisabled();
+  expect(screen.queryByText('Adds a charging station')).toBeNull();
+  expect(assistant.choose).not.toHaveBeenCalled();
 });

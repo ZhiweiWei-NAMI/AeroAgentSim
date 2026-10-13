@@ -174,6 +174,10 @@ def create_router(store: Any, *, run_root: Path, templates: Any, connection: Con
                 prior = next((record for record in session["applied"] if record["plan_version"] == version), None)
                 if prior is not None:
                     return prior
+                from .presentation import unchanged_plan
+
+                if unchanged_plan(plan):
+                    raise ValueError("This proposal makes no changes; choose an alternative or revise it before confirming / 此提议没有变更，请选择备选方案或修改后再确认")
                 if session["workspace_id"] is not None and plan["base"].get("workspace") != session["workspace_id"]:
                     raise SessionBusy("Draft a revision against the bound project before confirming / 请基于已绑定项目提出修改后再确认")
                 result = apply_plan(harness.tools.context(identifier), sessions.plan_directory(identifier, version), base=plan["base"], workspace_id=session["workspace_id"], name=plan["title"], note=plan["note"])

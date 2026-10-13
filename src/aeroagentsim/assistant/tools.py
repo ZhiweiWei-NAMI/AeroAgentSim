@@ -439,6 +439,11 @@ class ToolRunner:
 
         what_changes = change_summaries(result.diff_base) if result.ok else []
         model_prose = {"summary": summary, "assumptions": copy.deepcopy(assumptions), "note": note}
+        unchanged = result.ok and ("workspace" in base or variant is not None) and not what_changes and not any(result.diff_base.get("entities", {}).values())
+        if unchanged:
+            title = "Unchanged scene" if not session["locale"].startswith("zh") else "场景未改变"
+            summary = "This proposal makes no changes to the current scene." if not session["locale"].startswith("zh") else "此提议没有改变当前场景。"
+            note, assumptions = summary, []
         expanded = result.ok and result.operations != compile_operations
         if expanded:
             # The compiler introduced real prerequisites. Model prose written

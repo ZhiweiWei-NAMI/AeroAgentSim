@@ -12,7 +12,7 @@ import { AlternativesCompare } from './alternatives/AlternativesCompare';
 import type { AssistantSession } from './useAssistant';
 import { draftMessage } from './AssistantPanel';
 import { Contained } from './Contained';
-import { hasCompiledExpansion, parameterName, PlanSummary } from './OperationSummary';
+import { hasCompiledExpansion, isUnchangedPlan, parameterName, PlanSummary } from './OperationSummary';
 import { valueText } from './present';
 import { RegionProposal } from './RegionProposal';
 
@@ -30,7 +30,8 @@ type Tab = 'scene' | 'interactions' | 'changes' | 'story';
 type PlanBoardProps = {
   api: AssistantApi; assistant: AssistantSession; stage: Stage; waiting?: boolean; runId?: string;
   story?: Story; storyError?: string; startNs?: string; terminal: boolean;
-  initializing: boolean; canInitialize: boolean; latestVersion?: number; onInitialize: (version: number) => void; onApplied: (record: ApplyRecord) => void;
+  initializing: boolean; canInitialize: boolean; latestVersion?: number; onInitialize: (version: number) => void; onApplied: (record: ApplyRecord) => void | Promise<void>;
+  onProjectChanged?: () => void | Promise<void>;
   onHover: (ids: string[]) => void; onStep: (ids: string[]) => void; onContract: (type: string) => void; onSeek: (cut: number) => void;
   viewing?: number; onViewVersion: (version: number | undefined) => void; onClose: () => void;
 };
@@ -45,7 +46,7 @@ export function PlanBoard(props: PlanBoardProps) {
   </aside>}><PlanBoardBody {...props}/></Contained>;
 }
 
-function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, storyError, startNs, terminal, initializing, canInitialize, latestVersion, onInitialize, onApplied, onHover, onStep, onContract, onSeek, viewing, onViewVersion, onClose }: PlanBoardProps) {
+function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, storyError, startNs, terminal, initializing, canInitialize, latestVersion, onInitialize, onApplied, onProjectChanged, onHover, onStep, onContract, onSeek, viewing, onViewVersion, onClose }: PlanBoardProps) {
   const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const { session, plan: latest, busy, applied } = assistant;
   const currentStage: Stage = session?.applied.some(row=>row.plan_version===latest?.version) ? stage : 'proposed';
@@ -72,7 +73,8 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
   const plan = older ?? latest;
   if (!session || !plan) return null;
   const expanded = hasCompiledExpansion(plan);
-  const assumptions = expanded ? [] : plan.assumptions;
+  const unchanged = isUnchangedPlan(plan);
+  const assumptions = expanded || unchanged ? [] : plan.assumptions;
   const isOld = !!older && older.version !== latest?.version;
   // Which plan version actually changed the project — a shown plan that was
   // already applied is labelled "applied", never presented as an open draft.
@@ -86,7 +88,11 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
   const valid = plan.validation.state === 'valid' && plan.compile.ok && !loadingVersion && !versionError, applyDone = !!appliedForPlan;
   const confirm = async () => {
     setApplying(true); setApplyError(undefined);
-    try { onApplied(await assistant.apply(plan.version)); } catch (problem) { setApplyError(problem instanceof Error ? problem.message : String(problem)); } finally { setApplying(false); }
+    try {
+      const record=await assistant.apply(plan.version);
+      await onApplied(record);
+      await onProjectChanged?.();
+    } catch (problem) { setApplyError(problem instanceof Error ? problem.message : String(problem)); } finally { setApplying(false); }
   };
   const ask = (text: string) => void assistant.send(text,{locale,...(runId?{run_id:runId}:{})}).catch(() => undefined);
   // A question the user answered here stays answered even if a revision repeats it.
@@ -131,7 +137,7 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
             <em>{supersededBy ? L(`superseded by project version ${supersededBy.version}`, `已被项目版本 ${supersededBy.version} 取代`) : L('not running', '未运行')}</em></>
           : <>{terminal ? L('Run finished', '运行结束') : waiting ? L('Initialized · press Start', '已初始化 · 请按启动') : L('Running', '运行中')}<em className="wb-mono">{runId}</em></>}
       </span>
-      <h2>{bi(plan.title,zh)}</h2>
+      <h2>{unchanged?L('Unchanged scene','场景未改变'):bi(plan.title,zh)}</h2>
       <PlanSummary plan={plan}/>
       {expanded && <CompiledChanges plan={plan} onHover={hover}/>}
       {shownStage==='proposed' && !isOld && runId && <p className="hint" data-testid="as-pinned-run-notice">{L(`Confirm saves a new project version. Run ${runId} keeps its fixed version.`,`确认会保存新的项目版本，运行 ${runId} 仍使用其固定版本。`)}</p>}
@@ -149,7 +155,7 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
       </div>}
       {isOld && <div className="as-old-note">
         <span>{bi(plan.note, zh) || L('An earlier version, shown for comparison.', '早期版本，仅供对比。')}</span>
-        {isAlternative ? <button className="wb-btn small primary" onClick={() => void assistant.choose(plan.version)} data-testid="as-choose">{L('Choose this option', '选择此方案')}</button>
+        {isAlternative ? <button className="wb-btn small primary" disabled={unchanged || busy} onClick={() => void assistant.choose(plan.version)} data-testid="as-choose">{L('Choose this option', '选择此方案')}</button>
           : <button className="wb-btn small" onClick={() => ask(L(`Go back to version ${plan.version}, keeping everything else the same.`, `回到版本 ${plan.version}，其余保持不变。`))} disabled={busy}>{L('Go back to this version', '回到此版本')}</button>}
         <button className="wb-btn small ghost" onClick={() => view(undefined)}>{L('Show latest', '查看最新')}</button>
       </div>}
@@ -222,8 +228,9 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
               : L('Fix the problems the simulator reported.', '修复仿真器报告的问题。'))} />
           {applyError && <p className="as-note bad" role="alert">{bi(applyError,zh)}</p>}
           <div className="as-foot-actions">
-            <span className="as-quiet">{applyDone ? L('Already applied.', '已应用。') : L('Your scene changes only when you confirm.', '确认后场景才会改变。')}</span>
-            <button className="wb-btn primary as-confirm" disabled={!valid || busy || applying || applyDone} onClick={() => void confirm()} data-testid="as-confirm"
+            <span className="as-quiet">{applyDone ? L('Already applied.', '已应用。') : unchanged ? L('There are no changes to confirm.','没有需要确认的变更。') : L('Your scene changes only when you confirm.', '确认后场景才会改变。')}</span>
+            {unchanged && alternatives.length>=2 && <button className="wb-btn small" onClick={()=>setCompareAlt(true)}>{L('Choose an alternative','选择备选方案')}</button>}
+            <button className="wb-btn primary as-confirm" disabled={!valid || unchanged || busy || applying || applyDone} onClick={() => void confirm()} data-testid="as-confirm"
               title={!valid ? L('Available once the simulator has checked this version', '仿真器校验通过后可用') : busy ? L('Wait for the assistant to finish', '请等待助手完成') : undefined}>
               {applying ? <><span className="as-spin" />{L('Applying…', '正在应用…')}</> : <><Icon name="check" size={13} />{L('Confirm and apply', '确认并应用')}</>}
             </button>

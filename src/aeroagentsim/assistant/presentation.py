@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+
+def unchanged_plan(plan: dict) -> bool:
+    """Bound proposals and alternatives need actual effects, not just a recipe."""
+    difference = plan.get("diff_base")
+    return (plan["compile"]["ok"] and ("workspace" in plan["base"] or bool(plan.get("variant"))) and difference is not None
+            and not any(difference[group] for group in ("added", "changed", "removed"))
+            and not any(difference.get("entities", {}).values()))
+
 LABELS = {
     "add_lowalt_components": ("Install low-altitude components", "安装低空组件"),
     "add_place": ("Add place", "添加地点"), "update_place": ("Edit place", "修改地点"), "remove_place": ("Remove place", "移除地点"),

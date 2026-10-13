@@ -3,7 +3,7 @@ import { useI18n } from '../../i18n/I18nProvider';
 import type { AssistantApi, PlanVersion } from '../api';
 import type { DiffItem, SceneSummary } from '../api';
 import { bi, pick } from '../present';
-import { hasCompiledExpansion, PlanSummary } from '../OperationSummary';
+import { hasCompiledExpansion, isUnchangedPlan, PlanSummary } from '../OperationSummary';
 import { CompiledChanges } from '../PlanChanges';
 import { Icon } from '../icons';
 import '../alternatives.css';
@@ -49,7 +49,7 @@ export function AlternativesCompare({ api, sessionId, versions, current, onSelec
     {pair.length >= 2 && <div className="as-alt-grid" style={{ '--as-alt-n': pair.length } as CSSProperties}>
       {pair.map(({ plan }) => <article key={plan.version} className={`as-alt-col${current === plan.version ? ' is-current' : ''}`} data-testid={`as-alt-${plan.version}`} aria-current={current === plan.version || undefined}>
         <header className="as-alt-col-head">
-          <b>{plan.variant ? bi(plan.variant,zh) : L('Option', '方案')} · v{plan.version}</b>
+          <b>{isUnchangedPlan(plan)?L('Unchanged scene','场景未改变'):plan.variant ? bi(plan.variant,zh) : L('Option', '方案')} · v{plan.version}</b>
           {current === plan.version && <span className="as-alt-tag is-current" data-testid={`as-alt-active-${plan.version}`}>{L('under review', '查看中')}</span>}
           <ValidationTag plan={plan} />
         </header>
@@ -64,7 +64,7 @@ export function AlternativesCompare({ api, sessionId, versions, current, onSelec
           <DeltaList items={plan.diff_previous?.changed} scene={plan.scene} sign="~" />
           <DeltaList items={plan.diff_previous?.removed} sign="−" />
         </Group>
-        {!hasCompiledExpansion(plan) && plan.assumptions.length > 0 && <Group title={L('Assumptions', '假设')}>
+        {!hasCompiledExpansion(plan) && !isUnchangedPlan(plan) && plan.assumptions.length > 0 && <Group title={L('Assumptions', '假设')}>
           <ul className="as-alt-common">{plan.assumptions.map(text => <li key={text}>{bi(text,zh)}</li>)}</ul>
         </Group>}
         <footer className="as-alt-foot">

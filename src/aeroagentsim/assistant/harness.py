@@ -44,18 +44,104 @@ def split_suggestions(content: str) -> tuple[str, list[str]]:
     return content[:match.start()].strip(), suggestions
 
 
-def without_state_assertions(text: str, *, expanded: bool = False) -> str:
-    """State and experiment identities are rendered from current records, not model assertions."""
-    state = re.compile(
-        r"\b(?:validat\w*|pending)\b|wait.*confirm|before confirming|校验|验证|等待.*确认"
-        r"|\b(?:project|workspace|saved)\s+(?:version\b|v\d)|\bplan\s+(?:(?:revision|version)\s+)?v?\d"
-        r"|(?:项目|工作区)(?:的)?版本|(?:方案|计划)(?:修订|版本)?\s*v?\d"
-        r"|\brun\b.*\bversion\b|(?:运行|仿真).*版本"
-        r"|\b(?:can|ready to|may)\b.*\b(?:initializ\w*|start|run)\b|(?:可|能够).*?(?:初始化|启动|运行)", re.I)
-    components = re.compile(r"\b(?:engines?|components?)\b|引擎|组件", re.I)
-    sentences = re.split(r"(?<=[。！？])|(?<=[.!?])\s+|\n", text)
-    return "\n".join(sentence.strip() for sentence in sentences if sentence.strip() and
-                     not state.search(sentence) and not (expanded and components.search(sentence)))
+def without_state_assertions(text: str, *, expanded: bool = False, session: dict | None = None,
+                             plan: dict | None = None, workspace: dict | None = None,
+                             evidence: dict | None = None) -> str:
+    """Remove contradicted declarations, preserving instructions and Markdown layout."""
+    def contradicted(sentence: str) -> bool:
+        plain = re.sub(r"[*_`]", "", sentence).strip()
+        if plan is not None:
+            from .presentation import unchanged_plan
+
+            if unchanged_plan(plan) and re.search(r"(?:press|click)\s+confirm|点击.*确认", plain, re.I):
+                return True
+        # An imperative or conditional describes a workflow, not current readiness.
+        if re.match(r"(?:please\s+)?(?:click|press|open|select|choose|validate|save|initialize|start|wait|after|once|if|before)\b|请|点击|打开|选择|先|校验并|保存为|初始化后|启动后|如果|通过后", plain, re.I):
+            return False
+        if expanded and re.search(r"engines?|components?|引擎|组件", plain, re.I) and re.search(r"\bno\b|\bnot\b|without|没有|不添加|不新增|未添加|未新增", plain, re.I):
+            return True
+        if workspace is not None:
+            current = workspace.get("validation")
+            valid_draft = bool(current and current.get("revision") == workspace["revision"] and current.get("valid") is True)
+            latest = workspace.get("latest_version")
+            ready = workspace["dirty"] is False and latest is not None and latest.get("validation", {}).get("valid") is True
+            conditional = re.search(r"\b(?:after|once|when|if)\b|之后|后再|通过后|保存后|如果", plain, re.I)
+            if not ready and not conditional and re.search(r"\b(?:can|ready to|may)\b.*\b(?:initializ\w*|start|run)\b|(?:可|能够).*?(?:初始化|启动|运行)", plain, re.I):
+                return True
+            if workspace["dirty"] and not valid_draft and re.search(r"nothing.*validat|no.*(?:need|require).*validat|already validated|无需.*(?:校验|验证)|已经?校验|已通过校验", plain, re.I):
+                return True
+            version = re.search(r"(?:project|workspace|saved)\s+version\s+(?:(?:is|still|remains|was|v)\s*)*(\d+)|(?:项目|工作区)(?:的)?版本\s*(?:仍是|为|是|v|已保存为)*\s*(\d+)", plain, re.I)
+            if version and re.search(r"applied|saved|latest|current|still|pinned|固定|已应用|已保存|最新|当前|仍是", plain, re.I):
+                claimed = int(version.group(1) or version.group(2))
+                if evidence and re.search(r"\brun\b|运行|仿真", plain, re.I):
+                    actual = evidence.get("workspace_version")
+                elif re.search(r"latest|current|still|最新|当前|仍是", plain, re.I):
+                    actual = latest["version"] if latest else None
+                else:
+                    known = [r["version"] for r in (session or {}).get("applied", [])]
+                    return bool(known) and claimed not in known
+                if actual is not None and claimed != actual:
+                    return True
+        if plan is not None:
+            reference = re.search(r"\bplan\s+(?:(?:revision|version)\s+)?v?(\d+)|(?:方案|计划)(?:修订|版本)?\s*v?(\d+)", plain, re.I)
+            target = plan
+            if reference:
+                revision = int(reference.group(1) or reference.group(2))
+                target = (session or {}).get("plans", {}).get(str(revision))
+            if target is not None:
+                state = target["validation"]["state"]
+                if state != "valid" and re.search(r"(?:is|has been|already)\s+validated|passed.*(?:check|validat)|校验通过|已通过校验|已校验", plain, re.I):
+                    return True
+                if state == "valid" and re.search(r"validation\s+(?:is\s+)?(?:pending|failed)|still.*validat|等待校验|校验失败", plain, re.I):
+                    return True
+                from .presentation import unchanged_plan
+
+                if unchanged_plan(target) and re.search(r"(?:ready|can|may|should|press|click).*confirm|可.*确认|点击.*确认|应该.*确认", plain, re.I):
+                    return True
+        return False
+
+    def clean(content: str) -> str:
+        # Split prose only; numbered prefixes and decimal values stay attached.
+        parts = re.split(r"(?<=[。！？])|(?<=[.!?])(?=\s+[^\d\s])", content)
+        kept = [part for part in parts if not contradicted(part)]
+        return content if len(kept) == len(parts) else "".join(kept).strip()
+
+    lines = []
+    fence = False
+    for line in text.splitlines():
+        if line.lstrip().startswith(("```", "~~~")):
+            fence = not fence
+            lines.append(line)
+        elif fence or not line.strip():
+            lines.append(line)
+        elif line.lstrip().startswith("|"):
+            # Filter inside cells, never split or merge a Markdown table row.
+            lines.append("|".join(clean(cell) for cell in line.split("|")))
+        else:
+            prefix = re.match(r"^(\s*(?:[-+*]|\d+[.)])\s+|\s*#{1,6}\s+|\s*>\s*)", line)
+            body = line[prefix.end():] if prefix else line
+            cleaned = clean(body)
+            if cleaned:
+                lines.append((prefix.group() if prefix else "") + cleaned)
+    return "\n".join(lines).strip()
+
+
+def without_effects_section(text: str) -> str:
+    """The effects section has one owner: the compiler's current revision diff."""
+    lines, skipping, fence = [], False, False
+    heading = re.compile(r"^\s*(?:#{1,6}\s*)?(?:\*\*)?(?:实际变更|实际改动|What this changes|Actual changes)\s*[:：]?(?:\*\*)?\s*$", re.I)
+    for line in text.splitlines():
+        if line.lstrip().startswith(("```", "~~~")):
+            fence = not fence
+        if not fence and heading.match(line):
+            skipping = True
+            continue
+        if skipping:
+            if not line.strip() or re.match(r"\s*(?:[-+*]|\d+[.)]|\|)", line):
+                continue
+            skipping = False
+        lines.append(line)
+    return "\n".join(lines).strip()
 
 
 def run_evidence(tools: ToolRunner, identifier: str, context: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -224,15 +310,24 @@ class Harness:
             expanded = "_model_prose" in plan or any(op["op"] == "add_lowalt_components" and
                 not any(requested["op"] == "add_lowalt_components" for requested in plan["operations"])
                 for op in plan["compile"].get("operations", []))
+            workspace = self.tools.workspace_state(identifier) if isinstance(self.tools, ToolRunner) else None
             if not used_grounded_facts:
-                text = without_state_assertions(text, expanded=expanded)
+                text = without_state_assertions(text, expanded=expanded, session=session, plan=plan,
+                                                workspace=workspace, evidence=evidence)
             zh = str((context or {}).get("locale", session["locale"])).startswith("zh")
             unapplied = not any(record["plan_version"] == plan["version"] for record in session["applied"])
-            if expanded and unapplied and plan.get("what_changes"):
-                key = "text_zh" if zh else "text"
-                effects = ("实际变更：\n" if zh else "What this changes:\n") + "\n".join("- " + row[key] for row in plan["what_changes"])
-                text = (text + "\n\n" if text else "") + effects
-            workspace = self.tools.workspace_state(identifier) if isinstance(self.tools, ToolRunner) else None
+            if unapplied and plan.get("what_changes"):
+                from .presentation import change_summaries
+
+                has_effects = without_effects_section(text) != text
+                if expanded or has_effects:
+                    text = without_effects_section(text)
+                    difference = plan.get("diff_previous") if plan.get("parent") else None
+                    rows = change_summaries(difference) if difference is not None else plan["what_changes"]
+                    if rows:
+                        key = "text_zh" if zh else "text"
+                        effects = ("实际变更：\n" if zh else "What this changes:\n") + "\n".join("- " + row[key] for row in rows)
+                        text = (text + "\n\n" if text else "") + effects
             status = plan_status(session, plan, workspace=workspace, evidence=evidence, zh=zh)
             text = (text + "\n\n" if text else "") + status
         self.sessions.append(identifier, {"role": "assistant", "content": text + ("\nSuggestions: " + " | ".join(suggestions) if suggestions else "")})

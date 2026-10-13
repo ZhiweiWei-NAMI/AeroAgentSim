@@ -68,9 +68,17 @@ export function hasCompiledExpansion(plan: PlanVersion): boolean {
     !plan.operations.some(op=>op.op==='add_lowalt_components');
 }
 
+export function isUnchangedPlan(plan: PlanVersion): boolean {
+  const diff=plan.diff_base;
+  return plan.compile.ok && (typeof plan.base.workspace==='string' || !!plan.variant) && !!diff &&
+    ![...diff.added,...diff.changed,...diff.removed].length &&
+    !Object.values(diff.entities ?? {}).some(ids=>ids.length>0);
+}
+
 /** The compiler's revision summaries sometimes contain a full operation dump. */
 export function PlanSummary({ plan }: { plan: PlanVersion }) {
   const {locale}=useI18n(), zh=locale==='zh-CN', L: Lang=(en,cn)=>zh?cn:en;
+  if(isUnchangedPlan(plan))return <p>{L('This proposal makes no changes to the current scene.','此提议没有改变当前场景。')}</p>;
   const machineSummary=plan.operations.some(op=>plan.summary.includes(`${op.op}:`)) && /[{}]/.test(plan.summary);
   if(!machineSummary && !hasCompiledExpansion(plan))return plan.summary?<p>{bi(plan.summary,zh)}</p>:null;
   return <ul className="as-arrangement" data-testid="as-arrangement">{effectiveOperations(plan).map(op=>{

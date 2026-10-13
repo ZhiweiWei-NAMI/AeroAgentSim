@@ -20,6 +20,11 @@ KIND_LABELS = {
 }
 FIELD_LABELS = {
     "wind.speed_mps": ("Wind speed", "风速"), "speed_mps": ("Wind speed", "风速"),
+    "east_mps": ("Eastward wind velocity", "向东风速分量"),
+    "north_mps": ("Northward wind velocity", "向北风速分量"),
+    "up_mps": ("Upward wind velocity", "向上风速分量"),
+    "direction_deg": ("Wind direction (counterclockwise from east)", "风向（自东向逆时针）"),
+    "vectors": ("Wind velocity and direction", "风速分量与风向"),
     "after_speed_mps": ("Wind speed after event", "事件结束后风速"),
     "allocation": ("Allocation algorithm", "分配算法"),
     "path_planning": ("Route planning algorithm", "航线规划算法"),
@@ -103,7 +108,7 @@ def _metadata(name: str, kind: str, identity: str) -> tuple[str, str, str | None
     if identity == "algorithms" and key == "plugin":
         key = name.split(".", 1)[0]
     en, zh = FIELD_LABELS.get(name, FIELD_LABELS.get(key, (_humanize(name), _humanize(name))))
-    unit = {"lat": "°", "lon": "°", "bounds": "°", "alt": "m", "wind_speed": "m/s", "wind_limit": "m/s", "order_rate": "/s", "rate_per_s": "/s"}.get(key)
+    unit = {"lat": "°", "lon": "°", "bounds": "°", "direction_deg": "°", "alt": "m", "wind_speed": "m/s", "wind_limit": "m/s", "order_rate": "/s", "rate_per_s": "/s"}.get(key)
     if key in POSITION_FIELDS:
         unit = "m"
     if unit is None:

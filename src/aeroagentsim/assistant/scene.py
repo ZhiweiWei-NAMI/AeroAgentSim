@@ -188,12 +188,25 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
         return {"type": type_id, "ancestry": ancestry, "label": type_id}
     def label(identity: str | None) -> str | None:
         return entities.get(identity, {}).get("label", identity)
-    wind_profiles = [v for e in document.get("engines", {}).values() if e["plugin"] == "environment"
-                     for p in e["config"].get("profiles", {}).values() for k, v in p.items()
-                     if k in {"lowalt.wind", "oo:digital_twin.wind.horizontalVelocity"}]
+    wind_sources = [(engine, identity, key, profile) for engine, e in document.get("engines", {}).items() if e["plugin"] == "environment"
+                    for identity, fields in e["config"].get("profiles", {}).items() for key, profile in fields.items()
+                    if key in {"lowalt.wind", "oo:digital_twin.wind.horizontalVelocity"}]
+    wind_profiles = [profile for _, _, _, profile in wind_sources]
     def wind_speed(value):
         vectors = value if isinstance(value[0], list) else [value]
         return _common([math.sqrt(sum(v * v for v in vector)) for vector in vectors])
+    def wind_vectors(value):
+        vectors = value if isinstance(value[0], list) else [value]
+        # Keep every configured sample. Equal magnitudes do not imply equal direction.
+        return [{"east_mps": v[0], "north_mps": v[1],
+                 **({"up_mps": v[2]} if len(v) == 3 else {}),
+                 "direction_deg": math.degrees(math.atan2(v[1], v[0])) % 360 if v[0] or v[1] else None}
+                for v in vectors]
+    wind_details = {engine + "." + identity + "." + key: {
+        "mode": p["mode"], **({"vectors": wind_vectors(p["value"])} if "value" in p else {}),
+        "gusts": [{"start_s": g["start_ns"] / SECOND, "end_s": g["end_ns"] / SECOND,
+                   "vectors": wind_vectors(g["value"])} for g in p.get("gusts", [])]}
+        for engine, identity, key, p in wind_sources}
     speeds = [wind_speed(p["value"]) for p in wind_profiles if "value" in p]
     gusts = [{"start_s": g["start_ns"] / SECOND, "end_s": g["end_ns"] / SECOND,
               "speed_mps": wind_speed(g["value"])}
@@ -365,7 +378,7 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
     run_mode = "interactive" if any(s["id"] == "operator" and s["initial_watermark_ns"] == 0 for s in streams) else "scheduled"
     return {"title": document.get("title", document.get("id")), "city": document.get("city"),
             "duration_s": document["run"]["until_ns"] / SECOND, "run_mode": run_mode,
-            "environment": {"wind": {"speed_mps": _common(speeds), "gusts": gusts}, "zones": zones},
+            "environment": {"wind": {"speed_mps": _common(speeds), "gusts": gusts, "profiles": wind_details}, "zones": zones},
             "fleets": fleets, "places": places, "workloads": workloads, "events": events, "rules": rules, "routine": routine,
             "algorithms": copy.deepcopy(document.get("algorithms", {})), "cooperation": cooperation,
             "controls": copy.deepcopy(controls) if controls is not None else {},
@@ -422,7 +435,7 @@ def _traffic(document: dict, entities: dict, packages: list[dict], contract) -> 
 # Incidents and handoff points already appear as events and places; the provider follows from the helpers' mode.
 MIRRORED = {"cooperation": {"incidents", "handoff_points", "provider"}}
 SECTION_LABELS = {"title": ("Title", "标题"), "city": ("City", "城市"), "duration_s": ("Duration", "时长"), "run_mode": ("Run mode", "运行模式"),
-                  "environment": ("Environment", "环境"), "algorithms": ("Algorithms", "算法"), "cooperation": ("Cooperation rules", "协作规则"), "controls": ("Run controls", "运行控制"), "origin": ("ENU origin", "ENU 原点")}
+                  "environment": ("Environment", "环境"), "algorithms": ("Algorithms", "算法"), "cooperation": ("Cooperation rules", "协作规则"), "controls": ("Run controls", "运行控制"), "origin": ("ENU origin", "ENU 原点"), "region": ("Map region", "地图区域")}
 
 
 def _leaf_changes(before: Any, after: Any, prefix: str = "") -> list[dict]:
@@ -430,6 +443,9 @@ def _leaf_changes(before: Any, after: Any, prefix: str = "") -> list[dict]:
     if isinstance(before, dict) and isinstance(after, dict):
         return [row for key in sorted(before.keys() | after.keys()) if key != "labels"
                 for row in _leaf_changes(before.get(key), after.get(key), f"{prefix}.{key}" if prefix else key)]
+    if prefix.startswith("wind.profiles.") and isinstance(before, list) and isinstance(after, list) and len(before) == len(after):
+        return [row for index, (old, new) in enumerate(zip(before, after), 1)
+                for row in _leaf_changes(old, new, f"{prefix}.{index}")]
     return [] if before == after else [{"name": prefix, "before": before, "after": after}]
 
 
@@ -450,7 +466,7 @@ def diff(before: dict, after: dict) -> dict:
             fields = [{"name": k, "before": old[identity].get(k), "after": new[identity].get(k)} for k in sorted(old[identity].keys() | new[identity].keys()) if old[identity].get(k) != new[identity].get(k)]
             if fields:
                 result["changed"].append({"kind": kind, "id": identity, "label": new[identity].get("label", identity), **({"label_zh": new[identity]["label_zh"]} if "label_zh" in new[identity] else {}), "fields": fields})
-    for section in ("title", "city", "duration_s", "run_mode", "environment", "algorithms", "cooperation", "controls", "origin"):
+    for section in ("title", "city", "duration_s", "run_mode", "environment", "algorithms", "cooperation", "controls", "origin", "region"):
         old_value, new_value = before.get(section), after.get(section)
         if old_value == new_value:
             continue
