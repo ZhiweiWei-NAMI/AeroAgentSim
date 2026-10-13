@@ -5,7 +5,6 @@ import { AddFleet, fleetEditingOf, fleetMembers, type FleetEditing } from './Add
 import { RemoveEntity } from './RemoveEntity';
 import { operation } from '../operations';
 import { OperationDiff, operationText, useOperationsReview } from './Operations';
-import { pointer } from '../../form';
 
 /** Fleets are server structures (C11 add_fleet / set_fleet / remove_fleet, generated members, or draft
  * generators). This list never mutates the draft itself: adding and editing go through the operations
@@ -125,6 +124,3 @@ export function RemoveFleet({ api, studioApi, project, draft, onProject, L, flee
     </div>
   </div>;
 }
-
-/** Kept for existing imports: the draft pointer of a generator entry (read-only display use). */
-export const generatorPath = (name: string) => pointer('generators', name);

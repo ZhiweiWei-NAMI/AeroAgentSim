@@ -67,5 +67,3 @@ export function CategoryIcon({ category, size = 20 }: { category: Category; size
       return <svg {...common}><circle cx="8" cy="9" r="4" fill="#0072b2" /><circle cx="16" cy="9" r="4" fill="#d55e00" opacity="0.85" /><circle cx="12" cy="16" r="4" fill="#009e73" opacity="0.85" /></svg>;
   }
 }
-
-export const TEMPLATE_CATEGORIES: Category[] = ['logistics', 'emergency', 'inspection', 'agriculture', 'mobility', 'security', 'airspace', 'weather', 'energy', 'mixed'];

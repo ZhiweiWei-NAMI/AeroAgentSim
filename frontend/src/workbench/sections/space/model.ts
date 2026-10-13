@@ -23,10 +23,6 @@ export interface RegionPreview {
 /** Network result as written to draft.network by the backend. */
 export interface NetworkResult { status?: string; edge_count?: number; lane_count?: number; command?: string; location?: Record<string, unknown> | null }
 
-export async function fetchExtracts(api: WorkbenchApi, signal?: AbortSignal): Promise<ExtractInfo[]> {
-  return (await fetchMapCatalog(api, signal)).extracts;
-}
-
 export async function fetchMapCatalog(api: WorkbenchApi, signal?: AbortSignal): Promise<MapCatalog> {
   const catalog = await api.request<MapCatalog>('/v1/studio/catalog', { signal });
   if (!Array.isArray(catalog?.extracts)) throw new TypeError('The map catalog has no extract list.');

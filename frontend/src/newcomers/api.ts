@@ -28,4 +28,3 @@ export class TemplateApi {
  async compare(ids:string[],signal?:AbortSignal){if(ids.length<2||ids.length>4)throw Error('Choose two to four runs to compare.');return decodeComparison(await this.request<unknown>(`/v1/runs/compare?ids=${ids.map(encodeURIComponent).join(',')}`,undefined,signal));}
  async algorithms(signal?:AbortSignal){return decodeAlgorithms(await this.request<unknown>('/v1/algorithms',undefined,signal));}
 }
-export function consoleApiBase(search:string){return new URLSearchParams(search).get('api')??window.location.origin;}

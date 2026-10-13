@@ -1,6 +1,3 @@
-import { operation } from '../operations';
-import type { Draft } from './model';
-import { siteIds } from './model';
 import { parseStagedNumber } from './op-ui';
 
 /** Params for the C11 operations the Tasks / Components / Run forms stage (schemas on GET /v1/studio/operations). */
@@ -77,9 +74,6 @@ export function cooperationParams(part: {
   return out;
 }
 
-/** set_wind takes speed only — the operation schema has no direction parameter. */
-export const setWindOp = (speed_mps: number) => operation('set_wind', { speed_mps });
-
 /** add_gust: end must be after start and within the run horizon; speed ≥ 0. Returns the params or a field error. */
 export function gustProblem(gust: { start_s: string; end_s: string; speed_mps: string; duration_s: number | undefined }, zh: boolean): Record<string, string> | undefined {
   const L = (en: string, cn: string) => (zh ? cn : en);
@@ -91,21 +85,4 @@ export function gustProblem(gust: { start_s: string; end_s: string; speed_mps: s
   if (start !== undefined && end !== undefined && start >= 0 && end >= 0 && end <= start) errors.end_s = L('End must be after start.', '结束必须晚于开始。');
   if (!errors.end_s && gust.duration_s !== undefined && end !== undefined && end > gust.duration_s) errors.end_s = L(`Must stay within the run duration (${gust.duration_s} s).`, `必须处于运行时长（${gust.duration_s} 秒）之内。`);
   return Object.keys(errors).length ? errors : undefined;
-}
-export const gustOp = (gust: { start_s: number; end_s: number; speed_mps: number }) =>
-  operation('add_gust', { start_s: gust.start_s, end_s: gust.end_s, speed_mps: gust.speed_mps });
-
-/** Incidents: one point event with a place/ENU position and a time in seconds. */
-export const addIncidentOp = (input: { id: string; at: string; time_s: number }) =>
-  operation('add_incident', { id: input.id, kind: 'person_fall', at: input.at, time_s: input.time_s });
-export const setIncidentOp = (input: { id: string; time_s: number }) =>
-  operation('set_incident', { id: input.id, time_s: input.time_s });
-
-/** Run horizon in seconds (set_duration when lowalt, run.until_ns otherwise). */
-export const durationOp = (seconds: number) => operation('set_duration', { seconds });
-export const untilNs = (seconds: number) => Math.round(seconds * 1e9);
-
-/** Inline "no facility yet" helper: the ids the order forms may pick endpoints from. */
-export function placeIds(draft: Draft): string[] {
-  return siteIds(draft);
 }

@@ -433,7 +433,6 @@ export const geometryPolygons = (features: GeometryFeature[]): MapRing[][] => {
   return polygons;
 };
 
-export const enuRings = (features: GeometryFeature[]): MapRing[] => geometryPolygons(features).map(polygon => polygon[0]);
 
 /** C10 preview.geometry / compiled roads ENU polylines → map polylines. */
 export const enuLines = (lines: RegionRoad[] | undefined | null): MapRing[] => (lines ?? []).map(road => {

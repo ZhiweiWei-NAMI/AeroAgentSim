@@ -131,10 +131,6 @@ export async function applyOperations(api: WorkbenchApi, project: Project, opera
   });
 }
 
-export function operationCatalogue(api: WorkbenchApi, signal?: AbortSignal) {
-  return api.request<OperationSpec[]>('/v1/studio/operations', { signal });
-}
-
 /** Reads the structured 422 detail; other failures keep their message. */
 export function operationProblem(problem: unknown): OperationProblem {
   if (problem instanceof ApiError) {

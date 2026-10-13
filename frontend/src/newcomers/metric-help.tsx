@@ -25,7 +25,6 @@ function explanations(locale: string): Record<string, string> {
   };
 }
 
-export const METRIC_HELP = explanations('en-US');
 export function metricHelp(id: string, locale = 'en-US'): string | undefined {
   return explanations(locale)[id];
 }
