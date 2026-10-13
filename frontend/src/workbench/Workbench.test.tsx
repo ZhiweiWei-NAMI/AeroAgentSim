@@ -81,23 +81,30 @@ it.each(['keyboard', 'button'])('T4-07: Esc restores focus to the %s palette inv
   expect(control).toHaveFocus();
 });
 
-it('T2-R4-001: fast Confirm refreshes the applied workspace before its initial load, and an older load cannot overwrite it', async () => {
+it.each(['before','after'])('T2-R4-001: fast Confirm refreshes the applied workspace and ignores an initial load arriving %s the authoritative refresh', async order => {
   let finishInitial!: (value: Project) => void;
+  let finishRefresh!: (value: Project) => void;
   const stale = { ...project, latest_version: null, dirty: true, revision: 4 };
   const fresh = { ...project, revision: 6, latest_version: { ...project.latest_version!, version: 1, revision: 6 } };
   const record: ApplyRecord = { plan_version: 1, workspace_id: 'project', version: 1, revision: 6, applied_at: '', report: { created: [], changed: [], removed: [] } };
   vi.mocked(WorkbenchApi.prototype.project).mockReset()
     .mockImplementationOnce(() => new Promise<Project>(resolve => { finishInitial = resolve; }))
-    .mockResolvedValue(fresh);
+    .mockImplementationOnce(() => new Promise<Project>(resolve => { finishRefresh = resolve; }));
   mocks.session!.applied = [];
+  mocks.session!.plan = {...mocks.session!.plan!,operations:[{id:'duration',op:'set_duration',params:{seconds:600}}],
+    diff_base:{added:[],removed:[],changed:[{id:'run',kind:'scene',label:'Run',fields:[{name:'duration_s',before:300,after:600}]}]}};
   mocks.apply.mockImplementation(async () => { mocks.session = { ...mocks.session!, applied: [record] }; return record; });
   setup();
   fireEvent.click(await screen.findByTestId('as-confirm'));
+  await waitFor(() => expect(WorkbenchApi.prototype.project).toHaveBeenCalledTimes(2));
+  expect(WorkbenchApi.prototype.project).toHaveBeenNthCalledWith(2,record.workspace_id);
+  if(order==='before')await act(async () => finishInitial(stale));
+  await act(async () => finishRefresh(fresh));
   await waitFor(() => expect(screen.getByTestId('wb-version-chip')).toHaveTextContent('v1'));
   const initialize = screen.getByTestId('as-initialize');
   expect(initialize).toHaveTextContent('Initialize version 1'); expect(initialize).toBeEnabled();
   expect(WorkbenchApi.prototype.project).toHaveBeenCalledTimes(2);
-  await act(async () => finishInitial(stale));
+  if(order==='after')await act(async () => finishInitial(stale));
   expect(screen.getByTestId('wb-version-chip')).toHaveTextContent('v1');
   expect(screen.getByTestId('wb-init')).toHaveTextContent('Initialize v1');
   fireEvent.click(initialize);

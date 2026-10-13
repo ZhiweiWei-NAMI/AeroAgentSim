@@ -39,6 +39,20 @@ it('does not mark equal research fields changed on refresh or recompute the prev
   expect(result.current.assistant.draftState?.changes).toEqual([]);
   expect(server.preview).toHaveBeenCalledTimes(1);
 });
+it('T2-R4-002: uses server fixture digests and recomputes when file bytes change without a scenario edit',async()=>{
+  agent();
+  const planPath='/plan/files/decisions.json', workspacePath='/workspace/fixtures/decisions.json';
+  const scenario=(fixture_path:string)=>({engines:{decisions:{config:{fixture_path}}}});
+  server.preview.mockResolvedValue({name:'Plan',scenario:scenario(planPath),fixture_digests:{[planPath]:'sha256:same'}});
+  const saved:Project={...project(),scenario:scenario(workspacePath),fixture_digests:{[workspacePath]:'sha256:same'}};
+  const {result,rerender}=renderHook(({draft})=>useAssistantMode({...args,project:draft}),{initialProps:{draft:saved}});
+  await waitFor(()=>expect(result.current.assistant.draftState?.changes).toEqual([]));
+  rerender({draft:{...saved,fixture_digests:{[workspacePath]:'sha256:changed'}}});
+  expect(result.current.assistant.draftState?.changes).toEqual([
+    {path:['engines','decisions','config','fixture_path'],before:'sha256:same',after:'sha256:changed'},
+  ]);
+  expect(server.preview).toHaveBeenCalledTimes(1);
+});
 it('T4-R2-016: forwards region preview geometry and the new scene instead of inheriting the old scene',async()=>{
   agent(false);server.assistant={...server.assistant,plan:{...plan,operations:[{id:'region',op:'set_region',params:{extract:'wujiaochang'}}]}};
   const old=project();

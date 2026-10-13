@@ -5,7 +5,7 @@ import { AddObjects } from './AddObjects';
 import { forceSvgRenderer } from '../space/leafletTestSetup';
 
 const scroll = Element.prototype.scrollIntoView;
-beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); forceSvgRenderer(); });
+beforeEach(() => { sessionStorage.clear(); Element.prototype.scrollIntoView = vi.fn(); forceSvgRenderer(); });
 afterEach(() => { Element.prototype.scrollIntoView = scroll; cleanup(); });
 
 const L = (en: string, _zh?: string) => en;
@@ -60,5 +60,5 @@ it('keeps creation contract unchanged when picking', async () => {
   fireEvent.change(screen.getByLabelText('east (m)'), { target: { value: '12.3' } });
   fireEvent.change(screen.getByLabelText('north (m)'), { target: { value: '34.4' } });
   fireEvent.change(screen.getByLabelText('id (or id prefix)'), { target: { value: 'uav-1' } });
-  expect(screen.getByRole('button', { name: 'Create 1 objects' })).toBeEnabled();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Create 1 objects' })).toBeEnabled());
 });

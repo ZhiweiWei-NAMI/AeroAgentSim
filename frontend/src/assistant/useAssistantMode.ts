@@ -79,7 +79,7 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
   const [focus, setFocus] = useState<string[]>([]);
   const [reveal, setReveal] = useState<{ key: string; version: number }>();
   const changes = useMemo(() => applied && project && preview?.version===applied.plan_version
-    ? draftChanges(preview.scenario,project.scenario) : undefined,[applied,project?.scenario,preview]);
+    ? draftChanges(preview.scenario,project.scenario,{before:preview.fixture_digests,after:project.fixture_digests}) : undefined,[applied,project?.scenario,project?.fixture_digests,preview]);
   const zh = locale === 'zh-CN';
   const overlay = useMemo<PreviewOverlay | undefined>(() => {
     if (!live || !board) return undefined;

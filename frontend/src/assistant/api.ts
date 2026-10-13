@@ -112,6 +112,7 @@ export interface RegionPreview {
 }
 export interface PlanPreview {
   scenario: Record<string, any>; name: string; demo_console?: Workspace['demo_console'];
+  fixture_digests?: Workspace['fixture_digests'];
   region?: Workspace['region']; scene?: Workspace['scene']; region_preview?: RegionPreview;
   scene_source?: Workspace['scene_source']; preview?: Workspace['preview'];
 }

@@ -10,6 +10,7 @@ from fastapi import APIRouter, FastAPI, HTTPException, Query
 
 from aeroagentsim.authoring.templates import TemplateRegistry
 from aeroagentsim.authoring.workspace import WorkspaceConflict
+from aeroagentsim.scenario.paths import fixture_digests
 
 from .connection import ConnectionStore, now
 from .harness import Harness
@@ -135,7 +136,8 @@ def create_router(store: Any, *, run_root: Path, templates: Any, connection: Con
             plan = sessions.plan(identifier, version)
             if not plan["compile"]["ok"]:
                 raise ValueError("Cannot preview a plan that did not compile / 无法预览未编译成功的方案")
-            result = {"scenario": plan["_document"], "name": plan["title"]}
+            result = {"scenario": plan["_document"], "name": plan["title"],
+                      "fixture_digests": fixture_digests(plan["_document"], sessions.plan_directory(identifier, version) / "files")}
             result.update(plan.get("_geography", {}))
             if plan["_document"].get("city") == "huangpu":
                 # Same descriptor a new workspace receives, so the proposal previews the real city.

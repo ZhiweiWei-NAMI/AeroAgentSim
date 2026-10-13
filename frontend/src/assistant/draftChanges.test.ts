@@ -21,13 +21,35 @@ it('reports removal and addition distinctly, preserving false, zero and null as 
     {path:['added'],before:undefined,after:0},{path:['removed'],before:1,after:undefined},{path:['wind'],before:0,after:null},
   ]);
 });
+it('T2-R4-002: compares canonical numbers and reordered keys without rounding lossless integers',()=>{
+  const before={entities:[{id:'pad',facts:{position:[0,{$number:'5.00e0'},{$integer:'9007199254740993'}],capacity:{$number:'2.0'}}}],run:{seed:43}};
+  const after={run:{seed:{$number:'4.3e1'}},entities:[{facts:{capacity:2,position:[{$number:'-0.0'},5,{$number:'9007199254740993.000'}]},id:'pad'}]};
+  expect(draftChanges(before,after)).toEqual([]);
+  expect(draftChanges({value:{$integer:'9007199254740993'}},{value:{$integer:'9007199254740992'}})).toEqual([
+    {path:['value'],before:{$integer:'9007199254740993'},after:{$integer:'9007199254740992'}},
+  ]);
+  for(const value of [false,null,'0'])expect(draftChanges({value:{$number:'0.0'}},{value})).toHaveLength(1);
+});
+it('T2-R4-002: compares verified fixture bytes across copies and detects edits at an unchanged path',()=>{
+  const scene=(fixture_path:string)=>({engines:{decisions:{plugin:'traffic_decisions',config:{fixture_path}}}});
+  const plan='/plan/files/decisions.json', workspace='/workspace/fixtures/decisions.json';
+  expect(draftChanges(scene(plan),scene(workspace),{before:{[plan]:'sha256:same'},after:{[workspace]:'sha256:same'}})).toEqual([]);
+  const changed=[{path:['engines','decisions','config','fixture_path'],before:'sha256:same',after:'sha256:changed'}];
+  expect(draftChanges(scene(plan),scene(workspace),{before:{[plan]:'sha256:same'},after:{[workspace]:'sha256:changed'}})).toEqual(changed);
+  expect(draftChanges(scene(workspace),scene(workspace),{before:{[workspace]:'sha256:same'},after:{[workspace]:'sha256:changed'}})).toEqual(changed);
+  const shared=scene(workspace);
+  expect(draftChanges(shared,shared,{before:{[workspace]:'sha256:same'},after:{[workspace]:'sha256:changed'}})).toEqual(changed);
+  expect(draftChanges(scene(plan),scene(workspace),{before:{[plan]:'sha256:same'}})).toHaveLength(1);
+});
 it('T4-R2-016: passes through proposal geography instead of retaining the old workspace geography',()=>{
   const old:Workspace={id:'w',name:'Existing',scenario:{},region:{extract:'old',bounds:[1,2,3,4],alt:0,level_height_m:3},scene:{origin:{lat:1,lon:2,alt:0},bounds:[1,2,3,4],geojson:{type:'FeatureCollection',features:[]},roads:[],ground:{width_m:100,depth_m:100},diagnostics:[],attribution:'OSM'}};
   const scene:Workspace['scene']={...old.scene!,origin:{lat:31.3,lon:121.5,alt:0}};
   const region={extract:'wujiaochang',bounds:[121,31,122,32],alt:0,level_height_m:3.5};
   const scene_source={kind:'osm',extract:'wujiaochang'};
   const preview={origin:scene.origin,bounds:region.bounds,geometry:{buildings:scene.geojson,roads:[],truncated:false}};
-  const next=proposalWorkspace(old,{name:'New',scenario:{new:true},scene,region,scene_source,preview},'s',true);
+  const fixture_digests={'/plan/fixture.json':'sha256:plan'};
+  const next=proposalWorkspace({...old,fixture_digests:{'/workspace/fixture.json':'sha256:workspace'}},{name:'New',scenario:{new:true},fixture_digests,scene,region,scene_source,preview},'s',true);
+  expect(next.fixture_digests).toBe(fixture_digests);
   expect(next.scene_source).toBe(scene_source);expect(next.preview).toBe(preview);expect(next.proposal).toBe(true);expect(next.scene).toBe(scene);expect(next.region).toBe(region);expect(next.scenario).toEqual({new:true});
   const unavailable=proposalWorkspace(old,{name:'New',scenario:{}},'s',true);
   expect(unavailable.scene).toBeUndefined();expect(unavailable.region).toBeUndefined();

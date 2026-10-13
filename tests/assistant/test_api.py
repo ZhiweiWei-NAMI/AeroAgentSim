@@ -133,7 +133,7 @@ def test_only_confirm_writes_and_duplicate_confirm_is_idempotent(api: dict[str, 
     plan = client.get(f"/v1/assistant/sessions/{identifier}/plans/{result['version']}").json()
     assert plan["validation"]["state"] == "valid" and "_document" not in plan
     preview = client.get(f"/v1/assistant/sessions/{identifier}/plans/1/scenario").json()
-    assert preview == {"scenario": {"id": "fixture", "entities": []}, "name": "Fixture / 测试"}
+    assert preview == {"scenario": {"id": "fixture", "entities": []}, "name": "Fixture / 测试", "fixture_digests": {}}
     assert api["applied"] == []
     confirmed = client.post(f"/v1/assistant/sessions/{identifier}/apply", json={"plan_version": 1})
     assert confirmed.status_code == 200 and len(api["applied"]) == 1

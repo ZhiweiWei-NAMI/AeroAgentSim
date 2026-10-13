@@ -20,7 +20,7 @@ import yaml
 from aeroagentsim.platform.simulation import Simulation
 from aeroagentsim.scenario import Scenario, load_scenario
 from aeroagentsim.scenario.loader import UniqueLoader
-from aeroagentsim.scenario.paths import source_path
+from aeroagentsim.scenario.paths import fixture_digests, source_path
 
 from .catalog import Catalog, ScenarioCatalog, SnapshotCatalog
 from .templates import (
@@ -1019,6 +1019,7 @@ class WorkspaceStore:
         """The draft plus its version state, as the console shows it."""
         draft = self.get(identifier)
         self._resolve_city(draft, require_assets=False)
+        draft["fixture_digests"] = fixture_digests(draft["scenario"], self.directory(identifier))
         versions = self.versions(identifier)
         latest = versions[0] if versions else None
         draft["latest_version"] = latest

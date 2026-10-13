@@ -213,9 +213,10 @@ def test_t2_r3_009_status_follows_validation_and_latest_form_saved_version(proje
 def test_t2_as_012_completion_uses_validation_that_finished_after_its_prompt(project):
     tools, identifier, _ = project
     tools.on_plan = None
-    propose(tools, identifier, [operation("set_duration", "duration", seconds=600)])
+    propose(tools, identifier, [operation("set_duration", "duration", seconds=300)])
     plan = tools.sessions.plan(identifier)
     assert plan["validation"]["state"] == "pending"
+    assert plan["diff_base"]["changed"]  # This test requires a confirmable change.
 
     def complete(messages, schemas, **kwargs):
         assert "validation is running automatically" in messages[1]["content"]

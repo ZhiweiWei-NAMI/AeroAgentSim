@@ -30,6 +30,8 @@ export interface Workspace {
   revision?: number; created_at?: string; updated_at?: string;
   demo_console?: {capture_mode:string;city_available:boolean;scene?:import('../scene/presentation').ScenePresentation};
   id: string; name: string; scenario: Scenario; scene?: CityScene; registry_catalog?:{types:TypeRow[];fields:Array<Record<string,any>&{id:string}>;schemas:Record<string,any>};
+  /** SHA-256 of real engine fixture files, keyed by their authored references. */
+  fixture_digests?: Record<string, string>;
   region?: { extract: string; bounds: number[]; alt: number; level_height_m: number };
   scene_source?: { kind: string; extract?: string; attribution?: string; [key: string]: unknown };
   preview?: { origin: { lat: number; lon: number; alt: number }; bounds?: number[];

@@ -55,6 +55,11 @@ def without_state_assertions(text: str, *, expanded: bool = False, session: dict
 
             if unchanged_plan(plan) and re.search(r"(?:press|click)\s+confirm|点击.*确认", plain, re.I):
                 return True
+            if plan["validation"]["state"] == "valid" and re.search(
+                r"^(?:please\s+)?wait\s+(?:before\s+confirming\b|for\s+(?:the\s+)?(?:plan\s+)?validation\b)|^(?:请)?等待校验",
+                plain, re.I,
+            ):
+                return True
         # An imperative or conditional describes a workflow, not current readiness.
         if re.match(r"(?:please\s+)?(?:click|press|open|select|choose|validate|save|initialize|start|wait|after|once|if|before)\b|请|点击|打开|选择|先|校验并|保存为|初始化后|启动后|如果|通过后", plain, re.I):
             return False
@@ -70,7 +75,7 @@ def without_state_assertions(text: str, *, expanded: bool = False, session: dict
                 return True
             if workspace["dirty"] and not valid_draft and re.search(r"nothing.*validat|no.*(?:need|require).*validat|already validated|无需.*(?:校验|验证)|已经?校验|已通过校验", plain, re.I):
                 return True
-            version = re.search(r"(?:project|workspace|saved)\s+version\s+(?:(?:is|still|remains|was|v)\s*)*(\d+)|(?:项目|工作区)(?:的)?版本\s*(?:仍是|为|是|v|已保存为)*\s*(\d+)", plain, re.I)
+            version = re.search(r"(?:project|workspace|saved)\s+version\s+(?:(?:is|still|remains|was|v)\s*)*(\d+)|(?:项目|工作区)(?:的)?版本\s*(?:(?:仍是|仍为|为|是|已保存为)\s*)?v?\s*(\d+)", plain, re.I)
             if version and re.search(r"applied|saved|latest|current|still|pinned|固定|已应用|已保存|最新|当前|仍是", plain, re.I):
                 claimed = int(version.group(1) or version.group(2))
                 if evidence and re.search(r"\brun\b|运行|仿真", plain, re.I):
@@ -92,7 +97,7 @@ def without_state_assertions(text: str, *, expanded: bool = False, session: dict
                 state = target["validation"]["state"]
                 if state != "valid" and re.search(r"(?:is|has been|already)\s+validated|passed.*(?:check|validat)|校验通过|已通过校验|已校验", plain, re.I):
                     return True
-                if state == "valid" and re.search(r"validation\s+(?:is\s+)?(?:pending|failed)|still.*validat|等待校验|校验失败", plain, re.I):
+                if state == "valid" and re.search(r"validation\s+(?:(?:is|still)\s+)*(?:pending|failed)|still.*validat|等待校验|校验失败", plain, re.I):
                     return True
                 from .presentation import unchanged_plan
 

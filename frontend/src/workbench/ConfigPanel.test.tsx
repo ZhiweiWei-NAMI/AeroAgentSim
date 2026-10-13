@@ -100,7 +100,7 @@ it('T3-R4-002: partial knob responses cannot hide existing place and fleet forms
   await screen.findByText('Controls applied to the draft.');
   expect(screen.getByTestId('wb-initialize')).toHaveTextContent('Initialize v1');
   fireEvent.click(screen.getByRole('button', { name: 'Objects' }));
-  expect(screen.getByRole('button', { name: 'Add place' })).toBeVisible();
+  expect(await screen.findByRole('button', { name: 'Add place' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'Add fleet' })).toBeVisible();
   expect(screen.queryByText('Start with standard low-altitude components')).toBeNull();
 });
@@ -128,7 +128,7 @@ it('T1-R4-005: advanced creation keeps the real saved version and installed comp
     return <ConfigPanel api={api} project={current} onProject={setCurrent} section="objects" onSection={vi.fn()} onClose={vi.fn()} onInitialize={vi.fn()} initializing={false} />;
   }
   render(<I18nProvider><Harness /></I18nProvider>);
-  fireEvent.click(screen.getByRole('button', { name: 'Add objects (advanced)' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Add objects (advanced)' }));
   fireEvent.click(await screen.findByRole('option', { name: /aas:StudioFacility/ }));
   fireEvent.change(await screen.findByLabelText('id (or id prefix)'), { target: { value: 'research-static' } });
   const create = screen.getByRole('button', { name: 'Create 1 objects' });
