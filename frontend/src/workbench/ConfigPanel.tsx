@@ -1,5 +1,6 @@
 import { ModeSwitch, type EditMode, type Origin } from '../assistant/ModeSwitch';
-import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { Component, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { lazyWithRetry, retryFailedLazyImports } from '../lazyRetry';
 import { TemplateApi, type AlgorithmDescriptor, type KnobValue, type ScenarioTemplate } from '../newcomers/api';
 import { TemplateKnobControl } from '../newcomers/TemplateKnobControl';
 import { useI18n } from '../i18n/I18nProvider';
@@ -10,13 +11,13 @@ import { changedFields, changedSections, mergeSections, rebaseDraft, sameDraftVa
 import { StudioApi } from '../studio/api';
 import { SECTIONS, issuePointer, issueSection } from './sections/issues';
 import type { SectionProps } from './sections/types';
-const SpaceSection = lazy(() => import('./sections/SpaceSection').then(module => ({ default: module.SpaceSection })));
-const ObjectsSection = lazy(() => import('./sections/ObjectsSection').then(module => ({ default: module.ObjectsSection })));
-const RelationsSection = lazy(() => import('./sections/RelationsSection').then(module => ({ default: module.RelationsSection })));
-const TasksSection = lazy(() => import('./sections/TasksSection').then(module => ({ default: module.TasksSection })));
-const ComponentsSection = lazy(() => import('./sections/ComponentsSection').then(module => ({ default: module.ComponentsSection })));
-const AlgorithmsSection = lazy(() => import('./sections/AlgorithmsSection').then(module => ({ default: module.AlgorithmsSection })));
-const RunSection = lazy(() => import('./sections/RunSection').then(module => ({ default: module.RunSection })));
+const SpaceSection = lazyWithRetry(() => import('./sections/SpaceSection'), module => module.SpaceSection);
+const ObjectsSection = lazyWithRetry(() => import('./sections/ObjectsSection'), module => module.ObjectsSection);
+const RelationsSection = lazyWithRetry(() => import('./sections/RelationsSection'), module => module.RelationsSection);
+const TasksSection = lazyWithRetry(() => import('./sections/TasksSection'), module => module.TasksSection);
+const ComponentsSection = lazyWithRetry(() => import('./sections/ComponentsSection'), module => module.ComponentsSection);
+const AlgorithmsSection = lazyWithRetry(() => import('./sections/AlgorithmsSection'), module => module.AlgorithmsSection);
+const RunSection = lazyWithRetry(() => import('./sections/RunSection'), module => module.RunSection);
 import { assertOperationsReady, currentOperationsProject, mutateWorkspace, operationText, useWorkspaceOperations } from './sections/operations';
 import { StagedFormWorkspace, useStagedFormStatus } from './sections/useStagedForm';
 
@@ -50,7 +51,7 @@ export class ConfigureBoundary extends Component<{ children: ReactNode; label: s
     return this.state.error ? <div className="wb-issues" role="alert">
       <p>{L(`Could not display ${label}. Your other sections and draft are kept.`, `无法显示“${label}”。其他分区和草稿仍保留。`)}</p>
       <p className="hint wb-mono">{this.state.error.message}</p>
-      <button type="button" className="wb-btn" onClick={() => this.setState({ error: undefined })}>{L('Retry', '重试')}</button>
+      <button type="button" className="wb-btn" onClick={() => { retryFailedLazyImports(); this.setState({ error: undefined }); }}>{L('Retry', '重试')}</button>
     </div> : this.props.children;
   }
 }
@@ -79,7 +80,7 @@ export function controlSource(knob: ScenarioTemplate['knobs'][number], draft: Sc
       .map(engine => engine.config?.profiles?.[source.entity]?.[source.field]).filter(profile => profile !== undefined);
     if (profiles.length !== 1) return undefined;
     const profile = profiles[0], row = source.vector_index;
-    if (!['calm', 'constant'].includes(profile?.mode) || row !== undefined && (!Number.isSafeInteger(row) || row < 0)) return undefined;
+    if (!['calm', 'constant', 'gust'].includes(profile?.mode) || row !== undefined && (!Number.isSafeInteger(row) || row < 0)) return undefined;
     const vector = row === undefined ? profile.value : profile.value?.[row];
     if (!Array.isArray(vector) || ![2, 3].includes(vector.length) || vector.some(value => typeof controlValue(value) !== 'number')) return undefined;
     return controlValue(vector[knob.apply === 'traffic.wind_east' ? 0 : 1]);
@@ -287,8 +288,7 @@ export function ConfigPanel({ api, project: suppliedProject, onProject, onInitia
   // A success describes the saved revision; new local or invalid input invalidates that notice.
   useEffect(() => { if (local || controlsDirty || yamlDirty || invalid.size) setMessage(previous => previous?.kind === 'ok' ? undefined : previous); }, [draft, knobs, yaml, local, controlsDirty, yamlDirty, invalid]);
   const valueFor = (knob: ScenarioTemplate['knobs'][number]) => knobs[knob.id] === undefined ? controlSource(knob, draft, project.template?.knobs) : controlValue(knobs[knob.id]);
-  const controlsMissing = !!template?.knobs.some(knob => valueFor(knob) === undefined);
-  const validNow = project.validation?.valid && project.validation.revision === project.revision && !local && !controlsDirty && !controlsMissing && !yamlDirty && !invalid.size;
+  const validNow = project.validation?.valid && project.validation.revision === project.revision && !local && !controlsDirty && !yamlDirty && !invalid.size;
   const versioned = project.latest_version && project.latest_version.revision === project.revision && !local;
 
   const nav: Array<{ id: Section; label: string }> = [
@@ -304,7 +304,13 @@ export function ConfigPanel({ api, project: suppliedProject, onProject, onInitia
         <p className="hint">{L('The controls the scenario was designed around. Applying writes them into this draft and keeps your other edits.', '该场景围绕这些控制项设计。应用后会写入当前草稿，并保留你的其他修改。')}</p>
         <div className="wb-knobs">{template.knobs.map(knob => {
           const value = valueFor(knob);
-          return <div className="wb-knob" key={knob.id} data-path={knob.pointer}>{value === undefined ? <p role="alert">{L('Missing or invalid control source. Correct it in the form or file:', '控制项来源缺失或无效，请在表单或文件中修正：')} {knob.pointer ?? knob.id}</p>
+          return <div className="wb-knob" key={knob.id} data-path={knob.pointer}>{value === undefined ? <div className="wb-form-prerequisite">
+            <p>{L('This setting cannot be read from the current configuration. Validate the draft, or edit its source:', '无法从当前配置读取此控制项。可校验草稿，或编辑其来源：')} {knob.pointer ?? knob.id}</p>
+            <button className="wb-btn small" onClick={() => {
+              const source = knob.pointer ? issueSection({ source: 'scenario', path: knob.pointer, message: '' }) : 'components';
+              if (source) goTo(source, knob.pointer); else { setFocus(knob.pointer); onSection('file'); }
+            }}>{L('Edit source', '编辑来源')}</button>
+          </div>
             : <TemplateKnobControl disabled={workspaceOperations.applying || !!busy} knob={knob} value={value} onChange={value => setKnobs(previous => ({ ...previous, [knob.id]: value }))} onValidityChange={valid => reportValidity(`/knobs/${knob.id}`, valid)} algorithms={algorithms} />}</div>;
         })}</div>
       </>;
@@ -327,7 +333,7 @@ export function ConfigPanel({ api, project: suppliedProject, onProject, onInitia
     const props: SectionProps = { api, studioApi, project, draft, edit, replaceDraft: scenario => { setDraft(scenario); setLocal(true); }, focus: target === section ? focus : undefined, zh, locale, L, issues, onProject: sectionProject, saveDraft, reportValidity, onInspectContract, algorithms, goTo };
     const Body = SECTION_BODIES[target as SectionId];
     if (!Body) throw Error(L(`Unknown configuration section: ${target}`, `未知配置分区：${target}`));
-    return <Suspense fallback={null}><Body {...props} /></Suspense>;
+    return <Suspense fallback={<p className="hint" role="status">{L('Loading this section…', '正在加载此分区…')}</p>}><Body {...props} /></Suspense>;
   };
 
   return <StagedFormWorkspace.Provider value={{ id: project.id, revision: project.revision }}><FormValidity.Provider value={reportValidity}><aside className="wb-panel wb-right is-wide wb-glass" aria-label={L('Configure scenario', '配置场景')} data-testid="wb-config" data-morph={morph}>
@@ -375,10 +381,10 @@ export function ConfigPanel({ api, project: suppliedProject, onProject, onInitia
         {message && <div style={{ color: message.kind === 'error' ? 'var(--wb-bad)' : 'var(--wb-ok)' }}>{L(message.text, message.textZh ?? message.text)}</div>}
         {workspaceOperations.applying && <div className="hint" role="status">{L('Applying a change…', '正在应用变更…')}</div>}
         </div>
-        {(section === 'controls' || controlsDirty) && <button className="wb-btn primary" disabled={workspaceOperations.applying || !!busy || !controlsDirty || controlsMissing || !!invalid.size} onClick={() => void applyKnobs()}>{busy === 'knobs' ? L('Applying controls…', '正在应用控制项…') : L('Apply controls to draft', '应用到草稿')}</button>}
+        {(section === 'controls' || controlsDirty) && <button className="wb-btn primary" disabled={workspaceOperations.applying || !!busy || !controlsDirty || !!invalid.size} onClick={() => void applyKnobs()}>{busy === 'knobs' ? L('Applying controls…', '正在应用控制项…') : L('Apply controls to draft', '应用到草稿')}</button>}
       </div>
       <button className="wb-btn" disabled={workspaceOperations.applying || !local || !!busy || !!invalid.size || !!merge} onClick={() => void saveDraft()}>{busy === 'save' ? L('Saving…', '保存中…') : L('Save draft', '保存草稿')}</button>
-      <button className="wb-btn" disabled={workspaceOperations.applying || !!busy || !!invalid.size || controlsDirty || controlsMissing || yamlDirty} title={controlsDirty ? L('Apply the controls first', '请先应用控制项') : controlsMissing ? L('Correct the missing control source first', '请先修正缺失的控制项来源') : yamlDirty ? L('Import the file first', '请先导入文件') : undefined} data-testid="wb-validate" onClick={() => void validate()}>{busy === 'validate' ? L('Validating…', '校验中…') : L('Validate', '校验')}</button>
+      <button className="wb-btn" disabled={workspaceOperations.applying || !!busy || !!invalid.size || controlsDirty || yamlDirty} title={controlsDirty ? L('Apply the controls first', '请先应用控制项') : yamlDirty ? L('Import the file first', '请先导入文件') : undefined} data-testid="wb-validate" onClick={() => void validate()}>{busy === 'validate' ? L('Validating…', '校验中…') : L('Validate', '校验')}</button>
       <button className="wb-btn primary" disabled={workspaceOperations.applying || !validNow || !!versioned || !!busy} data-testid="wb-save-version" title={!validNow ? L('Validate this revision first', '请先校验当前修订') : undefined} onClick={() => void saveVersion()}>{L('Save version', '保存版本')}</button>
       <button className="wb-btn go" disabled={workspaceOperations.applying || !project.latest_version || initializing || !!busy} data-testid="wb-initialize" onClick={() => { if (project.latest_version) onInitialize(project.latest_version.version); }} title={L('Create a run of the latest saved version, held at t = 0', '以最新保存的版本创建运行，停在 t = 0')}>{initializing ? L('Initializing…', '初始化中…') : L(`Initialize v${project.latest_version?.version ?? '–'}`, `初始化 v${project.latest_version?.version ?? '–'}`)}</button>
     </div>

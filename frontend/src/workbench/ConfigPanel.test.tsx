@@ -76,6 +76,47 @@ it('T2-R4-004: displays 5 m/s after generic edits and sends only the unrelated e
   expect(Number((wind as HTMLInputElement).value)).toBe(5);
 });
 
+it.each(['en-US', 'zh-CN'])('T3-R5-001: reads the gust background and validates/saves the actual scenario in %s', async locale => {
+  localStorage.setItem('aeroagentsim.locale', locale);
+  const zh = locale === 'zh-CN';
+  catalog.template.mockResolvedValue({ id: 'traffic', knobs: [
+    { id: 'wind_east_mps', label: 'Eastward wind (m/s)', label_zh: '向东风速（米/秒）', type: 'number', default: 3, apply: 'traffic.wind_east' },
+    { id: 'wind_north_mps', label: 'Northward wind (m/s)', label_zh: '向北风速（米/秒）', type: 'number', default: 0, apply: 'traffic.wind_north' },
+  ] });
+  const wind = trafficWind();
+  const profile = wind.engines.weather.config.profiles['wind.region']['oo:digital_twin.wind.horizontalVelocity'];
+  const scenario = { ...wind, run: project.scenario.run, engines: { ...wind.engines, weather: { plugin: 'environment', config: { profiles: {
+    'wind.region': { 'oo:digital_twin.wind.horizontalVelocity': { ...profile, mode: 'gust', gusts: [{ start_ns: 10e9, end_ns: 15e9, value: [[9, 0]] }] } },
+  } } } } };
+  const initial = { ...project, template: { id: 'traffic', knobs: { wind_east_mps: 3, wind_north_mps: 0 } }, scenario };
+  const validation = { valid: true, revision: initial.revision, errors: [] };
+  const validated = { ...initial, validation };
+  const version = { version: 1, revision: initial.revision, digest: 'gust-version', created_at: '', validation };
+  const read = vi.fn().mockResolvedValueOnce(validated).mockResolvedValueOnce({ ...validated, latest_version: version });
+  const { api } = setup(initial, 'controls', { validate: vi.fn().mockResolvedValue(validation), project: read, saveVersion: vi.fn().mockResolvedValue(version) });
+  expect(Number((await screen.findByRole('spinbutton', { name: zh ? '向东风速（米/秒）' : 'Eastward wind (m/s)' }) as HTMLInputElement).value)).toBe(5);
+  expect(Number((screen.getByRole('spinbutton', { name: zh ? '向北风速（米/秒）' : 'Northward wind (m/s)' }) as HTMLInputElement).value)).toBe(2);
+  expect(screen.getByTestId('wb-validate')).toBeEnabled();
+  fireEvent.click(screen.getByTestId('wb-validate'));
+  await waitFor(() => expect(screen.getByTestId('wb-save-version')).toBeEnabled());
+  expect(api.validate).toHaveBeenCalledWith(initial.id, initial.revision);
+  fireEvent.click(screen.getByTestId('wb-save-version'));
+  await waitFor(() => expect(api.saveVersion).toHaveBeenCalledWith(initial.id, initial.revision));
+  expect(scenario.engines.weather.config.profiles['wind.region']['oo:digital_twin.wind.horizontalVelocity'].gusts).toEqual([{ start_ns: 10e9, end_ns: 15e9, value: [[9, 0]] }]);
+});
+
+it('T3-R5-001: an unreadable template control offers its source while server validation and versioning remain available', async () => {
+  catalog.template.mockResolvedValue({ id: 'traffic', knobs: [{ id: 'obsolete', label: 'Old control', type: 'number', default: 0, pointer: '/engines/old/config/value' }] });
+  const validation = { valid: true, revision: project.revision, errors: [] };
+  const initial = { ...project, template: { id: 'traffic', knobs: { obsolete: 0 } }, validation };
+  setup(initial, 'controls');
+  expect(await screen.findByText(/This setting cannot be read from the current configuration/)).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Edit source' })).toBeEnabled();
+  expect(screen.queryByRole('spinbutton', { name: 'Old control' })).toBeNull();
+  expect(screen.getByTestId('wb-validate')).toBeEnabled();
+  expect(screen.getByTestId('wb-save-version')).toBeEnabled();
+});
+
 it('T3-R4-002: partial knob responses cannot hide existing place and fleet forms or the saved version', async () => {
   catalog.template.mockResolvedValue({ id: 'example', knobs: [{ id: 'rate', label: 'Rate', type: 'number', pointer: '/rate', default: 1 }] });
   const initial = { ...project, template: { id: 'example', knobs: { rate: 1 } }, capabilities: { lowalt: true, region: false, network: false, city: false },

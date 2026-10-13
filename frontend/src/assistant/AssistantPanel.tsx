@@ -92,12 +92,16 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
   useLayoutEffect(() => { const node = input.current; if (!node) return; node.style.height = 'auto'; node.style.height = `${Math.min(160, node.scrollHeight)}px`; }, [text]);
   useEffect(() => { const handler = (event: Event) => { const detail = (event as CustomEvent<string>).detail; if (typeof detail === 'string') { setText(detail); requestAnimationFrame(() => { input.current?.focus(); input.current?.setSelectionRange(detail.length, detail.length); }); } }; addEventListener('aas-assistant-draft', handler); return () => removeEventListener('aas-assistant-draft', handler); }, []);
   const needsConnection = !connection || !connection.configured || connection.status === 'error';
+  const connecting = !assistant.session;
+  const [submitting, setSubmitting] = useState(false);
   const context: MessageContext = { locale, ...(selected ? { selected_entity: selected.id } : {}), ...(runId ? { run_id: runId } : {}) };
   const submit = (value = text) => {
-    if (!value.trim() || busy) return;
+    if (!value.trim() || busy || submitting || connecting || needsConnection) return;
     pinned.current = true;
-    void assistant.send(value, context).catch(() => undefined);
-    if (value === text) setText('');
+    setSubmitting(true);
+    void assistant.send(value, context).then(() => {
+      if (value === text) setText(current => current === value ? '' : current);
+    }).catch(() => undefined).finally(() => setSubmitting(false));
   };
   const lastAnswer = [...events].reverse().find(event => event.kind === 'assistant') as Extract<AssistantEvent, { kind: 'assistant' }> | undefined;
   const lastUser = [...events].reverse().find(event => event.kind === 'user');
@@ -162,8 +166,9 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
           <textarea ref={input} rows={1} value={text} disabled={needsConnection} onChange={event => setText(event.target.value)} data-testid="as-input"
             placeholder={plan ? L('Ask, or describe a change…', '提问，或描述要做的修改…') : L('Describe what you want to study…', '描述你想研究的内容…')}
             onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} />
-          <button type="submit" className="as-send" disabled={busy || !text.trim() || needsConnection} aria-label={L('Send', '发送')} data-testid="as-send"><Icon name="send" size={15} /></button>
+          <button type="submit" className="as-send" disabled={connecting || submitting || busy || !text.trim() || needsConnection} aria-label={connecting ? L('Connecting…', '正在连接…') : L('Send', '发送')} data-testid="as-send"><Icon name="send" size={15} /></button>
         </form>
+        {connecting && !needsConnection && !error && <small className="hint" role="status">{L('Connecting… Your message will stay here until the conversation is ready.', '正在连接… 对话就绪前，你的消息会保留在这里。')}</small>}
         <small className="as-fine">{L('Plans are proposals. Your scene changes only when you press Confirm.', '方案只是提议。只有按下“确认”后，场景才会改变。')}</small>
       </footer>
     </>}

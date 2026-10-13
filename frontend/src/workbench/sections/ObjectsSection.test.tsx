@@ -65,7 +65,34 @@ it('edits a generic position as three numeric inputs and keeps its strict vector
   fireEvent.change(screen.getByLabelText('up (m)'), { target: { value: '56' } });
   fireEvent.blur(screen.getByLabelText('up (m)'));
   expect(base.edit).toHaveBeenLastCalledWith('/entities/0/facts/aas.studio.position_enu_m', [12, 34, 56]);
-  expect(screen.getAllByText(/written by the motion engine energy model|authored initial value/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Authored initial value').length).toBeGreaterThan(0);
+});
+
+it.each(['en-US', 'zh-CN'])('T1-R5-001: displays the workflow binding for authored energy without inventing a motion engine in %s', locale => {
+  const draft = { entities: [{ id: 'owner-proof', type: 'aas:StudioFacility', facts: { 'aas.studio.energy_j': 100000 } }],
+    engines: { operations: { plugin: 'workflow' } },
+    bindings: { exact: [{ entity: 'owner-proof', field: 'aas.studio.energy_j', writer: 'operations' }] } };
+  const goTo = vi.fn(), L = (en: string, zh: string) => locale === 'zh-CN' ? zh : en;
+  const actual = { ...base.project, capabilities: { lowalt: false, region: false, network: false, city: false } };
+  render(<I18nProvider><ObjectsSection {...base} project={actual} draft={draft} L={L} goTo={goTo} /></I18nProvider>);
+  fireEvent.click(screen.getByRole('button', { name: L('Edit', '编辑') }));
+  expect(screen.getByText(L('Authored initial value · runtime writer: operations (workflow)', '作者提供的初始值 · 运行时写入方：operations（workflow）'))).toBeVisible();
+  expect(screen.queryByText(/motion engine energy model|运动引擎的能量模型/)).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: L('View runtime field bindings', '查看运行时字段绑定') }));
+  expect(goTo).toHaveBeenCalledWith('components', '/bindings');
+});
+
+it('T1-R5-001: uses the configured writer id and plugin for motion facts and discloses a missing engine', () => {
+  const draft = { entities: [{ id: 'point', type: 'aas:StudioFacility', facts: { 'aas.studio.energy_j': 42, 'custom.value': 3 } }],
+    engines: { flight: { plugin: 'kinematic' } }, bindings: { exact: [
+      { entity: 'point', field: 'aas.studio.energy_j', writer: 'flight' },
+      { entity: 'point', field: 'custom.value', writer: 'missing-component' },
+      { entity: 'other', field: 'aas.studio.energy_j', writer: 'operations' },
+    ] } };
+  setup(draft);
+  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  expect(screen.getByText('Authored initial value · runtime writer: flight (kinematic)')).toBeVisible();
+  expect(screen.getByText('Authored initial value · configured writer is missing: missing-component')).toBeVisible();
 });
 
 it('shows an airspace as polygon/floor/ceiling, not a moving point (T1-018)', async () => {

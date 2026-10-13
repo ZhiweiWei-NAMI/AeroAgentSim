@@ -680,11 +680,12 @@ class ToolRunner:
         applied = next((r for r in reversed(session["applied"]) if r["workspace_id"] == session["workspace_id"] and r["version"] == metadata.get("workspace_version")), None)
         # Every run has a pinned scenario, including versions saved in the Form editor.
         # Derive from that exact input instead of reusing another plan/version's expectations.
-        from .story import pinned_expectations
+        from .story import pinned_expectations, pinned_wind
 
         expectations = pinned_expectations(directory)
         selected_locale = session["locale"] if locale is None else locale
         return {**run_story(directory, expectations, locale=selected_locale), "run_id": run_id, "status": metadata["status"],
+                "wind": pinned_wind(directory),
                 "expectations_source": "pinned_run_scenario", "workspace_version": metadata.get("workspace_version"),
                 "plan_version": applied["plan_version"] if applied else None,
                 "details_url": f"/v1/assistant/sessions/{identifier}/story/{run_id}?locale={quote(selected_locale, safe='')}"}

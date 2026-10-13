@@ -440,10 +440,13 @@ SECTION_LABELS = {"title": ("Title", "标题"), "city": ("City", "城市"), "dur
 
 def _leaf_changes(before: Any, after: Any, prefix: str = "") -> list[dict]:
     """Changed leaves as dotted names; display labels are derived and never a change of their own."""
-    if isinstance(before, dict) and isinstance(after, dict):
+    if isinstance(before, dict) and isinstance(after, dict) or prefix.startswith("wind.profiles.") and (isinstance(before, dict) and after is None or before is None and isinstance(after, dict)):
+        before, after = before if before is not None else {}, after if after is not None else {}
         return [row for key in sorted(before.keys() | after.keys()) if key != "labels"
                 for row in _leaf_changes(before.get(key), after.get(key), f"{prefix}.{key}" if prefix else key)]
-    if prefix.startswith("wind.profiles.") and isinstance(before, list) and isinstance(after, list) and len(before) == len(after):
+    if prefix.startswith("wind.profiles.") and (isinstance(before, list) or isinstance(after, list)) and (before is None or after is None or isinstance(before, list) and isinstance(after, list) and len(before) == len(after)):
+        before = before if before is not None else [None] * len(after)
+        after = after if after is not None else [None] * len(before)
         return [row for index, (old, new) in enumerate(zip(before, after), 1)
                 for row in _leaf_changes(old, new, f"{prefix}.{index}")]
     return [] if before == after else [{"name": prefix, "before": before, "after": after}]
@@ -556,8 +559,9 @@ def _response_estimate(summary: dict, incident: dict) -> dict | None:
 
 def expectations(document: dict, summary: dict) -> list[dict]:
     result = []
-    def add(identity: str, schema: str, where: dict, en: str, zh: str, *, layer: str = "behaviour", at=None, precheck=None, depends=(), count: int | None = None, released: str | None = None, alternatives=()) -> str:
-        match = {"schema": schema, "where": where, **({"count": count} if count else {}), **({"released_schema": released} if released else {})}
+    def add(identity: str, schema: str, where: dict, en: str, zh: str, *, layer: str = "behaviour", at=None, precheck=None, depends=(), count: int | None = None, released: str | None = None, demand: dict | None = None, alternatives=()) -> str:
+        match = {"schema": schema, "where": where, **({"count": count} if count is not None else {}), **({"released_schema": released} if released else {}),
+                 **({"count_basis": "released", "demand": demand} if demand is not None else {})}
         result.append({"id": identity, "text": en, "text_zh": zh, "layer": layer, "match": match,
                        "approx_s": at, "precheck": precheck, "depends_on": list(depends), **({"alternatives": list(alternatives)} if alternatives else {})})
         return identity
@@ -566,27 +570,35 @@ def expectations(document: dict, summary: dict) -> list[dict]:
         if workload.get("domain") == "traffic":
             continue
         times = workload["release"].get("times_s")
-        counted = len(workload["tasks"]) > 2
+        stochastic = workload["release"]["mode"] == "poisson"
+        counted = stochastic or len(workload["tasks"]) > 2
         counts = {"count": len(workload["tasks"]), "released": "lowalt.task.created"} if counted else {}
+        if stochastic:
+            counts["demand"] = workload["release"]
         scopes = [(f"workload:{workload['id']}", {"task": {"$in": list(workload["tasks"])}},
                    workload["label"], workload["label_zh"], times[0] if times else None)] if counted else [
             (f"task:{task}", {"task": task}, *names.get(task, (task, task)), times[i] if times and i < len(times) else None)
             for i, task in enumerate(workload["tasks"])]
         configured = len(workload["tasks"])
         for prefix, where, en, zh, at in scopes:
-            # Each stage retains the configured workload as its target.
             released_en, released_zh = (f"{en[:1].upper()}{en[1:].rstrip('s')}s are released ({configured} configured)", f"{zh}按计划发布（共配置 {configured} 个）") if counted else (f"{en} is released", f"{zh}发布")
             assigned_en, assigned_zh = (f"Each configured {en.rstrip('s')} is assigned a UAV", f"每个已配置的{zh}都分配到无人机") if counted else (f"A UAV is assigned {en}", f"无人机获分配{zh}")
+            if stochastic:
+                released_en, released_zh = f"Random arrivals release {en} (up to {configured} configured slots)", f"随机到达发布{zh}（最多 {configured} 个配置名额）"
+                assigned_en, assigned_zh = f"Each released {en.rstrip('s')} is assigned a UAV", f"每个实际发布的{zh}都分配到无人机"
             created = add(prefix + ":created", "lowalt.task.created", where, released_en, released_zh, layer="setup", at=at, **counts)
             assigned = add(prefix + ":assigned", "lowalt.task.assigned", where, assigned_en, assigned_zh, depends=[created], **counts)
             previous = assigned
             for _, schema, _, text, text_zh in _mission_steps(workload):
                 suffix = schema.rsplit(".", 1)[-1]
                 conditional = schema == "lowalt.mobility.pad_wait"
-                text, text_zh = (f"{text} (each configured {en.rstrip('s')})", f"{text_zh}（每个已配置的{zh}）") if counted else (f"{en}: {text}", f"{zh}：{text_zh}")
+                qualifier, qualifier_zh = ("released", "实际发布") if stochastic else ("configured", "已配置")
+                text, text_zh = (f"{text} (each {qualifier} {en.rstrip('s')})", f"{text_zh}（每个{qualifier_zh}的{zh}）") if counted else (f"{en}: {text}", f"{zh}：{text_zh}")
                 if counted and schema == "lowalt.task.completed":
                     text, text_zh = (f"All {configured} configured {en} are completed",
                                      f"全部 {configured} 个已配置的{zh}都完成")
+                    if stochastic:
+                        text, text_zh = f"All released {en} are completed", f"全部实际发布的{zh}都完成"
                 step_counts = ({"count": 1, "released": "lowalt.task.created"} if counted else {}) if conditional else counts
                 identity = add(prefix + ":" + suffix, schema, where, text, text_zh, depends=[assigned if conditional else previous],
                                **step_counts)

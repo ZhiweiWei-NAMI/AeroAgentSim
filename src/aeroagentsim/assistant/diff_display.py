@@ -23,7 +23,7 @@ FIELD_LABELS = {
     "east_mps": ("Eastward wind velocity", "向东风速分量"),
     "north_mps": ("Northward wind velocity", "向北风速分量"),
     "up_mps": ("Upward wind velocity", "向上风速分量"),
-    "direction_deg": ("Wind direction (counterclockwise from east)", "风向（自东向逆时针）"),
+    "direction_deg": ("Wind travel direction (toward, counterclockwise from east)", "风的流向（吹向，自东向逆时针）"),
     "vectors": ("Wind velocity and direction", "风速分量与风向"),
     "after_speed_mps": ("Wind speed after event", "事件结束后风速"),
     "allocation": ("Allocation algorithm", "分配算法"),
@@ -123,7 +123,7 @@ def _number_text(value: int | float) -> str:
 
 
 def _text(value: Any, name: str, kind: str, identity: str, algorithms: dict, *, zh: bool = False) -> str:
-    if value is None:
+    if value is None or isinstance(value, str) and value.strip().lower() in {"", "none", "null"}:
         return "—"
     key = name.rsplit(".", 1)[-1]
     _, _, unit = _metadata(name, kind, identity)
@@ -144,14 +144,14 @@ def _text(value: Any, name: str, kind: str, identity: str, algorithms: dict, *, 
     if isinstance(value, list):
         if key in POSITION_FIELDS and value and all(type(v) in (int, float) for v in value):
             return "(" + ", ".join(_number_text(v) for v in value) + f") {symbol}"
-        return ", ".join(_text(v, name, kind, identity, algorithms, zh=zh) for v in value) if value else ("空" if zh else "Empty")
+        return ", ".join(_text(v, name, kind, identity, algorithms, zh=zh) for v in value) if value else "—"
     if isinstance(value, dict):
         entries = []
         for child, content in value.items():
             child_name = f"{name}.{child}" if name else child
             en, translated, _ = _metadata(child_name, kind, identity)
             entries.append(f"{translated if zh else en}: {_text(content, child_name, kind, identity, algorithms, zh=zh)}")
-        return "; ".join(entries) if entries else ("空" if zh else "Empty")
+        return "; ".join(entries) if entries else "—"
     return str(value)
 
 
@@ -164,6 +164,10 @@ def enrich_diff(difference: dict) -> dict:
             row["label_zh"] = row.get("label_zh") or row["id"]
             en, zh = KIND_LABELS.get(row["kind"], (_humanize(row["kind"]), _humanize(row["kind"])))
             row.update(kind_label=en, kind_label_zh=zh)
+            fields = row.get("fields", [])
+            # A parent summary repeats information when more specific fields exist.
+            if fields:
+                row["fields"] = [f for f in fields if not any(other["name"].startswith(f["name"] + ".") for other in fields)]
             for field in row.get("fields", []):
                 if DISPLAY_FIELDS <= field.keys():
                     continue

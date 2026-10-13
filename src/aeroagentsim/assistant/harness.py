@@ -61,7 +61,9 @@ def without_state_assertions(text: str, *, expanded: bool = False, session: dict
             ):
                 return True
         # An imperative or conditional describes a workflow, not current readiness.
-        if re.match(r"(?:please\s+)?(?:click|press|open|select|choose|validate|save|initialize|start|wait|after|once|if|before)\b|请|点击|打开|选择|先|校验并|保存为|初始化后|启动后|如果|通过后", plain, re.I):
+        if re.match(r"(?:please\s+)?(?:click|press|open|select|choose|validate|save|initialize|start|wait|after|once|if|before)\b|请|点击|打开|选择|先|(?:校验|验证)(?=当前|草稿|场景|配置|并|后|[。.!])|保存(?=项目|草稿|场景|配置|版本|为|后|[。.!])|初始化(?=场景|版本|后|[。.!，,])|启动后|如果|通过后", plain, re.I):
+            return False
+        if re.search(r"\b(?:must|need to|should)\b.*\b(?:click|press|validate|save)\b|需要.*(?:点击|校验|验证|保存)", plain, re.I):
             return False
         if expanded and re.search(r"engines?|components?|引擎|组件", plain, re.I) and re.search(r"\bno\b|\bnot\b|without|没有|不添加|不新增|未添加|未新增", plain, re.I):
             return True
@@ -128,6 +130,22 @@ def without_state_assertions(text: str, *, expanded: bool = False, session: dict
             cleaned = clean(body)
             if cleaned:
                 lines.append((prefix.group() if prefix else "") + cleaned)
+    # Filtering can remove an asserted state in the middle of a numbered workflow.
+    # Renumber surviving steps, keeping independent/nested lists and code intact.
+    counters, fence = {}, False
+    for index, line in enumerate(lines):
+        if line.lstrip().startswith(("```", "~~~")):
+            fence = not fence
+        if fence:
+            continue
+        number = re.match(r"^(\s*)(\d+)([.)])\s+(.*)$", line)
+        if number:
+            indent = len(number[1])
+            counters = {depth: count for depth, count in counters.items() if depth <= indent}
+            counters[indent] = counters.get(indent, 0) + 1
+            lines[index] = f"{number[1]}{counters[indent]}{number[3]} {number[4]}"
+        elif line.strip() and not line[:1].isspace():
+            counters.clear()
     return "\n".join(lines).strip()
 
 
@@ -166,9 +184,9 @@ def story_evidence(run_id: str, story: dict) -> dict:
     from .story import failure_summary
 
     return {"run_id": run_id, "status": story.get("status"), "terminal": story.get("terminal"),
-            **{k: story[k] for k in ("assessment", "coverage", "workspace_version", "plan_version", "expectations_source", "detail", "details_url", "locale") if k in story},
+            **{k: story[k] for k in ("assessment", "coverage", "workspace_version", "plan_version", "expectations_source", "detail", "details_url", "locale", "wind") if k in story},
             "failure_count": len(story.get("failures", [])), "failures": failure_summary(story.get("failures", [])),
-            "expectations": [{k: row.get(k) for k in ("id", "text", "text_zh", "status", "at_ns", "progress")} | {"recorded": (row.get("explanation") or {}).get("text")} for row in story["expectations"]],
+            "expectations": [{k: row.get(k) for k in ("id", "text", "text_zh", "status", "at_ns", "progress")} | {"recorded": (row.get("explanation") or {}).get("text"), "recorded_zh": (row.get("explanation") or {}).get("text_zh")} for row in story["expectations"]],
             "events": [{k: e[k] for k in ("schema", "text", "text_zh", "at_ns") if k in e} for e in story["events"][-12:]]}
 
 
@@ -244,17 +262,22 @@ class Harness:
             coverage = evidence["coverage"]
             rows = evidence.get("expectations", [])
             happened = sum(row["status"] == "happened" for row in rows)
+            assessed = sum(row["status"] not in {"not_evaluated", "not_taken"} for row in rows)
             lines = [f"运行 {evidence['run_id']}（{evidence['status']}）记录了 {coverage['recorded_events']} 个事件。" if zh else f"Run {evidence['run_id']} ({evidence['status']}) recorded {coverage['recorded_events']} events."]
             if rows:
-                lines.append(f"预期步骤已发生 {happened}/{len(rows)}；以各步骤证据为准。" if zh else f"{happened}/{len(rows)} expected steps were recorded; assess the evidence for each step.")
+                lines.append(f"预期步骤已发生 {happened}/{assessed}；以各步骤证据为准。" if zh else f"{happened}/{assessed} expected steps were recorded; assess the evidence for each step.")
             else:
                 lines.append("没有配置预期，不能据此判断全部成功。" if zh else "No expectations were configured; this does not establish success.")
             for row in rows[:10]:
                 label = (row.get("text_zh") if zh else row["text"]) or row["text"]
                 at = f" ({row['at_ns'] / 1e9:g} s)" if row.get("at_ns") is not None else ""
-                status = ({"happened": "已记录", "missed": "未记录", "pending": "等待记录", "not_taken": "未走此分支"} if zh else
-                          {"happened": "recorded", "missed": "not recorded", "pending": "pending", "not_taken": "branch not taken"})[row["status"]]
+                status = ({"happened": "已记录", "missed": "未记录", "pending": "等待记录", "not_taken": "未走此分支", "not_evaluated": "未评估"} if zh else
+                          {"happened": "recorded", "missed": "not recorded", "pending": "pending", "not_taken": "branch not taken", "not_evaluated": "not evaluated"})[row["status"]]
                 lines.append(f"- {label[:240]}: {status}{at}")
+                if (row.get("progress") or {}).get("configured"):
+                    explanation = row.get("recorded_zh" if zh else "recorded")
+                    if explanation:
+                        lines.append(explanation)
             count = evidence.get("failure_count", len(evidence.get("failures", [])))
             if count:
                 lines.append(f"记录到 {count} 条失败或冲突，按类型汇总：" if zh else f"{count} failure or conflict records, grouped by type:")
@@ -307,6 +330,18 @@ class Harness:
         text = grounded
         session = self.sessions.get(identifier)
         plan = session["plans"].get(str(session["plan_version"]))
+        zh = str((context or {}).get("locale", session["locale"])).startswith("zh")
+        has_scene = plan is not None and plan["compile"]["ok"] or plan is None and session["workspace_id"] is not None
+        if isinstance(self.tools, ToolRunner) and (evidence is not None and "wind" in evidence or evidence is None and has_scene):
+            from .wind import ground_wind_prose
+
+            if re.search(r"\bwind\b|\bgust\b|风", text, re.I) and re.search(r"north|south|east|west|direction|[东西南北]|风向|流向", text, re.I):
+                if evidence is not None:
+                    wind = evidence["wind"]
+                else:
+                    _, scene = self.tools._scene(identifier)
+                    wind = scene["environment"]["wind"]
+                text = ground_wind_prose(text, wind, zh=zh)
         if plan is not None and not (used_grounded_facts and evidence is not None):
             # Validation can finish while the provider is writing its completion.
             # Render status from the store, replacing the provider's status prose.

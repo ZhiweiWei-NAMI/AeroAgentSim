@@ -183,6 +183,8 @@ function kpiRows(runs: ComparisonRun[], order: string[] = []): KpiRow[] {
 
 /** Knob / algorithm columns where the compared runs actually differ. */
 function differences(runs: ComparisonRun[], templates: Map<string, ScenarioTemplate>, locale: string, algorithms: AlgorithmDescriptor[]): { label: string; values: string[] }[] {
+  // Run summaries resolve settings from the pinned configuration. Templates
+  // supply labels/options only; their defaults are never experiment values.
   const t = (key: string) => translate(locale, key);
   if (!runs.length) return [];
   const keys: string[] = [];

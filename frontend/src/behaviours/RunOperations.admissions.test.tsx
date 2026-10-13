@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -6,11 +6,11 @@ import { ConsoleNotifications } from '../console/Notifications';
 import { RunsApi } from '../feeds/http';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { emptyCommit, fixtureHeader } from './extension-fixture';
-import { RunOperations } from './RunOperations';
+import { mergeAdmissionReceipts, RunOperations } from './RunOperations';
 
 // Typed-form rendering is covered by its owner; these tests cover receipt persistence.
 vi.mock('./TypedPayloadForm', () => ({ TypedPayloadForm: () => <div data-testid="typed-payload" /> }));
-afterEach(() => { cleanup(); window.localStorage.clear(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); window.localStorage.clear(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 function runStore() {
   const store = new TemporalFeedStore({ ...fixtureHeader, kernelRunId: 'kernel.actual' });
@@ -89,4 +89,39 @@ it('shows admission query errors instead of implying that no receipts exist',asy
   mount(api);
   const error=await screen.findByText('HTTP 500: Journal unavailable');expect(error).toHaveAttribute('role','alert');expect(error).toBeVisible();
   expect(screen.queryByText('No admission receipts yet.')).toBeNull();
+});
+
+it('T3-R5-003: an older empty poll cannot erase an executed admission, and later pending snapshots cannot downgrade it', async () => {
+  vi.useFakeTimers();
+  const executed = { id: 'cmd-9', status: 'applied', execution_status: 'succeeded', execution_cut: 58, target_cut: 56,
+    execution_result: { injection_point: 'restaurant_delay' } };
+  const api = recordedApi([]);
+  let finishOld!: (value: typeof executed[]) => void;
+  const admissions = vi.spyOn(api, 'admissions')
+    .mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; }))
+    .mockResolvedValueOnce([executed])
+    .mockResolvedValue([{ id: 'cmd-9', status: 'admitted', execution_status: 'admitted', target_cut: 56 }]);
+  mount(api);
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  expect(admissions).toHaveBeenCalledTimes(2);
+  const receipt = screen.getByText('Admission #1').closest('article')!;
+  expect(receipt).toHaveTextContent('Executed.');
+  expect(receipt).toHaveTextContent('Execution · succeeded');
+  await act(async () => { finishOld([]); });
+  expect(screen.getByText('Admission receipts · 1')).toBeVisible();
+  expect(screen.queryByText('No admission receipts yet.')).toBeNull();
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  expect(screen.getByText('Admission receipts · 1')).toBeVisible();
+  expect(receipt).toHaveTextContent('Execution · succeeded');
+  expect(receipt).not.toHaveTextContent('awaiting execution');
+  expect(within(receipt).getByRole('button', { name: 'cut 58' })).toBeVisible();
+});
+
+it('T3-R5-003: merges the POST and journal receipt by command id, preserving failed execution evidence', () => {
+  const failed = { id: 'cmd-9', status: 'applied', stored: true, execution_status: 'failed', execution_cut: 58, detail: 'Engine rejected the event' };
+  const rows = mergeAdmissionReceipts([{ command_id: 'cmd-9', status: 'accepted', disposition: 'accepted' }], [failed]);
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject(failed);
+  expect(mergeAdmissionReceipts(rows, [{ command_id: 'cmd-9', status: 'accepted', disposition: 'accepted' }])[0]).toMatchObject(failed);
+  expect(mergeAdmissionReceipts(rows, [])).toEqual(rows);
 });

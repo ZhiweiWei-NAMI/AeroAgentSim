@@ -1,7 +1,8 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
+import { lazyWithRetry } from '../lazyRetry';
 import type { RegionMapProps } from './sections/space/RegionMap';
 
-const Map = lazy(() => import('./sections/space/RegionMap').then(module => ({ default: module.RegionMap })));
+const Map = lazyWithRetry(() => import('./sections/space/RegionMap'), module => module.RegionMap);
 
 /** Keep Leaflet out of forms until a map is actually mounted. */
 export function RegionMap(props: RegionMapProps) {

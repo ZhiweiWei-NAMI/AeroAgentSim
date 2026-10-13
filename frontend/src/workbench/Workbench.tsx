@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { lazyWithRetry, retryFailedLazyImports } from '../lazyRetry';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { EntityKey } from '../contracts/viewer-feed';
 import { RunsApi } from '../feeds/http';
@@ -38,17 +39,17 @@ import '../pages/inspect.css';
 import './workbench.css';
 import './run-status.css';
 
-const ConfigPanel = lazy(() => import('./ConfigPanel').then(module => ({ default: module.ConfigPanel })));
-const RecordsPanel = lazy(() => import('./RecordsPanel').then(module => ({ default: module.RecordsPanel })));
-const AssistantPanel = lazy(() => import('../assistant/AssistantPanel').then(module => ({ default: module.AssistantPanel })));
-const PlanBoard = lazy(() => import('../assistant/PlanBoard').then(module => ({ default: module.PlanBoard })));
-const ViewportView = lazy(() => import('../viewport/ViewportView').then(module => ({ default: module.ViewportView })));
-const ScenePreview = lazy(() => import('../studio/ScenePreview').then(module => ({ default: module.ScenePreview })));
-const BehaviourRunGraph = lazy(() => import('../behaviours/BehaviourRunGraph').then(module => ({ default: module.BehaviourRunGraph })));
-const NonspatialViews = lazy(() => import('../viewport/NonspatialViews').then(module => ({ default: module.NonspatialViews })));
-const CompareRuns = lazy(() => import('../newcomers/CompareRuns').then(module => ({ default: module.CompareRuns })));
-const AeroGraphPage = lazy(() => import('../pages/AeroGraphPage'));
-const ArtifactsPanel = lazy(() => import('../observations/ArtifactsPanel').then(module => ({ default: module.ArtifactsPanel })));
+const ConfigPanel = lazyWithRetry(() => import('./ConfigPanel'), module => module.ConfigPanel);
+const RecordsPanel = lazyWithRetry(() => import('./RecordsPanel'), module => module.RecordsPanel);
+const AssistantPanel = lazyWithRetry(() => import('../assistant/AssistantPanel'), module => module.AssistantPanel);
+const PlanBoard = lazyWithRetry(() => import('../assistant/PlanBoard'), module => module.PlanBoard);
+const ViewportView = lazyWithRetry(() => import('../viewport/ViewportView'), module => module.ViewportView);
+const ScenePreview = lazyWithRetry(() => import('../studio/ScenePreview'), module => module.ScenePreview);
+const BehaviourRunGraph = lazyWithRetry(() => import('../behaviours/BehaviourRunGraph'), module => module.BehaviourRunGraph);
+const NonspatialViews = lazyWithRetry(() => import('../viewport/NonspatialViews'), module => module.NonspatialViews);
+const CompareRuns = lazyWithRetry(() => import('../newcomers/CompareRuns'), module => module.CompareRuns);
+const AeroGraphPage = lazyWithRetry(() => import('../pages/AeroGraphPage'));
+const ArtifactsPanel = lazyWithRetry(() => import('../observations/ArtifactsPanel'), module => module.ArtifactsPanel);
 
 type Toast = { id: number; kind: 'info' | 'success' | 'error'; text: string };
 type Camera = 'orbit' | 'follow' | 'chase';
@@ -449,16 +450,17 @@ export default function Workbench() {
     const key = (event: KeyboardEvent) => {
       if (event.repeat || event.defaultPrevented) return;
       const target = event.target instanceof Element ? event.target : undefined;
-      if (target?.closest('button, input, select, textarea, [role="button"], [contenteditable]:not([contenteditable="false"])')) return;
       // T4-07: any open overlay/dialog owns the keyboard — palette, compare,
       // contract, gallery veil. Background shortcuts stop until it closes.
       const overlayOpen = palette || !!query.get('compare') || contractType !== undefined || query.has('gallery')
         || !!document.querySelector('[role="dialog"][aria-modal="true"], [role="alertdialog"]');
       // A photo or technical-details dialog owns its keyboard and focus.
-      if (target?.closest('[role="dialog"], [role="alertdialog"]')) return;
+      const inDialog = target?.closest('[role="dialog"], [role="alertdialog"]');
+      const searchKey = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
+      if (inDialog && !searchKey) return;
       if (overlayOpen) {
         // Only Escape (closing the overlay) and the palette toggle stay live.
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); if (palette) closePalette(); else openPalette(); return; }
+        if (searchKey) { event.preventDefault(); if (palette) closePalette(); else openPalette(); return; }
         if (event.key === 'Escape') {
           if (palette) closePalette();
           else if (query.get('compare')) update({ compare: undefined });
@@ -467,8 +469,14 @@ export default function Workbench() {
         }
         return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openPalette(); return; }
+      if (searchKey) { event.preventDefault(); openPalette(); return; }
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+      // Controls own their editing/activation keys; search and Escape remain global.
+      const control = target?.closest('button, input, select, textarea, [role="button"], [contenteditable]:not([contenteditable="false"])');
+      if (control && event.key !== 'Escape') {
+        const button = control.matches('button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], input[type="checkbox"], input[type="radio"]');
+        if (!button || event.key === ' ' || event.key === 'Enter' || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+      }
       if (event.key === ' ' && session) { event.preventDefault(); event.stopPropagation(); session.togglePlayback(); }
       else if (event.key === 'i' && session?.followingLive && mode === 'live' && ['running', 'paused', 'waiting_for_input'].includes(status ?? '')) { update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }
       else if (event.key === 'g' && session) update({ graph: query.get('graph') ? undefined : '1' });
@@ -596,7 +604,7 @@ export default function Workbench() {
     <Suspense fallback={null}>{query.get('records') ? <RecordsPanel api={api} projectId={project?.id} current={runId} refreshKey={recordsKey}
         onOpen={run => update({ run: run.id, mode: TERMINAL.has(run.status) ? 'replay' : 'live', cut: undefined, sel: undefined, records: undefined }, true, run.studio_workspace ? `/w/${encodeURIComponent(run.studio_workspace)}` : location.pathname)}
         onCompare={ids => update({ compare: ids.join(',') })} onDerive={derive} onClose={() => update({ records: undefined })} />
-      : boardOpen ? <Contained resetKey={`${assistant.assistant.plan?.version}-${assistant.viewing}`} fallback={retry => <aside className="as-board wb-panel wb-glass" data-testid="as-board-failed" role="alert"><p className="as-quiet">{L('This plan version could not be shown. The conversation and project are unaffected.', '无法显示此方案版本，对话和项目不受影响。')}</p><button className="wb-btn" onClick={retry}>{L('Try again', '重试')}</button></aside>}><PlanBoard api={assistant.api} assistant={assistant.assistant} stage={assistant.stage} waiting={status === 'initialized'} runId={runId} story={assistant.story} storyError={assistant.storyError}
+      : boardOpen ? <Contained resetKey={`${assistant.assistant.plan?.version}-${assistant.viewing}`} fallback={retry => <aside className="as-board wb-panel wb-glass" data-testid="as-board-failed" role="alert"><p className="as-quiet">{L('This plan version could not be shown. The conversation and project are unaffected.', '无法显示此方案版本，对话和项目不受影响。')}</p><button className="wb-btn" onClick={() => { retryFailedLazyImports(); retry(); }}>{L('Try again', '重试')}</button></aside>}><PlanBoard api={assistant.api} assistant={assistant.assistant} stage={assistant.stage} waiting={status === 'initialized'} runId={runId} story={assistant.story} storyError={assistant.storyError}
           startNs={store?.header.start.ns} terminal={TERMINAL.has(status ?? '')} initializing={initializing} canInitialize={!!project?.latest_version} latestVersion={project?.latest_version?.version} onInitialize={version => void initialize(version)}
           onApplied={record => void applied(record)} onHover={assistant.setFocus} onStep={assistant.setFocus} onContract={type => update({ contract: 'assistant', type, workspace: project?.id })}
           onSeek={cut => session?.seekCut(cut)} viewing={assistant.viewing} onViewVersion={assistant.setViewing} onClose={assistant.closeBoard} /></Contained>

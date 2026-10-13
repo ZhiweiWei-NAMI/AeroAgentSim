@@ -8,16 +8,23 @@ import { Fleets } from './objects/Fleets';
 import { LowaltStart } from './objects/LowaltStart';
 import { RemoveEntity } from './objects/RemoveEntity';
 import { capabilities } from './operations';
-import { instancePositionField, placeEditingOf, STUDIO_POS, STUDIO_VEL } from './objects/model';
+import { instancePositionField, placeEditingOf } from './objects/model';
 import { PositionField } from './objects/PositionField';
 
-/** The field ids a studio placement's engines write; shown read-only as ownership. */
-const WRITER_FIELD_HINT = (L: (en: string, zh: string) => string) => ({
-  [STUDIO_POS]: L('written by the motion/operations engine each step', '由运动/操作引擎每步写入'),
-  [STUDIO_VEL]: L('written by the motion engine (kinematic)', '由运动引擎写入（kinematic）'),
-  'aas.studio.energy_j': L('written by the motion engine energy model', '由运动引擎的能量模型写入'),
-  'aas.studio.state': L('written by the operations engine lifecycle', '由操作引擎的生命周期写入'),
-});
+/** Placement binds each authored fact explicitly; a field name does not identify its writer. */
+function fieldOwnership(draft: SectionProps['draft'], entity: string, field: string, L: SectionProps['L']) {
+  const bindings = draft.bindings as { exact?: Array<{ entity: string; field: string; writer: string }>; rules?: unknown[] } | undefined;
+  const exact = bindings?.exact?.filter(binding => binding.entity === entity && binding.field === field) ?? [];
+  if (exact.length > 1) return L('Conflicting writer bindings', '写入方绑定冲突');
+  if (!exact.length) return bindings?.rules?.length
+    ? L('Authored initial value · see type bindings in Execution components', '作者提供的初始值 · 类型绑定见执行组件')
+    : L('Authored initial value', '作者提供的初始值');
+  const writer = exact[0].writer;
+  const engine = (draft.engines as Record<string, { plugin?: string }> | undefined)?.[writer];
+  return engine?.plugin
+    ? L(`Authored initial value · runtime writer: ${writer} (${engine.plugin})`, `作者提供的初始值 · 运行时写入方：${writer}（${engine.plugin}）`)
+    : L(`Authored initial value · configured writer is missing: ${writer}`, `作者提供的初始值 · 缺少已绑定的写入组件：${writer}`);
+}
 
 export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L, onProject, onInspectContract, reportValidity, saveDraft, goTo }: SectionProps) {
   const entities = (Array.isArray(draft.entities) ? draft.entities : []) as Array<Record<string, any>>;
@@ -38,7 +45,6 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
   const generators = Object.values((draft.generators ?? {}) as Record<string, { count?: number }>);
   const generated = generators.every(generator => generator && typeof generator.count === 'number' && Number.isInteger(generator.count) && generator.count >= 0)
     ? generators.reduce((total, generator) => total + generator.count!, 0) : undefined;
-  const writerHint = WRITER_FIELD_HINT(L);
   // Capability gate: without the standard low-altitude components the section opens with the
   // server-owned install flow instead of dead-ending a "UAV" search (T4-11).
   const lowalt = capabilities(project)?.lowalt ?? false;
@@ -112,9 +118,10 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
             </>}
           <p className="hint" style={{ margin: '4px 0' }}>{L('Field ownership (who writes each value at run time):', '字段所有权（运行时由谁写入）：')}</p>
           {Object.entries(entity.facts ?? {}).map(([key, value]) => <div key={key} style={{ fontSize: 11.5 }}>
-            <span className="wb-mono">{key}</span> <span className="wb-tag">{(writerHint as Record<string, string>)[key] ?? L('authored initial value', '作者提供的初始值')}</span>
+            <span className="wb-mono">{key}</span> <span className="wb-tag">{fieldOwnership(draft, entity.id, key, L)}</span>
             {value !== null && typeof value === 'object' && <span className="wb-tag wb-mono">{JSON.stringify(value).slice(0, 60)}</span>}
           </div>)}
+          {goTo && <button className="wb-btn small ghost" onClick={() => goTo('components', '/bindings')}>{L('View runtime field bindings', '查看运行时字段绑定')}</button>}
           {onInspectContract && <button className="wb-btn small ghost" onClick={() => onInspectContract(entity.type)}>{L('Inspect type contract', '查看类型契约')}</button>}
         </td></tr>}
       </Fragment>)}

@@ -62,3 +62,17 @@ it('still scores real successes and misses normally', () => {
   expect(screen.getByTestId('as-story-missed').className).toContain('is-missed');
   expect(screen.getByTestId('as-story').textContent).toMatch(/1 expected step did not happen/);
 });
+
+it.each(['en-US','zh-CN'])('T2-R5-004: shows released execution counts and stochastic-demand explanation for successful checks in %s',locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  const explanation={text:'20 tasks actually released from 100 configured slots. Execution checks use released tasks; slots are a cap, not a fixed demand target.',
+    text_zh:'100 个配置名额中实际发布了 20 个任务。执行检查以实际发布的任务为准；名额是上限，不是固定需求目标。'};
+  renderStory(['created','assigned','picked_up','completed'].map(id=>({id,text:'Released orders',text_zh:'实际发布的订单',status:'happened',
+    progress:{done:20,total:20,configured:100},explanation})));
+  expect(screen.getByTestId('as-story')).toHaveTextContent('4/4');
+  expect(screen.getAllByText('20/20')).toHaveLength(4);
+  expect(screen.getAllByText(locale==='en-US'?/slots are a cap/:/名额是上限/)).toHaveLength(4);
+  expect(screen.queryByTestId('as-story-missed')).toBeNull();
+  expect(screen.getByTestId('as-story')).not.toHaveTextContent(locale==='en-US'?'名额是上限':'slots are a cap');
+  localStorage.setItem('aeroagentsim.locale','en-US');
+});

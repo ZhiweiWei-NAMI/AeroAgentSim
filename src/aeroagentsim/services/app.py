@@ -365,6 +365,8 @@ def create_app(
         return storage.metadata()
 
     def run_summary(path: Path, *, include_kpis: bool = True) -> dict[str, Any]:
+        import math
+
         from .feed_index import kpi_result as project_run
         from .feed_index import results_state
         from .storage import summary_configuration
@@ -372,6 +374,84 @@ def create_app(
         metadata = json.loads((path / "manifest.json").read_text())
         document = summary_configuration(path)
         template = metadata.get("template")
+        knobs: dict[str, Any] = {}
+        if template:
+            # Template metadata records the controls originally applied. Other
+            # editors can change their sources before the version is pinned.
+            # Read the immutable run document, never the current workspace or defaults.
+            pinned = json.loads((path / "scenario.json").read_text())
+            declared = next((item["knobs"] for item in templates.list() if item["id"] == template["id"]), [])
+            missing = object()
+
+            def at(pointer: str) -> Any:
+                value: Any = pinned
+                for part in pointer[1:].split("/"):
+                    part = part.replace("~1", "/").replace("~0", "~")
+                    if isinstance(value, dict):
+                        value = value.get(part, missing)
+                    elif isinstance(value, list) and part.isdigit() and int(part) < len(value):
+                        value = value[int(part)]
+                    else:
+                        return missing
+                return value
+
+            def numeric(value: Any) -> bool:
+                return type(value) in (int, float) and math.isfinite(value)
+
+            engines = pinned.get("engines", {})
+            for knob in declared:
+                value: Any = missing
+                hook = knob.get("apply")
+                if "pointer" in knob:
+                    value = at(knob["pointer"])
+                elif hook in {"traffic.wind_east", "traffic.wind_north"}:
+                    motion = engines.get("air_motion", {})
+                    model = motion.get("config", {}).get("consumption_model", {})
+                    if motion.get("plugin") == "kinematic" and model.get("plugin") == "wind":
+                        source = model.get("config", {})
+                        profiles = [engine.get("config", {}).get("profiles", {}).get(source.get("entity"), {}).get(source.get("field"))
+                                    for engine in engines.values() if engine.get("plugin") == "environment"]
+                        profiles = [profile for profile in profiles if profile is not None]
+                        if len(profiles) == 1 and isinstance(profiles[0], dict) and profiles[0].get("mode") in {"calm", "constant", "gust"}:
+                            vector = profiles[0].get("value")
+                            row = source.get("vector_index")
+                            if row is not None:
+                                vector = vector[row] if type(row) is int and isinstance(vector, list) and 0 <= row < len(vector) else missing
+                            if isinstance(vector, list) and len(vector) in {2, 3} and all(numeric(component) for component in vector):
+                                value = vector[0 if hook == "traffic.wind_east" else 1]
+                elif hook == "traffic.physics_hz":
+                    road = at("/engines/road_motion/config/step_ns")
+                    air = at("/engines/air_motion/config/step_ns")
+                    if type(road) is int and road > 0 and air == road:
+                        frequency = 1e9 / road
+                        rounded = round(frequency, 6)
+                        value = rounded if rounded > 0 and round(1e9 / rounded) == road else frequency
+                elif hook == "lowalt.operator_mode":
+                    operator = [stream for stream in pinned.get("ingress_streams", []) if stream.get("id") == "operator"]
+                    until = at("/run/until_ns")
+                    if len(operator) == 1 and type(until) is int:
+                        watermark = operator[0].get("initial_watermark_ns")
+                        if type(watermark) is int:
+                            value = "interactive" if watermark < until else "scheduled"
+                elif hook == "traffic.accident_time":
+                    durations = [action.get("duration_ns") for package in pinned.get("behaviours", [])
+                                 for chain_id, chain in package.get("document", package).get("chains", {}).items() if chain_id == "traffic.incident_report"
+                                 for transition in chain.get("transitions", []) if transition.get("id") == "schedule"
+                                 for action in transition.get("actions", []) if action.get("id") == "accident-time"]
+                    if len(durations) == 1 and type(durations[0]) is int:
+                        value = durations[0] / 1e9
+                elif hook == "traffic.decision_mode":
+                    decisions = engines.get("decisions", {})
+                    config = decisions.get("config", {})
+                    if decisions.get("plugin") == "traffic_decisions" and config.get("mode") == "stub":
+                        value = "scripted"
+                    elif decisions.get("plugin") == "langgraph" and config.get("provider", {}).get("mode") == "live":
+                        value = "live"
+                # Unresolved/changed compound sources are omitted, never filled
+                # with historical template values. Their exact configuration
+                # remains available in the pinned configuration comparison.
+                if type(value) in (str, bool) or numeric(value):
+                    knobs[knob["id"]] = value
         kpis = project_run(path, include_series=False) if include_kpis else None
         return {
             **metadata,
@@ -385,7 +465,7 @@ def create_app(
                 if template and "title_zh" in template
                 else {}
             ),
-            "knobs": template["knobs"] if template else {},
+            "knobs": knobs,
             "algorithms": document.get("algorithms", {}),
             **(
                 {"kpis": kpis["final"]}

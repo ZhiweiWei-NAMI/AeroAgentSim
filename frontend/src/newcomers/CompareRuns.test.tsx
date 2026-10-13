@@ -8,6 +8,25 @@ afterEach(()=>{cleanup();localStorage.removeItem(STORAGE_KEY);});
 const runs = ['a','b'].map(id=>({id,title:id,kpis:{},knobs:{},algorithms:{}}));
 const recorded_ends = {a:{at_ns:'10000000000',commit_index:2,status:'stopped'},b:{at_ns:'20000000000',commit_index:3,status:'completed'}};
 
+it.each(['en-US', 'zh-CN'])('T2-R5-002: shows the effective 5 m/s from the pinned run instead of the template default in %s', async locale => {
+  localStorage.setItem(STORAGE_KEY, locale);
+  const actual = [
+    { ...runs[0], template_id: 'traffic', knobs: { wind_east_mps: 5 } },
+    { ...runs[1], template_id: 'other', knobs: {} },
+  ];
+  const api = { compare: vi.fn().mockResolvedValue({ runs: actual }),
+    request: vi.fn().mockResolvedValue({ alignment: 'recorded_run_end', recorded_ends, config_diff: [] }),
+    templates: vi.fn().mockResolvedValue([{ id: 'traffic', title: 'Traffic', kpis: [], knobs: [
+      { id: 'wind_east_mps', label: 'Eastward wind (m/s)', label_zh: '向东风速（米/秒）', type: 'number', default: 3, apply: 'traffic.wind_east' },
+    ] }]), algorithms: vi.fn().mockResolvedValue([]) } as unknown as TemplateApi;
+  render(<I18nProvider><CompareRuns api={api} ids={['a', 'b']} /></I18nProvider>);
+  const label = await screen.findByText(locale === 'zh-CN' ? '向东风速（米/秒）' : 'Eastward wind (m/s)');
+  const row = within(label.closest('li')!);
+  expect(row.getByText('5')).toBeVisible();
+  expect(row.getByText('—')).toBeVisible();
+  expect(row.queryByText('3')).toBeNull();
+});
+
 it('shows direct form differences, null versus missing, and recorded time alignment',async()=>{
   const request=vi.fn().mockResolvedValue({alignment:'recorded_run_end',recorded_ends,config_diff:[
     {path:'/run/seed',values:{a:42,b:43},present:{a:true,b:true}},

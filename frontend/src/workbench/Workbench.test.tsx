@@ -11,6 +11,7 @@ import { emptyCommit, fixtureHeader } from '../behaviours/extension-fixture';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { PlaybackClock } from '../viewport/clock';
 import type { RunSession } from './useRunSession';
+import { Details } from '../console/Details';
 
 const mocks = vi.hoisted(() => ({ panelRender: vi.fn(), apply: vi.fn(), readSession: vi.fn(), session: undefined as Session | undefined, runSession: undefined as RunSession | undefined }));
 vi.mock('../assistant/AssistantPanel', () => ({ AssistantPanel: () => { mocks.panelRender(); return <input aria-label="Search objects" />; } }));
@@ -177,7 +178,7 @@ it('T4-R4-003: Space activates the focused Records button and leaves playback st
   expect(session.togglePlayback).not.toHaveBeenCalled(); expect(session.clock.playing).toBe(false);
 });
 
-it.each(['button', 'range', 'checkbox', 'input', 'select', 'textarea', 'editable', 'role-button'])('T4-R4-003: global shortcuts ignore a %s and its descendants', async kind => {
+it.each(['button', 'range', 'checkbox', 'input', 'select', 'textarea', 'editable', 'role-button'])('T4-R4-003 / T4-R5-001: a %s owns its editing/activation keys while search stays global', async kind => {
   const session = recorded(); setup(`/w/project?run=${run.id}&mode=replay&panel=assistant`);
   await screen.findByTestId('wb-version-chip');
   const element = document.createElement(kind === 'editable' || kind === 'role-button' ? 'div' : kind === 'range' || kind === 'checkbox' ? 'input' : kind);
@@ -187,11 +188,45 @@ it.each(['button', 'range', 'checkbox', 'input', 'select', 'textarea', 'editable
   document.body.append(element);
   const child = ['button', 'editable', 'role-button'].includes(kind) ? element.appendChild(document.createElement('span')) : element;
   try {
-    for (const key of [' ', 'r', 'g', 'l', 'k']) fireEvent.keyDown(child, { key, ctrlKey: key === 'k' });
+    const activationOnly = ['button', 'checkbox', 'role-button'].includes(kind);
+    for (const key of activationOnly ? [' ', 'Enter'] : [' ', 'r', 'g', 'l']) fireEvent.keyDown(child, { key });
     expect(session.togglePlayback).not.toHaveBeenCalled(); expect(session.backToLive).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByTestId('current-url').textContent).not.toContain('records=1');
+    fireEvent.keyDown(child, { key: 'k', ctrlKey: true });
+    expect(screen.getByRole('dialog')).toBeVisible();
+    fireEvent.keyDown(within(screen.getByRole('dialog')).getByRole('textbox'), { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
   } finally { element.remove(); }
+});
+
+it.each(['ctrlKey', 'metaKey'] as const)('T4-R5-001: %s+K and Escape keep working on the focused Records button', async modifier => {
+  setup('/w/project?panel=assistant');
+  const records = await screen.findByTestId('wb-records-toggle');
+  await userEvent.setup().click(records);
+  expect(records).toHaveFocus();
+  expect(screen.getByTestId('current-url')).toHaveTextContent('records=1');
+  fireEvent.keyDown(records, { key: 'k', [modifier]: true });
+  const palette = screen.getByRole('dialog');
+  fireEvent.keyDown(within(palette).getByRole('textbox'), { key: 'Escape' });
+  expect(records).toHaveFocus();
+  expect(screen.getByTestId('current-url')).toHaveTextContent('records=1');
+  fireEvent.keyDown(records, { key: 'Escape' });
+  expect(screen.getByTestId('current-url')).not.toHaveTextContent('records=1');
+});
+
+it('T4-R5-001: Escape closes the active details dialog before Records', async () => {
+  setup('/w/project?panel=assistant');
+  const records = await screen.findByTestId('wb-records-toggle');
+  fireEvent.click(records);
+  render(<I18nProvider><Details title="Receipt details"><p>Recorded receipt</p></Details></I18nProvider>);
+  fireEvent.click(screen.getByTestId('details-trigger'));
+  const dialog = screen.getByRole('dialog');
+  fireEvent.keyDown(within(dialog).getByRole('button', { name: 'Close' }), { key: 'Escape' });
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(screen.getByTestId('current-url')).toHaveTextContent('records=1');
+  fireEvent.keyDown(records, { key: 'Escape' });
+  expect(screen.getByTestId('current-url')).not.toHaveTextContent('records=1');
 });
 
 it('T4-R4-003: a local defaultPrevented event stays local, while Space on the observation surface controls playback', async () => {

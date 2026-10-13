@@ -17,6 +17,38 @@ import { emptyTransport, entityPayloadSchema, newIdempotencyKey, payloadProblem,
 import { displayName } from '../viewport/semantic';
 import { exactNanos, operatorTiming, type OperatorInput } from '../workbench/useOperatorInput';
 export { operatorTiming } from '../workbench/useOperatorInput';
+
+const admissionId = (row: unknown): string | undefined => mapping(row)
+  ? typeof row.id === 'string' ? row.id : typeof row.command_id === 'string' ? row.command_id : undefined
+  : undefined;
+const admissionProgress = (row: unknown): number => {
+  if (!mapping(row)) return 0;
+  const terminal = (status: unknown) => ['applied', 'succeeded', 'failed', 'rejected'].includes(String(status));
+  return terminal(row.execution_status) ? 3 : typeof row.execution_status === 'string' ? 1 : terminal(row.status) || row.disposition === 'rejected' ? 2
+    : ['admitted', 'delayed'].includes(String(row.status)) || row.disposition === 'delayed' ? 1 : 0;
+};
+/** Admissions form an append-only history; an observed execution outcome cannot become pending. */
+export function mergeAdmissionReceipts(previous: unknown[], incoming: unknown[]): unknown[] {
+  const merged: unknown[] = [], byId = new Map<string, number>();
+  for (const row of [...previous, ...incoming]) {
+    const id = admissionId(row), index = id === undefined ? undefined : byId.get(id);
+    if (index === undefined) {
+      if (id !== undefined) byId.set(id, merged.length);
+      merged.push(row);
+    } else {
+      const prior = merged[index];
+      if (mapping(prior) && mapping(row)) {
+        // Keep all recorded execution details when a later snapshot only has admission data.
+        const next = admissionProgress(row) < admissionProgress(prior) ? prior : { ...prior, ...row };
+        // Admission and execution have separate statuses; keep the terminal
+        // admission badge even if a snapshot repeats it as "admitted".
+        if (admissionProgress({ status: prior.status }) > admissionProgress({ status: next.status })) next.status = prior.status;
+        merged[index] = next;
+      }
+    }
+  }
+  return merged;
+}
 import './run-operations.css';
 interface Props { api:RunsApi;runId:string;store:TemporalFeedStore;selected?:EntityKey;commitCut?:number;onSelect:(key:EntityKey)=>void;onSeek:(index:number)=>void;mode:'live'|'replay';interactive?:boolean;onInjections?:(available:boolean)=>void;inputSource?:OperatorInput }
 type Translator = (key: string, vars?: Record<string, string | number>) => string;
@@ -160,25 +192,16 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
   // duplicate an admitted operation, and a journaled outcome updates the same row.
   useEffect(()=>{
     const abort=new AbortController();
+    let requested = 0, completed = 0;
     setAdmissions([]); setAdmissionError('');
-    const load=()=>{void api.admissions(runId,abort.signal).then(rows=>{
-      if(abort.signal.aborted)return;
+    const load=()=>{const sequence = ++requested; void api.admissions(runId,abort.signal).then(rows=>{
+      if(abort.signal.aborted || sequence < completed)return;
+      completed = sequence;
       setAdmissionError('');
-      setAdmissions(previous=>{
-        // A live receipt's command_id is the journaled row's id: keep only the journaled copy.
-        const journaled=new Set(rows.map(stored=>stored.id));
-        const live=previous.filter(row=>(!mapping(row)||typeof row.id!=='string')&&!(mapping(row)&&typeof row.command_id==='string'&&journaled.has(row.command_id)));
-        const merged=[...rows.map(stored=>({...stored,stored:true})),...live];
-        const seen=new Set<string>(),unique=merged.filter(row=>{
-          const key=typeof row.id==='string'?row.id:`live-${seen.size}`;
-          if(typeof row.id==='string'&&seen.has(key))return false;
-          seen.add(key);return true;
-        });
-        return unique;
-      });
-    }).catch(problem => { if(!abort.signal.aborted)setAdmissionError(String(problem).includes('HTTP 404')
+      setAdmissions(previous=>mergeAdmissionReceipts(previous, rows.map(stored=>({...stored,stored:true}))));
+    }).catch(problem => { if(!abort.signal.aborted && sequence >= completed){ completed = sequence; setAdmissionError(String(problem).includes('HTTP 404')
       ? copy('Saved admission receipts are unavailable on this server.','此服务器不提供已保存的受理回执。')
-      : problemMessage(problem)); });};
+      : problemMessage(problem)); } });};
     load();
     const timer=setInterval(load,5000);
     return()=>{abort.abort();clearInterval(timer);};
@@ -218,7 +241,7 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
       }
       const body=ingressBody(effective,injection?{injection_point:injection.id,payload:eventPayload}:payload,t);
       const receipt=await api.request(`/v1/runs/${encodeURIComponent(runId)}/ingress`,{method:'POST',headers:{'Content-Type':'application/json'},body:stringifyLossless(body)});
-      setAdmissions(rows=>[...rows,receipt]);notify({kind:'info',message:mapping(receipt)&&receipt.disposition==='accepted'?t('Event accepted. Follow its response in the timeline.'):t('Event receipt received. Check the result below.')});
+      setAdmissions(rows=>mergeAdmissionReceipts(rows,[receipt]));notify({kind:'info',message:mapping(receipt)&&receipt.disposition==='accepted'?t('Event accepted. Follow its response in the timeline.'):t('Event receipt received. Check the result below.')});
     }catch(problem){setError(problemMessage(problem));notify({kind:'error',message:problemMessage(problem)});}
   };
   const statusLabel=(status:string)=>{

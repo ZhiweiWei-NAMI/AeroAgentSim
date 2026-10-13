@@ -41,18 +41,26 @@ _INDEX_LOCK = threading.RLock()
 
 
 @lru_cache(maxsize=16)
-def _pinned_expectations(run_dir: Path, identities: tuple) -> list[dict]:
+def _pinned_facts(run_dir: Path, identities: tuple) -> dict:
     from .scene import expectations, summarize
 
     document = json.loads((run_dir / "scenario.json").read_text())
-    return expectations(document, summarize(document, directory=run_dir))
+    summary = summarize(document, directory=run_dir)
+    return {"expectations": expectations(document, summary), "wind": summary["environment"]["wind"]}
 
 
 def pinned_expectations(run_dir: Path) -> list[dict]:
     """The fixed run input supplies expectations for both assistant and Form versions."""
     run_dir = run_dir.resolve()
     identities = tuple(_identity(run_dir / name) for name in ("scenario.json", "runtime.registry.json", "behaviour.ir.json"))
-    return copy.deepcopy(_pinned_expectations(run_dir, identities))
+    return copy.deepcopy(_pinned_facts(run_dir, identities)["expectations"])
+
+
+def pinned_wind(run_dir: Path) -> dict:
+    """Share the pinned-input projection with expectations, including every vector."""
+    run_dir = run_dir.resolve()
+    identities = tuple(_identity(run_dir / name) for name in ("scenario.json", "runtime.registry.json", "behaviour.ir.json"))
+    return copy.deepcopy(_pinned_facts(run_dir, identities)["wind"])
 
 
 def _identity(path: Path) -> tuple | None:
@@ -296,16 +304,39 @@ def _outcomes(manifest: dict, expectations: list[dict], indexed: StoryIndex, ter
         found = [e for e in indexed.by_schema.get(match["schema"], []) if _matches(e["payload"], match["where"])]
         need = match.get("count", 1)
         released = sum(1 for e in indexed.by_schema.get(match["released_schema"], []) if _matches(e["payload"], match["where"])) if match.get("released_schema") else None
+        stochastic = match.get("count_basis") == "released"
+        configured = need
+        if stochastic:
+            releases = {e["payload"]["task"]: e for e in indexed.by_schema[match["released_schema"]] if _matches(e["payload"], match["where"])}
+            # Count distinct released tasks, so a duplicate receipt cannot stand in for another order.
+            unique = {}
+            for record in found:
+                task = record["payload"]["task"]
+                if task in releases and task not in unique:
+                    unique[task] = record
+            found = list(unique.values())
+            released = need = len(releases)
         # A counted expectation ("all 6 meals delivered") happens at its last required event.
-        event = found[need - 1] if len(found) >= need else None
+        event = found[need - 1] if need > 0 and len(found) >= need else None
         outcome = {"id": expected["id"], "text": expected["text"], "text_zh": expected["text_zh"],
-                   "status": "happened" if event is not None else "missed" if terminal else "pending",
+                   "status": "not_evaluated" if stochastic and need == 0 and terminal else "happened" if event is not None else "missed" if terminal else "pending",
                    "at_ns": event["at_ns"] if event is not None else None, "cut": event["cut"] if event is not None else None,
                    "evidence": {"text": event["text"], "text_zh": event["text_zh"], "schema": event["schema"], "payload": event["payload"]} if event is not None else None,
                    "explanation": None}
-        if need > 1:
-            outcome["progress"] = {"done": len(found), "total": need, **({"released": released} if released is not None else {})}
-        if event is None and need > 1:
+        if need > 1 or stochastic:
+            outcome["progress"] = {"done": len(found), "total": need, **({"released": released} if released is not None else {}), **({"configured": configured} if stochastic else {})}
+        if stochastic:
+            estimate = match["demand"].get("expected_released")
+            note = (f"Stochastic arrivals: {released} tasks actually released from {configured} configured slots. Execution checks use released tasks; slots are a cap, not a fixed demand target.",
+                    f"随机到达：{configured} 个配置名额中实际发布了 {released} 个任务。执行检查以实际发布的任务为准；名额是上限，不是固定需求目标。")
+            if estimate is not None:
+                note = (note[0] + f" Expected arrivals: about {estimate}.", note[1] + f"预计到达约 {estimate} 个。")
+            if need == 0:
+                note = (note[0] + " No tasks have been released; execution is not evaluated.", note[1] + "尚未发布任务，执行情况未评估。")
+            elif event is None:
+                note = (note[0] + f" {len(found)} of {need} recorded.", note[1] + f"已记录 {len(found)}/{need}。")
+            outcome["explanation"] = _explanation(*note, found[-3:])
+        elif event is None and need > 1:
             release_note = (f" {released} of the {need} configured tasks were released.", f"已配置的 {need} 个任务中发布了 {released} 个。") if released is not None else ("", "")
             outcome["explanation"] = _explanation(f"{len(found)} of {need} recorded" + (" before the run ended." if terminal else " so far.") + release_note[0],
                                                   f"已记录 {len(found)}/{need}" + ("，运行已结束。" if terminal else "。") + release_note[1], found[-3:])
@@ -318,7 +349,8 @@ def _outcomes(manifest: dict, expectations: list[dict], indexed: StoryIndex, ter
         if outcome["status"] != "happened" and any(other in happened for other in expected.get("alternatives", [])):
             outcome["status"] = "not_taken"
     failures = [e for e in events if e["schema"].endswith((".failed", ".decision_failed", ".conflict"))]
-    assessment = "unassessed" if not outcomes else "incomplete" if failures or any(r["status"] in {"missed", "pending"} for r in outcomes) else "satisfied"
+    assessed = [row for row in outcomes if row["status"] != "not_evaluated"]
+    assessment = "unassessed" if not assessed else "incomplete" if failures or any(r["status"] in {"missed", "pending"} for r in assessed) else "satisfied"
     return {"run_id": manifest.get("id"), "status": manifest.get("status"), "terminal": terminal, "locale": locale,
             "expectations": outcomes, "events": [{k: v for k, v in e.items() if k != "hidden"} for e in events if not e["hidden"]],
             "coverage": {"committed_records": indexed.cursor, "recorded_events": len(events), "schemas": dict(Counter(e["schema"] for e in events))},

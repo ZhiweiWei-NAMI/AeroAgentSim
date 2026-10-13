@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../workbench/api';
+import { useI18n } from '../i18n/I18nProvider';
 import { compiledParts, type AssistantApi, type AssistantEvent, type Connection, type MessageContext, type PlanPreview, type PlanVersion, type Session } from './api';
 import type { DraftChange } from './draftChanges';
 
@@ -11,6 +12,8 @@ export interface PendingMessage { text: string; context?: MessageContext }
 
 /** One conversation: its transcript (long-polled), current plan and actions. */
 export function useAssistantSession(api: AssistantApi, sessionId: string | undefined) {
+  const { locale } = useI18n();
+  const L = (en: string, zh: string) => locale === 'zh-CN' ? zh : en;
   const [session, setSession] = useState<Session>();
   const [events, setEvents] = useState<AssistantEvent[]>([]);
   const [busy, setBusy] = useState(false);
@@ -66,11 +69,15 @@ export function useAssistantSession(api: AssistantApi, sessionId: string | undef
   }, [api, sessionId, refresh]);
 
   const send = useCallback(async (text: string, context?: MessageContext) => {
-    if (!sessionId || !text.trim()) return;
+    if (!sessionId || session?.id !== sessionId || !text.trim()) {
+      const problem = new Error(!text.trim() ? L('Enter a message before sending.', '请输入消息后再发送。') : L('The conversation is still connecting.', '对话仍在连接。'));
+      setError(problem.message);
+      throw problem;
+    }
     setPending({ text, context }); setBusy(true); setError(undefined);
     try { await api.send(sessionId, text.trim(), context); }
     catch (problem) { setPending(undefined); setBusy(false); setError(problemText(problem)); throw problem; }
-  }, [api, sessionId]);
+  }, [api, sessionId, session?.id, locale]);
   const cancel = useCallback(async () => { if (sessionId) { try { await api.cancel(sessionId); } catch (problem) { setError(problemText(problem)); } } }, [api, sessionId]);
   const choose = useCallback(async (version: number) => {
     if (!sessionId) return;

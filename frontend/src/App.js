@@ -1,4 +1,5 @@
-import React, { lazy, Suspense } from 'react';
+import React, { Suspense } from 'react';
+import { lazyWithRetry } from './lazyRetry';
 import { ConfigProvider } from 'antd';
 import enUS from 'antd/locale/en_US';
 import zhCN from 'antd/locale/zh_CN';
@@ -8,10 +9,10 @@ import ConsoleShell from './console/ConsoleShell';
 import { ConsoleNotifications } from './console/Notifications';
 import { PageState } from './console/PageState';
 
-const Workbench = lazy(() => import('./workbench/Workbench'));
-const AgentConsole = lazy(() => import('./pages/AgentConsole'));
-const ConsoleGuide = lazy(() => import('./console/ConsoleGuide'));
-const CaptureConsole = lazy(() => import('./observations/CaptureConsole').then(module => ({ default: module.CaptureConsole })));
+const Workbench = lazyWithRetry(() => import('./workbench/Workbench'));
+const AgentConsole = lazyWithRetry(() => import('./pages/AgentConsole'));
+const ConsoleGuide = lazyWithRetry(() => import('./console/ConsoleGuide'));
+const CaptureConsole = lazyWithRetry(() => import('./observations/CaptureConsole'), module => module.CaptureConsole);
 
 /** Earlier addresses open the same place in the one workbench, keeping their context. */
 function legacyTarget(pathname, search) {
