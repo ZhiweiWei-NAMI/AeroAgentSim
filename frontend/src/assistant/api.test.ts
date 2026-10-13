@@ -30,3 +30,10 @@ it('T2-R2-003/T2-AS-015: transports run_id and the current locale in the support
   expect(url).toBe('http://api/v1/assistant/sessions/session%2Fid/messages');
   expect(JSON.parse(String(options.body))).toEqual({text:'Summarise this run.',context:{run_id:'actual-run',locale:'en-US'}});
 });
+
+it('sends the active locale when reading a recorded Story', async () => {
+  const fetch = vi.fn(async () => ({ ok: true, text: async () => '{"expectations":[],"events":[]}' }));
+  vi.stubGlobal('fetch', fetch);
+  await new AssistantApi('http://api').story('session/id', 'actual-run', undefined, 'zh-CN');
+  expect((fetch.mock.calls[0] as unknown as [string])[0]).toBe('http://api/v1/assistant/sessions/session%2Fid/story/actual-run?locale=zh-CN');
+});

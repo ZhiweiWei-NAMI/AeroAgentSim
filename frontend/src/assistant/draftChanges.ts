@@ -45,5 +45,8 @@ export function proposalWorkspace(project: Workspace | undefined, preview: PlanP
     demo_console:preview.demo_console ?? (changesRegion ? undefined : project?.demo_console),
     region:preview.region ?? (changesRegion ? undefined : project?.region),
     scene:preview.scene ?? (changesRegion ? undefined : project?.scene),
+    scene_source:preview.scene_source ?? (changesRegion ? undefined : project?.scene_source),
+    preview:preview.preview ?? (changesRegion ? undefined : project?.preview),
+    proposal:true,
   };
 }

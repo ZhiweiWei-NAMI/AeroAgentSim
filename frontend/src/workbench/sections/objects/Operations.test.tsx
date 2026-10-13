@@ -39,7 +39,7 @@ it('LowaltStart previews the C11 dry-run diff and disables Apply until previewed
   expect(path).toBe('/v1/studio/workspaces/w/operations');
   expect(init.body.dry_run).toBe(true);
   expect(init.body.operations[0].op).toBe('add_lowalt_components');
-  expect(await screen.findByRole('status', { name: 'Review changes' })).toBeTruthy();
+  expect(await screen.findByRole('group', { name: 'Review changes' })).toBeTruthy();
   expect(await screen.findByText('Parcel drone 1')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
   await waitFor(() => expect(onProject).toHaveBeenCalled());

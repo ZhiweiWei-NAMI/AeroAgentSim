@@ -4,6 +4,12 @@ import { I18nProvider } from '../../../i18n/I18nProvider';
 import { AddObjects } from './AddObjects';
 import { stringifyLossless } from '../../../feeds/lossless-json';
 import type { ComponentProps } from 'react';
+import type { PlacePickerMapProps } from '../space/PlacePickerMap';
+
+vi.mock('../space/PlacePickerMap', async importOriginal => ({ ...await importOriginal<object>(), PlacePickerMap: ({ position, onPick }: PlacePickerMapProps) => <div>
+  <button onClick={() => onPick(80, -25, true)}>Map click</button>
+  <output aria-label="Map marker">{JSON.stringify(position)}</output>
+</div> }));
 
 const scroll = Element.prototype.scrollIntoView;
 beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); });
@@ -209,4 +215,20 @@ it('uses the shared draft save before placement so local edits can adopt the aut
   expect(api.save).not.toHaveBeenCalled();
   expect(saveDraft.mock.invocationCallOrder[0]).toBeLessThan(api.request.mock.invocationCallOrder[0]);
   expect(onProject).toHaveBeenLastCalledWith(expect.objectContaining({ revision: 3 }));
+});
+
+it('uses the shared picker with live coordinates, clears invalid markers and preserves height', async () => {
+  setup({}, [], catalog, undefined, { project_detail: { region: { extract: 'test', bounds: [121, 31, 122, 32], alt: 0, level_height_m: 3.5 }, scene: { origin: { lat: 31.5, lon: 121.5, alt: 0 } } } });
+  await chooseUav();
+  fireEvent.change(screen.getByLabelText('up (m)'), { target: { value: '10' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Pick on map' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Map click' }));
+  expect(screen.getByLabelText('east (m)')).toHaveValue('80.0');
+  expect(screen.getByLabelText('north (m)')).toHaveValue('-25.0');
+  expect(screen.getByLabelText('up (m)')).toHaveValue('10');
+  fireEvent.change(screen.getByLabelText('east (m)'), { target: { value: '90' } });
+  expect(screen.getByLabelText('Map marker')).toHaveTextContent('[90,-25]');
+  fireEvent.change(screen.getByLabelText('east (m)'), { target: { value: '' } });
+  expect(screen.getByLabelText('Map marker')).toHaveTextContent('null');
+  expect(screen.getByRole('button', { name: 'Map click' })).toBeVisible();
 });

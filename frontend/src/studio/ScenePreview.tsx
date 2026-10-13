@@ -94,7 +94,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   const cityScene = (ws: Workspace) => ws.scenario?.city === 'huangpu' ? ws.demo_console?.scene : undefined;
   const city = cityScene(workspace);
   const sceneKey = JSON.stringify([workspace.id, api, city?.city?.kind ?? null, city?.city?.url ?? null, city?.camera ?? null,
-    workspace.scene?.ground ?? null, workspace.scene?.origin ?? null]);
+    workspace.scene?.ground ?? null, workspace.scene?.origin ?? null, workspace.proposal ?? false, workspace.proposal ? workspace.scene?.geojson : null]);
   const roadsKey = JSON.stringify(workspace.scene?.roads ?? null);
   const entitiesKey = JSON.stringify([workspace.scenario.entities, workspace.scenario.presentation ?? null, workspace.scenario.generators ?? null, workspace.scenario.registry?.types ?? null]);
   const layerKey = useMemo(() => LAYER_NAMES.map(name => layers.includes(name) ? 1 : 0).join(''), [layers]);
@@ -230,7 +230,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         }
         if (ws.scene) {
           beginLoad();
-          void loadOsmBuildings(`${api}/v1/studio/workspaces/${ws.id}/buildings.geojson`, ws.scene.origin, abort.signal).then(group => {
+          void loadOsmBuildings(ws.proposal ? ws.scene.geojson : `${api}/v1/studio/workspaces/${ws.id}/buildings.geojson`, ws.scene.origin, abort.signal).then(group => {
             if (abort.signal.aborted) disposeObject(group); else acceptCity(group);
           }).catch(e => { if (!abort.signal.aborted) setError({ kind: 'runtime', detail: String(e) }); }).finally(finishLoad);
         }
@@ -328,7 +328,11 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   const status = loading && <div className="studio-preview-status" role="status">{t('Loading city geometry…')}{progress && progress.total > 0 && <span> {zh ? '建筑' : 'Buildings'} {progress.loaded} / {progress.total}</span>}</div>;
   // Schematic plane vs real geography must be distinguishable at a glance (QA GEO-008).
   const hasGeography = !!city || !!workspace.scene;
-  const objectCount = authoredPositions(workspace.scenario ?? {}).length;
+  const scenario = workspace.scenario ?? {};
+  const placesAndFleets = (scenario.entities ?? []).some((entity: any) =>
+    'lowalt.site_position' in (entity.facts ?? {}) || 'lowalt.position' in (entity.facts ?? {}) ||
+    entity.type === 'aas:StudioFacility' || entity.type === 'aas:StudioEntity') ||
+    Object.values(scenario.generators ?? {}).some((generator: any) => typeof generator?.count === 'number' && generator.count > 0);
   // Sits just above the "Fit scene" chip, in the same visual language.
   const planeNote = !hasGeography && <div className="scene-preview-plane-note" data-testid="plane-note" role="note">
     <div>
@@ -336,7 +340,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       <span>{zh ? '选择真实区域：配置面板 › 空间 › 区域。' : 'Choose a real region: Configure › Scene & space › Region'}</span>
     </div>
   </div>;
-  const noObjects = hasGeography && objectCount === 0 && <div className="scene-preview-no-objects" data-testid="no-objects" role="status">{zh ? '暂无对象' : 'No objects yet'}</div>;
+  const noObjects = hasGeography && !placesAndFleets && <div className="scene-preview-no-objects" data-testid="no-objects" role="note">{zh ? '还没有地点' : 'No places yet'}</div>;
   if (bare) return <div className="scene-preview-canvas" ref={root} aria-label={t('Scene preview')} aria-busy={loading} data-rendered={rendered} data-testid="draft-preview" data-overlay-state={overlay?.tone ?? 'none'} data-overlay-labels="[]">
     {planeNote}
     {noObjects}

@@ -11,20 +11,30 @@ describe('journaled admission receipts (C7)', () => {
     expect(receipts).toEqual([rows[0]]);
   });
 
-  it('yields no receipts on 404 (older server) instead of failing the operate panel', async () => {
+  it('surfaces unavailable receipt storage on 404', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('not found', { status: 404 })));
-    expect(await new RunsApi('http://api').admissions('run-1')).toEqual([]);
+    await expect(new RunsApi('http://api').admissions('run-1')).rejects.toThrow('HTTP 404');
   });
 
-  it('drops malformed rows but keeps every well-formed one, with unknown target_cut as null', async () => {
+  it('rejects malformed rows visibly instead of silently losing receipts', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([
-      { status: 'applied' },
-      { id: 'cmd-2', status: 'rejected', detail: 'late' },
-      { id: 'cmd-3', status: 'applied' },
+      { status: 'applied' }, { id: 'cmd-2', status: 'rejected', detail: 'late' },
     ]), { status: 200 })));
+    await expect(new RunsApi('http://api').admissions('run-1')).rejects.toThrow('expected string');
+  });
+
+  it('preserves absent fields, recorded Instants, execution data and extension fields', async () => {
+    const rows: AdmissionReceipt[] = [
+      { id: 'cmd-2', status: 'rejected', detail: 'late' },
+      { id: 'cmd-3', status: 'applied', submitted_at: { ns: '16000000000', microstep: 4 },
+        requested_at: { ns: '16000000000', microstep: 0 }, target_cut: 226,
+        execution_status: 'succeeded', execution_cut: 228,
+        execution_result: { injection_point: 'restaurant_delay', exact: { $integer: '9223372036854775815' } },
+        idempotency_key: 'actual-request', boundary_ns: '16000000000' },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(rows))));
     const receipts = await new RunsApi('http://api').admissions('run-1');
-    expect(receipts.map(row => row.id)).toEqual(['cmd-2', 'cmd-3']);
-    expect(receipts[0].target_cut).toBeNull();
-    expect(receipts[0].detail).toBe('late');
+    expect(receipts).toEqual(rows);
+    expect(receipts[0]).not.toHaveProperty('target_cut');
   });
 });

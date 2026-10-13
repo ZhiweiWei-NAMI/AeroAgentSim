@@ -8,11 +8,11 @@ import { WeatherBlock } from './tasks/Weather';
 import { IncidentsBlock, TrafficBlock } from './tasks/Traffic';
 import { OpApply, type FormNavigation } from './tasks/op-ui';
 
-export function ComponentsSection({ api, project, draft, edit, focus, zh, L, onProject, saveDraft, onSection }: SectionProps & FormNavigation) {
+export function ComponentsSection({ api, project, draft, edit, focus, zh, L, onProject, saveDraft, goTo }: SectionProps & FormNavigation) {
   const environment = engineOf(draft, 'environment');
   const config = taskConfig(draft);
   const installOperations = useMemo(() => [operation('add_lowalt_components', {})], []);
-  const opProps = { api, project, onProject, saveDraft, zh, onSection };
+  const opProps = { api, project, onProject, saveDraft, zh, goTo };
   return <div className="wb-form-section">
     <p className="hint">{L('Choose the engines that drive motion, tasks, energy and weather.', '配置驱动运动、任务、能耗与天气的引擎。')}</p>
     {!engineOf(draft, 'lowalt_tasks') && <div className="wb-empty" data-testid="wb-lowalt-missing">

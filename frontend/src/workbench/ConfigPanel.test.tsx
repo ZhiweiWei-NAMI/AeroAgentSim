@@ -109,7 +109,9 @@ it('edits large engine geometry without mounting thousands of hidden inputs or d
   const initial = { ...project, scenario: { engines: { capture: { plugin: 'capture', config } } } };
   const { api, view } = setup(initial, 'components');
   expect(view.container.querySelectorAll('input')).toHaveLength(0);
-  const editor = screen.getByLabelText('capture config');
+  fireEvent.click(screen.getByText('Advanced', { selector: 'summary' }));
+  fireEvent.click(screen.getByText('capture', { selector: 'b' }));
+  const editor = screen.getByLabelText('capture configuration');
   const changed = { scene: { points: [...config.scene.points] } }; changed.scene.points[0] = [9, 0.5, 0];
   fireEvent.change(editor, { target: { value: JSON.stringify(changed) } });
   fireEvent.click(screen.getByRole('button', { name: 'Apply JSON', hidden: true }));
@@ -123,8 +125,8 @@ it('publishes unsaved coordinate edits for preview without saving or initializin
  const initial = { ...project, scenario: { ...project.scenario, entities: [{ id: 'drone', type: 'lowalt:UAV', facts: { 'lowalt.position': [10, 20, 30] } }] } };
  render(<ConfigPanel api={{ base: '/api', save } as unknown as WorkbenchApi} project={initial} onProject={vi.fn()} onDraft={onDraft} onInitialize={vi.fn()} initializing={false} section="objects" onSection={vi.fn()} onClose={vi.fn()} />);
  fireEvent.click(within(document.querySelector('[data-path="/entities/0"]')!).getByRole('button', { name: 'Edit' }));
- const coordinate = document.querySelector<HTMLInputElement>('[data-path="/entities/0/facts/lowalt.position"] input')!;
- fireEvent.change(coordinate, { target: { value: '120, 20, 30' } });
+ const coordinate = screen.getByLabelText('east (m)');
+ fireEvent.change(coordinate, { target: { value: '120' } });
  fireEvent.blur(coordinate);
  await waitFor(() => expect(onDraft).toHaveBeenLastCalledWith(initial.id, expect.objectContaining({ entities: [expect.objectContaining({ facts: { 'lowalt.position': [120, 20, 30] } })] }), true));
  expect(save).not.toHaveBeenCalled();
@@ -214,8 +216,9 @@ it('T4-01: another tab cannot clear this tab’s recovery, and a conflicted edit
   const initial = { ...project, scenario: { ...project.scenario, run: { until_ns: 360000000000, seed: 46 } } };
   const server = { ...initial, revision: 3, scenario: { ...initial.scenario, run: { until_ns: 360000000000, seed: 48 } } };
   const { view } = setup(initial, 'run', { save: vi.fn().mockRejectedValue(new ApiError(409, 'revision conflict')), project: vi.fn().mockResolvedValue(server) });
-  fireEvent.change(screen.getByLabelText('Random seed'), { target: { value: '47' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Apply seed to draft' }));
+  fireEvent.click(screen.getByText('Advanced (raw tree)', { selector: 'summary' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'seed' }), { target: { value: '47' } });
+  fireEvent.blur(screen.getByRole('textbox', { name: 'seed' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
   await screen.findByTestId('wb-merge');
   const key = 'aas.draft.test-project';

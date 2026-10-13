@@ -34,7 +34,7 @@ function initialFields(draft: Draft, stream?: Draft, identity?: string): Fields 
 
 /** Both create and edit keep raw text until preview; low-altitude structures are written by C11. */
 function OrdersForm({ draft, stream, identity, existingIds = [], ...props }: OperationProps & { draft: Draft; stream?: Draft; identity?: string; existingIds?: Array<string | undefined> }) {
-  const { L, zh, onSection } = props;
+  const { L, zh, goTo } = props;
   const [changes, setChanges] = useState<Partial<Fields>>({});
   const [touched, setTouched] = useState<Set<keyof Fields>>(() => new Set());
   const fields = { ...initialFields(draft, stream, identity), ...changes };
@@ -109,7 +109,7 @@ function OrdersForm({ draft, stream, identity, existingIds = [], ...props }: Ope
     <StagedNumber label={L('Task count', '任务数')} value={fields.count} min={1} max={1000} integer onChange={value => set('count', value)} />
     {picker('from', L('From facility', '起点设施'), origins)}
     {picker('to', L('To facility', '终点设施'), places)}
-    {!places.length && <Prerequisite onSection={onSection} section="objects:add-place" action={L('Add place', '添加设施')}>{L('No depot or customer places yet — open Objects → Add place.', '还没有仓库或客户设施——请打开“对象”→“添加设施”。')}</Prerequisite>}
+    {!places.length && <Prerequisite goTo={goTo} section="objects" focus="add-place" action={L('Add place', '添加设施')}>{L('No depot or customer places yet — open Objects → Add place.', '还没有仓库或客户设施——请打开“对象”→“添加设施”。')}</Prerequisite>}
     <label className="wb-form-field">{L('Release schedule', '释放时间表')}
       <select className="wb-search" aria-label={L('Release mode', '释放模式')} value={fields.mode} onChange={event => set('mode', event.target.value)}>
         {!['scheduled', 'poisson'].includes(fields.mode) && <option value={fields.mode}>{L('Choose a release schedule', '请选择释放时间表')}</option>}

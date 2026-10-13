@@ -444,9 +444,6 @@ export default function Workbench() {
   const following = camera === 'follow' && selectedSpatial;
   // Keep the usable scene and panel bounds tied to the panels actually on screen.
   const boardOpen = assistantOpen && assistant.board && !query.get('records');
-  // Until PlanBoard accepts the project's latest_version, its label names the version
-  // applied by the shown plan. Execute that exact version instead of a newer Form save.
-  const boardVersion = assistant.assistant.session?.applied.filter(row => row.plan_version === assistant.assistant.plan?.version && row.workspace_id === project?.id).at(-1)?.version;
   const layout = { '--wb-left-space': query.get('records') ? 'calc(var(--wb-left) + 60px)' : boardOpen ? 'var(--as-board-width)' : leftOpen ? 'var(--wb-left)' : '0px',
     '--wb-right-space': panel ? assistantOpen ? 'var(--as-chat-width)' : 'var(--wb-config-width)' : rightOpen && !inspectorCompact ? 'var(--wb-right)' : '0px',
     '--wb-overlay-right-space': !panel && rightOpen && inspectorCompact ? '250px' : 'var(--wb-right-space)',
@@ -542,7 +539,7 @@ export default function Workbench() {
         onOpen={run => update({ run: run.id, mode: TERMINAL.has(run.status) ? 'replay' : 'live', cut: undefined, sel: undefined, records: undefined }, true, run.studio_workspace ? `/w/${encodeURIComponent(run.studio_workspace)}` : location.pathname)}
         onCompare={ids => update({ compare: ids.join(',') })} onDerive={derive} onClose={() => update({ records: undefined })} />
       : boardOpen ? <Contained resetKey={`${assistant.assistant.plan?.version}-${assistant.viewing}`} fallback={retry => <aside className="as-board wb-panel wb-glass" data-testid="as-board-failed" role="alert"><p className="as-quiet">{L('This plan version could not be shown. The conversation and project are unaffected.', '无法显示此方案版本，对话和项目不受影响。')}</p><button className="wb-btn" onClick={retry}>{L('Try again', '重试')}</button></aside>}><PlanBoard api={assistant.api} assistant={assistant.assistant} stage={assistant.stage} waiting={status === 'initialized'} runId={runId} story={assistant.story} storyError={assistant.storyError}
-          startNs={store?.header.start.ns} terminal={TERMINAL.has(status ?? '')} initializing={initializing} canInitialize={!!project?.latest_version && boardVersion !== undefined} onInitialize={() => { if (boardVersion !== undefined) void initialize(boardVersion); }}
+          startNs={store?.header.start.ns} terminal={TERMINAL.has(status ?? '')} initializing={initializing} canInitialize={!!project?.latest_version} latestVersion={project?.latest_version?.version} onInitialize={version => void initialize(version)}
           onApplied={record => void applied(record)} onHover={assistant.setFocus} onStep={assistant.setFocus} onContract={type => update({ contract: 'assistant', type, workspace: project?.id })}
           onSeek={cut => session?.seekCut(cut)} viewing={assistant.viewing} onViewVersion={assistant.setViewing} onClose={assistant.closeBoard} /></Contained>
       : session && store && (leftOpen ? <ObjectsPanel store={store} revision={session.revision} selected={selected} selectionOrigin={selectionOrigin} onSelect={(key, fly) => select(key, fly)} onClose={() => setLeftOpen(false)} />

@@ -217,7 +217,7 @@ it.each(['en-US','zh-CN'])('T2-R2-003/T2-AS-015: Summarise sends the selected ru
 
 it('T2-R2-012: keeps What will I see after confirmation, with current locale context',async()=>{
   const agent=appliedAssistant();
-  board(agent,{stage:'configured',canInitialize:true});
+  board(agent,{stage:'configured',canInitialize:true,latestVersion:3});
   expect(screen.getByTestId('as-initialize')).toBeEnabled();
   const button=screen.getByTestId('as-what-to-watch');expect(button).toBeVisible();fireEvent.click(button);
   await waitFor(()=>expect(agent.send).toHaveBeenCalledWith('What should I watch for when I run it?',{locale:'en-US'}));

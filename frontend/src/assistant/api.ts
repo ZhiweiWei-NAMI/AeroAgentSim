@@ -107,6 +107,7 @@ export interface RegionPreview {
 export interface PlanPreview {
   scenario: Record<string, any>; name: string; demo_console?: Workspace['demo_console'];
   region?: Workspace['region']; scene?: Workspace['scene']; region_preview?: RegionPreview;
+  scene_source?: Workspace['scene_source']; preview?: Workspace['preview'];
 }
 
 export class AssistantApi {
@@ -126,5 +127,5 @@ export class AssistantApi {
   preview(id: string, version: number, signal?: AbortSignal) { return this.http.request<PlanPreview>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}/scenario`), { signal }); }
   choose(id: string, version: number) { return this.http.request<Session>(this.path(`/sessions/${encodeURIComponent(id)}/plans/${version}/choose`), { body: {} }); }
   apply(id: string, version: number) { return this.http.request<ApplyRecord>(this.path(`/sessions/${encodeURIComponent(id)}/apply`), { body: { plan_version: version } }); }
-  story(id: string, runId: string, signal?: AbortSignal) { return this.http.request<Story>(this.path(`/sessions/${encodeURIComponent(id)}/story/${encodeURIComponent(runId)}`), { signal }); }
+  story(id: string, runId: string, signal?: AbortSignal, locale?: string) { return this.http.request<Story>(this.path(`/sessions/${encodeURIComponent(id)}/story/${encodeURIComponent(runId)}${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`), { signal }); }
 }

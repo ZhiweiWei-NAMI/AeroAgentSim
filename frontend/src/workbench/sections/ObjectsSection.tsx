@@ -19,7 +19,7 @@ const WRITER_FIELD_HINT = (L: (en: string, zh: string) => string) => ({
   'aas.studio.state': L('written by the operations engine lifecycle', '由操作引擎的生命周期写入'),
 });
 
-export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L, onProject, onInspectContract, reportValidity, saveDraft }: SectionProps) {
+export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L, onProject, onInspectContract, reportValidity, saveDraft, goTo }: SectionProps) {
   const entities = (Array.isArray(draft.entities) ? draft.entities : []) as Array<Record<string, any>>;
   const [entityFilter, setEntityFilter] = useState('');
   const shownEntities = useMemo(() => entities.map((entity, index) => ({ entity, index })).filter(({ entity }) => !entityFilter || `${entity.id} ${entity.label ?? ''} ${entity.type}`.toLowerCase().includes(entityFilter.toLowerCase())), [entities, entityFilter]);
@@ -28,6 +28,11 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
   const [addingPlace, setAddingPlace] = useState(false);
   const [editingPlace, setEditingPlace] = useState<ComponentProps<typeof AddPlace>['editing']>();
   const [removing, setRemoving] = useState<string>();
+  useEffect(() => {
+    if (focus !== 'add-place') return;
+    setAddingPlace(true); setEditingPlace(undefined); setOpenEntity(undefined);
+    goTo?.('objects');
+  }, [focus]);
   // A jump to an instance clears the filter so the row is visible, and opens it.
   useEffect(() => { const match = /^\/entities\/(\d+)/.exec(focus ?? ''); if (match) { setEntityFilter(''); setOpenEntity(Number(match[1])); } }, [focus]);
   const generators = Object.values((draft.generators ?? {}) as Record<string, { count?: number }>);

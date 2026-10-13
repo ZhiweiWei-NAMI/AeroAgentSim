@@ -36,15 +36,15 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 function setup() { return render(<I18nProvider><MemoryRouter initialEntries={['/w/project?panel=assistant']}><Workbench /></MemoryRouter></I18nProvider>); }
 
-it('T2-R2-004: the assistant button initializes exactly its named v1 after Form saved v2', async () => {
+it('T2-R2-004: the assistant button names and initializes the latest server v2 after a Form save', async () => {
   setup();
   const button = await screen.findByTestId('as-initialize');
   await waitFor(() => expect(button).toBeEnabled());
-  expect(button).toHaveTextContent('Initialize version 1');
+  expect(button).toHaveTextContent('Initialize version 2');
   expect(screen.getByTestId('wb-init')).toHaveTextContent('Initialize v2');
   fireEvent.click(button);
-  await waitFor(() => expect(WorkbenchApi.prototype.initialize).toHaveBeenCalledWith('project', 1));
-  expect(await screen.findByText(/Initialized version 1\. The world is held/)).toBeVisible();
+  await waitFor(() => expect(WorkbenchApi.prototype.initialize).toHaveBeenCalledWith('project', 2));
+  expect(await screen.findByText(/Initialized version 2\. The world is held/)).toBeVisible();
 });
 
 it('the shell initializer names and requests the latest saved server version', async () => {

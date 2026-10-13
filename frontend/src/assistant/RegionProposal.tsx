@@ -11,7 +11,7 @@ const point=(value: unknown): number[]=>{
 
 /** Only source geometry is drawn. The compiled scene uses WGS84 polygons and ENU roads; C10 uses ENU throughout. */
 export function proposalGeography(preview: PlanPreview | undefined): Geography | undefined {
-  const source=preview?.region_preview, scene=preview?.scene;
+  const source=preview?.region_preview ?? (preview?.preview ? { ...preview.preview, bounds: preview.preview.bounds ?? preview.region?.bounds } : undefined), scene=preview?.scene;
   if(!source && !scene)return;
   if(source && (!source.geometry || typeof source.geometry.truncated!=='boolean' || !source.geometry.buildings))throw Error('Invalid source geometry');
   const origin=source?source.origin:scene!.origin, bounds=source?source.bounds:scene!.bounds;

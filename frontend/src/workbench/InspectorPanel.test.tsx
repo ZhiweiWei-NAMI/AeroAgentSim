@@ -31,9 +31,11 @@ it('reopens Operate for repeated requests and preserves manual tab switching bet
  view.rerender(<I18nProvider><InspectorPanel {...parameters} operateRequest={2} /></I18nProvider>);
  expect(screen.getByRole('tab', { name: '操作' })).toHaveAttribute('aria-selected', 'true');
 });
-it('shows the object identity once and gives the State tab directly to recorded fields', () => {
+it('shows the object identity once, with recorded fields under All fields on the State tab', () => {
  render(<I18nProvider><InspectorPanel {...props()} selected={vehicle} /></I18nProvider>);
  expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(1);
+ expect(screen.getByTestId('wb-all-fields')).not.toHaveAttribute('open');
+ fireEvent.click(screen.getByText('All fields', { selector: 'summary' }));
  expect(screen.getByRole('region', { name: 'Selected entity state' })).toBeVisible();
  expect(screen.queryByText('Selected entity')).not.toBeInTheDocument();
 });

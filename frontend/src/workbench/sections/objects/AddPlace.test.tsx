@@ -3,11 +3,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import { AddPlace } from './AddPlace';
 import type { PlaceEditing } from './model';
-import type { RegionMapProps } from '../space/RegionMap';
+import type { PlacePickerMapProps } from '../space/PlacePickerMap';
 
-vi.mock('../space/RegionMap', () => ({ RegionMap: ({ pick }: RegionMapProps) => <div>
-  <button onClick={() => pick?.onPick(80, -25, true)}>Map click</button>
-  <output aria-label="Map marker">{JSON.stringify(pick?.marker)}</output>
+vi.mock('../space/PlacePickerMap', async importOriginal => ({ ...await importOriginal<object>(), PlacePickerMap: ({ position, onPick }: PlacePickerMapProps) => <div>
+  <button onClick={() => onPick(80, -25, true)}>Map click</button>
+  <output aria-label="Map marker">{JSON.stringify(position)}</output>
 </div> }));
 afterEach(cleanup);
 const en = (text: string) => text, zh = (_en: string, text: string) => text;
@@ -94,8 +94,8 @@ it('keeps the current picker mounted after a click and follows typed coordinates
   });
   fireEvent.click(screen.getByRole('button', { name: 'Pick on map' }));
   fireEvent.click(screen.getByRole('button', { name: 'Map click' }));
-  expect(screen.getByLabelText('east (m)')).toHaveValue('80');
-  expect(screen.getByLabelText('north (m)')).toHaveValue('-25');
+  expect(screen.getByLabelText('east (m)')).toHaveValue('80.0');
+  expect(screen.getByLabelText('north (m)')).toHaveValue('-25.0');
   expect(screen.getByLabelText('up (m)')).toHaveValue('10');
   expect(screen.getByLabelText('Map marker')).toHaveTextContent('[80,-25]');
   fireEvent.change(screen.getByLabelText('east (m)'), { target: { value: '90' } });

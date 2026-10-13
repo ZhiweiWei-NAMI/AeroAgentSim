@@ -43,6 +43,7 @@ it.each(['zh-CN', 'en-US'] as const)('localizes event notices and admission expl
   const api = new RunsApi('http://api'), bodies: unknown[] = [], text = labels[locale];
   let receipt: unknown = { disposition: 'accepted', status: 'accepted', code: 'raw_ACCEPT' };
   vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
+    if (path.endsWith('/admissions')) return [];
     if (path.endsWith('/configuration')) return configuration();
     if (path.includes('/commits?')) return { status: 'running', commits: [], next: 8 };
     if (path.endsWith('/inputs')) return {status:'running',watermarks:{operator:0},pause_requested:false};
@@ -65,12 +66,14 @@ it.each(['zh-CN', 'en-US'] as const)('localizes event notices and admission expl
   const admission = screen.getByText(locale === 'zh-CN' ? '受理回执 · 2' : 'Admission receipts · 2').closest('details')!;
   fireEvent.click(within(admission).getAllByRole('button', { name: locale === 'zh-CN' ? /详\s*情/ : text.details })[1]);
   await waitFor(() => expect(screen.getByRole('dialog')).toBeVisible());
+  fireEvent.click(within(screen.getByRole('dialog')).getByText(locale === 'zh-CN' ? '原始记录' : 'Raw record', { selector: 'summary' }));
   expect(within(screen.getByRole('dialog')).getByText(/"code"\s*:\s*"raw_REJECT"/)).toBeVisible();
 });
 
 it('explains missing operator timing, localizes transport validation and keeps generated idempotency keys out of authored fields', async () => {
   const api = new RunsApi('http://api'), bodies: string[] = [];
   vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
+    if (path.endsWith('/admissions')) return [];
     if (path.endsWith('/configuration')) return { scenario: { id: 'external', behaviours: [{ document: { injection_points: [point] } }] } };
     if (path.includes('/commits?')) return { status: 'running', commits: [], next: 8 };
     if (path.endsWith('/inputs')) return {status:'running',watermarks:{operator:0},pause_requested:false};
@@ -145,6 +148,7 @@ it.each(['zh-CN', 'en-US'] as const)('leaves simulation control to the top bar a
 it('locks duplicate submissions and rechecks real run status before admitting events', async () => {
   const api = new RunsApi('http://api'); let status = 'running', finish!: (value: unknown) => void;
   const request = vi.spyOn(api, 'request').mockImplementation(async path => {
+    if (path.endsWith('/admissions')) return [];
     if (path.endsWith('/configuration')) return configuration();
     if (path.includes('/commits?')) return { status };
     if (path.endsWith('/inputs')) return { status, watermarks: { operator: 0 }, pause_requested: false };

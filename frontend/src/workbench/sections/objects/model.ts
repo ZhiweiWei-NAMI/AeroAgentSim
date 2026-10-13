@@ -15,6 +15,9 @@ export type Card = { minimum: number; maximum: number | null };
 export type RelationRow = {
   id: string; source_type: string; target_type: string;
   targets_per_source: Card; sources_per_target: Card; identity_policy?: string; metadata?: unknown;
+  valid_writers?: string[];
+  writer_options?: Array<{ writer: string; engine_id: string; plugin: string }>;
+  binding_kind?: string;
 };
 export type PlacementKind = 'entity' | 'facility' | 'airspace';
 export type CatalogType = TypeRow & { kind?: PlacementKind; engine?: 'kinematic' | 'workflow' };

@@ -31,6 +31,11 @@ export interface Workspace {
   demo_console?: {capture_mode:string;city_available:boolean;scene?:import('../scene/presentation').ScenePresentation};
   id: string; name: string; scenario: Scenario; scene?: CityScene; registry_catalog?:{types:TypeRow[];fields:Array<Record<string,any>&{id:string}>;schemas:Record<string,any>};
   region?: { extract: string; bounds: number[]; alt: number; level_height_m: number };
+  scene_source?: { kind: string; extract?: string; attribution?: string; [key: string]: unknown };
+  preview?: { origin: { lat: number; lon: number; alt: number }; bounds?: number[];
+    geometry: { buildings: { type: string; features: any[] }; roads: Array<{ id: string; points: number[][] }>; truncated: boolean }; [key: string]: unknown };
+  /** Compiled proposal geometry is local to this preview, not the saved workspace endpoint. */
+  proposal?: boolean;
   network_state?: 'none' | 'generated' | 'stale';
   validation?: { revision?: number; scope?: string; valid: boolean; errors: string[]; issues?:Array<{source:string;path:string;message:string}> };
 }

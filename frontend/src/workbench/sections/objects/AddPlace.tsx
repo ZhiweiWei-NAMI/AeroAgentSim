@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { operation } from '../operations';
 import type { Project, WorkbenchApi } from '../../api';
 import type { Scenario } from '../types';
 import { ID_PATTERN, nextRoleId, num, PLACE_ROLES, placeRoleOf, strictVector3, type PlaceEditing, type PlaceRole } from './model';
 import { OperationDiff, operationText, useOperationsReview } from './Operations';
-import { RegionMap, type RegionMapGeometry } from '../space/RegionMap';
-import { readRegion } from '../space/model';
+import { PlacePickerMap, canPickOnMap } from '../space/PlacePickerMap';
 
 type PositionMode = 'centre' | 'facility' | 'enu';
 
@@ -63,11 +62,9 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
   const review = useOperationsReview(api, project, [operation(isUpdate ? 'update_place' : 'add_place', params)]);
   const apply = async () => { if (!canPreview) return; const updated = await review.apply(); if (updated) { onProject(updated); onClose(); } };
 
-  const region = useMemo(() => readRegion(project_detail as never), [project_detail]);
-  const mapOrigin = region?.scene?.origin ?? null;
-  const mapGeometry: RegionMapGeometry | null = mapOrigin ? { origin: mapOrigin } : null;
-  const canPick = !!mapOrigin && !!region?.region;
-  const marker: [number, number] | null = mode === 'enu' && numbers[0] !== undefined && numbers[1] !== undefined ? [numbers[0], numbers[1]] : null;
+  const workspace = project_detail ?? project;
+  const canPick = canPickOnMap(workspace);
+  const marker: [number, number] | null = numbers[0] !== undefined && numbers[1] !== undefined ? [numbers[0], numbers[1]] : null;
 
   return <div className="wb-object-form" data-testid="wb-add-place">
     <h4>{isUpdate ? L('Edit place', '编辑设施') : L('Add place', '添加设施')}</h4>
@@ -101,13 +98,11 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
     </div>
     {positionInvalid && (touched.has('position') || isUpdate) && <p className="wb-field-error" role="alert">{L('Enter three finite numbers for the position.', '请输入三个有限数值作为位置。')}</p>}
     {startInvalid && touched.has('facility') && <p className="wb-field-error" role="alert">{L('Choose an existing facility.', '请选择已有设施。')}</p>}
-    <button type="button" className="wb-btn small" aria-expanded={picking} aria-pressed={picking} disabled={!canPick} onClick={() => setPicking(previous => !previous)}>
+    <button type="button" className="wb-btn small" aria-expanded={picking} aria-pressed={picking} disabled={!canPick} onClick={() => { if (!picking) { setMode('enu'); mark('position'); } setPicking(previous => !previous); }}>
       {picking ? L('Close pick on map', '关闭地图选点') : L('Pick on map', '地图选点')}</button>
     {!canPick && <p className="hint">{L('Apply a region in Scene & space to pick a position on the map.', '在“场景与空间”应用区域后即可在地图上选点。')}</p>}
-    {/* TODO R2-MAP: replace this RegionMap mount with the exported PlacePickerMap; pass project, draft, marker and onPick. */}
-    {picking && canPick && <RegionMap L={L} height={260} basemap={null} coverage={region?.region?.bounds ?? null} geometry={mapGeometry}
-      pick={{ marker, onPick: (pickedEast, pickedNorth) => { setMode('enu'); setEast(String(pickedEast)); setNorth(String(pickedNorth)); mark('position'); } }}
-      outsideWarning={L('Outside the applied region.', '超出已应用区域。')} />}
+    {picking && <PlacePickerMap api={api} workspace={workspace} draft={draft} L={L} position={marker}
+      onPick={(pickedEast, pickedNorth) => { setMode('enu'); setEast(pickedEast.toFixed(1)); setNorth(pickedNorth.toFixed(1)); mark('position'); }} />}
     <div className="wb-add-grid">
       {hasCapacity && <label className="wb-field"><span>{L('capacity (parallel slots)', '容量（并行位）')}</span><input inputMode="numeric" value={capacity} aria-invalid={touched.has('capacity') && capacityInvalid}
         onChange={event => { setCapacity(event.target.value); mark('capacity'); }} /></label>}

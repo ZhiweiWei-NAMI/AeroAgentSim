@@ -114,13 +114,13 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
     const abort = new AbortController();
     let timer = 0;
     const load = async () => {
-      try { const value = await api.story(sessionId, runId, abort.signal); if (!abort.signal.aborted) { setStory(value); setStoryError(undefined); } }
+      try { const value = await api.story(sessionId, runId, abort.signal, locale); if (!abort.signal.aborted) { setStory(value); setStoryError(undefined); } }
       catch (problem) { if (!abort.signal.aborted) setStoryError(problemText(problem)); }
       if (!abort.signal.aborted && !terminal) timer = window.setTimeout(load, 4000);
     };
     void load();
     return () => { abort.abort(); clearTimeout(timer); };
-  }, [api, live, sessionId, runId, stage, terminal]);
+  }, [api, live, sessionId, runId, stage, terminal, locale]);
 
   // Form ↔ Conversation: both panels stay mounted while the rewire plays.
   const lastSection = useRef('controls');

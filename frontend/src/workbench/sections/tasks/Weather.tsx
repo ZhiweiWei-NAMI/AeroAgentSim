@@ -11,7 +11,7 @@ interface Props extends FormNavigation {
 }
 
 /** The weather operations affect all configured wind profiles; the review lists their actual changes. */
-export function WeatherBlock({ environmentName: _name, environment, draft, edit: _edit, focus: _focus, L, api, project, onProject, saveDraft, zh, onSection }: Props) {
+export function WeatherBlock({ environmentName: _name, environment, draft, edit: _edit, focus: _focus, L, api, project, onProject, saveDraft, zh, goTo }: Props) {
   const slots = useMemo(() => Object.entries((environment.config?.profiles ?? {}) as Record<string, Draft>).flatMap(([entity, profile]) =>
     Object.entries(profile).filter(([key]) => key === 'lowalt.wind' || key === 'oo:digital_twin.wind.horizontalVelocity')
       .map(([key, wind]) => ({ entity, key, wind: wind as Draft }))), [canonicalJson(environment.config?.profiles)]);
@@ -51,7 +51,7 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
       <OpApply {...opProps} operations={windOperations} label={L('Preview', '预览')} primary small onApplied={() => setBackground(undefined)} />
     </fieldset>
     <fieldset className="wb-form-stack wb-gust-add"><legend>{L('Add gust', '添加阵风')}</legend>
-      {(missingDuration || shortDuration) && <Prerequisite onSection={onSection} section="run" action={L('Run & recording', '运行与记录')}>
+      {(missingDuration || shortDuration) && <Prerequisite goTo={goTo} section="run" action={L('Run & recording', '运行与记录')}>
         {missingDuration ? L('Set a run duration in Run & recording.', '请在“运行与记录”中设置运行时长。')
           : L(`Run duration is ${duration_s} s — lengthen it on Run & recording.`, `运行时长为 ${duration_s} 秒——请在“运行与记录”中延长。`)}
       </Prerequisite>}
@@ -68,9 +68,11 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
           : wind.gusts.map((entry: Draft, index: number) => <div key={index} className="wb-gust-row">
             <span className="wb-tag wb-mono">{nsToS(entry.start_ns) ?? '—'}–{nsToS(entry.end_ns) ?? '—'} s</span>
             <span className="wb-tag">{windSpeed(Array.isArray(entry.value?.[0]) ? entry.value[0] : entry.value) ?? '—'} m/s</span>
+            <OpApply {...opProps} operations={nsToS(entry.start_ns) === undefined ? undefined : [operation('remove_gust', { start_s: nsToS(entry.start_ns) })]}
+              label={L('Remove', '移除')} danger small
+              summary={<p className="hint">{L(`Remove the gust starting at ${nsToS(entry.start_ns)} s from matching wind profiles.`, `从匹配的风场中移除 ${nsToS(entry.start_ns)} 秒开始的阵风。`)}</p>} />
           </div>)}
       </div>)}
-      <Prerequisite onSection={onSection} section="file" action={L('File (YAML)', '文件（YAML）')}>{L('Edit existing gusts in File (YAML).', '请在“文件”（YAML）中编辑已有阵风。')}</Prerequisite>
     </details>
   </div>;
 }

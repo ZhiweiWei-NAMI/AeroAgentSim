@@ -18,6 +18,19 @@ function setup(draft: Record<string, unknown>) {
   return render(<I18nProvider><ObjectsSection {...({ ...base, draft } as SectionProps)} /></I18nProvider>);
 }
 
+it('opens Add place for prerequisite navigation and consumes the focus once', () => {
+  const goTo = vi.fn();
+  const props = { ...base, draft: { entities: [] }, focus: 'add-place', goTo };
+  const view = render(<I18nProvider><ObjectsSection {...props} /></I18nProvider>);
+  expect(screen.getByTestId('wb-add-place')).toBeVisible();
+  expect(goTo).toHaveBeenCalledWith('objects');
+  view.rerender(<I18nProvider><ObjectsSection {...props} focus={undefined} /></I18nProvider>);
+  fireEvent.click(within(screen.getByTestId('wb-add-place')).getByRole('button', { name: 'Close' }));
+  view.rerender(<I18nProvider><ObjectsSection {...props} focus={undefined} /></I18nProvider>);
+  expect(screen.queryByTestId('wb-add-place')).toBeNull();
+  expect(goTo).toHaveBeenCalledTimes(1);
+});
+
 it('opens with the low-altitude install flow when capabilities.lowalt is false (T4-11)', () => {
   render(<I18nProvider><ObjectsSection {...({ ...base, project: { id: 'w', revision: 1 }, draft: {} } as SectionProps)} /></I18nProvider>);
   expect(screen.getByText(/Start with standard low-altitude components/)).toBeTruthy();

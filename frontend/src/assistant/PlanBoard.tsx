@@ -30,7 +30,7 @@ type Tab = 'scene' | 'interactions' | 'changes' | 'story';
 type PlanBoardProps = {
   api: AssistantApi; assistant: AssistantSession; stage: Stage; waiting?: boolean; runId?: string;
   story?: Story; storyError?: string; startNs?: string; terminal: boolean;
-  initializing: boolean; canInitialize: boolean; onInitialize: () => void; onApplied: (record: ApplyRecord) => void;
+  initializing: boolean; canInitialize: boolean; latestVersion?: number; onInitialize: (version: number) => void; onApplied: (record: ApplyRecord) => void;
   onHover: (ids: string[]) => void; onStep: (ids: string[]) => void; onContract: (type: string) => void; onSeek: (cut: number) => void;
   viewing?: number; onViewVersion: (version: number | undefined) => void; onClose: () => void;
 };
@@ -45,7 +45,7 @@ export function PlanBoard(props: PlanBoardProps) {
   </aside>}><PlanBoardBody {...props}/></Contained>;
 }
 
-function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, storyError, startNs, terminal, initializing, canInitialize, onInitialize, onApplied, onHover, onStep, onContract, onSeek, viewing, onViewVersion, onClose }: PlanBoardProps) {
+function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, storyError, startNs, terminal, initializing, canInitialize, latestVersion, onInitialize, onApplied, onHover, onStep, onContract, onSeek, viewing, onViewVersion, onClose }: PlanBoardProps) {
   const { locale } = useI18n(), zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const { session, plan: latest, busy, applied } = assistant;
   const [older, setOlder] = useState<PlanVersion>();
@@ -97,8 +97,9 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
   // plan is labelled applied/superseded, never resurrected as an open draft.
   const shownStage: Stage = appliedShown ? (stage === 'running' ? 'running' : 'configured') : isOld ? 'proposed' : stage;
   const rows = session.plan_versions;
-  const initializeVersion=assistant.draftState?.latestVersion ?? appliedForPlan?.version ?? applied?.version;
-  const initializeAllowed=canInitialize && !assistant.draftState?.dirty && !loadingVersion && !versionError;
+  const initializeVersion=latestVersion ?? assistant.draftState?.latestVersion;
+  const initializeAllowed=canInitialize && initializeVersion !== undefined && !assistant.draftState?.dirty && !loadingVersion && !versionError;
+  const initialize = () => { if (initializeAllowed && !initializing) onInitialize(initializeVersion!); };
 
   return <aside className={`as-board wb-panel wb-glass is-${shownStage}${isOld ? ' is-old' : ''}`} data-testid="as-plan-board" data-stage={shownStage} aria-label={L('Plan board', '方案面板')}>
     <i className="as-board-scan" key={`scan-${plan.version}`} aria-hidden />
@@ -202,7 +203,7 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
           {shownStage === 'configured' ? <div className="as-foot-actions">
             <span className="as-quiet">{supersededBy ? L(`A later version (${supersededBy.version}) is what the project runs now.`, `项目现在使用的是更新的版本（${supersededBy.version}）。`) : L('Already applied to the project. Nothing more to confirm.', '已应用到项目。无需再次确认。')}</span>
             <button className="wb-btn" disabled={busy} onClick={()=>ask(L('What should I watch for when I run it?','运行时我应该关注什么？'))} data-testid="as-what-to-watch"><Icon name="eye" size={13}/>{L('What will I see?','我会看到什么？')}</button>
-            {!supersededBy && <button className="wb-btn primary" disabled={!initializeAllowed || initializing} onClick={onInitialize} data-testid="as-initialize"><Icon name="play" size={12} />{initializing ? L('Initializing…', '初始化中…') : L(`Initialize version ${initializeVersion ?? ''}`, `初始化版本 ${initializeVersion ?? ''}`)}</button>}
+            {!supersededBy && <button className="wb-btn primary" disabled={!initializeAllowed || initializing} onClick={initialize} data-testid="as-initialize"><Icon name="play" size={12} />{initializing ? L('Initializing…', '初始化中…') : L(`Initialize version ${initializeVersion ?? ''}`, `初始化版本 ${initializeVersion ?? ''}`)}</button>}
             {!supersededBy && !initializeAllowed && <span className="hint">{assistant.draftState?.dirty?L('Validate and save the changed draft as a version before initializing.','请先校验修改后的草稿并保存版本，再初始化。'):L('Save a valid version before initializing.','请先保存有效版本，再初始化。')} <a className="wb-btn small ghost" href={sectionHref('controls')}>{L('Open Configure','打开配置')}</a></span>}
           </div> : <div className="as-foot-actions">
             <span className="as-quiet">{terminal ? L('Ask about anything that surprised you.', '对结果有疑问可以直接问。') : L('The story updates as events are recorded.', '记录到事件后经过会更新。')}</span>
@@ -226,7 +227,7 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
         </>
         : stage === 'configured' ? <div className="as-foot-actions">
           <button className="wb-btn" disabled={busy} onClick={() => ask(L('What should I watch for when I run it?', '运行时我应该关注什么？'))} data-testid="as-what-to-watch"><Icon name="eye" size={13} />{L('What will I see?', '我会看到什么？')}</button>
-          <button className="wb-btn primary" disabled={!initializeAllowed || initializing} onClick={onInitialize} data-testid="as-initialize"><Icon name="play" size={12} />{initializing ? L('Initializing…', '初始化中…') : L(`Initialize version ${initializeVersion ?? ''}`, `初始化版本 ${initializeVersion ?? ''}`)}</button>
+          <button className="wb-btn primary" disabled={!initializeAllowed || initializing} onClick={initialize} data-testid="as-initialize"><Icon name="play" size={12} />{initializing ? L('Initializing…', '初始化中…') : L(`Initialize version ${initializeVersion ?? ''}`, `初始化版本 ${initializeVersion ?? ''}`)}</button>
         </div>
         : <div className="as-foot-actions">
           <span className="as-quiet">{terminal ? L('Ask about anything that surprised you.', '对结果有疑问可以直接问。') : L('The story updates as events are recorded.', '记录到事件后经过会更新。')}</span>

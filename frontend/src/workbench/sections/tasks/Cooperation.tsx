@@ -19,7 +19,7 @@ const text = (value: unknown, absentDefault: string) => value === undefined ? ab
 export function CooperationEditor({ config, engineName, draft, edit: _edit, focus, replaceDraft: _replaceDraft, ...props }: {
   config: Draft; engineName: string; draft: SectionProps['draft']; edit: SectionProps['edit']; focus?: string; replaceDraft: SectionProps['replaceDraft'];
 } & Pick<SectionProps, 'api' | 'project' | 'onProject' | 'saveDraft' | 'zh' | 'L'> & FormNavigation) {
-  const { L, zh, onSection } = props;
+  const { L, zh, goTo } = props;
   const base = pointer('engines', engineName, 'config', 'cooperation');
   const coop = config.cooperation as Draft | undefined;
   const vehicles = vehicleIds(draft), handoffs = handoffPointIds(draft, coop);
@@ -78,7 +78,7 @@ export function CooperationEditor({ config, engineName, draft, edit: _edit, focu
   return <div className="wb-coop wb-form-section" data-path={base}>
     <p className="hint">{L('Assign who notices an incident, who decides the response, and who helps at a handoff point.', '指派事件观察者、响应决策者，以及在交接点提供帮助的无人机。')}</p>
     <div className="wb-form-stack">
-      {!vehicles.length && <Prerequisite onSection={onSection} section="objects" action={L('Add fleet', '添加机群')}>{L('No UAVs yet — add a fleet in Objects.', '还没有无人机——请在“对象”中添加机群。')}</Prerequisite>}
+      {!vehicles.length && <Prerequisite goTo={goTo} section="objects" action={L('Add fleet', '添加机群')}>{L('No UAVs yet — add a fleet in Objects.', '还没有无人机——请在“对象”中添加机群。')}</Prerequisite>}
       {multi('watchers', L('Watcher vehicles', '观察者无人机'), vehicles)}
       <StagedNumber label={`${L('Notice radius', '发现半径')} (m)`} value={fields.radius} exclusiveMin={0} disabled={!fields.watchers.length} onChange={value => set('radius', value)} />
       {mode('responderMode', L('Response mode', '响应模式'))}
@@ -94,7 +94,7 @@ export function CooperationEditor({ config, engineName, draft, edit: _edit, focu
         </select>
       </label>
       {multi('handoffs', L('Handoff points', '交接点'), handoffs)}
-      {!handoffs.length && <Prerequisite onSection={onSection} section="objects:add-place" action={L('Add handoff point', '添加交接点')}>{L('No handoff-point places yet — add one in Objects → Add place.', '还没有交接点设施——请在“对象”→“添加设施”中添加。')}</Prerequisite>}
+      {!handoffs.length && <Prerequisite goTo={goTo} section="objects" focus="add-place" action={L('Add handoff point', '添加交接点')}>{L('No handoff-point places yet — add one in Objects → Add place.', '还没有交接点设施——请在“对象”→“添加设施”中添加。')}</Prerequisite>}
       <OpApply {...props} operations={operations} missing={missing} label={L('Preview', '预览')} primary small onApplied={() => setChanges({})} />
     </div>
     {coop && <>

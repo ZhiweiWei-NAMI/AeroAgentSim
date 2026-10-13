@@ -37,13 +37,25 @@ function kindLabel(kind: string | undefined, L: Localize) {
     behaviour: ['Behaviour', '行为'], generator: ['Generator', '生成器'], other: ['Reference', '引用'],
     workload: ['Orders', '订单'], task: ['Task', '任务'], event: ['Event', '事件'],
     region: ['Region', '区域'], environment: ['Environment', '环境'], algorithm: ['Algorithm', '算法'],
-    scene: ['Scene', '场景'], network: ['Road network', '道路网络'], rule: ['Rule', '规则'],
+    scene: ['Scene', '场景'], network: ['Road network', '道路网络'], rule: ['Rule', '规则'], run: ['Run settings', '运行设置'],
   };
   const pair = kind && labels[kind];
   return pair ? L(...pair) : kind ?? '—';
 }
 
 function rowLabel(row: DiffRow, L: Localize) {
+  if (!row.label_zh && row.label) {
+    const gust = /^Wind gust: (.+) m\/s$/.exec(row.label);
+    if (gust) return L(row.label, `阵风：${gust[1]} m/s`);
+    const labels: Record<string, string> = {
+      'parcel order': '包裹订单', 'meal order': '餐食订单', 'urgent medical order': '紧急医疗订单',
+      'inspection job': '巡检任务', 'survey job': '测绘任务', 'spraying job': '喷洒任务',
+      'passenger trip': '乘客行程', 'patrol round': '巡逻任务', 'incident response': '事件响应',
+      'Person fell on the street': '行人在街道跌倒', 'Person falls': '行人跌倒',
+      'Battery reserve': '预留电量', 'Safety distance': '安全间隔', 'Wind limit': '风速上限', 'Medical preemption': '医疗任务抢占',
+    };
+    if (labels[row.label]) return L(row.label, labels[row.label]);
+  }
   return operationText(L(row.label ?? row.id ?? '—', row.label_zh ?? row.label ?? row.id ?? '—'), L);
 }
 
@@ -57,7 +69,7 @@ export function OperationDiff({ diff, notes = [], stale = false, L, entities }: 
     { key: 'changed', rows: changes.changed, sign: '~', title: L('Changed', '修改') },
     { key: 'removed', rows: changes.removed, sign: '−', title: L('Removed', '移除') },
   ];
-  return <div className="wb-operation-diff" role="status" aria-label={L('Review changes', '查看变更')}>
+  return <div className="wb-operation-diff" role="group" aria-label={L('Review changes', '查看变更')}>
     {stale && <p className="hint wb-preview-stale">{L('Inputs or draft changed — preview again before applying.', '输入或草稿已变化，请重新预览后再应用。')}</p>}
     {groups.map(group => <section key={group.key} aria-label={group.title}>
       <h5>{group.title} <span className="wb-tag">{group.rows.length}</span></h5>

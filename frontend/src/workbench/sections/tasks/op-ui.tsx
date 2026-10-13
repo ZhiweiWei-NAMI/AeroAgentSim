@@ -1,80 +1,26 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { Project, WorkbenchApi } from '../../api';
-import { applyOperations, operationFreshnessKey, operationProblem, operationText, previewOperations, type DiffRow, type Operation, type OperationPreview } from '../operations';
+import { applyOperations, operationFreshnessKey, operationProblem, operationText, previewOperations, type Operation, type OperationPreview } from '../operations';
+import { OperationDiff } from '../objects/Operations';
+import type { SectionProps } from '../types';
 import '../tasks.css';
 
 export function problemMessage(problem: unknown, zh = false): string {
   return operationText(operationProblem(problem).message, zh);
 }
 
-export interface FormNavigation { onSection?: (section: string) => void }
+export type FormNavigation = Pick<SectionProps, 'goTo'>;
 
-export function Prerequisite({ children, section, action, onSection }: FormNavigation & { children: ReactNode; section: string; action: string }) {
+export function Prerequisite({ children, section, focus, action, goTo }: FormNavigation & { children: ReactNode; section: Parameters<NonNullable<SectionProps['goTo']>>[0]; focus?: string; action: string }) {
   return <p className="hint wb-form-prerequisite" role="note">
-    {children}{onSection && <button type="button" className="wb-btn small" onClick={() => onSection(section)}>{action}</button>}
+    {children}{goTo && <button type="button" className="wb-btn small" onClick={() => goTo(section, focus)}>{action}</button>}
   </p>;
 }
 
-const format = (value: unknown) => value === undefined ? '—' : typeof value === 'string' ? value : JSON.stringify(value);
-const KIND_LABELS: Record<string, [string, string]> = {
-  components: ['Components', '组件'], place: ['Place', '设施'], fleet: ['Fleet', '机群'],
-  workload: ['Order stream', '订单流'], event: ['Event', '事件'], rule: ['Rule', '规则'],
-  scene: ['Scene', '场景'], network: ['Road network', '路网'], run: ['Run settings', '运行设置'],
-};
-const LABELS: Record<string, [string, string]> = {
-  'parcel order': ['Parcel order', '包裹订单'], 'meal order': ['Meal order', '餐食订单'],
-  'urgent medical order': ['Urgent medical order', '紧急医疗订单'], 'inspection job': ['Inspection job', '巡检任务'],
-  'survey job': ['Survey job', '测绘任务'], 'spraying job': ['Spraying job', '喷洒任务'],
-  'passenger trip': ['Passenger trip', '乘客行程'], 'patrol round': ['Patrol round', '巡逻任务'],
-  'incident response': ['Incident response', '事件响应'],
-  'Person fell on the street': ['Person fell on the street', '行人在街道跌倒'],
-  'Person falls': ['Person falls', '行人跌倒'],
-  'Battery reserve': ['Battery reserve', '预留电量'], 'Safety distance': ['Safety distance', '安全间隔'],
-  'Wind limit': ['Wind limit', '风速上限'], 'Medical preemption': ['Medical preemption', '医疗任务抢占'],
-};
-
-function rowLabel(row: DiffRow, zh: boolean, L: (en: string, cn: string) => string): string {
-  if (zh && row.label_zh) return row.label_zh;
-  if (row.label) {
-    const known = LABELS[row.label];
-    if (known) return L(...known);
-    const gust = /^Wind gust: (.+) m\/s$/.exec(row.label);
-    if (gust) return L(`Wind gust: ${gust[1]} m/s`, `阵风：${gust[1]} m/s`);
-    return operationText(row.label, zh);
-  }
-  return '';
-}
-
-/** A single semantic list for every operation review, including destructive changes. */
-export function DiffPreview({ preview, L, zh }: { preview: OperationPreview; L: (en: string, cn: string) => string; zh: boolean }) {
-  const groups = [
-    { key: 'added' as const, sign: '+', title: L('Added', '新增') },
-    { key: 'changed' as const, sign: '~', title: L('Changed', '修改') },
-    { key: 'removed' as const, sign: '−', title: L('Removed', '移除') },
-  ];
-  return <div className="wb-operation-diff">{groups.map(group => {
-    const rows = preview.diff[group.key];
-    if (!rows.length) return null;
-    return <div key={group.key}>
-      <p className="hint"><b>{group.title}</b> · {rows.length}</p>
-      <ul className="wb-diff-list">
-        {rows.map((row, index) => <li key={index}>
-          <span aria-hidden>{group.sign}</span>{' '}
-          {row.kind && <span>{KIND_LABELS[row.kind] ? L(...KIND_LABELS[row.kind]) : row.kind}</span>}{' '}
-          {row.id && <span className="wb-mono">{row.id}</span>}{' '}{rowLabel(row, zh, L)}
-          {row.fields?.length ? <ul className="wb-diff-fields">{row.fields.map((field, fieldIndex) => <li key={fieldIndex}>
-            <span className="wb-mono">{field.name}</span>: {format(field.before)} → {format(field.after)}
-          </li>)}</ul> : null}
-        </li>)}
-      </ul>
-    </div>;
-  })}
-  {preview.notes.map((note, index) => {
-    const text = typeof note === 'string' ? operationText(note, zh)
-      : zh ? note.zh ?? operationText(note.text ?? note.en ?? '', true) : note.en ?? operationText(note.text ?? note.zh ?? '', false);
-    return <p key={index} className="hint wb-preview-note">{text}</p>;
-  })}</div>;
+/** Every form uses the same grouped review, including member deltas and removals. */
+export function DiffPreview({ preview, L }: { preview: OperationPreview; L: (en: string, cn: string) => string; zh: boolean }) {
+  return <OperationDiff {...preview} L={L} />;
 }
 
 export interface OpApplyProps {

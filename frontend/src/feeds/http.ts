@@ -1,11 +1,17 @@
 import { parseLosslessJson } from './lossless-json';
 import { validateBusinessEvents, validateKpiValues } from '../newcomers/validation';
-import type { FeedCommit, RunHeader, ViewerFeed } from '../contracts/viewer-feed';
+import type { FeedCommit, Instant, RunHeader, ViewerFeed } from '../contracts/viewer-feed';
 
 export interface WaitingContext { stream_ids: string[]; at_ns: string }
 export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string; studio_workspace?: string; studio_revision?: number; workspace_name?: string; configuration_digest?: string; waiting?: WaitingContext; template_id?:string; template_title?:string; template_title_zh?:string; knobs?:Record<string,string|number|boolean>; algorithms?:Record<string,string>; kpis?:import('../newcomers/api').KpiValues; /** False while KPIs/Story are still aggregating after a terminal status; absent on older servers. */ results_final?: boolean }
 /** One journaled ingress admission: survives a page refresh, unlike the in-memory POST receipt. */
-export interface AdmissionReceipt { id: string; submitted_at?: string; target_cut?: number | null; kind?: string; status: string; detail?: string }
+export interface AdmissionReceipt {
+  id: string; status: string; submitted_at?: Instant | string; requested_at?: Instant;
+  target_cut?: number | null; kind?: string; detail?: string;
+  execution_cut?: number; execution_status?: string; execution_result?: unknown;
+  command_id?: string; idempotency_key?: string; target?: unknown;
+  [key: string]: unknown;
+}
 export interface CommitPage { commits: FeedCommit[]; next: number; status: string; waiting?: WaitingContext }
 type ObjectValue = Record<string, unknown>;
 // Waiting on live operator watermark progress is a normal live-run state, not a failure.
@@ -169,21 +175,20 @@ export class RunsApi {
   async control(id: string, action: 'pause' | 'resume' | 'stop'): Promise<void> {
     await this.request(`/v1/runs/${encodeURIComponent(id)}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   }
-  /** Journaled ingress admissions (C7); a 404 on older servers yields no receipts, not an error. */
+  /** Journaled admission and execution evidence, preserving instants and portable results. */
   async admissions(id: string, signal?: AbortSignal): Promise<AdmissionReceipt[]> {
-    try {
-      const rows = array(await this.request(`/v1/runs/${encodeURIComponent(id)}/admissions`, { signal }));
-      return rows.flatMap(item => {
-        const row = object(item);
-        if (typeof row.id !== 'string' || typeof row.status !== 'string') return [];
-        return [{ id: row.id, status: row.status, submitted_at: typeof row.submitted_at === 'string' ? row.submitted_at : undefined,
-          target_cut: typeof row.target_cut === 'number' ? row.target_cut : null, kind: typeof row.kind === 'string' ? row.kind : undefined,
-          detail: typeof row.detail === 'string' ? row.detail : undefined }] as AdmissionReceipt[];
-      });
-    } catch (problem) {
-      if (/HTTP 40[45]/.test(String(problem))) return [];
-      throw problem;
+    const rows = array(await this.request(`/v1/runs/${encodeURIComponent(id)}/admissions`, { signal }));
+    for (const item of rows) {
+      const row = object(item);
+      string(row.id); string(row.status);
+      if (row.submitted_at !== undefined && typeof row.submitted_at !== 'string') instant(row.submitted_at);
+      if (row.requested_at !== undefined) instant(row.requested_at);
+      if (row.target_cut !== undefined && row.target_cut !== null) counter(row.target_cut);
+      if (row.execution_cut !== undefined) counter(row.execution_cut);
+      for (const key of ['kind', 'detail', 'execution_status', 'command_id', 'idempotency_key']) if (row[key] !== undefined) string(row[key]);
+      if (row.execution_result !== undefined) portable(row.execution_result);
     }
+    return rows as AdmissionReceipt[];
   }
 }
 

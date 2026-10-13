@@ -5,6 +5,7 @@ import { OrderStreams } from './OrderStreams';
 import { CooperationEditor } from './Cooperation';
 import { WeatherBlock } from './Weather';
 import { ComponentsSection } from '../ComponentsSection';
+import { TasksSection } from '../TasksSection';
 import type { Operation, OperationPreview } from '../operations';
 import type { Project } from '../../api';
 
@@ -38,6 +39,26 @@ const draft = {
 const stream = { id: 'parcels', kind: 'parcel', tasks: ['parcels-1'], origins: ['kitchen-1'], destinations: ['customer-1'], arrivals: { mode: 'poisson', rate_per_s: 0.08, start_ns: 1_500_000_000, end_ns: 180_000_000_000 }, priority: 1, payload_kg: 1 };
 const config = { generators: [stream] };
 const environment = { config: { profiles: { weather: { 'lowalt.wind': { mode: 'constant', value: [0, 0, 0] } } } } };
+
+it('forwards section navigation into task prerequisites', () => {
+  const goTo = vi.fn();
+  render(<I18nProvider><TasksSection {...sectionProps} goTo={goTo} draft={{ ...draft, entities: [], engines: { tasks: { plugin: 'lowalt_tasks', config: { generators: [] } } } }} /></I18nProvider>);
+  fireEvent.click(screen.getByRole('button', { name: 'Add place' }));
+  expect(goTo).toHaveBeenCalledWith('objects', 'add-place');
+});
+
+it('reviews gust removal before confirming and sends the reviewed selector', async () => {
+  const configured = { config: { profiles: { weather: { 'lowalt.wind': { mode: 'gust', value: [0, 0, 0], gusts: [{ start_ns: 20_000_000_000, end_ns: 25_000_000_000, value: [9, 0, 0] }] } } } } };
+  previewOperations.mockResolvedValueOnce({ diff: { added: [], changed: [], removed: [{ kind: 'event', id: 'wind-gust-20000000000', label: 'Wind gust: 9 m/s' }] }, notes: [] });
+  render(weather({ environment: configured }));
+  fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+  const confirm = await screen.findByRole('button', { name: 'Confirm' });
+  expect(screen.getByRole('region', { name: 'Removed' })).toHaveTextContent('Wind gust: 9 m/s');
+  expect(applyOperations).not.toHaveBeenCalled();
+  fireEvent.click(confirm);
+  await waitFor(() => expect(applyOperations).toHaveBeenCalled());
+  expect(applyOperations.mock.calls[0][2][0]).toMatchObject({ op: 'remove_gust', params: { start_s: 20 } });
+});
 beforeEach(() => {
   window.localStorage.setItem('aeroagentsim.locale', 'en-US');
   edit.mockClear(); replaceDraft.mockClear(); onProject.mockClear(); saveDraft.mockClear(); previewOperations.mockClear(); applyOperations.mockClear();
@@ -108,13 +129,13 @@ it('rejects invalid scheduled entries without silently filtering them', async ()
 });
 
 it('offers actual facility choices and an inline Objects navigation action (D6)', () => {
-  const onSection = vi.fn();
-  render(streams({ draft: { ...draft, entities: [draft.entities[3]] }, onSection }));
+  const goTo = vi.fn();
+  render(streams({ draft: { ...draft, entities: [draft.entities[3]] }, goTo }));
   expect(screen.getByLabelText('From facility')).toBeDisabled();
   expect(screen.getByLabelText('To facility')).toBeDisabled();
   expect(screen.queryByRole('option', { name: 'courier-1' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Add place' }));
-  expect(onSection).toHaveBeenCalledWith('objects:add-place');
+  expect(goTo).toHaveBeenCalledWith('objects', 'add-place');
   expect(within(creation()).getByRole('button', { name: 'Preview' })).toBeDisabled();
 });
 
@@ -244,13 +265,13 @@ it('rejects inverted, out-of-horizon and negative gusts after touch without writ
 });
 
 it('gives short durations an inline Run navigation action (D5)', () => {
-  const onSection = vi.fn();
-  render(weather({ draft: { ...draft, run: { until_ns: 2_000_000_000, advance_ns: 1_000_000_000 } }, onSection }));
+  const goTo = vi.fn();
+  render(weather({ draft: { ...draft, run: { until_ns: 2_000_000_000, advance_ns: 1_000_000_000 } }, goTo }));
   expect(screen.getByText(/Run duration is 2 s/)).toBeTruthy();
   expect(screen.getByLabelText('Start (s)')).toHaveValue('0.5');
   expect(screen.getByLabelText('End (s)')).toHaveValue('1');
   fireEvent.click(screen.getByRole('button', { name: 'Run & recording' }));
-  expect(onSection).toHaveBeenCalledWith('run');
+  expect(goTo).toHaveBeenCalledWith('run', undefined);
 });
 
 it('keeps the Components bootstrap review after polling (T2-R2-001)', async () => {

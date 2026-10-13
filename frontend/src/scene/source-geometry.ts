@@ -222,11 +222,14 @@ function footprintShape(rings: number[][][], origin: EnuOrigin, diag: { skippedD
   return shape;
 }
 
-export async function loadOsmBuildings(url: string, origin: EnuOrigin, signal: AbortSignal): Promise<THREE.Group> {
-  const text = await fetchText(url, signal, 'parse');
-  if (signal.aborted) throw new DOMException('Aborted during parse', 'AbortError');
+export async function loadOsmBuildings(source: string | GeoJsonCollection, origin: EnuOrigin, signal: AbortSignal): Promise<THREE.Group> {
+  const url = typeof source === 'string' ? source : 'proposal scene.geojson';
   let geo: GeoJsonCollection;
-  try { geo = JSON.parse(text) as GeoJsonCollection; } catch (e) { throw new Error(`${url}: invalid JSON (${(e as Error).message})`); }
+  if (typeof source === 'string') {
+    const text = await fetchText(source, signal, 'parse');
+    try { geo = JSON.parse(text) as GeoJsonCollection; } catch (e) { throw new Error(`${url}: invalid JSON (${(e as Error).message})`); }
+  } else geo = source;
+  if (signal.aborted) throw new DOMException('Aborted during parse', 'AbortError');
   if (geo?.type !== 'FeatureCollection' || !Array.isArray(geo.features)) throw new Error(`${url}: expected a GeoJSON FeatureCollection`);
 
   const diag = {

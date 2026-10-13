@@ -6,7 +6,7 @@ import { bi, kindNoun, pick, placeRole, releaseText, valueText, type Lang } from
 const OPS: Record<string, [string,string]> = {
   add_lowalt_components: ['Add the drone scene components','添加无人机场景组件'], set_region: ['Set the geographic area','设置地理区域'],
   set_control: ['Change a scene setting','修改场景设置'], set_duration: ['Set the run length','设置运行时长'], set_run_mode: ['Choose the input mode','选择输入方式'],
-  set_wind: ['Set background wind','设置常态风'], add_gust: ['Add a wind gust','添加阵风'], set_rule: ['Change a safety rule','修改安全规则'], set_algorithm: ['Choose a decision method','选择决策方法'],
+  set_wind: ['Set background wind','设置常态风'], add_gust: ['Add a wind gust','添加阵风'], remove_gust: ['Remove a wind gust','移除阵风'], set_rule: ['Change a safety rule','修改安全规则'], set_algorithm: ['Choose a decision method','选择决策方法'],
   add_place: ['Add a place','添加地点'], update_place: ['Change a place','修改地点'], remove_place: ['Remove a place','移除地点'],
   add_fleet: ['Add a group of UAVs','添加无人机编队'], set_fleet: ['Change a UAV group','修改无人机编队'], set_vehicle: ['Adjust one UAV','调整单架无人机'],
   add_orders: ['Add tasks','添加任务'], set_orders: ['Change tasks','修改任务'], remove_orders: ['Remove tasks','移除任务'], set_task: ['Change one task','修改单个任务'],
@@ -16,7 +16,7 @@ const OPS: Record<string, [string,string]> = {
 export function operationName(op: string, L: Lang) { const row=OPS[op]; return row ? L(...row) : L('Scene change','场景变更'); }
 
 const PARAMS: Record<string,[string,string]> = {
-  id: ['ID','标识'], count: ['Count','数量'], capacity: ['Capacity','容量'], power_w: ['Charging power (W)','充电功率（瓦）'],
+  index: ['Gust index','阵风索引'], id: ['ID','标识'], count: ['Count','数量'], capacity: ['Capacity','容量'], power_w: ['Charging power (W)','充电功率（瓦）'],
   battery_pct: ['Battery (%)','电量（%）'], payload_capacity_kg: ['Payload capacity (kg)','载荷容量（千克）'], payload_kg: ['Payload (kg)','载荷（千克）'],
   speed_mps: ['Wind speed (m/s)','风速（米/秒）'], start_s: ['Start (s)','开始（秒）'], end_s: ['End (s)','结束（秒）'], seconds: ['Duration (s)','时长（秒）'],
   at: ['Position','位置'], start: ['Starting point','出发点'], from: ['From','起点'], to: ['To','终点'], release: ['Release','发布时刻'],

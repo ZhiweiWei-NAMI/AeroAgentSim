@@ -5,8 +5,7 @@ import type { TypeDetail } from '../../../studio/api';
 import type { Scenario } from '../types';
 import { airspaceFieldOf, ID_PATTERN, isLowaltType, KINEMATIC_DEFAULTS, num, parseFact, positionFieldOf, STUDIO_AIRSPACE, STUDIO_STATE, useCatalog, WORKFLOW_DEFAULT_STATE, type CatalogType } from './model';
 import { operationText } from './Operations';
-import { RegionMap, type RegionMapBasemap, type RegionMapGeometry } from '../space/RegionMap';
-import { readRegion } from '../space/model';
+import { PlacePickerMap, canPickOnMap } from '../space/PlacePickerMap';
 
 type Kind = 'entity' | 'facility' | 'airspace';
 type Engine = 'kinematic' | 'workflow';
@@ -23,7 +22,7 @@ const factErrorText = (error: string, L: (en: string, zh: string) => string) => 
 /** The staged "Add objects" flow: type → identity/kind → placement/assumptions → review → one submit. */
 export function AddObjects({ api, studioApi, project, draft, project_detail, onProject, L, onClose, saveDraft }: {
   api: WorkbenchApi; studioApi: StudioApi; project: { id: string; revision: number }; draft: Scenario;
-  /** Full workspace (region + compiled scene), used only for the pick-on-map origin. */
+  /** Full workspace (region + compiled scene) for the geographic picker. */
   project_detail?: { region?: unknown; scene?: unknown };
   onProject: (project: Project) => void; L: (en: string, zh: string) => string; onClose: () => void;
   saveDraft?: () => Promise<Project | undefined>;
@@ -47,14 +46,9 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
   const [creating, setCreating] = useState(false);
   const [result, setResult] = useState<{ created: string[]; failed: Array<{ id: string; error: string }> }>();
   const [picking, setPicking] = useState(false);
-  const [pickMarker, setPickMarker] = useState<[number, number] | null>(null);
-
-  // Pick-on-map needs an applied region (a scenario origin + compiled scene). C9/C10.
-  const region = useMemo(() => readRegion(project_detail as never), [project_detail]);
-  const mapOrigin = region?.scene?.origin ?? (draft.origin as { lat: number; lon: number; alt: number } | undefined) ?? null;
-  const mapGeometry: RegionMapGeometry | null = mapOrigin ? { origin: mapOrigin } : null;
-  const mapBasemap: RegionMapBasemap | null = null; // AddObjects reuses the neutral surface; the Region block owns the tile layer.
-  const canPick = !!mapOrigin && !!region?.region;
+  const workspace = project_detail ?? project as Project;
+  const canPick = canPickOnMap(workspace);
+  const pickerEast = num(east), pickerNorth = num(north);
 
   const matches = useMemo(() => {
     if (!catalog) return [];
@@ -235,23 +229,9 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
           </button>
         </div>
       </div>}
-      {/* TODO R2-MAP: replace this RegionMap mount with the exported PlacePickerMap, using the same marker/onPick values. */}
-      {picking && kind !== 'airspace' && <RegionMap
-        L={L}
-        height={260}
-        basemap={mapBasemap}
-        coverage={region?.region?.bounds ?? null}
-        geometry={mapGeometry}
-        pick={{
-          onPick: (east, north) => {
-            setPickMarker([east, north]);
-            setEast((Math.round(east * 10) / 10).toString());
-            setNorth((Math.round(north * 10) / 10).toString());
-          },
-          marker: pickMarker,
-        }}
-        outsideWarning={L('Outside the applied region — allowed, but the point sits outside the compiled area.', '在已应用区域之外——允许，但该点位于已编译范围外。')}
-      />}
+      {picking && kind !== 'airspace' && <PlacePickerMap api={api} workspace={workspace} draft={draft} L={L}
+        position={pickerEast === undefined || pickerNorth === undefined ? null : [pickerEast, pickerNorth]}
+        onPick={(pickedEast, pickedNorth) => { setEast(pickedEast.toFixed(1)); setNorth(pickedNorth.toFixed(1)); }} />}
       {kind !== 'airspace' && <p className="wb-add-note">{L('Position is measured in metres east, north and up from the workspace origin.', '位置以相对工作区原点的东、北、天方向米数表示。')}</p>}
       {kind === 'airspace' && regionField && <>
         <p className="hint">{L('Set the polygon and altitude limits declared by this contract.', '设置此契约声明的多边形与高度范围。')}</p>

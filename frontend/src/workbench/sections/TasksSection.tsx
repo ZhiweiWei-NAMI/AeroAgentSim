@@ -14,7 +14,7 @@ import './tasks.css';
 
 type Catalog = { types: TypeRow[]; fields: Record<string, unknown>[]; relations: Record<string, unknown>[] };
 
-export function TasksSection({ api, studioApi, project, draft, edit, replaceDraft, focus, zh, L, issues, onProject, saveDraft, reportValidity }: SectionProps) {
+export function TasksSection({ api, studioApi, project, draft, edit, replaceDraft, focus, zh, L, issues, onProject, saveDraft, reportValidity, goTo }: SectionProps) {
   const [ruleEditor, setRuleEditor] = useState(false), [catalog, setCatalog] = useState<Catalog>();
   const ruleRoot = useRef<HTMLDivElement>(null), [ruleError, setRuleError] = useState<string>();
   const reportRuleValidity = useCallback((valid: boolean) => reportValidity('/behaviours', valid), [reportValidity]);
@@ -26,7 +26,7 @@ export function TasksSection({ api, studioApi, project, draft, edit, replaceDraf
   const config = taskConfig(draft);
   // When the low-altitude pack is absent the operations API can install it; no dead end (C11 add_lowalt_components).
   const lowaltMissing = !tasks;
-  const opProps = { api, project, onProject, saveDraft, zh };
+  const opProps = { api, project, onProject, saveDraft, zh, goTo };
   return <>
     <p className="hint">{L('What work appears and the rules that decide what is allowed: order streams, cooperation, predicates with parameters, and event chains.', '会出现哪些工作，以及决定允许做什么的规则：订单流、协同、带参数的谓词与事件链。')}</p>
     {lowaltMissing && <div className="wb-empty" data-testid="wb-lowalt-missing">

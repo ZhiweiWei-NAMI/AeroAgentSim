@@ -40,16 +40,30 @@ export function RelationsSection({ studioApi, project, draft, edit, focus, zh, L
   const [relationId, setRelationId] = useState('');
   const [sourceId, setSourceId] = useState('');
   const [targetId, setTargetId] = useState('');
+  const [writerId, setWriterId] = useState('');
 
   const edges = useMemo(() => ((draft.bindings as Record<string, any> | undefined)?.relations ?? []) as Array<Record<string, any>>, [draft.bindings]);
   const relations: RelationRow[] = catalog?.relations ?? [];
   const chosen = relations.find(row => row.id === relationId);
+  const writers = chosen?.valid_writers ?? chosen?.writer_options?.map(option => option.writer) ?? [];
+  const writer = writers.includes(writerId) ? writerId : writers[0];
+  const writerRule = chosen?.binding_kind === 'writer_rule';
   const entityIds = entities.map(entity => String(entity.id));
   const typeOf = (id: string) => entities.find(entity => entity.id === id)?.type;
+  const matchesType = (id: string, required: string) => {
+    const queue = [typeOf(id)], seen = new Set<string>();
+    while (queue.length) {
+      const type = queue.shift();
+      if (!type || seen.has(type)) continue;
+      if (type === required) return true;
+      seen.add(type); queue.push(...(catalog?.types.find(row => row.id === type)?.parents ?? []));
+    }
+    return false;
+  };
   const endpointBad = chosen && (
-    (typeOf(sourceId) !== undefined && typeOf(sourceId) !== chosen.source_type) ||
-    (typeOf(targetId) !== undefined && typeOf(targetId) !== chosen.target_type));
-  const canAdd = !!chosen && entityIds.includes(sourceId) && (entityIds.includes(targetId) || targetId.includes('*')) && !endpointBad;
+    (sourceId && !matchesType(sourceId, chosen.source_type)) ||
+    (targetId && !matchesType(targetId, chosen.target_type)));
+  const canAdd = !!chosen && writerRule && !!writer && entityIds.includes(sourceId) && entityIds.includes(targetId) && !endpointBad;
 
   const add = () => {
     if (!canAdd || !chosen) return;
@@ -57,9 +71,9 @@ export function RelationsSection({ studioApi, project, draft, edit, focus, zh, L
     // glob over SOURCE entity ids (fnmatchcase) scoping which sources this writer may bind — it is not
     // an endpoint list (T1-013). Scope the rule to the chosen source; the target types come from the
     // relation contract itself, so they are never written here.
-    const next = [...edges, { ...relationEdge('operations', chosen.id, chosen.source_type), ids: sourceId }];
+    const next = [...edges, { ...relationEdge(writer!, chosen.id, chosen.source_type), ids: sourceId }];
     edit(pointer('bindings', 'relations'), next);
-    setAdding(false); setRelationId(''); setSourceId(''); setTargetId('');
+    setAdding(false); setRelationId(''); setSourceId(''); setTargetId(''); setWriterId('');
   };
   const remove = (index: number) => {
     const bindings = { ...((draft.bindings ?? {}) as Record<string, any>) };
@@ -83,6 +97,13 @@ export function RelationsSection({ studioApi, project, draft, edit, focus, zh, L
         {!relations.length && <div className="wb-empty">{L('This workspace catalog declares no relations, so none can be added from here.', '当前工作区目录未声明任何关系，因此无法在此添加。')}</div>}
         {chosen && <>
           <p className="hint">{L(`Direction is fixed by the contract: source ${chosen.source_type} → target ${chosen.target_type}.`, `方向由契约固定：源 ${chosen.source_type} → 目标 ${chosen.target_type}。`)}</p>
+          <label className="wb-field"><span>{L('writer engine', '写入引擎')}</span>
+            <select value={writer ?? ''} disabled={!writerRule || !writers.length} onChange={event => setWriterId(event.target.value)}>
+              {!writers.length && <option value="">{L('No writer available', '没有可用写入者')}</option>}
+              {writers.map(id => { const option = chosen.writer_options?.find(row => row.writer === id); return <option key={id} value={id}>{option ? `${id} · ${option.engine_id} (${option.plugin})` : id}</option>; })}
+            </select></label>
+          {!writerRule && <p className="hint" role="note">{L('This relation cannot be configured as a writer rule in this form.', '此关系不能在此表单中配置为写入规则。')}</p>}
+          {writerRule && !writers.length && <p className="hint" role="note">{L('No configured engine writes this relation. Configure a writer in Execution components first.', '没有已配置引擎写入此关系，请先在“执行组件”中配置写入者。')}</p>}
           <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
             <label className="wb-field"><span>{L('source instance', '源实例')}</span>
               <select value={sourceId} onChange={event => setSourceId(event.target.value)}><option value="">{L('Choose…', '选择…')}</option>

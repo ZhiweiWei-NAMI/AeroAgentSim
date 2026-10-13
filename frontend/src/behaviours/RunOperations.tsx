@@ -161,12 +161,8 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
   useEffect(()=>{
     const abort=new AbortController();
     setAdmissions([]); setAdmissionError('');
-    // The older RunsApi.admissions projection discards execution fields and
-    // Instant timestamps. Read this endpoint losslessly, including new fields.
-    const load=()=>{void api.request(`/v1/runs/${encodeURIComponent(runId)}/admissions`,{signal:abort.signal}).then(value=>{
+    const load=()=>{void api.admissions(runId,abort.signal).then(rows=>{
       if(abort.signal.aborted)return;
-      if(!Array.isArray(value)||!value.every(row=>mapping(row)&&typeof row.id==='string'&&typeof row.status==='string'))throw Error(copy('Admission records are malformed.','受理记录格式不正确。'));
-      const rows=value as Draft[];
       setAdmissionError('');
       setAdmissions(previous=>{
         // A live receipt's command_id is the journaled row's id: keep only the journaled copy.

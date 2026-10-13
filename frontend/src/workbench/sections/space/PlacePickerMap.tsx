@@ -33,7 +33,14 @@ export function canPickOnMap(workspace: PlacePickerMapProps['workspace']): boole
 }
 
 /** Reusable picker: same C9 tiles, applied bounds, real buildings/roads and role markers as Region.
- * Mount whenever the picker is open, including while its coordinate fields are being edited.
+ * Mount in AddPlace/AddObjects whenever `picking` is true, including during ENU input.
+ * Pass `project_detail ?? project`, the current draft and live parsed east/north, or null
+ * if either coordinate is invalid. Opening AddPlace's picker selects ENU mode and shows
+ * its coordinate fields. A click updates east/north (to one decimal place), preserves up
+ * and invalidates the caller's review; typed changes move the same controlled marker.
+ * Gate the opening action with canPickOnMap; draft.origin alone is insufficient. Keep
+ * the inline region prerequisite, optionally using onOpenRegion for a navigation button.
+ * This component never authors objects: creation/update uses the caller's reviewed flow.
  */
 export function PlacePickerMap({ api, workspace, draft, position, onPick, onOpenRegion, L }: PlacePickerMapProps) {
   const [catalog, setCatalog] = useState<MapCatalog>();
