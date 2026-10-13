@@ -269,10 +269,10 @@ export function RegionBlock({ project: suppliedProject, api, draft, edit, issues
     {mapGeometry?.truncated && <span className="wb-map-chip warn" role="status">{L('Preview truncated — showing up to 3000 buildings and 3000 roads', '预览已截断——最多显示 3000 栋建筑和 3000 条道路')}</span>}
 
     <div className="wb-region-grid">
-      {fieldRow('west', L('West (°)', '西经（°）'), '121.50')}
-      {fieldRow('south', L('South (°)', '南纬（°）'), '31.30')}
-      {fieldRow('east', L('East (°)', '东经（°）'), '121.52')}
-      {fieldRow('north', L('North (°)', '北纬（°）'), '31.31')}
+      {fieldRow('west', L('West (°)', '西界经度（°）'), '121.50')}
+      {fieldRow('south', L('South (°)', '南界纬度（°）'), '31.30')}
+      {fieldRow('east', L('East (°)', '东界经度（°）'), '121.52')}
+      {fieldRow('north', L('North (°)', '北界纬度（°）'), '31.31')}
       {fieldRow('alt', L('Ground altitude (m)', '地面海拔（m）'), '0')}
       {fieldRow('level', L('Level height (m)', '层高（m）'), '3.5')}
     </div>

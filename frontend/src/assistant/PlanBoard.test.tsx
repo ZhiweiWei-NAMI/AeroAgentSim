@@ -52,6 +52,94 @@ const api = {
 
 const renderBoard = () => render(<Harness />);
 
+const boardWith = (current: AssistantSession, viewing?: number, onViewVersion = vi.fn()) => <I18nProvider>
+  <PlanBoard api={api} assistant={current} stage="proposed" terminal={false} initializing={false}
+    canInitialize={false} onInitialize={vi.fn()} onApplied={vi.fn()} onHover={vi.fn()} onStep={vi.fn()}
+    onContract={vi.fn()} onSeek={vi.fn()} viewing={viewing} onViewVersion={onViewVersion} onClose={vi.fn()} />
+</I18nProvider>;
+
+it.each(['en-US','zh-CN'])('T2-R6-004: retains the chosen answer through 202, gateway refusal, retry and server resolution in %s',async locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  const zh=locale==='zh-CN';
+  const question='How many drones can charge at once? / 充电站需要同时为几架无人机充电（容量）？';
+  const questioned={...plan(4),open_questions:[{question,options:['1 drone / 1 架','3 drones / 3 架']},{question:'Charging power? / 充电功率？'}]};
+  const send=vi.fn().mockResolvedValue(undefined);
+  const current={...assistant,plan:questioned,session:{...session,plan:questioned,alternatives:[]},send};
+  const view=render(boardWith(current));
+  fireEvent.click(screen.getByRole('button',{name:zh?'3 架':'3 drones'}));
+  const text=zh?'关于“充电站需要同时为几架无人机充电（容量）？”：3 架':'For "How many drones can charge at once?": 3 drones';
+  await waitFor(()=>expect(send).toHaveBeenCalledWith(text,{locale}));
+  expect(screen.getAllByTestId('as-question')).toHaveLength(2);
+  view.rerender(boardWith({...current,busy:true}));
+  expect(screen.getByRole('button',{name:zh?'重试':'Retry'})).toBeDisabled();
+  // The server accepted the message, but the turn failed with no new plan.
+  const events: Session['events']=[{kind:'user',seq:60,at:'',text},{kind:'error',seq:61,at:'',message:'HTTP 429'}, {kind:'turn_finished',seq:62,at:'',turn:9}];
+  const failed={...current,events,session:{...current.session,events}};
+  view.rerender(boardWith(failed));
+  expect(screen.getAllByTestId('as-question')).toHaveLength(2);
+  expect(screen.getByTestId('as-question-answer')).toHaveTextContent(zh?'3 架':'3 drones');
+  expect(screen.getByTestId('as-question-answer')).toHaveTextContent(zh?'仍未解决':'still unresolved');
+  fireEvent.click(screen.getByRole('button',{name:zh?'重试':'Retry'}));
+  await waitFor(()=>expect(send).toHaveBeenCalledTimes(2));
+  expect(send.mock.calls[1]).toEqual([text,{locale}]);
+  // Only a server revision that resolves the question removes its controls.
+  const resolved={...questioned,version:5,open_questions:questioned.open_questions.slice(1)};
+  view.rerender(boardWith({...failed,plan:resolved,session:{...failed.session,plan:resolved}}));
+  expect(screen.getAllByTestId('as-question')).toHaveLength(1);
+  expect(screen.queryByTestId('as-question-answer')).toBeNull();
+});
+
+it('T2-R6-004: restores an unresolved answer from server events after remount, ignoring the old answered cache',()=>{
+  const question='How many drones can charge at once?';
+  const questioned={...plan(4),open_questions:[{question,options:['1 drone','3 drones']}]};
+  sessionStorage.setItem('aas-answered:s1',JSON.stringify([question]));
+  const text=`For "${question}": 3 drones`;
+  const events: Session['events']=[{kind:'user',seq:60,at:'',text},{kind:'error',seq:61,at:'',message:'HTTP 429'}];
+  const current={...assistant,events:[],plan:questioned,session:{...session,plan:questioned,events}};
+  const view=render(boardWith(current));
+  expect(screen.getByTestId('as-question')).toBeVisible();
+  expect(screen.getByTestId('as-question-answer')).toHaveTextContent('3 drones');
+  view.unmount();render(boardWith(current));
+  expect(screen.getByTestId('as-question-answer')).toHaveTextContent('still unresolved');
+  fireEvent.click(screen.getByRole('button',{name:'Retry'}));
+  expect(assistant.send).toHaveBeenCalledWith(text,{locale:'en-US'});
+});
+
+it('T2-R6-004: keeps a rejected answer and exposes the submission error with Retry',async()=>{
+  const questioned={...plan(4),open_questions:[{question:'Capacity?',options:['3 drones']}]};
+  const send=vi.fn().mockRejectedValue(new Error('HTTP 503'));
+  render(boardWith({...assistant,send,plan:questioned,session:{...session,plan:questioned}}));
+  fireEvent.click(screen.getByRole('button',{name:'3 drones'}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('HTTP 503');
+  expect(screen.getByTestId('as-question-answer')).toHaveTextContent('3 drones');
+  expect(screen.getByRole('button',{name:'Retry'})).toBeEnabled();
+  expect(screen.getByTestId('as-question')).toBeVisible();
+});
+
+it.each(['en-US','zh-CN'])('T2-R6-002: explains exactly which base revision Confirm saves, then follows the selected four-drone alternative in %s',async locale=>{
+  localStorage.setItem('aeroagentsim.locale',locale);
+  const zh=locale==='zh-CN';
+  const withFleet=(version: number,count: number): PlanVersion=>({...plan(version),scene:{fleets:[{id:'meal-fleet',role:'meal_courier',label:'Meal drones',label_zh:'外卖无人机',count,members:Array.from({length:count},(_,i)=>`meal-${i+1}`)}],places:[],workloads:[],events:[]}});
+  const base=withFleet(1,3),alternative=withFleet(2,4);
+  const versions=[1,2,3].map(version=>({version,note:'',created_at:'',compile_ok:true,validation_state:'valid' as const}));
+  const current={...assistant,plan:base,session:{...session,plan:base,alternatives:[2,3],plan_versions:versions}};
+  const view=render(boardWith(current));
+  expect(screen.getByTestId('as-confirm-scope')).toHaveTextContent(zh?'v1，共 3 架无人机':'v1 with 3 UAVs');
+  expect(screen.getByText(zh?/尚未选中/:/have not been selected/)).toHaveTextContent('v2');
+  expect(screen.getByRole('button',{name:zh?'选择备选方案':'Choose an alternative'})).toBeEnabled();
+  vi.mocked(api.plan).mockResolvedValueOnce(alternative);
+  view.rerender(boardWith(current,2));
+  const choose=await screen.findByTestId('as-choose');
+  expect(screen.queryByTestId('as-confirm')).toBeNull();
+  fireEvent.click(choose);
+  expect(assistant.choose).toHaveBeenCalledWith(2);
+  view.rerender(boardWith({...current,plan:alternative,session:{...current.session,plan:alternative}}));
+  expect(screen.getByTestId('as-confirm-scope')).toHaveTextContent(zh?'v2，共 4 架无人机':'v2 with 4 UAVs');
+  vi.mocked(assistant.apply).mockResolvedValueOnce({...applied[0],plan_version:2});
+  fireEvent.click(screen.getByTestId('as-confirm'));
+  await waitFor(()=>expect(assistant.apply).toHaveBeenCalledWith(2));
+});
+
 function Harness() {
   const [viewing, setViewing] = useState<number | undefined>();
   return <I18nProvider>

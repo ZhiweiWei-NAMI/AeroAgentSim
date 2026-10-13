@@ -63,12 +63,12 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
     </p>
     {lowalt && !entities.length && generated === 0 && !adding && <div className="wb-empty" data-testid="wb-objects-empty">
       <strong>{L('The world has no objects yet', '世界还没有任何对象')}</strong>
-      {L('Add a place, fleet or object to start.', '添加设施、机群或对象以开始。')}
+      {L('Add a place, fleet or object to start.', '添加地点、机群或对象以开始。')}
     </div>}
     {lowalt && <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', margin: '6px 0' }}>
       <button className="wb-btn primary" aria-expanded={addingPlace} aria-pressed={addingPlace}
         onClick={() => { setAddingPlace(value => !value); setEditingPlace(undefined); }}>
-        {addingPlace && !editingPlace ? L('Close add place', '收起添加设施') : L('Add place', '添加设施')}</button>
+        {addingPlace && !editingPlace ? L('Close add place', '收起添加地点') : L('Add place', '添加地点')}</button>
       <button className="wb-btn" aria-expanded={adding} aria-pressed={adding} onClick={() => setAdding(value => !value)}>{adding ? L('Close add objects', '收起添加对象') : L('Add objects (advanced)', '添加对象（高级）')}</button>
     </div>}
     {lowalt && addingPlace && !editingPlace && <AddPlace api={api} project={project} draft={draft} project_detail={project as never} onProject={onProject} L={L} onClose={() => setAddingPlace(false)} />}
@@ -79,8 +79,8 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
     {lowalt && <Fleets api={api} studioApi={studioApi} project={project} draft={draft} onProject={onProject} L={L}
       onAddPlace={() => { setAddingPlace(true); setEditingPlace(undefined); }} />}
     {lowalt && !!places.length && <>
-      <h4>{L('Places', '设施')} <span className="wb-tag">{places.length}</span></h4>
-      <table className="wb-table"><thead><tr><th>{L('Place', '设施')}</th><th>{L('Type', '类型')}</th><th /></tr></thead><tbody>
+      <h4>{L('Places', '地点')} <span className="wb-tag">{places.length}</span></h4>
+      <table className="wb-table"><thead><tr><th>{L('Place', '地点')}</th><th>{L('Type', '类型')}</th><th /></tr></thead><tbody>
         {places.map(entity => <tr key={entity.id}>
           <td><b>{L(entity.label ?? entity.id, entity.label_zh ?? entity.label ?? entity.id)}</b><div className="wb-mono" style={{ fontSize: 11, color: 'var(--wb-muted)' }}>{entity.id}</div></td>
           <td className="wb-mono" style={{ fontSize: 11 }}>{entity.type}</td>

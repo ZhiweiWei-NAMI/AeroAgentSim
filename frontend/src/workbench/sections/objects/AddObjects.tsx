@@ -67,7 +67,7 @@ export function AddObjects({ api, studioApi, project: suppliedProject, draft, pr
   const unsupportedRegion = (!!regionField || contractKind === 'airspace' || chosen?.id === STUDIO_AIRSPACE) && !!detail
     && (chosen?.id !== STUDIO_AIRSPACE || regionField?.id !== 'aas.studio.airspace' || !!chosen.kind && chosen.kind !== 'airspace');
   const regionReason = L('This contract needs a region editor; this form cannot author its declared geometry.', '此契约需要区域编辑器；本表单无法编辑它声明的几何字段。');
-  const lowaltReason = L('Use Add place or Add fleet for this low-altitude contract.', '请通过“添加设施”或“添加机群”编辑此低空契约。');
+  const lowaltReason = L('Use Add place or Add fleet for this low-altitude contract.', '请通过“添加地点”或“添加机群”编辑此低空契约。');
   const abstractReason = L('Abstract types define shared fields only; the server rejects instantiating them.', '抽象类型只定义公共字段，服务器会拒绝实例化。');
   const facilityLike = kind === 'facility' || kind === 'airspace';
   const effectiveKind: Kind = kind === 'airspace' ? 'airspace' : facilityLike ? 'facility' : 'entity';
@@ -307,7 +307,7 @@ export function AddObjects({ api, studioApi, project: suppliedProject, draft, pr
         {!fieldRows.length && <p className="hint">{L('This type declares no extra contract fields.', '该类型没有额外的契约字段。')}</p>}
       </div>}
       {!!Object.keys(factErrors).length && <p className="wb-field-error" role="alert">{L('Fix the marked contract fields — invalid values are not sent.', '请修正标记的契约字段——无效值不会被发送。')}</p>}
-      {facilityLike && <p className="wb-add-note">{L('A facility is a catalog placement: its real-world service behaviour is only as real as the type contract declares.', '设施是一次目录放置：其真实服务行为取决于该类型契约所声明的内容。')}</p>}
+      {facilityLike && <p className="wb-add-note">{L('Facilities are static. To create something that moves, choose a moving type such as lowalt:UAV (or add a fleet).', '设施是静止的。要创建会移动的对象，请选择可移动类型（如 lowalt:UAV）或添加机队。')}</p>}
       <h4 style={{ margin: '10px 0 4px' }}>{L(`Review — ${reviewRows.length} instance(s) to create`, `确认 — 将创建 ${reviewRows.length} 个实例`)}</h4>
       <table className="wb-table wb-review"><thead><tr><th>{L('id', 'id')}</th><th>{L('type', '类型')}</th><th>{L('kind / engine', '种类 / 引擎')}</th><th>{L('position ENU (m)', '位置 ENU (m)')}</th><th>{L('facts', '事实')}</th></tr></thead><tbody>
         {reviewRows.map(row => <tr key={row.id}><td className="wb-mono">{row.id}</td><td className="wb-mono">{row.type}</td><td>{row.kind} / {row.engine}</td>

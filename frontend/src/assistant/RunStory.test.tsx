@@ -73,6 +73,18 @@ it.each(['en-US','zh-CN'])('T2-R5-004: shows released execution counts and stoch
   expect(screen.getAllByText('20/20')).toHaveLength(4);
   expect(screen.getAllByText(locale==='en-US'?/slots are a cap/:/名额是上限/)).toHaveLength(4);
   expect(screen.queryByTestId('as-story-missed')).toBeNull();
+  for(const row of screen.getAllByTestId('as-story-happened')) expect(row.querySelector('.as-why')).not.toHaveClass('is-error');
   expect(screen.getByTestId('as-story')).not.toHaveTextContent(locale==='en-US'?'名额是上限':'slots are a cap');
   localStorage.setItem('aeroagentsim.locale','en-US');
+});
+
+it('T2-R6-005: applies error styling only to missed-step explanations',()=>{
+  renderStory([
+    {id:'done',text:'Orders completed',status:'happened',explanation:{text:'20 orders were released and completed.'}},
+    {id:'miss',text:'Delivery missed',status:'missed',explanation:{text:'Battery exhausted.'}},
+    {id:'pending',text:'Delivery pending',status:'pending',explanation:{text:'Awaiting recorded completion.'}},
+  ]);
+  expect(screen.getByText(/20 orders were released/)).not.toHaveClass('is-error');
+  expect(screen.getByText(/Battery exhausted/)).toHaveClass('is-error');
+  expect(screen.getByText(/Awaiting recorded completion/)).not.toHaveClass('is-error');
 });

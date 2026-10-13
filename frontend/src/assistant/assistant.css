@@ -486,7 +486,8 @@
 .as-story-progress small { font-size: 10px; color: var(--wb-muted); opacity: .8; }
 .as-story-wait { width: 10px; height: 10px; border-radius: 50%; border: 1.5px dashed var(--as-proposal); animation: as-rotate 3s linear infinite; }
 .as-story-list time { color: var(--wb-muted); font-size: 11px; padding-top: 1px; }
-.as-why { margin: 4px 0 0; font-size: 11.5px; color: #8b2a22; }
+.as-why { margin: 4px 0 0; font-size: 11.5px; color: var(--wb-muted); }
+.as-why.is-error { color: var(--wb-bad); }
 .as-evidence { margin: 3px 0 0; display: flex; flex-wrap: wrap; gap: 4px; }
 .as-evidence span { font: 10.5px 'JetBrains Mono', ui-monospace, monospace; color: var(--wb-muted); background: rgba(20, 32, 46, .05); padding: 1px 5px; border-radius: 4px; }
 .as-story-act { display: flex; gap: 4px; }

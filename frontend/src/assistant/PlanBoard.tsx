@@ -52,8 +52,8 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
   const currentStage: Stage = session?.applied.some(row=>row.plan_version===latest?.version) ? stage : 'proposed';
   const [older, setOlder] = useState<PlanVersion>();
   const [versionError,setVersionError]=useState<string>();
-  const [answered, setAnswered] = useState<string[]>([]);
-  useEffect(() => { try { setAnswered(JSON.parse(sessionStorage.getItem(`aas-answered:${session?.id}`) ?? '[]')); } catch { setAnswered([]); } }, [session?.id]);
+  const [answers, setAnswers] = useState<Record<string, { text: string; error?: string }>>({});
+  useEffect(() => { setAnswers({}); }, [session?.id]);
   const [tab, setTab] = useState<Tab>(currentStage === 'running' ? 'story' : 'scene');
   const [compareAlt, setCompareAlt] = useState(false);
   const [applying, setApplying] = useState(false), [applyError, setApplyError] = useState<string>();
@@ -95,9 +95,23 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
     } catch (problem) { setApplyError(problem instanceof Error ? problem.message : String(problem)); } finally { setApplying(false); }
   };
   const ask = (text: string) => void assistant.send(text,{locale,...(runId?{run_id:runId}:{})}).catch(() => undefined);
-  // A question the user answered here stays answered even if a revision repeats it.
-  const answer = (question: string, text: string) => { setAnswered(rows => { const next = [...rows, question]; try { sessionStorage.setItem(`aas-answered:${session.id}`, JSON.stringify(next)); } catch { /* storage unavailable */ } return next; }); ask(text); };
-  const questions = plan.open_questions.map(questionOf).filter(row => !answered.includes(row.question));
+  // HTTP 202 only accepts a turn. The server's plan owns question resolution.
+  const answer = (question: string, text: string) => {
+    setAnswers(rows => ({ ...rows, [question]: { text } }));
+    void assistant.send(text, { locale, ...(runId ? { run_id: runId } : {}) }).catch(problem => {
+      setAnswers(rows => ({ ...rows, [question]: { text, error: problem instanceof Error ? problem.message : String(problem) } }));
+    });
+  };
+  const questions = plan.open_questions.map(questionOf);
+  const answerFor = (question: string) => {
+    if (answers[question]) return answers[question];
+    // Accepted answers survive refresh in the actual session transcript, even
+    // when the model refused the turn and never revised the plan.
+    const prefixes = [`For "${bi(question, false)}": `, `关于“${bi(question, true)}”：`,
+      `Use a sensible default for: ${bi(question, false)}`, `这个问题用合理的默认值：${bi(question, true)}`];
+    const event = [...(session.events ?? []), ...assistant.events].sort((a,b)=>b.seq-a.seq).find(row => row.kind === 'user' && prefixes.some(prefix => row.text.startsWith(prefix)));
+    return event?.kind === 'user' ? { text: event.text } : undefined;
+  };
   const askWhy = (item: StoryItem) => ask(L(`Why didn't this happen: "${item.text}"?`, `为什么这一步没有发生：“${item.text_zh ?? item.text}”？`));
   // A plan that is already applied is shown as applied (or superseded), never as a
   // fresh proposal — returning from Form or a refresh must not resurrect it.
@@ -108,6 +122,7 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
   const initializeVersion=latestVersion ?? assistant.draftState?.latestVersion;
   const initializeAllowed=canInitialize && initializeVersion !== undefined && !assistant.draftState?.dirty && !loadingVersion && !versionError;
   const initialize = () => { if (initializeAllowed && !initializing) onInitialize(initializeVersion!); };
+  const uavCount = scene?.fleets?.filter(fleet=>fleet.vehicle_class!=='aas:TrafficRoadVehicle').reduce((count,fleet)=>count+fleet.count,0);
 
   return <aside className={`as-board wb-panel wb-glass is-${shownStage}${isOld ? ' is-old' : ''}`} data-testid="as-plan-board" data-stage={shownStage} aria-label={L('Plan board', '方案面板')}>
     <i className="as-board-scan" key={`scan-${plan.version}`} aria-hidden />
@@ -167,15 +182,24 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
     </div>
 
     {!isOld && (shownStage === 'proposed' || !!assistant.draftState?.changes?.length) && (questions.length > 0 || assumptions.length > 0) && <div className="as-asks as-rise">
-      {(shownStage==='proposed'?questions:[]).map(({ question, options }) => <div key={question} className="as-question" data-testid="as-question">
+      {(shownStage==='proposed'?questions:[]).map(({ question, options }) => {
+        const submitted = answerFor(question);
+        return <div key={question} className="as-question" data-testid="as-question">
         <span className="as-question-mark">?</span>
         <div><p>{bi(question,zh)}</p>
           <div className="as-question-options">
             {options.map(option => <button key={option} className="wb-btn small" disabled={busy} onClick={() => answer(question, L(`For "${bi(question,zh)}": ${bi(option,zh)}`, `关于“${bi(question,zh)}”：${bi(option,zh)}`))}>{bi(option,zh)}</button>)}
-            <button className="wb-btn small ghost" disabled={busy} onClick={() => answer(question, L(`Use a sensible default for: ${question}`, `这个问题用合理的默认值：${question}`))}>{L('Use a sensible default', '用合理默认值')}</button>
+            <button className="wb-btn small ghost" disabled={busy} onClick={() => answer(question, L(`Use a sensible default for: ${bi(question,zh)}`, `这个问题用合理的默认值：${bi(question,zh)}`))}>{L('Use a sensible default', '用合理默认值')}</button>
           </div>
+          {submitted && <div className="wb-form-prerequisite" role="status" data-testid="as-question-answer">
+            <p className="hint">{L('Your answer:', '你的回答：')} {bi(submitted.text, zh)}</p>
+            <p className="hint">{busy ? L('Waiting for the assistant to update the plan. This question is still unresolved.', '正在等待助手更新方案，此问题仍未解决。')
+              : L('This question is still unresolved in the current plan. Retry your answer or choose another option.', '当前方案中此问题仍未解决。可重试你的回答，或选择其他选项。')}</p>
+            {submitted.error && <p className="wb-issues" role="alert">{bi(submitted.error, zh)}</p>}
+            <button className="wb-btn small" disabled={busy} onClick={() => answer(question, submitted.text)}>{L('Retry', '重试')}</button>
+          </div>}
         </div>
-      </div>)}
+      </div>; })}
       {assumptions.length > 0 && <details className="as-assumptions" open={shownStage==='proposed' && (plan.version === 1 || questions.length === 0)}>
         <summary>{shownStage==='proposed'?L(`Assumptions (${assumptions.length})`, `假设（${assumptions.length}）`):L('Assumptions in this plan','此方案的假设')}<small>{shownStage==='proposed'?L('filled in for you — change any of them', '已为你补全，可随时修改'):L('The current draft differs below.','当前草稿已改变。')}</small></summary>
         <ul>{assumptions.map(text => <li key={text}>
@@ -229,7 +253,13 @@ function PlanBoardBody({ api, assistant, stage, waiting = false, runId, story, s
           {applyError && <p className="as-note bad" role="alert">{bi(applyError,zh)}</p>}
           <div className="as-foot-actions">
             <span className="as-quiet">{applyDone ? L('Already applied.', '已应用。') : unchanged ? L('There are no changes to confirm.','没有需要确认的变更。') : L('Your scene changes only when you confirm.', '确认后场景才会改变。')}</span>
-            {unchanged && alternatives.length>=2 && <button className="wb-btn small" onClick={()=>setCompareAlt(true)}>{L('Choose an alternative','选择备选方案')}</button>}
+            {!unchanged && plan.compile.ok && uavCount !== undefined && <span className="hint" data-testid="as-confirm-scope">{L(
+              `Confirm and apply saves the displayed plan revision v${plan.version} with ${uavCount} UAVs.`,
+              `确认并应用会保存当前显示的方案修订 v${plan.version}，共 ${uavCount} 架无人机。`)}</span>}
+            {alternatives.length>=2 && !alternatives.includes(plan.version) && <>
+              <span className="hint">{L(`Alternatives ${alternatives.map(version=>`v${version}`).join(', ')} have not been selected. Review one and click Choose this option before confirming it.`, `备选方案 ${alternatives.map(version=>`v${version}`).join('、')} 尚未选中。请先查看目标版本并点击“选择此方案”，再确认。`)}</span>
+              <button className="wb-btn small" onClick={()=>setCompareAlt(true)}>{L('Choose an alternative','选择备选方案')}</button>
+            </>}
             <button className="wb-btn primary as-confirm" disabled={!valid || unchanged || busy || applying || applyDone} onClick={() => void confirm()} data-testid="as-confirm"
               title={!valid ? L('Available once the simulator has checked this version', '仿真器校验通过后可用') : busy ? L('Wait for the assistant to finish', '请等待助手完成') : undefined}>
               {applying ? <><span className="as-spin" />{L('Applying…', '正在应用…')}</> : <><Icon name="check" size={13} />{L('Confirm and apply', '确认并应用')}</>}

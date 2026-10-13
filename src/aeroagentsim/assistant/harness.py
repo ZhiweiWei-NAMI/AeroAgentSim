@@ -46,14 +46,26 @@ def split_suggestions(content: str) -> tuple[str, list[str]]:
 
 def without_state_assertions(text: str, *, expanded: bool = False, session: dict | None = None,
                              plan: dict | None = None, workspace: dict | None = None,
-                             evidence: dict | None = None) -> str:
+                             evidence: dict | None = None, authoritative_workflow: bool = False) -> str:
     """Remove contradicted declarations, preserving instructions and Markdown layout."""
     def contradicted(sentence: str) -> bool:
         plain = re.sub(r"[*_`]", "", sentence).strip()
+        if authoritative_workflow:
+            action = re.search(r"validat|re-?validat|sav\w*.*version|initializ|\bstart\b|confirm|compil|rewrit|revis|op-\d|校验|验证|保存.*版本|初始化|启动|确认|编译|重写|修订|更新.*操作", plain, re.I)
+            instruction = re.search(r"^(?:please\s+)?(?:click|press|open|select|choose|validate|save|initialize|start|draft|compile|rewrite|revise|update|check|return|go|after|once|before)\b|\b(?:must|need to|should|required|steps)\b|请|点击|打开|选择|先|校验|保存|初始化|启动|编译|重写|修改|更新|检查|步骤", plain, re.I)
+            plan_rewrite = re.search(r"initializ|初始化", plain, re.I) and re.search(r"revis|rewrit|compil|plan board|方案板|修订|重写|编译", plain, re.I)
+            if action and instruction or plan_rewrite:
+                return True
         if plan is not None:
             from .presentation import unchanged_plan
 
+            # Confirmation instructions have one owner: the selected revision's
+            # status below, including its compiled fleet and alternatives.
+            if re.search(r"(?:press|click|choose|ready|can|should|once|after).*\bconfirm\b|\bconfirm\b.*(?:board|plan|revision|drone|UAV|save)|点击.*确认|确认并应用", plain, re.I):
+                return True
             if unchanged_plan(plan) and re.search(r"(?:press|click)\s+confirm|点击.*确认", plain, re.I):
+                return True
+            if (session or {}).get("alternatives") and plan["version"] not in session["alternatives"] and re.search(r"\bconfirm\b|确认并应用", plain, re.I):
                 return True
             if plan["validation"]["state"] == "valid" and re.search(
                 r"^(?:please\s+)?wait\s+(?:before\s+confirming\b|for\s+(?:the\s+)?(?:plan\s+)?validation\b)|^(?:请)?等待校验",
@@ -284,7 +296,15 @@ class Harness:
             for failure in evidence.get("failures", []):
                 label = failure.get("text_zh") if zh else failure["text"]
                 reason = failure.get("reason")
-                lines.append(f"- {failure['last_at_ns'] / 1e9:g} s: {label or failure['text']} (×{failure['count']})" + (f" — {reason}" if reason else ""))
+                lines.append(f"- {label or failure['text']} (×{failure['count']})")
+                for pair in failure.get("pairs", []):
+                    caption = pair.get("text_zh") if zh else pair["text"]
+                    lines.append(f"  - {caption or pair['text']} (×{pair['count']})")
+                if not failure.get("pairs"):
+                    example = failure.get("last_example")
+                    if example:
+                        caption = example.get("text_zh") if zh else example["text"]
+                        lines.append(("  最后一条记录示例：" if zh else "  Last recorded example: ") + f"{failure['last_at_ns'] / 1e9:g} s: {caption or example['text']}" + (f" — {reason}" if reason else ""))
             details = f"\n\n[{'查看完整 Story 与事件证据' if zh else 'Full Story and event evidence'}]({details_url})"
             result = "\n\n".join(lines)
             if len(result) > 5500:
@@ -351,9 +371,14 @@ class Harness:
                 not any(requested["op"] == "add_lowalt_components" for requested in plan["operations"])
                 for op in plan["compile"].get("operations", []))
             workspace = self.tools.workspace_state(identifier) if isinstance(self.tools, ToolRunner) else None
+            authoritative_workflow = workspace is not None and any(record["plan_version"] == plan["version"] for record in session["applied"])
             if not used_grounded_facts:
                 text = without_state_assertions(text, expanded=expanded, session=session, plan=plan,
-                                                workspace=workspace, evidence=evidence)
+                                                workspace=workspace, evidence=evidence,
+                                                authoritative_workflow=authoritative_workflow)
+            if authoritative_workflow:
+                suggestions = [cleaned for suggestion in suggestions if (cleaned := without_state_assertions(
+                    suggestion, session=session, plan=plan, workspace=workspace, authoritative_workflow=True))]
             zh = str((context or {}).get("locale", session["locale"])).startswith("zh")
             unapplied = not any(record["plan_version"] == plan["version"] for record in session["applied"])
             if unapplied and plan.get("what_changes"):

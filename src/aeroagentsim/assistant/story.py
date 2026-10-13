@@ -216,8 +216,24 @@ def failure_summary(failures: list[dict], *, limit: int = 6) -> list[dict]:
     for schema in ordered[:limit]:
         rows = groups[schema]
         last = max(rows, key=lambda row: row["at_ns"])
+        captions = {"lowalt.airspace.conflict": ("Airspace conflicts", "空域冲突"),
+                    "traffic.capture.failed": ("Capture failures", "拍摄失败")}
+        label, label_zh = captions.get(schema, ("Recorded conflicts", "记录的冲突") if schema.endswith(".conflict") else ("Recorded failures", "记录的失败"))
+        pairs: dict[tuple[str, str], list[dict]] = defaultdict(list)
+        for row in rows:
+            payload = row.get("payload", {})
+            a, b = _entity_id(payload.get("a")), _entity_id(payload.get("b"))
+            if a is not None and b is not None:
+                pairs[tuple(sorted((a, b)))].append(row)
+        pair_counts = []
+        for pair, events in pairs.items():
+            example = max(events, key=lambda event: event["at_ns"])
+            pair_counts.append({"entities": list(pair), "count": len(events), "text": example["text"][:240],
+                                "text_zh": (example.get("text_zh") or example["text"])[:240]})
         result.append({"schema": schema, "count": len(rows),
-                       "text": last["text"][:240], "text_zh": (last.get("text_zh") or last["text"])[:240],
+                       "text": label, "text_zh": label_zh,
+                       "pairs": pair_counts,
+                       "last_example": {"text": last["text"][:240], "text_zh": (last.get("text_zh") or last["text"])[:240]},
                        "first_at_ns": min(row["at_ns"] for row in rows), "last_at_ns": last["at_ns"],
                        "reason": failure_reason(last.get("payload", {}))})
     return result

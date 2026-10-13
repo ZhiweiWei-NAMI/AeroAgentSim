@@ -86,11 +86,11 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
   const marker: [number, number] | null = numbers[0] !== undefined && numbers[1] !== undefined ? [numbers[0], numbers[1]] : null;
 
   return <div className="wb-object-form wb-form-card" data-testid="wb-add-place">
-    <h4 className="wb-form-card-title">{isUpdate ? L('Edit place', '编辑设施') : L('Add place', '添加设施')}</h4>
-    <p className="wb-form-card-sub">{L('Set the place and its service settings, then review the changes before applying.', '设置设施及服务参数，查看变更后再应用。')}</p>
+    <h4 className="wb-form-card-title">{isUpdate ? L('Edit place', '编辑地点') : L('Add place', '添加地点')}</h4>
+    <p className="wb-form-card-sub">{L('Set the place and its service settings, then review the changes before applying.', '设置地点及服务参数，查看变更后再应用。')}</p>
     <StagedFormNote form={staged} L={L} onDiscard={review.clear} />
     {isUpdate ? chosen && <p className="wb-form-field"><span className="wb-label">{L('Role', '角色')}: {L(chosen.en, chosen.zh)}</span></p>
-      : <div className="wb-choice-group" role="group" aria-label={L('Place role', '设施角色')}>
+      : <div className="wb-choice-group" role="group" aria-label={L('Place role', '地点角色')}>
       {PLACE_ROLES.map(row => <button type="button" key={row.role} aria-pressed={role === row.role} className="wb-choice"
         onClick={() => { setRole(row.role); if (!touched.has('id')) setIdText(nextRoleId(row.role, entities.map(entity => entity.id))); }}>{L(row.en, row.zh)}</button>)}
     </div>}
@@ -109,7 +109,7 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
       <label className="wb-form-field"><span className="wb-label">{L('Position from', '位置来源')}</span><select value={mode} onChange={event => { const source = event.target.value as PositionMode; if (source === 'facility' && facilityId) copyFacility(facilityId); else setMode(source); mark('position'); }}>
         <option value="map" disabled={!canPick}>{L('Map click', '地图选点')}</option>
         <option value="typed">{L('Typed', '手动输入')}</option>
-        <option value="facility" disabled={!facilities.length}>{L('Existing facility', '已有设施')}</option>
+        <option value="facility" disabled={!facilities.length}>{L('Existing facility', '已有地点')}</option>
       </select></label>
     </div>
     {touched.has('id') && idBad && <p className="wb-field-error" role="alert">{L('Enter a unique id using letters, digits and . _ : / - without spaces.', '请输入唯一 id，只能使用字母、数字和 . _ : / -，不能包含空格。')}</p>}
@@ -121,13 +121,13 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
       <label className="wb-form-field"><span className="wb-label">{L('Name (Chinese)', '名称（中文）')}</span><input value={labelZh} onChange={event => { setLabelZh(event.target.value); mark('label_zh'); }} /></label>
     </div>
     {mode === 'facility' && <div className="wb-form-grid">
-      <label className="wb-form-field"><span className="wb-label">{L('Existing facility', '已有设施')}</span><select value={facilityId} disabled={!facilities.length}
+      <label className="wb-form-field"><span className="wb-label">{L('Existing facility', '已有地点')}</span><select value={facilityId} disabled={!facilities.length}
         onChange={event => { copyFacility(event.target.value); }}>
         <option value="">{L('Choose…', '选择…')}</option>{facilities.map(entity => <option key={entity.id} value={entity.id}>{L(entity.label ?? entity.id, entity.label_zh ?? entity.label ?? entity.id)}</option>)}
       </select></label>
     </div>}
     {positionInvalid && (touched.has('position') || isUpdate) && <p className="wb-field-error" role="alert">{L('Enter three finite numbers for the position.', '请输入三个有限数值作为位置。')}</p>}
-    {startInvalid && <p className="hint wb-form-prerequisite" role="note">{L('Choose an existing facility.', '请选择已有设施。')}</p>}
+    {startInvalid && <p className="hint wb-form-prerequisite" role="note">{L('Choose an existing facility.', '请选择已有地点。')}</p>}
     <div className="wb-form-grid">
       {hasCapacity && <label className="wb-form-field"><span className="wb-label">{L('capacity (parallel slots)', '容量（并行位）')}</span><input inputMode="numeric" value={capacity} aria-invalid={touched.has('capacity') && capacityInvalid}
         onChange={event => { setCapacity(event.target.value); mark('capacity'); }} /></label>}
