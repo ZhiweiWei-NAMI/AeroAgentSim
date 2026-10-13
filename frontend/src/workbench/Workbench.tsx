@@ -524,6 +524,7 @@ export default function Workbench() {
     {project && panel && (!assistantOpen || assistant.morph?.from === 'form') ? <ConfigPanel key={project.id} api={api} project={project} onProject={setProject} onDraft={previewChanged} onInitialize={() => void initialize()} initializing={initializing}
         section={assistantOpen ? assistant.lastSection.current : panel} onSection={section => update({ panel: section })} onClose={() => update({ panel: undefined })}
         onInspectContract={type => update({ contract: panel, type, workspace: project.id })}
+        activeRunVersion={record?.studio_workspace === project.id ? record.workspace_version : undefined}
         onSwitch={(mode, origin) => assistant.switchMode(mode, origin)} switching={!!assistant.morph} morph={morphOf('form')} />
       : !assistantOpen && session && store && runId && (rightOpen ? <InspectorPanel api={runsApi} runId={runId} store={store} revision={session.revision} selected={selected} cut={session.cut} mode={mode ?? 'replay'} canOperate={canOperate} viewingHistory={history} operateRequest={operateRequest} inputSource={session.inputSource} onCompactChange={setInspectorCompact}
           onSelect={key => select(key)} onSeekCut={session.seekCut} onTrace={ref => openTrace(ref)} following={following}

@@ -162,8 +162,9 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
     const load=()=>{void api.admissions(runId,abort.signal).then(rows=>{
       if(abort.signal.aborted)return;
       setAdmissions(previous=>{
-        // Live POST receipts carry no id; journaled rows win by id, live rows stay.
-        const live=previous.filter(row=>!mapping(row)||typeof row.id!=='string');
+        // A live receipt's command_id is the journaled row's id: keep only the journaled copy.
+        const journaled=new Set(rows.map(stored=>stored.id));
+        const live=previous.filter(row=>(!mapping(row)||typeof row.id!=='string')&&!(mapping(row)&&typeof row.command_id==='string'&&journaled.has(row.command_id)));
         const merged=[...rows.map(stored=>({id:stored.id,status:stored.status,disposition:stored.status,submitted_at:stored.submitted_at,target_cut:stored.target_cut,kind:stored.kind,detail:stored.detail,stored:true})),...live];
         const seen=new Set<string>(),unique=merged.filter(row=>{
           const key=typeof row.id==='string'?row.id:`live-${seen.size}`;
