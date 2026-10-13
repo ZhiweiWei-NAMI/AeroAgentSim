@@ -36,14 +36,21 @@ function GalleryLanguage() {
 }
 
 /** The scenario library (nine ready-made worlds) and the user's projects. */
-export function Gallery({ api, current, onOpenProject, onCreate, onClose, initialGuide, onDescribe }: {
+export function Gallery({ api, current, onOpenProject, onCreate, onCreateBlank, onClose, initialGuide, onDescribe }: {
   api: WorkbenchApi; current?: string; initialGuide?: string;
-  onOpenProject: (id: string) => void; onCreate: (template: ScenarioTemplate) => Promise<void>; onClose?: () => void; onDescribe?: () => void;
+  onOpenProject: (id: string) => void; onCreate: (template: ScenarioTemplate) => Promise<void>; onCreateBlank: () => Promise<void>; onClose?: () => void; onDescribe?: () => void;
 }) {
   const { locale } = useI18n();
   const zh = locale === 'zh-CN', L = (en: string, cn: string) => zh ? cn : en;
   const [templates, setTemplates] = useState<ScenarioTemplate[]>(), [projects, setProjects] = useState<Project[]>();
   const [error, setError] = useState<string>(), [guide, setGuide] = useState<ScenarioTemplate>();
+  const [creating, setCreating] = useState(false);
+  const createBlank = async () => {
+    setCreating(true); setError(undefined);
+    try { await onCreateBlank(); }
+    catch (problem) { setError(String(problem)); }
+    finally { setCreating(false); }
+  };
   useEffect(() => {
     const abort = new AbortController();
     void api.templates(abort.signal).then(rows => { setTemplates(rows); if (initialGuide) setGuide(rows.find(row => row.id === initialGuide)); }).catch(problem => { if (!abort.signal.aborted) setError(String(problem)); });
@@ -58,8 +65,9 @@ export function Gallery({ api, current, onOpenProject, onCreate, onClose, initia
         <div className="wb-hero">
           <div style={{ flex: 1 }}>
             <h1>{L('Nine ready-made worlds', '九个现成的低空世界')}</h1>
-            <p>{L('Each scenario has controls to change and KPIs to measure the result. Open one to read its guide and create your own project from it.', '每个场景都有可调的控制项和衡量结果的指标。点开场景阅读指南，并以它为起点创建自己的项目。')}</p>
+            <p>{L('Start with a ready-made scenario, or skip this step and configure a blank project yourself. Manual setup does not require a model.', '可以从现成场景开始，也可以跳过这一步，从空白项目手动配置。手动操作无需连接模型。')}</p>
           </div>
+          <button className="wb-btn primary" disabled={creating} onClick={() => void createBlank()} data-testid="wb-create-blank">{creating ? L('Creating…', '正在创建…') : L('Skip, create manually', '跳过，手动创建')}</button>
           <GalleryLanguage />
           {onClose && <button className="wb-btn" onClick={onClose}>{L('Back to the scene', '返回场景')} <span className="wb-kbd">Esc</span></button>}
         </div>
@@ -80,7 +88,7 @@ export function Gallery({ api, current, onOpenProject, onCreate, onClose, initia
           {!templates && !error && <div className="wb-empty">{L('Loading scenarios…', '正在加载场景…')}</div>}
         </div>
         <div className="wb-section-title">{L('Your projects', '我的项目')}</div>
-        {projects && !projects.length && <div className="wb-empty"><strong>{L('No projects yet', '还没有项目')}</strong>{L('Create one from a scenario above.', '从上面的场景创建一个。')}</div>}
+        {projects && !projects.length && <div className="wb-empty"><strong>{L('No projects yet', '还没有项目')}</strong>{L('Create a blank project or start from a scenario above.', '可以创建空白项目，也可以从上面的场景开始。')}</div>}
         <div className="wb-projects">
           {(projects ?? []).map(project => <button key={project.id} className="wb-row wb-glass" style={{ padding: 12 }} title={project.id} aria-current={project.id === current} onClick={() => onOpenProject(project.id)} data-testid="wb-project">
             <span className="wb-dot" style={{ background: project.dirty ? 'var(--wb-warn)' : 'var(--wb-ok)' }} />

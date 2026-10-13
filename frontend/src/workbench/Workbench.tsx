@@ -350,6 +350,10 @@ export default function Workbench() {
   };
 
   // Projects and templates
+  const createBlankProject = async () => {
+    const created = await api.createProject(L('Untitled project', '未命名项目'));
+    update({ gallery: undefined, guide: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, assistant: undefined, records: undefined, compare: undefined, contract: undefined, graph: undefined, panel: 'space' }, true, `/w/${encodeURIComponent(created.id)}`);
+  };
   const createFromTemplate = async (template: ScenarioTemplate) => {
     try { const created = await api.createFromTemplate(template.id); update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: 'controls' }, true, `/w/${encodeURIComponent(created.workspace_id)}`); }
     catch (problem) { toast('error', problemText(problem)); }
@@ -545,7 +549,7 @@ export default function Workbench() {
     </div></div>}
 
     {/* Overlays */}
-    {showGallery && <Gallery api={api} current={project?.id} onDescribe={() => update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: 'assistant', assistant: undefined, records: undefined }, true, '/')} initialGuide={query.get('guide') ?? undefined} onOpenProject={id => update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: undefined }, true, `/w/${encodeURIComponent(id)}`)} onCreate={createFromTemplate} onClose={projectId ? () => update({ gallery: undefined }) : undefined} />}
+    {showGallery && <Gallery api={api} current={project?.id} onDescribe={() => update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: 'assistant', assistant: undefined, records: undefined }, true, '/')} initialGuide={query.get('guide') ?? undefined} onOpenProject={id => update({ gallery: undefined, run: undefined, mode: undefined, cut: undefined, sel: undefined, panel: undefined }, true, `/w/${encodeURIComponent(id)}`)} onCreate={createFromTemplate} onCreateBlank={createBlankProject} onClose={projectId ? () => update({ gallery: undefined }) : undefined} />}
     {query.get('compare') && <div className="wb-overlay" onClick={event => { if (event.target === event.currentTarget) update({ compare: undefined }); }}><div className="wb-overlay-card wb-glass"><Suspense fallback={null}><CompareRuns api={templateApi} ids={query.get('compare')!.split(',')} onBack={() => update({ compare: undefined })} /></Suspense></div></div>}
     {contractType !== undefined && <div className="wb-overlay" onClick={event => { if (event.target === event.currentTarget) update({ contract: undefined, type: undefined, workspace: undefined, panel: query.get('contract') ?? panel }); }}><div className="wb-overlay-card wb-glass">
       <div className="wb-hero"><div style={{ flex: 1 }}><h1>{L('Type contract', '类型契约')}</h1><p className="wb-mono">{contractType?.split(',')[0] || L('AeroGraph types, fields, relations and events', 'AeroGraph 类型、字段、关系与事件')}</p></div><button className="wb-btn primary" onClick={() => update({ contract: undefined, type: undefined, workspace: undefined, panel: query.get('contract') ?? panel })}>← {L('Back to the field you were editing', '返回正在编辑的字段')}</button></div>

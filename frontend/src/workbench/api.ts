@@ -39,6 +39,7 @@ export class WorkbenchApi {
   }
   // Projects (studio workspaces) and their versions.
   projects(signal?: AbortSignal) { return this.request<Project[]>('/v1/studio/workspaces', { signal }); }
+  createProject(name: string) { return this.request<{ id: string }>('/v1/studio/workspaces', { body: { name } }); }
   project(id: string, signal?: AbortSignal) { return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}`, { signal }); }
   save(id: string, scenario: Record<string, unknown>, revision: number, name?: string) {
     return this.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(id)}`, { body: { scenario, revision, ...(name ? { name } : {}) } });
