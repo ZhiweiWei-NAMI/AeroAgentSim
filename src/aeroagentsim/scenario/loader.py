@@ -13,8 +13,10 @@ from typing import Any, ClassVar, cast
 import yaml
 
 try:
+    from yaml import CSafeDumper as SafeDumper
     from yaml import CSafeLoader as SafeLoader
 except ImportError:  # PyYAML also supports installations without LibYAML.
+    from yaml import SafeDumper
     from yaml import SafeLoader
 
 from aerokernel import (
@@ -356,7 +358,7 @@ def load_scenario(
     try:
         if isinstance(source, dict):
             document = source
-            source_text = yaml.safe_dump(source, sort_keys=True)
+            source_text = yaml.dump(source, Dumper=SafeDumper, sort_keys=True)
             directory = Path.cwd() if base is None else base
         else:
             path = Path(source).resolve()
