@@ -49,6 +49,9 @@ const reducedMotion = () =>
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+const toBoundsExpression = (bounds: number[]): L.LatLngBoundsExpression =>
+  [[bounds[1], bounds[0]], [bounds[3], bounds[2]]];
+
 export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry, instances, pick, outsideWarning, height, className, L }: RegionMapProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -90,24 +93,24 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     mapRef.current = map;
     map.on('click', () => { setWheelArmed(true); map.options.scrollWheelZoom = true; });
     map.on('mouseout', () => { setWheelArmed(false); map.options.scrollWheelZoom = false; });
-    map.on('mousedown', (event: any) => {
+    map.on('mousedown', (event: L.LeafletMouseEvent) => {
       const state = latest.current;
       if (!state.onBoundsChange || !drawingRef.current) return;
       drawStartRef.current = event.latlng;
     });
-    map.on('mousemove', (event: any) => {
+    map.on('mousemove', (event: L.LeafletMouseEvent) => {
       const state = latest.current;
       const start = drawStartRef.current;
       if (!state.onBoundsChange || !drawingRef.current || !start) return;
       const w = Math.min(start.lng, event.latlng.lng), e = Math.max(start.lng, event.latlng.lng);
       const s = Math.min(start.lat, event.latlng.lat), n = Math.max(start.lat, event.latlng.lat);
       if (!drawRectRef.current) {
-        drawRectRef.current = Leaflet.rectangle([[s, w], [n, e]], {
+        drawRectRef.current = Leaflet.rectangle(toBoundsExpression([w, s, e, n]), {
           color: '#1f7ae0', weight: 1.5, dashArray: '4 4', fillOpacity: 0.04, interactive: false,
         }).addTo(map);
-      } else drawRectRef.current.setBounds([[s, w], [n, e]]);
+      } else drawRectRef.current.setBounds(toBoundsExpression([w, s, e, n]));
     });
-    map.on('mouseup', (event: any) => {
+    map.on('mouseup', (event: L.LeafletMouseEvent) => {
       const state = latest.current;
       const start = drawStartRef.current;
       if (!state.onBoundsChange || !drawingRef.current || !start || !drawRectRef.current) { drawStartRef.current = null; return; }
@@ -121,7 +124,7 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     });
     // Pick mode click.
     map.on('dblclick', () => { /* avoid interference while drawing */ });
-    map.on('click', (event: any) => {
+    map.on('click', (event: L.LeafletMouseEvent) => {
       const state = latest.current;
       if (!state.pick || drawingRef.current) return;
       const origin = state.geometry?.origin;
@@ -136,8 +139,6 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     });
     return () => { map.remove(); mapRef.current = null; };
   }, []);
-
-  useEffect(() => { drawingRef.current = drawing; }, [drawing]);
 
   // Esc cancels an active "Draw area" drag (spec 3).
   useEffect(() => {
@@ -178,32 +179,29 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     if (!map) return;
     if (coverageRef.current) { coverageRef.current.remove(); coverageRef.current = null; }
     if (!coverage || coverage.length !== 4) return;
-    coverageRef.current = Leaflet.rectangle([[coverage[1], coverage[0]], [coverage[3], coverage[2]]], {
+    coverageRef.current = Leaflet.rectangle(toBoundsExpression(coverage), {
       color: '#1f7ae0', weight: 1.5, dashArray: '4 4', fillOpacity: 0.04, interactive: false,
     }).addTo(map);
   }, [coverage]);
 
-  // --- selected bounds rectangle + 4 draggable corner handles + draggable body ---
+  // --- selected bounds rectangle + 4 draggable corner handles ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     if (boundsRef.current) { boundsRef.current.remove(); boundsRef.current = null; }
     handlesRef.current?.remove(); handlesRef.current = null;
     if (!bounds || bounds.length !== 4 || !onBoundsChange) return;
-    const layer = Leaflet.rectangle([[bounds[1], bounds[0]], [bounds[3], bounds[2]]], {
-      color: '#1f7ae0', weight: 2, fillOpacity: 0.1, draggable: true,
+    const layer = Leaflet.rectangle(toBoundsExpression(bounds), {
+      color: '#1f7ae0', weight: 2, fillOpacity: 0.1, interactive: false,
     }).addTo(map);
     boundsRef.current = layer;
     const write = (next: number[]) => {
       const clamped = latest.current.coverage && latest.current.coverage!.length === 4
         ? clampBoundsTo(next, latest.current.coverage!) : next;
       if (clamped[2] - clamped[0] <= 1e-9 || clamped[3] - clamped[1] <= 1e-9) return;
+      suppressRef.current = true; // our own write-back; do not re-sync from props
       latest.current.onBoundsChange?.(clamped);
     };
-    layer.on('dragend', () => {
-      const b = layer.getBounds();
-      write([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
-    });
     // Corner handles: small white circles, 2px accent border (CSS class .wb-map-handle).
     const group = Leaflet.layerGroup().addTo(map);
     handlesRef.current = group;
@@ -216,17 +214,17 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
         draggable: true, keyboard: false,
         icon: Leaflet.divIcon({ className: `wb-map-handle ${key}`, iconSize: [10, 10], iconAnchor: [5, 5] }),
       }).addTo(group);
-      handle.on('drag', (event: any) => {
-        const position = event.target.getLatLng();
+      handle.on('drag', (event: L.LeafletEvent) => {
+        const position = (event.target as L.Marker).getLatLng();
         const b = boundsRef.current?.getBounds();
         if (!b) return;
         const next: number[] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
         if (key.includes('w')) next[0] = position.lng; else next[2] = position.lng;
         if (key.includes('n')) next[3] = position.lat; else next[1] = position.lat;
-        layer.setBounds([[next[1], next[0]], [next[3], next[2]]]);
+        layer.setBounds(toBoundsExpression(next));
       });
-      handle.on('dragend', (event: any) => {
-        const position = event.target.getLatLng();
+      handle.on('dragend', (event: L.LeafletEvent) => {
+        const position = (event.target as L.Marker).getLatLng();
         const b = layer.getBounds();
         const next: number[] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
         if (key.includes('w')) next[0] = position.lng; else next[2] = position.lng;
@@ -241,16 +239,15 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
   useEffect(() => {
     if (suppressRef.current) { suppressRef.current = false; return; }
     if (!bounds || bounds.length !== 4 || !boundsRef.current) return;
-    boundsRef.current.setBounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]]);
+    boundsRef.current.setBounds(toBoundsExpression(bounds));
     if (handlesRef.current) {
       const corners: Array<[string, number, number]> = [
         ['nw', bounds[0], bounds[3]], ['ne', bounds[2], bounds[3]],
         ['sw', bounds[0], bounds[1]], ['se', bounds[2], bounds[1]],
       ];
       let index = 0;
-      handlesRef.current.eachLayer(layer => {
-        const marker = layer as unknown as { setLatLng(latlng: L.LatLngExpression): void };
-        marker.setLatLng([corners[index][2], corners[index][1]]);
+      handlesRef.current.eachLayer(child => {
+        (child as L.Marker).setLatLng([corners[index][2], corners[index][1]]);
         index++;
       });
     }
@@ -329,8 +326,8 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
   useEffect(() => {
     const map = mapRef.current;
     if (!map || fitted || !coverage || coverage.length !== 4) return;
-    map.fitBounds([[coverage[1], coverage[0]], [coverage[3], coverage[2]]], {
-      animate: !reducedMotion(), padding: [8, 8],
+    map.fitBounds(toBoundsExpression(coverage), {
+      animate: !reducedMotion(), padding: Leaflet.point(8, 8),
     });
     setFitted(true);
   }, [coverage, fitted]);
@@ -369,7 +366,7 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
 }
 
 /** Bounded helper for the C10 preview / compiled-scene ENU polygons → map rings. */
-export const enuRings = (features: Array<{ geometry?: { coordinates?: unknown } | null }>): Array<Array<[number, number]>> => {
+export const enuRings = (features: Array<{ geometry?: { type?: unknown; coordinates?: unknown } | null }>): Array<Array<[number, number]>> => {
   const rings: Array<Array<[number, number]>> = [];
   for (const feature of features) {
     const geometry = feature.geometry;

@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { Browser } from 'leaflet';
 import { I18nProvider } from '../../../i18n/I18nProvider';
 import { AddObjects } from './AddObjects';
+import { forceSvgRenderer } from '../space/leafletTestSetup';
 
 const scroll = Element.prototype.scrollIntoView;
-beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); Browser.svg = true; Browser.inlineSvg = true; Browser.vml = false; });
+beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); forceSvgRenderer(); });
 afterEach(() => { Element.prototype.scrollIntoView = scroll; cleanup(); });
 
 const L = (en: string, _zh?: string) => en;

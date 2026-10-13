@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addGust, engineOf, newCooperation, newOrderStream, removeGust, taskConfig, windDirection, windSpeed, nsToS } from './model';
+import { addOrdersParams, cooperationParams, gustProblem, setWindOp, gustOp, unknownEndpoints } from './ops';
+import { operation } from '../operations';
 
 const draft = {
   run: { until_ns: 360_000_000_000 },
@@ -49,5 +51,49 @@ describe('tasks/shared model helpers', () => {
     expect(coop.responder.order).toContain('request_handoff');
     expect(coop.helpers.selection).toBe('nearest');
     expect(coop.watchers.notice_radius_m).toBeGreaterThan(0);
+  });
+});
+
+describe('C11 operation param builders', () => {
+  it('add_orders sends only staged fields and keeps the delivery window food-only', () => {
+    const params = addOrdersParams({
+      id: 'rush', kind: 'food', count: 2, from: ['kitchen-1'], to: ['cust'],
+      release: { mode: 'scheduled', times_s: [0, 30] }, priority: 2, payload_kg: 3, delivery_window_s: 240,
+    });
+    expect(params).toEqual({
+      id: 'rush', kind: 'food', count: 2, from: ['kitchen-1'], to: ['cust'],
+      release: { mode: 'scheduled', times_s: [0, 30] }, priority: 2, payload_kg: 3, delivery_window_s: 240,
+    });
+    const parcel = addOrdersParams({ id: 'p', kind: 'parcel', count: 1, from: ['a'], to: ['b'], release: { mode: 'poisson', rate_per_s: 0.1, start_s: 0, end_s: 60 }, delivery_window_s: 99 });
+    expect('delivery_window_s' in parcel).toBe(false);
+  });
+
+  it('flags endpoints that are not existing places', () => {
+    expect(unknownEndpoints({ from: ['a'], to: ['b'] }, ['a', 'b'])).toEqual([]);
+    expect(unknownEndpoints({ from: ['a'], to: ['ghost'] }, ['a', 'b'])).toEqual(['ghost']);
+  });
+
+  it('cooperation params carry only the picked parts', () => {
+    expect(cooperationParams({ watchers: { vehicles: ['u1'], notice_radius_m: 120 } })).toEqual({
+      watchers: { vehicles: ['u1'], notice_radius_m: 120 },
+    });
+    expect(cooperationParams({ helpers: { mode: 'agent' } })).toEqual({ helpers: { mode: 'agent' } });
+    expect(cooperationParams({})).toEqual({});
+  });
+
+  it('set_wind takes speed only; add_gust keeps the three staged numbers', () => {
+    expect(setWindOp(4)).toEqual({ id: expect.any(String), op: 'set_wind', params: { speed_mps: 4 } });
+    expect(gustOp({ start_s: 60, end_s: 90, speed_mps: 9 }).op).toBe('add_gust');
+    expect(gustOp({ start_s: 60, end_s: 90, speed_mps: 9 }).params).toEqual({ start_s: 60, end_s: 90, speed_mps: 9 });
+    expect(operation('set_duration', { seconds: 360 }).op).toBe('set_duration');
+  });
+
+  it('gust validation refuses inverted windows, out-of-horizon ends and negative speed', () => {
+    expect(gustProblem({ start_s: '60', end_s: '90', speed_mps: '9', duration_s: 360 }, false)).toBeUndefined();
+    expect(gustProblem({ start_s: '90', end_s: '60', speed_mps: '9', duration_s: 360 }, false)?.end_s).toBeTruthy();
+    expect(gustProblem({ start_s: '300', end_s: '400', speed_mps: '9', duration_s: 360 }, false)?.end_s).toMatch(/360/);
+    expect(gustProblem({ start_s: '10', end_s: '20', speed_mps: '-1', duration_s: 360 }, false)?.speed_mps).toBeTruthy();
+    expect(gustProblem({ start_s: '', end_s: '20', speed_mps: '1', duration_s: 360 }, false)?.start_s).toBeTruthy();
+    expect(gustProblem({ start_s: '10', end_s: '20', speed_mps: '1', duration_s: undefined }, false)).toBeUndefined();
   });
 });

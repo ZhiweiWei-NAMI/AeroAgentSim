@@ -1,16 +1,15 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { Browser } from 'leaflet';
 import { RegionMap, enuLines, enuRings } from './RegionMap';
 import { enuToLonLat } from '../../geo';
+import { forceSvgRenderer } from './leafletTestSetup';
+
 
 const L = (en: string, _zh?: string) => en;
 const COVERAGE = [121.5, 31.3, 121.52, 31.31];
 const ORIGIN = { lat: 31.305, lon: 121.51, alt: 4 };
 
-// jsdom lacks createSVGRect, so Leaflet's vector renderer falls through to nothing;
-// force the SVG renderer path (real browsers always take it).
-beforeAll(() => { Browser.svg = true; Browser.inlineSvg = true; Browser.vml = false; });
+beforeAll(() => { forceSvgRenderer(); });
 
 afterEach(cleanup);
 

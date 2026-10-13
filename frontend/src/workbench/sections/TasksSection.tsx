@@ -2,17 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BehavioursPanel } from '../../studio/BehavioursPanel';
 import type { TypeRow, Workspace } from '../../studio/api';
 import { issueSection } from './issues';
+import { operation } from './operations';
 import type { Project } from '../api';
 import { Leaf, pointer } from '../form';
 import type { SectionProps } from './types';
 import { engineOf, taskConfig } from './tasks/model';
 import { OrderStreams } from './tasks/OrderStreams';
 import { CooperationEditor } from './tasks/Cooperation';
+import { OpApply } from './tasks/op-ui';
 import './tasks.css';
 
 type Catalog = { types: TypeRow[]; fields: Record<string, unknown>[]; relations: Record<string, unknown>[] };
 
-export function TasksSection({ project, studioApi, draft, edit, replaceDraft, focus, L, issues, onProject, saveDraft, reportValidity }: SectionProps) {
+export function TasksSection({ api, studioApi, project, draft, edit, replaceDraft, focus, zh, L, issues, onProject, saveDraft, reportValidity }: SectionProps) {
   const [ruleEditor, setRuleEditor] = useState(false), [catalog, setCatalog] = useState<Catalog>();
   const ruleRoot = useRef<HTMLDivElement>(null), [ruleError, setRuleError] = useState<string>();
   const reportRuleValidity = useCallback((valid: boolean) => reportValidity('/behaviours', valid), [reportValidity]);
@@ -22,16 +24,25 @@ export function TasksSection({ project, studioApi, draft, edit, replaceDraft, fo
   const behaviours = (Array.isArray(draft.behaviours) ? draft.behaviours : []) as Array<Record<string, any>>;
   const tasks = engineOf(draft, 'lowalt_tasks') ?? ((draft.engines as Record<string, any> | undefined)?.tasks ? { name: 'tasks', engine: (draft.engines as Record<string, any>).tasks as Record<string, any> } : undefined);
   const config = taskConfig(draft);
+  // When the low-altitude pack is absent the operations API can install it; no dead end (C11 add_lowalt_components).
+  const lowaltMissing = !tasks;
+  const opProps = { api, project, onProject, saveDraft, zh };
   return <>
     <p className="hint">{L('What work appears and the rules that decide what is allowed: order streams, cooperation, predicates with parameters, and event chains.', '会出现哪些工作，以及决定允许做什么的规则：订单流、协同、带参数的谓词与事件链。')}</p>
+    {lowaltMissing && <div className="wb-empty" data-testid="wb-lowalt-missing">
+      {L('This scenario has no low-altitude components (tasks engine, places, fleets), so order streams and cooperation have nothing to attach to.', '该场景没有低空组件（任务引擎、设施、机群），订单流与协同没有可依附的对象。')}
+      <OpApply api={api} project={project} onProject={onProject} saveDraft={saveDraft}
+        operations={[operation('add_lowalt_components', {})]}
+        label={L('Start with standard low-altitude components', '安装标准低空组件')} labelZh="安装标准低空组件" primary />
+    </div>}
     {config?.generators && <><h4>{L('Order streams', '订单流')}</h4>
-      <OrderStreams config={config} draft={draft} edit={edit} focus={focus} L={L} /></>}
-    {!config?.generators && <><h4>{L('Order streams', '订单流')}</h4>
-      <div className="wb-empty">{L('Needs the tasks engine (lowalt_tasks) to define order streams; this form cannot create engines yet. Start from a template in the gallery, or add the engine in File (YAML).', '需要任务引擎（lowalt_tasks）才能定义订单流；此表单尚不能创建引擎。可从图库的模板开始，或在“文件”（YAML）中添加引擎。')}</div></>}
+      <OrderStreams config={config} draft={draft} edit={edit} focus={focus} L={L} {...opProps} /></>}
+    {!config?.generators && !lowaltMissing && <><h4>{L('Order streams', '订单流')}</h4>
+      <div className="wb-empty">{L('The tasks engine exists but declares no generators array; add one in File (YAML).', '任务引擎存在但没有生成器数组；请在“文件”（YAML）中添加。')}</div></>}
     {config && tasks && <><h4>{L('Cooperation', '协同')}</h4>
-      <CooperationEditor config={config} engineName={tasks.name} draft={draft} edit={edit} focus={focus} L={L} replaceDraft={replaceDraft} /></>}
-    {!config && <><h4>{L('Cooperation', '协同')}</h4>
-      <div className="wb-empty">{L('Needs the tasks engine (lowalt_tasks) to configure cooperation; this form cannot create engines yet. Start from a template in the gallery, or add the engine in File (YAML).', '需要任务引擎（lowalt_tasks）才能配置协同；此表单尚不能创建引擎。可从图库的模板开始，或在“文件”（YAML）中添加引擎。')}</div></>}
+      <CooperationEditor config={config} engineName={tasks.name} draft={draft} edit={edit} focus={focus} L={L} replaceDraft={replaceDraft} {...opProps} /></>}
+    {!config && !lowaltMissing && <><h4>{L('Cooperation', '协同')}</h4>
+      <div className="wb-empty">{L('The tasks engine exists but its config carries no cooperation yet — set one up above.', '任务引擎存在但尚未配置协同——请在上方配置。')}</div></>}
     {behaviours.map((behaviour, b) => <div key={b}>
       <h4>{L('Rules', '规则')} · <span className="wb-mono">{behaviour.id ?? b}</span></h4>
       {Object.entries(behaviour.predicates ?? {}).map(([name, predicate]: [string, any]) => <details key={name} open><summary><b>{name}</b></summary>

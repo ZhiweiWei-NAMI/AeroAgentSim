@@ -2,7 +2,7 @@ import type { ValidationIssue, WorkbenchApi } from '../../api';
 import type { Workspace } from '../../../studio/api';
 
 /** Shapes of the server contracts this section consumes (see brief: C1, C2). */
-export interface ExtractInfo { id: string; label?: string; bounds?: number[]; attribution?: string }
+export interface ExtractInfo { id: string; label?: string; bounds?: number[]; attribution?: string; basemap?: { url?: string; attribution?: string } }
 export interface RegionPreview {
   preview: {
     extract: string; bounds: number[]; origin: { lat: number; lon: number; alt: number };
