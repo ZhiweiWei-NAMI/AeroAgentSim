@@ -376,10 +376,25 @@ export default function Workbench() {
     const key = (event: KeyboardEvent) => {
       if (event.repeat || event.defaultPrevented) return;
       const target = event.target as HTMLElement | null;
+      // T4-07: any open overlay/dialog owns the keyboard — palette, compare,
+      // contract, gallery veil. Background shortcuts stop until it closes.
+      const overlayOpen = palette || !!query.get('compare') || contractType !== undefined || query.has('gallery')
+        || !!document.querySelector('[role="dialog"][aria-modal="true"], [role="alertdialog"]');
       // A photo or technical-details dialog owns its keyboard and focus.
-      if (target?.closest('[role="dialog"], [role="alertdialog"]') || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      if (target?.closest('[role="dialog"], [role="alertdialog"]')) return;
       const editing = target && (target.isContentEditable || /^(TEXTAREA|SELECT)$/.test(target.tagName) ||
         target.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes((target as HTMLInputElement).type));
+      if (overlayOpen) {
+        // Only Escape (closing the overlay) and the palette toggle stay live.
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setPalette(value => !value); return; }
+        if (event.key === 'Escape' && !editing) {
+          if (palette) setPalette(false);
+          else if (query.get('compare')) update({ compare: undefined });
+          else if (contractType !== undefined) update({ contract: undefined, type: undefined });
+          else if (query.has('gallery') && projectId) update({ gallery: undefined });
+        }
+        return;
+      }
       if (editing && event.key !== 'Escape' && !((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k')) return;
       // Escape first leaves the field being edited; a second Escape closes the panel.
       if (editing && event.key === 'Escape') { target.blur(); return; }
@@ -456,8 +471,12 @@ export default function Workbench() {
         <button onClick={() => update({ gallery: '1' })} title={title ?? L('Switch scenario or project', '切换场景或项目')} data-testid="wb-project-switch"><span>{title ?? L('Choose a scenario', '选择场景')}</span> <span aria-hidden>▾</span></button>
         <small>{project?.template ? `${localized(template, 'title', locale) ?? project.template.id}` : project?.derived_from ? L(`derived from ${project.derived_from.run_id}`, `派生自 ${project.derived_from.run_id}`) : project ? L('Custom project', '自定义项目') : ''}</small>
       </div>
-      {project && <span className={`wb-chip ${project.dirty ? 'is-dirty' : 'is-version'}`} title={project.latest_version?.digest}>{project.latest_version ? `v${project.latest_version.version}` : L('no version', '无版本')}{project.dirty ? L(' · draft edited', ' · 草稿已修改') : ''}</span>}
-      {record?.workspace_version !== undefined && <span className="wb-chip" title={record.workspace_digest}>{L('run of', '运行版本')} v{record.workspace_version}</span>}
+      {project && <span className={`wb-chip ${project.dirty ? 'is-dirty' : 'is-version'}`} title={project.latest_version?.digest} data-testid="wb-version-chip">{project.latest_version ? `v${project.latest_version.version}` : L('no version', '无版本')}{project.dirty ? L(' · draft edited', ' · 草稿已修改') : ''}</span>}
+      {/* The run stays pinned to the version it was initialized from, even after a newer save. */}
+      {project && record?.workspace_version !== undefined && record.studio_workspace === project.id && record.workspace_version !== project.latest_version?.version &&
+        <span className="wb-chip is-dirty" title={record.workspace_digest}>{L('draft is newer than run v', '草稿比运行版本更新：')}v{record.workspace_version}</span>}
+      {record?.workspace_version !== undefined && (!project || record.studio_workspace !== project.id || record.workspace_version === project.latest_version?.version) &&
+        <span className="wb-chip" title={record.workspace_digest}>{L('run of', '运行版本')} v{record.workspace_version}</span>}
       </div>
       <div className="wb-simulation">
       <span className={`wb-status s-${status ?? 'none'}`} data-testid="wb-status"><i />{status ? finalizing ? L('Finalizing results…', '结果汇总中…') : status === 'initialized' ? L('Initialized · t = 0', '已初始化 · t = 0') : runStatusLabel(status, locale) : L('No run', '无运行')}{mode === 'replay' && !finalizing && <span className="wb-tag" style={{ marginLeft: 6 }}>{L('replay', '回放')}</span>}</span>
@@ -593,10 +612,20 @@ export default function Workbench() {
 
 function Palette({ items, onClose, placeholder }: { items: Array<{ id: string; label: string; hint: string; run: () => void }>; onClose: () => void; placeholder: string }) {
   const [query, setQuery] = useState(''), [index, setIndex] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const shown = items.filter(item => `${item.label} ${item.hint}`.toLowerCase().includes(query.toLowerCase())).slice(0, 60);
   const choose = (item?: { run: () => void }) => { if (item) { item.run(); onClose(); } };
+  // T4-07: Tab cycles inside the palette; focus cannot escape while it is open.
+  const trap = (event: React.KeyboardEvent) => {
+    if (event.key !== 'Tab') return;
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('input, button:not(:disabled)');
+    if (!focusable?.length) return;
+    event.preventDefault();
+    const list = [...focusable], position = list.indexOf(document.activeElement as HTMLElement);
+    list[event.shiftKey ? (position <= 0 ? list.length - 1 : position - 1) : (position === -1 || position === list.length - 1 ? 0 : position + 1)]?.focus();
+  };
   return <div className="wb-overlay" style={{ alignItems: 'flex-start' }} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <div className="wb-palette wb-glass" role="dialog" aria-label={placeholder}>
+    <div className="wb-palette wb-glass" role="dialog" aria-modal="true" aria-label={placeholder} ref={dialogRef} onKeyDown={trap}>
       <input autoFocus value={query} placeholder={placeholder} onChange={event => { setQuery(event.target.value); setIndex(0); }}
         onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setIndex(value => Math.min(shown.length - 1, value + 1)); } else if (event.key === 'ArrowUp') { event.preventDefault(); setIndex(value => Math.max(0, value - 1)); } else if (event.key === 'Enter') choose(shown[index]); else if (event.key === 'Escape') onClose(); }} />
       <ul>{shown.map((item, position) => <li key={item.id}><button aria-selected={position === index} onMouseEnter={() => setIndex(position)} onClick={() => choose(item)}><span style={{ flex: 1 }}>{item.label}</span><span className="wb-tag wb-mono">{item.hint}</span></button></li>)}</ul>

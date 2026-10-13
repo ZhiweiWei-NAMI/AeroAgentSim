@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ConfigPanel, controlSource, controlValue, issuePointer, issueSection } from './ConfigPanel';
-import type { Project, WorkbenchApi } from './api';
+import { ApiError, type Project, type WorkbenchApi } from './api';
 import { I18nProvider, useI18n } from '../i18n/I18nProvider';
+import { within } from '@testing-library/react';
 const catalog = vi.hoisted(() => ({ template: vi.fn(), algorithms: vi.fn() }));
 vi.mock('../newcomers/api', async original => ({ ...await original<object>(), TemplateApi: class { template = catalog.template; algorithms = catalog.algorithms; } }));
 vi.mock('../studio/BehavioursPanel', () => ({ BehavioursPanel: () => null }));
@@ -131,4 +132,44 @@ it('translates the saved control notice and template title when language changes
  const knobs=vi.fn().mockResolvedValue({...initial,revision:3,scenario:{generators:{fleet:{count:9}}}});setup(initial,'controls',{knobs});
  fireEvent.change(await screen.findByRole('spinbutton',{name:'Fleet count'}),{target:{value:'9'}});fireEvent.click(screen.getByRole('button',{name:'Apply controls to draft'}));await screen.findByText('Controls applied to the draft.');
  fireEvent.click(screen.getByRole('button',{name:'Switch language'}));expect(screen.getByText('控制项已应用到草稿。')).toBeVisible();expect(screen.getByRole('heading',{name:'配置 · 世界'})).toBeVisible();expect(screen.getByRole('spinbutton',{name:'数量'})).toHaveValue('9');expect(knobs).toHaveBeenCalledTimes(1);
+});
+
+it('a 409 save opens Compare and merge: local edits stay, choices are per section, and the merge saves on the server revision', async () => {
+  const serverProject: Project = { ...project, revision: 5, scenario: { ...project.scenario, run: { until_ns: 999 } } };
+  const api409 = { base: '/api', save: vi.fn()
+    .mockRejectedValueOnce(new ApiError(409, 'revision conflict'))
+    .mockImplementation(async (_id: string, scenario: Record<string, unknown>, revision: number) => ({ ...project, scenario, revision })),
+    project: vi.fn().mockResolvedValue(serverProject) } as unknown as WorkbenchApi;
+  function Harness409() {
+    const [current, setCurrent] = useState(project);
+    return <ConfigPanel api={api409} project={current} onProject={setCurrent} section="run" onSection={vi.fn()} onInitialize={vi.fn()} initializing={false} onClose={vi.fn()} />;
+  }
+  render(<I18nProvider><Harness409 /></I18nProvider>);
+  fireEvent.change(await screen.findByRole('textbox', { name: /until_ns/ }), { target: { value: '777' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+  const merge = await screen.findByTestId('wb-merge');
+  expect(merge).toHaveTextContent('Compare and merge');
+  expect(merge).toHaveTextContent('run');
+  // Local edits are never discarded: the until_ns field still shows 777.
+  expect(screen.getByRole('textbox', { name: /until_ns/ })).toHaveValue('777');
+  // Saving is blocked until every changed section has a choice.
+  expect(screen.getByTestId('wb-merge-save')).toBeDisabled();
+  fireEvent.click(within(screen.getByTestId('wb-merge')).getByRole('button', { name: 'Take server' }));
+  fireEvent.click(screen.getByTestId('wb-merge-save'));
+  await waitFor(() => expect(api409.save).toHaveBeenCalledTimes(2));
+  expect(api409.save).toHaveBeenLastCalledWith('test-project', expect.objectContaining({ run: { until_ns: 999 } }), 5);
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+  expect(document.querySelector('.wb-config-state-copy')?.textContent).toMatch(/Merged draft saved as revision \d+\./);
+  expect(screen.queryByTestId('wb-merge')).toBeNull();
+});
+
+it('an invalid saved draft can still be exported and repaired in the file editor while form edits are kept', async () => {
+  setup({ ...project, validation: { valid: false, revision: 2, errors: ['run.until_ns must be positive'] } }, 'file');
+  fireEvent.click(screen.getByRole('button', { name: 'Load scenario file' }));
+  const yaml = await screen.findByRole('textbox', { name: 'Scenario YAML' });
+  expect(yaml).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Download YAML' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Reload' })).toBeEnabled();
+  // The export shows the saved draft even while unsaved form edits exist.
+  expect(yaml).toHaveValue('run:\n  until_ns: 360000000000\n');
 });

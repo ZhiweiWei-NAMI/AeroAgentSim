@@ -14,6 +14,34 @@ import { displayName } from '../viewport/semantic';
 
 type Tab = 'state' | 'story' | 'operate';
 
+/** T3-006: lead with the fields an operator actually needs, in this order. */
+const OPERATING_FIELDS: Array<{ match: RegExp; en: string; zh: string }> = [
+  { match: /status|state$|lifecycle/i, en: 'Status', zh: '状态' },
+  { match: /battery|charge|energy|soc/i, en: 'Battery', zh: '电量' },
+  { match: /^position$|location|coord/i, en: 'Position', zh: '位置' },
+  { match: /task|mission|order|assignment/i, en: 'Task', zh: '任务' },
+  { match: /speed|velocity/i, en: 'Speed', zh: '速度' },
+  { match: /altitude|height/i, en: 'Altitude', zh: '高度' },
+];
+/** Fields that are identity/bookkeeping noise when empty — collapsed, not hidden. */
+const SECONDARY = /(?:digest|hash|generation|epoch|clock|producer|source|stamp|revision|_id$|^id$)/i;
+
+function operatingSplit(fields: Array<[string, unknown]>): { primary: Array<[string, unknown]>; secondary: Array<[string, unknown]> } {
+  const score = (id: string) => OPERATING_FIELDS.findIndex(row => row.match.test(id));
+  const sorted = [...fields].sort((a, b) => {
+    const sa = score(a[0]), sb = score(b[0]);
+    return (sa === -1 ? OPERATING_FIELDS.length : sa) - (sb === -1 ? OPERATING_FIELDS.length : sb);
+  });
+  const isEmpty = (fact: unknown) => {
+    const value = fact && typeof fact === 'object' && 'value' in (fact as Record<string, unknown>) ? (fact as Record<string, unknown>).value : fact;
+    return value === undefined || value === null || value === '' || Array.isArray(value) && value.length === 0;
+  };
+  return {
+    primary: sorted.filter(([id, value]) => score(id) !== -1 && !isEmpty(value)),
+    secondary: sorted.filter(([id, value]) => (score(id) === -1 || isEmpty(value)) && !SECONDARY.test(id)),
+  };
+}
+
 /** The selected object: state at the viewed moment, its story, and the operations it admits. */
 export function InspectorPanel({ api, runId, store, revision, selected, cut, mode, canOperate, viewingHistory, operateRequest, onSelect, onSeekCut, onTrace, onFocus, onFollow, following, onShowGraph, onClose, inputSource, onCompactChange }: {
   api: RunsApi; runId: string; store: TemporalFeedStore; revision: number; selected?: EntityKey; cut?: number; mode: 'live' | 'replay'; canOperate: boolean; viewingHistory?: boolean; operateRequest?: number;
@@ -86,7 +114,10 @@ export function InspectorPanel({ api, runId, store, revision, selected, cut, mod
       <div ref={body} className="wb-panel-body" style={{ paddingTop: 10 }}
         onWheel={() => cancelScrollRestore.current?.()} onPointerDown={() => cancelScrollRestore.current?.()} onKeyDown={() => cancelScrollRestore.current?.()}
         onScroll={event => { if (!cancelScrollRestore.current) scrollPositions.current[tab] = event.currentTarget.scrollTop; }}>
-        {tab === 'state' && <InspectionPanel store={store} selected={selected} onSeek={onSeekCut} onOpenTrace={ref => onTrace(ref)} />}
+        {tab === 'state' && <>
+          <OperatingSummary store={store} selected={selected} />
+          <InspectionPanel store={store} selected={selected} onSeek={onSeekCut} onOpenTrace={ref => onTrace(ref)} />
+        </>}
         {tab === 'story' && entity && <>
           <MomentsList store={store} entity={entity.key} onOpen={(ref, at) => { onSeekCut(at); onTrace(ref); }} />
           <ChangeList store={store} entity={entity.key} onOpen={(ref, at) => { onSeekCut(at); onTrace(ref); }} />
@@ -100,4 +131,36 @@ export function InspectorPanel({ api, runId, store, revision, selected, cut, mod
       </div>
     </>}
   </aside>;
+}
+
+/** T3-006: the operating state a dispatcher asks for first, above the full fact list. */
+function OperatingSummary({ store, selected }: { store: TemporalFeedStore; selected?: EntityKey }) {
+  const { locale } = useI18n();
+  const zh = locale === 'zh-CN', L = (en: string, zhText: string) => zh ? zhText : en;
+  const entity = selected ? store.entities.get(entityId(selected)) : undefined;
+  if (!entity) return null;
+  const { primary, secondary } = operatingSplit([...entity.fields]);
+  const label = (id: string) => OPERATING_FIELDS.find(row => row.match.test(id));
+  const factValue = (fact: unknown): unknown => fact && typeof fact === 'object' && 'value' in (fact as Record<string, unknown>) ? (fact as Record<string, unknown>).value : fact;
+  const shortValue = (value: unknown): string => {
+    const raw = factValue(value);
+    if (Array.isArray(raw)) return raw.map(item => typeof item === 'number' ? Number(item.toFixed(2)) : String(item)).join(', ');
+    if (raw && typeof raw === 'object') return '';
+    return raw === undefined || raw === null ? '' : String(raw);
+  };
+  const rows = primary.map(([id, value]) => ({ id, title: label(id)!, value: shortValue(value) })).filter(row => row.value !== '');
+  if (!rows.length && !secondary.length) return null;
+  return <section className="wb-operating" data-testid="wb-operating" aria-label={L('Operating state', '运行状态')}>
+    {rows.map(row => <div key={row.id} className="wb-operating-row">
+      <span className="wb-operating-label">{zh ? row.title.zh : row.title.en}</span>
+      <span className="wb-mono">{row.value}</span>
+    </div>)}
+    {secondary.length > 0 && <details className="wb-operating-more">
+      <summary>{L(`Other state · ${secondary.length}`, `其他状态 · ${secondary.length}`)}</summary>
+      <dl className="wb-operating-secondary">{secondary.map(([id, value]) => {
+        const text = shortValue(value);
+        return <div key={id}><dt>{id}</dt><dd className="wb-mono">{text === '' ? '—' : text}</dd></div>;
+      })}</dl>
+    </details>}
+  </section>;
 }

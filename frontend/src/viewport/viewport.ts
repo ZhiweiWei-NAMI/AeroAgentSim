@@ -347,28 +347,31 @@ export class Viewport {
       this.container.dataset.gpuMs=String(this.gpuTimer.milliseconds);
       this.container.dataset.gpuSample=String(this.gpuTimer.serial);
     }else{delete this.container.dataset.gpuMs;delete this.container.dataset.gpuSample;}
-    this.container.dataset.renderCount=String(++this.renderedFrames);
-    const renderFinished = performance.now();
-    this.container.dataset.updateMs=String(updateFinished-frameStarted);
-    this.container.dataset.labelsMs=String(this.layer.labelsMs);
-    this.container.dataset.entitiesMs=String(entitiesFinished-frameStarted);
-    this.container.dataset.submitMs=String(renderFinished-updateFinished);
+    // T4-06: per-frame attribute writes invalidate style/layout on every frame.
+    // The e2e assertions only need cameraPosition/cameraTarget; the counters and
+    // timings are diagnostics, written only under the ?perf profile.
     if(this.profile){
+      this.container.dataset.renderCount=String(++this.renderedFrames);
+      const renderFinished = performance.now();
+      this.container.dataset.updateMs=String(updateFinished-frameStarted);
+      this.container.dataset.labelsMs=String(this.layer.labelsMs);
+      this.container.dataset.entitiesMs=String(entitiesFinished-frameStarted);
+      this.container.dataset.submitMs=String(renderFinished-updateFinished);
       performance.measure('viewport.update',{start:frameStarted,end:updateFinished});
       performance.measure('viewport.submit',{start:updateFinished,end:renderFinished});
       performance.clearMeasures('viewport.update');performance.clearMeasures('viewport.submit');
-    }
+      this.container.dataset.renderMs=String(performance.now()-frameStarted);
+      this.container.dataset.drawCalls=String(this.renderer.info.render.calls);
+      this.container.dataset.triangles=String(this.renderer.info.render.triangles);
+      this.container.dataset.geometries=String(this.renderer.info.memory.geometries);
+      this.container.dataset.textures=String(this.renderer.info.memory.textures);
+    } else this.renderedFrames++;
     this.container.dataset.rendered='true';
     this.container.dataset.spatialCount=String(this.layer.positions.size);
     this.container.dataset.highlightCount=String(this.layer.highlightedShown);
-    this.container.dataset.drawCalls=String(this.renderer.info.render.calls);
-    this.container.dataset.triangles=String(this.renderer.info.render.triangles);
-    this.container.dataset.geometries=String(this.renderer.info.memory.geometries);
-    this.container.dataset.textures=String(this.renderer.info.memory.textures);
     this.container.dataset.cameraPosition=JSON.stringify(this.camera.position.toArray());
     this.container.dataset.cameraTarget=JSON.stringify(this.controls.target.toArray());
     this.container.dataset.cameraFov=String(this.camera.fov);
-    this.container.dataset.renderMs=String(performance.now()-frameStarted);
     if(deltaSeconds>0&&!document.hidden){
       this.qualityTime+=deltaSeconds;this.qualityFrames++;
       if(this.qualityTime>5){
@@ -408,10 +411,18 @@ export class Viewport {
     this.camera.updateProjectionMatrix();this.renderer.setSize(width,height);this.composer.setSize(width,height);
   };
   private press?: {x:number;y:number};
+  // T4-06: reused pick objects — a mouse-move storm must not allocate per event.
+  private pickRaycaster = new T.Raycaster();
+  private pickPoint = new T.Vector2();
+  private pickRay=(event:PointerEvent)=>{
+    const rect=this.renderer.domElement.getBoundingClientRect();
+    this.pickPoint.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);
+    this.pickRaycaster.setFromCamera(this.pickPoint,this.camera);
+    return this.pickRaycaster;
+  };
   private pointerMove=(event:PointerEvent)=>{
     if(!this.semanticLayer||!this.layer.semantic)return;
-    const rect=this.renderer.domElement.getBoundingClientRect(),raycaster=new T.Raycaster();
-    raycaster.setFromCamera(new T.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1),this.camera);
+    const raycaster=this.pickRay(event);
     const marker=this.semanticLayer.pick(raycaster);
     const id=marker?`${marker.key.id}:${marker.key.generation}`:undefined;this.hoverMarkerId=id;
     const entityKey=this.layer.pick(raycaster);
@@ -421,10 +432,8 @@ export class Viewport {
   private pointerDown=(event:PointerEvent)=>{this.press={x:event.clientX,y:event.clientY};};
   private pointerUp=(event:PointerEvent)=>{
     if(!this.press||Math.hypot(event.clientX-this.press.x,event.clientY-this.press.y)>5)return;
-    const rect=this.renderer.domElement.getBoundingClientRect(),raycaster=new T.Raycaster();
-    raycaster.setFromCamera(new T.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1),this.camera);
-    const key=this.layer.pick(raycaster);
-    if(!key&&this.semanticLayer&&this.layer.semantic){const marker=this.semanticLayer.pick(raycaster);if(marker)this.options.onSelect?.(marker.key);}
+    const key=this.layer.pick(this.pickRay(event));
+    if(!key&&this.semanticLayer&&this.layer.semantic){const marker=this.semanticLayer.pick(this.pickRay(event));if(marker)this.options.onSelect?.(marker.key);}
     if(key)this.options.onSelect?.(key);
   };
   dispose(){

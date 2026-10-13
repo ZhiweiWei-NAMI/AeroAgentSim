@@ -268,9 +268,15 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
   const eventTarget=injection?targetSummary(injection):undefined;
   const admissionSummary=(receipt:unknown)=>{
     if(!mapping(receipt))return t('Receipt could not be interpreted; read the raw record below.');
-    // A journaled admission without a terminal disposition is "awaiting execution",
-    // never success and never failure.
-    if(receipt.stored===true&&!['succeeded','rejected','failed'].includes(String(receipt.status)))return t('Admitted and awaiting execution. The execution receipts show what happened next.');
+    // Status precedence: a journaled execution outcome (succeeded/failed/
+    // rejected) outranks a mere "admitted"; admitted is never shown as success.
+    if(receipt.stored===true){
+      const status=String(receipt.status);
+      if(status==='rejected')return t('Event rejected ({code}): it was not executed.',{code:String(receipt.code??t('no code'))});
+      if(status==='failed')return t('Admitted but execution failed: {detail}',{detail:String(receipt.detail??t('no detail recorded'))});
+      if(status==='succeeded')return t('Executed. Its records appear in the timeline.');
+      return t('Admitted and awaiting execution. The execution receipts show what happened next.');
+    }
     switch(receipt.disposition){
       case 'accepted':return t('Event accepted for processing. The execution receipts show what happened next.');
       case 'delayed':return t('Event scheduled for later. Check its execution receipt after it runs.');
@@ -278,11 +284,28 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
       default:return t('Receipt without an admission disposition; read the raw record below.');
     }
   };
+  const admissionState=(receipt:unknown):'ok'|'bad'|'wait'|'info'=>{
+    if(!mapping(receipt))return 'info';
+    if(receipt.stored===true){
+      const status=String(receipt.status);
+      if(status==='succeeded')return 'ok';
+      if(status==='failed'||status==='rejected')return 'bad';
+      return 'wait';
+    }
+    return receipt.disposition==='accepted'||receipt.disposition==='delayed'?'wait':receipt.disposition==='rejected'?'bad':'info';
+  };
   const admissionTitle=(receipt:unknown)=>{
     const parts=[mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):''];
     if(mapping(receipt)&&typeof receipt.submitted_at==='string')parts.push(String(receipt.submitted_at));
     if(mapping(receipt)&&typeof receipt.target_cut==='number')parts.push(t('target cut {cut}',{cut:receipt.target_cut}));
     return parts.filter(Boolean).join(' · ');
+  };
+  /** Journaled timeline commits that carry this admission's records. */
+  const receiptCuts=(receipt:unknown):number[]=>{
+    const id=mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):undefined;
+    if(!id)return [];
+    const target=mapping(receipt)&&typeof receipt.target_cut==='number'?[receipt.target_cut as number]:[];
+    return [...new Set([...store.commits.filter(commit=>commit.messages.some(message=>String(message.id).includes(id))).map(commit=>commit.commitIndex),...target])].sort((a,b)=>a-b);
   };
   return <section className="run-operations" aria-label={t('Run operations')} aria-busy={busy}>
     {operationHint&&<p>{operationHint}</p>}
@@ -307,8 +330,43 @@ export function RunOperations({api,runId,store,selected,commitCut,onSelect,onSee
     {error&&<p role="alert">{error}</p>}
     {progressError&&<p role="alert">{progressError}</p>}
     <h3>{copy('Recorded input and execution','已记录的输入与执行')}</h3>
-    <details open={admissions.length>0}><summary>{t('Admission receipts · {count}',{count:admissions.length})}</summary>{!admissions.length&&<p>{t('No admission receipts yet.')}</p>}{admissions.map((receipt,index)=><article key={mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):index} data-admission-id={mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):undefined}>{t('Admission #{number}',{number:index+1})}{mapping(receipt)&&typeof receipt.status==='string'&&` · ${statusLabel(receipt.status)}`}{admissionTitle(receipt)&&<small style={{display:'block'}}>{admissionTitle(receipt)}</small>}<p className="receipt-help">{admissionSummary(receipt)}</p><Details title={t('Admission receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
-    <details><summary>{t('Execution receipts at this cut · {count}',{count:store.receipts.length})}</summary>{!store.receipts.length&&<p>{t('No execution receipts at this cut.')}</p>}{store.receipts.length>100&&<p>{t('Latest 100 of {count} execution receipts. All records are retained in the journal.',{count:store.receipts.length})}</p>}{store.receipts.slice(-100).map((receipt,index)=><article key={index}>{t('Execution #{number}',{number:Math.max(0,store.receipts.length-100)+index+1})} <Details title={t('Execution receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
+    <details open={admissions.length>0}><summary>{t('Admission receipts · {count}',{count:admissions.length})}</summary>
+      {!admissions.length&&<p>{t('No admission receipts yet.')}</p>}
+      {admissions.map((receipt,index)=>{
+        const id=mapping(receipt)&&typeof receipt.id==='string'?String(receipt.id):undefined;
+        const cuts=receiptCuts(receipt);
+        return <article key={id??index} className="receipt-card" data-admission-id={id} data-receipt-state={admissionState(receipt)}>
+          <header className="receipt-head">
+            <strong>{t('Admission #{number}',{number:index+1})}</strong>
+            {mapping(receipt)&&typeof receipt.status==='string'&&<span className="wb-tag" data-status={String(receipt.status)}>{statusLabel(receipt.status)}</span>}
+          </header>
+          {admissionTitle(receipt)&&<small className="wb-mono receipt-meta">{admissionTitle(receipt)}</small>}
+          <p className="receipt-help">{admissionSummary(receipt)}</p>
+          {cuts.length>0&&<p className="receipt-correlate">{t('In the timeline:')} {cuts.slice(0,4).map(cut=><button type="button" key={cut} onClick={()=>onSeek(cut)}>{t('cut {cut}',{cut})}</button>)}</p>}
+          <Details title={t('Admission receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details>
+        </article>;
+      })}
+    </details>
+    <details><summary>{t('Execution receipts at this cut · {count}',{count:store.receipts.length})}</summary>
+      {!store.receipts.length&&<p>{t('No execution receipts at this cut.')}</p>}
+      {store.receipts.length>100&&<p>{t('Latest 100 of {count} execution receipts. All records are retained in the journal.',{count:store.receipts.length})}</p>}
+      {store.receipts.slice(-100).map((receipt,index)=>{
+        // The typed journal shape is { commandId, status, result }; the raw
+        // disclosure below still shows whatever extra fields the journal adds.
+        const receiptId=typeof receipt.commandId==='string'?receipt.commandId:undefined;
+        const outcome=typeof receipt.status==='string'?receipt.status:undefined;
+        return <article key={index} className="receipt-card" data-receipt-state={outcome==='failed'||outcome==='rejected'?'bad':outcome==='succeeded'?'ok':'info'}>
+          <header className="receipt-head">
+            <strong>{t('Execution #{number}',{number:Math.max(0,store.receipts.length-100)+index+1})}</strong>
+            {outcome&&<span className="wb-tag" data-status={outcome}>{statusLabel(outcome)}</span>}
+          </header>
+          {/* Precedence: the journaled execution outcome of the linked admission outranks "admitted". */}
+          {receiptId&&admissions.some(row=>mapping(row)&&row.id===receiptId)&&<p className="receipt-correlate">{t('Response to admission {id}.',{id:receiptId})} {outcome==='succeeded'?t('Executed. Its records appear in the timeline.'):outcome?statusLabel(outcome):t('Admitted and awaiting execution. The execution receipts show what happened next.')}</p>}
+          {receiptId&&<small className="wb-mono receipt-meta">{receiptId}</small>}
+          <Details title={t('Execution receipt')} buttonLabel={t('Details')}><pre>{exactValue(receipt)}</pre></Details>
+        </article>;
+      })}
+    </details>
     <details><summary>{t('Decision / LangGraph and typed event records at this cut')}</summary>
       <label><input type="checkbox" checked={showInternal} onChange={event=>{setShowInternal(event.target.checked);setRecordPage(0);}}/>{t('Include internal runtime records')}</label>
       <p>{t('{count} records · page {page} of {pages}',{count:records.length,page:shownPage+1,pages:recordPages})}</p><button type="button" disabled={shownPage===0} onClick={()=>setRecordPage(shownPage-1)}>{t('Previous records')}</button><button type="button" disabled={shownPage===recordPages-1} onClick={()=>setRecordPage(shownPage+1)}>{t('Next records')}</button>

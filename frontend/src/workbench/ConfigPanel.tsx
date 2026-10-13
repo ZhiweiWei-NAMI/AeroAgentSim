@@ -6,6 +6,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { localized } from '../i18n/translate';
 import { ApiError, type Project, type SectionId, type ValidationIssue, type WorkbenchApi } from './api';
 import { FormValidity, getAt, setAt } from './form';
+import { changedSections, mergeSections, sectionSummary, type SectionChoice } from './merge-draft';
 import { StudioApi } from '../studio/api';
 import { SECTIONS, issuePointer, issueSection } from './sections/issues';
 import type { SectionProps } from './sections/types';
@@ -76,6 +77,8 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   const [knobs, setKnobs] = useState<Record<string, KnobValue>>({});
   const [yaml, setYaml] = useState<string>();
   const [yamlDirty, setYamlDirty] = useState(false), [yamlRevision, setYamlRevision] = useState(project.revision);
+  // T4-01: compare-and-merge after a 409 — local edits stay; the user picks per section.
+  const [merge, setMerge] = useState<{ server: Project; choices: Record<string, 'mine' | 'server'> }>();
   useEffect(() => { onDraft?.(project.id, draft, local); }, [project.id, draft, local, onDraft]);
   const [catalogError, setCatalogError] = useState<string>();
   const studioApi = useMemo(() => new StudioApi(api.base), [api.base]);
@@ -123,8 +126,38 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
       localStorage.removeItem(localKey(project.id)); setLocal(false); setRestored(false); setBaseRevision(saved.revision); onProject(saved);
       return saved;
     } catch (problem) {
-      fail(problem instanceof ApiError && problem.status === 409 ? L('The draft changed elsewhere. Your edits are kept locally; reload the project to compare before saving.', '草稿已在其他地方被修改。你的修改仍保存在本地；请重新加载项目对比后再保存。') : problem);
+      // T4-01: a 409 opens "Compare and merge". Local edits are never discarded;
+      // the user sees each changed section and chooses per section.
+      if (problem instanceof ApiError && problem.status === 409) {
+        try {
+          const server = await api.project(project.id);
+          setMerge({ server, choices: {} });
+          setMessage({ kind: 'error', text: L('The draft changed elsewhere. Compare the changed sections and choose per section; your edits are kept until you save the merge.', '草稿已在其他地方被修改。请逐个分区对比并选择；合并保存之前你的修改会保留。') });
+        } catch (fetchProblem) { fail(fetchProblem); }
+      } else fail(problem);
       return undefined;
+    } finally { setBusy(undefined); }
+  };
+  const conflict = merge ? changedSections(draft, merge.server.scenario as Scenario) : [];
+  const chooseMerge = (section: string, take: 'mine' | 'server') => setMerge(previous => previous ? { ...previous, choices: { ...previous.choices, [section]: take } } : previous);
+  const saveMerge = async () => {
+    if (!merge) return;
+    const choices: SectionChoice[] = Object.entries(merge.choices).map(([section, take]) => ({ section, take }));
+    if (choices.length !== conflict.length) { fail(L('Choose keep mine or take server for every changed section first.', '请先为每个变更分区选择“保留我的”或“采用服务器”。')); return; }
+    setBusy('merge');
+    try {
+      const merged = mergeSections(draft, merge.server.scenario as Scenario, choices);
+      const saved = await api.save(project.id, merged, merge.server.revision);
+      localStorage.removeItem(localKey(project.id));
+      setLocal(false); setRestored(false); setBaseRevision(saved.revision); setKnobs({}); setYaml(undefined); setYamlDirty(false);
+      setMerge(undefined); onProject(saved); setDraft(saved.scenario as Scenario);
+      setMessage({ kind: 'ok', text: `Merged draft saved as revision ${saved.revision}.`, textZh: `合并后的草稿已保存为修订 ${saved.revision}。` });
+    } catch (problem) {
+      // The server may have moved again; refresh the comparison against the new revision.
+      if (problem instanceof ApiError && problem.status === 409) {
+        try { const server = await api.project(project.id); setMerge({ server, choices: {} }); } catch { setMerge(undefined); }
+      }
+      fail(problem);
     } finally { setBusy(undefined); }
   };
   const validate = async () => {
@@ -154,6 +187,9 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   };
   const jump = (issue: ValidationIssue) => { const target = issueSection(issue); onSection(`${target ?? 'file'}:${issuePointer(issue.path)}`); setFocus(issuePointer(issue.path)); };
   const discard = () => { localStorage.removeItem(localKey(project.id)); setLocal(false); setRestored(false); setKnobs({}); setYaml(undefined); setYamlDirty(false); setDraft(project.scenario as Scenario); setBaseRevision(project.revision); };
+  // T1-010: an invalid saved draft must still be exportable and repairable in
+  // the file editor. Loading the file with unsaved form edits keeps those
+  // edits; the file editor shows the saved draft for export/repair only.
   const loadYaml = async (reload = false) => {
     setBusy('export');
     try {
@@ -189,15 +225,15 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     if (section === 'file') {
       return <>
         <p className="hint">{L('The same draft as a scenario file. Importing replaces the draft after the server compiles it.', '与表单是同一份草稿的文件形式。导入时服务器先编译，通过后替换草稿。')}</p>
-        {local && <p className="hint" style={{ color: 'var(--wb-warn)' }}>{L('Save the form edits first; the file shows the saved draft.', '请先保存表单修改；文件显示的是已保存的草稿。')}</p>}
+        {local && <p className="hint" style={{ color: 'var(--wb-warn)' }}>{L('Unsaved form edits are kept; this file shows the last saved draft. You can still export or repair it here, and reload the saved draft over your form edits.', '未保存的表单修改仍保留；此文件显示最近一次保存的草稿。仍可在此导出或修复，并可用已保存草稿覆盖表单修改。')}</p>}
         {yamlDirty && yamlRevision !== project.revision && <p role="alert">{L('This file was edited from an older revision. Copy your changes and reload the current draft before importing.', '此文件基于旧修订修改。请复制修改并重新加载当前草稿后导入。')}</p>}
         {busy === 'export' && <p className="hint" role="status">{L('Loading the saved scenario file…', '正在加载已保存的场景文件…')}</p>}
-        {yaml === undefined ? <button className="wb-btn" disabled={local || !!busy} onClick={() => void loadYaml()}>{busy === 'export' ? L('Loading scenario file…', '正在加载场景文件…') : L('Load scenario file', '加载场景文件')}</button>
+        {yaml === undefined ? <button className="wb-btn" disabled={!!busy} onClick={() => void loadYaml()}>{busy === 'export' ? L('Loading scenario file…', '正在加载场景文件…') : L('Load scenario file', '加载场景文件')}</button>
           : <><textarea className="wb-json" style={{ minHeight: '52vh' }} spellCheck={false} aria-label={L('Scenario YAML', '场景 YAML')} value={yaml} onChange={event => { setYaml(event.target.value); setYamlDirty(true); }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button className="wb-btn primary" disabled={!!busy || local || yamlRevision !== project.revision} onClick={() => { setBusy('import'); void api.importYaml(project.id, yaml, project.revision).then(saved => { localStorage.removeItem(localKey(project.id)); setYamlDirty(false); setYaml(undefined); onProject(saved); setMessage({ kind: 'ok', text: 'Imported into the draft.', textZh: '已导入草稿。' }); }).catch(fail).finally(() => setBusy(undefined)); }}>{L('Import into draft', '导入草稿')}</button>
-              <button className="wb-btn" disabled={local || !!busy} onClick={() => void loadYaml(true)}>{L('Reload', '重新加载')}</button>
-              <button className="wb-btn" disabled={local || yamlDirty || !!busy} onClick={() => { const url = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' })); const link = document.createElement('a'); link.href = url; link.download = `${project.id}.yaml`; link.click(); URL.revokeObjectURL(url); }}>{L('Download YAML', '下载 YAML')}</button>
+              <button className="wb-btn primary" disabled={!!busy || local || yamlRevision !== project.revision} title={local ? L('Save or discard your form edits first; importing here would replace them.', '请先保存或放弃表单修改；此处导入会覆盖它们。') : yamlRevision !== project.revision ? L('Reload the file at the current revision first.', '请先按当前修订重新加载文件。') : undefined} onClick={() => { setBusy('import'); void api.importYaml(project.id, yaml, project.revision).then(saved => { localStorage.removeItem(localKey(project.id)); setYamlDirty(false); setYaml(undefined); onProject(saved); setDraft(saved.scenario as Scenario); setMessage({ kind: 'ok', text: 'Imported into the draft.', textZh: '已导入草稿。' }); }).catch(fail).finally(() => setBusy(undefined)); }}>{L('Import into draft', '导入草稿')}</button>
+              <button className="wb-btn" disabled={!!busy} onClick={() => void loadYaml(true)} title={local ? L('This replaces your unsaved form edits with the saved draft.', '这会用已保存草稿覆盖未保存的表单修改。') : undefined}>{L('Reload', '重新加载')}</button>
+              <button className="wb-btn" disabled={!!busy} onClick={() => { const url = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' })); const link = document.createElement('a'); link.href = url; link.download = `${project.id}.yaml`; link.click(); URL.revokeObjectURL(url); }}>{L('Download YAML', '下载 YAML')}</button>
             </div></>}
       </>;
     }
@@ -211,6 +247,22 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     {restored && <div className="wb-restored">{L('Unsaved edits were restored from this browser.', '已从本浏览器恢复未保存的修改。')}<span className="wb-spacer" /><button className="wb-btn small" onClick={discard}>{L('Discard', '放弃')}</button></div>}
     {catalogError && <div className="wb-issues" role="alert">{catalogError}</div>}
     {issues.length > 0 && <div className="wb-issues" role="alert" data-testid="wb-issues">{issues.map((issue, index) => <button key={index} onClick={() => jump(issue)}>⚠ {[issue.entity_id, issue.field ?? issue.binding].filter(Boolean).join(' · ') || issue.path} — {issue.message}</button>)}</div>}
+    {merge && <div className="wb-merge wb-glass" data-testid="wb-merge" role="region" aria-label={L('Compare and merge drafts', '对比并合并草稿')}>
+      <h4>{L('Compare and merge', '对比并合并')}</h4>
+      <p className="hint">{zh ? `服务器草稿在你编辑修订 ${baseRevision} 期间已推进到修订 ${merge.server.revision}。你的修改仍保留在下方；请逐个变更分区选择，然后保存合并。` : `The server draft moved to revision ${merge.server.revision} while you were editing revision ${baseRevision}. Your edits are kept below; choose per changed section, then save the merge.`}</p>
+      {conflict.length === 0 && <p className="hint">{L('No top-level section differs; saving the merge will keep your draft as is.', '没有差异的顶层分区；保存合并将按原样保留你的草稿。')}</p>}
+      {conflict.map(row => <div key={row.section} className="wb-merge-row" data-testid={`wb-merge-${row.section}`}>
+        <div className="wb-merge-name"><b className="wb-mono">{row.section}</b><small>{L('mine', '我的')}: {sectionSummary(row.section, row.mine, locale)} · {L('server', '服务器')}: {sectionSummary(row.section, row.server, locale)}</small></div>
+        <div className="wb-merge-choose" role="radiogroup" aria-label={row.section}>
+          <button type="button" className="wb-btn small" aria-pressed={merge.choices[row.section] !== 'server'} onClick={() => chooseMerge(row.section, 'mine')}>{L('Keep mine', '保留我的')}</button>
+          <button type="button" className="wb-btn small" aria-pressed={merge.choices[row.section] === 'server'} onClick={() => chooseMerge(row.section, 'server')}>{L('Take server', '采用服务器')}</button>
+        </div>
+      </div>)}
+      <div className="wb-merge-actions">
+        <button className="wb-btn primary" disabled={!!busy || conflict.length !== Object.keys(merge.choices).length} data-testid="wb-merge-save" onClick={() => void saveMerge()}>{busy === 'merge' ? L('Saving merged draft…', '正在保存合并草稿…') : L('Save merged draft', '保存合并草稿')}</button>
+        <button className="wb-btn" disabled={!!busy} onClick={() => setMerge(undefined)}>{L('Close without merging', '不合并，直接关闭')}</button>
+      </div>
+    </div>}
     <div className="wb-config">
       <nav aria-label={L('Configuration sections', '配置分区')}>{nav.map(item => <button key={item.id} aria-current={section === item.id} onClick={() => { if (invalid.size) { fail(L('Correct the highlighted input before changing sections.', '请修正标记的输入后再切换分区。')); return; } onSection(item.id); setFocus(undefined); }}>{item.label}{issueSections.has(item.id as SectionId) && <i className="wb-issue-dot" aria-label={L('has issues', '有问题')} />}</button>)}</nav>
       <div className="wb-config-body">{sectionBody()}</div>
@@ -219,7 +271,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
       <div className="state" aria-live="polite">
         <div className="wb-config-state-copy">
         {local || controlsDirty || yamlDirty ? <b style={{ color: 'var(--wb-warn)' }}>{L('Unsaved edits', '有未保存的修改')}</b> : <b>{L(`Draft revision ${project.revision}`, `草稿修订 ${project.revision}`)}</b>}
-        {' · '}{project.latest_version ? L(`latest version ${project.latest_version.version}${versioned ? ' (this draft)' : ''}`, `最新版本 ${project.latest_version.version}${versioned ? '（即当前草稿）' : ''}`) : L('no saved version yet', '尚无保存的版本')}
+        {' · '}{project.latest_version ? L(`latest version v${project.latest_version.version}${versioned ? ' (this draft)' : ' (earlier revision)'}`, `最新版本 v${project.latest_version.version}${versioned ? '（即当前草稿）' : '（较早修订）'}`) : L('no saved version yet', '尚无保存的版本')}
         {activeRunVersion !== undefined && <div className="hint">{L(`Edits here go into the draft and a new version; the open run of v${activeRunVersion} is not affected.`, `此处修改写入草稿和新版本，不会影响已打开的 v${activeRunVersion} 运行。`)}</div>}
         {message && <div style={{ color: message.kind === 'error' ? 'var(--wb-bad)' : 'var(--wb-ok)' }}>{zh && message.textZh ? message.textZh : message.text}</div>}
         </div>

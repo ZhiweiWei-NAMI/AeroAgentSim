@@ -37,3 +37,16 @@
 .wb .run-operations .injection-hint, .wb .run-operations .receipt-help { font-size:12px; color:var(--wb-muted); }
 .wb .run-operations pre { max-width:100%; overflow:auto; font-size:11px; }
 .wb .run-operations [role=alert] { color:var(--wb-bad); }
+
+/* T4-12: receipt cards in the glass language; raw JSON stays behind a disclosure. */
+.receipt-card { border:1px solid var(--wb-line); border-radius:10px; padding:10px 12px; margin:10px 0; background:rgba(255,255,255,.62); transition:opacity .15s ease; }
+.receipt-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.receipt-head .wb-tag[data-status="succeeded"],.receipt-head .wb-tag[data-status="applied"] { color:var(--wb-ok); border-color:var(--wb-ok); }
+.receipt-head .wb-tag[data-status="failed"],.receipt-head .wb-tag[data-status="rejected"] { color:var(--wb-bad); border-color:var(--wb-bad); }
+.receipt-head .wb-tag[data-status="admitted"],.receipt-head .wb-tag[data-status="accepted"],.receipt-head .wb-tag[data-status="delayed"] { color:var(--wb-warn); border-color:var(--wb-warn); }
+.receipt-card[data-receipt-state="bad"] { border-color:rgba(192,54,44,.45); }
+.receipt-card[data-receipt-state="ok"] { border-color:rgba(28,124,60,.4); }
+.receipt-meta { display:block; margin-top:2px; color:var(--wb-muted); font-size:11px; word-break:break-all; }
+.receipt-correlate { margin:6px 0 0; font-size:12px; color:var(--wb-muted); display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.receipt-correlate button { min-height:24px; padding:2px 8px; font-size:11px; }
+@media (prefers-reduced-motion: reduce) { .receipt-card { transition:none; } }

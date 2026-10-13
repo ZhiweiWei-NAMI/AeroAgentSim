@@ -102,7 +102,12 @@ export function useRunSession(apiBase: string, runId: string | undefined, mode: 
     return () => { abort.abort(); if (paint !== undefined) cancelAnimationFrame(paint); };
   }, [runs, runId, mode]);
 
-  const inputSource = useOperatorInput(runs, runId, mode === 'live' && TERMINAL.has(status) ? 'replay' : mode, follow.current && cut === undefined && pendingCut === undefined);
+  // T3-001: the producer lives with the session — seeking/history browsing
+  // only gates whether it advances (followingLive), never its existence.
+  // A paused or terminal run stops production entirely (mode → replay).
+  const sourceLive = mode === 'live' && !TERMINAL.has(status) && status !== 'paused';
+  const sourceFollowing = sourceLive && follow.current && cut === undefined && pendingCut === undefined;
+  const inputSource = useOperatorInput(runs, runId, sourceLive ? 'live' : 'replay', sourceFollowing);
   if (!state || !runId) return undefined;
   const { store, clock } = state;
   const liveAllowed = () => mode === 'live' && !TERMINAL.has(statusRef.current) && statusRef.current !== 'paused';
