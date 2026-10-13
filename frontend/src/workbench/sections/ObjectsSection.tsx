@@ -39,7 +39,7 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
       <div style={{ marginTop: 8 }}><button className="wb-btn primary" onClick={() => setAdding(true)}>{L('Add objects', '添加对象')}</button></div>
     </div>}
     <div style={{ margin: '6px 0' }}><button className="wb-btn" aria-pressed={adding} onClick={() => setAdding(value => !value)}>{adding ? L('Close add objects', '收起添加对象') : L('Add objects', '添加对象')}</button></div>
-    {adding && <AddObjects api={api} studioApi={studioApi} project={project} draft={draft} onProject={onProject} L={L} onClose={() => setAdding(false)} />}
+    {adding && <AddObjects api={api} studioApi={studioApi} project={project} draft={draft} project_detail={project as never} onProject={onProject} L={L} onClose={() => setAdding(false)} />}
     <Fleets draft={draft} edit={edit} L={L} />
     <h4>{L('Instances', '实例')} <span className="wb-tag">{entities.length}</span></h4>
     <input className="wb-search" aria-label={L('Filter instances', '筛选实例')} placeholder={L('Filter by id, label or type', '按 id、名称或类型筛选')} value={entityFilter} onChange={event => setEntityFilter(event.target.value)} />

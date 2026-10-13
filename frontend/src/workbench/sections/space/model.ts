@@ -69,7 +69,7 @@ export function validateRegion(draft: RegionDraft, bounds?: number[]): { errors:
 /** A compiled region as GET workspace returns it, plus its derived scene summary. */
 export interface CompiledRegion {
   region: { extract: string; bounds: number[]; alt: number; level_height_m: number };
-  scene?: { origin?: { lat: number; lon: number; alt: number }; ground?: { width_m: number; depth_m: number }; diagnostics?: string[]; attribution?: string; roads?: unknown[]; geojson?: { features?: Array<{ properties?: Record<string, unknown> }> } };
+  scene?: { origin?: { lat: number; lon: number; alt: number }; ground?: { width_m: number; depth_m: number }; diagnostics?: string[]; attribution?: string; roads?: unknown[]; geojson?: { features?: Array<{ properties?: Record<string, unknown>; geometry?: { type?: string; coordinates?: unknown } }> } };
   network?: NetworkResult;
 }
 export function readRegion(workspace: { region?: unknown; scene?: unknown; network?: unknown } | undefined): CompiledRegion | undefined {

@@ -1,9 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { Browser } from 'leaflet';
 import { RegionBlock } from './RegionBlock';
 import { originShiftM, validateRegion } from './model';
 import type { SectionProps } from '../types';
 import { ApiError, WorkbenchApi } from '../../api';
+
+// jsdom lacks createSVGRect, so Leaflet's vector renderer must be forced onto the SVG path.
+beforeAll(() => { Browser.svg = true; Browser.inlineSvg = true; Browser.vml = false; });
 
 const savedProject = { id: 'w1', revision: 7 } as any;
 
@@ -80,6 +84,7 @@ describe('RegionBlock preview and apply', () => {
     const request = vi.fn()
       .mockResolvedValueOnce({ extracts: [{ id: 'wujiaochang', bounds: previewBody.bounds }] }) // catalog
       .mockResolvedValueOnce({ preview }) // dry run
+      .mockResolvedValueOnce({ extracts: [{ id: 'wujiaochang' }] }) // catalog (basemap lookup)
       .mockResolvedValueOnce(appliedProject) // apply
       .mockResolvedValueOnce(appliedProject); // workspace refresh
     const saveDraft = vi.fn(async () => savedProject);
@@ -109,7 +114,8 @@ describe('RegionBlock preview and apply', () => {
 
   it('degrades with a clear message when the server has no preview capability', async () => {
     const request = vi.fn()
-      .mockResolvedValueOnce({ extracts: [{ id: 'wujiaochang' }] })
+      .mockResolvedValueOnce({ extracts: [{ id: 'wujiaochang' }] }) // catalog (fetchExtracts)
+      .mockResolvedValueOnce({ extracts: [{ id: 'wujiaochang' }] }) // catalog (basemap lookup)
       .mockRejectedValueOnce(new ApiError(404, 'not found'));
     render(<RegionBlock {...makeProps({ api: mockApi(request) })} />);
     await selectExtract();
@@ -157,6 +163,7 @@ describe('RegionBlock preview and apply', () => {
   it('shows network generation result and states it is not a traffic run', async () => {
     const request = vi.fn()
       .mockResolvedValueOnce({ extracts: [{ id: 'wujiaochang' }] })
+      .mockResolvedValueOnce({ extracts: [{ id: 'wujiaochang' }] }) // catalog (basemap lookup)
       .mockResolvedValueOnce({ status: 'generated', edge_count: 1, lane_count: 2, location: { projParameter: '+proj=tmerc' } })
       .mockResolvedValueOnce({ id: 'w1', network: { edge_count: 1 } });
     const props = makeProps({ api: mockApi(request) });

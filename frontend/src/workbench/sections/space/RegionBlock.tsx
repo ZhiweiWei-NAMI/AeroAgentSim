@@ -6,6 +6,8 @@ import {
   previewRegion, readRegion, validateRegion,
   type ExtractInfo, type NetworkResult, type RegionDraft, type RegionPreview,
 } from './model';
+import { RegionMap, enuLines, enuRings, type RegionMapBasemap, type RegionMapGeometry, type RegionMapInstance } from './RegionMap';
+import { paletteColorFor } from '../objects/RegionMapSupport';
 
 export { originShiftM } from './model';
 
@@ -15,6 +17,9 @@ export const coord = (value: number) => value.toFixed(6).replace(/\.?0+$/, '');
 
 // Visible, editable modelling defaults: the form never starts with required fields empty.
 const emptyDraft = (): RegionDraft => ({ extract: '', west: '', south: '', east: '', north: '', alt: '0', level: '3.5' });
+
+/** Spec 4: chip when the compiled geometry set was truncated server-side. */
+const MAP_BUILDING_LIMIT = 3000;
 
 /**
  * Region stage: pick a configured local OSM extract, confirm WGS84 bounds and modelling
@@ -31,6 +36,56 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   const compiled = useMemo(() => readRegion(project as never), [project]);
   const conflict = cityConflictIssue(issues) ?? (hasCity(draft) && compiled ? { message: L('A fixed city and a compiled region are both configured; the run would otherwise mix city sources.', '同时配置了固定城市与已编译区域，否则运行会混用城市数据源。') } : undefined);
   const touchedExtract = useRef(false);
+
+  // --- Region map state (C9 basemap, C10 preview geometry, compiled scene, instances) ---
+  const [basemap, setBasemap] = useState<RegionMapBasemap | null>(null);
+  const [mapGeometry, setMapGeometry] = useState<RegionMapGeometry | null>(null);
+  const [mapTruncated, setMapTruncated] = useState(false);
+  const [mapInstances, setMapInstances] = useState<RegionMapInstance[]>([]);
+
+  // C9: the catalog may advertise a basemap for each extract; absent → offline notice chip.
+  useEffect(() => {
+    const signal = new AbortController();
+    api.request<{ extracts?: Array<{ id: string; basemap?: { url?: string; attribution?: string } }>; basemap?: { url?: string; attribution?: string } } | undefined>('/v1/studio/catalog', { signal: signal.signal })
+      .then(catalog => {
+        const row = catalog?.extracts?.find(item => item.id === form.extract) ?? undefined;
+        const tile = row?.basemap ?? catalog?.basemap;
+        setBasemap(tile?.url ? { url: tile.url, attribution: tile.attribution ?? '© OpenStreetMap contributors' } : null);
+      })
+      .catch(() => { if (!signal.signal.aborted) setBasemap(null); });
+    return () => signal.abort();
+  }, [api, form.extract]);
+
+  // C10 preview geometry wins while reviewing; otherwise the applied region's compiled scene.
+  useEffect(() => {
+    if (preview) {
+      // The preview answer carries counts only; the compiled map shows once applied. For the
+      // review state the map shows the selected bounds plus the preview origin crosshair.
+      setMapGeometry({ origin: preview.origin });
+      setMapTruncated(false);
+      return;
+    }
+    if (!compiled?.scene?.origin) { setMapGeometry(null); setMapTruncated(false); setMapInstances([]); return; }
+    const origin = compiled.scene.origin;
+    setMapGeometry({
+      origin,
+      buildings: enuRings(compiled.scene.geojson?.features ?? []),
+      roads: enuLines((compiled.scene.roads ?? []).filter(Array.isArray) as number[][][]),
+    });
+    setMapTruncated((compiled.scene.geojson?.features?.length ?? 0) > MAP_BUILDING_LIMIT);
+    // Existing instances with ENU positions (aas.studio.position_enu_m or the presentation position field).
+    const entities = (Array.isArray(draft.entities) ? draft.entities : []) as Array<Record<string, any>>;
+    const presentation = (Array.isArray(draft.presentation) ? draft.presentation : []) as Array<Record<string, any>>;
+    const typeOrder = new Map<string, number>();
+    for (const entity of entities) if (!typeOrder.has(entity.type)) typeOrder.set(entity.type, typeOrder.size);
+    const positions = presentation.length ? presentation.map(row => row.positionField ?? 'aas.studio.position_enu_m') : [];
+    setMapInstances(entities.flatMap(entity => {
+      const field = positions.find(candidate => entity.facts?.[candidate]) ?? 'aas.studio.position_enu_m';
+      const pos = entity.facts?.[field];
+      if (!Array.isArray(pos) || pos.length !== 3 || !pos.every(Number.isFinite)) return [];
+      return [{ east: pos[0] as number, north: pos[1] as number, color: paletteColorFor(entity.type, typeOrder), label: entity.label ? `${entity.label} · ${entity.id}` : String(entity.id ?? '') }];
+    }));
+  }, [preview, compiled, draft.entities, draft.presentation]);
 
   // Catalog of server-configured local extracts (no online search — see tools/build_map.py).
   useEffect(() => { const signal = new AbortController(); setCatalogError(undefined);
@@ -49,6 +104,24 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   const extractBounds = extracts?.find(item => item.id === form.extract)?.bounds;
   const [edited, setEdited] = useState<Partial<Record<keyof RegionDraft, boolean>>>({});
   const { errors, body } = validateRegion(form, extractBounds);
+
+  // Two-way sync: the map's selected rectangle ↔ the four W/S/E/N inputs (6 decimals on write).
+  const formBounds = useMemo(() => {
+    const w = Number(form.west), s = Number(form.south), e = Number(form.east), n = Number(form.north);
+    return [form.west, form.south, form.east, form.north].every(raw => raw.trim() !== '' && Number.isFinite(Number(raw)))
+      ? [w, s, e, n] : null;
+  }, [form.west, form.south, form.east, form.north]);
+  const [mapBounds, setMapBounds] = useState<number[] | null>(formBounds);
+  const boundsSource = useRef<'form' | 'map'>('form');
+  useEffect(() => { if (boundsSource.current === 'form') setMapBounds(formBounds); }, [formBounds]);
+  const onMapBounds = (next: number[]) => {
+    boundsSource.current = 'map';
+    setMapBounds(next);
+    setForm(previous => ({ ...previous, west: next[0].toFixed(6), south: next[1].toFixed(6), east: next[2].toFixed(6), north: next[3].toFixed(6) }));
+    setEdited(previous => ({ ...previous, west: true, south: true, east: true, north: true }));
+  };
+  useEffect(() => { boundsSource.current = 'form'; }, [form.west, form.south, form.east, form.north]);
+
   // Errors only once the user has actually edited that field (bounds errors likewise after edit).
   const shownErrors = Object.fromEntries(Object.entries(errors).filter(([key]) => edited[key as keyof RegionDraft])) as typeof errors;
   const invalid = Object.keys(errors).length > 0 || !body;
@@ -141,6 +214,18 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
       {catalogError && <span className="wb-field-error" role="alert">{catalogError}</span>}
       {!extracts && !catalogError && <span className="hint">{L('Loading the extract catalog…', '正在加载提取数据目录…')}</span>}
     </label>
+
+    <RegionMap
+      L={L}
+      basemap={basemap}
+      coverage={extractBounds ?? null}
+      bounds={mapBounds}
+      onBoundsChange={onMapBounds}
+      geometry={mapGeometry}
+      instances={mapInstances}
+      outsideWarning={L('Outside the extract coverage — allowed, but the server will clamp the region.', '超出提取数据覆盖范围——允许，但服务器会进行收敛。')}
+    />
+    {mapTruncated && <span className="wb-map-chip warn" role="status">{L('Showing the first 3000 buildings', '仅显示前 3000 个建筑物')}</span>}
 
     <div className="wb-region-grid">
       {fieldRow('west', L('West (°)', '西经（°）'), '121.50')}

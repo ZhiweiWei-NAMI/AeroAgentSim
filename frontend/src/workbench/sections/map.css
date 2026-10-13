@@ -1,0 +1,78 @@
+/* Region map — the pick-on-map and region-preview canvas. Sits inside the glass workbench
+   (frontend/src/workbench/workbench.css) and reuses its vars: --wb-accent, --wb-line, --wb-muted, --wb-radius. */
+
+.wb-map { position: relative; border-radius: 10px; border: 1px solid rgba(31, 122, 224, .18);
+  overflow: hidden; background: #eef2f6; }
+.wb-map-leaflet { height: 300px; transition: height .18s ease, opacity .18s ease; }
+.wb-map-expanded .wb-map-leaflet { height: 62vh; }
+.wb-map-pick .wb-map-leaflet { height: 260px; }
+/* Neutral ground when the basemap tile layer is hidden (C9 basemap null / tile error). */
+.wb-map-leaflet .leaflet-container { background: #eef2f6; font: inherit; }
+/* Keep the map's stacking below workbench glass panels but above its own chips. */
+.wb-map-leaflet .leaflet-pane, .wb-map-leaflet .leaflet-top, .wb-map-leaflet .leaflet-bottom { z-index: 400; }
+
+/* Tile pane: calm the basemap so it sits under the glass UI. */
+.wb-map-basemap .leaflet-tile-pane { filter: saturate(.45) brightness(1.06) contrast(.92); }
+
+/* Leaflet zoom control, top-left, small to match wb-btn.small. */
+.wb-map-leaflet .leaflet-bar a { width: 26px; height: 26px; line-height: 26px; font-size: 14px;
+  color: var(--wb-ink, #14202e); background: var(--wb-glass-strong, rgba(250, 252, 255, .94));
+  border-bottom: 1px solid var(--wb-line, rgba(20, 32, 46, .12)); }
+.wb-map-leaflet .leaflet-bar a:hover { background: #fff; color: var(--wb-accent, #1f7ae0); }
+.wb-map-leaflet .leaflet-control-zoom { border: 1px solid var(--wb-line, rgba(20, 32, 46, .12)); border-radius: 8px; overflow: hidden; box-shadow: none; }
+
+/* Attribution bottom-right at 10px. */
+.wb-map-leaflet .leaflet-control-attribution { font-size: 10px; background: rgba(250, 252, 255, .8);
+  color: var(--wb-muted, #5b6b7d); padding: 0 6px; }
+.wb-map-leaflet .leaflet-control-attribution a { color: var(--wb-muted, #5b6b7d); }
+
+/* Toolbar row inside the map frame. */
+.wb-map-toolbar { position: absolute; inset: 0 0 auto 0; display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px; pointer-events: none; z-index: 500; }
+.wb-map-toolbar > * { pointer-events: auto; }
+.wb-map-toolbar .wb-map-spacer { flex: 1; pointer-events: none; }
+.wb-map-expand { position: absolute; top: 6px; right: 6px; z-index: 520; width: 26px; padding: 0;
+  font-size: 13px; line-height: 1; }
+
+/* Chips (size, hints, offline notice) — glass tags in the workbench language. */
+.wb-map-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; line-height: 1.4;
+  padding: 2px 8px; border-radius: 999px; background: var(--wb-glass-strong, rgba(250, 252, 255, .94));
+  border: 1px solid var(--wb-line, rgba(20, 32, 46, .12)); color: var(--wb-ink, #14202e);
+  max-width: 100%; }
+.wb-map-chip.warn { border-color: rgba(232, 163, 23, .45); background: rgba(232, 163, 23, .12); color: #7a5600; }
+.wb-map-chip.live { border-color: rgba(31, 174, 107, .4); background: rgba(31, 174, 107, .12); color: #138152; }
+
+/* Pick mode: crosshair cursor over the map surface. */
+.wb-map-pick .leaflet-container { cursor: crosshair; }
+
+/* Corner handles of the selected bounds rectangle. */
+.wb-map-handle { width: 10px; height: 10px; border-radius: 50%; background: #fff;
+  border: 2px solid var(--wb-accent, #1f7ae0); box-sizing: border-box; cursor: move; }
+.wb-map-handle.ne { cursor: nesw-resize; } .wb-map-handle.nw { cursor: nwse-resize; }
+.wb-map-handle.se { cursor: nwse-resize; } .wb-map-handle.sw { cursor: nesw-resize; }
+
+/* Origin crosshair (12px, #e0453a) drawn as a divIcon. */
+.wb-map-origin { width: 12px; height: 12px; position: relative; pointer-events: none; }
+.wb-map-origin::before, .wb-map-origin::after { content: ''; position: absolute; background: #e0453a; }
+.wb-map-origin::before { left: 5.5px; top: 0; width: 1px; height: 12px; }
+.wb-map-origin::after { top: 5.5px; left: 0; height: 1px; width: 12px; }
+
+/* Instance dots (8px) in their presentation colour. */
+.wb-map-dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .9);
+  box-shadow: 0 0 0 1px rgba(20, 32, 46, .2); box-sizing: border-box; }
+
+/* Pick marker placed by the user. */
+.wb-map-pick-marker { width: 10px; height: 10px; border-radius: 50%; background: var(--wb-accent, #1f7ae0);
+  border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(31, 122, 224, .5); box-sizing: border-box; }
+
+/* Leaflet tooltips in the workbench voice. */
+.wb-map-leaflet .leaflet-tooltip { border: 1px solid var(--wb-line, rgba(20, 32, 46, .12));
+  border-radius: 7px; font-size: 11px; color: var(--wb-ink, #14202e);
+  background: var(--wb-glass-strong, rgba(250, 252, 255, .94)); box-shadow: 0 2px 8px rgba(9, 20, 36, .12); }
+
+/* "Draw area" drag: a live rectangle preview uses Leaflet's own renderer; keep transitions
+   to opacity/transform only, ≤180ms, and none at all for reduced motion. */
+.wb-map-leaflet * { transition-property: opacity, transform; transition-duration: .18s; }
+@media (prefers-reduced-motion: reduce) {
+  .wb-map-leaflet *, .wb-map-chip, .wb-map-toolbar { transition: none !important; animation: none !important; }
+}

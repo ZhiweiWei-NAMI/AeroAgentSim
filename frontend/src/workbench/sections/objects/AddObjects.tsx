@@ -4,6 +4,8 @@ import { ApiError, type Project, type WorkbenchApi } from '../../api';
 import type { TypeDetail, TypeRow } from '../../../studio/api';
 import type { Scenario } from '../types';
 import { ID_PATTERN, KINEMATIC_DEFAULTS, parseFact, positionFieldOf, STUDIO_AIRSPACE, STUDIO_STATE, useCatalog, WORKFLOW_DEFAULT_STATE } from './model';
+import { RegionMap, type RegionMapBasemap, type RegionMapGeometry } from '../space/RegionMap';
+import { readRegion } from '../space/model';
 
 type Kind = 'entity' | 'facility' | 'airspace';
 type Engine = 'kinematic' | 'workflow';
@@ -12,8 +14,10 @@ type Row = { id: string; type: string; kind: Kind; engine: Engine; position: num
 const ID_RULE = (L: (en: string, zh: string) => string) => L('Allowed: letters, digits and . _ : / - — no spaces or *', '允许：字母、数字和 . _ : / - — 不含空格或 *');
 
 /** The staged "Add objects" flow: type → identity/kind → placement/assumptions → review → one submit. */
-export function AddObjects({ api, studioApi, project, draft, onProject, L, onClose }: {
+export function AddObjects({ api, studioApi, project, draft, project_detail, onProject, L, onClose }: {
   api: WorkbenchApi; studioApi: StudioApi; project: { id: string; revision: number }; draft: Scenario;
+  /** Full workspace (region + compiled scene), used only for the pick-on-map origin. */
+  project_detail?: { region?: unknown; scene?: unknown };
   onProject: (project: Project) => void; L: (en: string, zh: string) => string; onClose: () => void;
 }) {
   const { catalog, catalogError } = useCatalog(studioApi, project.id, true);
@@ -32,6 +36,15 @@ export function AddObjects({ api, studioApi, project, draft, onProject, L, onClo
   const [floor, setFloor] = useState('0'), [ceiling, setCeiling] = useState('120');
   const [creating, setCreating] = useState(false);
   const [result, setResult] = useState<{ created: string[]; failed: Array<{ id: string; error: string }> }>();
+  const [picking, setPicking] = useState(false);
+  const [pickMarker, setPickMarker] = useState<[number, number] | null>(null);
+
+  // Pick-on-map needs an applied region (a scenario origin + compiled scene). C9/C10.
+  const region = useMemo(() => readRegion(project_detail as never), [project_detail]);
+  const mapOrigin = region?.scene?.origin ?? (draft.origin as { lat: number; lon: number; alt: number } | undefined) ?? null;
+  const mapGeometry: RegionMapGeometry | null = mapOrigin ? { origin: mapOrigin } : null;
+  const mapBasemap: RegionMapBasemap | null = null; // AddObjects reuses the neutral surface; the Region block owns the tile layer.
+  const canPick = !!mapOrigin && !!region?.region;
 
   const matches = useMemo(() => {
     if (!catalog) return [];
@@ -161,7 +174,30 @@ export function AddObjects({ api, studioApi, project, draft, onProject, L, onClo
         <label className="wb-field"><span>{L('north (m)', '北向 (m)')}</span><input inputMode="decimal" value={north} onChange={event => setNorth(event.target.value)} /></label>
         <label className="wb-field"><span>{L('up (m)', '天向 (m)')}</span><input inputMode="decimal" value={up} onChange={event => setUp(event.target.value)} /></label>
         {count > 1 && <label className="wb-field"><span>{L('spacing along east (m)', '沿东向间距 (m)')}</span><input inputMode="decimal" value={spacing} onChange={event => setSpacing(event.target.value)} /></label>}
+        <div className="wb-field" style={{ display: 'flex', alignItems: 'flex-end' }}>
+          <button type="button" className="wb-btn small" aria-expanded={picking} aria-pressed={picking} disabled={!canPick}
+            title={canPick ? undefined : L('Apply a region first (Scene & space › Region)', '请先应用区域（场景与空间 › 区域）')}
+            onClick={() => setPicking(previous => !previous)}>
+            {picking ? L('Close pick on map', '关闭地图选点') : L('Pick on map', '地图选点')}
+          </button>
+        </div>
       </div>
+      {picking && <RegionMap
+        L={L}
+        height={260}
+        basemap={mapBasemap}
+        coverage={region?.region?.bounds ?? null}
+        geometry={mapGeometry}
+        pick={{
+          onPick: (east, north) => {
+            setPickMarker([east, north]);
+            setEast((Math.round(east * 10) / 10).toString());
+            setNorth((Math.round(north * 10) / 10).toString());
+          },
+          marker: pickMarker,
+        }}
+        outsideWarning={L('Outside the applied region — allowed, but the point sits outside the compiled area.', '在已应用区域之外——允许，但该点位于已编译范围外。')}
+      />}
       <p className="wb-add-note">{L('Position is a local ENU metre vector [east, north, up] relative to the workspace origin, not latitude/longitude.', '位置是相对工作区原点的本地 ENU 米制向量 [东, 北, 天]，不是经纬度。')}</p>
       {kind === 'airspace' && <>
         <div className="wb-add-grid">
