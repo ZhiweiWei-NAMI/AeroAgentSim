@@ -1,18 +1,21 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import { I18nProvider } from '../../../i18n/I18nProvider';
 import { RemoveEntity } from './RemoveEntity';
+import { getOperationsState, mutateWorkspace, operation, previewOperations } from '../operations';
+import type { Project, WorkbenchApi } from '../../api';
 
 const scroll = Element.prototype.scrollIntoView;
 beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); });
-afterEach(() => { Element.prototype.scrollIntoView = scroll; });
+afterEach(() => { cleanup(); Element.prototype.scrollIntoView = scroll; });
 
 const L = (en: string, _zh?: string) => en;
 
 function setup(studioRequest: ReturnType<typeof vi.fn>, apiOverrides: Record<string, unknown> = {}) {
   const api = {
     save: vi.fn().mockResolvedValue({ id: 'w', revision: 2, scenario: { entities: [{ id: 'uav-1', type: 'oo:UAV', facts: {} }] } }),
+    project: vi.fn().mockResolvedValue({ id: 'w', revision: 4, scenario: { entities: [] } }),
     ...apiOverrides,
   };
   const onProject = vi.fn();
@@ -57,6 +60,7 @@ it('removes atomically on confirmation', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Confirm removal' }));
   await waitFor(() => expect(onProject).toHaveBeenLastCalledWith(updated));
   expect(api.save).toHaveBeenCalledTimes(1);
+  expect(api.project).toHaveBeenCalledWith('w');
   expect(request.mock.calls).toEqual([
     ['/v1/studio/workspaces/w/remove', { id: 'uav-1', revision: 2, dry_run: true }],
     ['/v1/studio/workspaces/w/remove', { id: 'uav-1', revision: 2 }],
@@ -88,7 +92,8 @@ it('invalidates removal when real draft inputs change after the review', async (
 
 it('removes lowalt places through C11 after showing the same shared review', async () => {
   const updated = { id: 'w', revision: 2, scenario: { entities: [] } };
-  const api = { request: vi.fn().mockResolvedValue({ diff: { added: [], changed: [], removed: [{ kind: 'place', id: 'pad', label: 'Pad' }] }, notes: [] }), project: vi.fn().mockResolvedValue(updated) };
+  const api = { request: vi.fn().mockResolvedValue({ diff: { added: [], changed: [], removed: [{ kind: 'place', id: 'pad', label: 'Pad' }] }, notes: [] }),
+    project: vi.fn(async () => { expect(getOperationsState('w').applying).toBe(true); return updated; }) };
   const studioApi = { request: vi.fn() }, onProject = vi.fn();
   render(<RemoveEntity api={api as never} studioApi={studioApi as never} project={{ id: 'w', revision: 1 }}
     draft={{ entities: [{ id: 'pad', type: 'lowalt:ChargingPad', facts: { 'lowalt.site_position': [1, 2, 3] } }] }} onProject={onProject} L={L} entityId="pad" onDone={() => undefined} />);
@@ -97,4 +102,43 @@ it('removes lowalt places through C11 after showing the same shared review', asy
   await waitFor(() => expect(onProject).toHaveBeenCalledWith(updated));
   expect(api.request.mock.calls[0][1].body.operations[0]).toMatchObject({ op: 'remove_place', params: { id: 'pad' } });
   expect(studioApi.request).not.toHaveBeenCalled();
+});
+
+it('gates generic removal from its prerequisite save through dependency review, confirmation and final GET (T3-R4-004 / T3-R3-002)', async () => {
+  let finishSave!: (value: Project) => void, finishPreview!: (value: unknown) => void, finishRead!: (value: Project) => void;
+  const save = vi.fn(() => { expect(getOperationsState('w').applying).toBe(true); return new Promise<Project>(resolve => { finishSave = resolve; }); });
+  const request = vi.fn()
+    .mockImplementationOnce(() => { expect(getOperationsState('w').applying).toBe(true); return new Promise(resolve => { finishPreview = resolve; }); })
+    .mockImplementationOnce(async () => { expect(getOperationsState('w').applying).toBe(true); return { id: 'w', revision: 3 }; });
+  const project = vi.fn(() => { expect(getOperationsState('w').applying).toBe(true); return new Promise<Project>(resolve => { finishRead = resolve; }); });
+  const { onProject } = setup(request, { save, project });
+  fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+  const sibling = { request: vi.fn() } as unknown as WorkbenchApi;
+  expect(() => previewOperations(sibling, { id: 'w', revision: 1 } as Project, [operation('set_wind', { speed_mps: 3 })])).toThrow(/Applying/);
+  await act(async () => finishSave({ id: 'w', revision: 2 } as Project));
+  await waitFor(() => expect(request).toHaveBeenCalledOnce());
+  expect(getOperationsState('w').applying).toBe(true);
+  await act(async () => finishPreview({ dependencies: [{ path: '/bindings/exact/0', kind: 'binding', detail: 'position' }] }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Confirm removal' }));
+  await waitFor(() => expect(project).toHaveBeenCalledOnce());
+  expect(getOperationsState('w').applying).toBe(true);
+  expect(onProject).not.toHaveBeenCalledWith(expect.objectContaining({ revision: 3 }));
+  const updated = { id: 'w', revision: 3, latest_version: { version: 1 }, scenario: { entities: [] } } as unknown as Project;
+  await act(async () => finishRead(updated));
+  expect(await screen.findByText(/Removed uav-1/)).toBeVisible();
+  expect(getOperationsState('w').applying).toBe(false);
+  expect(onProject).toHaveBeenLastCalledWith(updated);
+});
+
+it('disables generic removal while another workspace mutation is active', async () => {
+  const request = vi.fn();
+  setup(request);
+  let done!: (value: Project) => void;
+  let pending!: Promise<Project>;
+  act(() => { pending = mutateWorkspace({ id: 'w', revision: 1 }, () => new Promise<Project>(resolve => { done = resolve; })); });
+  expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+  expect(request).not.toHaveBeenCalled();
+  await act(async () => { done({ id: 'w', revision: 1 } as Project); await pending; });
+  expect(screen.getByRole('button', { name: 'Remove' })).toBeEnabled();
 });

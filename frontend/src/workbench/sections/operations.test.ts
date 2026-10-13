@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type Project, type WorkbenchApi } from '../api';
-import { applyOperations, currentOperationsProject, getOperationsState, OperationStateError, operation, operationFreshnessKey, operationProblem, operationText, previewOperations, subscribeOperations } from './operations';
+import { applyOperations, assertOperationsReady, currentOperationsProject, getOperationsState, mutateWorkspace, OperationStateError, operation, operationFreshnessKey, operationProblem, operationText, previewOperations, subscribeOperations } from './operations';
 
 const project = { id: 'workspace/1', revision: 7 } as Project;
 
@@ -95,4 +95,55 @@ it('allows independent workspaces to apply without sharing a global lock', async
   for (const base of bases) resolvers.get(base.id)!({ ...base, revision: 8 });
   await Promise.all(applying);
   expect(bases.map(base => getOperationsState(base.id).applying)).toEqual([false, false]);
+});
+
+it('composes ConfigPanel draft saving without opening the gate before the mutation/refresh (T1-R4-003 / T4-R4-002)', async () => {
+  const base = { ...project, id: 'composite' }, saved = { ...base, revision: 8 }, updated = { ...base, revision: 9 };
+  let finishSave!: (value: Project) => void, finishRead!: (value: Project) => void;
+  const snapshots: boolean[] = [];
+  const unsubscribe = subscribeOperations(base.id, () => snapshots.push(getOperationsState(base.id).applying));
+  const prepare = () => {
+    assertOperationsReady(currentOperationsProject(base)); // the actual saveDraft entry check
+    return mutateWorkspace(base, () => new Promise<Project>(resolve => { finishSave = resolve; }));
+  };
+  const apply = vi.fn((prepared: Pick<Project, 'id' | 'revision'>) => {
+    expect(prepared).toBe(saved);
+    expect(getOperationsState(base.id).applying).toBe(true);
+    return new Promise<Project>(resolve => { finishRead = resolve; });
+  });
+  try {
+    const pending = mutateWorkspace(base, apply, prepare);
+    await expect(mutateWorkspace(base, vi.fn())).rejects.toMatchObject({ reason: 'applying' });
+    expect(apply).not.toHaveBeenCalled();
+    finishSave(saved);
+    await vi.waitFor(() => expect(apply).toHaveBeenCalledOnce());
+    expect(() => previewOperations({ request: vi.fn() } as unknown as WorkbenchApi, saved, [operation('set_wind', { speed_mps: 3 })])).toThrow(OperationStateError);
+    expect(snapshots.every(Boolean)).toBe(true);
+    finishRead(updated);
+    expect(await pending).toBe(updated);
+    expect(snapshots.filter(value => !value)).toHaveLength(1);
+    expect(currentOperationsProject(base)).toBe(updated);
+  } finally { unsubscribe(); }
+});
+
+it('keeps a successful save authoritative when the following operation fails; no async caller can borrow the nested save permission', async () => {
+  const base = { ...project, id: 'failed-composite' }, saved = { ...base, revision: 8 };
+  const unsubscribe = subscribeOperations(base.id, () => undefined);
+  const failure = new Error('Real mutation failure');
+  try {
+    await expect(mutateWorkspace(base, async () => { throw failure; }, async () => saved)).rejects.toBe(failure);
+    expect(getOperationsState(base.id)).toEqual({ applying: false, project: saved });
+    await expect(mutateWorkspace(saved, vi.fn(), async () => {
+      await Promise.resolve();
+      return mutateWorkspace(saved, async () => saved);
+    })).rejects.toMatchObject({ reason: 'applying' });
+    expect(getOperationsState(base.id).applying).toBe(false);
+  } finally { unsubscribe(); }
+});
+
+it('never runs the mutation when saving prerequisites fails', async () => {
+  const apply = vi.fn();
+  await expect(mutateWorkspace({ ...project, id: 'unsaved-composite' }, apply, async () => undefined)).rejects.toThrow(/could not be saved/);
+  expect(apply).not.toHaveBeenCalled();
+  expect(getOperationsState('unsaved-composite').applying).toBe(false);
 });

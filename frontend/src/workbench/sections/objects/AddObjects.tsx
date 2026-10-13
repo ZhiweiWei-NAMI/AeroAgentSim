@@ -1,15 +1,25 @@
 import type { StudioApi } from '../../../studio/api';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState, type SetStateAction } from 'react';
 import { ApiError, type Project, type WorkbenchApi } from '../../api';
 import type { TypeDetail } from '../../../studio/api';
 import type { Scenario } from '../types';
 import { airspaceFieldOf, ID_PATTERN, isLowaltType, KINEMATIC_DEFAULTS, num, parseFact, positionFieldOf, STUDIO_AIRSPACE, STUDIO_STATE, useCatalog, WORKFLOW_DEFAULT_STATE, type CatalogType } from './model';
 import { operationText } from './Operations';
 import { PlacePickerMap, canPickOnMap } from '../space/PlacePickerMap';
+import { getOperationsState, mutateWorkspace, useWorkspaceOperations } from '../operations';
+import { useStagedForm } from '../useStagedForm';
+import { StagedFormNote } from '../tasks/op-ui';
 
 type Kind = 'entity' | 'facility' | 'airspace';
 type Engine = 'kinematic' | 'workflow';
 type Row = { id: string; type: string; kind: Kind; engine: Engine; position: number[]; facts: Record<string, unknown> };
+interface Fields {
+  typeQuery: string; typeId: string; kind: Kind; engine: Engine; idText: string; countText: string;
+  east: string; north: string; up: string; spacing: string; facts: Record<string, string>;
+  polygon: string; floor: string; ceiling: string;
+}
+const initialFields: Fields = { typeQuery: '', typeId: '', kind: 'entity', engine: 'kinematic', idText: '', countText: '1',
+  east: '0', north: '0', up: '0', spacing: '10', facts: {}, polygon: '', floor: '0', ceiling: '120' };
 
 const ID_RULE = (L: (en: string, zh: string) => string) => L('Allowed: letters, digits and . _ : / - — no spaces or *', '允许：字母、数字和 . _ : / - — 不含空格或 *');
 const factErrorText = (error: string, L: (en: string, zh: string) => string) => {
@@ -20,29 +30,25 @@ const factErrorText = (error: string, L: (en: string, zh: string) => string) => 
 };
 
 /** The staged "Add objects" flow: type → identity/kind → placement/assumptions → review → one submit. */
-export function AddObjects({ api, studioApi, project, draft, project_detail, onProject, L, onClose, saveDraft }: {
+export function AddObjects({ api, studioApi, project: suppliedProject, draft, project_detail, onProject, L, onClose, saveDraft }: {
   api: WorkbenchApi; studioApi: StudioApi; project: { id: string; revision: number }; draft: Scenario;
   /** Full workspace (region + compiled scene) for the geographic picker. */
   project_detail?: { region?: unknown; scene?: unknown };
   onProject: (project: Project) => void; L: (en: string, zh: string) => string; onClose: () => void;
   saveDraft?: () => Promise<Project | undefined>;
 }) {
+  const lock = useWorkspaceOperations(suppliedProject as Project), project = lock.project;
   const { catalog, catalogError } = useCatalog(studioApi, project.id, true);
-  const [typeQuery, setTypeQuery] = useState('');
-  const [typeId, setTypeId] = useState<string>();
+  const staged = useStagedForm(project.id, 'objects.advanced', initialFields, project.revision);
+  const { typeQuery, typeId, kind, engine, idText, countText, east, north, up, spacing, facts, polygon, floor, ceiling } = staged.values;
+  const setter = <K extends keyof Fields>(key: K) => (change: SetStateAction<Fields[K]>) => staged.setValues(previous => ({ ...previous,
+    [key]: typeof change === 'function' ? (change as (value: Fields[K]) => Fields[K])(previous[key]) : change }));
+  const setTypeQuery = setter('typeQuery'), setEngine = setter('engine'), setIdText = setter('idText'), setCountText = setter('countText');
+  const setEast = setter('east'), setNorth = setter('north'), setUp = setter('up'), setSpacing = setter('spacing'), setFacts = setter('facts');
+  const setPolygon = setter('polygon'), setFloor = setter('floor'), setCeiling = setter('ceiling');
   const [detail, setDetail] = useState<TypeDetail>();
   const [detailError, setDetailError] = useState<string>();
-  const selection = useRef(0);
-  const [kind, setKind] = useState<Kind>('entity');
-  const [engine, setEngine] = useState<Engine>('kinematic');
-  const [idText, setIdText] = useState('');
-  const [countText, setCountText] = useState('1');
   const count = Number(countText);
-  const [east, setEast] = useState('0'), [north, setNorth] = useState('0'), [up, setUp] = useState('0');
-  const [spacing, setSpacing] = useState('10');
-  const [facts, setFacts] = useState<Record<string, string>>({});
-  const [polygon, setPolygon] = useState('');
-  const [floor, setFloor] = useState('0'), [ceiling, setCeiling] = useState('120');
   const [creating, setCreating] = useState(false);
   const [result, setResult] = useState<{ created: string[]; failed: Array<{ id: string; error: string }> }>();
   const [picking, setPicking] = useState(false);
@@ -76,20 +82,46 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
   const idsBad = !idBase || !ID_PATTERN.test(idBase) || !countInvalid && Array.from({ length: count }, (_, index) => idFor(index)).some(duplicate);
   const firstIdClash = idBase && !countInvalid ? Array.from({ length: count }, (_, index) => idFor(index)).find(duplicate) : undefined;
 
+  const engines = draft.engines as Record<string, any> | undefined;
+  const engineReason = (candidate: Engine, row: CatalogType, nextKind: Kind): string | undefined => {
+    if (row.engine && candidate !== row.engine) return L(`This contract requires ${row.engine}.`, `此契约需要 ${row.engine}。`);
+    if (nextKind === 'airspace' && candidate !== 'workflow') return L('This contract requires the workflow engine.', '此契约需要工作流引擎。');
+    const configured = engines?.[candidate === 'kinematic' ? 'motion' : 'operations'];
+    if (configured && configured.plugin !== candidate) return L(`The ${candidate === 'kinematic' ? 'motion' : 'operations'} component uses ${configured.plugin}. Configure a compatible engine in Execution components.`, `组件 ${candidate === 'kinematic' ? 'motion' : 'operations'} 使用 ${configured.plugin}。请在“执行组件”配置兼容引擎。`);
+    if (candidate === 'kinematic' && configured && configured.config?.type_id !== row.id) return L(
+      `The motion engine accepts ${configured.config?.type_id ?? L('no declared type', '未声明类型')}; moving ${row.id} requires a compatible motion component in Execution components.`,
+      `运动引擎接受 ${configured.config?.type_id ?? '未声明类型'}；要移动 ${row.id}，请在“执行组件”配置兼容运动组件。`);
+    return undefined;
+  };
+  const compatibleEngines = (row: CatalogType, nextKind: Kind) => (nextKind === 'entity' ? ['kinematic', 'workflow'] as const : ['workflow', 'kinematic'] as const)
+    .filter(candidate => !engineReason(candidate, row, nextKind));
+  const engineProblem = chosen && engineReason(engine, chosen, kind);
+  const availableEngines = chosen ? compatibleEngines(chosen, kind) : [];
+  const componentsHref = useMemo(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('panel', 'components');
+    return `${url.pathname}${url.search}${url.hash}`;
+  }, []);
   const chooseType = (row: CatalogType) => {
-    const token = ++selection.current;
-    setTypeId(row.id); setDetail(undefined); setDetailError(undefined); setResult(undefined); setFacts({});
+    setDetail(undefined); setDetailError(undefined); setResult(undefined);
     const fields = (catalog?.fields ?? []).filter(field => field.declaring_type === row.id || field.type === row.id);
     const nextKind = row.kind ?? (airspaceFieldOf(fields) ? 'airspace' : 'entity');
-    setKind(nextKind); setEngine(row.engine ?? (nextKind === 'entity' ? 'kinematic' : 'workflow'));
-    if (nextKind === 'airspace') setCountText('1');
-    void studioApi.request<TypeDetail>(`/v1/studio/types/${row.id.split('/').map(encodeURIComponent).join('/')}?workspace=${encodeURIComponent(project.id)}`)
-      .then(answer => {
-        if (token !== selection.current) return;
-        setDetail(answer);
-        if (airspaceFieldOf(answer.fields)) { setKind(row.kind ?? 'airspace'); setEngine('workflow'); setCountText('1'); }
-      }).catch(problem => { if (token === selection.current) setDetailError(String(problem)); });
+    staged.setValues(previous => ({ ...previous, typeId: row.id, kind: nextKind,
+      engine: compatibleEngines(row, nextKind)[0] ?? previous.engine, facts: {}, ...(nextKind === 'airspace' ? { countText: '1' } : {}) }));
   };
+  // Reload the real contract after restoring a selection; fetching never resets authored facts.
+  useEffect(() => {
+    setDetail(undefined); setDetailError(undefined);
+    if (!typeId) return;
+    let cancelled = false;
+    void studioApi.request<TypeDetail>(`/v1/studio/types/${typeId.split('/').map(encodeURIComponent).join('/')}?workspace=${encodeURIComponent(project.id)}`)
+      .then(answer => {
+        if (cancelled) return;
+        setDetail(answer);
+        if (airspaceFieldOf(answer.fields)) staged.setValues(previous => ({ ...previous, kind: 'airspace', engine: 'workflow', countText: '1' }));
+      }).catch(problem => { if (!cancelled) setDetailError(String(problem)); });
+    return () => { cancelled = true; };
+  }, [studioApi, project.id, typeId]);
   const fieldRows = (detail?.fields ?? []).filter(field => field.id !== positionFieldOf(draft, chosen?.id ?? '') && field.id !== regionField?.id
     && (kind !== 'airspace' || !['aas.studio.velocity_enu_m_s', 'aas.studio.energy_j'].includes(field.id)));
   const defaultFor = (field: { id: string; schema: any; metadata: any }): string | undefined => {
@@ -142,36 +174,40 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
   const airspaceBad = kind === 'airspace' && (!polygonPoints || num(floor) === undefined || num(ceiling) === undefined || Number(floor) >= Number(ceiling));
   const canCreate = !!chosen && !!detail && detail.id === chosen.id && !detail.abstract && !chosen.abstract && !isLowaltType(chosen) && !unsupportedRegion
     && (!contractKind || kind === contractKind) && (kind !== 'airspace' || engine === 'workflow')
-    && !creating && !countInvalid && !idsBad && !posInvalid && !spacingInvalid && !airspaceBad && !Object.keys(factErrors).length;
+    && !creating && !lock.applying && !engineProblem && availableEngines.includes(engine) && !countInvalid && !idsBad && !posInvalid && !spacingInvalid && !airspaceBad && !Object.keys(factErrors).length;
 
   const create = async () => {
-    if (!canCreate || !chosen) return;
+    if (!canCreate || !chosen || getOperationsState(project.id).applying) return;
     setCreating(true); setResult(undefined);
+    const submitted = staged.values;
+    const created: string[] = [], failed: Array<{ id: string; error: string }> = [];
     try {
       // Save the local draft first and adopt the server's returned state (T1-007); `/place` takes no
       // revision, so the batch stops at the first failure instead of replaying against a stale draft.
-      const saved = saveDraft ? await saveDraft() : await api.save(project.id, draft, project.revision);
-      if (!saved) throw Error(L('Save the draft successfully before creating objects.', '请先成功保存草稿，再创建对象。'));
-      if (!saveDraft) onProject(saved);
-      const created: string[] = [], failed: Array<{ id: string; error: string }> = [];
-      for (const row of reviewRows) {
-        if (failed.length) break; // keep the server draft authoritative; do not chain stale placements
-        const body: Record<string, unknown> = { id: row.id, type: row.type, kind: row.kind, position: row.position, engine: row.engine };
-        if (Object.keys(row.facts).length) body.facts = row.facts;
-        if (row.kind === 'airspace') { body.polygon = polygonPoints; body.floor_m = Number(floor); body.ceiling_m = Number(ceiling); }
-        try {
-          const updated = await api.request<Project>(`/v1/studio/workspaces/${encodeURIComponent(project.id)}/place`, { body });
-          created.push(row.id); onProject(updated);
-        } catch (problem) { failed.push({ id: row.id, error: problem instanceof ApiError ? problem.detail : String(problem) }); }
-      }
-      setResult({ created, failed });
+      const updated = await mutateWorkspace(project, async () => {
+        for (const row of reviewRows) {
+          if (failed.length) break; // keep the server draft authoritative; do not chain stale placements
+          const body: Record<string, unknown> = { id: row.id, type: row.type, kind: row.kind, position: row.position, engine: row.engine };
+          if (Object.keys(row.facts).length) body.facts = row.facts;
+          if (row.kind === 'airspace') { body.polygon = polygonPoints; body.floor_m = Number(floor); body.ceiling_m = Number(ceiling); }
+          try {
+            await api.request<unknown>(`/v1/studio/workspaces/${encodeURIComponent(project.id)}/place`, { body });
+            created.push(row.id);
+          } catch (problem) { failed.push({ id: row.id, error: problem instanceof ApiError ? problem.detail : String(problem) }); }
+        }
+        return api.project(project.id);
+      }, saveDraft ?? (() => api.save(project.id, draft, project.revision)));
+      onProject(updated);
+      if (!failed.length) staged.clear(submitted);
     } catch (problem) {
-      setResult({ created: [], failed: [{ id: '—', error: problem instanceof ApiError ? problem.detail : String(problem) }] });
-    } finally { setCreating(false); }
+      failed.push({ id: '—', error: problem instanceof ApiError ? problem.detail : String(problem) });
+    } finally { setResult({ created, failed }); setCreating(false); }
   };
 
   return <div className="wb-object-form">
     <h4>{L('Add objects', '添加对象')}</h4>
+    <StagedFormNote form={staged} L={L} />
+    {lock.applying && !creating && <p className="hint wb-form-prerequisite" role="note">{L('Applying another change…', '正在应用另一项变更…')}</p>}
     <p className="hint">{L('Choose a contract type and set the object’s identity, position and initial state.', '选择契约类型，设置对象的身份、位置与初始状态。')}</p>
     {catalogError && <p role="alert" style={{ color: 'var(--wb-bad)' }}>{L('The type catalog is unavailable: ', '类型目录不可用：')}{catalogError}</p>}
     {!catalog && !catalogError && <p className="hint" role="status">{L('Loading the workspace type catalog…', '正在加载工作区类型目录…')}</p>}
@@ -196,7 +232,8 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
     {chosen && !chosen.abstract && !isLowaltType(chosen) && <>
       <div className="wb-add-grid">
         <label className="wb-field"><span>{L('Kind', '种类')}</span>
-          <select value={kind} disabled={!!contractKind || chosen.id === STUDIO_AIRSPACE} onChange={event => { const next = event.target.value as Kind; setKind(next); setEngine(next === 'entity' ? 'kinematic' : 'workflow'); }}>
+          <select value={kind} disabled={!!contractKind || chosen.id === STUDIO_AIRSPACE} onChange={event => { const next = event.target.value as Kind;
+            staged.setValues(previous => ({ ...previous, kind: next, engine: compatibleEngines(chosen, next)[0] ?? previous.engine })); }}>
             <option value="entity">{L('entity — a moving or active instance', 'entity — 会运动或主动的实例')}</option>
             <option value="facility">{L('facility — a static place (catalog placement)', 'facility — 静态地点（目录放置）')}</option>
             <option value="airspace" disabled={!regionField}>{L('Airspace — an area with floor and ceiling', '空域 — 有下限和上限的区域')}</option>
@@ -204,8 +241,9 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
         </label>
         <label className="wb-field"><span>{L('Engine', '引擎')}</span>
           <select value={engine} disabled={kind === 'airspace' || !!chosen.engine} onChange={event => setEngine(event.target.value as Engine)}>
-            <option value="kinematic">{L('kinematic — the motion engine moves it', 'kinematic — 运动引擎驱动其移动')}</option>
-            <option value="workflow">{L('workflow — a static or service instance', 'workflow — 静态或服务型实例')}</option>
+            {!availableEngines.includes(engine) && <option value={engine} disabled>{L('Selected engine is incompatible', '所选引擎不兼容')}</option>}
+            {availableEngines.includes('kinematic') && <option value="kinematic">{L('kinematic — the motion engine moves it', 'kinematic — 运动引擎驱动其移动')}</option>}
+            {availableEngines.includes('workflow') && <option value="workflow">{L('workflow — a static or service instance', 'workflow — 静态或服务型实例')}</option>}
           </select>
         </label>
         <label className="wb-field"><span>{L('id (or id prefix)', 'id（或 id 前缀）')}</span>
@@ -215,6 +253,12 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
           <input inputMode="numeric" value={countText} disabled={kind === 'airspace'} onChange={event => setCountText(event.target.value)} />
         </label>
       </div>
+      {(['kinematic', 'workflow'] as const).map(candidate => {
+        const reason = engineReason(candidate, chosen, kind);
+        return reason && <p className="hint wb-form-prerequisite" key={candidate} role="note">{reason}{' '}
+          <a className="wb-btn small" href={componentsHref}>{L('Execution components', '执行组件')}</a>
+        </p>;
+      })}
       <p className="wb-add-note">{ID_RULE(L)}{count > 1 ? L(' · batch ids are prefix-1 … prefix-N', ' · 批量 id 为 前缀-1 … 前缀-N') : ''}{firstIdClash ? ` — ${L(`an instance already uses ${firstIdClash}`, `已有实例使用 ${firstIdClash}`)}` : ''}</p>
       {kind !== 'airspace' && <div className="wb-add-grid">
         <label className="wb-field"><span>{L('east (m)', '东向 (m)')}</span><input inputMode="decimal" value={east} onChange={event => setEast(event.target.value)} /></label>
@@ -270,16 +314,16 @@ export function AddObjects({ api, studioApi, project, draft, project_detail, onP
           <td className="wb-mono">{row.kind === 'airspace' ? L('Polygon and altitude limits', '多边形与高度范围') : row.position.map(value => String(Math.round(value * 1000) / 1000)).join(', ')}</td>
           <td className="wb-mono" style={{ fontSize: 11 }}>{JSON.stringify(row.facts)}</td></tr>)}
       </tbody></table>
-      {result && <div role={result.failed.length ? 'alert' : 'status'} style={{ margin: '6px 0' }}>
+      <div style={{ display: 'flex', gap: 8, margin: '8px 0 2px' }}>
+        <button className="wb-btn primary" disabled={!canCreate} onClick={() => void create()}>{creating ? L('Creating…', '创建中…') : L(`Create ${reviewRows.length} objects`, `创建 ${reviewRows.length} 个对象`)}</button>
+      </div>
+      {!canCreate && !creating && <p className="wb-add-note">{L('Choose a concrete type, a valid unique id and finite positions to enable creation.', '选择具体类型、有效的唯一 id 和有限位置后才能创建。')}</p>}
+    </>}
+    {result && <div role={result.failed.length ? 'alert' : 'status'} style={{ margin: '6px 0' }}>
         {result.created.length > 0 && <p style={{ color: 'var(--wb-ok)', margin: '2px 0' }}>{L(`Created: ${result.created.join(', ')}`, `已创建：${result.created.join('、')}`)}</p>}
         {result.failed.map(item => <p key={item.id} style={{ color: 'var(--wb-bad)', margin: '2px 0' }}>{L(`Failed on ${item.id}: `, `${item.id} 失败：`)}{operationText(item.error, L)}</p>)}
         {!result.failed.length && <p style={{ color: 'var(--wb-ok)', margin: 0 }}>{L('All instances were placed. Reload shows them below.', '全部实例已放置，下方列表即为结果。')}</p>}
       </div>}
-      <div style={{ display: 'flex', gap: 8, margin: '8px 0 2px' }}>
-        <button className="wb-btn primary" disabled={!canCreate} onClick={() => void create()}>{creating ? L('Creating…', '创建中…') : L(`Create ${reviewRows.length} objects`, `创建 ${reviewRows.length} 个对象`)}</button>
-        <button className="wb-btn ghost" onClick={onClose}>{L('Close', '关闭')}</button>
-      </div>
-      {!canCreate && !creating && <p className="wb-add-note">{L('Choose a concrete type, a valid unique id and finite positions to enable creation.', '选择具体类型、有效的唯一 id 和有限位置后才能创建。')}</p>}
-    </>}
+    <button className="wb-btn ghost" disabled={creating} onClick={onClose}>{L('Close', '关闭')}</button>
   </div>;
 }

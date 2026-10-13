@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { SectionProps } from '../types';
-import { canonicalJson, operation } from '../operations';
+import { canonicalJson, operation, useWorkspaceOperations } from '../operations';
 import { useStagedForm } from '../useStagedForm';
 import { nsToS, orderStreamId, scalarNumber, siteIds, type Draft } from './model';
 import { OpApply, Prerequisite, StagedFormNote, StagedNumber, parseStagedNumber, stagedNumberProblem, type FormNavigation } from './op-ui';
@@ -148,6 +148,7 @@ function OrdersForm({ draft, stream, identity, existingIds = [], ...props }: Ope
 
 export function OrderStreamRow({ stream, index, draft, identity, onRemove, ...props }: OperationProps & { stream: Draft; index: number; draft: Draft; identity?: string; onRemove: () => void }) {
   const [expanded, setExpanded] = useState(false);
+  const workspace = useWorkspaceOperations(props.project);
   const { L } = props;
   return <div className="wb-order-row" data-testid="wb-order-row">
     <button type="button" className="wb-row-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
@@ -159,13 +160,14 @@ export function OrderStreamRow({ stream, index, draft, identity, onRemove, ...pr
     {expanded && <div className="wb-order-body">
       {identity && <OrdersForm {...props} stream={stream} identity={identity} draft={draft} />}
       {!identity && <p role="note" className="hint wb-form-prerequisite">{L('This stream has no unique workload ID. Check its ID and task members in File (YAML).', '该订单流没有唯一的工作量标识，请在“文件”（YAML）中检查标识和任务成员。')}</p>}
-      <button type="button" className="wb-btn small danger" disabled={!identity} onClick={onRemove}>{L('Remove stream…', '移除订单流…')}</button>
+      <button type="button" className="wb-btn small danger" disabled={!identity || workspace.applying} onClick={onRemove}>{L('Remove stream…', '移除订单流…')}</button>
     </div>}
   </div>;
 }
 
 export function OrderStreams({ config, draft, edit: _edit, focus: _focus, ...props }: OperationProps & { config: Draft; draft: SectionProps['draft']; edit: SectionProps['edit']; focus?: string }) {
   const { L } = props;
+  const workspace = useWorkspaceOperations(props.project);
   const generators = Array.isArray(config.generators) ? config.generators as Draft[] : undefined;
   const identities = generators?.map(stream => stream && typeof stream === 'object' && !Array.isArray(stream) ? orderStreamId(stream) : undefined) ?? [];
   const [confirming, setConfirming] = useState<{ id: string; index: number }>();
@@ -181,7 +183,7 @@ export function OrderStreams({ config, draft, edit: _edit, focus: _focus, ...pro
       const unique = id && identities.filter(value => value === id).length === 1 ? id : undefined;
       return <div key={index}>
         <OrderStreamRow {...props} stream={stream} index={index} identity={unique} draft={draft}
-          onRemove={() => { if (unique) setConfirming({ id: unique, index }); }} />
+          onRemove={() => { if (unique && !workspace.applying) setConfirming({ id: unique, index }); }} />
         {selected?.index === index && <OpApply {...props} operations={removeOperations} label={L('Preview removal', '预览移除')} danger small
           summary={<p className="hint">{L(`Review everything that will be removed from stream "${selected.id}".`, `请核对移除订单流“${selected.id}”时会删除的全部内容。`)}</p>}
           onApplied={() => setConfirming(undefined)} />}

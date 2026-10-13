@@ -341,6 +341,12 @@ def create_router(
     def remove(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
         return checked(lambda: store.remove(identifier, body))
 
+    @router.post("/workspaces/{identifier}/relations")
+    def add_relation(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        from .relations import add_initial_relation
+
+        return checked(lambda: add_initial_relation(store, identifier, body))
+
     @router.post("/workspaces/{identifier}/validate")
     def validate(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
         if set(body) - {"scenario", "revision"} or (

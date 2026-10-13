@@ -3,21 +3,26 @@ import { Leaf, pointer } from '../form';
 import { readableLabel } from '../../pages/inspection-format';
 import type { SectionProps } from './types';
 import { useCatalog, type RelationRow } from './objects/model';
+import { getOperationsState, mutateWorkspace, useWorkspaceOperations } from './operations';
+import { operationText } from './objects/Operations';
+import { useStagedForm } from './useStagedForm';
+import { StagedFormNote } from './tasks/op-ui';
 
 const RESOURCE_FACT = /(capacity|open|power|queue|slots|preparation|stock|pads?_|_count)/;
 const packageDocument = (spec: Record<string, any>) => spec.document ?? spec;
-// RelationRule.ids is a glob over sources, so escape literal metacharacters in an instance id.
-const sourceScope = (id: string) => id.replace(/[\[*?]/g, char => char === '[' ? '[[]' : `[${char}]`);
 
-export function RelationsSection({ studioApi, project, draft, edit, replaceDraft, focus, zh, L, onInspectContract, goTo }: SectionProps) {
+export function RelationsSection({ api, studioApi, project: suppliedProject, draft, edit, replaceDraft, focus, zh, L, onInspectContract, goTo, saveDraft, onProject }: SectionProps) {
+  const workspace = useWorkspaceOperations(suppliedProject), project = workspace.project;
   const entities = (Array.isArray(draft.entities) ? draft.entities : []) as Array<Record<string, any>>;
   const engines = (draft.engines ?? {}) as Record<string, any>;
   const [adding, setAdding] = useState(false);
   const { catalog, catalogError } = useCatalog(studioApi, project.id, adding);
-  const [relationId, setRelationId] = useState('');
-  const [sourceId, setSourceId] = useState('');
-  const [targetId, setTargetId] = useState('');
-  const [writerId, setWriterId] = useState('');
+  const staged = useStagedForm(project.id, 'relations.add', { relationId: '', sourceId: '', targetId: '', writerId: '' }, project.revision);
+  const { relationId, sourceId, targetId, writerId } = staged.values;
+  const setSourceId = (sourceId: string) => staged.setValues(previous => ({ ...previous, sourceId }));
+  const setTargetId = (targetId: string) => staged.setValues(previous => ({ ...previous, targetId }));
+  const setWriterId = (writerId: string) => staged.setValues(previous => ({ ...previous, writerId }));
+  const [addingBusy, setAddingBusy] = useState(false), [addError, setAddError] = useState<string>();
   const [removing, setRemoving] = useState<string>();
   const rules = useMemo(() => ((draft.bindings as Record<string, any> | undefined)?.relations ?? []) as Array<Record<string, any>>, [draft.bindings]);
   const behaviourEngines = Object.entries(engines).filter(([, engine]) => engine.plugin === 'behaviour');
@@ -26,12 +31,12 @@ export function RelationsSection({ studioApi, project, draft, edit, replaceDraft
   const relations: RelationRow[] = catalog?.relations ?? [];
   const chosen = relations.find(row => row.id === relationId);
   const writers = chosen?.valid_writers ?? chosen?.writer_options?.map(option => option.writer) ?? [];
-  const writer = writers.includes(writerId) ? writerId : writers[0];
+  const writer = writerId || writers[0];
   const option = chosen?.writer_options?.find(row => row.writer === writer);
   const engine = option && engines[option.engine_id];
   // Only the existing behaviour plugin accepts bootstrap_relations. Other partitions may
   // produce edges during execution, but declaring their ownership cannot create an edge.
-  const supportsInitialLink = behaviourEngines.length === 1 && engine?.plugin === 'behaviour' && option?.writer === option?.engine_id;
+  const supportsInitialLink = writers.includes(writer) && behaviourEngines.length === 1 && engine?.plugin === 'behaviour' && option?.writer === option?.engine_id;
   const typeOf = (id: string) => entities.find(entity => entity.id === id)?.type;
   const matchesType = (id: string, required: string) => {
     const queue = [typeOf(id)], seen = new Set<string>();
@@ -51,29 +56,26 @@ export function RelationsSection({ studioApi, project, draft, edit, replaceDraft
   const cardinalityBad = !!sourceId && !!targetId && !duplicate && (
     typeof sourceLimit === 'number' && related.filter(({ edge }) => edge.source?.$ref?.id === sourceId).length >= sourceLimit ||
     typeof targetLimit === 'number' && related.filter(({ edge }) => edge.target?.$ref?.id === targetId).length >= targetLimit);
-  const canAdd = !!chosen && supportsInitialLink && typeof draft.id === 'string' && !!sourceId && !!targetId && !endpointBad && !duplicate && !cardinalityBad;
+  const canAdd = !!chosen && supportsInitialLink && typeof draft.id === 'string' && !!sourceId && !!targetId && !endpointBad && !duplicate && !cardinalityBad && !addingBusy && !workspace.applying;
   const labelOf = (id: string) => {
     const entity = entities.find(row => row.id === id);
     return (zh ? entity?.label_zh ?? entity?.label : entity?.label) ?? id;
   };
 
-  const add = () => {
-    if (!canAdd || !chosen || !writer) return;
-    const occupied = new Set([...packages.map(spec => packageDocument(spec).id), ...links.map(({ edge }) => edge.id)]);
-    let index = 1;
-    while (occupied.has(`workbench-link-${index}`)) index++;
-    const id = `workbench-link-${index}`;
-    const ref = (entityId: string) => ({ $ref: { run_id: draft.id, epoch: '0', id: entityId, generation: 0, type_id: typeOf(entityId) } });
-    const pkg = { format: 'aeroagentsim.behaviour-package/v1', id, revision: 1, predicates: {}, chains: {}, bindings: [],
-      budgets: { max_transitions_per_instance_per_ns: 64, max_instances: 1 },
-      bootstrap_relations: { owner: writer, assertions: [{ id, relation: chosen.id, source: ref(sourceId), target: ref(targetId) }] } };
-    const scope = sourceScope(sourceId);
-    const nextRules = rules.some(rule => rule.writer === writer && rule.relation === chosen.id && rule.type === chosen.source_type && rule.ids === scope)
-      ? rules : [...rules, { writer, relation: chosen.id, type: chosen.source_type, ids: scope }];
-    // One draft replacement keeps the assertion and its permission atomic. Existing packages,
-    // including path references or compiled IR, remain intact and the loader resolves them.
-    replaceDraft({ ...draft, bindings: { ...(draft.bindings as Record<string, any> ?? {}), relations: nextRules }, behaviours: [...packages, pkg] });
-    setAdding(false); setRelationId(''); setSourceId(''); setTargetId(''); setWriterId('');
+  const add = async () => {
+    if (!canAdd || !chosen || !writer || getOperationsState(project.id).applying) return;
+    const submitted = staged.values;
+    setAddingBusy(true); setAddError(undefined);
+    try {
+      const updated = await mutateWorkspace(project, async saved => {
+        await api.request<unknown>(`/v1/studio/workspaces/${encodeURIComponent(saved.id)}/relations`, {
+          body: { relation: chosen.id, writer, source: sourceId, target: targetId, revision: saved.revision },
+        });
+        return api.project(saved.id);
+      }, saveDraft);
+      onProject(updated); staged.clear(submitted); setAdding(false);
+    } catch (problem) { setAddError(operationText(problem instanceof Error ? problem.message : String(problem), L)); }
+    finally { setAddingBusy(false); }
   };
   const removeLink = (packageIndex: number, edgeIndex: number) => {
     const next = packages.map((spec, index) => {
@@ -87,6 +89,9 @@ export function RelationsSection({ studioApi, project, draft, edit, replaceDraft
   };
   const resources = entities.map((entity, index) => ({ entity, index })).filter(({ entity }) => Object.keys(entity.facts ?? {}).some(key => RESOURCE_FACT.test(key)));
   return <>
+    <StagedFormNote form={staged} L={L} />
+    {workspace.applying && !addingBusy && <p className="hint wb-form-prerequisite" role="note">{L('Applying another change…', '正在应用另一项变更…')}</p>}
+    {addError && <p className="wb-field-error" role="alert">{addError}</p>}
     <p className="hint">{L('Initial links between specific instances, their engine write permissions, and facility resource facts. Initial links take effect when the scene is initialized.', '具体实例之间的初始连接、引擎写入权限和设施资源事实。初始连接在场景初始化时生效。')}</p>
     <div style={{ margin: '6px 0' }}><button className="wb-btn" aria-pressed={adding} onClick={() => setAdding(value => !value)}>{adding ? L('Close add relation', '收起添加关系') : L('Add relation', '添加关系')}</button></div>
     {adding && <div className="wb-form-card">
@@ -94,8 +99,9 @@ export function RelationsSection({ studioApi, project, draft, edit, replaceDraft
       {!catalog && !catalogError && <p className="hint" role="status">{L('Loading the relation catalog…', '正在加载关系目录…')}</p>}
       {catalog && <>
         <label className="wb-form-field"><span className="wb-label">{L('relation type', '关系类型')}</span>
-          <select value={relationId} onChange={event => { setRelationId(event.target.value); setWriterId(''); }}>
+          <select value={relationId} onChange={event => { staged.setValues(previous => ({ ...previous, relationId: event.target.value, writerId: '' })); }}>
             <option value="">{L('Choose a relation…', '选择关系…')}</option>
+            {relationId && !chosen && <option value={relationId} disabled>{L(`${relationId} (unavailable)`, `${relationId}（不可用）`)}</option>}
             {relations.map(row => <option key={row.id} value={row.id}>{row.id}</option>)}
           </select></label>
         {!relations.length && <div className="wb-empty">{L('This workspace catalog declares no relations, so none can be added from here.', '当前工作区目录未声明任何关系，因此无法在此添加。')}</div>}
@@ -125,7 +131,7 @@ export function RelationsSection({ studioApi, project, draft, edit, replaceDraft
           {duplicate && <p className="hint">{L('This initial link already exists.', '此初始连接已存在。')}</p>}
           {cardinalityBad && <p role="alert" className="wb-issues">{L('This link exceeds the number of endpoints allowed by the relation contract.', '此连接超出了关系契约允许的端点数量。')}</p>}
           <p className="hint">{L('Save and initialize the scene to assert this source → target link through the selected engine.', '保存并初始化场景后，所选引擎会写入此源 → 目标连接。')}</p>
-          <button className="wb-btn primary" disabled={!canAdd} onClick={add}>{L('Add relation', '添加关系')}</button>
+          <button className="wb-btn primary" disabled={!canAdd} onClick={() => void add()}>{addingBusy ? L('Adding…', '添加中…') : L('Add relation', '添加关系')}</button>
         </>}
       </>}
     </div>}

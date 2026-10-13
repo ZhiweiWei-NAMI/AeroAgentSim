@@ -16,6 +16,10 @@ export interface WorkspaceOperationsState { applying: boolean; project?: Project
 const idle: WorkspaceOperationsState = { applying: false };
 const workspaceStates = new Map<string, WorkspaceOperationsState>();
 const workspaceListeners = new Map<string, Set<() => void>>();
+type WorkspaceBase = Pick<Project, 'id' | 'revision'>;
+// ConfigPanel's saveDraft checks/acquires the gate synchronously, before its first await.
+// Permit that one save inside a larger mutation without granting async callers reentrancy.
+let preparing: { id: string; claimed: boolean } | undefined;
 
 export const getOperationsState = (workspaceId: string): WorkspaceOperationsState => workspaceStates.get(workspaceId) ?? idle;
 export function subscribeOperations(workspaceId: string, listener: () => void): () => void {
@@ -49,9 +53,9 @@ export class OperationStateError extends Error {
       : 'The draft was updated. Preview again before applying. / 草稿已更新，请重新预览后再应用。');
   }
 }
-export function assertOperationsReady(project: Project) {
+export function assertOperationsReady(project: WorkspaceBase) {
   const state = getOperationsState(project.id);
-  if (state.applying) throw new OperationStateError('applying');
+  if (state.applying && !(preparing?.id === project.id && !preparing.claimed)) throw new OperationStateError('applying');
   if (state.project && state.project.revision > project.revision) throw new OperationStateError('stale');
 }
 
@@ -59,16 +63,31 @@ export function assertOperationsReady(project: Project) {
  * Never queue an old confirmation and apply it against a different revision.
  * Run settings and raw draft saves use the same gate as C11 operations.
  */
-export async function mutateWorkspace(project: Project, apply: () => Promise<Project>): Promise<Project> {
+export async function mutateWorkspace(project: WorkspaceBase, apply: (base: WorkspaceBase) => Promise<Project>, prepare?: () => Promise<Project | undefined>): Promise<Project> {
   assertOperationsReady(project);
-  publishOperations(project.id, { ...getOperationsState(project.id), applying: true });
+  const nested = getOperationsState(project.id).applying;
+  if (nested) preparing!.claimed = true;
+  else publishOperations(project.id, { ...getOperationsState(project.id), applying: true });
   try {
-    const updated = await apply();
+    let base = project;
+    if (prepare) {
+      const previous = preparing;
+      let pending: Promise<Project | undefined>;
+      preparing = { id: project.id, claimed: false };
+      try { pending = prepare(); } finally { preparing = previous; }
+      const saved = await pending;
+      if (!saved) throw Error('The draft could not be saved. Fix the highlighted inputs before applying. / 草稿保存失败，请修正标记的输入后再应用。');
+      base = saved;
+      publishOperations(project.id, { applying: true, project: saved });
+    }
+    const updated = await apply(base);
     publishOperations(project.id, { applying: true, project: updated });
     return updated;
   } finally {
-    publishOperations(project.id, { ...getOperationsState(project.id), applying: false });
-    if (!workspaceListeners.has(project.id)) workspaceStates.delete(project.id);
+    if (!nested) {
+      publishOperations(project.id, { ...getOperationsState(project.id), applying: false });
+      if (!workspaceListeners.has(project.id)) workspaceStates.delete(project.id);
+    }
   }
 }
 let serial = 0;

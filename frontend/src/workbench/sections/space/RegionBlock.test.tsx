@@ -6,11 +6,12 @@ import { originShiftM, validateRegion } from './model';
 import { captureMaps, forceSvgRenderer, mapLayers } from './leafletTestSetup';
 import { APPLIED_REGION, BASEMAP, COVERAGE, DRAFT, PREVIEW, SCENE, WGS_RINGS } from './mapTestFixtures';
 import type { SectionProps } from '../types';
-import { ApiError, WorkbenchApi } from '../../api';
+import { ApiError, WorkbenchApi, type Project } from '../../api';
+import { getOperationsState, operation, previewOperations } from '../operations';
 
 beforeAll(() => { forceSvgRenderer(); });
 let maps: Leaflet.Map[];
-beforeEach(() => { maps = captureMaps(); });
+beforeEach(() => { sessionStorage.clear(); maps = captureMaps(); });
 
 const savedProject = { id: 'w1', revision: 3 } as any;
 
@@ -46,6 +47,60 @@ const selectExtract = async () => {
 };
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+
+it('retains unapplied region assumptions across unmount/refresh and warns before leaving (T1-R4-001 / T4-R4-001)', async () => {
+  const props = makeProps({ project: { ...savedProject, region: APPLIED_REGION, scene: SCENE } });
+  const view = render(<RegionBlock {...props} />);
+  fill('Ground altitude (m)', '12.3'); fill('Level height (m)', '6.7');
+  view.unmount();
+  const unload = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(unload);
+  expect(unload.defaultPrevented).toBe(true);
+  render(<RegionBlock {...props} />);
+  expect(screen.getByLabelText('Ground altitude (m)')).toHaveValue('12.3');
+  expect(screen.getByLabelText('Level height (m)')).toHaveValue('6.7');
+  expect(screen.getByText('Restored unsaved inputs')).toBeVisible();
+  expect(screen.getByTestId('region-summary')).toBeVisible();
+  expect(props.onProject).not.toHaveBeenCalled();
+  expect(props.saveDraft).not.toHaveBeenCalled();
+});
+
+it.each(['region', 'network'] as const)('locks %s saving, mutation and authoritative refresh against sibling actions (T4-R4-002)', async phase => {
+  const base = { ...savedProject, scenario: {}, region: APPLIED_REGION, scene: SCENE } as Project;
+  const updated = { ...base, revision: 4 };
+  let save!: (value: Project) => void, read!: (value: Project) => void;
+  const saveDraft = vi.fn(() => {
+    expect(getOperationsState(base.id).applying).toBe(true);
+    return new Promise<Project>(resolve => { save = resolve; });
+  });
+  const api = mockApi({
+    '/v1/studio/catalog': { extracts: [{ id: 'wujiaochang' }] },
+    '/v1/studio/workspaces/w1/region': (body: unknown) => {
+      if ((body as { dry_run?: boolean }).dry_run) return { preview: { ...PREVIEW, origin_shift_m: 0, affected_entities: [], network_invalidated: false } };
+      expect(getOperationsState(base.id).applying).toBe(true); return updated;
+    },
+    '/v1/studio/workspaces/w1/network': () => { expect(getOperationsState(base.id).applying).toBe(true); return { edge_count: 1, lane_count: 2 }; },
+    '/v1/studio/workspaces/w1': () => new Promise<Project>(resolve => { read = resolve; }),
+  });
+  const onProject = vi.fn();
+  render(<RegionBlock {...makeProps({ project: base, api, onProject, saveDraft })} />);
+  await screen.findByRole('option', { name: /^wujiaochang/ });
+  if (phase === 'region') {
+    fill('Ground altitude (m)', '12.3');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview region' }));
+    await screen.findByTestId('region-review');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply region' }));
+  } else fireEvent.click(screen.getByRole('button', { name: 'Generate road network' }));
+  expect(getOperationsState(base.id).applying).toBe(true);
+  expect(() => previewOperations(api, base, [operation('set_duration', { seconds: 601 })])).toThrow(/Applying/);
+  await act(async () => save(base));
+  await waitFor(() => expect(read).toBeTypeOf('function'));
+  expect(getOperationsState(base.id).applying).toBe(true);
+  expect(screen.getByRole('button', { name: 'Preview region' })).toBeDisabled();
+  expect(onProject).not.toHaveBeenCalled();
+  await act(async () => read(updated));
+  await waitFor(() => expect(onProject).toHaveBeenCalledWith(updated));
+  expect(getOperationsState(base.id).applying).toBe(false);
+});
 
 describe('RegionBlock validation gating', () => {
   it('keeps actions disabled until complete, ordered bounds are entered', async () => {
@@ -305,13 +360,16 @@ describe('round 2 Region form and review regressions', () => {
     verify();
   });
 
-  it('updates from a genuine applied-region change and preserves edits on unrelated refreshes', () => {
+  it('preserves pending research inputs even when the applied region changes, and discards back to the current server region', () => {
     const props = makeProps({ project, draft: DRAFT });
     const view = render(<RegionBlock {...props} />);
     fill('Ground altitude (m)', '30');
     view.rerender(<RegionBlock {...props} project={{ ...props.project, region: { ...APPLIED_REGION } }} />);
     expect(screen.getByLabelText('Ground altitude (m)')).toHaveValue('30');
     view.rerender(<RegionBlock {...props} project={{ ...props.project, revision: 4, region: { ...APPLIED_REGION, alt: 40, level_height_m: 8 } }} />);
+    expect(screen.getByLabelText('Ground altitude (m)')).toHaveValue('30');
+    expect(screen.getByLabelText('Level height (m)')).toHaveValue('6');
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
     expect(screen.getByLabelText('Ground altitude (m)')).toHaveValue('40');
     expect(screen.getByLabelText('Level height (m)')).toHaveValue('8');
   });

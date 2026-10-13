@@ -1,10 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../../i18n/I18nProvider';
 import { AddObjects } from './AddObjects';
 import { stringifyLossless } from '../../../feeds/lossless-json';
 import type { ComponentProps } from 'react';
 import type { PlacePickerMapProps } from '../space/PlacePickerMap';
+import { getOperationsState, operation, previewOperations } from '../operations';
+import type { Project, WorkbenchApi } from '../../api';
 
 vi.mock('../space/PlacePickerMap', async importOriginal => ({ ...await importOriginal<object>(), PlacePickerMap: ({ position, onPick }: PlacePickerMapProps) => <div>
   <button onClick={() => onPick(80, -25, true)}>Map click</button>
@@ -12,8 +14,8 @@ vi.mock('../space/PlacePickerMap', async importOriginal => ({ ...await importOri
 </div> }));
 
 const scroll = Element.prototype.scrollIntoView;
-beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); });
-afterEach(() => { Element.prototype.scrollIntoView = scroll; });
+beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); sessionStorage.clear(); });
+afterEach(() => { cleanup(); Element.prototype.scrollIntoView = scroll; });
 
 const L = (en: string, _zh?: string) => en;
 const catalog = { types: [
@@ -26,6 +28,7 @@ function setup(apiOverrides: Record<string, unknown> = {}, entities: Array<Recor
   const api = {
     save: vi.fn().mockResolvedValue({ id: 'w', revision: 2, scenario: { entities } }),
     request: vi.fn().mockResolvedValue({ id: 'w', revision: 3, scenario: { entities } }),
+    project: vi.fn().mockResolvedValue({ id: 'w', revision: 3, scenario: { entities } }),
     ...apiOverrides,
   };
   const studioApi = {
@@ -40,9 +43,9 @@ function setup(apiOverrides: Record<string, unknown> = {}, entities: Array<Recor
     }),
   };
   const onProject = vi.fn();
-  render(<I18nProvider><AddObjects api={api as never} studioApi={studioApi as never} project={{ id: 'w', revision: 1 }}
+  const view = render(<I18nProvider><AddObjects api={api as never} studioApi={studioApi as never} project={{ id: 'w', revision: 1 }}
     draft={{ entities } as never} onProject={onProject} L={L} onClose={() => undefined} {...props} /></I18nProvider>);
-  return { api, onProject, studioApi };
+  return { api, onProject, studioApi, view };
 }
 
 async function chooseUav() {
@@ -87,7 +90,7 @@ it('places each reviewed instance and adopts the updated workspace', async () =>
   const firstPlaced = { id: 'w', revision: 3, scenario: { entities: [{ id: 'uav-1' }] } };
   const allPlaced = { id: 'w', revision: 4, scenario: { entities: [{ id: 'uav-1' }, { id: 'uav-2' }] } };
   const request = vi.fn().mockResolvedValueOnce(firstPlaced).mockResolvedValueOnce(allPlaced);
-  const { api, onProject } = setup({ request });
+  const { api, onProject } = setup({ request, project: vi.fn().mockResolvedValue(allPlaced) });
   await chooseUav();
   fireEvent.change(screen.getByLabelText('id (or id prefix)'), { target: { value: 'uav' } });
   fireEvent.change(screen.getByLabelText('count'), { target: { value: '2' } });
@@ -102,7 +105,8 @@ it('places each reviewed instance and adopts the updated workspace', async () =>
     ['/v1/studio/workspaces/w/place', { body: { id: 'uav-1', type: 'oo:UAV', kind: 'entity', engine: 'kinematic', position: [10, 0, 0] } }],
     ['/v1/studio/workspaces/w/place', { body: { id: 'uav-2', type: 'oo:UAV', kind: 'entity', engine: 'kinematic', position: [15, 0, 0] } }],
   ]);
-  expect(onProject).toHaveBeenCalledWith(firstPlaced);
+  expect(api.project).toHaveBeenCalledWith('w');
+  expect(onProject).not.toHaveBeenCalledWith(firstPlaced);
   expect(onProject).toHaveBeenLastCalledWith(allPlaced);
 });
 
@@ -231,4 +235,78 @@ it('uses the shared picker with live coordinates, clears invalid markers and pre
   fireEvent.change(screen.getByLabelText('east (m)'), { target: { value: '' } });
   expect(screen.getByLabelText('Map marker')).toHaveTextContent('null');
   expect(screen.getByRole('button', { name: 'Map click' })).toBeVisible();
+});
+
+it('restores all unconfirmed advanced inputs and warns after Conversation/refresh (T1-R4-001)', async () => {
+  const first = setup();
+  await chooseUav();
+  const values = { 'Search the workspace type catalog': 'UAV', 'Kind': 'facility', 'id (or id prefix)': 'research-static',
+    'count': '2', 'east (m)': '12.', 'north (m)': '34', 'up (m)': '56', 'spacing along east (m)': '20', 'aas.studio.energy_j': '100000' };
+  for (const [label, value] of Object.entries(values)) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  expect(screen.getByLabelText('Engine')).toHaveValue('workflow');
+  first.view.unmount();
+  const unload = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(unload);
+  expect(unload.defaultPrevented).toBe(true);
+  const second = setup();
+  await screen.findByLabelText('aas.studio.energy_j');
+  expect(screen.getByText('Restored unsaved inputs')).toBeVisible();
+  for (const [label, value] of Object.entries(values)) expect(screen.getByLabelText(label)).toHaveValue(value);
+  expect(screen.getByLabelText('Engine')).toHaveValue('workflow');
+  expect(second.api.request).not.toHaveBeenCalled();
+});
+
+it('holds the lock from draft save through the full batch and authoritative read, preserving version and capabilities (T1-R4-003 / T1-R4-005)', async () => {
+  let saved!: (value: Project) => void, read!: (value: Project) => void;
+  const partial = { id: 'w', revision: 4, scenario: { entities: [{ id: 'batch-1' }, { id: 'batch-2' }] } };
+  const full = { ...partial, latest_version: { version: 1 }, capabilities: { lowalt: true, region: false, network: false, city: false } } as unknown as Project;
+  const save = vi.fn(() => { expect(getOperationsState('w').applying).toBe(true); return new Promise<Project>(resolve => { saved = resolve; }); });
+  const request = vi.fn(async () => { expect(getOperationsState('w').applying).toBe(true); return partial; });
+  const project = vi.fn(() => { expect(getOperationsState('w').applying).toBe(true); return new Promise<Project>(resolve => { read = resolve; }); });
+  const fixture = setup({ save, request, project });
+  await chooseUav();
+  fireEvent.change(screen.getByLabelText('id (or id prefix)'), { target: { value: 'batch' } });
+  fireEvent.change(screen.getByLabelText('count'), { target: { value: '2' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create 2 objects' }));
+  const sibling = { request: vi.fn() } as unknown as WorkbenchApi;
+  expect(() => previewOperations(sibling, { id: 'w', revision: 1 } as Project, [operation('set_wind', { speed_mps: 3 })])).toThrow(/Applying/);
+  await act(async () => saved({ id: 'w', revision: 2 } as Project));
+  await waitFor(() => expect(project).toHaveBeenCalledOnce());
+  expect(request).toHaveBeenCalledTimes(2);
+  expect(getOperationsState('w').applying).toBe(true);
+  expect(fixture.onProject).not.toHaveBeenCalled();
+  await act(async () => read(full));
+  expect(await screen.findByText('Created: batch-1, batch-2')).toBeVisible();
+  expect(fixture.onProject).toHaveBeenCalledTimes(1);
+  expect(fixture.onProject).toHaveBeenLastCalledWith(full);
+  expect(getOperationsState('w').applying).toBe(false);
+  expect(Object.keys(sessionStorage).filter(key => key.startsWith('aas.staged.'))).toHaveLength(0);
+});
+
+it('defaults to the first compatible engine and explains the excluded motion type (T1-R4-006)', async () => {
+  const type = { id: 'aas:StudioFacility', parents: [], abstract: false };
+  const { api } = setup({}, [], { types: [type], relations: [] }, { ...type, fields: [] },
+    { draft: { entities: [], engines: { motion: { plugin: 'kinematic', config: { type_id: 'lowalt:UAV' } } } } });
+  fireEvent.click(await screen.findByRole('option', { name: 'aas:StudioFacility' }));
+  await screen.findByText('This type declares no extra contract fields.');
+  expect(screen.getByLabelText('Engine')).toHaveValue('workflow');
+  expect(screen.queryByRole('option', { name: /kinematic —/ })).toBeNull();
+  expect(screen.getByText(/motion engine accepts lowalt:UAV/)).toBeVisible();
+  fireEvent.change(screen.getByLabelText('id (or id prefix)'), { target: { value: 'compatible' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create 1 objects' }));
+  await screen.findByText('Created: compatible');
+  expect(api.request.mock.calls[0][1].body.engine).toBe('workflow');
+});
+
+it('retains a restored incompatible engine visibly and blocks creation until the researcher changes it (T1-R4-006)', async () => {
+  const first = setup(); await chooseUav();
+  fireEvent.change(screen.getByLabelText('id (or id prefix)'), { target: { value: 'moving' } });
+  first.view.unmount();
+  const second = setup({}, [], catalog, undefined, { draft: { entities: [], engines: { motion: { plugin: 'kinematic', config: { type_id: 'another:type' } } } } });
+  await screen.findByLabelText('aas.studio.energy_j');
+  expect(screen.getByLabelText('Engine')).toHaveValue('kinematic');
+  expect(screen.getByRole('button', { name: 'Create 1 objects' })).toBeDisabled();
+  expect(screen.getByText(/motion engine accepts another:type/)).toBeVisible();
+  expect(second.api.request).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Engine'), { target: { value: 'workflow' } });
+  expect(screen.getByRole('button', { name: 'Create 1 objects' })).toBeEnabled();
 });

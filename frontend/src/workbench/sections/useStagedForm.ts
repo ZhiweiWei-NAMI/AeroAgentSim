@@ -39,6 +39,13 @@ export function useStagedFormStatus(workspaceId: string): boolean {
 }
 
 interface Buffer<T> { values: T; baseline: T; revision?: number; restored: boolean; error?: string }
+function sameInputShape(value: unknown, initial: unknown): boolean {
+  if (initial === null) return value === null;
+  if (Array.isArray(initial)) return Array.isArray(value) && (initial.length === 0 || value.every(item => sameInputShape(item, initial[0])));
+  if (typeof initial === 'object') return !!value && typeof value === 'object' && !Array.isArray(value)
+    && Object.entries(initial).every(([key, field]) => key in value && sameInputShape((value as Record<string, unknown>)[key], field));
+  return typeof value === typeof initial;
+}
 function restore<T>(id: string | undefined, form: string, revision: number | undefined, initial: T): Buffer<T> {
   const fresh = { values: initial, baseline: initial, revision, restored: false };
   if (id === undefined) return fresh;
@@ -50,7 +57,7 @@ function restore<T>(id: string | undefined, form: string, revision: number | und
       const record = JSON.parse(sessionStorage.getItem(key)!);
       if (record.workspace !== id || record.form !== form || !Number.isSafeInteger(record.revision)
         || !('values' in record) || !('baseline' in record) || key !== storageKey(id, record.revision, form)
-        || initial && typeof initial === 'object' && [record.values, record.baseline].some(value => !value || typeof value !== 'object' || Array.isArray(value) !== Array.isArray(initial))) throw Error('Invalid unsaved form record. / 未保存的表单记录无效。');
+        || !sameInputShape(record.values, initial) || !sameInputShape(record.baseline, initial)) throw Error('Invalid unsaved form record. / 未保存的表单记录无效。');
       return record as { values: T; baseline: T; revision: number };
     }).sort((a, b) => b.revision - a.revision);
     if (!records.length) return fresh;
@@ -73,8 +80,8 @@ export function useStagedForm<T>(workspaceId: string | undefined, formKey: strin
   const context = useContext(StagedFormWorkspace);
   const revision = baseRevision ?? (context?.id === workspaceId ? context?.revision : undefined);
   const identity = canonicalJson([workspaceId, formKey]);
-  const latest = useRef({ initial, revision });
-  latest.current = { initial, revision };
+  const latest = useRef({ initial, revision, identity });
+  latest.current = { initial, revision, identity };
   const [buffer, setBuffer] = useState(() => restore(workspaceId, formKey, revision, initial));
   const current = useRef(buffer);
   current.current = buffer;
@@ -94,6 +101,7 @@ export function useStagedForm<T>(workspaceId: string | undefined, formKey: strin
   }, [identity, revision, canonicalJson(initial), dirty, buffer.restored, buffer.error]);
 
   const setValues = useCallback((change: SetStateAction<T>) => {
+    if (latest.current.identity !== canonicalJson([workspaceId, formKey])) return;
     const previous = current.current;
     const values = typeof change === 'function' ? (change as (value: T) => T)(previous.values) : change;
     const next = { ...previous, values };
@@ -114,6 +122,7 @@ export function useStagedForm<T>(workspaceId: string | undefined, formKey: strin
   }, [workspaceId, formKey]);
 
   const clear = useCallback((appliedValues?: T) => {
+    if (latest.current.identity !== canonicalJson([workspaceId, formKey])) return;
     // Input entered while a request was running is a new buffer, not part of that apply.
     if (appliedValues !== undefined && canonicalJson(current.current.values) !== canonicalJson(appliedValues)) return;
     const next: Buffer<T> = { values: latest.current.initial, baseline: latest.current.initial, revision: latest.current.revision, restored: false };

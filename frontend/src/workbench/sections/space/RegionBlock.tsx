@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { ApiError } from '../../api';
 import type { SectionProps } from '../types';
-import { capabilities } from '../operations';
+import { assertOperationsReady, capabilities, mutateWorkspace, useWorkspaceOperations } from '../operations';
+import { useStagedForm } from '../useStagedForm';
+import { StagedFormNote } from '../tasks/op-ui';
 import {
   applyRegion, cityConflictIssue, generateNetwork, hasCity, heightSummary,
   catalogBasemap, extractLabel, fetchMapCatalog, previewMapGeometry, previewRegion, readRegion, regionDraft, sceneMapGeometry, validateRegion,
@@ -53,11 +55,21 @@ const fieldErrorText = (message: string, L: SectionProps['L']) => {
  * assumptions, review server-side impact, then apply. Only configured local extracts are
  * offered — there is no online search (see tools/build_map.py to add one).
  */
-export function RegionBlock({ project, api, draft, edit, issues, onProject, saveDraft, L }: SectionProps) {
+export function RegionBlock({ project: suppliedProject, api, draft, edit, issues, onProject, saveDraft, L }: SectionProps) {
+  const workspace = useWorkspaceOperations(suppliedProject), project = workspace.project;
   const fieldId = useId();
   const [catalog, setCatalog] = useState<MapCatalog>(), [catalogError, setCatalogError] = useState<unknown>();
   const compiled = useMemo(() => readRegion(project), [project]);
-  const [form, setForm] = useState<RegionDraft>(() => regionDraft(compiled?.region));
+  const initial = useMemo(() => {
+    const value = regionDraft(compiled?.region);
+    if (compiled) return value;
+    const richer = catalog?.extracts.filter(item => Number.isInteger(item.buildings) && item.buildings! > 0 && validWgs84Bounds(item.bounds))
+      .sort((a, b) => b.buildings! - a.buildings!)[0];
+    return richer ? { ...value, extract: richer.id, west: String(richer.bounds![0]), south: String(richer.bounds![1]),
+      east: String(richer.bounds![2]), north: String(richer.bounds![3]) } : value;
+  }, [compiled, catalog]);
+  const staged = useStagedForm(project.id, 'space.region', initial, project.revision);
+  const { values: form, setValues: setForm } = staged;
   const [edited, setEdited] = useState<Partial<Record<keyof RegionDraft, boolean>>>({});
   const [preview, setPreview] = useState<RegionPreview['preview']>(), [previewError, setPreviewError] = useState<string>(), [previewing, setPreviewing] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false), [applying, setApplying] = useState(false), [applyError, setApplyError] = useState<string>();
@@ -69,9 +81,6 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   const basemap = catalogBasemap(catalog, form.extract);
   const mapGeometry = useMemo(() => preview ? previewMapGeometry(preview) : sceneMapGeometry(compiled?.scene), [preview, compiled]);
   const mapObjects = useMemo(() => regionMapObjects(draft, L), [draft.entities, draft.presentation, draft.generators, draft.engines, L]);
-  const appliedKey = JSON.stringify([project.id, compiled?.region]);
-  const hydratedFrom = useRef(appliedKey);
-  const defaultSelected = useRef(false);
 
   // One catalog request supplies every extract's coverage/counts and the shared C9 tiles.
   useEffect(() => {
@@ -86,25 +95,6 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
     return () => signal.abort();
   }, [api]);
 
-  // Adopt actual region mutations, while unrelated server refreshes preserve local field edits.
-  useEffect(() => {
-    if (hydratedFrom.current === appliedKey) return;
-    hydratedFrom.current = appliedKey;
-    setForm(regionDraft(compiled?.region)); setEdited({});
-    setPreview(undefined); setAcknowledged(false); setNetResult(undefined);
-  }, [appliedKey, compiled]);
-
-  // For a new project, prefer the richest actual catalog entry. Do not overwrite an edit.
-  useEffect(() => {
-    if (!extracts || defaultSelected.current) return;
-    defaultSelected.current = true;
-    if (compiled || Object.keys(edited).length || form.extract) return;
-    const richer = extracts.filter(item => Number.isInteger(item.buildings) && item.buildings! > 0 && validWgs84Bounds(item.bounds))
-      .sort((a, b) => b.buildings! - a.buildings!)[0];
-    if (richer) setForm(previous => ({ ...previous, extract: richer.id, west: String(richer.bounds![0]),
-      south: String(richer.bounds![1]), east: String(richer.bounds![2]), north: String(richer.bounds![3]) }));
-  }, [extracts, compiled, edited, form.extract]);
-
   const extractBounds = extracts?.find(item => item.id === form.extract)?.bounds;
   const { errors, body } = validateRegion(form, extractBounds);
 
@@ -117,7 +107,7 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   const onMapBounds = useCallback((next: number[]) => {
     setForm(previous => ({ ...previous, west: next[0].toFixed(6), south: next[1].toFixed(6), east: next[2].toFixed(6), north: next[3].toFixed(6) }));
     setEdited(previous => ({ ...previous, west: true, south: true, east: true, north: true }));
-  }, []);
+  }, [setForm]);
 
   // Errors only once the user has actually edited that field (bounds errors likewise after edit).
   const shownErrors = Object.fromEntries(Object.entries(errors).filter(([key]) => edited[key as keyof RegionDraft])) as typeof errors;
@@ -131,9 +121,10 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   const currentKey = previewKey(form);
   const stale = !!preview && (previewedFrom !== currentKey || previewRevision !== project.revision);
   const doPreview = async () => {
-    if (!body) return;
+    if (!body || workspace.applying) return;
     setPreviewing(true); setPreviewError(undefined); setApplyError(undefined); setAcknowledged(false);
     try {
+      assertOperationsReady(project);
       const answer = await previewRegion(api, project.id, body);
       setPreview(answer);
       setPreviewedFrom(previewKey(form));
@@ -143,36 +134,38 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
     finally { setPreviewing(false); }
   };
   const doApply = async () => {
-    if (!body || !preview || stale || previewing || applying || (needsConfirm && !acknowledged)) return;
+    if (!body || !preview || stale || previewing || applying || workspace.applying || (needsConfirm && !acknowledged)) return;
     setApplying(true); setApplyError(undefined);
     try {
-      const saved = await saveDraft();
-      if (!saved) throw new Error(L('The draft could not be saved, so the region was not applied.', '草稿保存失败，区域未应用。'));
-      if (saved.revision !== previewRevision) {
-        setPreviewedFrom('');
-        throw new Error(L('The draft changed while saving — preview the region again.', '保存时草稿已变更——请重新预览区域。'));
-      }
-      await applyRegion(api, saved.id, body);
-      onProject(await api.project(saved.id)); // re-fetch: the server is the source of truth (design ③)
+      const updated = await mutateWorkspace(project, async saved => {
+        if (saved.revision !== previewRevision) {
+          setPreviewedFrom('');
+          throw new Error(L('The draft changed while saving — preview the region again.', '保存时草稿已变更——请重新预览区域。'));
+        }
+        await applyRegion(api, saved.id, body);
+        return api.project(saved.id);
+      }, saveDraft);
+      onProject(updated);
+      staged.clear(form); setEdited({});
       setPreview(undefined); setPreviewedFrom(''); setAcknowledged(false);
-    } catch (problem) { setApplyError(String(problem)); }
+    } catch (problem) { setApplyError(serverText(String(problem), L)); }
     finally { setApplying(false); }
   };
   const doNetwork = async () => {
-    if (!networkCapable) return;
+    if (!networkCapable || workspace.applying) return;
     setNetBusy(true); setNetError(undefined);
     try {
-      const saved = await saveDraft();
-      if (!saved) throw new Error(L('The draft could not be saved, so the network was not generated.', '草稿保存失败，路网未生成。'));
       try {
-        const result = await generateNetwork(api, saved.id);
-        setNetResult(result);
-        onProject(await api.project(saved.id)); // re-fetch: network state comes from the server (design ④)
+        onProject(await mutateWorkspace(project, async saved => {
+          const result = await generateNetwork(api, saved.id);
+          setNetResult(result);
+          return api.project(saved.id);
+        }, saveDraft));
       } catch (problem) {
         if (problem instanceof ApiError && problem.unavailable) throw new Error(L('This server does not expose the road-network endpoint.', '此服务器未提供路网生成接口。'));
         throw problem;
       }
-    } catch (problem) { setNetError(String(problem instanceof Error ? problem.message : problem)); }
+    } catch (problem) { setNetError(serverText(String(problem instanceof Error ? problem.message : problem), L)); }
     finally { setNetBusy(false); }
   };
 
@@ -197,6 +190,8 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
 
   return <section className="wb-region" aria-label={L('Region', '区域')}>
     <h4>{L('Region', '区域')}</h4>
+    <StagedFormNote form={staged} L={L} onDiscard={() => { setEdited({}); setAcknowledged(false); }} />
+    {workspace.applying && !applying && !netBusy && <p className="hint wb-form-prerequisite" role="note">{L('Applying another change…', '正在应用另一项变更…')}</p>}
     <p className="hint">{L(
       'Choose a map extract, select an area and review its buildings and roads before applying.',
       '选择地图数据和范围，查看建筑与道路后再应用。')}</p>
@@ -284,12 +279,12 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
     <p className="hint">{L('Defaults are modelling assumptions — edit them for your site.', '默认值是建模假设——请按你的场地修改。')}</p>
 
     <div className="wb-region-actions">
-      <button className="wb-btn" disabled={invalid || previewing || applying} onClick={() => void doPreview()}>{previewing ? L('Previewing…', '预演中…') : L('Preview region', '预览区域')}</button>
-      <button className="wb-btn primary" data-testid="apply-region" disabled={invalid || !preview || stale || previewing || applying || (needsConfirm && !acknowledged)}
+      <button className="wb-btn" disabled={invalid || previewing || applying || workspace.applying} onClick={() => void doPreview()}>{previewing ? L('Previewing…', '预演中…') : L('Preview region', '预览区域')}</button>
+      <button className="wb-btn primary" data-testid="apply-region" disabled={invalid || !preview || stale || previewing || applying || workspace.applying || (needsConfirm && !acknowledged)}
         onClick={() => void doApply()}>{applying ? L('Applying…', '应用中…') : L('Apply region', '应用区域')}</button>
       {stale && <span className="wb-region-warn" role="status">{L('Out of date — preview again.', '已失效——请重新预览。')}</span>}
       {!networkCapable && <span className="wb-region-warn" role="status">{L('Apply a region first (step ③).', '请先应用区域（步骤 ③）。')}</span>}
-      <button className="wb-btn" data-testid="generate-network" disabled={!networkCapable || netBusy}
+      <button className="wb-btn" data-testid="generate-network" disabled={!networkCapable || netBusy || workspace.applying}
         title={networkCapable ? undefined : L('Apply a region first (step ③).', '请先应用区域（步骤 ③）。')}
         onClick={() => void doNetwork()}>{netBusy ? L('Generating…', '生成中…') : L('Generate road network', '生成路网')}</button>
     </div>
