@@ -7,6 +7,7 @@ preserves OSM topology at crop boundaries rather than inventing clipped ways.
 from __future__ import annotations
 
 import math
+import copy
 import re
 import subprocess
 import tempfile
@@ -17,6 +18,34 @@ from typing import Any
 
 Bounds = list[float]
 Point = tuple[float, float]
+
+
+def enu_scales(origin: dict[str, Any]) -> tuple[float, float]:
+    """Metres per longitude/latitude degree in compile_scene's local frame."""
+    rad, a, e2 = math.pi / 180, 6378137.0, 6.69437999014e-3
+    denominator = 1 - e2 * math.sin(origin["lat"] * rad) ** 2
+    return (a / math.sqrt(denominator) * math.cos(origin["lat"] * rad) * rad,
+            a * (1 - e2) / denominator**1.5 * rad)
+
+
+def preview_geometry(scene: dict[str, Any], *, limit: int = 3000) -> dict[str, Any]:
+    """Bounded building GeoJSON and road polylines in the preview ENU frame."""
+    origin = scene["origin"]
+    east, north = enu_scales(origin)
+    buildings = [feature for feature in scene["geojson"]["features"] if feature["geometry"]["type"] in {"Polygon", "MultiPolygon"}]
+
+    def project(coordinates: list) -> list:
+        if coordinates and isinstance(coordinates[0], (int, float)):
+            lon, lat = coordinates[:2]
+            return [(lon - origin["lon"]) * east, (lat - origin["lat"]) * north, 0.0]
+        return [project(child) for child in coordinates]
+
+    features = [copy.deepcopy(feature) for feature in buildings[:limit]]
+    for feature in features:
+        feature["geometry"]["coordinates"] = project(feature["geometry"]["coordinates"])
+    return {"buildings": {"type": "FeatureCollection", "features": features},
+            "roads": [{"id": road["id"], "points": copy.deepcopy(road["points"])} for road in scene["roads"][:limit]],
+            "truncated": len(buildings) > limit or len(scene["roads"]) > limit}
 
 
 def origin_distance(previous: dict[str, Any], current: dict[str, Any]) -> float:
@@ -275,10 +304,7 @@ def compile_scene(
     root, nodes = _read(path)
     _source_bounds(nodes, box)
     lon0, lat0 = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
-    rad, a, e2 = math.pi / 180, 6378137.0, 6.69437999014e-3
-    denominator = 1 - e2 * math.sin(lat0 * rad) ** 2
-    east = a / math.sqrt(denominator) * math.cos(lat0 * rad) * rad
-    north = a * (1 - e2) / denominator**1.5 * rad
+    east, north = enu_scales({"lat": lat0})
     features: list[dict[str, Any]] = []
     roads: list[dict[str, Any]] = []
     diagnostics = [

@@ -63,6 +63,8 @@ class CompileResult:
     diff_base: dict[str, Any] = field(default_factory=dict)
     interactions: dict[str, Any] = field(default_factory=dict)
     expectations: list[dict[str, Any]] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    operations: list[dict[str, Any]] = field(default_factory=list)
 
     def to_data(self) -> dict[str, Any]:
         return copy.deepcopy({**{k: v for k, v in self.__dict__.items() if k != "document"}, "files_dir": str(self.files_dir)})
@@ -95,6 +97,12 @@ def resolve_base(ctx: CompileContext, base: dict) -> BaseScene:
 def _editable_packages(document: dict) -> None:
     if "behaviours" in document:
         document["behaviours"] = [copy.deepcopy(p.get("document", p)) for p in document["behaviours"]]
+        # The loader also writes compiled IR into config.packages, including
+        # absolute diagnostic source paths. The top-level packages are the
+        # portable source of truth; rebuild IR from them on the next load.
+        for engine in document.get("engines", {}).values():
+            if engine.get("plugin") == "behaviour":
+                engine["config"].pop("packages", None)
 
 
 def _write(path: Path, value: Any) -> None:
@@ -182,6 +190,10 @@ def _position(document: dict, value: Any, field_name: str) -> list[float]:
             if key in entity["facts"]:
                 return list(entity["facts"][key])
         _fail(field_name, f"{value} has no lowalt position", "此对象没有低空空间坐标")
+    if value.casefold() in {"center", "centre", "middle", "region_center", "enu_origin", "中间", "中心"}:
+        # compile_scene centres its ENU frame on the selected region. With no
+        # geodetic region this is still the authored local ENU origin.
+        return [0.0, 0.0, 0.0]
     for engine in document.get("engines", {}).values():
         cooperation = engine.get("config", {}).get("cooperation", {})
         point = next((p for p in cooperation.get("handoff_points", []) + cooperation.get("incidents", []) if p["id"] == value), None)
@@ -352,22 +364,17 @@ def _food_bindings(document: dict, owner: str) -> None:
 
 
 def _idle_kitchens(document: dict, warnings: list[dict]) -> None:
-    """Kitchens without meal orders are plain sites: the task engine only produces food facts when meals exist."""
+    """Explain inert kitchens while retaining their authored preparation settings."""
     if not any(e["type"] == "lowalt:Restaurant" for e in document["entities"]):
         return
-    owner, tasks = _engine(document, "lowalt_tasks")
+    _, tasks = _engine(document, "lowalt_tasks")
     if any(g["kind"] == "food" for g in tasks.get("generators", [])):
         return
-    idle = [e for e in document["entities"] if e["type"] == "lowalt:Restaurant" and e["facts"].pop("lowalt.food_preparation_s", None) is not None]
+    idle = [e for e in document["entities"] if e["type"] == "lowalt:Restaurant"]
     if not idle:
         return
-    rules = document["bindings"]["rules"]
-    for rule in rules:
-        if rule["writer"] == owner and rule["type"] == "lowalt:Restaurant":
-            rule["fields"] = [f for f in rule["fields"] if f != "lowalt.food_preparation_s"]
-    document["bindings"]["rules"] = [r for r in rules if r["fields"]]
     names = ", ".join(e["id"] for e in idle)
-    warnings.append({"op_id": None, "field": "kitchens", "message": f"Kitchen {names} has no meal orders, so it is only a site; add orders with kind food to cook / 厨房 {names} 没有餐食订单，仅作为站点；请添加 food 类型订单"})
+    warnings.append({"op_id": None, "field": "kitchens", "message": f"Kitchen {names} has no meal orders; preparation settings are retained; add orders with kind food to cook / 厨房 {names} 没有餐食订单，已保留准备参数；请添加 food 类型订单"})
 
 
 def _add_orders(document: dict, p: dict) -> None:
@@ -467,6 +474,11 @@ def _admit_task_kind(document: dict, kind: str) -> None:
 
 def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name: str, p: dict,
                      directory: Path, warnings: list[dict], op_id: str) -> None:
+    if name == "add_lowalt_components":
+        from aeroagentsim.packs.lowalt.template import install_components
+
+        install_components(document, directory=directory)
+        return
     if name == "set_control":
         if scene.template_id is None:
             _fail("control", "This workspace has no template controls", "此工作区没有模板控件")
@@ -636,24 +648,25 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         _overlay(document)
         vehicle_class, kinds, label, label_zh = ROLES[p["role"]]
         template = document.get("generators", {}).get("fleet")
-        if template is None:
-            _fail("base", "Add UAV fleets to a lowalt starting point", "请在低空起点中添加无人机群")
-        base_kinds = tasks.setdefault("vehicle_kinds", {}).get(template["facts"]["lowalt.vehicle_class"], list(kinds))
+        from aeroagentsim.packs.lowalt.template import vehicle_facts
+
+        initial = template["facts"] if template is not None else vehicle_facts()
+        base_kinds = tasks.setdefault("vehicle_kinds", {}).get(initial["lowalt.vehicle_class"], list(kinds))
         overrides = tasks.setdefault("vehicle_task_kinds", {})
-        for i in range(template["count"]):
+        for i in range(template["count"] if template is not None else 0):
             overrides.setdefault(template["prefix"] + str(i + 1), list(base_kinds))
         tasks["vehicle_kinds"].setdefault(vehicle_class, list(kinds))
         tasks.setdefault("cruise_altitudes", {}).setdefault(vehicle_class, 125.0)
         for i in range(p["count"]):
             identity = f"{p['id']}-{i + 1}"
             _unique(document, identity)
-            facts = copy.deepcopy(template["facts"])
+            facts = copy.deepcopy(initial)
             facts.update({"lowalt.position": _position(document, p["start"], "start"), "lowalt.vehicle_class": vehicle_class,
                           "lowalt.wind_limit_mps": WIND_LIMITS[vehicle_class]})
             if "battery_pct" in p:
                 facts["lowalt.soc"] = p["battery_pct"] / 100
                 facts["lowalt.motion_energy_j"] = facts["lowalt.capacity_j"] * facts["lowalt.soc"]
-            facts["lowalt.payload_capacity_kg"] = float(p.get("payload_capacity_kg", 150 if vehicle_class == "passenger" else template["facts"]["lowalt.payload_capacity_kg"]))
+            facts["lowalt.payload_capacity_kg"] = float(p.get("payload_capacity_kg", 150 if vehicle_class == "passenger" else initial["lowalt.payload_capacity_kg"]))
             document["entities"].append({"id": identity, "type": "lowalt:UAV", "label": f"{label} {i + 1}", "label_zh": f"{label_zh} {i + 1}", "vehicle_class": vehicle_class, "facts": facts})
             overrides[identity] = list(p.get("task_kinds", kinds))
         return
@@ -959,7 +972,7 @@ def _places_first(operations: list[dict]) -> list[int]:
         identity = operation["params"].get("id")
         return not any(isinstance(o, dict) and o.get("op") in {"update_place", "remove_place"}
                        and isinstance(o.get("params"), dict) and o["params"].get("id") == identity for o in operations[:i])
-    return sorted(range(len(operations)), key=lambda i: not early(i))
+    return sorted(range(len(operations)), key=lambda i: 0 if isinstance(operations[i], dict) and operations[i].get("op") == "add_lowalt_components" else 1 if early(i) else 2)
 
 
 def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_dir: Path, *, resolved: BaseScene | None = None) -> CompileResult:
@@ -971,6 +984,8 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
     document: dict = {}
     scene: BaseScene | None = None
     base_summary: dict = {}
+    notes: list[str] = []
+    base_lowalt = False
     try:
         scene = resolve_base(ctx, base) if resolved is None else resolved
         if out_dir.resolve().is_relative_to(scene.directory.resolve()) or scene.directory.resolve().is_relative_to(files.resolve()):
@@ -986,6 +1001,9 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         document = _rebase(scene.document, scene.directory, files)
         baseline = load_scenario(document, base=files)
         base_summary = summarize(baseline.document, directory=files, controls=scene.controls)
+        from aeroagentsim.packs.lowalt.template import has_lowalt_components
+
+        base_lowalt = has_lowalt_components(baseline.document)
         # Keep the authored document: loader expansion must remain repeatable.
         from aeroagentsim.packs.lowalt.template import expand as expand_template
 
@@ -1021,6 +1039,16 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         seen: set[str] = set()
         if not isinstance(operations, list):
             _fail("operations", "Operations must be a list", "操作必须为列表")
+        operations = copy.deepcopy(operations)
+        if operations and not any(e.get("plugin") == "lowalt_tasks" for e in document["engines"].values()) and not any(isinstance(o, dict) and o.get("op") == "add_lowalt_components" for o in operations):
+            used_ids = [o.get("id") for o in operations if isinstance(o, dict)]
+            automatic_id = "auto-lowalt-components"
+            while automatic_id in used_ids:
+                automatic_id += "-1"
+            operations.insert(0, {"id": automatic_id, "op": "add_lowalt_components", "params": {}})
+            message = "Prepended add_lowalt_components: standard lowalt engines, algorithm slots and rules; no places, fleets or orders; existing entities and origin preserved / 已前置 add_lowalt_components：安装标准低空引擎、算法槽和规则，不生成设施、机群或订单，保留已有实体和原点"
+            notes.append(message)
+            warnings.append({"op_id": automatic_id, "field": "operations", "message": message})
         for i in _places_first(operations):
             operation = operations[i]
             op_id = operation.get("id", f"op-{i + 1}") if isinstance(operation, dict) else f"op-{i + 1}"
@@ -1073,6 +1101,10 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
     result = CompileResult(not errors, errors, warnings, document, files, _digest(document, files), summary,
                            diff(base_summary, summary) if not errors else {}, interactions(summary) if not errors else {},
                            expectations(document, summary) if not errors else [])
+    result.notes = notes
+    result.operations = copy.deepcopy(operations) if isinstance(operations, list) else []
+    if result.ok and not base_lowalt and has_lowalt_components(document):
+        result.diff_base["added"].insert(0, {"kind": "components", "id": "lowalt_components", "label": "Standard lowalt engines, algorithm slots and rules", "label_zh": "标准低空引擎、算法槽和规则", "op": "add_lowalt_components"})
     _write(out_dir / "scenario.json", document)
     _write(out_dir / "compile.json", {**result.to_data(), "base": base, "base_revision": scene.revision if scene else None,
                                       "template_id": scene.template_id if scene else None, "controls": scene.controls if scene else {}})

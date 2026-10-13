@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 from .catalog import engines
 from .inputs import configured_extracts, configured_ontology
-from .workspace import WorkspaceConflict, WorkspaceStore
+from .workspace import WorkspaceConflict, WorkspaceOperationError, WorkspaceStore
 
 T = TypeVar("T")
 
@@ -25,6 +25,8 @@ def checked(action: Callable[[], T]) -> T:
         return action()
     except WorkspaceConflict as exc:
         raise HTTPException(409, str(exc)) from exc
+    except WorkspaceOperationError as exc:
+        raise HTTPException(422, {"operation": exc.operation, "field": exc.field, "message": str(exc)}) from exc
     except FileNotFoundError as exc:
         raise HTTPException(404, str(exc)) from exc
     except (ValueError, TypeError, KeyError, OSError) as exc:
@@ -84,6 +86,11 @@ def create_router(
             }
             return {
                 "extracts": source_catalog(),
+                "basemap": None if os.environ.get("AEROAGENTSIM_BASEMAP_URL") == "" else {
+                    "url": os.environ.get("AEROAGENTSIM_BASEMAP_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
+                    "attribution": os.environ.get("AEROAGENTSIM_BASEMAP_ATTRIBUTION", "© OpenStreetMap contributors"),
+                    "max_zoom": 19,
+                },
                 "engines": items,
                 "demo_profiles": profiles,
             }
@@ -109,6 +116,27 @@ def create_router(
             return result
 
         return checked(read)
+
+    @router.get("/operations")
+    def operation_catalog() -> list[dict[str, Any]]:
+        from aeroagentsim.assistant.operations import operation_catalogue
+
+        return [{"op": spec["name"], "topic": spec["topic"], "label": spec["description"],
+                 "label_zh": spec["description_zh"], "schema": spec["parameters"], "example": spec["example"]}
+                for spec in operation_catalogue()]
+
+    @router.post("/workspaces/{identifier}/operations")
+    def operations(identifier: str, body: dict[str, Any], request: Request) -> dict[str, Any]:
+        from .templates import TemplateRegistry
+
+        templates = getattr(request.app.state, "templates", None) or TemplateRegistry(None)
+        profile = None
+        if run_root is not None:
+            from aeroagentsim.assistant.connection import ConnectionStore
+
+            if ConnectionStore(run_root).get()["configured"]:
+                profile = "assistant"
+        return checked(lambda: store.operations(identifier, body, templates=templates, agent_profile=profile))
 
     @router.get("/types/{type_id:path}")
     def type_detail(type_id: str, workspace: str | None = None) -> dict[str, Any]:
@@ -349,8 +377,10 @@ def create_router(
             with store.lock:
                 draft = store.get(identifier)
                 directory = store.directory(identifier)
-                if "region" not in draft:
-                    raise ValueError("network: compile a region first")
+                if "region" not in draft or "scene" not in draft:
+                    raise ValueError(f"network: select map bounds, preview the region, then Apply region (POST /v1/studio/workspaces/{identifier}/region with dry_run=false) before generating the road network; a preview alone is not saved / 请先在地图选定范围、预览并应用区域（dry_run=false），再生成道路网络；仅预览不会保存区域")
+                if not (directory / "region.osm.xml").is_file():
+                    raise ValueError("network: the saved region's OSM crop is missing; reapply this workspace's region, then generate the road network / 已保存区域缺少 OSM 裁剪文件，请重新应用本工作区的区域后生成道路网络")
                 result = generate_sumo(
                     directory / "region.osm.xml", directory / "network.net.xml"
                 )

@@ -83,7 +83,7 @@ def runner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ToolRunner,
     def compile(ctx: Any, base: Any, operations: Any, directory: Path, *, resolved: Any = None) -> Any:
         directory.mkdir(parents=True)
         document = {"id": "test", "entities": [{"id": op["id"], "parameters": op["params"]} for op in operations]}
-        data = dict(ok=True, errors=[], warnings=[], document=document, digest="fixture", summary={"fleets": [], "places": []}, diff_base={}, interactions=[], expectations=[{"schema": "fixture.event"}])
+        data = dict(ok=True, errors=[], warnings=[], notes=[], operations=operations, document=document, digest="fixture", summary={"fleets": [], "places": []}, diff_base={}, interactions=[], expectations=[{"schema": "fixture.event"}])
         return SimpleNamespace(**data, to_data=lambda: copy.deepcopy(data))
 
     monkeypatch.setattr(compiler, "compile_plan", compile)
@@ -128,7 +128,7 @@ def test_compile_failure_is_an_invalid_version(runner: tuple[ToolRunner, str], m
 
     tools, identifier = runner
     initial(tools, identifier)
-    data = dict(ok=False, errors=[{"op_id": "op-1", "field": "seconds", "message": "bad"}], warnings=[], document=None, digest=None, summary=None, diff_base={}, interactions=[], expectations=[])
+    data = dict(ok=False, errors=[{"op_id": "op-1", "field": "seconds", "message": "bad"}], warnings=[], notes=[], operations=[], document=None, digest=None, summary=None, diff_base={}, interactions=[], expectations=[])
     monkeypatch.setattr(compiler, "compile_plan", lambda *args, **kwargs: SimpleNamespace(**data, to_data=lambda: data))
     result = tools.revise_plan(identifier, note="Invalid / 无效", update=[{"id": "op-1", "op": "set_duration", "params": {"seconds": -1}}])
     assert result["ok"] is False and result["errors"][0]["op_id"] == "op-1"

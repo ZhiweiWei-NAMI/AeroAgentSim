@@ -23,6 +23,7 @@ LIMITS = [
     {"text": "Agent decisions require a connected provider. One generated base-fleet member cannot be edited independently; use an explicit added fleet for individual initial states.", "text_zh": "智能体决策需要已连接服务。基础生成机群中的单个成员无法独立编辑；单机初始状态请使用新增显式机群。"},
 ]
 BRIEF = {
+    "add_lowalt_components": ("Install lowalt components", "安装低空组件"),
     "set_control": ("Set template control", "设置模板控件"), "set_duration": ("Set duration", "设置时长"),
     "set_run_mode": ("Set input mode", "设置输入模式"), "set_wind": ("Set wind", "设置风速"),
     "add_gust": ("Add gust", "添加阵风"), "set_rule": ("Set operating rule", "设置运行规则"),

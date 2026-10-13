@@ -18,7 +18,7 @@ ROLES = {
     "sprayer": ("spraying", ["spraying"], "Sprayer", "植保无人机"),
 }
 PLACE_TYPES = {
-    "vertiport": "Vertiport", "charging_pad": "ChargingPad", "kitchen": "Restaurant",
+    "vertiport": "Vertiport", "charging_pad": "ChargingPad", "depot": "Depot", "kitchen": "Restaurant",
     "customer": "Customer", "handoff_point": "HandoffPoint", "incident_site": "Site",
     "inspection_start": "Site", "inspection_end": "Site",
 }
@@ -40,7 +40,7 @@ STRING = {"type": "string", "minLength": 1}
 IDENTIFIER = {**STRING, "description": "Stable scene identifier / 稳定场景标识"}
 STRINGS = {"type": "array", "items": STRING, "minItems": 1, "uniqueItems": True}
 POSITION = {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}
-AT = {"anyOf": [STRING, POSITION]}
+AT = {"anyOf": [STRING, POSITION], "description": "Facility id, catalogue place, centre/center/middle (ENU origin), or [east,north,up] metres / 设施标识、目录地点、中间（ENU 原点）或米制坐标"}
 COUNT = {"type": "integer", "minimum": 1, "maximum": 1000}
 KINDS = {**STRINGS, "items": enum(TASK_KINDS)}
 MODE = enum(["prescribed", "agent"])
@@ -78,6 +78,7 @@ def _spec(name: str, topic: str, en: str, zh: str, schema: dict[str, Any], examp
                              "example": {"id": "op-1", "op": name, "params": example}}
 
 
+_spec("add_lowalt_components", "controls", "Install the standard lowalt engines, algorithm slots and rules without places, fleets or orders.", "安装标准低空引擎、算法槽和规则，不添加设施、机群或订单。", obj({}), {})
 _spec("set_control", "controls", "Set a declared starting-point control.", "设置起点模板已声明的控件。", obj({"control": STRING, "value": {}}, ("control", "value")), {"control": "fleet_size", "value": 4})
 _spec("set_duration", "controls", "Set the run horizon in seconds.", "设置仿真时长（秒）。", obj({"seconds": number(exclusiveMinimum=0)}, ("seconds",)), {"seconds": 360})
 _spec("set_run_mode", "controls", "Choose scheduled or interactive operator input.", "选择预设或交互操作输入。", obj({"mode": enum(["scheduled", "interactive"])}, ("mode",)), {"mode": "scheduled"})

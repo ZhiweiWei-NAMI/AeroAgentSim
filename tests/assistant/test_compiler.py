@@ -201,10 +201,12 @@ def test_cooperation_revisions_rebuild_handoff_points(context: CompileContext, t
 
 
 def test_kitchen_without_meal_orders_is_a_valid_site(context: CompileContext, tmp_path: Path) -> None:
-    # Models add kitchens to bases without meals; the task engine writes kitchen facts only when meals exist.
+    # Kitchens may precede their orders, so the real preparation input must survive.
     result = compile_ops(context, tmp_path, [op("add_place", id="kitchen-1", role="kitchen", at=[-80, 60, 0], preparation_s=30)], "city-day")
     assert result.ok, result.errors
     assert any(w["field"] == "kitchens" and "kitchen-1" in w["message"] for w in result.warnings)
+    kitchen = next(e for e in result.document["entities"] if e["id"] == "kitchen-1")
+    assert kitchen["facts"]["lowalt.food_preparation_s"] == 30.0
     assert validate_compiled(context, tmp_path / "plan")["valid"]
 
 

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import copy
+import importlib.resources
+import json
+from pathlib import Path
 from typing import Any
 
 from aeroagentsim.packs.common import finite, ns, vec
@@ -18,6 +21,154 @@ DEFAULT_ALGORITHMS = {
     "conflict_resolution": "altitude_layers",
     "charging": "threshold_return",
 }
+
+
+def vehicle_facts() -> dict[str, Any]:
+    """The standard parcel UAV initial state, also used by explicit fleets."""
+    return {
+        "lowalt.velocity": [0.0, 0.0, 0.0],
+        "lowalt.motion_energy_j": 240000.0,
+        "lowalt.capacity_j": 240000.0,
+        "lowalt.soc": 1.0,
+        "lowalt.payload_kg": 0.0,
+        "lowalt.payload_capacity_kg": 3.0,
+        "lowalt.vehicle_class": "parcel",
+        "lowalt.membership": [],
+        "lowalt.conflicts": [],
+        "lowalt.weather_held": False,
+        "lowalt.charging": False,
+        "lowalt.energy_used_j": 0.0,
+        "lowalt.distance_m": 0.0,
+        "lowalt.wind_limit_mps": 12.0,
+        "lowalt.returning_to_charge": False,
+    }
+
+
+def components_document() -> dict[str, Any]:
+    """Extract the executable base from the public template, without its district.
+
+    A wind environment is required by the committed snapshot contract. There
+    are no facilities, vehicles, zones, tasks or fleet generators in this base.
+    """
+    document = parcel_document(fleet_size=1, wind_speed=0.0)
+    document["entities"] = [e for e in document["entities"] if e["type"] == "lowalt:Environment"]
+    document["engines"]["tasks"]["config"]["generators"] = []
+    del document["generators"]
+    return document
+
+
+def has_lowalt_components(document: dict[str, Any]) -> bool:
+    engines = document.get("engines", {}).values()
+    plugins = [engine.get("plugin") for engine in engines]
+    return (
+        all(plugins.count(plugin) == 1 for plugin in ("lowalt_tasks", "lowalt_airspace", "lowalt_energy", "behaviour"))
+        and any(engine.get("plugin") == "kinematic" and engine.get("config", {}).get("type_id") == "lowalt:UAV" for engine in engines)
+        and any(engine.get("plugin") == "environment" and any("lowalt.wind" in profile for profile in engine.get("config", {}).get("profiles", {}).values()) for engine in engines)
+        and set(SLOTS) <= document.get("algorithms", {}).keys()
+        and any(package.get("document", package).get("id") == "lowalt.rules" for package in document.get("behaviours", []))
+    )
+
+
+def install_components(document: dict[str, Any], *, directory: Path) -> None:
+    """Install the standard lowalt base while preserving existing authoring.
+
+    Generic engine and entity ids can already be occupied in a blank project;
+    remap the new component's references instead of replacing those objects.
+    """
+    if has_lowalt_components(document):
+        return
+    if any(engine.get("plugin") in {"lowalt_tasks", "lowalt_airspace", "lowalt_energy"} for engine in document["engines"].values()):
+        raise ValueError("add_lowalt_components: existing lowalt components are incomplete; repair their configuration / 已有低空组件不完整，请修复其配置")
+    base = components_document()
+    registry = document["registry"]
+    required_types = sorted({parent for row in base["registry"]["types"] for parent in row["parents"] if not parent.startswith("lowalt:")})
+    if "compile" in registry:
+        selected = registry["compile"]["types"]
+        selected.extend(identity for identity in required_types if identity not in selected)
+    else:
+        # Snapshot-only installations use the same shipped, source-derived
+        # ancestor closure as the public lowalt templates, never invented types.
+        installed_path = importlib.resources.files("aeroagentsim") / "template_data" / "parcel-delivery" / "registry.snapshot.json"
+        source = Path(str(installed_path)) if installed_path.is_file() else Path(__file__).resolve().parents[4] / "scenarios/templates/parcel-delivery/registry.snapshot.json"
+        fragment = json.loads(source.read_text(encoding="utf-8"))
+        snapshot_path = Path(registry["snapshot"])
+        path = snapshot_path if snapshot_path.is_absolute() else directory / snapshot_path
+        if not path.resolve().is_relative_to(directory.resolve()):
+            raise ValueError("add_lowalt_components: snapshot must be inside plan files / 快照须位于计划目录内")
+        snapshot = json.loads(path.read_text(encoding="utf-8"))
+        types = snapshot["registry"]["types"]
+        known = {row["id"]: row for row in types}
+        for row in fragment["registry"]["types"]:
+            if row["id"] in known and known[row["id"]] != row:
+                raise ValueError(f"add_lowalt_components: conflicting source type {row['id']} / 来源类型冲突")
+            if row["id"] not in known:
+                types.append(copy.deepcopy(row))
+                details = snapshot.setdefault("details", {})
+                details.setdefault("effective_fields", {})[row["id"]] = fragment["details"]["effective_fields"][row["id"]]
+        snapshot.setdefault("details", {})["lowalt_components_source"] = copy.deepcopy(fragment["details"]["provenance"])
+        if "types" in snapshot["details"].get("statistics", {}):
+            snapshot["details"]["statistics"]["types"] = len(types)
+        path.write_text(json.dumps(snapshot, ensure_ascii=False, sort_keys=True, allow_nan=False), encoding="utf-8")
+    engines = document["engines"]
+    behaviour_ids = [key for key, engine in engines.items() if engine["plugin"] == "behaviour"]
+    if len(behaviour_ids) > 1:
+        raise ValueError("add_lowalt_components: one behaviour engine required / 行为引擎须唯一")
+
+    def free_id(preferred: str, used: set[str]) -> str:
+        candidate = preferred
+        index = 1
+        while candidate in used:
+            candidate = f"lowalt-{preferred}-{index}"
+            index += 1
+        used.add(candidate)
+        return candidate
+
+    used = set(engines)
+    identities = {
+        key: behaviour_ids[0] if key == "behaviour" and behaviour_ids else free_id(key, used)
+        for key in base["engines"]
+    }
+
+    def references(value: Any) -> Any:
+        if isinstance(value, list):
+            return [references(item) for item in value]
+        if isinstance(value, dict):
+            return {key: identities.get(item, item) if key in {"target", "writer", "controller"} and isinstance(item, str) else references(item)
+                    for key, item in value.items()}
+        return value
+
+    for category, rows in base["registry"].items():
+        if category == "snapshot":
+            continue
+        current = document["registry"].setdefault(category, [])
+        known = {row["id"]: row for row in current}
+        for row in rows:
+            if row["id"] in known and known[row["id"]] != row:
+                raise ValueError(f"add_lowalt_components: conflicting {category} descriptor {row['id']} / 低空描述符冲突")
+            if row["id"] not in known:
+                current.append(copy.deepcopy(row))
+    for key, engine in base["engines"].items():
+        installed = references(engine)
+        if key == "behaviour" and behaviour_ids:
+            config = engines[identities[key]]["config"]
+            for capability, declaration in installed["config"]["capabilities"].items():
+                existing = config.setdefault("capabilities", {}).get(capability)
+                if existing is not None and existing != declaration:
+                    raise ValueError(f"add_lowalt_components: conflicting capability {capability} / 行为能力冲突")
+                config["capabilities"][capability] = declaration
+            document.setdefault("behaviours", []).extend(config.pop("packages", []))
+        else:
+            engines[identities[key]] = installed
+    weather = base["entities"][0]
+    weather_id = free_id(weather["id"], {entity["id"] for entity in document["entities"]})
+    profiles = engines[identities["environment"]]["config"]["profiles"]
+    profiles[weather_id] = profiles.pop(weather["id"])
+    document["entities"].append({**weather, "id": weather_id})
+    for category, rows in base["bindings"].items():
+        document["bindings"].setdefault(category, []).extend(references(rows))
+    document.setdefault("behaviours", []).extend(copy.deepcopy(base["behaviours"]))
+    document["algorithms"] = copy.deepcopy(base["algorithms"])
+    document["presentation"].extend(copy.deepcopy(base["presentation"]))
 
 
 def expand(document: dict[str, Any]) -> None:
@@ -47,7 +198,7 @@ def expand(document: dict[str, Any]) -> None:
                 item["subjects"] = copy.deepcopy(descriptor["subjects"])
         known = {item["id"] for item in messages}
         messages.extend(copy.deepcopy(item) for key, item in wanted.items() if key not in known)
-    if "generators" in document:
+    if "generators" in document or any(p.get("document", p).get("id") == "lowalt.rules" for p in document.get("behaviours", [])):
         configure_detection(document)
     # In live operator mode the source supplies these events. Retaining the
     # scheduled demonstration as well would dispatch the same one-shot task
@@ -347,21 +498,7 @@ def parcel_document(
                 "type": "lowalt:UAV",
                 "starts": [[-240.0, -220.0, 50.0], [240.0, -220.0, 50.0]],
                 "spacing_m": 35.0,
-                "facts": {
-                    "lowalt.velocity": [0.0, 0.0, 0.0],
-                    "lowalt.motion_energy_j": 240000.0,
-                    "lowalt.capacity_j": 240000.0,
-                    "lowalt.soc": 1.0,
-                    "lowalt.payload_kg": 0.0,
-                    "lowalt.payload_capacity_kg": 3.0,
-                    "lowalt.vehicle_class": "parcel",
-                    "lowalt.membership": [],
-                    "lowalt.conflicts": [],
-                    "lowalt.weather_held": False,
-                    "lowalt.charging": False,
-                    "lowalt.energy_used_j": 0.0,
-                    "lowalt.distance_m": 0.0,
-                },
+                "facts": vehicle_facts(),
             }
         },
         "engines": {

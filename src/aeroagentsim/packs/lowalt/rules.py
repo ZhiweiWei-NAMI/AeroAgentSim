@@ -595,13 +595,15 @@ def configure_detection(document: dict[str, Any]) -> None:
         reserve = package["predicates"]["battery_below_reserve"]["parameters"][
             "reserve_percent"
         ]
-        document["engines"]["tasks"]["config"]["dispatch_min_soc"] = (
+        tasks = next(engine["config"] for engine in document["engines"].values() if engine["plugin"] == "lowalt_tasks")
+        airspace = next(engine["config"] for engine in document["engines"].values() if engine["plugin"] == "lowalt_airspace")
+        tasks["dispatch_min_soc"] = (
             finite(reserve, "battery reserve", 0) / 100.0
         )
         # Three per-UAV policies plus one no-fly instance per protected zone.
-        fleet = document["generators"]["fleet"]
-        fleet_size = fleet["count"] + sum(
-            entity["type"] == UAV and not entity["id"].startswith(fleet["prefix"])
+        fleet = document.get("generators", {}).get("fleet")
+        fleet_size = (fleet["count"] if fleet is not None else 0) + sum(
+            entity["type"] == UAV and (fleet is None or not entity["id"].startswith(fleet["prefix"]))
             for entity in document["entities"]
         )
         zones = sum(
@@ -615,7 +617,7 @@ def configure_detection(document: dict[str, Any]) -> None:
         radius = package["predicates"]["closer_than_safety_distance"]["parameters"][
             "horizontal_m"
         ]
-        document["engines"]["airspace"]["config"]["separation_horizontal_m"] = finite(
+        airspace["separation_horizontal_m"] = finite(
             radius, "safety distance", 1e-9
         )
         limits = {
@@ -627,7 +629,8 @@ def configure_detection(document: dict[str, Any]) -> None:
         # Expose the actual authored class limit as committed configuration,
         # rather than leave the obsolete WIP fact inconsistent with the knob.
         facts = [e["facts"] for e in document["entities"] if e["type"] == UAV]
-        facts.append(document["generators"]["fleet"]["facts"])
+        if fleet is not None:
+            facts.append(fleet["facts"])
         for fact in facts:
             fact["lowalt.wind_limit_mps"] = limits[
                 f"{fact['lowalt.vehicle_class']}_limit_mps"

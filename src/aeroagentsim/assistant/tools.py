@@ -292,12 +292,12 @@ class ToolRunner:
         plan = {"version": version, "created_at": now(), "note": note, "variant": variant, "parent": parent,
                 "base": base, "base_label": resolved.label, "title": title, "summary": summary,
                 "operations": operations, "assumptions": assumptions, "open_questions": open_questions,
-                "compile": {"ok": result.ok, "errors": result.errors, "warnings": result.warnings},
+                "compile": {"ok": result.ok, "errors": result.errors, "warnings": result.warnings, "notes": result.notes, "operations": result.operations},
                 "validation": {"state": "pending" if result.ok else "invalid", "errors": [] if result.ok else result.errors},
                 "scene": result.summary, "diff_base": result.diff_base, "diff_previous": diff_previous,
                 "interactions": result.interactions, "expectations": result.expectations,
                 "_document": result.document,
-                "_baseline_operations": baseline, "_compile_operations": compile_operations}
+                "_baseline_operations": baseline, "_compile_operations": result.operations}
         self.sessions.put_plan(identifier, plan, current=current)
         if result.ok and self.on_plan is not None:
             self.on_plan(identifier, version)
@@ -306,7 +306,7 @@ class ToolRunner:
         compact_diff = {"total_changes": len(changes), "changes": changes[:8], "operations": {key: [{"id": op["id"], "op": op.get("op", op.get("after", {}).get("op"))} for op in rows] for key, rows in operations_changed.items()}}
         return {"version": version, "ok": True, "validation": "running automatically; the board enables Confirm when it passes", "scene": short_scene(result.summary),
                 "operations": [{"id": op["id"], "op": op["op"]} for op in operations],
-                "diff_previous": compact_diff, "warnings": result.warnings,
+                "diff_previous": compact_diff, "warnings": result.warnings, "notes": result.notes,
                 "prechecks": result.expectations, "note": note, "variant": variant}
 
     def draft_plan(self, identifier: str, **arguments: Any) -> dict[str, Any]:

@@ -51,7 +51,7 @@ def api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
     def compile(ctx: Any, base: Any, operations: Any, directory: Path, *, resolved: Any = None) -> Any:
         directory.mkdir(parents=True)
-        data = dict(ok=True, errors=[], warnings=[], document={"id": "fixture", "entities": []}, digest="fixture", summary={"fleets": [], "places": []}, diff_base={}, interactions=[], expectations=[{"schema": "fixture.incident"}])
+        data = dict(ok=True, errors=[], warnings=[], notes=[], operations=operations, document={"id": "fixture", "entities": []}, digest="fixture", summary={"fleets": [], "places": []}, diff_base={}, interactions=[], expectations=[{"schema": "fixture.incident"}])
         return SimpleNamespace(**data, to_data=lambda: copy.deepcopy(data))
 
     monkeypatch.setattr(compiler, "compile_plan", compile)

@@ -12,7 +12,7 @@ from typing import Any
 
 from aeroagentsim.authoring.templates import demo_source
 
-ROOF_ROLES = ["vertiport", "charging_pad", "kitchen", "customer", "handoff_point", "inspection_start", "inspection_end"]
+ROOF_ROLES = ["vertiport", "charging_pad", "depot", "kitchen", "customer", "handoff_point", "inspection_start", "inspection_end"]
 STREET_ROLES = ["incident_site", "handoff_point", "inspection_start", "inspection_end"]
 LANDMARKS = {
     "plaza": ("West Plaza", "西广场"), "hospital": ("Hospital rooftop", "医院屋顶"),

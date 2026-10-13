@@ -230,7 +230,8 @@ class LowaltTasks(ContextEngine):
         # Cost-model constants handed to allocators (speed, energy per metre).
         self.vehicle_model = self.cfg.get("vehicle_model", {})
         self.motion = self.cfg["motion"]
-        self.food_enabled = any(g["kind"] == "food" for g in self.cfg["generators"])
+        restaurant_type = any(type_row.id == "lowalt:Restaurant" for type_row in build.registry.types)
+        self.food_enabled = any(g["kind"] == "food" for g in self.cfg["generators"]) or (restaurant_type and bool(refs(build, "lowalt:Restaurant")))
         self.radius = finite(self.cfg["arrival_radius_m"], "arrival radius", 0)
         # Reuse only the committed base snapshot within ONE engine callback.
         # Lazy reads preserve the causal scope of earlier receipts/releases.

@@ -151,6 +151,16 @@ class WorkspaceConflict(ValueError):
     """An edit targets an older saved revision."""
 
 
+class WorkspaceOperationError(ValueError):
+    """A deterministic form operation failed at an authored field."""
+
+    def __init__(self, operation: str | None, field: str, message: str) -> None:
+        self.operation, self.field = operation, field
+        if " / " not in message:
+            message += " / 操作配置无效，请按字段提示修正"
+        super().__init__(message)
+
+
 class WorkspaceStore:
     """Draft edits are reversible; validation compiles real registry and engine contracts."""
 
@@ -221,7 +231,7 @@ class WorkspaceStore:
         directory.mkdir(exist_ok=True)
         path = directory / "draft.json"
         stored = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
-        metadata = {"revision", "updated_at", "validation", "behaviour_validation"}
+        metadata = {"revision", "updated_at", "validation", "behaviour_validation", "notes"}
 
         def contents(value: dict[str, Any]) -> str:
             return json.dumps({key: item for key, item in value.items() if key not in metadata}, sort_keys=True, ensure_ascii=False, allow_nan=False)
@@ -351,6 +361,62 @@ class WorkspaceStore:
         else:
             draft.pop("demo_console", None)
             draft.pop("scene_source", None)
+
+    def operations(self, identifier: str, body: dict[str, Any], *, templates: Any, agent_profile: str | None = None) -> dict[str, Any]:
+        """Compile form operations with the assistant compiler; apply one draft edit.
+
+        Compilation uses a disposable sibling directory. Dry runs and failures
+        leave the workspace and its resources untouched, and never call an LLM.
+        """
+        from aeroagentsim.assistant.compiler import CompileContext, _copy_files, _rebase, compile_plan
+        from aeroagentsim.assistant.operations import OperationError, STRING, obj, validate_parameters
+
+        try:
+            validate_parameters(body, obj({
+                "operations": {"type": "array", "items": obj({"id": STRING, "op": STRING, "params": {"type": "object"}}, ("id", "op", "params"))},
+                "revision": {"type": "integer", "minimum": 0}, "dry_run": {"type": "boolean"},
+            }, ("operations",)), "body")
+        except OperationError as exc:
+            operation = None
+            match = re.match(r"body.operations\[(\d+)\]", exc.field)
+            if match and isinstance(body, dict) and isinstance(body.get("operations"), list):
+                item = body["operations"][int(match[1])]
+                if isinstance(item, dict) and isinstance(item.get("id"), str):
+                    operation = item["id"]
+            raise WorkspaceOperationError(operation, exc.field, str(exc)) from exc
+        with self.lock:
+            draft = self.get(identifier)
+            self.check_revision(draft, body.get("revision"))
+            with tempfile.TemporaryDirectory(prefix="operations-", dir=self.root) as scratch:
+                result = compile_plan(CompileContext(self, templates, agent_profile),
+                                      {"workspace": identifier, "revision": draft["revision"]},
+                                      body["operations"], Path(scratch))
+                if not result.ok:
+                    error = result.errors[0]
+                    raise WorkspaceOperationError(error["op_id"], error["field"], error["message"])
+                try:
+                    self._check_scene_source(draft, result.document)
+                    validate_configuration(result.document, base=result.files_dir, directory=Path(scratch))
+                except (ValueError, TypeError, KeyError, OSError) as exc:
+                    operation = body["operations"][-1]["id"] if body["operations"] else None
+                    message = str(exc)
+                    if " / " not in message:
+                        message += " / 操作配置无效，请按字段提示修正"
+                    raise WorkspaceOperationError(operation, getattr(exc, "path", "params"), message) from exc
+                if body.get("dry_run") is True:
+                    return {"diff": {key: result.diff_base[key] for key in ("added", "changed", "removed")}, "notes": result.notes + [warning["message"] for warning in result.warnings if warning["message"] not in result.notes]}
+                directory = self.directory(identifier)
+                document = _rebase(result.document, result.files_dir, directory)
+                self._base(document, identifier)
+                _copy_files(result.files_dir, directory)
+                draft["scenario"] = document
+                draft["notes"] = result.notes + [warning["message"] for warning in result.warnings if warning["message"] not in result.notes]
+                if draft.get("template"):
+                    record = json.loads((Path(scratch) / "compile.json").read_text(encoding="utf-8"))
+                    draft["template"]["knobs"] = record["controls"]
+                self._resolve_city(draft)
+                self._write(draft)
+            return self.summary(identifier)
 
     @staticmethod
     def _check_scene_source(draft: dict[str, Any], document: dict[str, Any] | None = None) -> None:
@@ -624,7 +690,7 @@ class WorkspaceStore:
     def region(
         self, identifier: str, region: dict[str, Any], source: Path
     ) -> dict[str, Any]:
-        from .scene import compile_scene, crop_osm, origin_distance, region_source
+        from .scene import compile_scene, crop_osm, origin_distance, preview_geometry, region_source
 
         required = {"extract", "bounds", "alt", "level_height_m"}
         if required - region.keys() or region.keys() - required - {"dry_run"}:
@@ -660,6 +726,7 @@ class WorkspaceStore:
                     "roads": len(scene["roads"]), "attribution": scene["attribution"],
                     "height_source": region_source(region, scene)["height_source"],
                     "diagnostics": scene["diagnostics"],
+                    "geometry": preview_geometry(scene),
                     "affected_entities": [
                         entity["id"] for entity in document["entities"]
                         if any(isinstance(entity["facts"].get(field), list) and len(entity["facts"][field]) == 3 for field in position_fields)
@@ -911,6 +978,14 @@ class WorkspaceStore:
         latest = versions[0] if versions else None
         draft["latest_version"] = latest
         draft["dirty"] = latest is None or latest["revision"] != draft["revision"]
+        from aeroagentsim.packs.lowalt.template import has_lowalt_components
+
+        draft["capabilities"] = {
+            "lowalt": has_lowalt_components(draft["scenario"]),
+            "region": "region" in draft and "scene" in draft,
+            "network": "network" in draft and (self.directory(identifier) / "network.net.xml").is_file(),
+            "city": draft.get("scene_source", {}).get("kind") == "fixed-city" and draft.get("demo_console", {}).get("city_available") is True,
+        }
         return draft
 
     def derive(self, run: Path, name: str | None, *, registry: Any = None) -> dict[str, Any]:
