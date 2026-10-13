@@ -228,3 +228,52 @@ def test_model_story_compaction_preserves_coverage_and_failure(tmp_path):
     assert compact["events_sampled"]
     assert compact["failure_count"] == 1
     assert compact["failures"][0]["payload"]["reason"] == "real failure"
+
+
+def test_traffic_award_actor_receipt_matches_template_before_capture_timeout(tmp_path):
+    from aeroagentsim.assistant.scene import expectations, summarize
+    from aeroagentsim.authoring.templates import TemplateRegistry
+    from aeroagentsim.scenario import load_scenario
+
+    prepared = TemplateRegistry().apply("traffic-accident")
+    loaded = load_scenario(prepared.document, base=prepared.base)
+    expected = expectations(loaded.document, summarize(loaded.document, directory=prepared.base))
+    award = next(row for row in expected if row["match"]["schema"] == "traffic.award.committed")
+    capture = next(row for row in expected if row["match"]["schema"] == "traffic.capture.stored")
+    run = journal_run(tmp_path / "traffic", [
+        {"at_ns": 23_066_666_667, "items": [event("traffic.award.committed", {"actor": "uav.bravo"}, 23_066_666_667)]},
+        {"at_ns": 57_066_666_667, "items": [event("traffic.capture.failed", {"actor": "uav.bravo", "incident": "incident.01", "reason": "viewer asset initialization deadline exceeded"}, 57_066_666_667)]},
+    ])
+    story = run_story(run, [award, capture])
+    recorded, missed = story["expectations"]
+    assert recorded["status"] == "happened" and recorded["at_ns"] == 23_066_666_667
+    assert recorded["evidence"]["payload"] == {"actor": "uav.bravo"} and recorded["explanation"] is None
+    assert missed["status"] == "missed" and "deadline exceeded" in missed["explanation"]["text"]
+    assert story["coverage"]["schemas"]["traffic.award.committed"] == 1
+
+
+def test_later_capture_failure_does_not_explain_an_unrecorded_award(tmp_path):
+    run = journal_run(tmp_path / "traffic", [{"at_ns": 57_000_000_000, "items": [
+        event("traffic.capture.failed", {"actor": "uav.bravo", "incident": "incident.01", "reason": "capture timeout"}, 57_000_000_000),
+    ]}])
+    missing = run_story(run, [expectation("traffic.award.committed", {"actor": "uav.bravo"})])["expectations"][0]
+    assert missing["status"] == "missed"
+    assert missing["explanation"] == {"text": "No recorded event.", "text_zh": "没有记录事件。", "evidence": []}
+
+
+def test_story_tool_context_caps_large_failure_payloads_without_losing_counts():
+    from aeroagentsim.assistant.tools import compact_json
+
+    failures = [{"schema": "aas.behaviour.conflict", "text": "A recorded conflict", "at_ns": i,
+                 "payload": {"reason": "busy", "predicate_context": "internal" * 1000}} for i in range(288)]
+    failures.append({"schema": "traffic.capture.failed", "text": "Capture failed", "at_ns": 57_000_000_000,
+                     "payload": {"reason": "{'status': 'timeout', 'reason': 'viewer asset initialization deadline exceeded'}", "child_receipt": "internal" * 1000}})
+    story = {"run_id": "run-real", "status": "completed", "coverage": {"recorded_events": 9211},
+             "expectations": [], "events": [], "failures": failures, "details_url": "/recorded-details"}
+    raw = compact_json(story)
+    result = json.loads(raw)
+    assert len(raw) <= 6500 and "predicate_context" not in raw and "child_receipt" not in raw
+    assert result["coverage"]["recorded_events"] == 9211 and result["failure_count"] == 289
+    assert result["failures"][0]["count"] == 1 and result["failures"][1]["count"] == 288
+    assert result["failures"][0]["reason"] == "viewer asset initialization deadline exceeded"
+    assert result["details_url"] == "/recorded-details"

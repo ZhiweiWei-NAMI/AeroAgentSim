@@ -194,3 +194,67 @@ def test_run_summary_cannot_deny_recorded_failure(tmp_path, monkeypatch):
     answer = next(e["text"] for e in agent.sessions.get(identifier)["events"] if e["kind"] == "assistant")
     assert "335" in answer and "renderer failed" in answer and "57.1 s" in answer
     assert "does not establish success" in answer and "everything succeeded" not in answer
+
+
+def test_duplicate_json_keys_recover_with_schema_and_retained_operation_hint(tmp_path, monkeypatch):
+    from aeroagentsim.assistant.tools import tool_schemas
+
+    agent, provider, tools, identifier = harness(tmp_path, monkeypatch, [call('{"query":"a","query":"b"}'), call('{"query":"fixed"}'), {"role": "assistant", "content": "Corrected."}])
+    monkeypatch.setattr("aeroagentsim.assistant.harness.tool_schemas", tool_schemas)
+    with agent.sessions.edit(identifier) as session:
+        session["plan_version"] = 1
+        session["plans"]["1"] = {"version": 1, "base": {}, "operations": [{"id": "op-1", "op": "add_place", "params": {"id": "south-pad"}}],
+                                    "title": "Draft", "summary": "Draft", "assumptions": [], "open_questions": [],
+                                    "compile": {"ok": False, "errors": [{"message": "Invalid draft"}]}, "validation": {"state": "invalid"}, "scene": {}}
+    turn = agent.sessions.begin_turn(identifier, "Fix the tool request")
+    agent.run_turn(identifier, turn["turn"])
+    rejected = json.loads(provider.requests[1]["messages"][-1]["content"])
+    assert rejected["code"] == "TOOL_ARGUMENTS" and "duplicate keys" in rejected["error"]
+    assert "query" in rejected["schema"]["fields"]
+    assert rejected["current_operations"] == [{"id": "op-1", "op": "add_place", "target": "south-pad"}]
+    assert "do not re-add" in rejected["hint"] and tools.executed == [("find_places", {"query": "fixed"})]
+    assert not agent.sessions.get(identifier)["busy"]
+
+
+def test_large_summary_is_bounded_localized_and_links_recorded_details(tmp_path, monkeypatch):
+    agent, provider, tools, identifier = harness(tmp_path, monkeypatch, [{"role": "assistant", "content": "当前没有已运行的记录。"}])
+    failures = [{"schema": "aas.behaviour.conflict", "text": "A conflict", "text_zh": "冲突", "at_ns": i,
+                 "payload": {"predicate_context": "secret-internals" * 1000, "reason": "busy"}} for i in range(288)]
+    failures.append({"schema": "traffic.capture.failed", "text": "Capture failed", "text_zh": "拍摄失败", "at_ns": 57_066_666_667,
+                     "payload": {"reason": "{'status': 'timeout', 'reason': 'viewer asset initialization deadline exceeded'}"}})
+    story = {"run_id": "run-chosen", "status": "completed", "terminal": True, "assessment": "incomplete",
+             "coverage": {"recorded_events": 9211, "schemas": {"traffic.award.committed": 1}}, "events": [], "failures": failures,
+             "expectations": [{"id": "award", "text": "Response award committed", "text_zh": "响应机分配已确认", "status": "happened", "at_ns": 23_066_666_667},
+                              {"id": "capture", "text": "Capture stored", "text_zh": "图像已存储", "status": "missed", "at_ns": None}],
+             "details_url": "/v1/assistant/sessions/session/story/run-chosen?locale=en"}
+    requested = []
+    def recorded(session, run_id, locale=None):
+        requested.append((run_id, locale))
+        return story
+    tools.run_story = recorded
+    with agent.sessions.edit(identifier) as session:
+        session["locale"] = "zh-CN"
+    context = {"run_id": "run-chosen", "locale": "en"}
+    turn = agent.sessions.begin_turn(identifier, "Summarise what happened in this run compared with the plan.", context)
+    agent.run_turn(identifier, turn["turn"], context)
+    answer = next(e["text"] for e in agent.sessions.get(identifier)["events"] if e["kind"] == "assistant")
+    assert requested == [("run-chosen", "en")]
+    assert len(answer) <= 6000 and "9211" in answer and "289" in answer and "×288" in answer
+    assert "Response award committed: recorded (23.0667 s)" in answer
+    assert "viewer asset initialization deadline exceeded" in answer and "predicate_context" not in answer and "secret-internals" not in answer
+    assert "[Full Story and event evidence]" in answer and story["details_url"] in answer
+    assert "当前没有" not in answer and "拍摄失败" not in answer
+
+
+def test_explicit_run_cannot_be_replaced_by_model_tool_selection(tmp_path, monkeypatch):
+    requested_call = call('{"run_id":"run-other"}')
+    requested_call["tool_calls"][0]["function"]["name"] = "run_story"
+    agent, provider, tools, identifier = harness(tmp_path, monkeypatch, [requested_call, {"role": "assistant", "content": "There is no run."}])
+    tools.run_story = lambda session, run_id: {"run_id": run_id, "status": "completed", "coverage": {"recorded_events": 7}, "expectations": [], "events": []}
+    context = {"run_id": "run-chosen"}
+    turn = agent.sessions.begin_turn(identifier, "Summarise this run", context)
+    agent.run_turn(identifier, turn["turn"], context)
+    rejected = json.loads(provider.requests[1]["messages"][-1]["content"])
+    assert "run-chosen" in rejected["error"] and not tools.executed
+    answer = next(e["text"] for e in agent.sessions.get(identifier)["events"] if e["kind"] == "assistant")
+    assert "Run run-chosen (completed) recorded 7 events" in answer and "There is no run" not in answer

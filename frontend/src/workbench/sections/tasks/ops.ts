@@ -1,15 +1,26 @@
 import { operation } from '../operations';
 import type { Draft } from './model';
+import { siteIds } from './model';
+import { parseStagedNumber } from './op-ui';
 
 /** Params for the C11 operations the Tasks / Components / Run forms stage (schemas on GET /v1/studio/operations). */
 
 export const TASK_KINDS_C11 = ['parcel', 'food', 'medical', 'inspection', 'survey', 'spraying', 'passenger', 'patrol', 'incident_response'] as const;
 
+export function taskKindLabel(kind: string, L: (en: string, zh: string) => string): string {
+  const labels: Record<string, [string, string]> = {
+    parcel: ['Parcel', '包裹'], food: ['Meal', '餐食'], medical: ['Medical', '医疗'],
+    inspection: ['Inspection', '巡检'], survey: ['Survey', '测绘'], spraying: ['Spraying', '喷洒'],
+    passenger: ['Passenger', '乘客'], patrol: ['Patrol', '巡逻'], incident_response: ['Incident response', '事件响应'],
+  };
+  return labels[kind] ? L(...labels[kind]) : L('Unsupported kind', '不支持的类型');
+}
+
 /** RELEASE shape from operations.py: scheduled {times_s} or poisson {rate_per_s, start_s, end_s}. */
 export type Release = {
   mode: 'scheduled'; times_s: number[];
 } | {
-  mode: 'poisson'; rate_per_s: number | undefined; start_s: number | undefined; end_s: number | undefined; burst_size?: number;
+  mode: 'poisson'; rate_per_s: number | undefined; start_s?: number; end_s?: number; burst_size?: number;
 };
 
 export interface OrdersInput {
@@ -36,7 +47,8 @@ export function unknownEndpoints(input: { from: string[]; to: string[] }, places
 export function cooperationParams(part: {
   watchers?: { vehicles?: string[]; notice_radius_m?: number };
   responder?: { mode?: 'prescribed' | 'agent'; goal?: string; order?: string[] };
-  helpers?: { vehicles?: string[]; ask_radius_m?: number; mode?: 'prescribed' | 'agent'; selection?: 'nearest' | 'first' };
+  helpers?: { vehicles?: string[]; ask_radius_m?: number; mode?: 'prescribed' | 'agent'; goal?: string; selection?: 'nearest' | 'first' };
+  handoff_points?: string[];
 }): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (part.watchers) {
@@ -57,9 +69,11 @@ export function cooperationParams(part: {
     if (part.helpers.vehicles) helpers.vehicles = part.helpers.vehicles;
     if (part.helpers.ask_radius_m !== undefined) helpers.ask_radius_m = part.helpers.ask_radius_m;
     if (part.helpers.mode) helpers.mode = part.helpers.mode;
+    if (part.helpers.goal) helpers.goal = part.helpers.goal;
     if (part.helpers.selection) helpers.selection = part.helpers.selection;
     out.helpers = helpers;
   }
+  if (part.handoff_points) out.handoff_points = part.handoff_points;
   return out;
 }
 
@@ -70,12 +84,12 @@ export const setWindOp = (speed_mps: number) => operation('set_wind', { speed_mp
 export function gustProblem(gust: { start_s: string; end_s: string; speed_mps: string; duration_s: number | undefined }, zh: boolean): Record<string, string> | undefined {
   const L = (en: string, cn: string) => (zh ? cn : en);
   const errors: Record<string, string> = {};
-  const start = Number(gust.start_s), end = Number(gust.end_s), speed = Number(gust.speed_mps);
-  if (gust.start_s.trim() === '' || !Number.isFinite(start) || start < 0) errors.start_s = L('Enter a start time of 0 s or more.', '请输入不小于 0 秒的开始时间。');
-  if (gust.end_s.trim() === '' || !Number.isFinite(end) || end < 0) errors.end_s = L('Enter an end time of 0 s or more.', '请输入不小于 0 秒的结束时间。');
-  if (gust.speed_mps.trim() === '' || !Number.isFinite(speed) || speed < 0) errors.speed_mps = L('Enter a wind speed of 0 m/s or more.', '请输入不小于 0 m/s 的风速。');
-  if (Number.isFinite(start) && Number.isFinite(end) && start >= 0 && end >= 0 && end <= start) errors.end_s = L('End must be after start.', '结束必须晚于开始。');
-  if (!errors.end_s && gust.duration_s !== undefined && Number.isFinite(end) && end > gust.duration_s) errors.end_s = L(`Must stay within the run duration (${gust.duration_s} s).`, `必须处于运行时长（${gust.duration_s} 秒）之内。`);
+  const start = parseStagedNumber(gust.start_s), end = parseStagedNumber(gust.end_s), speed = parseStagedNumber(gust.speed_mps);
+  if (start === undefined || start < 0) errors.start_s = L('Enter a start time of 0 s or more.', '请输入不小于 0 秒的开始时间。');
+  if (end === undefined || end < 0) errors.end_s = L('Enter an end time of 0 s or more.', '请输入不小于 0 秒的结束时间。');
+  if (speed === undefined || speed < 0) errors.speed_mps = L('Enter a wind speed of 0 m/s or more.', '请输入不小于 0 m/s 的风速。');
+  if (start !== undefined && end !== undefined && start >= 0 && end >= 0 && end <= start) errors.end_s = L('End must be after start.', '结束必须晚于开始。');
+  if (!errors.end_s && gust.duration_s !== undefined && end !== undefined && end > gust.duration_s) errors.end_s = L(`Must stay within the run duration (${gust.duration_s} s).`, `必须处于运行时长（${gust.duration_s} 秒）之内。`);
   return Object.keys(errors).length ? errors : undefined;
 }
 export const gustOp = (gust: { start_s: number; end_s: number; speed_mps: number }) =>
@@ -93,7 +107,5 @@ export const untilNs = (seconds: number) => Math.round(seconds * 1e9);
 
 /** Inline "no facility yet" helper: the ids the order forms may pick endpoints from. */
 export function placeIds(draft: Draft): string[] {
-  return ((Array.isArray(draft.entities) ? draft.entities : []) as Draft[])
-    .map(entity => String(entity?.id ?? ''))
-    .filter(Boolean);
+  return siteIds(draft);
 }

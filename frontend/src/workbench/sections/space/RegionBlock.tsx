@@ -4,11 +4,12 @@ import type { SectionProps } from '../types';
 import { capabilities } from '../operations';
 import {
   applyRegion, cityConflictIssue, generateNetwork, hasCity, heightSummary,
-  previewRegion, readRegion, validateRegion,
-  type ExtractInfo, type NetworkResult, type RegionDraft, type RegionPreview,
+  catalogBasemap, extractLabel, fetchMapCatalog, previewMapGeometry, previewRegion, readRegion, regionDraft, sceneMapGeometry, validateRegion,
+  type MapCatalog, type NetworkResult, type RegionDraft, type RegionPreview,
 } from './model';
-import { RegionMap, enuLines, enuRings, type RegionMapBasemap, type RegionMapGeometry, type RegionMapInstance } from './RegionMap';
-import { paletteColorFor } from '../objects/RegionMapSupport';
+import { RegionMap } from './RegionMap';
+import { regionMapObjects } from '../objects/RegionMapSupport';
+import { validWgs84Bounds } from '../../geo';
 
 export { originShiftM } from './model';
 
@@ -16,14 +17,26 @@ export { originShiftM } from './model';
 export const m = (value: number, digits = 1) => `${value.toFixed(digits)} m`;
 export const coord = (value: number) => value.toFixed(6).replace(/\.?0+$/, '');
 
-// Visible, editable modelling defaults: the form never starts with required fields empty.
-const emptyDraft = (): RegionDraft => ({ extract: '', west: '', south: '', east: '', north: '', alt: '0', level: '3.5' });
+/** Compare research values, so harmless numeric formatting and rerenders keep the review. */
+const previewKey = (form: RegionDraft) => JSON.stringify(validateRegion(form).body ?? form);
 
-/** Serialise the four bounds + alt + level + extract; any change to these invalidates the preview (design ②). */
-const previewKey = (form: RegionDraft) => [form.extract, form.west, form.south, form.east, form.north, form.alt, form.level].join('|');
-
-/** Spec 4: chip when the compiled geometry set was truncated server-side. */
-const MAP_BUILDING_LIMIT = 3000;
+/** Older servers return some explanatory fields as "en / zh". Render only one locale. */
+const serverText = (value: string, L: SectionProps['L']) => {
+  const parts = value.split(' / ');
+  return parts.length === 2 ? L(parts[0], parts[1]) : L(value, value);
+};
+const fieldErrorText = (message: string, L: SectionProps['L']) => {
+  const zh: Record<string, string> = {
+    'Longitude between -180 and 180 degrees.': '经度须在 -180 至 180 度之间。',
+    'Latitude between -90 and 90 degrees.': '纬度须在 -90 至 90 度之间。',
+    'West must be smaller than east (WGS84 degrees, no antimeridian wrap).': '西侧经度须小于东侧经度（WGS84 度，不跨越日期变更线）。',
+    'South must be smaller than north.': '南侧纬度须小于北侧纬度。',
+    'Ground altitude in metres is required.': '请填写地面海拔（米）。',
+    'Level height must be a positive number of metres.': '层高须为正数（米）。',
+    'Bounds must stay inside the extract coverage.': '范围须在提取数据的覆盖区域内。',
+  };
+  return L(message, zh[message] ?? message);
+};
 
 /**
  * Region stage: pick a configured local OSM extract, confirm WGS84 bounds and modelling
@@ -32,89 +45,57 @@ const MAP_BUILDING_LIMIT = 3000;
  */
 export function RegionBlock({ project, api, draft, edit, issues, onProject, saveDraft, L }: SectionProps) {
   const fieldId = useId();
-  const [extracts, setExtracts] = useState<ExtractInfo[]>(), [catalogError, setCatalogError] = useState<string>();
-  const [form, setForm] = useState<RegionDraft>(emptyDraft);
+  const [catalog, setCatalog] = useState<MapCatalog>(), [catalogError, setCatalogError] = useState<unknown>();
+  const compiled = useMemo(() => readRegion(project), [project]);
+  const [form, setForm] = useState<RegionDraft>(() => regionDraft(compiled?.region));
+  const [edited, setEdited] = useState<Partial<Record<keyof RegionDraft, boolean>>>({});
   const [preview, setPreview] = useState<RegionPreview['preview']>(), [previewError, setPreviewError] = useState<string>(), [previewing, setPreviewing] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false), [applying, setApplying] = useState(false), [applyError, setApplyError] = useState<string>();
   const [netBusy, setNetBusy] = useState(false), [netError, setNetError] = useState<string>(), [netResult, setNetResult] = useState<NetworkResult>();
-  const compiled = useMemo(() => readRegion(project as never), [project]);
   const caps = capabilities(project as never);
   const networkCapable = caps ? caps.region : !!compiled; // C13: the server decides; no region on the server → inline reason.
   const conflict = cityConflictIssue(issues) ?? (hasCity(draft) && compiled ? { message: L('A fixed city and a compiled region are both configured; the run would otherwise mix city sources.', '同时配置了固定城市与已编译区域，否则运行会混用城市数据源。') } : undefined);
-  const touchedExtract = useRef(false);
+  const extracts = catalog?.extracts;
+  const basemap = catalogBasemap(catalog, form.extract);
+  const mapGeometry = useMemo(() => preview ? previewMapGeometry(preview) : sceneMapGeometry(compiled?.scene), [preview, compiled]);
+  const mapObjects = useMemo(() => regionMapObjects(draft, L), [draft.entities, draft.presentation, draft.generators, draft.engines, L]);
+  const appliedKey = JSON.stringify([project.id, compiled?.region]);
+  const hydratedFrom = useRef(appliedKey);
+  const defaultSelected = useRef(false);
 
-  // --- Region map state (C9 basemap, C10 preview geometry, compiled scene, instances) ---
-  const [basemap, setBasemap] = useState<RegionMapBasemap | null>(null);
-  const [mapGeometry, setMapGeometry] = useState<RegionMapGeometry | null>(null);
-  const [mapTruncated, setMapTruncated] = useState(false);
-  const [mapInstances, setMapInstances] = useState<RegionMapInstance[]>([]);
-
-  const catalogRequest = useCallback(async (signal: AbortSignal) => {
-    const catalog = await api.request<{ extracts?: ExtractInfo[]; basemap?: { url?: string; attribution?: string } }>('/v1/studio/catalog', { signal });
-    const row = catalog?.extracts?.find(item => item.id === form.extract) ?? undefined;
-    const tile = row?.basemap ?? catalog?.basemap;
-    return {
-      extracts: Array.isArray(catalog?.extracts) ? catalog.extracts : [],
-      basemap: tile?.url ? { url: tile.url, attribution: tile.attribution ?? '© OpenStreetMap contributors' } : null,
-    };
-  }, [api, form.extract]);
-
-  // One shared catalog read per extract selection: extract list + C9 basemap (no duplicate request).
+  // One catalog request supplies every extract's coverage/counts and the shared C9 tiles.
   useEffect(() => {
     const signal = new AbortController();
     setCatalogError(undefined);
-    catalogRequest(signal.signal)
-      .then(({ extracts: list, basemap: tile }) => { setExtracts(list); setBasemap(tile); })
+    fetchMapCatalog(api, signal.signal)
+      .then(answer => { if (!signal.signal.aborted) setCatalog(answer); })
       .catch(problem => {
         if (signal.signal.aborted) return;
-        setExtracts(undefined);
-        setBasemap(null);
-        setCatalogError(problem instanceof ApiError && problem.unavailable ? L('The studio catalog is unavailable on this server, so no extract can be listed here.', '此服务器没有提供 studio 目录，无法列出可用的 OSM 提取数据。') : String(problem));
+        setCatalog(undefined); setCatalogError(problem);
       });
     return () => signal.abort();
-  }, [catalogRequest, L]);
+  }, [api]);
 
-  // C10 preview geometry wins while reviewing; otherwise the applied region's compiled scene.
+  // Adopt actual region mutations, while unrelated server refreshes preserve local field edits.
   useEffect(() => {
-    if (preview) {
-      // The preview answer carries counts only; the compiled map shows once applied. For the
-      // review state the map shows the selected bounds plus the preview origin crosshair.
-      setMapGeometry({ origin: preview.origin });
-      setMapTruncated(false);
-      return;
-    }
-    if (!compiled?.scene?.origin) { setMapGeometry(null); setMapTruncated(false); setMapInstances([]); return; }
-    const origin = compiled.scene.origin;
-    setMapGeometry({
-      origin,
-      buildings: enuRings(compiled.scene.geojson?.features ?? []),
-      roads: enuLines((compiled.scene.roads ?? []).filter(Array.isArray) as number[][][]),
-    });
-    setMapTruncated((compiled.scene.geojson?.features?.length ?? 0) > MAP_BUILDING_LIMIT);
-    // Existing instances with ENU positions (aas.studio.position_enu_m or the presentation position field).
-    const entities = (Array.isArray(draft.entities) ? draft.entities : []) as Array<Record<string, any>>;
-    const presentation = (Array.isArray(draft.presentation) ? draft.presentation : []) as Array<Record<string, any>>;
-    const typeOrder = new Map<string, number>();
-    for (const entity of entities) if (!typeOrder.has(entity.type)) typeOrder.set(entity.type, typeOrder.size);
-    const positions = presentation.length ? presentation.map(row => row.positionField ?? 'aas.studio.position_enu_m') : [];
-    setMapInstances(entities.flatMap(entity => {
-      const field = positions.find(candidate => entity.facts?.[candidate]) ?? 'aas.studio.position_enu_m';
-      const pos = entity.facts?.[field];
-      if (!Array.isArray(pos) || pos.length !== 3 || !pos.every(Number.isFinite)) return [];
-      return [{ east: pos[0] as number, north: pos[1] as number, color: paletteColorFor(entity.type, typeOrder), label: entity.label ? `${entity.label} · ${entity.id}` : String(entity.id ?? '') }];
-    }));
-  }, [preview, compiled, draft.entities, draft.presentation]);
+    if (hydratedFrom.current === appliedKey) return;
+    hydratedFrom.current = appliedKey;
+    setForm(regionDraft(compiled?.region)); setEdited({});
+    setPreview(undefined); setAcknowledged(false); setNetResult(undefined);
+  }, [appliedKey, compiled]);
 
-  // Prefill from the extract's known bounds once, on selection.
+  // For a new project, prefer the richest actual catalog entry. Do not overwrite an edit.
   useEffect(() => {
-    if (!touchedExtract.current || !form.extract || !extracts) return;
-    touchedExtract.current = false;
-    const found = extracts.find(item => item.id === form.extract);
-    if (found?.bounds?.length === 4) setForm(previous => ({ ...previous, west: String(found.bounds![0]), south: String(found.bounds![1]), east: String(found.bounds![2]), north: String(found.bounds![3]) }));
-  }, [form.extract, extracts]);
+    if (!extracts || defaultSelected.current) return;
+    defaultSelected.current = true;
+    if (compiled || Object.keys(edited).length || form.extract) return;
+    const richer = extracts.filter(item => Number.isInteger(item.buildings) && item.buildings! > 0 && validWgs84Bounds(item.bounds))
+      .sort((a, b) => b.buildings! - a.buildings!)[0];
+    if (richer) setForm(previous => ({ ...previous, extract: richer.id, west: String(richer.bounds![0]),
+      south: String(richer.bounds![1]), east: String(richer.bounds![2]), north: String(richer.bounds![3]) }));
+  }, [extracts, compiled, edited, form.extract]);
 
   const extractBounds = extracts?.find(item => item.id === form.extract)?.bounds;
-  const [edited, setEdited] = useState<Partial<Record<keyof RegionDraft, boolean>>>({});
   const { errors, body } = validateRegion(form, extractBounds);
 
   // Two-way sync: the map's selected rectangle ↔ the four W/S/E/N inputs (6 decimals on write).
@@ -123,16 +104,10 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
     return [form.west, form.south, form.east, form.north].every(raw => raw.trim() !== '' && Number.isFinite(Number(raw)))
       ? [w, s, e, n] : null;
   }, [form.west, form.south, form.east, form.north]);
-  const [mapBounds, setMapBounds] = useState<number[] | null>(formBounds);
-  const boundsSource = useRef<'form' | 'map'>('form');
-  useEffect(() => { if (boundsSource.current === 'form') setMapBounds(formBounds); }, [formBounds]);
-  const onMapBounds = (next: number[]) => {
-    boundsSource.current = 'map';
-    setMapBounds(next);
+  const onMapBounds = useCallback((next: number[]) => {
     setForm(previous => ({ ...previous, west: next[0].toFixed(6), south: next[1].toFixed(6), east: next[2].toFixed(6), north: next[3].toFixed(6) }));
     setEdited(previous => ({ ...previous, west: true, south: true, east: true, north: true }));
-  };
-  useEffect(() => { boundsSource.current = 'form'; }, [form.west, form.south, form.east, form.north]);
+  }, []);
 
   // Errors only once the user has actually edited that field (bounds errors likewise after edit).
   const shownErrors = Object.fromEntries(Object.entries(errors).filter(([key]) => edited[key as keyof RegionDraft])) as typeof errors;
@@ -142,8 +117,9 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   const needsConfirm = !!preview && (preview.origin_shift_m === null || preview.origin_shift_m > 0 || preview.affected_entities.length > 0 || preview.network_invalidated);
   // Design ②: the preview is tied to the exact inputs it was made from; any change marks it out of date.
   const [previewedFrom, setPreviewedFrom] = useState('');
+  const [previewRevision, setPreviewRevision] = useState<number>();
   const currentKey = previewKey(form);
-  const stale = !!preview && previewedFrom !== currentKey;
+  const stale = !!preview && (previewedFrom !== currentKey || previewRevision !== project.revision);
   const doPreview = async () => {
     if (!body) return;
     setPreviewing(true); setPreviewError(undefined); setApplyError(undefined); setAcknowledged(false);
@@ -151,16 +127,21 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
       const answer = await previewRegion(api, project.id, body);
       setPreview(answer);
       setPreviewedFrom(previewKey(form));
+      setPreviewRevision(project.revision);
     }
     catch (problem) { setPreview(undefined); setPreviewError(problem instanceof ApiError && problem.unavailable ? L('This server does not support region preview (dry run). The region was not applied.', '服务器不支持区域预演（dry run）。区域未应用。') : String(problem)); }
     finally { setPreviewing(false); }
   };
   const doApply = async () => {
-    if (!body || !preview || stale || (needsConfirm && !acknowledged)) return;
+    if (!body || !preview || stale || previewing || applying || (needsConfirm && !acknowledged)) return;
     setApplying(true); setApplyError(undefined);
     try {
       const saved = await saveDraft();
       if (!saved) throw new Error(L('The draft could not be saved, so the region was not applied.', '草稿保存失败，区域未应用。'));
+      if (saved.revision !== previewRevision) {
+        setPreviewedFrom('');
+        throw new Error(L('The draft changed while saving — preview the region again.', '保存时草稿已变更——请重新预览区域。'));
+      }
       await applyRegion(api, saved.id, body);
       onProject(await api.project(saved.id)); // re-fetch: the server is the source of truth (design ③)
       setPreview(undefined); setPreviewedFrom(''); setAcknowledged(false);
@@ -201,32 +182,32 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
     <input className="wb-search" inputMode="decimal" value={form[key]} aria-label={label} aria-invalid={shownErrors[key] ? true : undefined}
       aria-describedby={shownErrors[key] ? `${fieldId}-${key}-error` : undefined} placeholder={hint}
       onChange={event => setField(key)(event.target.value)} />
-    {shownErrors[key] && <span id={`${fieldId}-${key}-error`} className="wb-field-error" role="alert">{shownErrors[key]}</span>}
+    {shownErrors[key] && <span id={`${fieldId}-${key}-error`} className="wb-field-error" role="alert">{fieldErrorText(shownErrors[key]!, L)}</span>}
   </label>;
 
   return <section className="wb-region" aria-label={L('Region', '区域')}>
     <h4>{L('Region', '区域')}</h4>
     <p className="hint">{L(
-      'Only server-configured local OSM extracts are supported — there is no online place search. Ask an operator to add one with tools/build_map.py.',
-      '仅支持服务器已配置的本地 OSM 提取数据——没有在线地点搜索。可用 tools/build_map.py 添加新的提取数据。')}</p>
+      'Choose a map extract, select an area and review its buildings and roads before applying.',
+      '选择地图数据和范围，查看建筑与道路后再应用。')}</p>
 
     {compiled && <div className="wb-region-card" data-testid="region-summary">
-      <h4>{L('Compiled region', '已编译区域')} <span className="wb-tag ok">{L('from server', '来自服务器')}</span></h4>
+      <h4>{L('Applied region', '已应用区域')} <span className="wb-tag ok">{L('saved', '已保存')}</span></h4>
       <dl className="wb-region-meta">
         <dt>{L('Source', '数据源')}</dt><dd className="wb-mono">{compiled.region.extract}{compiled.scene?.attribution ? ` · ${compiled.scene.attribution}` : ''}</dd>
         <dt>{L('Bounds (WGS84)', '范围（WGS84）')}</dt><dd className="wb-mono">{compiled.region.bounds.map(coord).join(', ')}</dd>
-        {compiled.scene?.origin && <><dt>{L('ENU origin', 'ENU 原点')}</dt><dd className="wb-mono">{coord(compiled.scene.origin.lat)}, {coord(compiled.scene.origin.lon)} · alt {m(compiled.scene.origin.alt, 0)}</dd></>}
+        {compiled.scene?.origin && <><dt>{L('ENU origin', 'ENU 原点')}</dt><dd className="wb-mono">{coord(compiled.scene.origin.lat)}, {coord(compiled.scene.origin.lon)} · {L('altitude', '海拔')} {m(compiled.scene.origin.alt, 0)}</dd></>}
         {compiled.scene?.ground && <><dt>{L('Ground extent', '地面范围')}</dt><dd className="wb-mono">{m(compiled.scene.ground.width_m)} × {m(compiled.scene.ground.depth_m)}</dd></>}
-        {compiled.scene?.roads && <><dt>{L('Roads', '道路')}</dt><dd>{compiled.scene.roads.length} <span className="wb-tag">ENU polyline</span></dd></>}
+        {compiled.scene?.roads && <><dt>{L('Roads', '道路')}</dt><dd>{compiled.scene.roads.length}</dd></>}
       </dl>
       {heights && <p className="hint">{L(
-        `Heights: ${heights.sourced} from OSM height, ${heights.estimated} estimated from building:levels × level height, ${heights.missing} kept as 2D footprints without a volume (OSM often lacks heights; none receive a silent default).`,
-        `高度：${heights.sourced} 个来自 OSM height，${heights.estimated} 个按 building:levels × 层高估算，${heights.missing} 个仅保留二维轮廓无体量（OSM 常缺高度；绝不使用静默默认高度）。`)}</p>}
-      {!!compiled.scene?.diagnostics?.length && <ul className="wb-region-diag">{compiled.scene.diagnostics.map((line, index) => <li key={index} className="wb-mono">{line}</li>)}</ul>}
+        `Heights: ${heights.sourced} from OSM height, ${heights.estimated} estimated from building:levels × level height, ${heights.missing} kept as 2D footprints without a volume.`,
+        `高度：${heights.sourced} 个来自 OSM 高度，${heights.estimated} 个按建筑层数 × 层高估算，${heights.missing} 个保留为二维轮廓。`)}</p>}
+      {!!compiled.scene?.diagnostics?.length && <ul className="wb-region-diag">{compiled.scene.diagnostics.map((line, index) => <li key={index} className="wb-mono">{serverText(line, L)}</li>)}</ul>}
     </div>}
 
     <div className="wb-region-card" data-testid="network-summary">
-      <h4>{L('Road network', '路网')} <span className="wb-tag info">{networkState === 'none' ? L('Not generated', '未生成') : networkState === 'stale' ? L('stale', '已失效') : networkState}</span></h4>
+      <h4>{L('Road network', '路网')} <span className="wb-tag info">{networkState === 'none' ? L('Not generated', '未生成') : networkState === 'stale' ? L('stale', '已失效') : L('generated', '已生成')}</span></h4>
       {network && <dl className="wb-region-meta">
         {typeof network.edge_count === 'number' && <><dt>{L('Edges', '路段')}</dt><dd className="wb-mono">{network.edge_count}</dd></>}
         {typeof network.lane_count === 'number' && <><dt>{L('Lanes', '车道')}</dt><dd className="wb-mono">{network.lane_count}</dd></>}
@@ -241,25 +222,39 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
     <label className="wb-region-field">
       <span>{L('Extract', 'OSM 提取数据')}</span>
       <select className="wb-search" value={form.extract} aria-label={L('Extract', 'OSM 提取数据')}
-        onChange={event => { touchedExtract.current = true; setField('extract')(event.target.value); }}>
+        onChange={event => {
+          const value = event.target.value;
+          if (value === form.extract) return;
+          setEdited(previous => ({ ...previous, extract: true }));
+          const found = extracts?.find(item => item.id === value);
+          const extent = validWgs84Bounds(found?.bounds) ? found.bounds : null;
+          setForm(previous => ({ ...previous, extract: value, ...(extent ? { west: String(extent[0]),
+            south: String(extent[1]), east: String(extent[2]), north: String(extent[3]) } : {}) }));
+        }}>
         <option value="">{L('Select a configured extract…', '选择已配置的提取数据…')}</option>
-        {(extracts ?? []).map(item => <option key={item.id} value={item.id}>{item.label ?? item.id}{item.bounds ? L(' (coverage known)', '（已知覆盖范围）') : ''}</option>)}
+        {form.extract && !extracts?.some(item => item.id === form.extract) && <option value={form.extract}>{L(form.extract, form.extract)}</option>}
+        {(extracts ?? []).map(item => <option key={item.id} value={item.id}>{extractLabel(item, L)}</option>)}
       </select>
-      {catalogError && <span className="wb-field-error" role="alert">{catalogError}</span>}
+      {!!catalogError && <span className="wb-field-error" role="alert">{catalogError instanceof ApiError && catalogError.unavailable
+        ? L('The map extracts are unavailable on this server.', '此服务器的地图提取数据不可用。')
+        : L(`Could not load map extracts: ${String(catalogError)}`, `无法加载地图提取数据：${String(catalogError)}`)}</span>}
       {!extracts && !catalogError && <span className="hint">{L('Loading the extract catalog…', '正在加载提取数据目录…')}</span>}
     </label>
 
     <RegionMap
       L={L}
       basemap={basemap}
+      basemapLoading={!catalog && !catalogError}
       coverage={extractBounds ?? null}
-      bounds={mapBounds}
+      bounds={formBounds}
       onBoundsChange={onMapBounds}
       geometry={mapGeometry}
-      instances={mapInstances}
-      outsideWarning={L('Outside the extract coverage — allowed, but the server will clamp the region.', '超出提取数据覆盖范围——允许，但服务器会进行收敛。')}
+      instances={mapObjects.instances}
     />
-    {mapTruncated && <span className="wb-map-chip warn" role="status">{L('Showing the first 3000 buildings', '仅显示前 3000 个建筑物')}</span>}
+    {!!mapObjects.invalidPositions.length && <p className="wb-field-error" role="alert">{L(
+      `Fix invalid positions to show these markers: ${mapObjects.invalidPositions.join(', ')}`,
+      `请修正以下无效位置以显示标记：${mapObjects.invalidPositions.join('、')}`)}</p>}
+    {mapGeometry?.truncated && <span className="wb-map-chip warn" role="status">{L('Preview truncated — showing up to 3000 buildings and 3000 roads', '预览已截断——最多显示 3000 栋建筑和 3000 条道路')}</span>}
 
     <div className="wb-region-grid">
       {fieldRow('west', L('West (°)', '西经（°）'), '121.50')}
@@ -272,8 +267,8 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
     <p className="hint">{L('Defaults are modelling assumptions — edit them for your site.', '默认值是建模假设——请按你的场地修改。')}</p>
 
     <div className="wb-region-actions">
-      <button className="wb-btn" disabled={invalid || previewing} onClick={() => void doPreview()}>{previewing ? L('Previewing…', '预演中…') : L('Preview region', '预览区域')}</button>
-      <button className="wb-btn primary" data-testid="apply-region" disabled={invalid || !preview || stale || applying || (needsConfirm && !acknowledged)}
+      <button className="wb-btn" disabled={invalid || previewing || applying} onClick={() => void doPreview()}>{previewing ? L('Previewing…', '预演中…') : L('Preview region', '预览区域')}</button>
+      <button className="wb-btn primary" data-testid="apply-region" disabled={invalid || !preview || stale || previewing || applying || (needsConfirm && !acknowledged)}
         onClick={() => void doApply()}>{applying ? L('Applying…', '应用中…') : L('Apply region', '应用区域')}</button>
       {stale && <span className="wb-region-warn" role="status">{L('Out of date — preview again.', '已失效——请重新预览。')}</span>}
       {!networkCapable && <span className="wb-region-warn" role="status">{L('Apply a region first (step ③).', '请先应用区域（步骤 ③）。')}</span>}
@@ -286,24 +281,24 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
     {applyError && <p className="wb-field-error" role="alert">{applyError}</p>}
     {netError && <p className="wb-field-error" role="alert">{netError}</p>}
 
-    {preview && <div className="wb-region-card" data-testid="region-review" role="group" aria-label={L('Region review', '区域评审')} aria-disabled={stale || undefined}
-      style={stale ? { opacity: 0.45 } : undefined}>
+    {preview && <div className="wb-region-card wb-region-review" data-testid="region-review" role="group" aria-label={L('Region review', '区域评审')} aria-disabled={stale || undefined}>
       <h4>{L('Review before applying', '应用前评审')}{stale && <span className="wb-tag warn">{L('Out of date — preview again', '已失效——请重新预览')}</span>}</h4>
       <dl className="wb-region-meta">
         <dt>{L('Extract', '提取数据')}</dt><dd className="wb-mono">{preview.extract}</dd>
         <dt>{L('Bounds (WGS84)', '范围（WGS84）')}</dt><dd className="wb-mono">{preview.bounds.map(coord).join(', ')}</dd>
-        <dt>{L('ENU origin', 'ENU 原点')}</dt><dd className="wb-mono">{coord(preview.origin.lat)}, {coord(preview.origin.lon)} · alt {m(preview.origin.alt, 0)}</dd>
+        <dt>{L('ENU origin', 'ENU 原点')}</dt><dd className="wb-mono">{coord(preview.origin.lat)}, {coord(preview.origin.lon)} · {L('altitude', '海拔')} {m(preview.origin.alt, 0)}</dd>
         <dt>{L('Buildings', '建筑物')}</dt><dd className="wb-mono">{preview.buildings}</dd>
         <dt>{L('Roads', '道路')}</dt><dd className="wb-mono">{preview.roads}</dd>
         <dt>{L('Attribution', '来源署名')}</dt><dd>{preview.attribution || L('unknown', '未知')}</dd>
-        <dt>{L('Height source', '高度来源')}</dt><dd className="wb-mono">{preview.height_source || L('unknown', '未知')}</dd>
+        <dt>{L('Height source', '高度来源')}</dt><dd className="wb-mono">{preview.height_source ? serverText(preview.height_source, L) : L('Not provided', '未提供')}</dd>
       </dl>
       {!!preview.previous_origin && <p className="hint">{L(
         `Origin moves ${preview.origin_shift_m == null ? L('by an unknown distance', '未知距离') : m(preview.origin_shift_m)}; affected objects ${preview.affected_entities.length ? preview.affected_entities.join(', ') : L('none', '无')} keep their ENU coordinates, so their geographic position changes with the origin.`,
         `原点移动 ${preview.origin_shift_m == null ? '未知距离' : m(preview.origin_shift_m)}；受影响对象 ${preview.affected_entities.length ? preview.affected_entities.join('、') : '无'} 的 ENU 坐标不变，其地理位置随原点改变。`)}</p>}
       {preview.network_invalidated && <p className="wb-region-warn" role="status">⚠ {L('Applying replaces the region, so the previously generated road network becomes stale and must be regenerated.', '应用会替换区域，已生成的路网将失效，需要重新生成。')}</p>}
       {preview.city_conflict && <p className="wb-region-warn" role="status">⚠ {L('A fixed city is also configured. The run must use one source; clear the city below or skip the region.', '同时配置了固定城市。运行只能使用一个数据源：请在下方清除城市，或放弃该区域。')}</p>}
-      {!!preview.diagnostics.length && <ul className="wb-region-diag">{preview.diagnostics.map((line, index) => <li key={index} className="wb-mono">{line}</li>)}</ul>}
+      {!preview.geometry && <p className="wb-region-warn" role="status">{L('The preview contains no building or road geometry; update the server to review the map before applying.', '预览未提供建筑或道路几何；请更新服务器以便在应用前查看地图。')}</p>}
+      {!!preview.diagnostics.length && <ul className="wb-region-diag">{preview.diagnostics.map((line, index) => <li key={index} className="wb-mono">{serverText(line, L)}</li>)}</ul>}
       {needsConfirm && <label className="wb-region-confirm">
         <input type="checkbox" checked={acknowledged} onChange={event => setAcknowledged(event.target.checked)} />
         {L('I understand the origin shift, affected objects and stale road network described above.', '我已理解上述原点位移、受影响对象与失效路网。')}

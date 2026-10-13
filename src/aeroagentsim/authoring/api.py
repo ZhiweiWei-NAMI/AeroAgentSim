@@ -6,7 +6,6 @@ import json
 import os
 import re
 from collections.abc import Callable
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -14,7 +13,7 @@ from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 from .catalog import engines
-from .inputs import configured_extracts, configured_ontology
+from .inputs import configured_extracts, configured_ontology, extract_catalogue
 from .workspace import WorkspaceConflict, WorkspaceOperationError, WorkspaceStore
 
 T = TypeVar("T")
@@ -40,22 +39,11 @@ def create_router(
     run_root: Path | None = None,
 ) -> APIRouter:
     """Only configured local extracts are exposed, never arbitrary host-file paths."""
-    from .scene import extract_bounds
-
     sources = configured_extracts() if extracts is None else extracts
     router = APIRouter(prefix="/v1/studio", tags=["studio"])
 
-    @lru_cache(maxsize=1)
     def source_catalog() -> list[dict[str, Any]]:
-        rows = []
-        for key, path in sources.items():
-            row: dict[str, Any] = {"id": key, "name": key, "label": key}
-            try:
-                row["bounds"] = extract_bounds(path)
-            except (ValueError, TypeError, KeyError, OSError) as exc:
-                row["diagnostics"] = [f"Bounds unavailable: {exc} / 无法确定范围：{exc}"]
-            rows.append(row)
-        return rows
+        return extract_catalogue(sources)
 
     @router.get("/catalog")
     def catalog() -> dict[str, Any]:
@@ -84,8 +72,10 @@ def create_router(
                     "*.yaml"
                 )
             }
+            extracts = source_catalog()
             return {
-                "extracts": source_catalog(),
+                "extracts": extracts,
+                "default_extract": extracts[0]["id"] if extracts else None,
                 "basemap": None if os.environ.get("AEROAGENTSIM_BASEMAP_URL") == "" else {
                     "url": os.environ.get("AEROAGENTSIM_BASEMAP_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
                     "attribution": os.environ.get("AEROAGENTSIM_BASEMAP_ATTRIBUTION", "© OpenStreetMap contributors"),
@@ -106,6 +96,11 @@ def create_router(
             result = selected.search(q)
             if isinstance(selected, ScenarioCatalog):
                 result["relations"] = selected.relations(q)
+                if workspace is not None and result["relations"]:
+                    writers = store.relation_writers(workspace)
+                    result["relations"] = [{**row, "valid_writers": [option["writer"] for option in writers.get(row["id"], [])],
+                                            "writer_options": writers.get(row["id"], []), "binding_kind": "writer_rule"}
+                                           for row in result["relations"]]
                 return result
             result["relations"] = [
                 {**record.data, "source": record.location()}
@@ -188,7 +183,10 @@ def create_router(
 
     @router.post("/workspaces/{identifier}")
     def save(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
-        return checked(lambda: store.save(identifier, body))
+        def persist() -> dict[str, Any]:
+            store.save(identifier, body)
+            return store.summary(identifier)
+        return checked(persist)
 
     @router.post("/workspaces/{identifier}/templates/{name}")
     def import_demo(identifier: str, name: str, body: dict[str, Any]) -> dict[str, Any]:

@@ -9,15 +9,15 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from aeroagentsim.authoring.inputs import configured_extracts
-from aeroagentsim.authoring.scene import extract_bounds
+from aeroagentsim.authoring.inputs import configured_extracts, extract_catalogue
+from aeroagentsim.authoring.scene import extract_bounds, preview_geometry
 from aeroagentsim.authoring.workspace import WorkspaceStore
 
 from .operations import OperationError
 
 
 def catalogue() -> list[dict]:
-    return [{"id": key, "bounds": extract_bounds(path)} for key, path in configured_extracts().items()]
+    return extract_catalogue(configured_extracts())
 
 
 def _source(extract: str) -> Path:
@@ -60,6 +60,12 @@ def preview(ctx, document: dict, params: dict, files: Path) -> dict:
     (files / "network.net.xml").unlink(missing_ok=True)
     record = {"region": result["region"], "scene": result["scene"], "scene_source": result["scene_source"],
               "source_digest": source_digest, "previous_origin": copy.deepcopy(document.get("origin")), "network_invalidated": network_invalidated}
+    scene = result["scene"]
+    record["preview"] = {"extract": region["extract"], "bounds": scene["bounds"], "origin": scene["origin"],
+                         "previous_origin": record["previous_origin"], "network_invalidated": network_invalidated,
+                         "buildings": sum(f["geometry"]["type"] in {"Polygon", "MultiPolygon"} for f in scene["geojson"]["features"]),
+                         "roads": len(scene["roads"]), "attribution": scene["attribution"], "diagnostics": scene["diagnostics"],
+                         "geometry": preview_geometry(scene)}
     (files / "region.plan.json").write_text(json.dumps(record, ensure_ascii=False, allow_nan=False))
     document["origin"] = result["scenario"]["origin"]
     return record

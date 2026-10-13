@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import ast
 import json
 import math
 import threading
@@ -174,6 +175,46 @@ def _related(event: dict, where: dict) -> bool:
     return bool(shared) and all(_matches(event["payload"][key], where[key]) for key in shared)
 
 
+def failure_reason(payload: dict) -> str | None:
+    """Keep the recorded business reason; internal receipt contexts stay in details."""
+    reason = payload.get("reason")
+    if isinstance(reason, str) and reason.lstrip().startswith("{") and len(reason) > 4000:
+        return None  # The full receipt remains available in Story evidence.
+    for _ in range(3):
+        if isinstance(reason, dict):
+            reason = reason.get("reason")
+        elif isinstance(reason, str) and reason.lstrip().startswith("{") and len(reason) <= 4000:
+            try:
+                reason = json.loads(reason)
+            except ValueError:
+                try:
+                    reason = ast.literal_eval(reason)
+                except (ValueError, SyntaxError):
+                    break
+        else:
+            break
+    if not isinstance(reason, str) or not reason.strip():
+        return None
+    return reason[:220] + ("…" if len(reason) > 220 else "")
+
+
+def failure_summary(failures: list[dict], *, limit: int = 6) -> list[dict]:
+    """Group all failures, prioritising business failures over repeated conflicts."""
+    groups: dict[str, list[dict]] = defaultdict(list)
+    for event in failures:
+        groups[event["schema"]].append(event)
+    ordered = sorted(groups, key=lambda schema: (0 if schema == "traffic.capture.failed" else 2 if schema.endswith(".conflict") else 1, schema))
+    result = []
+    for schema in ordered[:limit]:
+        rows = groups[schema]
+        last = max(rows, key=lambda row: row["at_ns"])
+        result.append({"schema": schema, "count": len(rows),
+                       "text": last["text"][:240], "text_zh": (last.get("text_zh") or last["text"])[:240],
+                       "first_at_ns": min(row["at_ns"] for row in rows), "last_at_ns": last["at_ns"],
+                       "reason": failure_reason(last.get("payload", {}))})
+    return result
+
+
 def _missing(expectation: dict, events: list[dict], approaches: dict[str, dict], terminal: bool, last_ns: int | None) -> dict:
     where = expectation["match"]["where"]
     schema = expectation["match"]["schema"]
@@ -212,11 +253,15 @@ def _missing(expectation: dict, events: list[dict], approaches: dict[str, dict],
         reason = failures[-1]["payload"].get("reason")
         return _explanation("Recorded task failure" + (": " + str(reason) if reason is not None else "; no reason recorded"),
                             "记录到任务失败" + ("：" + str(reason) if reason is not None else "；未记录原因"), [failures[-1]])
-    traffic_failures = [e for e in related if e["schema"] in {"traffic.capture.failed", "traffic.decision.failed", "traffic.award.conflict"}]
+    # A later capture failure cannot explain an earlier award/bid/detection.
+    failure_schemas = ({"traffic.capture.failed"} if schema.startswith("traffic.capture.") else
+                       {"traffic.decision.failed", "traffic.award.conflict"} if schema == "traffic.award.committed" else set())
+    traffic_failures = [e for e in related if e["schema"] in failure_schemas]
     if traffic_failures:
         failure = traffic_failures[-1]
-        return _explanation(failure["text"] + ": " + json.dumps(failure["payload"], ensure_ascii=False),
-                            (failure.get("text_zh") or failure["text"]) + "：" + json.dumps(failure["payload"], ensure_ascii=False), [failure])
+        reason = failure_reason(failure["payload"])
+        return _explanation(failure["text"] + (": " + reason if reason else ""),
+                            (failure.get("text_zh") or failure["text"]) + ("：" + reason if reason else ""), [failure])
     approx = expectation.get("approx_s")
     if terminal and approx is not None and last_ns is not None and last_ns < round(approx * 1e9):
         return _explanation(f"The committed run ends at {last_ns / 1e9:g} s, before the configured step at {approx:g} s. No recorded event.",
@@ -277,6 +322,6 @@ def _outcomes(manifest: dict, expectations: list[dict], indexed: StoryIndex, ter
     return {"run_id": manifest.get("id"), "status": manifest.get("status"), "terminal": terminal, "locale": locale,
             "expectations": outcomes, "events": [{k: v for k, v in e.items() if k != "hidden"} for e in events if not e["hidden"]],
             "coverage": {"committed_records": indexed.cursor, "recorded_events": len(events), "schemas": dict(Counter(e["schema"] for e in events))},
-            "assessment": assessment, "failures": copy.deepcopy(failures),
+            "assessment": assessment, "failures": copy.deepcopy(failures), "failure_summary": failure_summary(failures),
             "detail": "No configured expectations; recorded events remain available, no success conclusion is implied / 未配置预期，仍可读取事件记录，不能据此判断成功" if not outcomes else None,
             "last_at_ns": last_ns}

@@ -1,14 +1,18 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as Leaflet from 'leaflet';
 import { RegionBlock } from './RegionBlock';
 import { originShiftM, validateRegion } from './model';
-import { forceSvgRenderer } from './leafletTestSetup';
+import { captureMaps, forceSvgRenderer, mapLayers } from './leafletTestSetup';
+import { APPLIED_REGION, BASEMAP, COVERAGE, DRAFT, PREVIEW, SCENE, WGS_RINGS } from './mapTestFixtures';
 import type { SectionProps } from '../types';
 import { ApiError, WorkbenchApi } from '../../api';
 
 beforeAll(() => { forceSvgRenderer(); });
+let maps: Leaflet.Map[];
+beforeEach(() => { maps = captureMaps(); });
 
-const savedProject = { id: 'w1', revision: 7 } as any;
+const savedProject = { id: 'w1', revision: 3 } as any;
 
 /** Route mocks by URL prefix instead of call order: every request for the same
  *  resource gets the same answer, so mount-order changes cannot skew assertions. */
@@ -41,7 +45,7 @@ const selectExtract = async () => {
   fireEvent.change(screen.getByLabelText('Extract'), { target: { value: 'wujiaochang' } });
 };
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('RegionBlock validation gating', () => {
   it('keeps actions disabled until complete, ordered bounds are entered', async () => {
@@ -84,6 +88,7 @@ describe('RegionBlock preview and apply', () => {
     buildings: 3, roads: 1, attribution: '© OpenStreetMap contributors · ODbL',
     height_source: 'osm.height', diagnostics: ['way/1: missing height'], affected_entities: ['marker-1'],
     network_invalidated: true, city_conflict: false,
+    geometry: PREVIEW.geometry,
   };
   const appliedProject = { ...savedProject, region: previewBody, scene: { origin: preview.origin } };
 
@@ -162,7 +167,7 @@ describe('RegionBlock preview and apply', () => {
     // Cancellation path: no apply happened.
     expect(screen.queryByTestId('region-review')).toBeNull();
     expect(screen.getByRole('button', { name: 'Apply region' })).toBeDisabled();
-    expect(request).toHaveBeenCalledTimes(3); // 2 catalog reads (mount + extract selection) + the rejected dry run
+    expect(request).toHaveBeenCalledTimes(2); // one catalog read plus the rejected preview
   });
 
   it('shows the city conflict and clears the city on request', () => {
@@ -184,9 +189,9 @@ describe('RegionBlock preview and apply', () => {
     (props.project as any).region = { extract: 'wujiaochang', bounds: [121.5, 31.3, 121.52, 31.31], alt: 20, level_height_m: 3.5 };
     (props.project as any).scene = {
       origin: { lat: 31.3, lon: 121.5, alt: 20 }, ground: { width_m: 2406, depth_m: 713 },
-      attribution: '© OpenStreetMap contributors · ODbL', roads: [{ id: 'r' }],
+      attribution: '© OpenStreetMap contributors · ODbL', roads: [{ id: 'r', points: [[0, 0, 0], [10, 10, 0]] }],
       diagnostics: ['crop note'],
-      geojson: { features: [{ properties: { height_source: 'osm.height' } }, { properties: { height_source: 'osm.building:levels * authored level_height_m' } }, { properties: {} }] },
+      geojson: SCENE!.geojson,
     };
     render(<RegionBlock {...props} />);
     const summary = screen.getByTestId('region-summary');
@@ -268,5 +273,124 @@ describe('RegionBlock preview and apply', () => {
     render(<RegionBlock {...props} />);
     expect(screen.getByTestId('network-summary').textContent).toContain('Not generated');
     expect(screen.queryByText(/generate again/)).toBeNull();
+  });
+});
+
+describe('round 2 Region form and review regressions', () => {
+  const project = { ...savedProject, scenario: DRAFT, region: APPLIED_REGION, scene: SCENE };
+  const catalog = { basemap: BASEMAP, extracts: [{ id: 'wujiaochang', bounds: COVERAGE }] };
+
+  it('hydrates applied extract/bounds/25 m altitude/6 m level immediately and survives reopen and same-extract selection (T1-004 / T1-R2-008)', async () => {
+    const crop = [121.51, 31.302, 121.519, 31.305];
+    const props = makeProps({ project: { ...project, region: { ...APPLIED_REGION, bounds: crop } }, draft: DRAFT,
+      api: mockApi({ '/v1/studio/catalog': catalog }) });
+    const verify = () => {
+      expect(screen.getByLabelText('Extract')).toHaveValue('wujiaochang');
+      expect(screen.getByLabelText('West (°)')).toHaveValue('121.51');
+      expect(screen.getByLabelText('South (°)')).toHaveValue('31.302');
+      expect(screen.getByLabelText('East (°)')).toHaveValue('121.519');
+      expect(screen.getByLabelText('North (°)')).toHaveValue('31.305');
+      expect(screen.getByLabelText('Ground altitude (m)')).toHaveValue('25');
+      expect(screen.getByLabelText('Level height (m)')).toHaveValue('6');
+      expect(screen.queryByText('Map unavailable — bounds can still be typed')).toBeNull();
+    };
+    const view = render(<RegionBlock {...props} />);
+    verify();
+    await waitFor(() => expect(mapLayers(maps[0]).some(layer => layer instanceof Leaflet.TileLayer)).toBe(true));
+    fireEvent.change(screen.getByLabelText('Extract'), { target: { value: 'wujiaochang' } });
+    verify();
+    view.unmount();
+    render(<RegionBlock {...props} />);
+    verify();
+  });
+
+  it('updates from a genuine applied-region change and preserves edits on unrelated refreshes', () => {
+    const props = makeProps({ project, draft: DRAFT });
+    const view = render(<RegionBlock {...props} />);
+    fill('Ground altitude (m)', '30');
+    view.rerender(<RegionBlock {...props} project={{ ...props.project, region: { ...APPLIED_REGION } }} />);
+    expect(screen.getByLabelText('Ground altitude (m)')).toHaveValue('30');
+    view.rerender(<RegionBlock {...props} project={{ ...props.project, revision: 4, region: { ...APPLIED_REGION, alt: 40, level_height_m: 8 } }} />);
+    expect(screen.getByLabelText('Ground altitude (m)')).toHaveValue('40');
+    expect(screen.getByLabelText('Level height (m)')).toHaveValue('8');
+  });
+
+  it('passes real preview buildings/road records and the server truncation flag through to review (T3-R2-003 / T4-R2-005 / T2-R2-013)', async () => {
+    const props = makeProps({ project, draft: DRAFT, api: mockApi({ '/v1/studio/catalog': catalog,
+      '/v1/studio/workspaces/w1/region': { preview: { ...PREVIEW, geometry: { ...PREVIEW.geometry!, truncated: true } } } }) });
+    render(<RegionBlock {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Preview region' }));
+    await screen.findByTestId('region-review');
+    const buildings = mapLayers(maps[0]).filter((layer): layer is Leaflet.Polygon => layer instanceof Leaflet.Polygon && !(layer instanceof Leaflet.Rectangle));
+    const roads = mapLayers(maps[0]).filter(layer => layer instanceof Leaflet.Polyline && !(layer instanceof Leaflet.Polygon));
+    expect(buildings).toHaveLength(3);
+    expect(roads).toHaveLength(1);
+    const first = (buildings[0].getLatLngs() as Leaflet.LatLng[][])[0][0];
+    expect(first.lng).toBeCloseTo(WGS_RINGS[0][0][0], 10);
+    expect(first.lat).toBeCloseTo(WGS_RINGS[0][0][1], 10);
+    expect(screen.getByText(/Preview truncated/)).toBeVisible();
+    expect(screen.getByText('OSM height; building levels')).toBeVisible();
+    expect(screen.queryByText(/OSM 高度；建筑层数/)).toBeNull();
+  });
+
+  it('writes map-drawn W/S/E/N back to the actual form and restores panning (T1-R2-003 / T2-R2-006)', async () => {
+    render(<RegionBlock {...makeProps({ project, api: mockApi({ '/v1/studio/catalog': catalog }) })} />);
+    await waitFor(() => expect(mapLayers(maps[0]).some(layer => layer instanceof Leaflet.TileLayer)).toBe(true));
+    const map = maps[0], before = map.getCenter();
+    fireEvent.click(screen.getByRole('button', { name: 'Draw area' }));
+    expect(map.dragging.enabled()).toBe(false);
+    act(() => {
+      map.fire('mousedown', { latlng: Leaflet.latLng(31.302, 121.505) });
+      map.fire('mousemove', { latlng: Leaflet.latLng(31.305, 121.52) });
+      map.fire('mouseup', { latlng: Leaflet.latLng(31.305, 121.52) });
+    });
+    expect(screen.getByLabelText('West (°)')).toHaveValue('121.505000');
+    expect(screen.getByLabelText('South (°)')).toHaveValue('31.302000');
+    expect(screen.getByLabelText('East (°)')).toHaveValue('121.520000');
+    expect(screen.getByLabelText('North (°)')).toHaveValue('31.305000');
+    expect(map.getCenter()).toEqual(before);
+    expect(map.dragging.enabled()).toBe(true);
+  });
+
+  it('keeps an unchanged review through rerenders/numeric formatting and invalidates a real base-revision change', async () => {
+    const props = makeProps({ project, draft: DRAFT, api: mockApi({ '/v1/studio/catalog': catalog,
+      '/v1/studio/workspaces/w1/region': { preview: PREVIEW } }) });
+    const view = render(<RegionBlock {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Preview region' }));
+    await screen.findByTestId('region-review');
+    fireEvent.click(screen.getByRole('checkbox'));
+    fill('Ground altitude (m)', '25.0');
+    view.rerender(<RegionBlock {...props} project={{ ...props.project }} draft={{ ...DRAFT }} />);
+    expect(screen.getByRole('button', { name: 'Apply region' })).toBeEnabled();
+    view.rerender(<RegionBlock {...props} project={{ ...props.project, revision: 4 }} />);
+    expect(screen.getByRole('button', { name: 'Apply region' })).toBeDisabled();
+  });
+
+  it('does not apply a review if saving other edits moved its base revision', async () => {
+    const request = vi.fn();
+    const api = mockApi({ '/v1/studio/catalog': catalog, '/v1/studio/workspaces/w1/region': { preview: PREVIEW } }, request);
+    render(<RegionBlock {...makeProps({ project, api, saveDraft: vi.fn(async () => ({ ...project, revision: 4 })) })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Preview region' }));
+    await screen.findByTestId('region-review');
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply region' }));
+    expect(await screen.findByText(/draft changed while saving/)).toBeVisible();
+    const regionCalls = request.mock.calls.filter(([url]) => url.endsWith('/region'));
+    expect(regionCalls).toHaveLength(1);
+    expect(regionCalls[0][1].body.dry_run).toBe(true);
+  });
+
+  it('shows catalog counts, uses the richer extract on a new project, and leaves absent counts absent (D10)', async () => {
+    const api = mockApi({ '/v1/studio/catalog': { basemap: BASEMAP, extracts: [
+      { id: 'wujiaochang', label: 'Wujiaochang', buildings: 3, roads: 1, bounds: COVERAGE },
+      { id: 'huangpu-lite', label: 'Huangpu lite', buildings: 414, roads: 120, bounds: [121.47, 31.2, 121.5, 31.24] },
+      { id: 'other', label: 'Other extract' },
+    ] } });
+    render(<RegionBlock {...makeProps({ api })} />);
+    expect(await screen.findByRole('option', { name: 'Huangpu lite — 414 buildings · 120 roads' })).toBeVisible();
+    expect(screen.getByRole('option', { name: 'Wujiaochang — 3 buildings · 1 roads' })).toBeVisible();
+    expect(screen.getByRole('option', { name: 'Other extract' })).toBeVisible();
+    await waitFor(() => expect(screen.getByLabelText('Extract')).toHaveValue('huangpu-lite'));
+    expect(screen.getByLabelText('West (°)')).toHaveValue('121.47');
   });
 });

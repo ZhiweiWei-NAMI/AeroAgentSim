@@ -7,6 +7,7 @@
 .wb-region-field input[aria-invalid='true'] { border-color: var(--wb-bad); }
 .wb-region-card { border: 1px solid var(--wb-line); border-radius: 10px; padding: 10px 12px; background: rgba(255,255,255,.55); display: flex; flex-direction: column; gap: 6px; }
 .wb-region-card h4 { margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wb-region-review[aria-disabled='true'] { opacity: .45; }
 .wb-region-meta { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; font-size: 12px; margin: 0; }
 .wb-region-meta dt { color: var(--wb-muted); white-space: nowrap; }
 .wb-region-meta dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }

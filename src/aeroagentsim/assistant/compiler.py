@@ -327,7 +327,7 @@ def _group_id(group: dict) -> str:
 def _group(tasks: dict, identity: str) -> dict:
     matches = [g for g in tasks["generators"] if _group_id(g) == identity]
     if len(matches) != 1:
-        _fail("id", f"Workload {identity!r} is absent or ambiguous; valid workload ids: {[_group_id(g) for g in tasks['generators']]}. Operation ids such as op-N select revise_plan edits, not workloads", "工作量不存在或有歧义，请使用列出的工作量标识；op-N 用于修改方案操作")
+        _fail("id", f"Workload {identity!r} is absent or ambiguous; valid workload ids: {[_group_id(g) for g in tasks['generators']]}. Keep its add_orders creation and edit it with revise_plan.update, or add a set_orders edit after it", "工作量不存在或有歧义；请保留创建该工作量的 add_orders 操作并修改该操作，或在其后添加 set_orders")
     return matches[0]
 
 
@@ -987,6 +987,8 @@ def _operation_order(operations: list[dict], document: dict) -> list[int]:
     """Stable dependency order; authored operation ids/order remain unchanged."""
     creators: dict[str, int] = {}
     existing = {e["id"] for e in document.get("entities", [])}
+    existing.update(_group_id(group) for spec in document.get("engines", {}).values() if spec.get("plugin") == "lowalt_tasks"
+                    for group in spec["config"].get("generators", []))
     for i, operation in enumerate(operations):
         if not isinstance(operation, dict) or not isinstance(operation.get("params"), dict):
             continue
@@ -1012,18 +1014,24 @@ def _operation_order(operations: list[dict], document: dict) -> list[int]:
     deps: dict[int, set[int]] = {i: set() for i in range(len(operations))}
     installers = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "add_lowalt_components"]
     regions = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "set_region"]
+    durations = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "set_duration"]
+    workloads = {o.get("id"): o["params"]["id"] for o in operations if isinstance(o, dict) and o.get("op") == "add_orders" and isinstance(o.get("params"), dict) and "id" in o["params"]}
     for i, operation in enumerate(operations):
         if not isinstance(operation, dict):
             continue
         params = operation.get("params", {})
         refs = references(params)
         if operation.get("op") in {"update_place", "remove_place", "set_orders", "remove_orders", "set_incident", "remove_incident"} and isinstance(params, dict):
-            refs.add(params.get("id"))
+            target = params.get("id")
+            refs.add(workloads.get(target, target) if operation.get("op") in {"set_orders", "remove_orders"} and isinstance(target, str) and target not in existing else target)
         deps[i].update(creators[r] for r in refs if r not in existing and r in creators and creators[r] != i)
         if installers and i not in installers:
             deps[i].add(installers[0])
         if regions and i not in regions and i not in installers:
             deps[i].add(regions[-1])
+        # Release defaults use the final requested horizon, regardless of list order.
+        if operation.get("op") in {"add_orders", "set_orders", "set_task", "add_gust", "add_incident", "set_incident", "schedule_event"}:
+            deps[i].update(durations)
     ordered = []
     while deps:
         ready = next((i for i in sorted(deps) if not deps[i]), None)
@@ -1035,6 +1043,91 @@ def _operation_order(operations: list[dict], document: dict) -> list[int]:
         for waiting in deps.values():
             waiting.discard(ready)
     return ordered
+
+
+def _time_bounds(document: dict, operations: list[dict], errors: list[dict], warnings: list[dict]) -> None:
+    """Check final inputs, after duration edits; never extend the experiment implicitly."""
+    duration_ns = document["run"]["until_ns"]
+    duration_s = duration_ns / SECOND
+    authored: set[tuple[str, int]] = set()
+
+    def check(value: float, field_name: str, op_id: str | None, *, ns: int | None = None) -> None:
+        at_ns = round(value * SECOND) if ns is None else ns
+        authored.add((field_name, at_ns))
+        if at_ns <= duration_ns:
+            return
+        message = (f"{field_name} is {value:g} s, beyond the {duration_s:g} s run. Move it inside the run or set the run duration to at least {value:g} s / "
+                   f"{field_name} 为 {value:g} 秒，超出 {duration_s:g} 秒运行。请移至运行范围内，或将运行时长设为至少 {value:g} 秒")
+        row = {"op_id": op_id, "field": field_name, "code": "RUN_HORIZON", "message": message}
+        (errors if op_id is not None else warnings).append(row)
+
+    task_engines = [spec["config"] for spec in document["engines"].values() if spec["plugin"] == "lowalt_tasks"]
+    groups = {_group_id(group): group for tasks in task_engines for group in tasks.get("generators", [])}
+    incidents = {incident["id"]: incident for tasks in task_engines for incident in tasks.get("cooperation", {}).get("incidents", [])}
+    workload_ids = {o["id"]: o["params"]["id"] for o in operations if o["op"] == "add_orders" and "id" in o}
+    release_owners = {}
+    incident_owners = {}
+    task_owners = {}
+    for operation in operations:
+        name, params = operation["op"], operation["params"]
+        if name in {"add_orders", "set_orders"} and "release" in params:
+            identity = params["id"] if params["id"] in groups else workload_ids.get(params["id"], params["id"])
+            release_owners[identity] = operation
+        if name in {"add_incident", "set_incident"} and "time_s" in params:
+            incident_owners[params["id"]] = operation
+        if name == "set_task" and "release_s" in params:
+            task_owners[params["task"]] = operation
+    gusts = {(g["start_ns"], g["end_ns"]) for spec in document["engines"].values() if spec["plugin"] == "environment"
+             for profiles in spec["config"].get("profiles", {}).values() for profile in profiles.values() for g in profile.get("gusts", [])}
+    task_times = {task: group["arrivals"]["times_ns"][index] for group in groups.values() if group["arrivals"]["mode"] == "scheduled"
+                  for index, task in enumerate(group["tasks"])}
+    for operation in operations:
+        name, params, op_id = operation["op"], operation["params"], operation.get("id")
+        if name == "add_gust" and (round(params["start_s"] * SECOND), round(params["end_s"] * SECOND)) in gusts:
+            for key in ("start_s", "end_s"):
+                check(params[key], "params." + key, op_id)
+        if name in {"add_incident", "set_incident"} and incidents.get(params["id"]) and incident_owners.get(params["id"]) is operation:
+            check(incidents[params["id"]]["at_s"], "params.time_s", op_id)
+        if name == "set_task" and task_owners.get(params["task"]) is operation and params["task"] in task_times:
+            ns = task_times[params["task"]]
+            check(ns / SECOND, "params.release_s", op_id, ns=ns)
+        if name == "schedule_event":
+            check(params["at_s"], "params.at_s", op_id)
+        if name in {"add_orders", "set_orders"}:
+            identity = params["id"] if params["id"] in groups else workload_ids.get(params["id"], params["id"])
+            group = groups.get(identity)
+            if group is not None and release_owners.get(identity) is operation:
+                release = group["arrivals"]
+                for index, value in enumerate(release.get("times_ns", [])):
+                    check(value / SECOND, f"params.release.times_s[{index}]", op_id, ns=value)
+                for key in ("start_ns", "end_ns"):
+                    if key in release:
+                        check(release[key] / SECOND, "params.release." + key.replace("_ns", "_s"), op_id, ns=release[key])
+
+    # Existing template schedules can intentionally outlast a shortened run.
+    # They remain authored, but the limitation must be visible in the proposal.
+    existing: list[tuple[str, int]] = []
+    for engine_id, spec in document["engines"].items():
+        config = spec["config"]
+        if spec["plugin"] == "environment":
+            for identity, profiles in config.get("profiles", {}).items():
+                for field_id, profile in profiles.items():
+                    for index, gust in enumerate(profile.get("gusts", [])):
+                        existing.append((f"engines.{engine_id}.profiles.{identity}.{field_id}.gusts[{index}].end_s", gust["end_ns"]))
+        if spec["plugin"] == "lowalt_tasks":
+            for group in config.get("generators", []):
+                arrivals = group["arrivals"]
+                times = arrivals.get("times_ns", []) if arrivals["mode"] == "scheduled" else [arrivals["end_ns"]] if "end_ns" in arrivals else []
+                if times:
+                    existing.append((f"workloads.{_group_id(group)}.release", max(times)))
+            for incident in config.get("cooperation", {}).get("incidents", []):
+                existing.append((f"incidents.{incident['id']}.time_s", round(incident["at_s"] * SECOND)))
+    for command in document.get("bindings", {}).get("commands", []):
+        existing.append((f"events.{command['schema']}.at_s", command["at_ns"]))
+    explicit_times = {time for _, time in authored}
+    for field_name, at_ns in existing:
+        if at_ns not in explicit_times:
+            check(at_ns / SECOND, field_name, None, ns=at_ns)
 
 
 def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_dir: Path, *, resolved: BaseScene | None = None) -> CompileResult:
@@ -1115,7 +1208,10 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
             notes.append(message)
             warnings.append({"op_id": automatic_id, "field": "operations", "message": message})
         created_by: dict[str, str] = {}
-        for i in _operation_order(operations, document):
+        workload_creators = {o["id"]: o["params"]["id"] for o in operations if isinstance(o, dict) and o.get("op") == "add_orders" and
+                             isinstance(o.get("params"), dict) and isinstance(o.get("params", {}).get("id"), str) and isinstance(o.get("id"), str)}
+        ordered_indices = _operation_order(operations, document)
+        for i in ordered_indices:
             operation = operations[i]
             op_id = operation.get("id", f"op-{i + 1}") if isinstance(operation, dict) else f"op-{i + 1}"
             candidate, candidate_controls = copy.deepcopy(document), copy.deepcopy(scene.controls)
@@ -1125,6 +1221,11 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
                     _fail("id", "Operation ids must be unique", "操作标识必须唯一")
                 seen.add(op_id)
                 name, params = validate_operation(operation)
+                if name in {"set_orders", "remove_orders"} and params["id"] in workload_creators:
+                    existing_workloads = {_group_id(group) for spec in candidate["engines"].values() if spec["plugin"] == "lowalt_tasks"
+                                          for group in spec["config"].get("generators", [])}
+                    if params["id"] not in existing_workloads:
+                        params = {**params, "id": workload_creators[params["id"]]}
                 removals = _apply_operation(ctx, scene, candidate, name, params, files, warnings, op_id)
                 if "generators" in candidate:
                     _sync_base_fleet(candidate)
@@ -1142,6 +1243,8 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
                 message = str(exc)
                 if owner is not None and isinstance(operation, dict) and str(operation.get("op", "")).startswith("add_"):
                     message += f". {target!r} is already added by {owner} in THIS draft; edit {owner} with revise_plan.update instead of adding it again / 该对象已由本草稿操作 {owner} 添加，请修改该操作"
+                if isinstance(operation, dict) and operation.get("op") in {"set_orders", "remove_orders"} and getattr(exc, "field", None) == "id":
+                    message += f". Workload creation operations (op id → workload id): {workload_creators}; retain these creations / 工作量创建操作（操作标识→工作量标识），请保留创建操作"
                 errors.append({"op_id": op_id, "field": getattr(exc, "field", "params"), "message": message})
         coop = next((e["config"].get("cooperation") for e in document["engines"].values() if e["plugin"] == "lowalt_tasks"), None)
         if coop is not None and not errors:
@@ -1160,6 +1263,8 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
                 warnings.append({"op_id": None, "field": "incidents", "message": "Cooperation is configured but no incident is scheduled, so nobody will notice, hand over or photograph anything; add one with add_incident / 已配置协作但没有安排事件，不会触发发现、交接或拍摄；请用 add_incident 添加事件"})
             if not any(e["plugin"] in {"lowalt_city_capture", "traffic_camera_capture"} for e in document["engines"].values()):
                 warnings.append({"op_id": None, "field": "photograph", "message": "Photograph events are recorded, but this scene has no city camera for an image artifact / 此场景可记录拍摄事件，但没有城市相机生成照片文件"})
+        if not errors:
+            _time_bounds(document, [operations[i] for i in ordered_indices], errors, warnings)
         if not errors:
             _idle_kitchens(document, warnings)
             loaded = load_scenario(document, base=files)

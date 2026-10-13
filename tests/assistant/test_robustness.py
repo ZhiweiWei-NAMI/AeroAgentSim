@@ -140,7 +140,10 @@ def test_partial_restore_and_saved_draft_scope(project):
     restored = tools.sessions.plan(session)
     assert restored["operations"] == first["operations"]
     assert restored["assumptions"] == []
-    assert '"count":3' in restored["summary"] and '"capacity":2' in restored["summary"]
+    assert "count 3" in restored["summary"] and "capacity 2" in restored["summary"]
+    assert "Add place" in restored["summary"] and "Add fleet" in restored["summary"]
+    assert "add_place" not in restored["summary"] and "{" not in restored["summary"]
+    assert restored["operation_summaries"][1]["label_zh"] == "添加机群"
     directory = tools.sessions.plan_directory(session, restored["version"])
     assert validate_compiled(tools.context(session), directory)["valid"]
     applied = apply_plan(tools.context(session), directory, base=restored["base"], workspace_id=draft["id"], name="Saved", note="Test")
@@ -178,6 +181,23 @@ def test_region_preview_apply_and_uncovered_bounds(project, monkeypatch, tmp_pat
     assert any(r["id"] == "region" for r in plan["diff_base"]["changed"])
     assert any(r["id"] == "network.net.xml" for r in plan["diff_base"]["removed"])
     assert validate_compiled(tools.context(session), directory)["valid"]
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from types import SimpleNamespace
+    from aeroagentsim.assistant.api import create_router
+
+    app = FastAPI()
+    app.include_router(create_router(tools.store, run_root=tools.run_root, templates=tools.templates, sessions=tools.sessions, harness=SimpleNamespace(tools=tools)))
+    with TestClient(app) as client:
+        response = client.get(f"/v1/assistant/sessions/{session}/plans/{plan['version']}/scenario")
+    assert response.status_code == 200, response.text
+    preview = response.json()
+    form_preview = tools.store.region(draft["id"], {"extract": "local", "bounds": bounds, "alt": 0, "level_height_m": 3, "dry_run": True}, source)["preview"]
+    assert preview["preview"]["geometry"] == form_preview["geometry"]
+    assert preview["preview"]["geometry"]["buildings"]["features"] and preview["preview"]["geometry"]["roads"]
+    assert preview["scenario"]["origin"] == preview["scene"]["origin"] == preview["preview"]["origin"]
+    assert preview["region"]["bounds"] == bounds and preview["scene_source"]["kind"] == "region"
+    assert "scene" not in tools.store.get(draft["id"])
     apply_plan(tools.context(session), directory, base=plan["base"], workspace_id=draft["id"], name="Region", note="Test")
     saved = tools.store.get(draft["id"])
     assert saved["region"]["bounds"] == bounds
@@ -233,3 +253,183 @@ def test_watch_reply_uses_selected_applied_alternative_not_old_prose(tmp_path):
     assert "Total UAVs: 4" in answer and "extra: 2" in answer
     assert "capacity 2" in answer
     assert "adds three" not in answer and "five in total" not in answer
+
+
+def parcel_operations():
+    return [operation("add_place", "depot-op", id="depot", role="depot", at=[0, -100, 0]),
+            operation("add_place", "customer-op", id="customer", role="customer", at=[0, 100, 0]),
+            operation("add_orders", "orders-op", id="parcel_flow", kind="parcel", count=2,
+                      **{"from": ["depot"], "to": ["customer"], "release": {"mode": "scheduled", "times_s": [0, 30]}})]
+
+
+def test_set_orders_revision_retains_creation_recipe_and_can_be_revised_again(project):
+    tools, session, _ = project
+    assert propose(tools, session, parcel_operations())["ok"]
+    prior = tools.sessions.plan(session)
+    creation = next(op for op in prior["operations"] if op["op"] == "add_orders")
+    edit = operation("set_orders", creation["id"], id="parcel_flow", release={"mode": "scheduled", "times_s": [0, 40]})
+    assert tools.revise_plan(session, update=[edit])["ok"]
+    revised = tools.sessions.plan(session)
+    retained = next(op for op in revised["operations"] if op["id"] == creation["id"])
+    assert retained["op"] == "add_orders" and retained["params"]["kind"] == "parcel" and retained["params"]["count"] == 2
+    assert retained["params"]["from"] == ["depot"] and retained["params"]["release"]["times_s"] == [0, 40]
+    # Selecting the creator's op id is also unambiguous and does not erase it.
+    assert tools.revise_plan(session, update=[operation("set_orders", creation["id"], id=creation["id"], priority=7)])["ok"]
+    final = tools.sessions.plan(session)
+    assert next(w for w in final["scene"]["workloads"] if w["id"] == "parcel_flow")["release"]["times_s"] == [0, 40]
+    assert "2 releases, 0–40 s" in final["summary"] and "set_orders" not in final["summary"]
+
+
+@pytest.mark.parametrize("selector", ["parcel_flow", "orders-op"])
+def test_same_plan_set_orders_resolves_creation_even_before_it(project, tmp_path, selector):
+    tools, session, draft = project
+    edits = [operation("set_orders", "timing-op", id=selector, release={"mode": "scheduled", "times_s": [0, 1]})]
+    edits.extend(parcel_operations())
+    edits.append(operation("set_duration", "duration-op", seconds=2))
+    result = compile_plan(tools.context(session), {"workspace": draft["id"]}, edits, tmp_path / "same-plan")
+    assert result.ok, result.errors
+    arrivals = next(g for e in result.document["engines"].values() if e["plugin"] == "lowalt_tasks" for g in e["config"]["generators"] if g["id"] == "parcel_flow")["arrivals"]
+    assert arrivals["times_ns"] == [0, 1_000_000_000]
+
+
+def test_missing_workload_error_lists_workload_creation_operation_ids(project, tmp_path):
+    tools, session, draft = project
+    result = compile_plan(tools.context(session), {"workspace": draft["id"]}, parcel_operations() + [operation("set_orders", "bad-op", id="wrong-workload", priority=2)], tmp_path / "missing")
+    assert not result.ok
+    error = next(e for e in result.errors if e["op_id"] == "bad-op")
+    assert "orders-op" in error["message"] and "parcel_flow" in error["message"] and "retain" in error["message"]
+
+
+def test_duplicate_readd_after_failure_can_recover_by_editing_retained_operations(project):
+    tools, session, draft = project
+    ops = parcel_operations()
+    ops[-1]["params"]["from"] = ["missing-depot"]
+    assert not propose(tools, session, ops)["ok"]
+    repeated = tools.revise_plan(session, add=[ops[0]])
+    assert not repeated["ok"]
+    error = next(e for e in repeated["errors"] if "already added by op-1" in e["message"])
+    assert "THIS draft" in error["message"] and "revise_plan.update" in error["message"]
+    repaired = tools.revise_plan(session, remove=["op-4"], update=[{**parcel_operations()[-1], "id": "op-3"}])
+    assert repaired["ok"] and tools.store.get(draft["id"]) == draft
+
+
+def test_kitchen_only_preparation_guidance_is_in_both_plan_tool_schemas(project):
+    schemas = {s["function"]["name"]: s["function"]["parameters"] for s in tool_schemas()}
+    for tool, field in (("draft_plan", "operations"), ("revise_plan", "add"), ("revise_plan", "update")):
+        branches = schemas[tool]["properties"][field]["items"]["anyOf"]
+        place = next(b for b in branches if b["properties"]["op"]["enum"] == ["add_place"])
+        description = place["properties"]["params"]["properties"]["preparation_s"]["description"]
+        assert "Kitchens only" in description and "仅厨房" in description
+    tools, session, _ = project
+    result = propose(tools, session, [operation("add_place", "bad", id="depot", role="depot", at="center", preparation_s=30)])
+    assert not result["ok"] and result["errors"][0]["field"] == "preparation_s"
+    assert "kitchen" in result["errors"][0]["message"]
+
+
+@pytest.mark.parametrize("timed", [
+    operation("add_gust", "gust", start_s=170, end_s=200, speed_mps=14),
+    operation("add_incident", "incident", id="fall", kind="person_fall", at="center", time_s=3),
+    operation("add_orders", "orders", id="late-orders", kind="parcel", count=2, **{"from": ["depot"], "to": ["customer"], "release": {"mode": "scheduled", "times_s": [0, 30]}}),
+    operation("add_orders", "orders", id="late-orders", kind="parcel", count=2, **{"from": ["depot"], "to": ["customer"], "release": {"mode": "poisson", "rate_per_s": 1, "end_s": 20}}),
+])
+def test_timed_operations_beyond_final_duration_are_actionable_errors(project, tmp_path, timed):
+    tools, session, draft = project
+    result = compile_plan(tools.context(session), {"workspace": draft["id"]}, parcel_operations()[:2] + [timed, operation("set_duration", "duration", seconds=2)], tmp_path / "unreachable")
+    assert not result.ok
+    error = next(e for e in result.errors if e["op_id"] == timed["id"] and e.get("code") == "RUN_HORIZON")
+    assert "2 s run" in error["message"] and "set the run duration to at least" in error["message"] and "请移至运行范围内" in error["message"]
+    assert tools.store.get(draft["id"]) == draft
+
+
+def test_later_duration_edit_makes_gust_and_poisson_defaults_reachable(project, tmp_path):
+    tools, session, draft = project
+    ops = parcel_operations()
+    ops[-1]["params"]["release"] = {"mode": "poisson", "rate_per_s": 0.1}
+    ops.extend([operation("add_gust", "gust", start_s=170, end_s=200, speed_mps=14), operation("set_duration", "duration", seconds=320)])
+    result = compile_plan(tools.context(session), {"workspace": draft["id"]}, ops, tmp_path / "reachable")
+    assert result.ok, result.errors
+    assert result.document["run"]["until_ns"] == 320_000_000_000
+    arrivals = next(g for e in result.document["engines"].values() if e["plugin"] == "lowalt_tasks" for g in e["config"]["generators"] if g["id"] == "parcel_flow")["arrivals"]
+    assert arrivals["end_ns"] == 320_000_000_000
+    assert not any(w.get("code") == "RUN_HORIZON" for w in result.warnings)
+
+
+def test_duration_shrink_flags_existing_template_schedules(project, tmp_path):
+    tools, session, _ = project
+    result = compile_plan(tools.context(session), {"template": "food-delivery"}, [operation("set_duration", "duration", seconds=2)], tmp_path / "short-template")
+    assert result.ok, result.errors
+    assert any(w.get("code") == "RUN_HORIZON" and "2 s run" in w["message"] for w in result.warnings)
+
+
+def test_duplicate_key_revision_args_recover_without_losing_the_retained_plan(project):
+    from types import SimpleNamespace
+
+    tools, session, _ = project
+    assert propose(tools, session, [operation("add_place", "pad-op", id="pad", role="charging_pad", at="center", capacity=1)])["ok"]
+    current = tools.sessions.plan(session)
+    updated = copy.deepcopy(current["operations"][0])
+    updated["params"]["capacity"] = 3
+    requests = []
+    bad = '{"update":' + json.dumps([updated]) + ',"open_questions":[],"open_questions":[]}'
+    good = json.dumps({"update": [updated], "open_questions": []})
+    def call_args(args):
+        return {"role": "assistant", "content": None, "tool_calls": [{"id": "revise", "type": "function", "function": {"name": "revise_plan", "arguments": args}}]}
+    replies = iter([call_args(bad), call_args(good), {"role": "assistant", "content": "Capacity is three."}])
+    def complete(messages, schemas, **kwargs):
+        requests.append(copy.deepcopy(messages))
+        return {"message": next(replies), "usage": {"total_tokens": 1}}
+    agent = Harness.__new__(Harness)
+    agent.sessions, agent.tools, agent.max_calls = tools.sessions, tools, 3
+    agent.connection = SimpleNamespace(provider=lambda: SimpleNamespace(complete=complete))
+    turn = tools.sessions.begin_turn(session, "Change pad capacity to three")
+    agent.run_turn(session, turn["turn"])
+    rejected = json.loads(requests[1][-1]["content"])
+    assert "duplicate keys" in rejected["error"] and "open_questions" in rejected["schema"]["fields"]
+    assert rejected["current_operations"] == [{"id": updated["id"], "op": "add_place", "target": "pad"}]
+    revised = tools.sessions.plan(session)
+    assert revised["version"] == 2 and revised["compile"]["ok"]
+    assert len(revised["operations"]) == 1 and revised["operations"][0]["params"]["capacity"] == 3
+    assert not tools.sessions.get(session)["busy"]
+
+
+def test_revision_summary_uses_active_locale_and_bounded_release_prose():
+    from aeroagentsim.assistant.tools import operation_summary
+
+    ops = parcel_operations() + [operation("add_fleet", "fleet-op", id="extra", role="parcel_drone", count=3, start="depot")]
+    english = operation_summary(ops, "en")
+    chinese = operation_summary(ops, "zh-CN")
+    assert "Add orders" in english and "2 releases, 0–30 s" in english and "count 3" in english
+    assert "添加订单" in chinese and "2 次，0–30 s" in chinese and "数量 3" in chinese
+    assert "Add orders" not in chinese and "添加订单" not in english
+    assert all("{" not in text and "add_orders" not in text and "orders-op" not in text for text in (english, chinese))
+
+
+def test_scheduled_operator_event_beyond_duration_is_rejected(project, tmp_path):
+    tools, session, _ = project
+    result = compile_plan(tools.context(session), {"template": "food-delivery"}, [
+        operation("schedule_event", "late-event", event="restaurant_delay", at_s=40, params={"restaurant": "restaurant-west", "delay_s": 10}),
+        operation("set_duration", "duration", seconds=2),
+    ], tmp_path / "late-event")
+    assert not result.ok
+    assert any(e["op_id"] == "late-event" and e["field"] == "params.at_s" and e.get("code") == "RUN_HORIZON" for e in result.errors)
+
+
+def test_legacy_failed_set_orders_revision_recovers_real_ancestor_creation(project):
+    tools, session, _ = project
+    assert propose(tools, session, parcel_operations())["ok"]
+    creation = copy.deepcopy(tools.sessions.plan(session)["operations"][-1])
+    assert tools.revise_plan(session, update=[operation("set_orders", creation["id"], id="parcel_flow", release={"mode": "scheduled", "times_s": [0, 40]})])["ok"]
+    # The recorded R2 failure already has set_orders in the retained creation's
+    # slot. Reopening it must use its ancestor's real recipe, without defaults.
+    with tools.sessions.edit(session) as data:
+        legacy = data["plans"]["2"]
+        legacy["operations"][-1] = operation("set_orders", creation["id"], id="parcel_flow", release={"mode": "scheduled", "times_s": [0, 40]})
+        legacy["compile"]["ok"] = False
+        legacy["validation"]["state"] = "invalid"
+    result = tools.revise_plan(session, add=[operation("set_duration", "duration", seconds=320)])
+    assert result["ok"], result
+    plan = tools.sessions.plan(session)
+    restored = next(op for op in plan["operations"] if op["id"] == creation["id"])
+    assert restored["op"] == "add_orders" and restored["params"]["count"] == 2 and restored["params"]["kind"] == "parcel"
+    assert restored["params"]["release"]["times_s"] == [0, 40] and restored["params"]["from"] == ["depot"]
+    assert any("from plan v1" in note for note in result["notes"])

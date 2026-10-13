@@ -623,7 +623,7 @@ def expectations(document: dict, summary: dict) -> list[dict]:
         actors = [m for f in summary["fleets"] if f.get("domain") == "traffic" and f["vehicle_class"] == "aas:TrafficUAV" for m in f["members"]]
         for schema in stages:
             declaration = EVENT_NARRATIVES[schema]
-            where = {"actor": {"$in": actors}} if schema.startswith(("traffic.capture.", "traffic.bid.")) else {"incident": {"$in": [e["id"] for e in traffic["incidents"]]}}
+            where = {"actor": {"$in": actors}} if schema.startswith(("traffic.capture.", "traffic.bid.", "traffic.award.")) else {"incident": {"$in": [e["id"] for e in traffic["incidents"]]}}
             en = re.sub(r"\{[^}]+\}", "a configured participant", declaration["template"])
             zh = re.sub(r"\{[^}]+\}", "已配置对象", declaration["template_zh"])
             add("traffic:" + schema, schema, where, "If permitted: " + en, "若条件允许：" + zh)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { enuToLonLat, lonLatToEnu } from './geo';
+import { enuToLonLat, lonLatToEnu, validEnuOrigin, validWgs84Bounds } from './geo';
 
 const ORIGIN = { lat: 31.304_1, lon: 121.512_3, alt: 12 };
 
@@ -34,5 +34,21 @@ describe('workbench/geo ENU ↔ WGS84', () => {
     expect(Number.isFinite(lonLatToEnu(121.52, 31.31, ORIGIN).east)).toBe(true);
     expect(Number.isNaN(lonLatToEnu(Number.NaN, 31.31, ORIGIN).east)).toBe(true);
     expect(Number.isNaN(enuToLonLat(Number.NaN, 0, ORIGIN).lat)).toBe(true);
+  });
+
+  it('does not substitute zero altitude for an invalid scene origin', () => {
+    for (const alt of [NaN, undefined, null]) {
+      const origin = { ...ORIGIN, alt } as typeof ORIGIN;
+      expect(validEnuOrigin(origin)).toBe(false);
+      expect(Number.isNaN(lonLatToEnu(ORIGIN.lon, ORIGIN.lat, origin).up)).toBe(true);
+      expect(Number.isNaN(enuToLonLat(0, 0, origin).lon)).toBe(true);
+    }
+  });
+
+  it('allows only finite ordered WGS84 bounds into the map view/layers', () => {
+    expect(validWgs84Bounds([121.5, 31.3, 121.52, 31.31])).toBe(true);
+    for (const bounds of [null, [], [1, 2, NaN, 3], [2, 1, 1, 3], [1, 3, 2, 3], [181, 1, 182, 3]]) {
+      expect(validWgs84Bounds(bounds)).toBe(false);
+    }
   });
 });

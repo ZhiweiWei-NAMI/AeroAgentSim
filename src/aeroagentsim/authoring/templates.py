@@ -115,7 +115,7 @@ def starter(identifier: str, ontology: Path) -> dict[str, Any]:
         "run": {
             "pacing": "fast",
             "seed": 1,
-            "until_ns": 2_000_000_000,
+            "until_ns": 600_000_000_000,
             "advance_ns": 100_000_000,
         },
         "outputs": {"durability": "flush"},

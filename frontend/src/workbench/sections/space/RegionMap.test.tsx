@@ -1,98 +1,192 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { RegionMap, enuLines, enuRings } from './RegionMap';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as Leaflet from 'leaflet';
+import { RegionMap, enuLines, geometryPolygons } from './RegionMap';
 import { enuToLonLat } from '../../geo';
-import { forceSvgRenderer } from './leafletTestSetup';
+import { sceneMapGeometry, previewMapGeometry } from './model';
+import { captureMaps, forceSvgRenderer, mapLayers } from './leafletTestSetup';
+import { BASEMAP, COVERAGE, ORIGIN, PREVIEW, SCENE, WGS_RINGS } from './mapTestFixtures';
 
+const L = (en: string, _zh: string) => en;
+let maps: Leaflet.Map[];
+beforeAll(forceSvgRenderer);
+beforeEach(() => { maps = captureMaps(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+const polygons = (map: Leaflet.Map) => mapLayers(map).filter((layer): layer is Leaflet.Polygon => layer instanceof Leaflet.Polygon && !(layer instanceof Leaflet.Rectangle));
+const roads = (map: Leaflet.Map) => mapLayers(map).filter((layer): layer is Leaflet.Polyline => layer instanceof Leaflet.Polyline && !(layer instanceof Leaflet.Polygon));
 
-const L = (en: string, _zh?: string) => en;
-const COVERAGE = [121.5, 31.3, 121.52, 31.31];
-const ORIGIN = { lat: 31.305, lon: 121.51, alt: 4 };
-
-beforeAll(() => { forceSvgRenderer(); });
-
-afterEach(cleanup);
-
-describe('RegionMap chips and controls (jsdom, no tile fetch)', () => {
-  it('shows the size chip, wheel hint and offline notice without a basemap', () => {
-    render(<RegionMap L={L} basemap={null} coverage={COVERAGE} bounds={[121.5, 31.3, 121.51, 31.305]}
-      onBoundsChange={() => undefined} />);
-    expect(screen.getByTestId('wb-map-size').textContent).toMatch(/km/);
-    expect(screen.getByText('Click the map to zoom with the wheel')).toBeTruthy();
-    expect(screen.getByText('Basemap offline — outlines and compiled geometry still shown')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Draw area' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Expand map' }).getAttribute('aria-expanded')).toBe('false');
+describe('RegionMap lifecycle and real geometry (T1-R2-008 / T4-R2-001 / T1-R2-004)', () => {
+  it('initialises a view before attaching saved geometry, then accepts coverage on reopen', () => {
+    const addLayer = Leaflet.Map.prototype.addLayer;
+    vi.spyOn(Leaflet.Map.prototype, 'addLayer').mockImplementation(function (this: Leaflet.Map, layer) {
+      if (layer instanceof Leaflet.Path) expect(Number.isFinite(this.getZoom())).toBe(true);
+      return addLayer.call(this, layer);
+    });
+    const geometry = sceneMapGeometry(SCENE);
+    const view = render(<RegionMap L={L} basemap={null} geometry={geometry} />);
+    expect(maps).toHaveLength(1);
+    expect(screen.queryByText('Map unavailable — bounds can still be typed')).toBeNull();
+    view.rerender(<RegionMap L={L} basemap={null} geometry={geometry} coverage={COVERAGE} bounds={COVERAGE} />);
+    expect(maps).toHaveLength(1);
+    expect(polygons(maps[0])).toHaveLength(3);
+    expect(roads(maps[0])).toHaveLength(1);
+    view.unmount();
+    render(<RegionMap L={L} basemap={null} geometry={geometry} coverage={COVERAGE} bounds={COVERAGE} />);
+    expect(maps).toHaveLength(2);
+    expect(screen.queryByText('Map unavailable — bounds can still be typed')).toBeNull();
   });
 
-  it('shows the pick hint instead of the wheel hint in pick mode', () => {
-    render(<RegionMap L={L} basemap={null} coverage={COVERAGE} geometry={{ origin: ORIGIN }}
-      pick={{ onPick: () => undefined }} />);
-    expect(screen.getByText('Click to place — east/north fill in automatically')).toBeTruthy();
-    expect(screen.queryByText('Click the map to zoom with the wheel')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Draw area' })).toBeNull();
+  it('keeps saved WGS84 buildings in place and projects ENU road records exactly once', () => {
+    render(<RegionMap L={L} basemap={null} coverage={COVERAGE} geometry={sceneMapGeometry(SCENE)} />);
+    const buildings = polygons(maps[0]);
+    expect(buildings).toHaveLength(3);
+    for (const [index, building] of buildings.entries()) {
+      const first = (building.getLatLngs() as Leaflet.LatLng[][])[0][0];
+      expect(first.lng).toBe(WGS_RINGS[index][0][0]);
+      expect(first.lat).toBe(WGS_RINGS[index][0][1]);
+      expect(building.getBounds().getEast()).toBeGreaterThan(building.getBounds().getWest());
+      expect(building.options.fillOpacity).toBe(0.35);
+    }
+    expect(new Set(buildings.map(building => building.getElement()?.getAttribute('d'))).size).toBe(3);
+    const road = roads(maps[0])[0];
+    const point = (road.getLatLngs() as Leaflet.LatLng[])[0];
+    expect(point.lng).toBeCloseTo(COVERAGE[2], 10);
+    expect(point.lat).toBeCloseTo(COVERAGE[3], 10);
+    expect(road.options).toMatchObject({ weight: 2, color: '#14202e' });
   });
 
-  it('declares the basemap live only when tiles load, and down again on error', async () => {
-    // With a basemap URL the offline chip must not show before tiles report in.
-    render(<RegionMap L={L} basemap={{ url: 'https://tiles.test/{z}/{x}/{y}.png', attribution: '© Tiles Test' }} />);
-    expect(screen.queryByText('Basemap offline — outlines and compiled geometry still shown')).toBeNull();
-  });
-});
-
-describe('geometry extraction helpers', () => {
-  it('keeps only polygon outer rings from C10/compiled GeoJSON features', () => {
-    const rings = enuRings([
-      { geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 0]], [[1, 1]]] } },
-      { geometry: { type: 'LineString', coordinates: [[0, 0], [1, 1]] } },
-      { geometry: null },
-      {},
-    ]);
-    expect(rings).toEqual([[[0, 0], [10, 0], [10, 10], [0, 0]]]);
+  it('projects the server C10 preview footprints with its own origin (T3-R2-003)', () => {
+    render(<RegionMap L={L} basemap={null} coverage={COVERAGE} geometry={previewMapGeometry(PREVIEW)} />);
+    const first = (polygons(maps[0])[0].getLatLngs() as Leaflet.LatLng[][])[0][0];
+    expect(first.lng).toBeCloseTo(WGS_RINGS[0][0][0], 10);
+    expect(first.lat).toBeCloseTo(WGS_RINGS[0][0][1], 10);
+    expect(roads(maps[0])).toHaveLength(1);
   });
 
-  it('maps ENU roads through to [east, north] pairs', () => {
-    expect(enuLines([[[0, 0, 0], [100, 50, 0]]])).toEqual([[[0, 0], [100, 50]]]);
-    expect(enuLines(undefined)).toEqual([]);
-  });
-});
-
-describe('RegionMap bounds write-back contract', () => {
-  it('clamps map-drawn bounds to the extract coverage before reporting', () => {
-    // Simulate the drag write path: the component clamps through the same helper it uses
-    // internally, so a draw outside coverage cannot escape it.
-    const clamp = (bounds: number[], coverage: number[]) => [
-      Math.min(Math.max(bounds[0], coverage[0]), coverage[2]),
-      Math.min(Math.max(bounds[1], coverage[1]), coverage[3]),
-      Math.min(Math.max(bounds[2], coverage[0]), coverage[2]),
-      Math.min(Math.max(bounds[3], coverage[1]), coverage[3]),
-    ];
-    const clamped = clamp([121.49, 31.29, 121.53, 31.32], COVERAGE);
-    expect(clamped).toEqual([121.5, 31.3, 121.52, 31.31]);
-  });
-
-  it('renders pick coordinates back through the ENU formula', () => {
-    // A pick at ENU (100 m, 200 m) relative to ORIGIN lands at this WGS84 point.
-    const { lat, lon } = enuToLonLat(100, 200, ORIGIN);
-    expect(lat).toBeGreaterThan(ORIGIN.lat);
-    expect(lon).toBeGreaterThan(ORIGIN.lon);
+  it('contains a map effect failure and keeps typed bounds and surrounding controls usable', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const badGeometry = { origin: ORIGIN, buildings: [{ geometry: { type: 'Polygon', coordinates: [[[NaN, 1], [1, 2], [2, 3]]] } }] };
+    render(<div><label>West<input defaultValue="121.5" /></label>
+      <RegionMap L={L} basemap={null} geometry={badGeometry} /><button>Other action</button></div>);
+    expect(screen.getByRole('alert')).toHaveTextContent('Map unavailable — bounds can still be typed');
+    fireEvent.change(screen.getByLabelText('West'), { target: { value: '121.51' } });
+    expect(screen.getByLabelText('West')).toHaveValue('121.51');
+    expect(screen.getByRole('button', { name: 'Other action' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Retry map' })).toBeEnabled();
+    expect(consoleError).toHaveBeenCalled();
   });
 });
 
-describe('AddObjects pick button gating (component contract)', () => {
-  it('pins the pick marker via the onPick callback', () => {
+describe('drawing and keyboard ownership', () => {
+  it('suspends panning, writes real W/S/E/N, clamps to coverage and restores navigation (T1-R2-003)', () => {
+    const onBoundsChange = vi.fn();
+    render(<RegionMap L={L} basemap={null} coverage={COVERAGE} bounds={COVERAGE} onBoundsChange={onBoundsChange} />);
+    const map = maps[0], before = map.getCenter();
+    fireEvent.click(screen.getByRole('button', { name: 'Draw area' }));
+    expect(map.dragging.enabled()).toBe(false);
+    act(() => {
+      map.fire('mousedown', { latlng: Leaflet.latLng(31.302, 121.505) });
+      map.fire('mousemove', { latlng: Leaflet.latLng(31.32, 121.53) });
+      map.fire('mouseup', { latlng: Leaflet.latLng(31.32, 121.53) });
+    });
+    expect(onBoundsChange).toHaveBeenCalledTimes(1);
+    expect(onBoundsChange).toHaveBeenCalledWith([121.505, 31.302, COVERAGE[2], COVERAGE[3]]);
+    expect(map.getCenter()).toEqual(before);
+    expect(map.dragging.enabled()).toBe(true);
+    expect(screen.getByRole('button', { name: 'Draw area' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('Escape cancels only drawing even with the Workbench window-capture guard registered first (T4-R2-012)', () => {
+    const closePanel = vi.fn(), onBoundsChange = vi.fn(), bubbled = vi.fn();
+    const workbenchKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || (event.target as HTMLElement)?.closest('[role="dialog"], [role="alertdialog"]')) return;
+      if (event.key === 'Escape') closePanel();
+    };
+    window.addEventListener('keydown', workbenchKey, true);
+    window.addEventListener('keydown', bubbled);
+    try {
+      render(<RegionMap L={L} basemap={null} coverage={COVERAGE} onBoundsChange={onBoundsChange} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Draw area' }));
+      act(() => {
+        maps[0].fire('mousedown', { latlng: Leaflet.latLng(31.302, 121.505) });
+        maps[0].fire('mousemove', { latlng: Leaflet.latLng(31.304, 121.51) });
+      });
+      fireEvent.keyDown(screen.getByTestId('wb-map-surface'), { key: 'Escape' });
+      expect(closePanel).not.toHaveBeenCalled();
+      expect(bubbled).not.toHaveBeenCalled();
+      expect(onBoundsChange).not.toHaveBeenCalled();
+      expect(maps[0].dragging.enabled()).toBe(true);
+      expect(screen.getByRole('button', { name: 'Draw area' })).toHaveAttribute('aria-pressed', 'false');
+      act(() => maps[0].fire('mouseup', { latlng: Leaflet.latLng(31.304, 121.51) }));
+      expect(onBoundsChange).not.toHaveBeenCalled();
+      fireEvent.keyDown(screen.getByTestId('wb-map-surface'), { key: 'Escape' });
+      expect(closePanel).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener('keydown', workbenchKey, true); window.removeEventListener('keydown', bubbled);
+    }
+  });
+
+  it('a click enables the real wheel handler and a wheel event zooms; leaving disables it (T4-R2-007)', async () => {
+    render(<RegionMap L={L} basemap={null} coverage={COVERAGE} />);
+    const map = maps[0], before = map.getZoom();
+    expect(map.scrollWheelZoom.enabled()).toBe(false);
+    act(() => map.fire('click', { latlng: map.getCenter() }));
+    expect(map.scrollWheelZoom.enabled()).toBe(true);
+    fireEvent.wheel(screen.getByTestId('wb-map-surface'), { deltaY: -100, deltaMode: 0, clientX: 200, clientY: 100 });
+    await waitFor(() => expect(map.getZoom()).toBeGreaterThan(before));
+    act(() => map.fire('mouseout'));
+    expect(map.scrollWheelZoom.enabled()).toBe(false);
+    expect(screen.getByText('Click the map to zoom with the wheel')).toBeVisible();
+  });
+});
+
+describe('basemap, readonly bounds and pick controls', () => {
+  it('draws the applied bounds without edit handles, and gives real tile load/error feedback', () => {
+    const view = render(<RegionMap L={L} basemap={BASEMAP} coverage={COVERAGE} bounds={COVERAGE} geometry={sceneMapGeometry(SCENE)} />);
+    const layers = mapLayers(maps[0]);
+    expect(layers.filter(layer => layer instanceof Leaflet.Rectangle)).toHaveLength(2);
+    expect(view.container.querySelector('.wb-map-handle')).toBeNull();
+    const tiles = layers.find((layer): layer is Leaflet.TileLayer => layer instanceof Leaflet.TileLayer)!;
+    expect(tiles.options.maxZoom).toBe(18);
+    act(() => tiles.fire('tileload'));
+    expect(view.container.querySelector('.wb-map')).toHaveClass('wb-map-basemap');
+    act(() => tiles.fire('tileerror'));
+    expect(screen.getByText('Basemap tiles unavailable — bounds and geometry are shown')).toBeVisible();
+    expect(polygons(maps[0])).toHaveLength(3);
+  });
+
+  it('uses the current scene origin for clicks and moves a controlled marker on typed edits', () => {
     const onPick = vi.fn();
-    // The outside warning appears only after a click outside the coverage; initially hidden.
-    render(<RegionMap L={L} basemap={null} coverage={COVERAGE} geometry={{ origin: ORIGIN }}
-      pick={{ onPick, marker: [12, 34] }} outsideWarning="Outside the applied region — allowed, but the point sits outside the compiled area." />);
-    expect(screen.queryByText('Outside the applied region — allowed, but the point sits outside the compiled area.')).toBeNull();
-    onPick(12.3, 34.4, false);
-    expect(onPick).toHaveBeenCalledWith(12.3, 34.4, false);
+    const view = render(<RegionMap L={L} basemap={null} coverage={COVERAGE} bounds={COVERAGE} geometry={{ origin: ORIGIN }} pick={{ onPick, marker: [12, 34] }} />);
+    expect(screen.queryByRole('button', { name: 'Draw area' })).toBeNull();
+    const point = enuToLonLat(100, 200, ORIGIN);
+    act(() => maps[0].fire('click', { latlng: Leaflet.latLng(point.lat, point.lon) }));
+    expect(onPick).toHaveBeenCalledTimes(1);
+    expect(onPick.mock.calls[0][0]).toBeCloseTo(100, 6);
+    expect(onPick.mock.calls[0][1]).toBeCloseTo(200, 6);
+    expect(onPick.mock.calls[0][2]).toBe(true);
+    view.rerender(<RegionMap L={L} basemap={null} coverage={COVERAGE} bounds={COVERAGE} geometry={{ origin: ORIGIN }} pick={{ onPick, marker: [300, -120] }} />);
+    const marker = mapLayers(maps[0]).find((layer): layer is Leaflet.Marker => layer instanceof Leaflet.Marker && layer.getElement()?.classList.contains('wb-map-pick-marker') === true)!;
+    const expected = enuToLonLat(300, -120, ORIGIN);
+    expect(marker.getLatLng().lng).toBeCloseTo(expected.lon, 10);
+    expect(marker.getLatLng().lat).toBeCloseTo(expected.lat, 10);
+    expect(screen.getByTestId('wb-map-size')).toBeVisible();
   });
 
-  it('fireEvent on the expand button keeps aria-expanded in sync', () => {
+  it('expands an empty map safely and reports explicitly disabled tiles', () => {
     render(<RegionMap L={L} basemap={null} />);
-    const expand = screen.getByRole('button', { name: 'Expand map' });
-    fireEvent.click(expand);
-    expect(expand.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Expand map' }));
+    expect(screen.getByRole('button', { name: 'Expand map' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('No basemap configured — bounds and geometry are shown')).toBeVisible();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('geometry shapes', () => {
+  it('retains holes and MultiPolygon members instead of flattening a false filled footprint', () => {
+    const outer = [[0, 0], [10, 0], [10, 10], [0, 0]], hole = [[1, 1], [2, 1], [2, 2], [1, 1]];
+    expect(geometryPolygons([{ geometry: { type: 'MultiPolygon', coordinates: [[outer, hole], [outer]] } }])).toEqual([[outer, hole], [outer]]);
+    expect(enuLines([{ id: 'r', points: [[0, 0, 0], [100, 50, 0]], tags: { highway: 'trunk' } }])).toEqual([[[0, 0], [100, 50]]]);
+    expect(() => enuLines([{ id: 'bad', points: [[NaN, 0, 0], [1, 2, 0]] }])).toThrow(/finite/);
   });
 });

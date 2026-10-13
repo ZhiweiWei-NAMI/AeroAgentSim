@@ -185,6 +185,43 @@ class WorkspaceStore:
         self._snapshot_catalogs: dict[
             str, tuple[tuple[str, int, int], SnapshotCatalog]
         ] = {}
+        self._relation_writer_cache: dict[str, tuple[tuple, dict[str, list[dict]]]] = {}
+
+    def relation_writers(self, identifier: str) -> dict[str, list[dict]]:
+        """Inspect actual plugin partitions without binding or starting a world."""
+        from aeroagentsim.models import motion_model
+        from aeroagentsim.platform.plugins import EngineBuild, EngineCatalog
+
+        draft = self.get(identifier)
+        document = draft["scenario"]
+        base = self._base(document, identifier)
+        snapshot = document["registry"].get("snapshot")
+        stat = source_path(snapshot, base).stat() if snapshot is not None else None
+        key = (draft["revision"], (stat.st_ino, stat.st_size, stat.st_mtime_ns) if stat else None)
+        cached = self._relation_writer_cache.get(identifier)
+        if cached is not None and cached[0] == key:
+            return copy.deepcopy(cached[1])
+        scenario = load_scenario(document, base=base)
+        catalog = EngineCatalog()
+        partitions, models, engines, writers = {}, {}, [], {}
+        with tempfile.TemporaryDirectory(prefix="relation-writers-", dir=self.root) as scratch:
+            try:
+                for engine_id, spec in scenario.engines.items():
+                    if spec["plugin"] == "kinematic":
+                        models[engine_id] = motion_model(spec["config"], scenario.registry, scenario.manifest.entities)
+                for engine_id, spec in sorted(scenario.engines.items()):
+                    engine = catalog.build(spec["plugin"], EngineBuild(engine_id, spec["config"], scenario.registry, scenario.manifest,
+                                           scenario.manifest.entities, scenario.initial, partitions, models, Path(scratch)))
+                    engines.append(engine)
+                    for partition in engine.partitions:
+                        partitions[partition.id] = partition
+                        for relation in partition.relation_produces:
+                            writers.setdefault(relation, []).append({"writer": partition.id, "engine_id": engine_id, "plugin": spec["plugin"]})
+            finally:
+                for engine in reversed(engines):
+                    engine.close()
+        self._relation_writer_cache[identifier] = (key, writers)
+        return copy.deepcopy(writers)
 
     def catalog_for(self, identifier: str | None = None) -> Catalog:
         if identifier is None:
@@ -1329,7 +1366,11 @@ class WorkspaceStore:
                         },
                     }
                 )
+            from .wire import normalize_wire
+
+            document = normalize_wire(document, self.catalog, base=self._base(document, identifier))
             load_scenario(document, base=self._base(document, identifier))
+            draft["scenario"] = document
             draft.pop("validation", None)
             return self._write(draft)
 

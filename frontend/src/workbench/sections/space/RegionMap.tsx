@@ -6,23 +6,27 @@
  * Coordinates come in/go out as WGS84 bounds [west, south, east, north] and ENU metres
  * relative to `origin`, both exactly per workbench/geo.ts (the scene-compiler formula, C13).
  */
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Component, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import * as Leaflet from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../map.css';
-import { enuToLonLat, lonLatToEnu, type EnuOrigin } from '../../geo';
+import { enuToLonLat, lonLatToEnu, validEnuOrigin, validWgs84Bounds, type EnuOrigin } from '../../geo';
+import type { GeometryFeature, RegionRoad } from './model';
 
-export interface RegionMapBasemap { url: string; attribution: string }
-export interface RegionMapInstance { east: number; north: number; color: string; label: string }
+export interface RegionMapBasemap { url: string; attribution: string; max_zoom?: number }
+export interface RegionMapInstance { east: number; north: number; color: string; label: string; letter?: string }
 export interface RegionMapGeometry {
   origin: EnuOrigin;
-  buildings?: Array<Array<[number, number]>>; // ENU metre rings (outer ring per building)
-  roads?: Array<Array<[number, number]>>; // ENU metre polylines
+  buildings?: GeometryFeature[];
+  /** C10 preview footprints are ENU; saved scene.geojson footprints are WGS84. */
+  buildingFrame?: 'enu' | 'wgs84';
+  roads?: RegionRoad[]; // C10 and saved scenes both use records with ENU points
   truncated?: boolean;
 }
 
 export interface RegionMapProps {
   basemap: RegionMapBasemap | null;
+  basemapLoading?: boolean;
   /** Extract coverage to fit initially and clamp against; null skips fitting. */
   coverage?: number[] | null; // [w, s, e, n] WGS84
   bounds?: number[] | null; // selected [w, s, e, n] WGS84; editable when onBoundsChange is set
@@ -45,14 +49,27 @@ const clampBoundsTo = (bounds: number[], coverage: number[]): number[] => [
   Math.min(Math.max(bounds[3], coverage[1]), coverage[3]),
 ];
 
-const reducedMotion = () =>
-  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 const toBoundsExpression = (bounds: number[]): L.LatLngBoundsExpression =>
   [[bounds[1], bounds[0]], [bounds[3], bounds[2]]];
 
-export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry, instances, pick, outsideWarning, height, className, L }: RegionMapProps) {
+/** Keep a Leaflet render/effect failure local, leaving the surrounding bounds form usable. */
+class MapBoundary extends Component<{ children: ReactNode; L: RegionMapProps['L'] }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    return this.state.failed ? <div className="wb-empty" role="alert">
+      <p>{this.props.L('Map unavailable — bounds can still be typed', '地图不可用——仍可手动输入范围')}</p>
+      <button type="button" className="wb-btn small" onClick={() => this.setState({ failed: false })}>
+        {this.props.L('Retry map', '重试地图')}</button>
+    </div> : this.props.children;
+  }
+}
+
+export function RegionMap(props: RegionMapProps) {
+  return <MapBoundary L={props.L}><RegionMapCanvas {...props} /></MapBoundary>;
+}
+
+function RegionMapCanvas({ basemap, basemapLoading, coverage, bounds, onBoundsChange, geometry, instances, pick, outsideWarning, height, className, L }: RegionMapProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tilesRef = useRef<L.TileLayer | null>(null);
@@ -66,20 +83,18 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
   const pickMarkerRef = useRef<L.Marker | null>(null);
   const drawRectRef = useRef<L.Rectangle | null>(null);
   const drawStartRef = useRef<L.LatLng | null>(null);
-  const suppressRef = useRef(false); // don't echo drag-driven writes back into the map
   const latest = useRef({ coverage, bounds, onBoundsChange, geometry, instances, pick, basemap });
   latest.current = { coverage, bounds, onBoundsChange, geometry, instances, pick, basemap };
 
   const [expanded, setExpanded] = useState(false);
   const [wheelArmed, setWheelArmed] = useState(false);
-  const [basemapLive, setBasemapLive] = useState(false);
-  const [basemapDown, setBasemapDown] = useState(false);
+  const [tileState, setTileState] = useState<'disabled' | 'loading' | 'live' | 'error'>('disabled');
   const [drawing, setDrawing] = useState(false);
   const [outside, setOutside] = useState(false);
-  const [fitted, setFitted] = useState(false);
+  const fittedCoverage = useRef<string>();
   const expandId = useId();
   const drawingRef = useRef(false);
-  useEffect(() => { drawingRef.current = drawing; }, [drawing]);
+  const changeDrawing = (active: boolean) => { drawingRef.current = active; setDrawing(active); };
 
   const sizeStyle = { height: height !== undefined && !expanded ? `${height}px` : undefined };
 
@@ -89,10 +104,23 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     const map = Leaflet.map(hostRef.current, {
       zoomControl: true, attributionControl: true,
       scrollWheelZoom: false, // armed only on click, off again on leave (spec 1)
+      zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false,
     });
     mapRef.current = map;
-    map.on('click', () => { setWheelArmed(true); map.options.scrollWheelZoom = true; });
-    map.on('mouseout', () => { setWheelArmed(false); map.options.scrollWheelZoom = false; });
+    // Leaflet's renderer needs a centre/zoom before ANY tiles, vectors or markers attach.
+    // The empty-state view is only a camera, never a source for authored coordinates.
+    const state = latest.current;
+    const extent = validWgs84Bounds(state.bounds) ? state.bounds : validWgs84Bounds(state.coverage) ? state.coverage : null;
+    const origin = validEnuOrigin(state.geometry?.origin) ? state.geometry.origin : null;
+    map.setView(extent ? [(extent[1] + extent[3]) / 2, (extent[0] + extent[2]) / 2]
+      : origin ? [origin.lat, origin.lon] : [0, 0], extent || origin ? 14 : 2, { animate: false });
+    if (extent) map.fitBounds(toBoundsExpression(extent), { animate: false, padding: Leaflet.point(8, 8), maxZoom: 19 });
+    fittedCoverage.current = validWgs84Bounds(state.coverage) ? state.coverage.join(',') : undefined;
+    map.on('click', () => {
+      if (drawingRef.current) return;
+      map.scrollWheelZoom.enable(); setWheelArmed(true);
+    });
+    map.on('mouseout', () => { map.scrollWheelZoom.disable(); setWheelArmed(false); });
     map.on('mousedown', (event: L.LeafletMouseEvent) => {
       const state = latest.current;
       if (!state.onBoundsChange || !drawingRef.current) return;
@@ -113,25 +141,24 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     map.on('mouseup', (event: L.LeafletMouseEvent) => {
       const state = latest.current;
       const start = drawStartRef.current;
-      if (!state.onBoundsChange || !drawingRef.current || !start || !drawRectRef.current) { drawStartRef.current = null; return; }
+      if (!state.onBoundsChange || !drawingRef.current || !start) return;
       const w = Math.min(start.lng, event.latlng.lng), e = Math.max(start.lng, event.latlng.lng);
       const s = Math.min(start.lat, event.latlng.lat), n = Math.max(start.lat, event.latlng.lat);
-      drawRectRef.current.remove(); drawRectRef.current = null; drawStartRef.current = null;
       const coverageNow = state.coverage;
       let next = [w, s, e, n];
-      if (coverageNow && coverageNow.length === 4) next = clampBoundsTo(next, coverageNow);
-      if (next[2] - next[0] > 1e-9 && next[3] - next[1] > 1e-9) state.onBoundsChange?.(next);
+      if (validWgs84Bounds(coverageNow)) next = clampBoundsTo(next, coverageNow);
+      if (validWgs84Bounds(next)) state.onBoundsChange(next);
+      changeDrawing(false);
     });
     // Pick mode click.
-    map.on('dblclick', () => { /* avoid interference while drawing */ });
     map.on('click', (event: L.LeafletMouseEvent) => {
       const state = latest.current;
       if (!state.pick || drawingRef.current) return;
       const origin = state.geometry?.origin;
-      if (!origin) return;
+      if (!validEnuOrigin(origin)) return;
       const enu = lonLatToEnu(event.latlng.lng, event.latlng.lat, origin);
       const coverageNow = state.coverage;
-      const inside = !coverageNow || coverageNow.length !== 4
+      const inside = !validWgs84Bounds(coverageNow)
         || (event.latlng.lng >= coverageNow[0] && event.latlng.lng <= coverageNow[2]
           && event.latlng.lat >= coverageNow[1] && event.latlng.lat <= coverageNow[3]);
       setOutside(!inside);
@@ -140,37 +167,37 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     return () => { map.remove(); mapRef.current = null; };
   }, []);
 
-  // Esc cancels an active "Draw area" drag (spec 3).
+  // Drawing owns the drag gesture. Restore the exact navigation state on completion/cancel.
   useEffect(() => {
-    if (!drawing) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setDrawing(false);
+    const map = mapRef.current;
+    if (!drawing || !map) return;
+    const wasDragging = map.dragging.enabled(), wasDoubleClicking = map.doubleClickZoom.enabled();
+    map.dragging.disable(); map.doubleClickZoom.disable(); map.scrollWheelZoom.disable();
+    setWheelArmed(false);
+    return () => {
       drawStartRef.current = null;
       drawRectRef.current?.remove();
       drawRectRef.current = null;
+      if (mapRef.current !== map) return;
+      if (wasDragging) map.dragging.enable();
+      if (wasDoubleClicking) map.doubleClickZoom.enable();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, [drawing]);
 
-  // --- basemap tile layer (C9): null or first tile error → hide + notice chip ---
+  // --- basemap tile layer (C9): report real load errors without replacing geography ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     if (tilesRef.current) { tilesRef.current.remove(); tilesRef.current = null; }
-    setBasemapLive(false);
-    setBasemapDown(false);
-    if (!basemap?.url) { setBasemapDown(true); return; }
-    const tiles = Leaflet.tileLayer(basemap.url, { attribution: basemap.attribution, maxZoom: 19 });
-    let firstSuccess = false, firstError = false;
-    tiles.on('tileload', () => { if (!firstSuccess) { firstSuccess = true; setBasemapLive(true); } });
-    tiles.on('tileerror', () => { if (!firstSuccess && !firstError) { firstError = true; tiles.remove(); tilesRef.current = null; setBasemapDown(true); } });
+    if (!basemap?.url) { setTileState('disabled'); return; }
+    setTileState('loading');
+    const tiles = Leaflet.tileLayer(basemap.url, { attribution: basemap.attribution, maxZoom: basemap.max_zoom ?? 19 });
+    let failed = false;
+    tiles.on('tileload', () => { if (!failed) setTileState('live'); });
+    tiles.on('tileerror', () => { failed = true; setTileState('error'); });
     tiles.addTo(map);
     tilesRef.current = tiles;
-    // A few seconds with zero loaded tiles (e.g. fully offline) also counts as down.
-    const timer = window.setTimeout(() => { if (!firstSuccess && !firstError) { tiles.remove(); tilesRef.current = null; setBasemapDown(true); } }, 8000);
-    return () => window.clearTimeout(timer);
+    return () => { tiles.off(); tiles.remove(); if (tilesRef.current === tiles) tilesRef.current = null; };
   }, [basemap]);
 
   // --- extract coverage rectangle: dashed #1f7ae0 "4 4", fill-opacity .04 ---
@@ -178,7 +205,7 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     const map = mapRef.current;
     if (!map) return;
     if (coverageRef.current) { coverageRef.current.remove(); coverageRef.current = null; }
-    if (!coverage || coverage.length !== 4) return;
+    if (!validWgs84Bounds(coverage)) return;
     coverageRef.current = Leaflet.rectangle(toBoundsExpression(coverage), {
       color: '#1f7ae0', weight: 1.5, dashArray: '4 4', fillOpacity: 0.04, interactive: false,
     }).addTo(map);
@@ -190,16 +217,16 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     if (!map) return;
     if (boundsRef.current) { boundsRef.current.remove(); boundsRef.current = null; }
     handlesRef.current?.remove(); handlesRef.current = null;
-    if (!bounds || bounds.length !== 4 || !onBoundsChange) return;
+    if (!validWgs84Bounds(bounds)) return;
     const layer = Leaflet.rectangle(toBoundsExpression(bounds), {
       color: '#1f7ae0', weight: 2, fillOpacity: 0.1, interactive: false,
     }).addTo(map);
     boundsRef.current = layer;
+    if (!onBoundsChange || drawing) return;
     const write = (next: number[]) => {
-      const clamped = latest.current.coverage && latest.current.coverage!.length === 4
+      const clamped = validWgs84Bounds(latest.current.coverage)
         ? clampBoundsTo(next, latest.current.coverage!) : next;
       if (clamped[2] - clamped[0] <= 1e-9 || clamped[3] - clamped[1] <= 1e-9) return;
-      suppressRef.current = true; // our own write-back; do not re-sync from props
       latest.current.onBoundsChange?.(clamped);
     };
     // Corner handles: small white circles, 2px accent border (CSS class .wb-map-handle).
@@ -233,25 +260,7 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
       });
     }
     return () => { group.remove(); };
-  }, [bounds, onBoundsChange]);
-
-  // --- two-way sync: typed bounds move the rectangle; drag writes are not echoed ---
-  useEffect(() => {
-    if (suppressRef.current) { suppressRef.current = false; return; }
-    if (!bounds || bounds.length !== 4 || !boundsRef.current) return;
-    boundsRef.current.setBounds(toBoundsExpression(bounds));
-    if (handlesRef.current) {
-      const corners: Array<[string, number, number]> = [
-        ['nw', bounds[0], bounds[3]], ['ne', bounds[2], bounds[3]],
-        ['sw', bounds[0], bounds[1]], ['se', bounds[2], bounds[1]],
-      ];
-      let index = 0;
-      handlesRef.current.eachLayer(child => {
-        (child as L.Marker).setLatLng([corners[index][2], corners[index][1]]);
-        index++;
-      });
-    }
-  }, [bounds]);
+  }, [bounds, onBoundsChange, drawing]);
 
   // --- compiled/preview geometry: buildings, roads, origin crosshair (spec 4) ---
   useEffect(() => {
@@ -261,6 +270,7 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     roadsRef.current?.remove(); roadsRef.current = null;
     originRef.current?.remove(); originRef.current = null;
     if (!geometry) return;
+    if (!validEnuOrigin(geometry.origin)) throw new TypeError('Map geometry has no valid scene origin.');
     const toLatLng = (point: [number, number]): L.LatLngExpression => {
       const { lat, lon } = enuToLonLat(point[0], point[1], geometry!.origin);
       return [lat, lon];
@@ -268,19 +278,19 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     if (geometry.buildings?.length) {
       const group = Leaflet.layerGroup().addTo(map);
       buildingsRef.current = group;
-      for (const ring of geometry.buildings) {
-        if (!ring || ring.length < 3) continue;
-        Leaflet.polygon(ring.map(toLatLng), {
-          color: '#5b6b7d', weight: 0.6, opacity: 0.6, fillColor: '#5b6b7d', fillOpacity: 0.35, interactive: false,
+      for (const polygon of geometryPolygons(geometry.buildings)) {
+        const toBuildingLatLng = geometry.buildingFrame === 'wgs84'
+          ? (point: [number, number]): L.LatLngExpression => [point[1], point[0]] : toLatLng;
+        Leaflet.polygon(polygon.map(ring => ring.map(toBuildingLatLng)), {
+          color: '#1f7ae0', weight: 0.6, opacity: 0.6, fillColor: '#38c6f4', fillOpacity: 0.35, interactive: false,
         }).addTo(group);
       }
     }
     if (geometry.roads?.length) {
       const group = Leaflet.layerGroup().addTo(map);
       roadsRef.current = group;
-      for (const points of geometry.roads) {
-        if (!points || points.length < 2) continue;
-        Leaflet.polyline(points.map(toLatLng), { color: '#e8a317', weight: 1.5, interactive: false }).addTo(group);
+      for (const points of enuLines(geometry.roads)) {
+        Leaflet.polyline(points.map(toLatLng), { color: '#14202e', weight: 2, interactive: false }).addTo(group);
       }
     }
     const center = enuToLonLat(0, 0, geometry.origin);
@@ -290,7 +300,7 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     }).addTo(map);
   }, [geometry]);
 
-  // --- existing instances as 8px dots in their presentation colour (spec 5) ---
+  // --- existing places and fleet starts in their role colours ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -301,10 +311,15 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     instancesRef.current = group;
     for (const instance of instances) {
       const { lat, lon } = enuToLonLat(instance.east, instance.north, geometry.origin);
-      const dot = Leaflet.circleMarker([lat, lon], {
-        radius: 4, color: instance.color, weight: 1, fillColor: instance.color, fillOpacity: 0.9,
+      const icon = document.createElement('span');
+      icon.className = 'wb-map-dot'; icon.style.backgroundColor = instance.color;
+      icon.textContent = instance.letter ?? '';
+      const dot = Leaflet.marker([lat, lon], { keyboard: true,
+        icon: Leaflet.divIcon({ className: '', html: icon, iconSize: [18, 18], iconAnchor: [9, 9] }),
+        title: instance.label,
       }).addTo(group);
-      dot.bindTooltip(instance.label, { direction: 'top', offset: [0, -4] });
+      const tooltip = document.createElement('span'); tooltip.textContent = instance.label;
+      dot.bindTooltip(tooltip, { direction: 'top', offset: [0, -4] });
     }
   }, [instances, geometry]);
 
@@ -314,7 +329,7 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     if (!map) return;
     pickMarkerRef.current?.remove();
     pickMarkerRef.current = null;
-    if (!pick?.marker || !geometry) return;
+    if (!pick?.marker || !pick.marker.every(Number.isFinite) || !geometry) return;
     const { lat, lon } = enuToLonLat(pick.marker[0], pick.marker[1], geometry.origin);
     pickMarkerRef.current = Leaflet.marker([lat, lon], {
       interactive: false, keyboard: false,
@@ -322,21 +337,35 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
     }).addTo(map);
   }, [pick?.marker, geometry]);
 
-  // --- initial view: fit the extract coverage once, no animation under reduced motion ---
+  useEffect(() => {
+    if (!pick?.marker || !pick.marker.every(Number.isFinite) || !geometry || !validWgs84Bounds(coverage)) { setOutside(false); return; }
+    const point = enuToLonLat(pick.marker[0], pick.marker[1], geometry.origin);
+    setOutside(point.lon < coverage[0] || point.lon > coverage[2] || point.lat < coverage[1] || point.lat > coverage[3]);
+  }, [pick?.marker, geometry, coverage]);
+
+  useEffect(() => {
+    const control = mapRef.current?.zoomControl.getContainer();
+    const labels = [L('Zoom in', '放大'), L('Zoom out', '缩小')];
+    control?.querySelectorAll('a').forEach((button, index) => {
+      button.title = labels[index]; button.setAttribute('aria-label', labels[index]);
+    });
+  }, [L]);
+
+  // Fit a newly selected extract; equal arrays from parent renders keep the user's camera.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || fitted || !coverage || coverage.length !== 4) return;
+    if (!map || !validWgs84Bounds(coverage) || fittedCoverage.current === coverage.join(',')) return;
     map.fitBounds(toBoundsExpression(coverage), {
-      animate: !reducedMotion(), padding: Leaflet.point(8, 8),
+      animate: false, padding: Leaflet.point(8, 8), maxZoom: 19,
     });
-    setFitted(true);
-  }, [coverage, fitted]);
+    fittedCoverage.current = coverage.join(',');
+  }, [coverage]);
 
   // Expanded height changes need a re-measure.
   useEffect(() => { mapRef.current?.invalidateSize({ animate: false }); }, [expanded]);
 
   const size = useMemo(() => {
-    if (!bounds || bounds.length !== 4) return null;
+    if (!validWgs84Bounds(bounds)) return null;
     const origin: EnuOrigin = geometry?.origin ?? { lat: bounds[1], lon: bounds[0], alt: 0 };
     const width = lonLatToEnu(bounds[2], bounds[1], origin).east - lonLatToEnu(bounds[0], bounds[1], origin).east;
     const depth = lonLatToEnu(bounds[0], bounds[3], origin).north - lonLatToEnu(bounds[0], bounds[1], origin).north;
@@ -346,17 +375,28 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
 
   const formatKm = (metres: number) => `${(metres / 1000).toFixed(2)} km`;
 
-  return <div className={`wb-map${expanded ? ' wb-map-expanded' : ''}${pick ? ' wb-map-pick' : ''}${basemapLive ? ' wb-map-basemap' : ''} ${className ?? ''}`}>
-    <div ref={hostRef} className="wb-map-leaflet" style={sizeStyle} data-testid="wb-map-surface" />
+  // Workbench's window-capture handler yields to a dialog containing focus. This
+  // nonmodal drawing dialog lets local Escape cancel before the panel can close.
+  return <div className={`wb-map${expanded ? ' wb-map-expanded' : ''}${pick ? ' wb-map-pick' : ''}${tileState === 'live' ? ' wb-map-basemap' : ''} ${className ?? ''}`}
+    role={drawing ? 'dialog' : undefined} aria-label={drawing ? L('Draw area', '框选范围') : undefined}
+    onKeyDownCapture={event => {
+      if (event.key !== 'Escape' || !drawingRef.current) return;
+      event.preventDefault(); event.stopPropagation(); changeDrawing(false);
+    }}>
+    <div ref={hostRef} className="wb-map-leaflet" tabIndex={0} aria-label={L('Region map', '区域地图')}
+      style={sizeStyle} data-testid="wb-map-surface" />
     <div className="wb-map-toolbar">
       {size && <span className="wb-map-chip wb-mono" data-testid="wb-map-size">{formatKm(size.width)} × {formatKm(size.depth)}</span>}
       {onBoundsChange && <button type="button" className="wb-btn small" aria-pressed={drawing}
-        onClick={() => setDrawing(previous => !previous)}>{L('Draw area', '框选范围')}</button>}
+        onClick={() => { changeDrawing(!drawingRef.current); hostRef.current?.focus(); }}>{L('Draw area', '框选范围')}</button>}
+      {drawing && <span className="wb-map-chip" role="status">{L('Drag to select bounds; Esc cancels', '拖动选择范围；Esc 取消')}</span>}
       <span className="wb-map-spacer" />
       {!wheelArmed && !pick && <span className="wb-map-chip" role="status">{L('Click the map to zoom with the wheel', '点击地图后即可滚轮缩放')}</span>}
       {pick && <span className="wb-map-chip" role="status">{L('Click to place — east/north fill in automatically', '点击放置——东/北坐标会自动填入')}</span>}
       {pick && outside && outsideWarning && <span className="wb-map-chip warn" role="alert">{outsideWarning}</span>}
-      {basemapDown && <span className="wb-map-chip warn" role="status">{L('Basemap offline — outlines and compiled geometry still shown', '底图离线——轮廓与已编译几何仍会显示')}</span>}
+      {basemapLoading && <span className="wb-map-chip" role="status">{L('Loading map background…', '正在加载地图底图…')}</span>}
+      {tileState === 'disabled' && !basemapLoading && <span className="wb-map-chip" role="status">{L('No basemap configured — bounds and geometry are shown', '未配置底图——显示范围与几何')}</span>}
+      {tileState === 'error' && <span className="wb-map-chip warn" role="status">{L('Basemap tiles unavailable — bounds and geometry are shown', '底图瓦片不可用——显示范围与几何')}</span>}
     </div>
     <button type="button" className="wb-btn small ghost wb-map-expand" aria-label={L('Expand map', '展开地图')}
       aria-expanded={expanded} aria-controls={expandId} title={L('Expand map', '展开地图')}
@@ -365,22 +405,41 @@ export function RegionMap({ basemap, coverage, bounds, onBoundsChange, geometry,
   </div>;
 }
 
-/** Bounded helper for the C10 preview / compiled-scene ENU polygons → map rings. */
-export const enuRings = (features: Array<{ geometry?: { type?: unknown; coordinates?: unknown } | null }>): Array<Array<[number, number]>> => {
-  const rings: Array<Array<[number, number]>> = [];
+type MapRing = Array<[number, number]>;
+/** Preserve polygon holes and every MultiPolygon member, in the input coordinate frame. */
+export const geometryPolygons = (features: GeometryFeature[]): MapRing[][] => {
+  const polygons: MapRing[][] = [];
+  const ring = (raw: unknown): MapRing => {
+    if (!Array.isArray(raw) || raw.length < 3) throw new TypeError('Building ring needs at least three points.');
+    return raw.map(point => {
+      if (!Array.isArray(point) || !Number.isFinite(point[0]) || !Number.isFinite(point[1])) throw new TypeError('Building coordinates must be finite numbers.');
+      return [point[0], point[1]] as [number, number];
+    });
+  };
+  const polygon = (raw: unknown): MapRing[] => {
+    if (!Array.isArray(raw) || !raw.length) throw new TypeError('Building polygon has no rings.');
+    return raw.map(ring);
+  };
   for (const feature of features) {
     const geometry = feature.geometry;
     if (!geometry) continue;
     if (geometry.type === 'Polygon') {
-      const outer = (geometry.coordinates as number[][][])?.[0];
-      if (Array.isArray(outer)) rings.push(outer.map(point => [point[0], point[1]] as [number, number]));
+      polygons.push(polygon(geometry.coordinates));
+    } else if (geometry.type === 'MultiPolygon') {
+      if (!Array.isArray(geometry.coordinates)) throw new TypeError('Building multipolygon has no polygons.');
+      polygons.push(...geometry.coordinates.map(polygon));
     }
   }
-  return rings;
+  return polygons;
 };
 
+export const enuRings = (features: GeometryFeature[]): MapRing[] => geometryPolygons(features).map(polygon => polygon[0]);
+
 /** C10 preview.geometry / compiled roads ENU polylines → map polylines. */
-export const enuLines = (lines: number[][][] | undefined | null): Array<Array<[number, number]>> =>
-  (lines ?? []).filter(Array.isArray).map(points => Array.isArray(points)
-    ? points.filter(Array.isArray).map(point => [point[0], point[1]] as [number, number])
-    : []);
+export const enuLines = (lines: RegionRoad[] | undefined | null): MapRing[] => (lines ?? []).map(road => {
+  if (!Array.isArray(road.points) || road.points.length < 2) throw new TypeError('Road needs at least two points.');
+  return road.points.map(point => {
+    if (!Array.isArray(point) || !Number.isFinite(point[0]) || !Number.isFinite(point[1])) throw new TypeError('Road coordinates must be finite numbers.');
+    return [point[0], point[1]] as [number, number];
+  });
+});

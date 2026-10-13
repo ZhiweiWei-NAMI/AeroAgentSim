@@ -95,10 +95,23 @@ def create_router(store: Any, *, run_root: Path, templates: Any, connection: Con
 
     @router.post("/sessions/{identifier}/messages", status_code=202)
     def message(identifier: str, body: dict[str, Any]) -> dict[str, int]:
+        """Submit text with explicit run_id/locale, or context.{run_id,locale}.
+
+        Conflicting top-level/context values are rejected. The requested run is
+        authoritative; completed runs use their own pinned scenario and journal.
+        """
         def submit() -> dict[str, int]:
-            validate_arguments(object_schema({"text": {"type": "string", "minLength": 1, "maxLength": 16000}, "context": object_schema({"selected_entity": STRING, "run_id": STRING, "locale": {"type": "string", "minLength": 1, "maxLength": 32}})}, ("text",)), body)
+            locale = {"type": "string", "minLength": 1, "maxLength": 32}
+            validate_arguments(object_schema({"text": {"type": "string", "minLength": 1, "maxLength": 16000}, "run_id": STRING, "locale": locale,
+                                              "context": object_schema({"selected_entity": STRING, "run_id": STRING, "locale": locale})}, ("text",)), body)
+            context = dict(body.get("context", {}))
+            for key in ("run_id", "locale"):
+                if key in body:
+                    if key in context and context[key] != body[key]:
+                        raise ValueError(f"{key}: conflicting request and context values / 请求与上下文的值冲突")
+                    context[key] = body[key]
             harness.tools.agent_profile = "assistant" if connection.get()["configured"] else None
-            return harness.submit(identifier, body["text"], body.get("context"))
+            return harness.submit(identifier, body["text"], context or None)
         return checked(submit)
 
     @router.get("/sessions/{identifier}/events")
@@ -123,6 +136,7 @@ def create_router(store: Any, *, run_root: Path, templates: Any, connection: Con
             if not plan["compile"]["ok"]:
                 raise ValueError("Cannot preview a plan that did not compile / 无法预览未编译成功的方案")
             result = {"scenario": plan["_document"], "name": plan["title"]}
+            result.update(plan.get("_geography", {}))
             if plan["_document"].get("city") == "huangpu":
                 # Same descriptor a new workspace receives, so the proposal previews the real city.
                 from aeroagentsim.authoring.demo import city_presentation
@@ -172,8 +186,9 @@ def create_router(store: Any, *, run_root: Path, templates: Any, connection: Con
         return checked(confirm)
 
     @router.get("/sessions/{identifier}/story/{run_id}")
-    def story(identifier: str, run_id: str) -> dict[str, Any]:
-        return checked(lambda: harness.tools.run_story(identifier, run_id))
+    def story(identifier: str, run_id: str, locale: str | None = Query(None, min_length=1, max_length=32, description="Response locale; omitted uses the session locale")) -> dict[str, Any]:
+        """Read this explicit run ID, independently of the selected proposal."""
+        return checked(lambda: harness.tools.run_story(identifier, run_id, locale=locale))
 
     return router
 

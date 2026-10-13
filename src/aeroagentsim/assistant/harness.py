@@ -50,17 +50,21 @@ def run_evidence(tools: ToolRunner, identifier: str, context: dict[str, Any] | N
     if not isinstance(run_id, str):
         return None
     try:
-        story = tools.run_story(identifier, run_id)
+        locale = (context or {}).get("locale")
+        story = tools.run_story(identifier, run_id, **({"locale": locale} if locale is not None else {}))
     except (OSError, ValueError, KeyError) as error:
         return {"run_id": run_id, "unavailable": str(error)}
     return story_evidence(run_id, story)
 
 
 def story_evidence(run_id: str, story: dict) -> dict:
+    from .story import failure_summary
+
     return {"run_id": run_id, "status": story.get("status"), "terminal": story.get("terminal"),
-            **{k: story[k] for k in ("assessment", "coverage", "failures", "workspace_version", "plan_version", "expectations_source", "detail") if k in story},
-            "expectations": [{k: row.get(k) for k in ("id", "text", "status", "at_ns", "progress")} | {"recorded": (row.get("explanation") or {}).get("text")} for row in story["expectations"]],
-            "events": [{k: e.get(k) for k in ("schema", "text", "at_ns")} for e in story["events"][-40:]]}
+            **{k: story[k] for k in ("assessment", "coverage", "workspace_version", "plan_version", "expectations_source", "detail", "details_url", "locale") if k in story},
+            "failure_count": len(story.get("failures", [])), "failures": failure_summary(story.get("failures", [])),
+            "expectations": [{k: row.get(k) for k in ("id", "text", "text_zh", "status", "at_ns", "progress")} | {"recorded": (row.get("explanation") or {}).get("text")} for row in story["expectations"]],
+            "events": [{k: e[k] for k in ("schema", "text", "text_zh", "at_ns") if k in e} for e in story["events"][-12:]]}
 
 
 class Harness:
@@ -125,7 +129,13 @@ class Harness:
         session = self.sessions.get(identifier)
         question = next((m["content"] for m in reversed(session["transcript"]) if m["role"] == "user"), "")
         zh = str(session["locale"]).startswith("zh")
-        if evidence is not None and evidence.get("coverage") is not None and re.search(r"summari[sz]e|what is happening|总结|现在发生", question, re.I):
+        if evidence is not None and re.search(r"summari[sz]e|what is happening|总结|现在发生", question, re.I):
+            details_url = evidence.get("details_url") or f"/v1/assistant/sessions/{identifier}/story/{evidence['run_id']}"
+            if "unavailable" in evidence:
+                return ((f"无法读取运行 {evidence['run_id']} 的记录：" if zh else f"Could not read the records for run {evidence['run_id']}: ") + evidence["unavailable"][:600] +
+                        f"\n\n[{'查看记录' if zh else 'Recorded details'}]({details_url})")
+            if evidence.get("coverage") is None:
+                return text
             coverage = evidence["coverage"]
             rows = evidence.get("expectations", [])
             happened = sum(row["status"] == "happened" for row in rows)
@@ -134,12 +144,24 @@ class Harness:
                 lines.append(f"预期步骤已发生 {happened}/{len(rows)}；以各步骤证据为准。" if zh else f"{happened}/{len(rows)} expected steps were recorded; assess the evidence for each step.")
             else:
                 lines.append("没有配置预期，不能据此判断全部成功。" if zh else "No expectations were configured; this does not establish success.")
-            for schema, count in coverage.get("schemas", {}).items():
-                lines.append(f"- {schema}: {count}")
+            for row in rows[:10]:
+                label = (row.get("text_zh") if zh else row["text"]) or row["text"]
+                at = f" ({row['at_ns'] / 1e9:g} s)" if row.get("at_ns") is not None else ""
+                status = ({"happened": "已记录", "missed": "未记录", "pending": "等待记录", "not_taken": "未走此分支"} if zh else
+                          {"happened": "recorded", "missed": "not recorded", "pending": "pending", "not_taken": "branch not taken"})[row["status"]]
+                lines.append(f"- {label[:240]}: {status}{at}")
+            count = evidence.get("failure_count", len(evidence.get("failures", [])))
+            if count:
+                lines.append(f"记录到 {count} 条失败或冲突，按类型汇总：" if zh else f"{count} failure or conflict records, grouped by type:")
             for failure in evidence.get("failures", []):
                 label = failure.get("text_zh") if zh else failure["text"]
-                lines.append(f"- {failure['at_ns'] / 1e9:g} s: {label or failure['text']} — " + json.dumps(failure["payload"], ensure_ascii=False))
-            return "\n\n".join(lines)
+                reason = failure.get("reason")
+                lines.append(f"- {failure['last_at_ns'] / 1e9:g} s: {label or failure['text']} (×{failure['count']})" + (f" — {reason}" if reason else ""))
+            details = f"\n\n[{'查看完整 Story 与事件证据' if zh else 'Full Story and event evidence'}]({details_url})"
+            result = "\n\n".join(lines)
+            if len(result) > 5500:
+                result = result[:5200] + ("\n\n更多记录见详情。" if zh else "\n\nMore records are available in details.")
+            return result + details
         if isinstance(self.tools, ToolRunner) and question.strip() in {"What should I watch for when I run it?", "运行时我应该关注什么？"}:
             from .scene import expectations
 
@@ -180,7 +202,7 @@ class Harness:
         text = grounded
         session = self.sessions.get(identifier)
         plan = session["plans"].get(str(session["plan_version"]))
-        if plan is not None:
+        if plan is not None and not (used_grounded_facts and evidence is not None):
             # Validation can finish while the provider is writing its completion.
             # Render status from the store, replacing the provider's status prose.
             if not used_grounded_facts and evidence is None:
@@ -275,6 +297,8 @@ class Harness:
                     try:
                         if argument_error:
                             raise ValueError(argument_error)
+                        if name == "run_story" and (context or {}).get("run_id") is not None and arguments.get("run_id") != context["run_id"]:
+                            raise ValueError(f"run_id: this question refers to {context['run_id']}; read that run / 请读取问题明确指定的运行")
                         if self.sessions.cancelled(identifier, turn):
                             raise ValueError("Cancelled before tool execution / 工具执行前已取消")
                         result = self.tools.execute(identifier, name, arguments)

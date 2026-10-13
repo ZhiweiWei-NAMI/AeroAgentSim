@@ -58,7 +58,8 @@
 .wb-map-origin::after { top: 5.5px; left: 0; height: 1px; width: 12px; }
 
 /* Instance dots (8px) in their presentation colour. */
-.wb-map-dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .9);
+.wb-map-dot { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+  border-radius: 50%; border: 1px solid rgba(255, 255, 255, .9); color: #fff; font-size: 10px;
   box-shadow: 0 0 0 1px rgba(20, 32, 46, .2); box-sizing: border-box; }
 
 /* Pick marker placed by the user. */
@@ -74,5 +75,5 @@
    to opacity/transform only, ≤180ms, and none at all for reduced motion. */
 .wb-map-leaflet * { transition-property: opacity, transform; transition-duration: .18s; }
 @media (prefers-reduced-motion: reduce) {
-  .wb-map-leaflet *, .wb-map-chip, .wb-map-toolbar { transition: none !important; animation: none !important; }
+  .wb-map-leaflet, .wb-map-leaflet *, .wb-map-chip, .wb-map-toolbar { transition: none !important; animation: none !important; }
 }

@@ -193,5 +193,53 @@ def test_story_reads_applied_version_and_recorded_run(api: dict[str, Any], monke
     assert response.status_code == 200 and response.json()["plan_version"] == 1
     assert response.json()["steps"][0]["status"] == "not_happened"
     assert called == [(directory, [{"schema": "fixture.incident"}], "en")]
+    localized = client.get(f"/v1/assistant/sessions/{identifier}/story/{run_id}?locale=zh-CN")
+    assert localized.status_code == 200
+    assert called[-1] == (directory, [{"schema": "fixture.incident"}], "zh-CN")
+    assert api["sessions"].get(identifier)["locale"] == "en"
+    assert client.get(f"/v1/assistant/sessions/{identifier}/story/{run_id}?locale=").status_code == 422
     (directory / "manifest.json").write_text(json.dumps({"id": run_id, "studio_workspace": "other", "workspace_version": 1, "status": "completed"}))
     assert client.get(f"/v1/assistant/sessions/{identifier}/story/{run_id}").status_code == 404
+
+
+def test_message_accepts_explicit_run_and_locale_and_rejects_conflicts(api, monkeypatch):
+    client = api["client"]
+    identifier = client.post("/v1/assistant/sessions", json={"workspace_id": "fixture-project", "locale": "zh-CN"}).json()["id"]
+    submitted = []
+    def capture(session, text, context):
+        submitted.append((session, text, context))
+        return {"turn": len(submitted), "seq": 1}
+    monkeypatch.setattr(api["harness"], "submit", capture)
+    endpoint = f"/v1/assistant/sessions/{identifier}/messages"
+    text = "Summarise what happened in this run compared with the plan."
+    response = client.post(endpoint, json={"text": text, "run_id": "run-explicit", "locale": "en", "context": {"selected_entity": "uav.bravo"}})
+    assert response.status_code == 202, response.text
+    assert submitted[-1] == (identifier, text, {"run_id": "run-explicit", "locale": "en", "selected_entity": "uav.bravo"})
+    assert client.post(endpoint, json={"text": text, "context": {"run_id": "run-explicit", "locale": "en"}}).status_code == 202
+    assert submitted[-1][2] == {"run_id": "run-explicit", "locale": "en"}
+    for body in ({"text": text, "run_id": "run-explicit", "context": {"run_id": "run-other"}},
+                 {"text": text, "locale": "en", "context": {"locale": "zh-CN"}}, {"text": text, "run_id": None}, {"text": text, "locale": ""}):
+        assert client.post(endpoint, json=body).status_code == 422
+    assert len(submitted) == 2
+    assert "run_id/locale" in client.get("/openapi.json").json()["paths"]["/v1/assistant/sessions/{identifier}/messages"]["post"]["description"]
+
+
+def test_unbound_session_can_read_explicit_completed_form_run(api, monkeypatch):
+    from aeroagentsim.assistant import story
+
+    identifier = api["client"].post("/v1/assistant/sessions", json={"locale": "zh-CN"}).json()["id"]
+    run_id = "run-" + "c" * 32
+    directory = api["root"] / run_id
+    directory.mkdir()
+    (directory / "manifest.json").write_text(json.dumps({"id": run_id, "studio_workspace": "fixture-project", "workspace_version": 2, "status": "completed"}))
+    calls = []
+    monkeypatch.setattr(story, "pinned_expectations", lambda path: [{"id": "pinned-version-2"}])
+    def recorded(path, expectations, *, locale):
+        calls.append((path, expectations, locale))
+        return {"locale": locale, "coverage": {"recorded_events": 9211}, "expectations": [], "events": []}
+    monkeypatch.setattr(story, "run_story", recorded)
+    response = api["client"].get(f"/v1/assistant/sessions/{identifier}/story/{run_id}?locale=en")
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "completed" and response.json()["workspace_version"] == 2 and response.json()["plan_version"] is None
+    assert response.json()["coverage"]["recorded_events"] == 9211 and response.json()["locale"] == "en"
+    assert calls == [(directory, [{"id": "pinned-version-2"}], "en")]

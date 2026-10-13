@@ -14,6 +14,26 @@ let serial = 0;
 /** Operation ids only identify edits within one request. */
 export const operation = (op: string, params: Record<string, unknown> = {}): Operation => ({ id: `form-${++serial}`, op, params });
 
+/** Canonical research inputs: object key order is immaterial; array order is meaningful. */
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
+}
+
+/** Transport ids identify requests, never the inputs reviewed by the researcher. */
+export function operationFreshnessKey(operations: Operation[], revision: number): string {
+  return canonicalJson({ revision, operations: operations.map(({ op, params }) => ({ op, params })) });
+}
+
+/** The operations contract also returns bilingual strings. Split only the language boundary,
+ * preserving slashes in units, identifiers and paths. */
+export function operationText(text: string, zh: boolean): string {
+  const boundary = /\s+\/\s+(?=[\u3400-\u9fff])/;
+  const match = boundary.exec(text);
+  if (!match) return text;
+  return zh ? text.slice(match.index + match[0].length).trim() : text.slice(0, match.index).trim();
+}
+
 export function capabilities(project: Project): Capabilities | undefined {
   return (project as Project & { capabilities?: Capabilities }).capabilities;
 }

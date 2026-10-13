@@ -7,6 +7,7 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from aeroagentsim.services.storage import RunStorage
 
@@ -67,7 +68,7 @@ def tool_schemas() -> list[dict[str, Any]]:
         ("explain_participant", "Read full participant facts; auto uses an unapplied proposal, otherwise the saved draft. Choose current for Form edits, proposed for plan review.", object_schema({"id": STRING, "scope": enum(["auto", "current", "proposed"])}, ("id",))),
         ("explain_relation", "Explain configured links in the saved draft or unapplied proposal.", object_schema({"a": STRING, "b": STRING, "scope": enum(["auto", "current", "proposed"])}, ("a", "b"))),
         ("list_runs", "List recorded runs of this session's bound project.", object_schema({})),
-        ("run_story", "Read expectations versus recorded events for a run; never simulate an outcome.", object_schema({"run_id": STRING}, ("run_id",))),
+        ("run_story", "Read the exact requested run's pinned expectations and journal, including completed Form-saved runs. Locale is optional; no simulation is performed.", object_schema({"run_id": STRING, "locale": {"type": "string", "minLength": 1, "maxLength": 32}}, ("run_id",))),
     ]
     return [{"type": "function", "function": {"name": name, "description": description, "parameters": schema}} for name, description, schema in specs]
 
@@ -103,18 +104,33 @@ def compact_json(value: Any, budget: int = 6500) -> str:
         # string slice that can hide a failure or look like an empty recorded run.
         events = value["events"]
         failures = value.get("failures", [])
-        value = {**{k: value[k] for k in ("run_id", "status", "terminal", "assessment", "coverage", "detail", "expectations_source", "workspace_version", "plan_version", "last_at_ns") if k in value},
+        from .story import failure_summary
+
+        groups = failure_summary(failures, limit=4)
+        summaries = [{**row, "payload": {"reason": row["reason"]} if row["reason"] is not None else {}} for row in groups]
+        value = {**{k: value[k] for k in ("run_id", "status", "terminal", "assessment", "coverage", "detail", "expectations_source", "workspace_version", "plan_version", "last_at_ns", "details_url") if k in value},
                  "expectations": [{k: row[k] for k in ("id", "status", "at_ns", "progress") if k in row} for row in value["expectations"]],
-                 "events": [{k: e[k] for k in ("schema", "text", "at_ns") if k in e} for e in events[-12:]],
+                 "events": [{k: e[k][:240] if isinstance(e[k], str) else e[k] for k in ("schema", "text", "at_ns") if k in e} for e in events[-12:]],
                  "events_sampled": len(events) > 12,
-                 "failures": failures[-8:], "failure_count": len(failures), "failures_sampled": len(failures) > 8}
+                 "failures": summaries, "failure_count": len(failures), "failures_sampled": len(groups) < len({row["schema"] for row in failures})}
     raw = json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
     if len(raw) <= budget:
         return raw
     if isinstance(value, dict) and "coverage" in value:
-        value["expectations"] = value["expectations"][:12]
-        value["expectations_sampled"] = True
-        value["failures"] = [{k: row[k] for k in ("schema", "text", "at_ns", "payload") if k in row} for row in value["failures"][-3:]]
+        value["expectation_count"] = len(value["expectations"])
+        value["coverage"] = copy.deepcopy(value["coverage"])
+        schemas = value["coverage"].get("schemas", {})
+        if len(schemas) > 12:
+            value["coverage"].update(schemas=dict(list(schemas.items())[:12]), schema_count=len(schemas), schemas_sampled=True)
+        for key, limit in (("events", 4), ("expectations", 12), ("failures", 2)):
+            value[key] = value[key][:limit]
+            value[key + "_sampled"] = True
+        raw = json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+        if len(raw) <= budget:
+            return raw
+        value = {**{k: value[k] for k in ("run_id", "status", "terminal", "assessment", "failure_count", "expectation_count", "details_url") if k in value},
+                 "coverage": {k: value["coverage"][k] for k in ("recorded_events", "committed_records") if k in value["coverage"]},
+                 "truncated": True, "detail": "Read Story details for the full evidence / 完整证据见 Story 详情"}
         return json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
     return json.dumps({"truncated": True, "preview": raw[:budget - 400], "detail": "Result exceeds context budget; omitted data is not evidence of absence. Query a specific id or narrower topic / 结果超出预算，省略不代表不存在；请查询具体标识或缩小主题"}, ensure_ascii=False)
 
@@ -149,11 +165,16 @@ def operation_list(operations: list[dict]) -> list[dict]:
     return [{"id": op.get("id"), "op": op.get("op"), "target": next((op.get("params", {})[key] for key in ("id", "fleet", "vehicle", "task", "control", "slot", "rule", "extract") if key in op.get("params", {})), None)} for op in operations]
 
 
-def operation_summary(operations: list[dict]) -> str:
+def operation_summary(operations: list[dict], locale: str = "en") -> str:
     """Parameter prose is regenerated from restored/revised operations, never old counts."""
-    # Revision additions intentionally have no op id until SessionStore.allocate.
-    # Describe their real operation/parameters without inventing an identifier.
-    return "; ".join((f"{op['id']} " if "id" in op else "") + f"{op['op']}: " + json.dumps(op["params"], ensure_ascii=False, separators=(",", ":")) for op in operations) or "No operations / 无操作"
+    from .presentation import operation_summaries
+
+    rows = operation_summaries(operations)
+    key = "text_zh" if locale.startswith("zh") else "text"
+    result = "; ".join(row[key] for row in rows[:12])
+    if len(rows) > 12:
+        result += f"；另有 {len(rows) - 12} 项修改，见变更详情" if locale.startswith("zh") else f"; {len(rows) - 12} more changes in Changes"
+    return result or ("无修改" if locale.startswith("zh") else "No changes")
 
 
 def workspace_operations(operations: list[dict[str, Any]], baseline: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -352,6 +373,33 @@ class ToolRunner:
 
         session = self.sessions.get(identifier)
         previous = session["plans"].get(str(session["plan_version"]))
+        # Older failed revisions may already have replaced their creation with
+        # set_orders. Recover only that same retained op's real ancestor recipe.
+        recipes = {}
+        ancestor = session["plans"].get(str(parent))
+        visited = set()
+        while ancestor is not None and ancestor["version"] not in visited:
+            visited.add(ancestor["version"])
+            for operation in ancestor["operations"]:
+                if operation["op"] == "add_orders":
+                    recipes.setdefault(operation["id"], (operation, ancestor["version"]))
+            ancestor = session["plans"].get(str(ancestor.get("parent")))
+        recovery_notes = []
+        operations = copy.deepcopy(operations)
+        for index, operation in enumerate(operations):
+            recipe = recipes.get(operation.get("id"))
+            if operation["op"] != "set_orders" or recipe is None:
+                continue
+            creation, source_version = recipe
+            target = creation["params"]["id"]
+            if operation["params"]["id"] not in {target, creation["id"]}:
+                continue
+            if any(op["op"] == "add_orders" and op["params"]["id"] == target for op in operations):
+                continue
+            operations[index] = {"id": operation["id"], "op": "add_orders", "params": {**copy.deepcopy(creation["params"]), **operation["params"], "id": target}}
+            recovery_notes.append(f"Retained the creation of workload {target!r} from plan v{source_version} while editing its parameters / 修改工作量 {target!r} 时保留方案 v{source_version} 的真实创建配置")
+        if recovery_notes:
+            summary = operation_summary(operations, session["locale"])
         ctx = self.context(identifier)
         base = copy.deepcopy(base)
         requested_base = copy.deepcopy(base)
@@ -373,8 +421,10 @@ class ToolRunner:
         directory = self.sessions.plan_directory(identifier, version)
         directory.parent.mkdir(parents=True, exist_ok=True)
         result = compile_plan(ctx, base, compile_operations, directory, resolved=resolved)
+        result.notes.extend(recovery_notes)
         if "template" in requested_base and "workspace" in base:
             result.notes.append(f"Bound workspace preserved; requested template {requested_base['template']!r} was not substituted. Lowalt prerequisites are installed by explicit compiler operations / 保留绑定工作区，未替换为请求模板，低空前置组件通过编译操作安装")
+        if recovery_notes or ("template" in requested_base and "workspace" in base):
             record_path = directory / "compile.json"
             if record_path.is_file():
                 record = json.loads(record_path.read_text())
@@ -394,6 +444,20 @@ class ToolRunner:
                 "interactions": result.interactions, "expectations": result.expectations,
                 "_document": result.document,
                 "_baseline_operations": baseline, "_compile_operations": result.operations}
+        from .presentation import operation_summaries
+
+        plan["operation_summaries"] = operation_summaries(operations)
+        region_plan = directory / "files/region.plan.json"
+        if result.ok and region_plan.is_file():
+            geography = json.loads(region_plan.read_text())
+            plan["_geography"] = {k: geography[k] for k in ("region", "scene", "scene_source", "preview")}
+        elif result.ok and "workspace" in base:
+            draft = self.store.get(base["workspace"])
+            if draft.get("revision") == resolved.revision and "scene" in draft:
+                from aeroagentsim.authoring.scene import preview_geometry
+
+                plan["_geography"] = {k: copy.deepcopy(draft[k]) for k in ("region", "scene", "scene_source") if k in draft}
+                plan["_geography"]["preview"] = {"origin": draft["scene"]["origin"], "geometry": preview_geometry(draft["scene"])}
         self.sessions.put_plan(identifier, plan, current=current)
         if result.ok and self.on_plan is not None:
             self.on_plan(identifier, version)
@@ -414,7 +478,7 @@ class ToolRunner:
         return self._compile(identifier, **arguments)
 
     @staticmethod
-    def _revision(plan: dict[str, Any], changes: dict[str, Any]) -> dict[str, Any]:
+    def _revision(plan: dict[str, Any], changes: dict[str, Any], locale: str = "en") -> dict[str, Any]:
         result = {k: copy.deepcopy(plan[k]) for k in ("base", "title", "summary", "operations", "assumptions", "open_questions")}
         known = {op["id"] for op in result["operations"]}
         remove = []
@@ -436,7 +500,16 @@ class ToolRunner:
         if set(remove) - known:
             unknown = ", ".join(sorted(set(remove) - known))
             raise ValueError(f"Cannot remove unknown operations {unknown}. Current ids: {current} / 无法移除不存在的操作 {unknown}；当前标识：{current}")
-        by_id = {op["id"]: op for op in updates}
+        by_id = {op["id"]: copy.deepcopy(op) for op in updates}
+        # Revising a retained workload creation edits its recipe. Replacing the
+        # creation by set_orders would leave nothing to edit on recompilation.
+        for original in result["operations"]:
+            update = by_id.get(original["id"])
+            if original["op"] == "add_orders" and update is not None and update["op"] == "set_orders":
+                if update["params"]["id"] not in {original["params"]["id"], original["id"]}:
+                    raise ValueError(f"{original['id']}: workload is {original['params']['id']!r}; retain that target / 请保留该工作量标识")
+                params = {**copy.deepcopy(original["params"]), **update["params"], "id": original["params"]["id"]}
+                by_id[original["id"]] = {"id": original["id"], "op": "add_orders", "params": params}
         result["operations"] = [copy.deepcopy(by_id.get(op["id"], op)) for op in result["operations"] if op["id"] not in remove]
         for op in changes.get("add", []):
             added = copy.deepcopy(op)
@@ -447,9 +520,9 @@ class ToolRunner:
                 result[key] = copy.deepcopy(changes[key])
         if remove or updates or changes.get("add"):
             if "summary" not in changes:
-                result["summary"] = operation_summary(result["operations"])
+                result["summary"] = operation_summary(result["operations"], locale)
             if "title" not in changes:
-                result["title"] = "Revised arrangement / 修改后的安排"
+                result["title"] = "修改后的安排" if locale.startswith("zh") else "Revised arrangement"
             if "assumptions" not in changes:
                 result["assumptions"] = []  # Old parameter prose cannot be assumed true after edits.
         if "open_questions" in changes and ("add_questions" in changes or "resolve_questions" in changes):
@@ -471,7 +544,7 @@ class ToolRunner:
         if self.sessions.get(identifier)["plan_version"] is None:
             raise ValueError("No plan in this conversation yet; start one with draft_plan (an open project is its base) / 本对话还没有方案；请先用 draft_plan 起草（已打开的项目即为起点）")
         plan = self.sessions.plan(identifier)
-        return self._compile(identifier, **self._revision(plan, changes), parent=plan["version"], retained={op["id"] for op in plan["operations"]})
+        return self._compile(identifier, **self._revision(plan, changes, self.sessions.get(identifier)["locale"]), parent=plan["version"], retained={op["id"] for op in plan["operations"]})
 
     def restore_operations(self, identifier: str, from_version: int, note: str, op_ids: list[str] | None = None) -> dict[str, Any]:
         previous, current = self.sessions.plan(identifier, from_version), self.sessions.plan(identifier)
@@ -490,8 +563,9 @@ class ToolRunner:
                 following = {later["id"] for later in previous["operations"][index + 1:]}
                 position = next((i for i, current_op in enumerate(arguments["operations"]) if current_op["id"] in following), len(arguments["operations"]))
                 arguments["operations"].insert(position, copy.deepcopy(op))
-            arguments["title"] = f"Restored operations from v{from_version} / 恢复 v{from_version} 的操作"
-            arguments["summary"] = operation_summary(arguments["operations"])
+            locale = self.sessions.get(identifier)["locale"]
+            arguments["title"] = f"恢复 v{from_version} 的安排" if locale.startswith("zh") else f"Restored arrangement from v{from_version}"
+            arguments["summary"] = operation_summary(arguments["operations"], locale)
             arguments["assumptions"] = []
         arguments["note"] = note
         retained = {op["id"] for p in (previous, current) for op in p["operations"]}
@@ -505,7 +579,7 @@ class ToolRunner:
         results = []
         for variant in variants:
             if "changes" in variant:
-                arguments = self._revision(plan, variant["changes"])
+                arguments = self._revision(plan, variant["changes"], self.sessions.get(identifier)["locale"])
             else:
                 arguments = {k: copy.deepcopy(plan[k]) for k in ("base", "title", "summary", "operations", "assumptions", "open_questions")}
                 arguments["operations"] = variant["operations"]
@@ -556,7 +630,7 @@ class ToolRunner:
                 result.append({k: metadata[k] for k in ("id", "status", "workspace_version", "scenario") if k in metadata})
         return result
 
-    def run_story(self, identifier: str, run_id: str) -> dict[str, Any]:
+    def run_story(self, identifier: str, run_id: str, locale: str | None = None) -> dict[str, Any]:
         from .story import run_story
 
         if not run_id.startswith("run-") or Path(run_id).name != run_id:
@@ -564,7 +638,9 @@ class ToolRunner:
         directory = self.run_root / run_id
         metadata = RunStorage(directory).metadata()
         session = self.sessions.get(identifier)
-        if session["workspace_id"] is None or metadata.get("studio_workspace") != session["workspace_id"]:
+        if locale is not None and (not isinstance(locale, str) or not locale.strip() or len(locale) > 32):
+            raise ValueError("locale: a nonempty locale of at most 32 characters is required / 语言标识须非空且不超过 32 个字符")
+        if session["workspace_id"] is not None and metadata.get("studio_workspace") != session["workspace_id"]:
             raise FileNotFoundError("Run does not belong to this project / 运行不属于此项目")
         applied = next((r for r in reversed(session["applied"]) if r["workspace_id"] == session["workspace_id"] and r["version"] == metadata.get("workspace_version")), None)
         # Every run has a pinned scenario, including versions saved in the Form editor.
@@ -572,6 +648,8 @@ class ToolRunner:
         from .story import pinned_expectations
 
         expectations = pinned_expectations(directory)
-        return {**run_story(directory, expectations, locale=session["locale"]), "run_id": run_id, "status": metadata["status"],
+        selected_locale = session["locale"] if locale is None else locale
+        return {**run_story(directory, expectations, locale=selected_locale), "run_id": run_id, "status": metadata["status"],
                 "expectations_source": "pinned_run_scenario", "workspace_version": metadata.get("workspace_version"),
-                "plan_version": applied["plan_version"] if applied else None}
+                "plan_version": applied["plan_version"] if applied else None,
+                "details_url": f"/v1/assistant/sessions/{identifier}/story/{run_id}?locale={quote(selected_locale, safe='')}"}
