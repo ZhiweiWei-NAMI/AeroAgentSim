@@ -61,6 +61,21 @@ def test_diff_tracks_configuration_and_real_entities(compiled) -> None:
     assert result["added"] == result["removed"] == []
 
 
+def test_diff_preserves_localized_labels_for_every_change_group():
+    before = {"places": [
+        {"id": "changed", "label": "Pad", "label_zh": "充电坪", "position": [0, 0, 0]},
+        {"id": "removed", "label": "Depot", "label_zh": "仓库"},
+    ]}
+    after = {"places": [
+        {"id": "changed", "label": "Pad", "label_zh": "充电坪", "position": [10, 0, 0]},
+        {"id": "added", "label": "Customer", "label_zh": "客户"},
+    ]}
+    result = diff(before, after)
+    assert result["added"][0]["label_zh"] == "客户"
+    assert result["changed"][0]["label_zh"] == "充电坪"
+    assert result["removed"][0]["label_zh"] == "仓库"
+
+
 def test_explanations_do_not_invent_assignments(compiled) -> None:
     loaded, prepared = compiled
     summary = summarize(loaded.document, directory=prepared.base)

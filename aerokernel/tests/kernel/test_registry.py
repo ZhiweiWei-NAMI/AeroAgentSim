@@ -75,8 +75,8 @@ SCHEMAS = [
     ({"type": "integer", "minimum": 0, "maximum": 3}, [0, 3], [True, 1.0, -1, 4]),
     (
         {"type": "number", "minimum": 0.0, "maximum": 3.0},
-        [0.0, 3.0],
-        [0, True, -1.0, 4.0],
+        [0, 3, 0.0, 3.0],
+        [True, False, None, "1", -1, -1.0, 4, 4.0],
     ),
     ({"type": "boolean"}, [False, True], [0, 1, None]),
     ({"type": "string", "min_length": 1, "max_length": 2}, ["a", "é"], ["", "abc", 1]),
@@ -95,8 +95,8 @@ SCHEMAS = [
     ),
     (
         {"type": "vector", "items": {"type": "number"}, "length": 2},
-        [[1.0, 2.0]],
-        [[1.0], [1, 2]],
+        [[1.0, 2.0], [1, 2], [1, 2.0]],
+        [[1.0], [True, 2], ["1", 2]],
     ),
     (
         {"type": "matrix", "items": {"type": "integer"}, "rows": 2, "columns": 1},
@@ -143,6 +143,20 @@ def test_portable_subset(schema, valid, invalid):
     for value in invalid:
         with pytest.raises(KernelError):
             r.validate(r.field("f").schema, value)
+
+
+def test_integral_json_numbers_validate_in_nested_number_slots_without_boolean_coercion():
+    import json
+
+    schema = {"type": "record", "members": {
+        "energy": {"type": "number", "minimum": 0, "maximum": 100000},
+        "position": {"type": "vector", "length": 3, "items": {"type": "number"}},
+    }, "required": ["energy", "position"], "extra": False}
+    r = registry((FieldDescriptor("f", "Root", schema),))
+    r.validate(schema, json.loads('{"energy":100000,"position":[0,-25,10]}'))
+    for invalid in (True, False, None, "100000", -1, 100001):
+        with pytest.raises(KernelError):
+            r.validate(schema, {"energy": invalid, "position": [0, -25, 10]})
 
 
 @pytest.mark.parametrize(

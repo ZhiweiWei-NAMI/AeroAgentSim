@@ -357,7 +357,7 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
                     resume = "lowalt.weather.release" in wind_schemas and gust["end_s"] < duration and after is not None and all(
                         after <= limits[entities[v]["facts"]["lowalt.vehicle_class"] + "_limit_mps"] for v in members)
                     effects.append({"fleet": fleet["id"], "vehicles": members, "spraying": fleet["vehicle_class"] == "spraying", "resume": resume})
-        events.append({"id": f"wind-gust-{i + 1}", "kind": "wind_gust", "label": f"Wind gust: {gust['speed_mps']:g} m/s",
+        events.append({"id": f"wind-gust-{round(gust['start_s'] * SECOND)}", "kind": "wind_gust", "label": f"Wind gust: {gust['speed_mps']:g} m/s",
                        "label_zh": f"阵风：风速 {gust['speed_mps']:g} 米/秒", "at_s": gust["start_s"], "end_s": gust["end_s"],
                        "speed_mps": gust["speed_mps"], "after_speed_mps": after, "effects": effects, "place": None, "position": None, "layer": "setup"})
     streams = document.get("ingress_streams", [])
@@ -442,13 +442,13 @@ def diff(before: dict, after: dict) -> dict:
         old = {r["id"]: r for r in before.get(section, [])}
         new = {r["id"]: r for r in after.get(section, [])}
         for identity in sorted(new.keys() - old.keys()):
-            result["added"].append({"kind": kind, "id": identity, "label": new[identity]["label"]})
+            result["added"].append({"kind": kind, "id": identity, "label": new[identity]["label"], **({"label_zh": new[identity]["label_zh"]} if "label_zh" in new[identity] else {})})
         for identity in sorted(old.keys() - new.keys()):
-            result["removed"].append({"kind": kind, "id": identity, "label": old[identity]["label"]})
+            result["removed"].append({"kind": kind, "id": identity, "label": old[identity]["label"], **({"label_zh": old[identity]["label_zh"]} if "label_zh" in old[identity] else {})})
         for identity in sorted(old.keys() & new.keys()):
             fields = [{"name": k, "before": old[identity].get(k), "after": new[identity].get(k)} for k in sorted(old[identity].keys() | new[identity].keys()) if old[identity].get(k) != new[identity].get(k)]
             if fields:
-                result["changed"].append({"kind": kind, "id": identity, "label": new[identity]["label"], "fields": fields})
+                result["changed"].append({"kind": kind, "id": identity, "label": new[identity]["label"], **({"label_zh": new[identity]["label_zh"]} if "label_zh" in new[identity] else {}), "fields": fields})
     for section in ("title", "city", "duration_s", "run_mode", "environment", "algorithms", "cooperation", "controls", "origin"):
         old_value, new_value = before.get(section), after.get(section)
         if old_value == new_value:

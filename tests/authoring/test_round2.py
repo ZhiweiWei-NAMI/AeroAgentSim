@@ -137,6 +137,13 @@ def test_scoped_relation_catalog_exposes_real_writers_and_rule_semantics(studio)
     assert row["writer_options"] == [{"writer": "behaviour", "engine_id": "behaviour", "plugin": "behaviour"}]
     assert row["binding_kind"] == "writer_rule" and store.get(draft["id"]) == saved
     document = copy.deepcopy(saved["scenario"])
+    document["bindings"]["relations"][0]["writer"] = row["valid_writers"][0]
+    accepted = client.post(f"/v1/studio/workspaces/{draft['id']}", json={"scenario": document, "revision": saved["revision"]})
+    assert accepted.status_code == 200, accepted.text
+    validation = store.validate(draft["id"])
+    assert validation["valid"], validation
+    saved = store.get(draft["id"])
+    document = copy.deepcopy(saved["scenario"])
     document["engines"]["behaviour"]["config"].pop("relation_produces")
     document["bindings"]["relations"] = []
     store.save(draft["id"], {"scenario": document, "revision": saved["revision"]})

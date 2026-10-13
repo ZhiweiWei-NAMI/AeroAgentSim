@@ -1,8 +1,10 @@
 """Restore declared floating quantities after JavaScript JSON serialization.
 
-JSON has one numeric category; the kernel intentionally has distinct integer
-and floating schemas. Only present integer numeric values in declared number
-slots are converted. Missing, null, Boolean and string values remain unchanged
+JSON has one numeric category; integer schemas remain strict, while number schemas
+accept integral quantities. Authoring restores floats for number slots so
+typed enums and the saved field representation retain their declared kind.
+Only present integer numeric values in declared number slots are converted.
+Missing, null, Boolean and string values remain unchanged
 and are rejected by the real loader when invalid.
 """
 

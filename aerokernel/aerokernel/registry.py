@@ -372,7 +372,7 @@ class MemoryRegistry:
             "null": value is None,
             "boolean": type(value) is bool,
             "integer": type(value) is int,
-            "number": type(value) is float,
+            "number": type(value) in (int, float),
             "string": type(value) is str,
             "array": type(value) is list,
             "vector": type(value) is list,

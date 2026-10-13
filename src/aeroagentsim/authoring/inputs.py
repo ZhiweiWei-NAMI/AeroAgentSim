@@ -73,8 +73,17 @@ def extract_catalogue(sources: dict[str, Path]) -> list[dict]:
     rows = []
     for index, key in enumerate(keys):
         path = sources[key].resolve()
-        stat = path.stat()
         en, zh = labels.get(key, (key, key))
-        rows.append({"id": key, "name": key, "label": en, "label_zh": zh, "default": index == 0,
-                     **_extract_statistics(str(path), (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns))})
+        row = {"id": key, "name": key, "label": en, "label_zh": zh, "default": False}
+        try:
+            stat = path.stat()
+            row.update(_extract_statistics(str(path), (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)))
+        except (ValueError, OSError) as error:
+            # A broken configured source stays visible with its real diagnostic;
+            # it cannot hide the usable sources or acquire invented bounds/counts.
+            row["diagnostics"] = [str(error)]
+        rows.append(row)
+    default = next((row for row in rows if "bounds" in row), None)
+    if default is not None:
+        default["default"] = True
     return rows

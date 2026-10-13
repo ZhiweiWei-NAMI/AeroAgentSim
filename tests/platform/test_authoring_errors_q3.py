@@ -16,7 +16,7 @@ from aeroagentsim.scenario import ScenarioError, load_scenario
 @pytest.mark.parametrize(
     "value,code",
     [
-        (-5, "VALUE_SCHEMA"),
+        (-5, "VALUE_BOUND"),
         (False, "VALUE_SCHEMA"),
         ("-5.0", "VALUE_SCHEMA"),
         (-5.0, "VALUE_BOUND"),

@@ -184,6 +184,13 @@ def test_catalog_and_real_run_replay(tmp_path: Path) -> None:
         )
         assert client.post(endpoint + "/validate", json={}).json()["valid"]
         assert client.get(endpoint + "/export").status_code == 200
+        # This lifecycle test needs a short recorded run; the research blank
+        # now intentionally defaults to 600 seconds.
+        shortened = client.post(endpoint + "/operations", json={"operations": [
+            {"id": "test-duration", "op": "set_duration", "params": {"seconds": 2}},
+        ], "revision": w["revision"]})
+        assert shortened.status_code == 200, shortened.text
+        w = shortened.json()
         run = client.post(
             "/v1/runs", json={"scenario": w["scenario"], "studio_workspace": w["id"]}
         )

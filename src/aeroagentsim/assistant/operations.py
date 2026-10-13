@@ -84,6 +84,9 @@ _spec("set_duration", "controls", "Set the run horizon in seconds.", "设置仿�
 _spec("set_run_mode", "controls", "Choose scheduled or interactive operator input.", "选择预设或交互操作输入。", obj({"mode": enum(["scheduled", "interactive"])}, ("mode",)), {"mode": "scheduled"})
 _spec("set_wind", "events", "Set the background wind speed.", "设置背景风速。", obj({"speed_mps": number()}, ("speed_mps",)), {"speed_mps": 3})
 _spec("add_gust", "events", "Add a timed wind gust.", "添加定时阵风。", obj({"start_s": number(), "end_s": number(exclusiveMinimum=0), "speed_mps": number()}, ("start_s", "end_s", "speed_mps")), {"start_s": 60, "end_s": 90, "speed_mps": 9})
+_spec("remove_gust", "events", "Remove a configured gust by its zero-based index or start time from matching wind profiles.", "按从零开始的索引或开始时间删除匹配风场中的阵风。",
+      {**obj({"index": {"type": "integer", "minimum": 0}, "start_s": number()}),
+       "anyOf": [obj({"index": {"type": "integer", "minimum": 0}}, ("index",)), obj({"start_s": number()}, ("start_s",))]}, {"start_s": 60})
 _spec("set_rule", "rules", "Change an operational safety or medical rule.", "修改运行安全或医疗规则。", obj({"rule": enum(["battery_reserve_pct", "safety_distance_m", "wind_limit_mps", "medical_preemption"]), "value": {"anyOf": [number(), {"type": "boolean"}]}}, ("rule", "value")), {"rule": "battery_reserve_pct", "value": 30})
 _spec("set_algorithm", "algorithms", "Select an installed decision algorithm for a slot.", "为算法槽选择已安装的决策算法。", obj({"slot": enum(["allocation", "path_planning", "conflict_resolution", "charging"]), "value": STRING}, ("slot", "value")), {"slot": "allocation", "value": "nearest"})
 place = {"id": IDENTIFIER, "role": enum(PLACE_TYPES), "at": AT, "label": STRING, "label_zh": STRING,

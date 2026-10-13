@@ -29,6 +29,55 @@ def files(root: Path) -> dict[str, bytes]:
     return {str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()}
 
 
+@pytest.mark.parametrize("selector", [{"index": 0}, {"start_s": 20}])
+def test_remove_gust_reviews_exact_interval_and_preserves_remaining_gust(api, selector):
+    store, _, client = api
+    draft = store.create("Reviewed weather")
+    path = f"/v1/studio/workspaces/{draft['id']}"
+    response = client.post(path + "/operations", json={"operations": [
+        op("components", "add_lowalt_components"),
+        op("wind", "set_wind", speed_mps=2),
+        op("first", "add_gust", start_s=20, end_s=25, speed_mps=9),
+        op("second", "add_gust", start_s=40, end_s=45, speed_mps=12),
+    ]})
+    assert response.status_code == 200, response.text
+    saved = store.get(draft["id"])
+    request = {"operations": [op("remove", "remove_gust", **selector)], "revision": saved["revision"], "dry_run": True}
+    before = files(store.directory(draft["id"]))
+    review = client.post(path + "/operations", json=request)
+    assert review.status_code == 200, review.text
+    assert store.get(draft["id"]) == saved and files(store.directory(draft["id"])) == before
+    removed = [row for row in review.json()["diff"]["removed"] if row["kind"] == "event"]
+    assert len(removed) == 1 and removed[0]["label"] == "Wind gust: 9 m/s"
+    assert removed[0]["label_zh"] == "阵风：风速 9 米/秒"
+    assert not any(row["id"] == "wind-gust-40000000000" for group in ("added", "removed") for row in review.json()["diff"][group])
+    request["dry_run"] = False
+    applied = client.post(path + "/operations", json=request)
+    assert applied.status_code == 200, applied.text
+    profile = applied.json()["scenario"]["engines"]["environment"]["config"]["profiles"]["weather"]["lowalt.wind"]
+    assert profile["value"] == [2, 0, 0] and profile["gusts"] == [{"start_ns": 40_000_000_000, "end_ns": 45_000_000_000, "value": [12, 0, 0]}]
+    assert store.validate(draft["id"])["valid"]
+    # The last removal restores a valid constant profile and keeps the baseline.
+    last = client.post(path + "/operations", json={"operations": [op("last", "remove_gust", start_s=40)], "revision": applied.json()["revision"]})
+    assert last.status_code == 200, last.text
+    profile = last.json()["scenario"]["engines"]["environment"]["config"]["profiles"]["weather"]["lowalt.wind"]
+    assert profile == {"mode": "constant", "value": [2, 0, 0]}
+    assert store.validate(draft["id"])["valid"]
+
+
+@pytest.mark.parametrize("selector", [{}, {"index": True}, {"index": -1}, {"start_s": None}, {"index": 0, "start_s": 20}, {"index": 99}, {"start_s": 99}])
+def test_remove_gust_invalid_selection_does_not_mutate_workspace(api, selector):
+    store, _, client = api
+    draft = store.create("Invalid gust removal")
+    path = f"/v1/studio/workspaces/{draft['id']}"
+    saved = client.post(path + "/operations", json={"operations": [op("components", "add_lowalt_components"), op("gust", "add_gust", start_s=20, end_s=25, speed_mps=9)]})
+    assert saved.status_code == 200, saved.text
+    before = store.get(draft["id"])
+    response = client.post(path + "/operations", json={"operations": [op("invalid-remove", "remove_gust", **selector)], "revision": before["revision"]})
+    assert response.status_code == 422, response.text
+    assert store.get(draft["id"]) == before
+
+
 @pytest.fixture
 def api(tmp_path: Path):
     store = WorkspaceStore(tmp_path / "workspaces", None)

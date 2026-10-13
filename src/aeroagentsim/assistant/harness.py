@@ -124,11 +124,11 @@ class Harness:
         self.sessions.emit(identifier, "notice", text="Turn cancelled; compiled proposals remain available / 对话已取消；已编译的方案仍可查看")
         return True
 
-    def _grounded_reply(self, identifier: str, text: str, evidence: dict | None) -> str:
+    def _grounded_reply(self, identifier: str, text: str, evidence: dict | None, context: dict[str, Any] | None = None) -> str:
         """Fixed observation actions render recorded facts instead of historical model prose."""
         session = self.sessions.get(identifier)
         question = next((m["content"] for m in reversed(session["transcript"]) if m["role"] == "user"), "")
-        zh = str(session["locale"]).startswith("zh")
+        zh = str((context or {}).get("locale", session["locale"])).startswith("zh")
         if evidence is not None and re.search(r"summari[sz]e|what is happening|总结|现在发生", question, re.I):
             details_url = evidence.get("details_url") or f"/v1/assistant/sessions/{identifier}/story/{evidence['run_id']}"
             if "unavailable" in evidence:
@@ -190,14 +190,14 @@ class Harness:
                     return ("已保存草稿中仍存在这些对象：\n\n" if zh else "These participants exist in the saved draft:\n\n") + "\n\n".join(json.dumps(entity, ensure_ascii=False) for entity in facts)
         return text
 
-    def _answer(self, identifier: str, message: dict[str, Any], evidence: dict | None = None) -> None:
+    def _answer(self, identifier: str, message: dict[str, Any], evidence: dict | None = None, context: dict[str, Any] | None = None) -> None:
         content = message.get("content")
         if not isinstance(content, str) or not content.strip():
             raise ProviderError("PROTOCOL", "empty final completion")
         text, suggestions = split_suggestions(content)
         if not text:
             raise ProviderError("PROTOCOL", "empty final completion")
-        grounded = self._grounded_reply(identifier, text, evidence)
+        grounded = self._grounded_reply(identifier, text, evidence, context)
         used_grounded_facts = grounded != text
         text = grounded
         session = self.sessions.get(identifier)
@@ -208,15 +208,15 @@ class Harness:
             if not used_grounded_facts and evidence is None:
                 sentences = re.split(r"(?<=[。！？])|(?<=[.!?])\s+|\n", text)
                 text = "\n".join(s.strip() for s in sentences if s.strip() and not re.search(r"\b(?:validat\w*|pending)\b|wait.*confirm|before confirming|校验|验证|等待.*确认", s, re.I))
-            status = plan_status(session, plan, zh=str(session["locale"]).startswith("zh"))
+            status = plan_status(session, plan, zh=str((context or {}).get("locale", session["locale"])).startswith("zh"))
             text = (text + "\n\n" if text else "") + status
         self.sessions.append(identifier, {"role": "assistant", "content": text + ("\nSuggestions: " + " | ".join(suggestions) if suggestions else "")})
         self.sessions.emit(identifier, "assistant", text=text, suggestions=suggestions)
 
-    def _closing(self, identifier: str) -> str:
+    def _closing(self, identifier: str, context: dict[str, Any] | None = None) -> str:
         """A grounded closing line from the session's current plan, for a turn the model did not close."""
         session = self.sessions.get(identifier)
-        zh = str(session.get("locale", "")).startswith("zh")
+        zh = str((context or {}).get("locale", session.get("locale", ""))).startswith("zh")
         plan = session["plans"].get(str(session["plan_version"]))
         if plan is None:
             return "这一轮还没有形成方案，请再发一条消息继续。" if zh else "No proposal was finished in this turn; send another message to continue."
@@ -257,13 +257,13 @@ class Harness:
                     raise ProviderError("PROTOCOL", "invalid assistant message")
                 calls = message.get("tool_calls")
                 if not calls:
-                    self._answer(identifier, message, evidence)
+                    self._answer(identifier, message, evidence, context)
                     break
                 if exhausted:
                     # Some models keep asking for tools even when none are offered; the turn still
                     # ends with an answer, the model's own text if it gave any, else the plan's state.
                     content = message.get("content")
-                    self._answer(identifier, {"role": "assistant", "content": content if isinstance(content, str) and content.strip() else self._closing(identifier)}, evidence)
+                    self._answer(identifier, {"role": "assistant", "content": content if isinstance(content, str) and content.strip() else self._closing(identifier, context)}, evidence, context)
                     self.sessions.emit(identifier, "notice", text="The model exhausted this turn's tool budget; review the latest proposal or send another message / 模型已用尽本轮工具预算；请查看最新方案或发送下一条消息")
                     break
                 if not isinstance(calls, list) or len(calls) > 12:

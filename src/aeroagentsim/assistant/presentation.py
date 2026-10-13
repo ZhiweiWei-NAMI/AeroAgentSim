@@ -10,7 +10,7 @@ LABELS = {
     "add_fleet": ("Add fleet", "添加机群"), "set_fleet": ("Edit fleet", "修改机群"), "remove_fleet": ("Remove fleet", "移除机群"),
     "set_vehicle": ("Edit drone", "修改无人机"), "add_orders": ("Add orders", "添加订单"), "set_orders": ("Edit orders", "修改订单"),
     "remove_orders": ("Remove orders", "移除订单"), "set_task": ("Edit task", "修改任务"),
-    "set_wind": ("Background wind", "背景风"), "add_gust": ("Wind gust", "阵风"),
+    "set_wind": ("Background wind", "背景风"), "add_gust": ("Wind gust", "阵风"), "remove_gust": ("Remove wind gust", "移除阵风"),
     "set_duration": ("Run duration", "运行时长"), "set_run_mode": ("Run mode", "运行模式"),
     "set_cooperation": ("Cooperation", "协作安排"), "remove_cooperation": ("Remove cooperation", "移除协作"),
     "add_incident": ("Schedule incident", "安排事件"), "set_incident": ("Edit incident", "修改事件"), "remove_incident": ("Remove incident", "移除事件"),
@@ -20,7 +20,7 @@ LABELS = {
 PARAMETERS = {
     "id": ("", ""), "fleet": ("", ""), "vehicle": ("", ""), "task": ("", ""),
     "role": ("role", "角色"), "kind": ("kind", "类型"), "at": ("position", "位置"), "start": ("start", "起点"),
-    "count": ("count", "数量"), "capacity": ("capacity", "容量"), "power_w": ("power", "功率"),
+    "index": ("gust index", "阵风索引"), "count": ("count", "数量"), "capacity": ("capacity", "容量"), "power_w": ("power", "功率"),
     "battery_pct": ("battery", "电量"), "payload_capacity_kg": ("payload capacity", "载荷容量"),
     "payload_kg": ("payload", "载荷"), "preparation_s": ("preparation", "准备时长"),
     "delivery_window_s": ("delivery window", "配送时间窗"), "priority": ("priority", "优先级"),

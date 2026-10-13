@@ -75,7 +75,7 @@ def create_router(
             extracts = source_catalog()
             return {
                 "extracts": extracts,
-                "default_extract": extracts[0]["id"] if extracts else None,
+                "default_extract": next((row["id"] for row in extracts if row["default"]), None),
                 "basemap": None if os.environ.get("AEROAGENTSIM_BASEMAP_URL") == "" else {
                     "url": os.environ.get("AEROAGENTSIM_BASEMAP_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
                     "attribution": os.environ.get("AEROAGENTSIM_BASEMAP_ATTRIBUTION", "© OpenStreetMap contributors"),

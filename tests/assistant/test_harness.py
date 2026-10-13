@@ -66,6 +66,27 @@ def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, replies: list[Any],
     return Harness(sessions, connection, tools, max_calls=max_calls), provider, tools, identifier  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize("locale,language", [("en-US", "English"), ("zh-CN", "Chinese")])
+def test_response_language_and_grounded_reply_honor_context_locale(tmp_path, monkeypatch, locale, language):
+    from aeroagentsim.assistant.prompts import state_message
+
+    agent, _, _, identifier = harness(tmp_path, monkeypatch, [])
+    with agent.sessions.edit(identifier) as session:
+        session["locale"] = "zh-CN" if locale == "en-US" else "en-US"
+    agent.sessions.append(identifier, {"role": "user", "content": "Summarise the run."})
+    context = {"locale": locale, "run_id": "recorded"}
+    session = agent.sessions.get(identifier)
+    prompt = state_message(session, {}, context)
+    assert f"Reply in {language}" in prompt["content"]
+    assert f'locale: "{locale}"' in prompt["content"]
+    agent._answer(identifier, {"content": "Historical provider prose."}, {
+        "run_id": "recorded", "status": "completed", "coverage": {"recorded_events": 3}, "expectations": [], "failures": [],
+    }, context)
+    text = agent.sessions.get(identifier)["transcript"][-1]["content"]
+    assert ("recorded 3 events" if locale == "en-US" else "记录了 3 个事件") in text
+    assert ("没有配置预期" if locale == "en-US" else "No expectations were configured") not in text
+
+
 def test_tool_result_then_final_reply_and_statistics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     agent, provider, tools, identifier = harness(tmp_path, monkeypatch, [call('{"query":"incident"}'), {"role": "assistant", "content": "A proposed place.\nSuggestions: Defaults | Two options | Later | Inspect | Fifth"}])
     turn = agent.sessions.begin_turn(identifier, "Propose a place")

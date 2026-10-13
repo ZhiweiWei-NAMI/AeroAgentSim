@@ -525,12 +525,31 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                 stream["initial_watermark_ns"] = 0 if p["mode"] == "interactive" else document["run"]["until_ns"]
                 stream.pop("timeout_s", None)
         return
-    if name in {"set_wind", "add_gust"}:
+    if name in {"set_wind", "add_gust", "remove_gust"}:
         profiles = [(key, value) for e in document["engines"].values() if e["plugin"] == "environment"
                     for profile in e["config"].get("profiles", {}).values() for key, value in profile.items()
                     if key in {"lowalt.wind", "oo:digital_twin.wind.horizontalVelocity"}]
         if not profiles:
-            _fail("speed_mps", "Starting scene has no lowalt wind profile", "起点场景没有低空风场配置")
+            _fail("params" if name == "remove_gust" else "speed_mps", "Starting scene has no lowalt wind profile", "起点场景没有低空风场配置")
+        if name == "remove_gust":
+            selector = "index" if "index" in p else "start_s"
+            matches = []
+            for _, profile in profiles:
+                gusts = profile.get("gusts", [])
+                indices = ([p["index"]] if p["index"] < len(gusts) else []) if selector == "index" else [
+                    index for index, gust in enumerate(gusts) if gust["start_ns"] == round(p["start_s"] * SECOND)]
+                if len(indices) > 1:
+                    _fail(selector, "Gust start is ambiguous; select its index", "阵风开始时间不唯一，请使用索引")
+                if indices:
+                    matches.append((profile, indices[0]))
+            if not matches:
+                _fail(selector, "No configured gust matches this selection", "没有匹配此选择的已配置阵风")
+            for profile, index in matches:
+                del profile["gusts"][index]
+                if not profile["gusts"]:
+                    profile.pop("gusts")
+                    profile["mode"] = "constant"
+            return
         if name == "add_gust" and p["end_s"] <= p["start_s"]:
             _fail("end_s", "Gust end must follow start", "阵风结束必须晚于开始")
         if name == "add_gust" and round(p["end_s"] * SECOND) <= round(p["start_s"] * SECOND):

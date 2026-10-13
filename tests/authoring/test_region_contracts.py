@@ -103,7 +103,8 @@ def test_catalog_and_region_rest_contracts(tmp_path: Path) -> None:
     app.include_router(create_router(store, extracts={"fixture": SOURCE}))
     with TestClient(app) as client:
         extracts = client.get("/v1/studio/catalog").json()["extracts"]
-        assert extracts == [{"id": "fixture", "name": "fixture", "label": "fixture", "bounds": extract_bounds(SOURCE)}]
+        assert extracts == [{"id": "fixture", "name": "fixture", "label": "fixture", "label_zh": "fixture", "default": True,
+                             "bounds": extract_bounds(SOURCE), "buildings": 3, "roads": 1}]
         response = client.post(f"/v1/studio/workspaces/{draft['id']}/region", json=region(dry_run=True))
         assert response.status_code == 200 and response.json()["preview"]["buildings"] == 3
         invalid = client.post(f"/v1/studio/workspaces/{draft['id']}/region", json=region(dry_run=True, extract="missing"))
@@ -122,8 +123,10 @@ def test_catalog_keeps_unknown_bounds_absent_with_an_explicit_diagnostic(tmp_pat
         empty, known = response.json()["extracts"]
         assert empty["id"] == empty["label"] == "empty"
         assert "bounds" not in empty
+        assert "buildings" not in empty and "roads" not in empty and not empty["default"]
         assert "no coordinate nodes" in empty["diagnostics"][0]
         assert known["bounds"] == extract_bounds(SOURCE)
+        assert known["default"] and response.json()["default_extract"] == "fixture"
 
 
 def test_preview_buildings_and_roads_are_enu_relative_to_preview_origin(tmp_path: Path) -> None:
