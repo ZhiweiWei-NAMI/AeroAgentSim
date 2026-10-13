@@ -1,5 +1,5 @@
 import { localized, translate } from '../i18n/translate';
-import type { AlgorithmDescriptor, AlgorithmSlot, BusinessEvent, KnobValue, TemplateKnob } from './api';
+import type { AlgorithmDescriptor, AlgorithmSlot, BusinessEvent, KnobValue, ScenarioTemplate, TemplateKnob } from './api';
 
 /** Presentation only: choice values and algorithm ids sent to the service never change. */
 export function knobOptionLabel(knob: TemplateKnob, value: KnobValue, locale = 'en-US', algorithms?: AlgorithmDescriptor[]): string {
@@ -54,4 +54,17 @@ export function eventNarrative(event: BusinessEvent, locale = 'en-US', entityNam
     new RegExp(`(?<![\\w-])${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`, 'g'),
     entityNames?.get(id) ?? id,
   ), localized(event, 'text', locale));
+}
+
+export function difficultyLabel(difficulty: ScenarioTemplate['difficulty'], locale = 'en-US'): string {
+  const t = (key: string) => translate(locale, key);
+  return difficulty === 'beginner' ? t('Beginner friendly') : difficulty === 'intermediate' ? t('Some experience helps') : t('Advanced');
+}
+
+export function durationLabel(durationS: number, locale = 'en-US'): string {
+  const t = (key: string, vars: Record<string, number>) => translate(locale, key, vars);
+  if (durationS >= 60) {
+    return t('about {minutes} min simulated', { minutes: Math.round(durationS / 60) });
+  }
+  return t('about {seconds} s simulated', { seconds: durationS });
 }

@@ -9,9 +9,14 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 from aeroagentsim.agents.langgraph_client import JournalClient
-from aeroagentsim.agents.provider import ProviderError
 
-from .overlay import COOP_OPTIONS, HANDOFF_FIELDS, INCIDENT_FIELDS, TASK_KINDS, cooperation_overlay
+from .overlay import (
+    COOP_OPTIONS,
+    HANDOFF_FIELDS,
+    INCIDENT_FIELDS,
+    TASK_KINDS,
+    cooperation_overlay,
+)
 
 FRAGMENT_PATH: Path = Path(__file__).with_name("cooperation.snapshot.json")
 CONTRACT_ERROR = (
@@ -24,6 +29,7 @@ for _name, _en, _zh, _entities, _position, _severity in (
     ("incident.occurred", "Incident {incident} occurred ({kind})", "事件{incident}发生（{kind}）", ["incident"], "position", "warning"),
     ("incident.noticed", "{vehicle} noticed {incident} at {distance_m} m", "{vehicle}在 {distance_m} 米处发现{incident}", ["incident", "vehicle"], "vehicle", "notice"),
     ("incident.decision", "{vehicle} chose {choice} for {incident}: {reason}", "{vehicle}对{incident}选择{choice}：{reason}", ["incident", "vehicle"], "vehicle", "notice"),
+    ("incident.decision_failed", "{vehicle} failed to decide for {incident} ({role}): {reason}", "{vehicle}对{incident}决策失败（{role}）：{reason}", ["incident", "vehicle"], "vehicle", "warning"),
     ("incident.responding", "{vehicle} reached the response position above {incident}", "{vehicle}到达{incident}上方的响应位置", ["incident", "vehicle"], "position", "notice"),
     ("incident.photographed", "{vehicle} completed the observation of {incident}", "{vehicle}完成对{incident}的拍摄观测", ["incident", "vehicle"], "position", "info"),
     ("incident.reported", "{vehicle} reported {incident}", "{vehicle}上报{incident}", ["incident", "vehicle"], "vehicle", "notice"),
@@ -31,6 +37,7 @@ for _name, _en, _zh, _entities, _position, _severity in (
     ("handoff.offer", "{helper} offered accepted={accepted} for {handoff}: {reason}", "{helper}对{handoff}回复接受={accepted}：{reason}", ["incident", "handoff", "task", "requester", "helper"], "helper", "notice"),
     ("handoff.accepted", "{helper} accepted {task} from {requester} at {point}; released: {others}", "{helper}接受在{point}从{requester}接取{task}；释放候选：{others}", ["incident", "handoff", "task", "requester", "helper", "point", "others"], "point", "notice"),
     ("handoff.declined", "{handoff} for {task} was declined: {reason}", "{task}的{handoff}被拒绝：{reason}", ["incident", "handoff", "task", "requester"], "requester", "warning"),
+    ("handoff.failed", "{handoff} for {task} failed: {reason}", "{task}的{handoff}失败：{reason}", ["incident", "handoff", "task", "requester"], "requester", "warning"),
     ("handoff.dropped", "{requester} dropped {task} at {point} for {helper}", "{requester}将{task}放在{point}等待{helper}接取", ["incident", "handoff", "task", "requester", "helper", "point"], "point", "info"),
     ("handoff.transferred", "{helper} took over {task} from {requester} at {point}", "{helper}在{point}从{requester}接管{task}", ["incident", "handoff", "task", "requester", "helper", "point"], "helper", "info"),
 ):
@@ -318,15 +325,12 @@ def decision_graph(client: JournalClient, options: dict[str, Any]) -> Any:
         def validate(value: dict[str, Any]) -> None:
             if set(value) != {"choice", "reason"} or type(value["choice"]) is not str or value["choice"] not in payload["allowed"] or type(value["reason"]) is not str or not 0 < len(value["reason"].strip()) <= 500:
                 raise ValueError("reply requires an allowed choice and a short nonempty reason / 回复需要有效选项和简短理由")
-        try:
-            reply = await client.ask_json(
-                payload["role"],
-                "AEROAGENTSIM-COOPERATION-DECISION\nChoose one allowed action from the committed vehicle state and constraints. Reply only with JSON {\"choice\":\"<allowed option>\",\"reason\":\"<short sentence>\"}. Give the reason in English and Simplified Chinese. Do not claim an action has already happened.",
-                {"role": payload["role"], "goal": payload["goal"], "state": json.loads(payload["state_json"]), "allowed": payload["allowed"], "constraints": payload["constraints"]},
-                validate,
-            )
-        except (ProviderError, ValueError, TypeError, KeyError) as exc:
-            reply = {"choice": "", "reason": f"Model failure / 模型失败: {exc}"}
+        reply = await client.ask_json(
+            payload["role"],
+            "AEROAGENTSIM-COOPERATION-DECISION\nChoose one allowed action from the committed vehicle state and constraints. Reply only with JSON {\"choice\":\"<allowed option>\",\"reason\":\"<short sentence>\"}. Give the reason in English and Simplified Chinese. Do not claim an action has already happened.",
+            {"role": payload["role"], "goal": payload["goal"], "state": json.loads(payload["state_json"]), "allowed": payload["allowed"], "constraints": payload["constraints"]},
+            validate,
+        )
         return {"outputs": [{"kind": "event", "schema": "lowalt.coop.decision_result", "topic": "lowalt.cooperation", "payload": {"incident": payload["incident"], "vehicle": payload["vehicle"], "role": payload["role"], **reply}}]}
 
     graph = StateGraph(State)

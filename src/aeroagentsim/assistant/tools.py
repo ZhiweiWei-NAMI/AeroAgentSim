@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import copy
 import json
-import math
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -12,6 +11,8 @@ from typing import Any
 from aeroagentsim.services.storage import RunStorage
 
 from .connection import now
+from .operations import OperationError, validate_parameters
+from .operations import obj as object_schema
 from .sessions import SessionStore
 
 STRING = {"type": "string", "minLength": 1}
@@ -23,68 +24,11 @@ BASE = {"anyOf": [
 ]}
 
 
-def object_schema(properties: dict[str, Any], required: tuple[str, ...] = ()) -> dict[str, Any]:
-    return {"type": "object", "properties": properties, "required": list(required), "additionalProperties": False}
-
-
-def _discriminated(branches: list[dict[str, Any]], value: Any, path: str) -> dict[str, Any] | None:
-    """For unions tagged by a one-value enum (operations by "op"), the branch whose error is worth reporting."""
-    if not isinstance(value, dict):
-        return None
-    for key in ("op",):
-        tags = {b["properties"][key]["enum"][0]: b for b in branches if len(b.get("properties", {}).get(key, {}).get("enum", [])) == 1}
-        if tags:
-            if value.get(key) not in tags:
-                raise ValueError(f"{path}.{key}: choose from {sorted(tags)} / 请使用列出的操作")
-            return tags[value[key]]
-    return None
-
-
 def validate_arguments(schema: dict[str, Any], value: Any, path: str = "arguments") -> None:
-    if "anyOf" in schema or "oneOf" in schema:
-        branches = schema.get("anyOf", schema.get("oneOf", []))
-        tagged = _discriminated(branches, value, path)
-        if tagged is not None:
-            validate_arguments(tagged, value, path)
-            return
-        for branch in branches:
-            try:
-                validate_arguments(branch, value, path)
-                return
-            except ValueError:
-                continue
-        raise ValueError(f"{path}: no matching schema / 不符合参数结构")
-    kind = schema.get("type")
-    if kind is None:
-        return
-    matches = {"object": isinstance(value, dict), "array": isinstance(value, list),
-               "string": isinstance(value, str), "integer": type(value) is int,
-               "number": type(value) in (int, float) and math.isfinite(value),
-               "boolean": type(value) is bool, "null": value is None}
-    if not matches.get(kind, False):
-        raise ValueError(f"{path}: expected {kind} / 参数类型错误")
-    if "enum" in schema and value not in schema["enum"]:
-        raise ValueError(f"{path}: choose from {schema['enum']} / 请使用列出的选项")
-    if kind == "object":
-        properties = schema.get("properties", {})
-        missing = set(schema.get("required", [])) - value.keys()
-        extra = value.keys() - properties.keys() if schema.get("additionalProperties") is False else set()
-        if missing or extra:
-            raise ValueError(f"{path}: missing {sorted(missing)}, unknown {sorted(extra)} / 参数缺失或未声明")
-        for key, child in value.items():
-            if key in properties:
-                validate_arguments(properties[key], child, f"{path}.{key}")
-    elif kind == "array":
-        if len(value) < schema.get("minItems", 0) or len(value) > schema.get("maxItems", 1000):
-            raise ValueError(f"{path}: array length outside bounds / 列表长度超出范围")
-        for index, child in enumerate(value):
-            validate_arguments(schema.get("items", {}), child, f"{path}[{index}]")
-    elif kind == "string":
-        if len(value) < schema.get("minLength", 0) or len(value) > schema.get("maxLength", 16000):
-            raise ValueError(f"{path}: string length outside bounds / 文本长度超出范围")
-    elif kind in {"integer", "number"}:
-        if ("minimum" in schema and value < schema["minimum"]) or ("maximum" in schema and value > schema["maximum"]):
-            raise ValueError(f"{path}: number outside bounds / 数值超出范围")
+    try:
+        validate_parameters(value, schema, path, tool_input=True)
+    except OperationError as error:
+        raise ValueError(f"{error.field}: {error}") from error
 
 
 def operation_catalog() -> tuple[dict[str, Any], str]:
@@ -282,7 +226,14 @@ class ToolRunner:
         return find_places(query=query, near=near, role=role, limit=12)
 
     def lookup_contract(self, identifier: str, term: str) -> dict[str, Any]:
-        selected = self.store.catalog_for(self.sessions.get(identifier)["workspace_id"])
+        from aeroagentsim.authoring.catalog import ScenarioCatalog
+
+        session = self.sessions.get(identifier)
+        if session["plan_version"] is not None:
+            document, _ = self._scene(identifier)
+            selected = ScenarioCatalog(document, base=self.sessions.plan_directory(identifier, session["plan_version"]) / "files")
+        else:
+            selected = self.store.catalog_for(session["workspace_id"])
         result = selected.search(term)
         if "relations" in result:
             relations = result["relations"]
@@ -306,7 +257,7 @@ class ToolRunner:
         return {"types": types, "fields": fields, "relations": links, "counts": {"types": len(result["types"]), "fields": len(result["fields"]), "relations": len(relations)}, "scope": result.get("catalog_scope", "aerograph-source")}
 
     def _compile(self, identifier: str, *, base: dict[str, Any], title: str, summary: str, operations: list[dict[str, Any]], assumptions: list[str], open_questions: list[Any], note: str, variant: str | None = None, parent: int | None = None, current: bool = True, retained: set[str] | None = None) -> dict[str, Any]:
-        from aeroagentsim.services.app import configuration_differences
+        from aeroagentsim.services.comparison import configuration_differences
 
         from .compiler import compile_plan, resolve_base
         from .scene import diff as scene_diff
@@ -332,7 +283,7 @@ class ToolRunner:
         compile_operations = workspace_operations(operations, baseline) if baseline else operations
         directory = self.sessions.plan_directory(identifier, version)
         directory.parent.mkdir(parents=True, exist_ok=True)
-        result = compile_plan(ctx, base, compile_operations, directory)
+        result = compile_plan(ctx, base, compile_operations, directory, resolved=resolved)
         comparable = previous is not None and previous["compile"]["ok"] and result.ok
         changes = configuration_differences({"previous": previous["_document"], "current": result.document}) if comparable else []
         # The board renders scene-level differences; operation and raw config deltas stay alongside.
@@ -345,7 +296,7 @@ class ToolRunner:
                 "validation": {"state": "pending" if result.ok else "invalid", "errors": [] if result.ok else result.errors},
                 "scene": result.summary, "diff_base": result.diff_base, "diff_previous": diff_previous,
                 "interactions": result.interactions, "expectations": result.expectations,
-                "_document": result.document, "_compile_data": result.to_data(), "_digest": result.digest,
+                "_document": result.document,
                 "_baseline_operations": baseline, "_compile_operations": compile_operations}
         self.sessions.put_plan(identifier, plan, current=current)
         if result.ok and self.on_plan is not None:

@@ -396,6 +396,7 @@ def header(directory: Path) -> dict[str, Any]:
                 pending.extend(types[parent].parents)
         return result
 
+    runtime_registry = registry.to_data()
     result: dict[str, Any] = {
         "contract": "aeroagentsim.viewer-feed/v1",
         "runId": metadata["id"],
@@ -418,8 +419,8 @@ def header(directory: Path) -> dict[str, Any]:
         ],
         "presentation": scenario.get("presentation", []),
         "start": {"ns": "0", "microstep": 0},
-        "runtimeRegistry": lossless(registry.to_data()),
-        "messages": lossless(registry.to_data()["messages"]),
+        "runtimeRegistry": lossless(runtime_registry),
+        "messages": lossless(runtime_registry["messages"]),
     }
     # Optional authored entity metadata only; nothing is invented for entities
     # (or generated fleet members) that declare no label/business/vehicle_class.

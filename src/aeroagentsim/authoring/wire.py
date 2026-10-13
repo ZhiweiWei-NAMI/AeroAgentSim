@@ -72,7 +72,7 @@ def normalize_wire(
         if base is None:
             raise ValueError("Registry snapshot normalization requires its document base")
         compiled = read_snapshot(source_path(registry["snapshot"], base))
-        definitions.update(compiled.registry.to_data()["schemas"])
+        definitions.update(thaw(compiled.registry.schemas))
         for field in compiled.registry.fields:
             fields.setdefault(field.id, thaw(field.schema))
 

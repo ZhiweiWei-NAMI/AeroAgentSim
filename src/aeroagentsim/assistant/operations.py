@@ -116,48 +116,68 @@ class OperationError(ValueError):
         super().__init__(message)
 
 
-def validate_parameters(value: Any, schema: dict[str, Any], field: str = "params") -> None:
-    """Validate the catalogue's JSON Schema subset without an added dependency."""
-    if "anyOf" in schema:
-        for choice in schema["anyOf"]:
+def validate_parameters(value: Any, schema: dict[str, Any], field: str = "params", *, tool_input: bool = False) -> None:
+    """Shared schema traversal with the existing tool transport and operation boundaries."""
+    branches = schema.get("anyOf", schema.get("oneOf") if tool_input else None)
+    if branches is not None:
+        if tool_input and isinstance(value, dict):
+            tags = {b["properties"]["op"]["enum"][0]: b for b in branches if len(b.get("properties", {}).get("op", {}).get("enum", [])) == 1}
+            if tags:
+                if value.get("op") not in tags:
+                    raise OperationError(field + ".op", f"Choose from {sorted(tags)} / 请使用列出的操作")
+                validate_parameters(value, tags[value["op"]], field, tool_input=True)
+                return
+        for choice in branches:
             try:
-                validate_parameters(value, choice, field)
+                validate_parameters(value, choice, field, tool_input=tool_input)
                 return
             except OperationError:
                 pass
         raise OperationError(field, "Value does not match an allowed shape / 值不符合允许的格式")
     kind = schema.get("type")
+    if tool_input and kind is None:
+        return
     valid = {"object": isinstance(value, dict), "array": isinstance(value, list), "string": isinstance(value, str),
-             "number": type(value) in (int, float), "integer": type(value) is int, "boolean": type(value) is bool}
-    if kind is not None and not valid[kind]:
+             "number": type(value) in (int, float), "integer": type(value) is int, "boolean": type(value) is bool,
+             "null": tool_input and value is None}
+    if kind is not None and not valid.get(kind, False):
         raise OperationError(field, f"Expected {kind} / 需要 {kind}")
     if "enum" in schema and value not in schema["enum"]:
         raise OperationError(field, f"Choose from {schema['enum']} / 请从这些选项中选择")
     if kind in {"number", "integer"}:
         if not math.isfinite(value):
             raise OperationError(field, "Finite number required / 需要有限数值")
-        for bound, comparison in (("minimum", lambda a, b: a < b), ("maximum", lambda a, b: a > b), ("exclusiveMinimum", lambda a, b: a <= b)):
+        bounds = [("minimum", lambda a, b: a < b), ("maximum", lambda a, b: a > b)]
+        if not tool_input:
+            bounds.append(("exclusiveMinimum", lambda a, b: a <= b))
+        for bound, comparison in bounds:
             if bound in schema and comparison(value, schema[bound]):
                 raise OperationError(field, f"Must satisfy {bound} {schema[bound]} / 数值必须满足此边界")
-    if kind == "string" and len(value.strip()) < schema.get("minLength", 0):
-        raise OperationError(field, "Nonempty text required / 需要非空文本")
+    if kind == "string":
+        length = len(value if tool_input else value.strip())
+        if length < schema.get("minLength", 0):
+            raise OperationError(field, "Nonempty text required / 需要非空文本")
+        if tool_input and length > schema.get("maxLength", 16000):
+            raise OperationError(field, "Text length outside bounds / 文本长度超出范围")
     if kind == "array":
-        if len(value) < schema.get("minItems", 0) or len(value) > schema.get("maxItems", math.inf):
+        if len(value) < schema.get("minItems", 0) or len(value) > schema.get("maxItems", 1000 if tool_input else math.inf):
             raise OperationError(field, "Invalid array length / 列表长度无效")
-        if schema.get("uniqueItems") and any(v in value[:i] for i, v in enumerate(value)):
+        if not tool_input and schema.get("uniqueItems") and any(v in value[:i] for i, v in enumerate(value)):
             raise OperationError(field, "Duplicate entries / 存在重复项")
         for i, item in enumerate(value):
-            validate_parameters(item, schema.get("items", {}), f"{field}[{i}]")
+            validate_parameters(item, schema.get("items", {}), f"{field}[{i}]", tool_input=tool_input)
     if kind == "object":
         properties = schema.get("properties", {})
-        if schema.get("additionalProperties") is False:
-            for key in value.keys() - properties.keys():
-                raise OperationError(f"{field}.{key}", "Unknown parameter / 未知参数")
-        for key in schema.get("required", []):
-            if key not in value:
-                raise OperationError(f"{field}.{key}", "Required parameter / 缺少必需参数")
+        missing = [key for key in schema.get("required", []) if key not in value]
+        extra = value.keys() - properties.keys() if schema.get("additionalProperties") is False else set()
+        if tool_input and (missing or extra):
+            raise OperationError(field, f"missing {sorted(missing)}, unknown {sorted(extra)} / 参数缺失或未声明")
+        if extra:
+            raise OperationError(f"{field}.{next(iter(extra))}", "Unknown parameter / 未知参数")
+        if missing:
+            raise OperationError(f"{field}.{missing[0]}", "Required parameter / 缺少必需参数")
         for key, item in value.items():
-            validate_parameters(item, properties.get(key, {}), f"{field}.{key}")
+            validate_parameters(item, properties.get(key, {}), f"{field}.{key}", tool_input=tool_input)
 
 
 def validate_operation(operation: dict[str, Any]) -> tuple[str, dict[str, Any]]:

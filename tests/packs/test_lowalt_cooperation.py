@@ -12,9 +12,11 @@ import pytest
 from aeroagentsim.packs.lowalt.cooperation import (
     EVENTS,
     FRAGMENT_PATH,
-    expand as expand_cooperation,
     merge_contract_snapshot,
     validate_config,
+)
+from aeroagentsim.packs.lowalt.cooperation import (
+    expand as expand_cooperation,
 )
 from aeroagentsim.packs.lowalt.everyday import _base, _group, _site
 from aeroagentsim.packs.lowalt.food import food_document
@@ -252,41 +254,53 @@ def _reply(choice: str) -> dict[str, Any]:
     return {"message": {"role": "assistant", "content": json.dumps({"choice": choice, "reason": "Help while keeping delivery / 协助并保持交付"})}, "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
 
 
-@pytest.mark.parametrize("invalid", [False, True])
-def test_agent_decisions_are_journaled_and_invalid_reply_has_explicit_fallback(tmp_path: Path, invalid: bool) -> None:
+@pytest.mark.parametrize("response,offer", [("request_handoff", "accept"), ("teleport", "accept"), ("request_handoff", "teleport"), ("request_handoff", "decline")])
+def test_agent_decisions_are_journaled_without_prescribed_substitution(tmp_path: Path, response: str, offer: str) -> None:
     pytest.importorskip("langgraph")
     document = _document(tmp_path)
     coop = document["engines"]["tasks"]["config"]["cooperation"]
     coop["responder"].update(mode="agent", goal="Help without abandoning delivery / 帮助行人且保留交付")
     coop["helpers"].update(mode="agent", goal="Keep deliveries on time / 保持准时交付")
-    coop["provider"] = {"mode": "stub", "model": "cooperation-test/v1", "responses": {"responder": [_reply("teleport" if invalid else "request_handoff")], "helper": [_reply("accept")]}}
+    coop["provider"] = {"mode": "stub", "model": "cooperation-test/v1", "responses": {"responder": [_reply(response), _reply("report_only")], "helper": [_reply(offer)]}}
     records = _run(document)
-    assert _events(records, "lowalt.task.completed")[0]["payload"]["vehicle"] == "courier-1"
-    assert _events(records, "lowalt.incident.photographed")
-    decision = _events(records, "lowalt.incident.decision")[0]["payload"]
-    assert decision["mode"] == "agent" and decision["choice"] == "request_handoff"
-    assert ("fallback" in decision["reason"]) is invalid
-    calls = [event["payload"] for event in _events(records, "aas.langgraph.record") if event["payload"]["phase"] == "model_call"]
-    assert len(calls) == 2
+    handed_off = response == "request_handoff" and offer == "accept"
+    assert _events(records, "lowalt.task.completed")[0]["payload"]["vehicle"] == ("courier-1" if handed_off else "drone-1")
+    assert bool(_events(records, "lowalt.incident.photographed")) is handed_off
+    decisions = [event["payload"] for event in _events(records, "lowalt.incident.decision")]
+    assert [event["choice"] for event in decisions] == ([] if response == "teleport" else ["request_handoff"] if handed_off else ["request_handoff", "report_only"])
+    assert all(event["mode"] == "agent" for event in decisions)
+    failures = _events(records, "lowalt.incident.decision_failed")
+    assert [event["payload"]["role"] for event in failures] == (["responder"] if response == "teleport" else ["helper"] if offer == "teleport" else [])
+    if response == "teleport":
+        assert _fact_values(records, "incident-1", "lowalt.incident_state")[-1] == "decision_failed"
+    elif not handed_off:
+        assert _fact_values(records, "handoff-incident-1", "lowalt.handoff_state")[-1] == ("failed" if offer == "teleport" else "declined")
+        assert _events(records, "lowalt.incident.reported")
+    calls = [json.loads(event["payload"]["data_json"]) for event in _events(records, "aas.langgraph.record") if event["payload"]["phase"] == "model_call"]
+    assert len(calls) == (1 if response == "teleport" else 2 if handed_off else 3)
     for call in calls:
-        data = json.loads(call["data_json"])
-        assert data["request"]["messages"][0]["content"].startswith("AEROAGENTSIM-COOPERATION-DECISION\n")
-    if invalid:
-        assert any(event["payload"]["phase"] == "validation" for event in _events(records, "aas.langgraph.record"))
+        assert call["request"]["messages"][0]["content"].startswith("AEROAGENTSIM-COOPERATION-DECISION\n")
 
 
-def test_agent_provider_failure_is_recorded_before_prescribed_fallback(tmp_path: Path) -> None:
+@pytest.mark.parametrize("role", ["responder", "helper"])
+def test_agent_provider_failure_is_recorded_without_a_business_decision(tmp_path: Path, role: str) -> None:
     pytest.importorskip("langgraph")
     document = _document(tmp_path)
     coop = document["engines"]["tasks"]["config"]["cooperation"]
     coop["responder"].update(mode="agent", goal="Help / 协助")
-    coop["provider"] = {"mode": "stub", "model": "cooperation-test/v1", "responses": {"responder": [{"error": {"code": "TRANSPORT", "message": "injected outage"}}]}}
+    coop["helpers"].update(mode="agent", goal="Help / 协助")
+    responses = {"responder": [_reply("request_handoff"), _reply("report_only")], "helper": [_reply("accept")]}
+    responses[role] = [{"error": {"code": "TRANSPORT", "message": "injected outage"}}]
+    coop["provider"] = {"mode": "stub", "model": "cooperation-test/v1", "responses": responses}
     records = _run(document)
-    decision = _events(records, "lowalt.incident.decision")[0]["payload"]
-    assert "fallback" in decision["reason"] and "TRANSPORT" in decision["reason"]
+    failures = _events(records, "lowalt.incident.decision_failed")
+    assert len(failures) == 1 and failures[0]["payload"]["role"] == role
+    assert "injected outage" in failures[0]["payload"]["reason"]
     calls = [json.loads(event["payload"]["data_json"]) for event in _events(records, "aas.langgraph.record") if event["payload"]["phase"] == "model_call"]
-    assert calls[0]["error"]["code"] == "TRANSPORT"
-    assert _events(records, "lowalt.incident.photographed")
+    assert any(call.get("error", {}).get("code") == "TRANSPORT" for call in calls)
+    assert not _events(records, "lowalt.incident.photographed")
+    assert not _events(records, "lowalt.handoff.accepted")
+    assert _events(records, "lowalt.task.completed")[0]["payload"]["vehicle"] == "drone-1"
 
 
 @pytest.mark.parametrize("field,value,path", [

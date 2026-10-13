@@ -6,22 +6,22 @@ import argparse
 import json
 import time
 from contextlib import ExitStack
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from aerokernel import CommandRequest, Instant, Journal, Kernel, replay
-from aerokernel.engine import Engine, Partition
-from aerokernel.state import StateView
+from aerokernel import CommandRequest, Instant, Journal, replay
 
-from aeroagentsim.platform.plugins import EngineBuild, EngineCatalog
+from aeroagentsim.platform.plugins import EngineCatalog
+from aeroagentsim.platform.simulation import Simulation
 from aeroagentsim.scenario import Scenario, load_scenario
 
 from . import register
 from .container import DockerContainer
 
 
-class AdapterRun:
-    """Use the platform's scenario and catalog contracts without global mutation."""
+class AdapterRun(Simulation):
+    """The shared simulation with optional native-container lifecycle ownership."""
 
     def __init__(
         self,
@@ -30,13 +30,10 @@ class AdapterRun:
         containers: bool = False,
         journal: Journal | None = None,
     ) -> None:
-        self.scenario = scenario
         self.resources = ExitStack()
         self.closed = False
-        self.engines: list[Engine] = []
-        catalog = register(EngineCatalog())
-        partitions: dict[str, Partition] = {}
         try:
+            engines = {}
             for engine_id, item in sorted(scenario.engines.items()):
                 config = dict(item["config"])
                 if containers and "image" in config:
@@ -44,31 +41,12 @@ class AdapterRun:
                         DockerContainer(config["image"])
                     )
                     config["host"], config["port"] = container.endpoint
-                engine = catalog.build(
-                    item["plugin"],
-                    EngineBuild(
-                        engine_id,
-                        config,
-                        scenario.registry,
-                        scenario.manifest,
-                        scenario.manifest.entities,
-                        scenario.initial,
-                        partitions,
-                    ),
-                )
-                self.engines.append(engine)
-                self.resources.callback(engine.close)
-                for partition in engine.partitions:
-                    if partition.id in partitions:
-                        raise ValueError("duplicate partition ID")
-                    partitions[partition.id] = partition
-            self.kernel = Kernel(
-                root_seed=scenario.seed,
-                journal=journal,
-                mappings=scenario.clock_mappings,
-                configuration={"scenario": scenario.document},
+                engines[engine_id] = {**item, "config": config}
+            super().__init__(
+                replace(scenario, engines=engines),
+                journal=Journal() if journal is None else journal,
+                catalog=register(EngineCatalog()),
             )
-            self.kernel.bind(scenario.registry, scenario.manifest, tuple(self.engines))
         except BaseException:
             self.resources.close()
             raise
@@ -79,18 +57,12 @@ class AdapterRun:
     def __exit__(self, *_: object) -> None:
         self.close()
 
-    def start(self) -> StateView:
-        return self.kernel.start()
-
-    def run_until(self, ns: int) -> StateView:
-        return self.kernel.run_until(ns)
-
     def close(self) -> None:
         if self.closed:
             return
         self.closed = True
         try:
-            self.kernel.close()
+            super().close()
         finally:
             self.resources.close()
 

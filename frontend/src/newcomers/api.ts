@@ -15,7 +15,6 @@ export type AlgorithmSlot = 'allocation'|'path_planning'|'conflict_resolution'|'
 export interface AlgorithmDescriptor {id:string;slot:AlgorithmSlot;label:string;label_zh?:string;description:string;description_zh?:string}
 export interface ComparisonRun {id:string;title:string;title_zh?:string;template_id?:string;kpis:KpiValues;knobs:Record<string,KnobValue>;algorithms:Partial<Record<AlgorithmSlot,string>>}
 export interface RunComparison {runs:ComparisonRun[]}
-export interface TemplateRunReceipt {run_id:string;workspace_id?:string}
 export class TemplateApi {
  constructor(readonly base:string=window.location.origin){}
  async request<T>(path:string,body?:unknown,signal?:AbortSignal):Promise<T>{
@@ -25,11 +24,8 @@ export class TemplateApi {
  }
  async templates(signal?:AbortSignal){return decodeTemplates(await this.request<unknown>('/v1/templates',undefined,signal));}
  async template(id:string,signal?:AbortSignal){return decodeTemplates([await this.request<unknown>(`/v1/templates/${encodeURIComponent(id)}`,undefined,signal)])[0];}
- async start(id:string,knobs:Record<string,KnobValue>={},workspace=false){const receipt=await this.request<TemplateRunReceipt>(`/v1/templates/${encodeURIComponent(id)}/runs`,{knobs,...(workspace?{workspace:true}:{})});if(!receipt||typeof receipt.run_id!=='string'||!receipt.run_id)throw Error('The service did not return a run.');return receipt;}
- async workspace(id:string,knobs:Record<string,KnobValue>={}){const receipt=await this.request<{workspace_id:string}>(`/v1/templates/${encodeURIComponent(id)}/workspace`,{knobs});if(!receipt||typeof receipt.workspace_id!=='string'||!receipt.workspace_id)throw Error('The service did not return a workspace.');return receipt;}
  async kpis(id:string,signal?:AbortSignal){return decodeKpis(await this.request<unknown>(`/v1/runs/${encodeURIComponent(id)}/kpis`,undefined,signal));}
  async compare(ids:string[],signal?:AbortSignal){if(ids.length<2||ids.length>4)throw Error('Choose two to four runs to compare.');return decodeComparison(await this.request<unknown>(`/v1/runs/compare?ids=${ids.map(encodeURIComponent).join(',')}`,undefined,signal));}
  async algorithms(signal?:AbortSignal){return decodeAlgorithms(await this.request<unknown>('/v1/algorithms',undefined,signal));}
 }
 export function consoleApiBase(search:string){return new URLSearchParams(search).get('api')??window.location.origin;}
-export function templateRunUrl(receipt:TemplateRunReceipt,base:string,templateId:string){return `/runs/${encodeURIComponent(receipt.run_id)}?mode=live&view=expert&template=${encodeURIComponent(templateId)}&api=${encodeURIComponent(base)}`;}

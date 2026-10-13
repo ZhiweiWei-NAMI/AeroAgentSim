@@ -14,7 +14,7 @@ from aeroagentsim.agents.provider import ProviderError
 from aeroagentsim.agents.tools import strict_json
 
 from .connection import ConnectionStore, provider_detail
-from .prompts import SYSTEM_PROMPT, state_message
+from .prompts import SYSTEM_PROMPT, plan_status, state_message
 from .sessions import SessionStore
 from .tools import ToolRunner, compact_json, tool_label, tool_schemas
 
@@ -127,15 +127,12 @@ class Harness:
 
     def _closing(self, identifier: str) -> str:
         """A grounded closing line from the session's current plan, for a turn the model did not close."""
-        zh = str(self.sessions.get(identifier).get("locale", "")).startswith("zh")
-        try:
-            plan = self.sessions.plan(identifier)
-        except FileNotFoundError:
+        session = self.sessions.get(identifier)
+        zh = str(session.get("locale", "")).startswith("zh")
+        plan = session["plans"].get(str(session["plan_version"]))
+        if plan is None:
             return "这一轮还没有形成方案，请再发一条消息继续。" if zh else "No proposal was finished in this turn; send another message to continue."
-        questions = len(plan.get("open_questions") or [])
-        if zh:
-            return f"方案 v{plan['version']}「{plan['title']}」已准备好：{plan['summary']}" + (f" 还有 {questions} 个待确认问题，可直接选择或使用默认值。" if questions else "") + " 请在方案板中查看，确认无误后点击“确认并应用”。"
-        return f"Plan v{plan['version']} \"{plan['title']}\" is ready: {plan['summary']}" + (f" {questions} open question(s) remain; pick an answer or use the default." if questions else "") + " Review it on the plan board and press Confirm and apply when it looks right."
+        return plan_status(session, plan, zh=zh)
 
     def run_turn(self, identifier: str, turn: int, context: dict[str, Any] | None = None) -> None:
         started = time.monotonic()

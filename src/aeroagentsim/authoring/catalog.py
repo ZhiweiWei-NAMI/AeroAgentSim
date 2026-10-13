@@ -40,7 +40,7 @@ class Catalog:
                         {
                             "id": row["id"],
                             "name": row.get("name"),
-                            "parents": [row["parent"]] if row.get("parent") else [],
+                            "parents": list(row.get("parents", [row["parent"]] if row.get("parent") is not None else [])),
                             "abstract": row["abstract"],
                             "directory": row.get("navigation", {}).get("view"),
                             "parentStatus": row.get("parentStatus"),
@@ -73,7 +73,7 @@ class Catalog:
                 }
                 for f in compiled.effective_fields(type_id)
             ],
-            "schemas": compiled.registry.to_data()["schemas"],
+            "schemas": thaw(compiled.registry.schemas),
             "provenance": thaw(compiled.provenance),
             "normalizations": thaw(compiled.normalizations),
         }
@@ -84,13 +84,12 @@ class Catalog:
 class ScenarioCatalog(Catalog):
     """The selected scenario registry, including its authored local declarations.
 
-    Compile only the registry through the scenario loader. Unfinished entities,
-    engines and rules must not prevent the editor from reading the types needed
-    to repair them. This envelope contains no entities and is never executed.
+    Share registry compilation with the scenario loader. Unfinished entities,
+    engines and rules must not prevent reading the types needed to repair them.
     """
 
     def __init__(self, document: dict[str, Any], *, base: Path) -> None:
-        from aeroagentsim.scenario import load_scenario
+        from aeroagentsim.scenario.loader import _finite, load_registry
 
         registry = document.get("registry")
         if not isinstance(registry, dict):
@@ -106,34 +105,11 @@ class ScenarioCatalog(Catalog):
             isinstance(engine, dict) and engine.get("plugin") == "behaviour"
             for engine in document.get("engines", {}).values()
         ):
-            from aeroagentsim.behaviours.records import overlay
+            from aeroagentsim.behaviours.records import install_overlay
 
-            for category, rows in overlay().items():
-                selected = declarations.setdefault(category, [])
-                existing = {row["id"]: row for row in selected}
-                for row in rows:
-                    if row["id"] in existing:
-                        if existing[row["id"]] != row:
-                            raise ValueError(
-                                f"registry.{category}.{row['id']}: conflicts with behaviour overlay"
-                            )
-                    else:
-                        selected.append(row)
-        loaded = load_scenario(
-            {
-                "format": "aeroagentsim.scenario/v1",
-                "id": "authoring-registry",
-                "registry": declarations,
-                "entities": [],
-                "bindings": {"lifecycle": []},
-                "engines": {},
-                "run": {"pacing": "fast", "seed": 0, "until_ns": 0, "advance_ns": 1},
-                "outputs": {"durability": "flush"},
-            },
-            base=base,
-        )
-        self._compiled = loaded.compiled
-        self._registry = loaded.registry
+            install_overlay(declarations)
+        _finite(declarations, "scenario.registry")
+        self._compiled, self._registry = load_registry(declarations, base=base)
         self.root = base.resolve()
         self._sources = None
         self._details = {}
@@ -146,7 +122,7 @@ class ScenarioCatalog(Catalog):
     def relations(self, query: str = "") -> list[dict[str, Any]]:
         return [
             row
-            for row in self._registry.to_data().get("relations", [])
+            for row in (relation.to_data() for relation in self._registry.relations)
             if query.casefold() in str(row).casefold()
         ]
 
@@ -157,7 +133,7 @@ class ScenarioCatalog(Catalog):
         q = query.casefold()
         types = []
         for descriptor in registry.types:
-            row = raw_types.get(descriptor.id)
+            row = thaw(raw_types.get(descriptor.id, {}))
             row = row if isinstance(row, dict) else {}
             haystack = row | {"id": descriptor.id, "parents": list(descriptor.parents)}
             if q not in str(haystack).casefold():
@@ -203,7 +179,7 @@ class ScenarioCatalog(Catalog):
         return {
             "types": types,
             "fields": fields,
-            "schemas": registry.to_data()["schemas"],
+            "schemas": thaw(registry.schemas),
             "catalog_scope": "scenario-snapshot" if self.snapshot else "scenario-selection",
             "catalog_notice": (
                 "Type catalog limited to this scenario's snapshot"
@@ -232,7 +208,7 @@ class ScenarioCatalog(Catalog):
                 for f in registry.fields
                 if registry.is_a(type_id, f.declaring_type)
             ],
-            "schemas": registry.to_data()["schemas"],
+            "schemas": thaw(registry.schemas),
             "relations": [
                 row
                 for row in self.relations()

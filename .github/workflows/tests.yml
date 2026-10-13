@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, dev/lowalt]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, dev/lowalt]
   workflow_dispatch:
   workflow_call:
 
@@ -30,7 +30,7 @@ jobs:
       - name: Install minimal platform and test tools
         working-directory: platform
         run: |
-          python -m pip install -e "./aerokernel[test]" -e '.[server,dev]' -c constraints/dev.txt
+          python -m pip install -e "./aerokernel[test]" -e '.[server,dev,agents]' -c constraints/dev.txt
           python -m pip install pytest-github-actions-annotate-failures
       - name: Install console and camera dependencies
         working-directory: platform/frontend
@@ -38,6 +38,15 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
           npm run build
+      - name: Current frontend tests
+        working-directory: platform/frontend
+        run: |
+          npm run typecheck
+          npm test
+      - name: Assistant conversation through the workbench
+        if: matrix.python-version == '3.11'
+        working-directory: platform/frontend
+        run: AEROAGENTSIM_PYTHON=$(command -v python) npm run test:e2e -- e2e/assistant.spec.ts
       - name: Independent non-Docker tests
         working-directory: platform
         env:
@@ -45,7 +54,7 @@ jobs:
         run: |
           # Canonical-source compatibility cases run in the AeroGraph job below.
           python -m pytest tests/platform tests/integrations/aerograph/test_compiler.py \
-            tests/adapters tests/agents/test_provider.py tests/behaviours \
+            tests/adapters tests/agents/test_provider.py tests/assistant tests/behaviours \
             tests/observations tests/packs tests/authoring/test_snapshot_catalog.py \
             tests/demos/traffic_accident/test_public_demo.py \
             tests/demos/traffic_accident/test_packaging.py \

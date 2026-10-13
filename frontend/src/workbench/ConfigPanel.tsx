@@ -1,7 +1,7 @@
 import { ModeSwitch, type EditMode, type Origin } from '../assistant/ModeSwitch';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TemplateApi, type AlgorithmDescriptor, type KnobValue, type ScenarioTemplate } from '../newcomers/api';
-import { TemplateKnobControl } from '../newcomers/CustomizeTemplate';
+import { TemplateKnobControl } from '../newcomers/TemplateKnobControl';
 import { algorithmSlotLabel } from '../newcomers/presentation';
 import { useI18n } from '../i18n/I18nProvider';
 import { localized } from '../i18n/translate';

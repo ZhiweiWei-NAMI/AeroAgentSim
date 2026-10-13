@@ -49,7 +49,7 @@ def api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     monkeypatch.setattr(tools, "context", lambda identifier: None)
     monkeypatch.setattr(compiler, "resolve_base", lambda ctx, base: SimpleNamespace(label="Real fixture / 真实测试数据", revision=1 if "workspace" in base else None))
 
-    def compile(ctx: Any, base: Any, operations: Any, directory: Path) -> Any:
+    def compile(ctx: Any, base: Any, operations: Any, directory: Path, *, resolved: Any = None) -> Any:
         directory.mkdir(parents=True)
         data = dict(ok=True, errors=[], warnings=[], document={"id": "fixture", "entities": []}, digest="fixture", summary={"fleets": [], "places": []}, diff_base={}, interactions=[], expectations=[{"schema": "fixture.incident"}])
         return SimpleNamespace(**data, to_data=lambda: copy.deepcopy(data))

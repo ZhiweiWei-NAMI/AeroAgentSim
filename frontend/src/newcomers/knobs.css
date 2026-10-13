@@ -1,0 +1,24 @@
+.template-knob-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.template-knob-row label {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.template-knob-hint {
+  font-size: 0.8rem;
+  color: var(--csl-text-muted, #4a5561);
+}
+
+.template-number-control {display:flex;align-items:center;gap:16px}
+
+.template-number-control>.ant-slider {flex:1}
+
+.template-number-control>.ant-input-number {width:88px}
+
+.template-knob-row .ant-select {width:100%}

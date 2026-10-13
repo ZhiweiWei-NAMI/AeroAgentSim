@@ -363,14 +363,7 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
         if type_id in seen_types:
             continue
         seen_types.add(type_id)
-        parent = row.get("parent")
-        parents[type_id] = (
-            list(row["parents"])
-            if snapshot is not None
-            else [parent]
-            if isinstance(parent, str)
-            else []
-        )
+        parents[type_id] = list(row.get("parents", [row["parent"]] if isinstance(row.get("parent"), str) else []))
         navigation = row.get("navigation")
         types.append(
             {

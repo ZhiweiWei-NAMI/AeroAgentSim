@@ -15,6 +15,7 @@ from aeroagentsim.agents.provider import OpenAIProvider, Provider, ProviderError
 from aeroagentsim.agents.tools import strict_json
 
 PROFILE_LOCK = threading.RLock()
+_PROFILE_API_KEY = "AEROAGENTSIM_ASSISTANT_PROFILE_API_KEY"
 
 
 def now() -> str:
@@ -56,8 +57,8 @@ class ConnectionStore:
             return saved, key
         base_url = os.environ.get("AEROAGENTSIM_ASSISTANT_BASE_URL")
         model = os.environ.get("AEROAGENTSIM_ASSISTANT_MODEL")
-        key_env = os.environ.get("AEROAGENTSIM_ASSISTANT_API_KEY_ENV")
-        key = os.environ.get(key_env) if key_env else None
+        key_env = os.environ.get("AEROAGENTSIM_ASSISTANT_API_KEY_ENV", "AEROAGENTSIM_ASSISTANT_API_KEY")
+        key = os.environ.get(key_env)
         settings: dict[str, Any] = {
             "source": "operator" if base_url or model else None,
             "base_url": base_url,
@@ -78,23 +79,24 @@ class ConnectionStore:
             raise ValueError("Provider profiles must map names to objects / 提供者配置必须是名称到对象的映射")
         return profiles
 
-    def _refresh_profile(self) -> None:
+    def _refresh_profile(self) -> tuple[dict[str, Any], str | None]:
         settings, key = self._settings()
         if not settings.get("base_url") or not settings.get("model"):
-            return
+            return settings, key
         OpenAIProvider(settings["base_url"], settings["model"], key)
         with PROFILE_LOCK:
             profiles = self._profiles()
             profiles["assistant"] = {
                 "base_url": settings["base_url"].rstrip("/"),
                 "model": settings["model"],
-                "api_key_env": "AEROAGENTSIM_ASSISTANT_API_KEY",
+                "api_key_env": _PROFILE_API_KEY,
             }
             if key is None:
-                os.environ.pop("AEROAGENTSIM_ASSISTANT_API_KEY", None)
+                os.environ.pop(_PROFILE_API_KEY, None)
             else:
-                os.environ["AEROAGENTSIM_ASSISTANT_API_KEY"] = key
+                os.environ[_PROFILE_API_KEY] = key
             os.environ["AEROAGENTSIM_PROVIDER_PROFILES"] = json.dumps(profiles)
+        return settings, key
 
     def get(self) -> dict[str, Any]:
         with self.lock:
@@ -137,10 +139,9 @@ class ConnectionStore:
 
     def provider(self) -> Provider:
         with self.lock:
-            settings, key = self._settings()
+            settings, key = self._refresh_profile()
             if not settings.get("base_url") or not settings.get("model"):
                 raise ValueError("Connect a model first / 请先连接模型")
-            self._refresh_profile()
             return self.factory(settings["base_url"], settings["model"], key)
 
     def test(self) -> dict[str, Any]:

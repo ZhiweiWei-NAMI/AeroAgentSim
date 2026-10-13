@@ -50,6 +50,11 @@ def _missing(expectation: dict, events: list[dict], approaches: dict[str, dict],
     where = expectation["match"]["where"]
     schema = expectation["match"]["schema"]
     related = [e for e in events if _related(e, where)]
+    decision_failures = [e for e in related if e["schema"] == "lowalt.incident.decision_failed"]
+    if decision_failures:
+        failure = decision_failures[-1]
+        return _explanation("Recorded decision failure: " + failure["payload"]["reason"],
+                            "记录到决策失败：" + failure["payload"]["reason"], [failure])
     if schema == "lowalt.incident.noticed" and where.get("incident") in approaches:
         approach = approaches[where["incident"]]
         return _explanation(f"No notice event recorded. Closest recorded watcher approach: {approach['vehicle']}, {approach['distance_m']:.1f} m at {approach['at_ns'] / 1e9:g} s (notice radius {approach['notice_radius_m']:g} m). Sampled positions do not prove what happened between records.",
@@ -171,12 +176,8 @@ def run_story(run_dir: Path, expectations: list[dict], *, locale: str = "en") ->
     for expected in expectations:
         match = expected["match"]
         found = [e for e in events if e["schema"] == match["schema"] and _matches(e["payload"], match["where"])]
-        need = configured = match.get("count", 1)
-        if match.get("released_schema"):
-            # Configured slots may never be released within the run; judge completion against what was released.
-            released = sum(1 for e in events if e["schema"] == match["released_schema"] and _matches(e["payload"], match["where"]))
-            if terminal and 0 < released < configured:
-                need = released
+        need = match.get("count", 1)
+        released = sum(1 for e in events if e["schema"] == match["released_schema"] and _matches(e["payload"], match["where"])) if match.get("released_schema") else None
         # A counted expectation ("all 6 meals delivered") happens at its last required event.
         event = found[need - 1] if len(found) >= need else None
         outcome = {"id": expected["id"], "text": expected["text"], "text_zh": expected["text_zh"],
@@ -184,12 +185,12 @@ def run_story(run_dir: Path, expectations: list[dict], *, locale: str = "en") ->
                    "at_ns": event["at_ns"] if event is not None else None, "cut": event["cut"] if event is not None else None,
                    "evidence": {"text": event["text"], "text_zh": event["text_zh"], "schema": event["schema"], "payload": event["payload"]} if event is not None else None,
                    "explanation": None}
-        if configured > 1:
-            outcome["progress"] = {"done": min(len(found), need), "total": need, **({"configured": configured} if need != configured else {})}
-        if event is None and configured > 1:
-            unreleased = (f" {configured - need} of the {configured} configured were never released before the run ended.", f"另有 {configured - need}/{configured} 个已配置任务在运行结束前未发布。") if need != configured else ("", "")
-            outcome["explanation"] = _explanation(f"{len(found)} of {need}{' released' if need != configured else ''} recorded" + (" before the run ended." if terminal else " so far.") + unreleased[0],
-                                                  f"已记录 {len(found)}/{need}" + ("，运行已结束。" if terminal else "。") + unreleased[1], found[-3:])
+        if need > 1:
+            outcome["progress"] = {"done": len(found), "total": need, **({"released": released} if released is not None else {})}
+        if event is None and need > 1:
+            release_note = (f" {released} of the {need} configured tasks were released.", f"已配置的 {need} 个任务中发布了 {released} 个。") if released is not None else ("", "")
+            outcome["explanation"] = _explanation(f"{len(found)} of {need} recorded" + (" before the run ended." if terminal else " so far.") + release_note[0],
+                                                  f"已记录 {len(found)}/{need}" + ("，运行已结束。" if terminal else "。") + release_note[1], found[-3:])
         elif event is None:
             outcome["explanation"] = _missing(expected, events, approaches, terminal, last_ns)
         outcomes.append(outcome)

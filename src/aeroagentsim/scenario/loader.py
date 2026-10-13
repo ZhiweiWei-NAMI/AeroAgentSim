@@ -11,6 +11,12 @@ from pathlib import Path
 from typing import Any, ClassVar, cast
 
 import yaml
+
+try:
+    from yaml import CSafeLoader as SafeLoader
+except ImportError:  # PyYAML also supports installations without LibYAML.
+    from yaml import SafeLoader
+
 from aerokernel import (
     BindingManifest,
     BindingRule,
@@ -59,12 +65,12 @@ class ScenarioError(ValueError):
         self.code = code
 
 
-class UniqueLoader(yaml.SafeLoader):
+class UniqueLoader(SafeLoader):
     """YAML 1.2 Boolean spellings and duplicate-key rejection."""
 
     yaml_implicit_resolvers: ClassVar[dict[Any, Any]] = {  # type: ignore[misc]
         key: [(tag, regex) for tag, regex in entries if tag != "tag:yaml.org,2002:bool"]
-        for key, entries in yaml.SafeLoader.yaml_implicit_resolvers.items()
+        for key, entries in SafeLoader.yaml_implicit_resolvers.items()
     }
 
 
@@ -174,144 +180,11 @@ class Scenario:
     provenance: str = "lean"
 
 
-def load_scenario(
-    source: Path | str | dict[str, Any], *, base: Path | None = None
-) -> Scenario:
-    """Read a file or YAML body; never infer domain kinds or missing observations."""
-    try:
-        if isinstance(source, dict):
-            document = source
-            source_text = yaml.safe_dump(source, sort_keys=True)
-            directory = Path.cwd() if base is None else base
-        else:
-            path = Path(source).resolve()
-            source_text = path.read_text()
-            document = obj(yaml.load(source_text, Loader=UniqueLoader), "scenario")
-            directory = path.parent
-        return _compile(document, source_text, directory)
-    except ScenarioError:
-        raise
-    except (KeyError, TypeError, ValueError, OSError, yaml.YAMLError) as exc:
-        raise ScenarioError(
-            f"scenario: {exc}", code=getattr(exc, "code", None)
-        ) from exc
-
-
-def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
-    document = copy.deepcopy(document)
-    _finite(document, "scenario")
-    # Cooperation and per-vehicle task kinds also expand at load time; the expansion may read the
-    # registry snapshot, which is relative to the scenario file.
-    task_extensions = any(
-        isinstance(engine, dict) and engine.get("plugin") == "lowalt_tasks"
-        and any(key in (engine.get("config") or {}) for key in ("cooperation", "vehicle_task_kinds"))
-        for engine in (document.get("engines") or {}).values()
-    )
-    if "algorithms" in document or "generators" in document or task_extensions:
-        from aeroagentsim.packs.lowalt.template import expand
-
-        snapshot = (document.get("registry") or {}).get("snapshot")
-        if task_extensions and snapshot is not None:
-            document["registry"]["snapshot"] = str(source_path(text(snapshot, "registry.snapshot"), base))
-        try:
-            expand(document)
-        finally:
-            if task_extensions and snapshot is not None:
-                document["registry"]["snapshot"] = snapshot
-    behaviour_engines = [
-        name
-        for name, item in document.get("engines", {}).items()
-        if item.get("plugin") == "behaviour"
-    ]
-    if "behaviours" in document or behaviour_engines:
-        from aeroagentsim.behaviours.compiler import resolve_packages
-        from aeroagentsim.behaviours.records import TYPE, overlay
-
-        if len(behaviour_engines) != 1:
-            raise ScenarioError("behaviours: declare exactly one behaviour engine")
-        engine_id = behaviour_engines[0]
-        config = document["engines"][engine_id]["config"]
-        specs = document.get("behaviours", config.get("packages", []))
-        resolved = resolve_packages(specs, base)
-        config["packages"] = resolved
-        from aeroagentsim.behaviours.sampled import expand_pool
-
-        expand_pool(document, resolved)
-        if "behaviours" in document:
-            document["behaviours"] = resolved
-        descriptors = overlay()
-        for category, items in descriptors.items():
-            authored = document["registry"].setdefault(category, [])
-            existing = {item["id"]: item for item in authored}
-            for item in items:
-                if item["id"] in existing:
-                    if existing[item["id"]] != item:
-                        raise ScenarioError(
-                            f"registry.{category}.{item['id']}: conflicts "
-                            "with behaviour overlay"
-                        )
-                else:
-                    authored.append(item)
-        bindings = document["bindings"]
-        rules = bindings.setdefault("rules", [])
-        fields = [item["id"] for item in descriptors["fields"]]
-        if not any(
-            rule["type"] == TYPE and rule["writer"] == engine_id for rule in rules
-        ):
-            rules.append(
-                {
-                    "writer": engine_id,
-                    "type": TYPE,
-                    "fields": fields,
-                    "ids": "behaviour:*",
-                }
-            )
-        if not any(
-            rule["type"] == TYPE and rule["controller"] == engine_id
-            for rule in bindings["lifecycle"]
-        ):
-            bindings["lifecycle"].append(
-                {"controller": engine_id, "type": TYPE, "ids": "behaviour:*"}
-            )
-    allowed = {
-        "format",
-        "id",
-        "registry",
-        "entities",
-        "bindings",
-        "engines",
-        "presentation",
-        "run",
-        "outputs",
-        "origin",
-        "clock_mappings",
-        "ingress_streams",
-        "behaviours",
-        "provenance",
-        "algorithms",
-        "generators",
-        "event_narratives",
-        "city",
-    }
-    if extra := set(document) - allowed:
-        raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")
-    if "city" in document and document["city"] != "huangpu":
-        raise ScenarioError("city: expected huangpu")
-    if document.get("format") != FORMAT:
-        raise ScenarioError(f"format: expected {FORMAT}")
-    if "algorithms" in document:
-        algorithms = obj(document["algorithms"], "algorithms")
-        slots = {"allocation", "path_planning", "conflict_resolution", "charging"}
-        if set(algorithms) - slots:
-            raise ScenarioError("algorithms: unknown algorithm slot")
-        for slot, algorithm in algorithms.items():
-            text(algorithm, f"algorithms.{slot}")
-    if "event_narratives" in document:
-        from aeroagentsim.services.narratives import validate_declarations
-
-        validate_declarations(document["event_narratives"])
-    run_id = text(document["id"], "id")
-    registry_spec = obj(document["registry"], "registry")
+def load_registry(
+    registry_spec: dict[str, Any], *, base: Path
+) -> tuple[CompiledRegistry, MemoryRegistry]:
+    """Compile the selected registry and overlays without loading entities or engines."""
+    registry_spec = obj(registry_spec, "registry")
     contract(
         registry_spec,
         "registry",
@@ -466,13 +339,142 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         tuple(types),
         tuple(fields),
         tuple(messages),
-        schemas=compiled.registry.to_data()["schemas"],
+        schemas=thaw(compiled.registry.schemas),
         relations=tuple(relations),
     )
     try:
-        declarations(registry, document)
+        declarations(registry, {"registry": registry_spec})
     except (ValueError, KeyError, TypeError) as exc:
         raise ScenarioError(str(exc), code=getattr(exc, "code", None)) from exc
+    return compiled, registry
+
+
+def load_scenario(
+    source: Path | str | dict[str, Any], *, base: Path | None = None
+) -> Scenario:
+    """Read a file or YAML body; never infer domain kinds or missing observations."""
+    try:
+        if isinstance(source, dict):
+            document = source
+            source_text = yaml.safe_dump(source, sort_keys=True)
+            directory = Path.cwd() if base is None else base
+        else:
+            path = Path(source).resolve()
+            source_text = path.read_text()
+            document = obj(yaml.load(source_text, Loader=UniqueLoader), "scenario")
+            directory = path.parent
+        return _compile(document, source_text, directory)
+    except ScenarioError:
+        raise
+    except (KeyError, TypeError, ValueError, OSError, yaml.YAMLError) as exc:
+        raise ScenarioError(
+            f"scenario: {exc}", code=getattr(exc, "code", None)
+        ) from exc
+
+
+def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
+    document = copy.deepcopy(document)
+    _finite(document, "scenario")
+    # Cooperation and per-vehicle task kinds also expand at load time; the expansion may read the
+    # registry snapshot, which is relative to the scenario file.
+    task_extensions = any(
+        isinstance(engine, dict) and engine.get("plugin") == "lowalt_tasks"
+        and any(key in (engine.get("config") or {}) for key in ("cooperation", "vehicle_task_kinds"))
+        for engine in (document.get("engines") or {}).values()
+    )
+    if "algorithms" in document or "generators" in document or task_extensions:
+        from aeroagentsim.packs.lowalt.template import expand
+
+        snapshot = (document.get("registry") or {}).get("snapshot")
+        if task_extensions and snapshot is not None:
+            document["registry"]["snapshot"] = str(source_path(text(snapshot, "registry.snapshot"), base))
+        try:
+            expand(document)
+        finally:
+            if task_extensions and snapshot is not None:
+                document["registry"]["snapshot"] = snapshot
+    behaviour_engines = [
+        name
+        for name, item in document.get("engines", {}).items()
+        if item.get("plugin") == "behaviour"
+    ]
+    if "behaviours" in document or behaviour_engines:
+        from aeroagentsim.behaviours.compiler import resolve_packages
+        from aeroagentsim.behaviours.records import TYPE, install_overlay
+
+        if len(behaviour_engines) != 1:
+            raise ScenarioError("behaviours: declare exactly one behaviour engine")
+        engine_id = behaviour_engines[0]
+        config = document["engines"][engine_id]["config"]
+        specs = document.get("behaviours", config.get("packages", []))
+        resolved = resolve_packages(specs, base)
+        config["packages"] = resolved
+        from aeroagentsim.behaviours.sampled import expand_pool
+
+        expand_pool(document, resolved)
+        if "behaviours" in document:
+            document["behaviours"] = resolved
+        descriptors = install_overlay(document["registry"])
+        bindings = document["bindings"]
+        rules = bindings.setdefault("rules", [])
+        fields = [item["id"] for item in descriptors["fields"]]
+        if not any(
+            rule["type"] == TYPE and rule["writer"] == engine_id for rule in rules
+        ):
+            rules.append(
+                {
+                    "writer": engine_id,
+                    "type": TYPE,
+                    "fields": fields,
+                    "ids": "behaviour:*",
+                }
+            )
+        if not any(
+            rule["type"] == TYPE and rule["controller"] == engine_id
+            for rule in bindings["lifecycle"]
+        ):
+            bindings["lifecycle"].append(
+                {"controller": engine_id, "type": TYPE, "ids": "behaviour:*"}
+            )
+    allowed = {
+        "format",
+        "id",
+        "registry",
+        "entities",
+        "bindings",
+        "engines",
+        "presentation",
+        "run",
+        "outputs",
+        "origin",
+        "clock_mappings",
+        "ingress_streams",
+        "behaviours",
+        "provenance",
+        "algorithms",
+        "generators",
+        "event_narratives",
+        "city",
+    }
+    if extra := set(document) - allowed:
+        raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")
+    if "city" in document and document["city"] != "huangpu":
+        raise ScenarioError("city: expected huangpu")
+    if document.get("format") != FORMAT:
+        raise ScenarioError(f"format: expected {FORMAT}")
+    if "algorithms" in document:
+        algorithms = obj(document["algorithms"], "algorithms")
+        slots = {"allocation", "path_planning", "conflict_resolution", "charging"}
+        if set(algorithms) - slots:
+            raise ScenarioError("algorithms: unknown algorithm slot")
+        for slot, algorithm in algorithms.items():
+            text(algorithm, f"algorithms.{slot}")
+    if "event_narratives" in document:
+        from aeroagentsim.services.narratives import validate_declarations
+
+        validate_declarations(document["event_narratives"])
+    run_id = text(document["id"], "id")
+    compiled, registry = load_registry(document["registry"], base=base)
     refs: list[EntityRef] = []
     initial: dict[str, dict[str, Any]] = {}
     for index, item in enumerate(seq(document["entities"], "entities")):

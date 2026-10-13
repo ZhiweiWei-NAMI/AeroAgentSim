@@ -53,8 +53,6 @@ def test_key_is_separate_masked_and_profile_is_resolvable(tmp_path: Path, enviro
 
 
 def test_operator_key_selector_and_tiny_test(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, environment: None) -> None:
-    import os
-
     monkeypatch.setenv("AEROAGENTSIM_ASSISTANT_BASE_URL", "http://localhost:9876/v1")
     monkeypatch.setenv("AEROAGENTSIM_ASSISTANT_MODEL", "operator-model")
     monkeypatch.setenv("AEROAGENTSIM_ASSISTANT_API_KEY_ENV", "TEST_OPERATOR_KEY")
@@ -62,7 +60,7 @@ def test_operator_key_selector_and_tiny_test(tmp_path: Path, monkeypatch: pytest
     provider = Provider()
     connection = ConnectionStore(tmp_path, provider_factory=lambda *args: provider)
     assert connection.get()["source"] == "operator"
-    assert os.environ["AEROAGENTSIM_ASSISTANT_API_KEY"] == "operator-secret"
+    assert OpenAIProvider.from_config({"profile": "assistant"}).api_key == "operator-secret"
     assert connection.test()["status"] == "ok"
     assert provider.calls == [{"timeout_s": 20, "max_tokens": 8}]
 

@@ -18,7 +18,7 @@ from typing import Any
 import yaml
 
 from aeroagentsim.platform.simulation import Simulation
-from aeroagentsim.scenario import load_scenario
+from aeroagentsim.scenario import Scenario, load_scenario
 from aeroagentsim.scenario.loader import UniqueLoader
 from aeroagentsim.scenario.paths import source_path
 
@@ -96,7 +96,9 @@ def issue_location(scenario: dict[str, Any], path: str, message: str) -> dict[st
         while tokens:
             # Match keys in the actual draft: lowalt.site_capacity is one field, not two.
             length = next((size for size in range(len(tokens), 0, -1) if isinstance(node, dict) and ".".join(tokens[:size]) in node), 1)
-            part = ".".join(tokens[:length]); del tokens[:length]; parts.append(part)
+            part = ".".join(tokens[:length])
+            del tokens[:length]
+            parts.append(part)
             if isinstance(node, dict):
                 node = node.get(part)
             elif isinstance(node, list) and part.isdigit() and int(part) < len(node):
@@ -117,6 +119,31 @@ def issue_location(scenario: dict[str, Any], path: str, message: str) -> dict[st
     elif parts[0] in {"engines", "algorithms"} and len(parts) > 1:
         location["binding"] = parts[1]
     return location
+
+
+def validate_configuration(document: dict[str, Any], *, base: Path, directory: Path) -> Scenario:
+    """Bind configuration contracts; bootstrap and native resets belong to execution."""
+    loaded = load_scenario(document, base=base)
+    with tempfile.TemporaryDirectory(prefix="validation-", dir=directory) as scratch:
+        Simulation(loaded, run_directory=Path(scratch)).close()
+    return loaded
+
+
+def validation_failure(document: dict[str, Any], error: Exception) -> dict[str, Any]:
+    authored: BaseException = error
+    while authored.__cause__ is not None and not hasattr(authored, "path"):
+        authored = authored.__cause__
+    path = getattr(authored, "path", "$")
+    return {
+        "valid": False,
+        "errors": [f"{type(error).__name__}: {error}"],
+        "issues": [{
+            "source": getattr(authored, "source", "scenario"),
+            "path": path,
+            "message": str(authored),
+            **issue_location(document, path, str(authored)),
+        }],
+    }
 
 
 class WorkspaceConflict(ValueError):
@@ -661,16 +688,10 @@ class WorkspaceStore:
                 else self.get(identifier)
             )
             try:
-                loaded = load_scenario(
-                    draft["scenario"], base=self._base(draft["scenario"], identifier)
+                loaded = validate_configuration(
+                    draft["scenario"], base=self._base(draft["scenario"], identifier),
+                    directory=self.directory(identifier),
                 )
-                with tempfile.TemporaryDirectory(
-                    prefix="validation-", dir=self.directory(identifier)
-                ) as scratch:
-                    simulation = Simulation(loaded, run_directory=Path(scratch))
-                    # Construction compiles registry, owners and capabilities.
-                    # Plugin bootstrap and external resets belong to the run worker.
-                    simulation.close()
                 result: dict[str, Any] = {
                     "valid": True,
                     "errors": [],
@@ -678,22 +699,7 @@ class WorkspaceStore:
                     "scope": "configuration",
                 }
             except Exception as exc:  # noqa: BLE001 - validation returns the real diagnostic
-                authored: BaseException = exc
-                while authored.__cause__ is not None and not hasattr(authored, "path"):
-                    authored = authored.__cause__
-                path = getattr(authored, "path", "$")
-                result = {
-                    "valid": False,
-                    "errors": [f"{type(exc).__name__}: {exc}"],
-                    "issues": [
-                        {
-                            "source": getattr(authored, "source", "scenario"),
-                            "path": path,
-                            "message": str(authored),
-                            **issue_location(draft["scenario"], path, str(authored)),
-                        }
-                    ],
-                }
+                result = validation_failure(draft["scenario"], exc)
             result["revision"] = draft["revision"]
             draft["validation"] = result
             self._write(draft)

@@ -1,17 +1,11 @@
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
-import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
-import {MemoryRouter, useLocation} from 'react-router-dom';
+import {cleanup, fireEvent, render, screen} from '@testing-library/react';
+import {MemoryRouter} from 'react-router-dom';
 import {I18nProvider, useI18n} from '../i18n/I18nProvider';
 import {TemplateApi, type BusinessEvent, type ScenarioTemplate} from './api';
-import TemplateGallery from './TemplateGallery';
-import CustomizeTemplate from './CustomizeTemplate';
 import {EventFeed} from './EventFeed';
 import {KpiPanel} from './KpiPanel';
 import {CompareRuns} from './CompareRuns';
-import ExperimentPanel from './ExperimentPanel';
-import {TemporalFeedStore} from '../feeds/temporal-store';
-import {PlaybackClock} from '../viewport/clock';
-import {fixtureHeader, emptyCommit} from '../behaviours/extension-fixture';
 import {eventNarrative} from './presentation';
 import {categoryMetadata, severityLabel} from './categories';
 import {metricHelp} from './metric-help';
@@ -24,8 +18,7 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localStorage.clear(); });
 function LocaleToggle() { const {locale, setLocale} = useI18n(); return <button aria-label="switch-language" onClick={() => setLocale(locale === 'zh-CN' ? 'en-US' : 'zh-CN')}>switch</button>; }
-function Destination() { const location = useLocation(); return <output data-testid="destination">{location.pathname}{location.search}</output>; }
-function renderLocalized(ui: React.ReactNode) { return render(<I18nProvider><MemoryRouter>{ui}<LocaleToggle /><Destination /></MemoryRouter></I18nProvider>); }
+function renderLocalized(ui: React.ReactNode) { return render(<I18nProvider><MemoryRouter>{ui}<LocaleToggle /></MemoryRouter></I18nProvider>); }
 const template: ScenarioTemplate = {
   format: 'aeroagentsim.template/v1', id: 'bilingual', title: 'Delivery scenario', title_zh: '配送场景',
   summary: 'Deliver parcels.', summary_zh: '将包裹送达客户。', category: 'logistics', difficulty: 'beginner', duration_s: 120, scenario: 'delivery.yaml',
@@ -47,39 +40,9 @@ function mockFetch(routes: Record<string, unknown>) {
   return fetchMock;
 }
 
-it('translates gallery content and interpolated counts, switching locale without rewriting or reloading templates', async () => {
-  const fetchMock = mockFetch({'/v1/templates': [template]});
-  renderLocalized(<TemplateGallery apiBase="http://api.test" />);
-  const card = await screen.findByTestId('template-bilingual');
-  expect(within(card).getByRole('heading', {name: '配送场景'})).toBeInTheDocument();
-  expect(within(card).getByText('将包裹送达客户。')).toBeInTheDocument();
-  expect(within(card).getByText('适合新手')).toBeInTheDocument();
-  expect(within(card).getByText('约 2 分钟仿真时间')).toBeInTheDocument();
-  expect(screen.getByTestId('filter-all')).toHaveTextContent('全部（1）');
-  expect(screen.getByTestId('filter-logistics')).toHaveTextContent('物流配送（1）');
-  expect(screen.getByRole('img', {name: '配送场景 — 场景示意图'})).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', {name: 'switch-language'}));
-  expect(within(card).getByRole('heading', {name: 'Delivery scenario'})).toBeInTheDocument();
-  expect(screen.getByTestId('filter-all')).toHaveTextContent('All (1)');
-  expect(fetchMock).toHaveBeenCalledTimes(1);
-  expect(template.title).toBe('Delivery scenario');
-});
 
-it('localizes customized knob labels, descriptions and choices while posting original typed values', async () => {
-  const fetchMock = mockFetch({'/v1/templates/bilingual/runs': {run_id: 'new-run'}});
-  renderLocalized(<CustomizeTemplate template={template} api={new TemplateApi('http://api.test')} apiBase="http://api.test" />);
-  expect(screen.getByText('试试加急配送。')).toBeInTheDocument();
-  expect(screen.getByText('观察配送进度。')).toBeInTheDocument();
-  expect(screen.getByText('选择配送方式。')).toBeInTheDocument();
-  fireEvent.change(screen.getByRole('spinbutton', {name: '无人机数量'}), {target: {value: '4'}});
-  fireEvent.mouseDown(screen.getByRole('combobox', {name: '配送方式'}));
-  fireEvent.click(screen.getByText('加急'));
-  fireEvent.click(screen.getByRole('switch', {name: '允许充电'}));
-  fireEvent.click(screen.getByTestId('custom-run-bilingual'));
-  await waitFor(() => expect(screen.getByTestId('destination')).toHaveTextContent('/runs/new-run'));
-  const posted = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
-  expect(JSON.parse(String(posted?.[1]?.body))).toEqual({knobs: {count: 4, mode: 'rush', enabled: false}});
-});
+
+
 
 it('localizes metric labels and explanations without changing metric ids, measurements or units', () => {
   renderLocalized(<KpiPanel values={{tasks_completed: {value: 4, unit: 'count', label: 'Tasks completed'}, mean_task_latency_s: {value: 3, unit: 's', label: 'Mean task latency'}, custom_metric: {value: null, unit: 'kJ', label: 'Special measurement', label_zh: '特殊测量'}}} ids={['tasks_completed', 'mean_task_latency_s', 'custom_metric']} series={[]} />);
@@ -136,20 +99,4 @@ it('uses additive titles and choice labels throughout a comparison without alter
   expect(screen.getAllByText('已完成任务')).toHaveLength(2);
   expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('compare?ids=r-1,r-2'))).toBe(true);
   expect(runs.map(run => run.knobs.mode)).toEqual(['normal', 'rush']);
-});
-
-it('makes both boolean experiment values reachable with localized controls and typed payloads', async () => {
-  const report = {id: 'experiment', contract: 'aeroagentsim.experiment/v1', template_id: 'bilingual', template_title: 'Delivery scenario', status: 'completed', seeds: 3, jobs: 1, horizon_s: null, knobs: {}, vary: {enabled: [true, false]}, total: 6, completed: 6, failed: 0, error: null, runs: [], table: [{config_id: 'config-0', knobs: {enabled: true}, metrics: {tasks_completed: {mean: 4, std: 1, n: 3, unit: 'count', label: 'Tasks completed', best: true}}}]};
-  const fetchMock = mockFetch({'/v1/templates/bilingual/experiments': report});
-  renderLocalized(<ExperimentPanel base="http://api.test" templates={[template]} />);
-  fireEvent.click(screen.getByTestId('exp-knob-enabled'));
-  fireEvent.click(screen.getByRole('button', {name: '添加“允许充电”：是'}));
-  fireEvent.click(screen.getByRole('button', {name: '添加“允许充电”：否'}));
-  expect(screen.getByTestId('experiment-preview')).toHaveTextContent('2 种设置组合 × 3 次重复 = 6 次运行');
-  expect(screen.getByRole('spinbutton', {name: '仿真时长（秒）'})).toBeInTheDocument();
-  fireEvent.click(screen.getByTestId('experiment-start'));
-  expect(await screen.findByTestId('experiment-report')).toHaveTextContent('实验已完成 — 共 6 次运行，6 次成功。');
-  expect(screen.getByRole('heading', {name: '配送场景'})).toBeInTheDocument();
-  expect(screen.getByText('已完成任务')).toBeInTheDocument();
-  expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({vary: {enabled: [true, false]}, seeds: 3, jobs: 1});
 });

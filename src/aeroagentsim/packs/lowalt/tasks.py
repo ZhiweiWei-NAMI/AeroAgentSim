@@ -150,7 +150,7 @@ class Incident:
     point: str | None = None
     handoff_phase: str = "idle"
     candidates: tuple[str, ...] = ()
-    offers: dict[str, bool] | None = None
+    offers: dict[str, bool | None] | None = None
     sources: tuple[str, ...] = ()
     last_event_key: str | None = None
 
@@ -909,7 +909,7 @@ class LowaltTasks(ContextEngine):
 
     def _coop_reserved(self, vehicle: str) -> bool:
         return any(
-            (incident.responder == vehicle and incident.phase not in {"photographed", "reported"})
+            (incident.responder == vehicle and incident.phase not in {"photographed", "reported", "decision_failed"})
             or (incident.helper == vehicle and incident.handoff_phase == "accepted")
             or (incident.helper == vehicle and incident.handoff_phase == "dropped")
             or (vehicle in incident.candidates and incident.handoff_phase == "requested")
@@ -945,6 +945,8 @@ class LowaltTasks(ContextEngine):
             blocked["finish_then_respond"] = "No current task to finish / 当前没有待完成任务"
         if not self.cooperation["handoff_points"] and job is not None and job.phase == "picked_up":
             blocked["request_handoff"] = "No handoff point is configured / 未配置交接点"
+        if incident.handoff_phase in {"declined", "failed"}:
+            blocked["request_handoff"] = "The handoff ended without a helper / 交接已结束，没有协助者接替"
         if flight.purpose != "task" or read(ctx, flight.vehicle, "lowalt.charging") or read(ctx, flight.vehicle, "lowalt.weather_held") or read(ctx, flight.vehicle, "lowalt.returning_to_charge"):
             for option in COOP_OPTIONS[:-1]:
                 blocked.setdefault(option, "Vehicle is under flight or charging control / 无人机正在接受飞行或充电控制")
@@ -982,6 +984,7 @@ class LowaltTasks(ContextEngine):
             "charging": read(ctx, flight.vehicle, "lowalt.charging"),
             "distance_to_incident_m": self._coop_distance(ctx, vehicle, incident.config["position"]),
             "distance_to_requester_m": self._coop_distance(ctx, vehicle, vec(read(ctx, self.by_id[incident.responder], "lowalt.position"))),
+            "handoff_state": incident.handoff_phase,
         }
         if incident.job is not None:
             state["requested_task"] = incident.job.ref.id
@@ -1018,12 +1021,25 @@ class LowaltTasks(ContextEngine):
                 key = self.coop_decisions.pop(payload["decision_id"], None)
                 if key is not None and key in self.coop_pending:
                     failure = json.loads(payload["data_json"])
-                    self._coop_input(ctx, "lowalt.coop.decision_result", {
-                        "incident": key[0], "vehicle": key[1], "role": key[2], "choice": "",
-                        "reason": f"Model failure / 模型失败: {failure['code']}: {failure['message']}",
-                    }, source)
+                    self.coop_pending.remove(key)
+                    incident = self.incidents[key[0]]
+                    incident.sources = (source,)
+                    self._coop_failed(ctx, incident, key[1], key[2], f"Model failure / 模型失败: {failure['code']}: {failure['message']}")
             return True
         return False
+
+    def _coop_failed(self, ctx: EngineContext, incident: Incident, vehicle: str, role: str, reason: str) -> None:
+        self._business_event(ctx, "lowalt.incident.decision_failed", {
+            "incident": incident.ref.id, "vehicle": vehicle, "role": role, "mode": "agent", "reason": reason,
+        })
+        if role == "responder":
+            incident.choice = None
+            self._coop_state(ctx, incident, "decision_failed")
+        else:
+            assert incident.offers is not None
+            incident.offers[vehicle] = None
+            if len(incident.offers) == len(incident.candidates):
+                self._coop_defer(ctx, incident, "select")
 
     def _coop_tick(self, ctx: EngineContext) -> None:
         assert self.cooperation is not None
@@ -1043,21 +1059,8 @@ class LowaltTasks(ContextEngine):
                 ctx.set(incident.ref, "lowalt.incident_noticed_by", vehicle)
                 ctx.set(incident.ref, "lowalt.incident_responder", vehicle)
                 self._business_event(ctx, "lowalt.incident.noticed", {"incident": incident.ref.id, "vehicle": vehicle, "distance_m": gap})
-                allowed, blocked = self._coop_options(ctx, incident)
                 if self.cooperation["responder"]["mode"] == "agent":
-                    rules = self.cooperation["responder"]["rules"]
-                    descriptions = {
-                        "respond_now": "Respond now; suspend and later resume any interruptible task / 立即响应；暂停并随后恢复可中断任务",
-                        "request_handoff": "Ask eligible helpers to take over the current task / 请求合格协助者接管当前任务",
-                        "finish_then_respond": "Complete the current task before responding / 完成当前任务后响应",
-                        "report_only": "Report this incident without flying to it / 仅上报事件",
-                    }
-                    constraints = [
-                        f"Responding requires at least {rules['min_battery_pct']}% battery and distance at most {rules['max_response_distance_m']} m / 响应要求达到最低电量且不超过最大距离",
-                        f"Protected task kinds cannot be interrupted or transferred: {rules['protected_task_kinds']} / 受保护任务类别不能中断或交接",
-                        "A helper must accept before you leave your delivery / 离开配送前必须有协助者接受" if rules["require_replacement"] else "An interruptible delivery may be suspended and resumed after responding / 可中断配送允许在响应后恢复",
-                    ]
-                    self._coop_request(ctx, incident, vehicle, "responder", allowed, [descriptions[v] for v in allowed] + constraints + [f"{v}: {reason}" for v, reason in blocked.items()])
+                    self._coop_decide(ctx, incident)
                 else:
                     self._coop_defer(ctx, incident, "decide")
                 break
@@ -1066,6 +1069,22 @@ class LowaltTasks(ContextEngine):
         assert self.cooperation is not None and incident.responder is not None
         allowed, blocked = self._coop_options(ctx, incident)
         mode = self.cooperation["responder"]["mode"]
+        if mode == "agent" and choice is None:
+            incident.choice = None
+            rules = self.cooperation["responder"]["rules"]
+            descriptions = {
+                "respond_now": "Respond now; suspend and later resume any interruptible task / 立即响应；暂停并随后恢复可中断任务",
+                "request_handoff": "Ask eligible helpers to take over the current task / 请求合格协助者接管当前任务",
+                "finish_then_respond": "Complete the current task before responding / 完成当前任务后响应",
+                "report_only": "Report this incident without flying to it / 仅上报事件",
+            }
+            constraints = [
+                f"Responding requires at least {rules['min_battery_pct']}% battery and distance at most {rules['max_response_distance_m']} m / 响应要求达到最低电量且不超过最大距离",
+                f"Protected task kinds cannot be interrupted or transferred: {rules['protected_task_kinds']} / 受保护任务类别不能中断或交接",
+                "A helper must accept before you leave your delivery / 离开配送前必须有协助者接受" if rules["require_replacement"] else "An interruptible delivery may be suspended and resumed after responding / 可中断配送允许在响应后恢复",
+            ]
+            self._coop_request(ctx, incident, incident.responder, "responder", allowed, [descriptions[v] for v in allowed] + constraints + [f"{v}: {why}" for v, why in blocked.items()])
+            return
         if after_handoff:
             choice = self._coop_ordered(allowed, after_handoff=True)
             reason = "No helper accepted; taking the next allowed action / 无协助者接受；采用下一允许选项"
@@ -1074,8 +1093,8 @@ class LowaltTasks(ContextEngine):
             reason = "First allowed action in the prescribed order / 按预设顺序采用首个允许选项"
         elif choice not in allowed:
             rejected = blocked.get(choice, "Invalid model choice / 无效模型选项")
-            choice = self._coop_ordered(allowed)
-            reason = f"Recorded fallback / 已记录回退: {reason}; {rejected}"
+            self._coop_failed(ctx, incident, incident.responder, "responder", f"{reason}; {rejected}")
+            return
         incident.choice = choice
         self._business_event(ctx, "lowalt.incident.decision", {
             "incident": incident.ref.id, "vehicle": incident.responder, "mode": mode,
@@ -1114,7 +1133,7 @@ class LowaltTasks(ContextEngine):
         if identity == incident.responder:
             return "Requester cannot take its own handoff / 请求者不能接替自身"
         if any(other is not incident and (
-            other.responder == identity and other.phase not in {"photographed", "reported"}
+            other.responder == identity and other.phase not in {"photographed", "reported", "decision_failed"}
             or other.helper == identity and other.handoff_phase in {"accepted", "dropped"}
             or identity in other.candidates and other.handoff_phase == "requested"
         ) for other in self.incidents.values()):
@@ -1162,22 +1181,25 @@ class LowaltTasks(ContextEngine):
         assert self.cooperation is not None and incident.offers is not None
         if helper in incident.offers or incident.handoff_phase != "requested":
             return
-        flight = self.flights[helper]
-        idle = flight.job is None and flight.purpose == "task" and not read(ctx, flight.vehicle, "lowalt.charging") and not read(ctx, flight.vehicle, "lowalt.returning_to_charge")
-        prescribed = self.cooperation["helpers"]["rules"]["accept_when"] == "always" or idle
-        if choice is None:
-            accepted = prescribed
+        mode = self.cooperation["helpers"]["mode"]
+        if mode == "prescribed":
+            flight = self.flights[helper]
+            idle = flight.job is None and flight.purpose == "task" and not read(ctx, flight.vehicle, "lowalt.charging") and not read(ctx, flight.vehicle, "lowalt.returning_to_charge")
+            accepted = self.cooperation["helpers"]["rules"]["accept_when"] == "always" or idle
             reason = "Prescribed helper accepts / 预设规则接受" if accepted else "Helper busy or charging / 协助者忙碌或正在充电"
         elif choice not in {"accept", "decline"}:
-            accepted = prescribed
-            reason = f"Recorded fallback / 已记录回退: {reason}; " + ("prescribed acceptance / 预设接受" if accepted else "helper busy or charging / 协助者忙碌或充电")
+            self._coop_failed(ctx, incident, helper, "helper", f"{reason}; Invalid model choice / 无效模型选项")
+            return
         else:
             accepted = choice == "accept"
         blocked = self._coop_candidate(ctx, incident, helper)
         if accepted and blocked is not None:
+            if mode == "agent":
+                self._coop_failed(ctx, incident, helper, "helper", "Offer re-check / 接受条件复核: " + blocked)
+                return
             accepted, reason = False, "Offer re-check / 接受条件复核: " + blocked
         incident.offers[helper] = accepted
-        self._business_event(ctx, "lowalt.handoff.offer", {**self._handoff_payload(incident), "helper": helper, "accepted": accepted, "reason": reason, "mode": self.cooperation["helpers"]["mode"]})
+        self._business_event(ctx, "lowalt.handoff.offer", {**self._handoff_payload(incident), "helper": helper, "accepted": accepted, "reason": reason, "mode": mode})
         if len(incident.offers) == len(incident.candidates):
             self._coop_defer(ctx, incident, "select")
 
@@ -1185,7 +1207,7 @@ class LowaltTasks(ContextEngine):
         assert self.cooperation is not None and incident.offers is not None and incident.responder is not None and incident.job is not None
         requester = self.flights[incident.responder]
         allowed, blocked = self._coop_options(ctx, incident)
-        accepted = [identity for identity in incident.candidates if incident.offers[identity] and self._coop_candidate(ctx, incident, identity) is None]
+        accepted = [identity for identity in incident.candidates if incident.offers[identity] is True and self._coop_candidate(ctx, incident, identity) is None]
         reason = None
         if requester.job is not incident.job or "request_handoff" not in allowed:
             reason = "Requester state changed before handoff acceptance / 接受交接前请求者状态已改变: " + blocked.get("request_handoff", "task changed / 任务已改变")
@@ -1195,8 +1217,11 @@ class LowaltTasks(ContextEngine):
         if incident.job.phase == "picked_up" and not points:
             reason = "No open handoff point / 没有开放交接点"
         if reason is not None:
-            self._handoff_state(ctx, incident, "declined")
-            self._business_event(ctx, "lowalt.handoff.declined", {**self._handoff_payload(incident), "reason": reason})
+            phase = "failed" if any(offer is None for offer in incident.offers.values()) else "declined"
+            if phase == "failed":
+                reason += "; Helper decision failed / 协助者决策失败"
+            self._handoff_state(ctx, incident, phase)
+            self._business_event(ctx, "lowalt.handoff." + phase, {**self._handoff_payload(incident), "reason": reason})
             self._coop_decide(ctx, incident, after_handoff=True)
             return
         requester_position = vec(read(ctx, requester.vehicle, "lowalt.position"))
@@ -1252,7 +1277,10 @@ class LowaltTasks(ContextEngine):
                 assert self.cooperation is not None
                 rules = self.cooperation["responder"]["rules"]
                 if read(ctx, flight.vehicle, "lowalt.soc") * 100 < rules["min_battery_pct"] or self._coop_distance(ctx, flight.vehicle.id, incident.config["position"]) > rules["max_response_distance_m"]:
-                    self._coop_decide(ctx, incident, "report_only", "Response constraints no longer permit flight / 当前约束已不允许响应飞行")
+                    if self.cooperation["responder"]["mode"] == "agent":
+                        self._coop_decide(ctx, incident)
+                    else:
+                        self._coop_decide(ctx, incident, "report_only", "Response constraints no longer permit flight / 当前约束已不允许响应飞行")
                 elif not read(ctx, flight.vehicle, "lowalt.charging") and not read(ctx, flight.vehicle, "lowalt.returning_to_charge"):
                     self._coop_begin_response(ctx, incident)
                 return

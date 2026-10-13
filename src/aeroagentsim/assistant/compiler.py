@@ -9,7 +9,6 @@ import importlib
 import json
 import re
 import shutil
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,14 +16,18 @@ from typing import Any
 import yaml
 
 from aeroagentsim.authoring.templates import TemplateRegistry, _knob_value, _pointer
-from aeroagentsim.authoring.workspace import WorkspaceStore, issue_location
+from aeroagentsim.authoring.workspace import (
+    WorkspaceStore,
+    validate_configuration,
+    validation_failure,
+)
 from aeroagentsim.packs.lowalt.overlay import overlay
 from aeroagentsim.packs.lowalt.rules import WIND_LIMITS
 from aeroagentsim.packs.lowalt.tasks import FOOD_FIELDS
 from aeroagentsim.scenario import load_scenario
 from aeroagentsim.scenario.loader import UniqueLoader
 
-from .operations import OperationError, PLACE_TYPES, ROLES, validate_operation
+from .operations import PLACE_TYPES, ROLES, OperationError, validate_operation
 from .places import place_catalogue
 
 SECOND = 1_000_000_000
@@ -62,7 +65,7 @@ class CompileResult:
     expectations: list[dict[str, Any]] = field(default_factory=list)
 
     def to_data(self) -> dict[str, Any]:
-        return copy.deepcopy({**self.__dict__, "files_dir": str(self.files_dir)})
+        return copy.deepcopy({**{k: v for k, v in self.__dict__.items() if k != "document"}, "files_dir": str(self.files_dir)})
 
 
 class PlanConflict(ValueError):
@@ -137,8 +140,10 @@ def _digest(document: dict, directory: Path | None) -> str:
     for path in paths:
         relative = path.relative_to(directory).as_posix().encode()
         data = path.read_bytes()
-        digest.update(len(relative).to_bytes(8, "big")); digest.update(relative)
-        digest.update(len(data).to_bytes(8, "big")); digest.update(data)
+        digest.update(len(relative).to_bytes(8, "big"))
+        digest.update(relative)
+        digest.update(len(data).to_bytes(8, "big"))
+        digest.update(data)
     return "sha256:" + digest.hexdigest()
 
 
@@ -687,11 +692,13 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                 for i in range(len(members), count):
                     identity = f"{p['fleet']}-{i + 1}"
                     _unique(document, identity)
-                    entity = copy.deepcopy(prototype); entity["id"] = identity
+                    entity = copy.deepcopy(prototype)
+                    entity["id"] = identity
                     # Members are named "<role label> <n>"; new members continue the numbering.
                     entity.update(label=re.sub(r"\s*\d+$", "", prototype.get("label", p["fleet"])) + f" {i + 1}",
                                   label_zh=re.sub(r"\s*\d+$", "", prototype.get("label_zh", p["fleet"])) + f" {i + 1}")
-                    document["entities"].append(entity); members.append(entity)
+                    document["entities"].append(entity)
+                    members.append(entity)
                     tasks.setdefault("vehicle_task_kinds", {})[identity] = list(tasks["vehicle_task_kinds"][prototype["id"]])
             elif count < len(members):
                 removed = {e["id"] for e in members[count:]}
@@ -823,7 +830,8 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                 if isinstance(point, str):
                     existing = next((r for r in coop["handoff_points"] if r["id"] == point), None)
                     if existing:
-                        points.append(copy.deepcopy(existing)); continue
+                        points.append(copy.deepcopy(existing))
+                        continue
                     existing_site = next((e for e in document["entities"] if e["id"] == point), None)
                     point_id = "handoff-" + point if existing_site is not None and existing_site["type"] != "lowalt:HandoffPoint" else point
                     if point_id != point:
@@ -838,7 +846,8 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                     _fail("handoff_points", "Provide at or position for each handoff point", "每个交接点需要 at 或 position")
                 else:
                     point["position"] = _position(document, point["position"], "handoff_points.position")
-                point.setdefault("label", point["id"]); point.setdefault("label_zh", "交接点 " + point["id"])
+                point.setdefault("label", point["id"])
+                point.setdefault("label_zh", "交接点 " + point["id"])
                 points.append(point)
             p["handoff_points"] = points
         # Generated points and incidents follow the configuration: drop the old ones so expansion rebuilds them.
@@ -872,7 +881,9 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
 
 def _schedule_event(document: dict, p: dict, directory: Path) -> None:
     from aerokernel.ids import EntityRef
+
     from aeroagentsim.packs.lowalt.everyday import _operators
+
     from .operations import validate_parameters
     from .scene import _registry_types
     points: dict[str, str] = {}
@@ -921,7 +932,8 @@ def _schedule_event(document: dict, p: dict, directory: Path) -> None:
                 if current == schema["target_type"]:
                     return {"$ref": EntityRef(document["id"], "0", entity["id"], 0, entity["type"]).to_data()}
                 if current not in seen:
-                    seen.add(current); remaining.extend(types.get(current, {}).get("parents", []))
+                    seen.add(current)
+                    remaining.extend(types.get(current, {}).get("parents", []))
             _fail(field_name, f"Select an entity of type {schema['target_type']}", "请选择符合目标契约类型的实体")
         if kind == "number":
             return float(value)
@@ -950,7 +962,7 @@ def _places_first(operations: list[dict]) -> list[int]:
     return sorted(range(len(operations)), key=lambda i: not early(i))
 
 
-def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_dir: Path) -> CompileResult:
+def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_dir: Path, *, resolved: BaseScene | None = None) -> CompileResult:
     from .scene import diff, expectations, interactions, summarize
     out_dir = Path(out_dir)
     files = out_dir / "files"
@@ -960,7 +972,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
     scene: BaseScene | None = None
     base_summary: dict = {}
     try:
-        scene = resolve_base(ctx, base)
+        scene = resolve_base(ctx, base) if resolved is None else resolved
         if out_dir.resolve().is_relative_to(scene.directory.resolve()) or scene.directory.resolve().is_relative_to(files.resolve()):
             _fail("out_dir", "Plan directory must be outside the base scene", "计划目录必须位于起点场景之外")
     except Exception as exc:  # noqa: BLE001 - no output may replace the source scene
@@ -1068,7 +1080,6 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
 
 
 def validate_compiled(ctx: CompileContext, out_dir: Path) -> dict:
-    from aeroagentsim.platform.simulation import Simulation
     out_dir = Path(out_dir)
     document = json.loads((out_dir / "scenario.json").read_text())
     record = json.loads((out_dir / "compile.json").read_text())
@@ -1077,17 +1088,10 @@ def validate_compiled(ctx: CompileContext, out_dir: Path) -> dict:
             raise ValueError("Plan has compile errors / 计划存在编译错误")
         if _digest(document, out_dir / "files") != record["digest"]:
             raise PlanConflict("Compiled plan files changed / 编译后的计划文件已改变")
-        loaded = load_scenario(document, base=out_dir / "files")
-        with tempfile.TemporaryDirectory(prefix="validation-", dir=out_dir) as scratch:
-            simulation = Simulation(loaded, run_directory=Path(scratch))
-            simulation.close()
+        validate_configuration(document, base=out_dir / "files", directory=out_dir)
         result = {"valid": True, "errors": [], "issues": []}
     except Exception as exc:  # noqa: BLE001 - match WorkspaceStore diagnostics
-        authored = exc
-        while authored.__cause__ is not None and not hasattr(authored, "path"):
-            authored = authored.__cause__
-        path = getattr(authored, "path", "$")
-        result = {"valid": False, "errors": [f"{type(exc).__name__}: {exc}"], "issues": [{"source": getattr(authored, "source", "scenario"), "path": path, "message": str(authored), **issue_location(document, path, str(authored))}]}
+        result = validation_failure(document, exc)
     _write(out_dir / "validation.json", {**result, "digest": record["digest"]})
     return result
 

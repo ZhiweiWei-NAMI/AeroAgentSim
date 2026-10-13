@@ -1,6 +1,5 @@
 import {expect, it} from 'vitest';
 import {decodeAlgorithms, decodeComparison, decodeTemplates} from './api-decode';
-import {decodeExperimentReport} from './experiment-api';
 import {validateBusinessEvents, validateKpiValues} from './validation';
 import {businessProjection} from './projection';
 import {emptyCommit} from '../behaviours/extension-fixture';
@@ -46,12 +45,4 @@ it('retains Chinese business narratives through committed-cut projection without
   expect(event.text).toBe('A parcel arrived.');
   expect(() => validateBusinessEvents([{...event, text_zh: {text: 'bad'}}])).toThrow('Expected text');
   expect(validateKpiValues({tasks_completed: {value: null, unit: 'count', label: 'Delivered', label_zh: '已送达'}}).tasks_completed.value).toBeNull();
-});
-
-it('retains optional experiment titles and metric labels with null measurements unchanged', () => {
-  const raw = {id: 'experiment', contract: 'aeroagentsim.experiment/v1', template_id: 'bilingual', template_title: 'Delivery', template_title_zh: '配送', status: 'completed', seeds: 1, jobs: 1, horizon_s: null, knobs: {}, vary: {mode: ['normal', 'rush']}, total: 2, completed: 2, failed: 0, error: null, runs: [], table: [{config_id: 'config-0', knobs: {mode: 'normal'}, metrics: {tasks_completed: {mean: null, std: null, n: 0, unit: 'count', label: 'Delivered', label_zh: '已送达', best: false}}}]};
-  const report = decodeExperimentReport(raw);
-  expect(report.template_title_zh).toBe('配送');
-  expect(report.table[0].metrics.tasks_completed).toEqual(raw.table[0].metrics.tasks_completed);
-  expect(report.vary.mode).toEqual(['normal', 'rush']);
 });

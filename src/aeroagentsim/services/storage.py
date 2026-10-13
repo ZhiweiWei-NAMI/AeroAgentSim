@@ -97,9 +97,8 @@ class RunStorage:
     def prepare(self, scenario: Scenario) -> None:
         self.directory.mkdir(parents=True, exist_ok=False)
         (self.directory / "scenario.yaml").write_text(scenario.source)
-        (self.directory / "scenario.json").write_bytes(
-            canonical_json(scenario.document)
-        )
+        document = canonical_json(scenario.document)
+        (self.directory / "scenario.json").write_bytes(document)
         scenario.compiled.write_snapshot(self.directory / "registry.snapshot.json")
         (self.directory / "runtime.registry.json").write_bytes(
             canonical_json(scenario.registry.to_data())
@@ -112,9 +111,7 @@ class RunStorage:
                 "kernel_run_id": scenario.run_id,
                 "scenario": scenario.document["id"],
                 "registry_id": scenario.run_id + "/registry",
-                "configuration_digest": hashlib.sha256(
-                    canonical_json(scenario.document)
-                ).hexdigest(),
+                "configuration_digest": hashlib.sha256(document).hexdigest(),
                 "until_ns": str(scenario.until_ns),
                 "status": "created",
             },

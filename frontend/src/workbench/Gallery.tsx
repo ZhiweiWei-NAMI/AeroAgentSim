@@ -2,7 +2,7 @@ import { metricLabel } from '../newcomers/metric-help';
 import { useEffect, useState } from 'react';
 import type { ScenarioTemplate } from '../newcomers/api';
 import { categoryMetadata } from '../newcomers/categories';
-import { difficultyLabel, durationLabel } from '../newcomers/TemplateGallery';
+import { difficultyLabel, durationLabel } from '../newcomers/presentation';
 import { localized } from '../i18n/translate';
 import { useI18n } from '../i18n/I18nProvider';
 import { ApiError, type Project, type WorkbenchApi } from './api';

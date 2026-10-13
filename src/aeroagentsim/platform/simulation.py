@@ -39,8 +39,9 @@ class Simulation:
         journal: Journal | None = None,
         run_directory: Path | None = None,
         provenance: str | None = None,
+        catalog: EngineCatalog | None = None,
     ) -> None:
-        engines: list[Engine] = []
+        self.engines: list[Engine] = []
         owned_journal = (
             Journal(codec="positional-deflate") if journal is None else journal
         )
@@ -48,15 +49,15 @@ class Simulation:
             self._construct(
                 scenario,
                 journal=owned_journal,
-                engines=engines,
                 run_directory=run_directory,
                 provenance=provenance,
+                catalog=EngineCatalog() if catalog is None else catalog,
             )
         except Exception as exc:
             # Ownership transfers to the kernel only after successful binding.
             # Failed binding may have registered just a subset of these engines.
             failures: list[Exception] = []
-            for engine in reversed(engines):
+            for engine in reversed(self.engines):
                 try:
                     engine.close()
                 except Exception as cleanup:  # noqa: BLE001 - close every engine before reporting
@@ -83,9 +84,9 @@ class Simulation:
         scenario: Scenario,
         *,
         journal: Journal,
-        engines: list[Engine],
         run_directory: Path | None,
         provenance: str | None,
+        catalog: EngineCatalog,
     ) -> None:
         self.scenario = scenario
         # The scenario setting is the pinned default; an explicit override must
@@ -94,7 +95,6 @@ class Simulation:
         if type(effective) is not str or effective not in {"lean", "full"}:
             raise ScenarioError("provenance: expected lean or full")
         # Explicitly supplied journals keep their codec, including historical 1.x.
-        catalog = EngineCatalog()
         partitions: dict[str, Partition] = {}
         self.ingress_targets: dict[str, set[str]] = {}
         # Allocate before factory order: planners and movers share object identity.
@@ -143,7 +143,7 @@ class Simulation:
                     f"engines.{engine_id}.config: {exc}",
                     code=getattr(exc, "code", None),
                 ) from exc
-            engines.append(engine)
+            self.engines.append(engine)
             if any(p.timing.mode == "real_time" for p in engine.partitions) and not any(
                 engine_id in stream.engine_ids for stream in scenario.ingress_streams
             ):
@@ -175,7 +175,7 @@ class Simulation:
                 "scenario": scenario.document,
             },
         )
-        self.kernel.bind(scenario.registry, scenario.manifest, tuple(engines))
+        self.kernel.bind(scenario.registry, scenario.manifest, tuple(self.engines))
 
     def start(self) -> StateView:
         return self.kernel.start()

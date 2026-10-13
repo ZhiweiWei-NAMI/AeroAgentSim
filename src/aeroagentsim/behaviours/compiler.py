@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import copy
-import re
 from fnmatch import fnmatchcase
 from pathlib import Path
-from typing import Any, ClassVar, cast
+from typing import Any, cast
 
 import yaml
 from aerokernel import EntityRef
@@ -14,6 +13,7 @@ from aerokernel import EntityRef
 from aeroagentsim.engines.predicate import VERSION, nodes
 from aeroagentsim.engines.predicate_ast import TEMPORAL, validate_ast
 from aeroagentsim.platform.plugins import EngineBuild
+from aeroagentsim.scenario.loader import UniqueLoader
 
 from .records import EVENTS
 from .schema import FORMAT, CompileError, PackageIR
@@ -1257,35 +1257,6 @@ def compile_package(
     if "conflicts" in p:
         p["conflicts"].sort(key=lambda rule: rule["id"])
     return PackageIR(p, f"{p['id']}@{p['revision']}", source, dependencies)
-
-
-class UniqueLoader(yaml.SafeLoader):
-    yaml_implicit_resolvers: ClassVar[dict[Any, Any]] = {  # type: ignore[misc]
-        key: [(tag, regex) for tag, regex in entries if tag != "tag:yaml.org,2002:bool"]
-        for key, entries in yaml.SafeLoader.yaml_implicit_resolvers.items()
-    }
-
-
-UniqueLoader.add_implicit_resolver(
-    "tag:yaml.org,2002:bool",
-    re.compile(r"^(?:true|false|True|False|TRUE|FALSE)$"),
-    list("tTfF"),
-)
-
-
-def _mapping(loader: UniqueLoader, node: yaml.MappingNode) -> dict[str, Any]:
-    pairs: dict[str, Any] = {}
-    for key_node, value_node in node.value:
-        key = loader.construct_object(key_node)
-        if type(key) is not str or key in pairs:
-            raise ValueError(
-                f"YAML line {key_node.start_mark.line + 1}: duplicate/nonstring key {key}"
-            )
-        pairs[key] = loader.construct_object(value_node)
-    return pairs
-
-
-UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping)
 
 
 def resolve_packages(specs: list[Any], base: Path) -> list[dict[str, Any]]:

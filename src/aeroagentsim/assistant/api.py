@@ -123,9 +123,7 @@ def create_router(store: Any, *, run_root: Path, templates: Any, connection: Con
             if not plan["compile"]["ok"]:
                 raise ValueError("Cannot preview a plan that did not compile / 无法预览未编译成功的方案")
             result = {"scenario": plan["_document"], "name": plan["title"]}
-            if "demo_console" in plan["_compile_data"]:
-                result["demo_console"] = plan["_compile_data"]["demo_console"]
-            elif plan["_document"].get("city") == "huangpu":
+            if plan["_document"].get("city") == "huangpu":
                 # Same descriptor a new workspace receives, so the proposal previews the real city.
                 from aeroagentsim.authoring.demo import city_presentation
                 result["demo_console"] = {"capture_mode": "city", "city_available": True, "scene": city_presentation()}

@@ -72,11 +72,11 @@ def cooperation_overlay() -> dict[str, Any]:
     for owner, specs in (
         ("Incident", (
             ("kind", STRING, "1"), ("position", VECTOR, "m"),
-            ("state", {"type": "string", "enum": ["pending", "occurred", "noticed", "responding", "photographed", "reported"]}, "1"),
+            ("state", {"type": "string", "enum": ["pending", "occurred", "noticed", "responding", "photographed", "reported", "decision_failed"]}, "1"),
             ("time_ns", INT, "ns"), ("noticed_by", STRING, "1"), ("responder", STRING, "1"),
         )),
         ("Handoff", (
-            ("state", {"type": "string", "enum": ["idle", "requested", "accepted", "declined", "dropped", "transferred"]}, "1"),
+            ("state", {"type": "string", "enum": ["idle", "requested", "accepted", "declined", "dropped", "transferred", "failed"]}, "1"),
             ("task", STRING, "1"), ("from", STRING, "1"), ("to", STRING, "1"), ("point", STRING, "1"),
         )),
     ):
@@ -92,6 +92,7 @@ def cooperation_overlay() -> dict[str, Any]:
         "incident.occurred": {"incident": STRING, "kind": STRING, "position": VECTOR},
         "incident.noticed": {"incident": STRING, "vehicle": STRING, "distance_m": NUMBER},
         "incident.decision": {"incident": STRING, "vehicle": STRING, "mode": STRING, "choice": STRING, "reason": STRING, "allowed": STRINGS, "blocked": blocked},
+        "incident.decision_failed": {"incident": STRING, "vehicle": STRING, "role": STRING, "mode": STRING, "reason": STRING},
         "incident.responding": {"incident": STRING, "vehicle": STRING, "position": VECTOR},
         "incident.photographed": {"incident": STRING, "vehicle": STRING, "position": VECTOR},
         "incident.reported": {"incident": STRING, "vehicle": STRING},
@@ -99,6 +100,7 @@ def cooperation_overlay() -> dict[str, Any]:
         "handoff.offer": {**base, "helper": STRING, "accepted": BOOL, "reason": STRING, "mode": STRING},
         "handoff.accepted": {**handoff, "others": STRINGS},
         "handoff.declined": {**base, "reason": STRING},
+        "handoff.failed": {**base, "reason": STRING},
         "handoff.dropped": handoff,
         "handoff.transferred": handoff,
         "coop.decision_request": {"incident": STRING, "vehicle": STRING, "role": STRING, "goal": STRING, "state_json": STRING, "allowed": STRINGS, "constraints": STRINGS},

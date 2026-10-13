@@ -15,9 +15,9 @@ from aeroagentsim.platform.plugins import EngineBuild
 from aeroagentsim.scenario.loader import contract, text
 
 from .artifacts import ArtifactStore
+from .committed import CommittedBrowserRenderer
 from .contracts import CaptureReceipt, CaptureRequest, artifact_id
 from .renderer import BrowserRenderer, Renderer, StubRenderer
-from .committed import CommittedBrowserRenderer
 
 # Semantic keys are mapped onto explicitly selected registry fields by config.
 METADATA = frozenset(

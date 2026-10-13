@@ -21,6 +21,23 @@ EVENTS = tuple(
 INJECT = "aas.runtime.inject_event"
 
 
+def install_overlay(registry: dict[str, Any]) -> dict[str, Any]:
+    """Merge the shared behaviour contracts without replacing authored definitions."""
+    descriptors = overlay()
+    for category, rows in descriptors.items():
+        selected = registry.setdefault(category, [])
+        existing = {row["id"]: row for row in selected}
+        for row in rows:
+            if row["id"] in existing:
+                if existing[row["id"]] != row:
+                    raise ValueError(
+                        f"registry.{category}.{row['id']}: conflicts with behaviour overlay"
+                    )
+            else:
+                selected.append(row)
+    return descriptors
+
+
 def record_schema(members: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "type": "record",

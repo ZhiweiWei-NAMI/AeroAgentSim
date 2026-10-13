@@ -181,7 +181,9 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
             row = catalog.type_detail(current) if catalog is not None else type_rows.get(current, {})
             for parent in row.get("parents", []):
                 if parent not in visited:
-                    visited.add(parent); ancestry.append(parent); queue.append(parent)
+                    visited.add(parent)
+                    ancestry.append(parent)
+                    queue.append(parent)
         return {"type": type_id, "ancestry": ancestry, "label": type_id}
     def label(identity: str | None) -> str | None:
         return entities.get(identity, {}).get("label", identity)
@@ -249,7 +251,8 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
         for key in ("watchers", "helpers"):
             cooperation[key]["labels"] = {v: label(v) for v in cooperation[key].get("vehicles", [])}
         for point in cooperation.get("handoff_points", []):
-            point.setdefault("label", label(point["id"])); point.setdefault("label_zh", _chinese_label(point["label"]))
+            point.setdefault("label", label(point["id"]))
+            point.setdefault("label_zh", _chinese_label(point["label"]))
         for incident in cooperation.get("incidents", []):
             labels = EVENT_LABELS.get(incident["kind"], (incident["id"], incident["id"]))
             incident.setdefault("label", label(incident["id"]) or labels[0])
@@ -490,19 +493,19 @@ def expectations(document: dict, summary: dict) -> list[dict]:
             for i, task in enumerate(workload["tasks"])]
         configured = len(workload["tasks"])
         for prefix, where, en, zh, at in scopes:
-            # A counted workload reads as stages of all its released work, not as one order.
+            # Each stage retains the configured workload as its target.
             released_en, released_zh = (f"{en[:1].upper()}{en[1:].rstrip('s')}s are released ({configured} configured)", f"{zh}按计划发布（共配置 {configured} 个）") if counted else (f"{en} is released", f"{zh}发布")
-            assigned_en, assigned_zh = (f"Each released {en.rstrip('s')} is assigned a UAV", f"每个已发布的{zh}都分配到无人机") if counted else (f"A UAV is assigned {en}", f"无人机获分配{zh}")
+            assigned_en, assigned_zh = (f"Each configured {en.rstrip('s')} is assigned a UAV", f"每个已配置的{zh}都分配到无人机") if counted else (f"A UAV is assigned {en}", f"无人机获分配{zh}")
             created = add(prefix + ":created", "lowalt.task.created", where, released_en, released_zh, layer="setup", at=at, **counts)
             assigned = add(prefix + ":assigned", "lowalt.task.assigned", where, assigned_en, assigned_zh, depends=[created], **counts)
             previous = assigned
             for _, schema, _, text, text_zh in _mission_steps(workload):
                 suffix = schema.rsplit(".", 1)[-1]
                 conditional = schema == "lowalt.mobility.pad_wait"
-                text, text_zh = (f"{text} (each released {en.rstrip('s')})", f"{text_zh}（每个已发布的{zh}）") if counted else (f"{en}: {text}", f"{zh}：{text_zh}")
+                text, text_zh = (f"{text} (each configured {en.rstrip('s')})", f"{text_zh}（每个已配置的{zh}）") if counted else (f"{en}: {text}", f"{zh}：{text_zh}")
                 if counted and schema == "lowalt.task.completed":
-                    text, text_zh = (f"Every released {en.rstrip('s')} is completed ({len(workload['tasks'])} configured)",
-                                     f"每个已发布的{zh}都完成（共配置 {len(workload['tasks'])} 个）")
+                    text, text_zh = (f"All {configured} configured {en} are completed",
+                                     f"全部 {configured} 个已配置的{zh}都完成")
                 step_counts = ({"count": 1, "released": "lowalt.task.created"} if counted else {}) if conditional else counts
                 identity = add(prefix + ":" + suffix, schema, where, text, text_zh, depends=[assigned if conditional else previous],
                                **step_counts)
