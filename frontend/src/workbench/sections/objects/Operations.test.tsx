@@ -155,7 +155,14 @@ it('groups every review by Added/Changed/Removed counts, with kind, id and activ
   expect(screen.getByText('查看后再应用')).toBeTruthy();
   expect(screen.getByText('厨房已就绪')).toBeTruthy();
   expect(screen.queryByText(/Kitchen ready/)).toBeNull();
-  expect(screen.getByText((_, element) => element?.className === 'wb-diff-field' && element.textContent === '数量 — 2 → 3')).toBeTruthy();
+  expect(screen.getByText((_, element) => element?.className === 'wb-diff-field' && element.textContent === '数量: 2 → 3')).toBeTruthy();
+});
+
+it('prefers server-provided labels, texts and kind tags in the diff (D11)', () => {
+  render(<OperationDiff L={L} diff={{ added: [], changed: [{ kind: 'environment', id: 'env', kind_label: 'Wind settings', kind_label_zh: '风场设置',
+    label: 'Environment', label_zh: '环境', fields: [{ name: 'wind.speed_mps', before: null, after: 0, label: 'Wind speed (m/s)', label_zh: '风速（m/s）', before_text: '—', after_text: '0' }] }], removed: [] }} notes={[]} />);
+  expect(screen.getByText('Wind settings')).toBeTruthy();
+  expect(screen.getByText((_, element) => element?.className === 'wb-diff-field' && element.textContent === 'Wind speed (m/s): — → 0')).toBeTruthy();
 });
 
 it('does not split coordinate-unit prose when choosing a bilingual backend message', () => {

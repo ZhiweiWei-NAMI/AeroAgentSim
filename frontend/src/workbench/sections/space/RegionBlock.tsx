@@ -15,11 +15,11 @@ export { originShiftM } from './model';
 
 
 /** One-line summary of buildings without height data, from the preview geometry. */
-function heightSummaryFromPreview(preview: RegionPreview['preview']): string | undefined {
+function heightSummaryFromPreview(preview: RegionPreview['preview'], L: SectionProps['L']): string | undefined {
   const features = preview.geometry?.buildings.features.filter(feature => feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon') ?? [];
   const missing = features.filter(feature => typeof feature.properties?.height_source !== 'string').length;
   return missing > 0
-    ? `${missing} building${missing === 1 ? ' has' : 's have'} no height data — shown as footprints`
+    ? L(`${missing} building${missing === 1 ? ' has' : 's have'} no height data — shown as footprints`, `${missing} 栋建筑缺少高度数据，以二维轮廓显示`)
     : undefined;
 }
 
@@ -318,7 +318,7 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
           `原点移动 ${preview.origin_shift_m == null ? '未知距离' : m(preview.origin_shift_m)}；受影响对象 ${preview.affected_entities.length ? preview.affected_entities.join('、') : '无'} 的 ENU 坐标不变，其地理位置随原点改变。`)}</p>}
         {!!preview.diagnostics.length && <ul className="wb-region-diag">{preview.diagnostics.map((line, index) => <li key={index} className="wb-mono">{serverText(line, L)}</li>)}</ul>}
       </details>}
-      {heightSummaryFromPreview(preview) && <p className="hint" role="status">{heightSummaryFromPreview(preview)}</p>}
+      {heightSummaryFromPreview(preview, L) && <p className="hint" role="status">{heightSummaryFromPreview(preview, L)}</p>}
       {preview.network_invalidated && <p className="wb-region-warn" role="status">⚠ {L('Applying replaces the region, so the previously generated road network becomes stale and must be regenerated.', '应用会替换区域，已生成的路网将失效，需要重新生成。')}</p>}
       {preview.city_conflict && <p className="wb-region-warn" role="status">⚠ {L('A fixed city is also configured. The run must use one source; clear the city below or skip the region.', '同时配置了固定城市。运行只能使用一个数据源：请在下方清除城市，或放弃该区域。')}</p>}
       {!preview.geometry && <p className="wb-region-warn" role="status">{L('The preview contains no building or road geometry; update the server to review the map before applying.', '预览未提供建筑或道路几何；请更新服务器以便在应用前查看地图。')}</p>}

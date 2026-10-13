@@ -3,11 +3,15 @@ import type { Project, WorkbenchApi } from '../../api';
 import { applyOperations, operationProblem, previewOperations, type DiffRow, type Operation, type OperationPreview } from '../operations';
 
 type Localize = (en: string, zh: string) => string;
+
+/** C11 rows may carry their own kind label and preformatted field values; fall back only when absent. */
+export type DiffField = { name: string; before?: unknown; after?: unknown; label?: string; label_zh?: string; before_text?: string; after_text?: string };
+export type RichDiffRow = DiffRow & { kind_label?: string; kind_label_zh?: string; fields?: DiffField[] };
 export type ObjectsDiff = OperationPreview['diff'] & { entities?: { added: string[]; changed: string[]; removed: string[] } };
 
 /** C11 also reports explicit member deltas. Keep them in the review, including fleet shrinkage. */
 export function operationChanges(diff: ObjectsDiff, entities: Array<{ id: string; label?: string; label_zh?: string }> = []): OperationPreview['diff'] {
-  const changes = { added: [...diff.added], changed: [...diff.changed], removed: [...diff.removed] };
+  const changes = { added: [...diff.added] as RichDiffRow[], changed: [...diff.changed] as RichDiffRow[], removed: [...diff.removed] as RichDiffRow[] };
   const append = (group: keyof typeof changes, id: string) => {
     if (changes[group].some(row => row.kind === 'entity' && row.id === id)) return;
     const entity = entities.find(row => row.id === id);
@@ -28,7 +32,9 @@ export function operationText(text: string, L: Localize): string {
   return split < 0 ? text : L(text.slice(0, split), text.slice(split + 3));
 }
 
-function kindLabel(kind: string | undefined, L: Localize) {
+function kindLabel(row: RichDiffRow, L: Localize) {
+  const provided = operationText(L(row.kind_label ?? '', row.kind_label_zh ?? row.kind_label ?? ''), L);
+  if (row.kind_label) return provided;
   const labels: Record<string, [string, string]> = {
     entity: ['Object', '对象'], place: ['Place', '设施'], facility: ['Place', '设施'],
     fleet: ['Fleet', '机群'], participant: ['Participant', '参与者'], engine: ['Engine', '引擎'],
@@ -39,8 +45,8 @@ function kindLabel(kind: string | undefined, L: Localize) {
     region: ['Region', '区域'], environment: ['Environment', '环境'], algorithm: ['Algorithm', '算法'],
     scene: ['Scene', '场景'], network: ['Road network', '道路网络'], rule: ['Rule', '规则'], run: ['Run settings', '运行设置'],
   };
-  const pair = kind && labels[kind];
-  return pair ? L(...pair) : kind ?? '—';
+  const pair = row.kind && labels[row.kind];
+  return pair ? L(...pair) : row.kind ?? '—';
 }
 
 /** Human field label: a row-provided label wins, else a known field, else a humanised name. */
@@ -58,6 +64,15 @@ function fieldLabel(name: string, L: Localize) {
 function fieldValue(value: unknown, L: Localize) {
   if (value === null || value === undefined) return L('—', '—');
   return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
+/** "<label>: <before> → <after>", preferring the server-provided label and preformatted values. */
+function fieldLine(field: DiffField, L: Localize) {
+  const provided = field.label ?? field.label_zh;
+  const label = provided ? operationText(L(provided, field.label_zh ?? field.label), L) : fieldLabel(field.name, L);
+  const before = field.before_text ?? fieldValue(field.before, L);
+  const after = field.after_text ?? fieldValue(field.after, L);
+  return `${label}: ${before} → ${after}`;
 }
 
 function rowLabel(row: DiffRow, L: Localize) {
@@ -80,7 +95,7 @@ function rowLabel(row: DiffRow, L: Localize) {
 export function OperationDiff({ diff, notes = [], stale = false, L, entities }: {
   diff: ObjectsDiff; notes?: OperationPreview['notes']; stale?: boolean; L: Localize; entities?: Array<{ id: string; label?: string; label_zh?: string }>;
 }) {
-  const changes = operationChanges(diff, entities);
+  const changes = operationChanges(diff, entities) as { added: RichDiffRow[]; changed: RichDiffRow[]; removed: RichDiffRow[] };
   const groups = [
     { key: 'added', rows: changes.added, sign: '+', title: L('Added', '新增') },
     { key: 'changed', rows: changes.changed, sign: '~', title: L('Changed', '修改') },
@@ -94,13 +109,10 @@ export function OperationDiff({ diff, notes = [], stale = false, L, entities }: 
         {group.rows.map((row, index) => <li key={`${row.kind}:${row.id}:${index}`}>
           <div className="wb-diff-row">
             <span className={`wb-diff-sign wb-diff-sign-${group.key}`} aria-hidden>{group.sign}</span>
-            <strong>{rowLabel(row, L)}</strong>
-            <span className="wb-tag">{kindLabel(row.kind, L)}</span>
-            <span className="wb-mono wb-diff-id" title={row.id}>{row.id ?? '—'}</span>
+            <strong className="wb-diff-label">{rowLabel(row, L)}</strong>
+            <span className="wb-diff-id" title={row.id}><span className="wb-tag">{kindLabel(row, L)}</span> <span className="wb-mono">{row.id ?? '—'}</span></span>
           </div>
-          {row.fields?.map(field => <div key={field.name} className="wb-diff-field">
-            {fieldLabel(field.name, L)} <span aria-hidden>—</span> {fieldValue(field.before, L)} → {fieldValue(field.after, L)}
-          </div>)}
+          {row.fields?.map(field => <div key={field.name} className="wb-diff-field">{fieldLine(field, L)}</div>)}
         </li>)}
       </ul>
     </section>)}

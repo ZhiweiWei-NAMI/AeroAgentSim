@@ -11,14 +11,15 @@
 .wb-operation-diff { margin: 6px 0; }
 .wb-operation-diff h5 { margin: 8px 0 2px; font: inherit; font-size: 12px; font-weight: 650; color: var(--wb-ink); }
 .wb-diff-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
-.wb-diff-row { display: grid; grid-template-columns: 14px auto auto minmax(0, 1fr); gap: 8px; align-items: baseline; }
+/* D11: sign | label (wraps) | id, so a long label never pushes into the id. */
+.wb-diff-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: baseline; }
 .wb-diff-sign { font-weight: 700; }
 .wb-diff-sign-added { color: var(--wb-ok); }
 .wb-diff-sign-changed { color: var(--wb-warn); }
 .wb-diff-sign-removed { color: var(--wb-bad); }
-.wb-diff-id { color: var(--wb-muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; justify-self: end; }
+.wb-diff-label { overflow-wrap: anywhere; min-width: 0; }
+.wb-diff-id { max-width: 40%; color: var(--wb-muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; justify-self: end; }
 .wb-diff-field { color: var(--wb-muted); font-size: 12px; overflow-wrap: anywhere; padding-left: 22px; }
-.wb-diff-subheading { margin: 4px 0 0; font-size: 12px; color: var(--wb-muted); }
 .wb-preview-stale { color: var(--wb-warn); }
 .wb-add-note { margin: 2px 0 6px; font-size: 11.5px; color: var(--wb-muted); }
 .wb-objects-count { font-size: 12px; color: var(--wb-muted); margin: 0; }

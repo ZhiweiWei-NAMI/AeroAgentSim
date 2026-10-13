@@ -45,6 +45,16 @@ export function draftBinding(scenario: Workspace['scenario'], typeId: string) {
 export function authoredPositions(scenario: Workspace['scenario']): number[][] {
   const points: number[][] = [];
   for (const entity of scenario.entities ?? []) {
+    const airspace = entity.facts?.['aas.studio.airspace'];
+    if (airspace) {
+      if (Array.isArray(airspace.polygon)) for (const point of airspace.polygon) {
+        if (!Array.isArray(point) || point.length < 2 || !point.slice(0, 2).every(Number.isFinite)) continue;
+        for (const altitude of [airspace.floor_m, airspace.ceiling_m]) {
+          if (Number.isFinite(altitude)) points.push([point[0], point[1], altitude]);
+        }
+      }
+      continue;
+    }
     const binding = draftBinding(scenario, entity.type);
     const pos = binding ? entity.facts?.[binding.positionField] : undefined;
     if (Array.isArray(pos) && pos.length === 3 && pos.every(Number.isFinite)) points.push(pos);
@@ -123,6 +133,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       const bounds = new THREE.Box3();
       if (ws.scene) bounds.union(new THREE.Box3(new THREE.Vector3(-ws.scene.ground.width_m / 2, 0, -ws.scene.ground.depth_m / 2), new THREE.Vector3(ws.scene.ground.width_m / 2, 0, ws.scene.ground.depth_m / 2)));
       for (const [e, n, u] of authored) bounds.expandByPoint(new THREE.Vector3(e, u, -n));
+      for (const road of ws.scene?.roads ?? []) for (const [e, n, u] of road.points) bounds.expandByPoint(new THREE.Vector3(e, u, -n));
       if (bounds.isEmpty()) bounds.set(new THREE.Vector3(-100, 0, -100), new THREE.Vector3(100, 0, 100));
       const size = bounds.getSize(new THREE.Vector3()), center = bounds.getCenter(new THREE.Vector3());
       const extent = Math.max(size.x, size.z, 200) * 1.25;
@@ -212,6 +223,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         if (ws.scene) bounds.union(new THREE.Box3(new THREE.Vector3(-ws.scene.ground.width_m / 2, 0, -ws.scene.ground.depth_m / 2), new THREE.Vector3(ws.scene.ground.width_m / 2, 0, ws.scene.ground.depth_m / 2)));
         for (const [e, n, u] of authoredPositions(scenario)) bounds.expandByPoint(new THREE.Vector3(e, u, -n));
         bounds.union(new THREE.Box3().setFromObject(groups.buildings));
+        bounds.union(new THREE.Box3().setFromObject(groups.roads));
         if (bounds.isEmpty()) bounds.set(new THREE.Vector3(-100, 0, -100), new THREE.Vector3(100, 0, 100));
         fitGround(bounds);
         if (!userMoved && !latest.current.overlay) fitView();
@@ -288,6 +300,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       current.groups.roads.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#6b737c' })));
     });
     current.hologram?.sync(current.groups.roads, 'road');
+    current.refreshBounds(latest.current.workspace.scenario);
     current.invalidate();
   }, [sceneKey, roadsKey]);
 
@@ -306,6 +319,8 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
           current.groups.airspace.add(new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: '#e99c36' })));
         }
       }
+      // Area geometry is authoritative; legacy placement anchors are not point objects.
+      if (airspace) return;
       const binding = draftBinding(scenario, entity.type);
       const pos = binding && entity.facts?.[binding.positionField];
       if (!Array.isArray(pos) || pos.length !== 3 || !pos.every(Number.isFinite)) return;

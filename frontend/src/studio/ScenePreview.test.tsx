@@ -188,3 +188,51 @@ describe('ScenePreview layer toggles', () => {
     expect(mocks.scene!.getObjectByName('layer-buildings')!.visible).toBe(false);
   });
 });
+
+it('T1-R3-005: depicts an area only at its authored polygon, ignoring its legacy origin anchor', () => {
+  const area = { id: 'zone-away', type: 'airspace', facts: { pos: [0, 0, 0], 'aas.studio.airspace': {
+    floor_m: 10, ceiling_m: 80, polygon: [[1000, 1000], [1040, 1000], [1040, 1040], [1000, 1040]],
+  } } };
+  const scenario = { presentation: [{ typeId: 'airspace', positionField: 'pos' }], entities: [area] };
+  expect(authoredPositions(scenario)).toEqual([
+    [1000, 1000, 10], [1000, 1000, 80], [1040, 1000, 10], [1040, 1000, 80],
+    [1040, 1040, 10], [1040, 1040, 80], [1000, 1040, 10], [1000, 1040, 80],
+  ]);
+  render(<ScenePreview bare workspace={{ id: 'area-only', scenario } as any} api="/api" layers={ALL} />);
+  expect(mocks.scene!.getObjectByName('layer-airspace')!.children).toHaveLength(2);
+  expect(mocks.scene!.getObjectByName('layer-entities')!.children).toHaveLength(0);
+  expect(screen.getByTestId('draft-preview')).toHaveAttribute('data-marker-positions', '[]');
+  const ground = mocks.scene!.getObjectByName('layer-ground')!.children[0] as THREE.Mesh<THREE.PlaneGeometry>;
+  expect(ground.position.x).toBe(1020);
+  expect(ground.position.z).toBe(-1020);
+  expect(mocks.camera!.position.y).toBeGreaterThan(80);
+});
+
+it('T1-R3-005: a malformed area never becomes a fabricated point at its legacy anchor', () => {
+  const scenario = { presentation: [{ typeId: 'airspace', positionField: 'pos' }], entities: [
+    { id: 'bad-zone', type: 'airspace', facts: { pos: [0, 0, 0], 'aas.studio.airspace': { polygon: null, floor_m: 10, ceiling_m: 80 } } },
+  ] };
+  expect(authoredPositions(scenario)).toEqual([]);
+  render(<ScenePreview workspace={{ ...workspace, scenario }} api="/api" layers={ALL} />);
+  expect(mocks.scene!.getObjectByName('layer-entities')!.children).toHaveLength(0);
+  expect(mocks.scene!.getObjectByName('layer-airspace')!.children).toHaveLength(0);
+});
+
+it('D15: the ground covers out-of-bounds roads on initial render, road edits and entity edits', () => {
+  const initial = { ...workspace, scenario: {}, scene: { ...workspace.scene, roads: [{ points: [[-1500, -2400, 0], [2500, 3400, 0]] }] } };
+  const view = render(<ScenePreview workspace={initial} api="/api" layers={['ground', 'roads']} />);
+  const covered = (points: number[][]) => {
+    const ground = mocks.scene!.getObjectByName('layer-ground')!.children[0] as THREE.Mesh<THREE.PlaneGeometry>;
+    for (const [east, north] of points) {
+      expect(Math.abs(east - ground.position.x)).toBeLessThan(ground.geometry.parameters.width / 2);
+      expect(Math.abs(-north - ground.position.z)).toBeLessThan(ground.geometry.parameters.height / 2);
+    }
+  };
+  covered(initial.scene.roads[0].points);
+  const next = { ...initial, scene: { ...initial.scene, roads: [{ points: [[-7500, 6100, 0], [5200, -8400, 0]] }] } };
+  view.rerender(<ScenePreview workspace={next} api="/api" layers={['ground', 'roads']} />);
+  covered(next.scene.roads[0].points);
+  view.rerender(<ScenePreview workspace={{ ...next, scenario: { presentation: [{ typeId: 't', positionField: 'pos' }], entities: [{ id: 'point', type: 't', facts: { pos: [20, 30, 0] } }] } }} api="/api" layers={ALL} />);
+  covered(next.scene.roads[0].points);
+  expect(mocks.renderers).toBe(1);
+});

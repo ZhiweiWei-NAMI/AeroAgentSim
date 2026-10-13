@@ -14,7 +14,6 @@ export function LowaltStart({ api, project, onProject, L, onAddObjects, genericO
     <strong>{L('Start with standard low-altitude components', '先安装标准低空组件')}</strong>
     <p className="hint">{L('Adds the wind engine, task engine and execution components a drone scene needs. Review the changes before applying.', '添加无人机场景所需的风场引擎、任务引擎和执行组件。查看变更后再应用。')}</p>
     {review.preview && <OperationDiff {...review.preview} stale={review.stale} L={L} />}
-    {review.preview && <p className="wb-diff-subheading">{L('Standard lowalt engines, algorithm slots and rules', '标准低空引擎、算法槽位与规则')}</p>}
     {review.problem && <p className="wb-field-error" role="alert">{operationText(review.problem.message, L)}</p>}
     <div className="wb-form-actions wb-object-actions">
       {!review.preview && <button className="wb-btn primary" disabled={!!review.busy} onClick={() => void review.load()}>

@@ -63,3 +63,28 @@ it.each(['en-US','zh-CN'])('T3-R2-001: labels charging, energy, SoC, use, veloci
   expect(summary).not.toHaveTextContent(/Battery|电量/);
   expect(screen.getByTestId('wb-all-fields')).not.toHaveAttribute('open');
 });
+
+it.each(['en-US', 'zh-CN'])('T3-R3-004: shows the recorded task label in %s with the complete transport reference in a tooltip', locale => {
+  localStorage.setItem('aeroagentsim.locale', locale);
+  const task = { id: 'medical-delivery-01', generation: 0 };
+  const ref = { $ref: { epoch: '0', generation: 0, id: task.id, run_id: 'traffic-accident', type_id: 'task' } };
+  const store = new TemporalFeedStore({ ...fixtureHeader, entities: [{ id: task.id, type: 'task', label: 'Medical delivery', label_zh: '医疗配送' }],
+    fields: [{ fieldId: 'current_task', displayName: 'Current Task / 当前任务', valueType: 'ref' }] });
+  store.ingest({ ...emptyCommit(1), created: [{ ...vehicle, typeId: 'vehicle' }, { ...task, typeId: 'task' }],
+    facts: [{ entity: vehicle, fieldId: 'current_task', value: ref, producer: 'task-engine', validFrom: at('0') }] });
+  store.seek('0');
+  const props = { api: {} as never, runId: 'run', store, revision: 1, selected: vehicle, mode: 'replay' as const, canOperate: false, following: false,
+    onSelect: vi.fn(), onSeekCut: vi.fn(), onTrace: vi.fn(), onFocus: vi.fn(), onFollow: vi.fn(), onShowGraph: vi.fn(), onClose: vi.fn() };
+  const view = render(<I18nProvider><InspectorPanel {...props} /></I18nProvider>);
+  const summary = screen.getByTestId('wb-operating');
+  const taskValue = within(summary).getByText(locale === 'en-US' ? 'Medical delivery' : '医疗配送');
+  expect(taskValue).toHaveAttribute('title', JSON.stringify(ref));
+  expect(summary).not.toHaveTextContent(/\$ref|run_id|generation/);
+  // The current cut controls label resolution: an absent or other-generation task
+  // must not borrow a current/future object's display name.
+  store.ingest({ ...emptyCommit(2, '10'), facts: [{ entity: vehicle, fieldId: 'current_task', value: { $ref: { ...ref.$ref, generation: 1 } }, producer: 'task-engine', validFrom: at('10') }] });
+  store.seek('10');
+  view.rerender(<I18nProvider><InspectorPanel {...props} revision={2} /></I18nProvider>);
+  expect(within(summary).getByText(task.id)).toBeVisible();
+  expect(summary).not.toHaveTextContent(locale === 'en-US' ? 'Medical delivery' : '医疗配送');
+});

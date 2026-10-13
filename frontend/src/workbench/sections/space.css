@@ -1,5 +1,6 @@
 /* Space section: Region block. Reuses the glass workbench language; no new visual vocabulary. */
 .wb-region { display: flex; flex-direction: column; gap: 8px; }
+.wb-space-city { margin-top: 12px; max-width: 420px; }
 .wb-region-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
 .wb-region-field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
 .wb-region-field > span:first-child { font-weight: 560; }

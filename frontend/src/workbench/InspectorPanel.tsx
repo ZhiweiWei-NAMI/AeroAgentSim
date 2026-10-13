@@ -139,9 +139,14 @@ function OperatingSummary({ store, selected }: { store: TemporalFeedStore; selec
   if (!entity) return null;
   const primary = operatingFields([...entity.fields]);
   const factValue = (fact: unknown): unknown => fact && typeof fact === 'object' && 'value' in (fact as Record<string, unknown>) ? (fact as Record<string, unknown>).value : fact;
-  const shortValue = (value: unknown): string => {
+  const shortValue = (value: unknown): { text: string; reference?: string } => {
     const raw = factValue(value);
-    return stateValue(raw,locale) ?? exactValue(raw);
+    const ref = raw && typeof raw === 'object' && '$ref' in raw ? (raw as Record<string, any>).$ref : undefined;
+    if (ref && typeof ref.id === 'string' && (typeof ref.generation === 'number' || typeof ref.generation === 'string')) {
+      const target = store.entities.get(entityId(ref));
+      return { text: target && target.typeId === ref.type_id ? displayName(target, store.header, locale) : ref.id, reference: exactValue(raw) };
+    }
+    return { text: stateValue(raw,locale) ?? exactValue(raw) };
   };
   const rows = primary.map(([id,value]) => {
     const field=store.header.fields.find(row=>row.fieldId===id);
@@ -152,7 +157,7 @@ function OperatingSummary({ store, selected }: { store: TemporalFeedStore; selec
   return <section className="wb-operating" data-testid="wb-operating" aria-label={L('Operating state', '运行状态')}>
     {rows.map(row => <div key={row.id} className="wb-operating-row">
       <span className="wb-operating-label">{row.title}{row.unit && <small> ({row.unit})</small>}</span>
-      <span className="wb-mono">{row.value}</span>
+      <span className="wb-mono" title={row.value.reference} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{row.value.text}</span>
     </div>)}
   </section>;
 }

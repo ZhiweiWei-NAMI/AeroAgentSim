@@ -13,7 +13,7 @@ export function SpaceSection(props: SectionProps) {
   return <>
     <p className="hint">{L('Geographic scope, city assets and how types are drawn in the scene.', '地理范围、城市素材以及类型在场景中的呈现方式。')}</p>
     <RegionBlock {...props} />
-    <label className="wb-form-field" data-path="/city" style={{ maxWidth: 420 }}>
+    <label className="wb-form-field wb-space-city" data-path="/city">
       <span className="wb-label">{L('City', '城市')}</span>
       <select value={(draft.city as string | undefined) ?? 'none'} aria-label={L('City', '城市')}
         onChange={event => edit('/city', event.target.value === 'none' ? undefined : event.target.value)}>
