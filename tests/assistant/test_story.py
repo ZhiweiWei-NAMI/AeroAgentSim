@@ -137,3 +137,94 @@ def test_counted_outcome_retains_the_configured_target(tmp_path: Path, released:
     if completed < 6:
         assert f"{completed} of 6 recorded" in outcome["explanation"]["text"]
         assert f"{released} of the 6 configured tasks were released" in outcome["explanation"]["text"]
+
+
+def test_traffic_receipts_and_capture_failure_are_visible_without_expectations(tmp_path):
+    run = journal_run(tmp_path / "traffic", [
+        {"at_ns": 20_000_000_000, "items": [event("traffic.incident.activated", {"incident": "incident.01"}, 20_000_000_000)]},
+        {"at_ns": 23_100_000_000, "items": [event("traffic.award.committed", {"incident": "incident.01", "actor": "uav.bravo"}, 23_100_000_000)]},
+        {"at_ns": 57_100_000_000, "items": [event("traffic.capture.failed", {"actor": "uav.bravo", "reason": "renderer unavailable"}, 57_100_000_000)]},
+    ])
+    empty = run_story(run, [])
+    assert empty["assessment"] == "unassessed"
+    assert empty["coverage"]["recorded_events"] == 3
+    assert [e["schema"] for e in empty["events"]] == ["traffic.incident.activated", "traffic.award.committed", "traffic.capture.failed"]
+    assert empty["failures"][0]["payload"]["reason"] == "renderer unavailable"
+    outcome = run_story(run, [expectation("traffic.capture.stored", {"actor": {"$in": ["uav.alpha", "uav.bravo"]}})])
+    assert outcome["assessment"] == "incomplete"
+    assert outcome["expectations"][0]["status"] == "missed"
+    assert "renderer unavailable" in outcome["expectations"][0]["explanation"]["text"]
+
+
+def test_story_caches_completed_runs_and_reads_only_new_commits(tmp_path, monkeypatch):
+    run = journal_run(tmp_path / "incremental", [
+        {"at_ns": 1, "items": []},
+        {"at_ns": 2, "items": [event("traffic.incident.activated", {"incident": "incident.01"}, 2)]},
+    ], status="running", committed_cut=1)
+    storage = RunStorage(run)
+    final = storage.entries[-1]
+    starts = []
+    original = RunStorage.records
+
+    def read(self, start=0, limit=1000):
+        starts.append(start)
+        return original(self, start, limit)
+
+    monkeypatch.setattr(RunStorage, "records", read)
+    expected = [expectation("traffic.incident.activated", {"incident": "incident.01"})]
+    assert run_story(run, expected)["expectations"][0]["status"] == "pending"
+    assert starts == [0]
+    before = {p.name: p.read_bytes() for p in run.iterdir() if p.is_file()}
+    assert run_story(run, expected)["events"] == []
+    assert starts == [0]
+    assert {p.name: p.read_bytes() for p in run.iterdir() if p.is_file()} == before
+    storage.publish_prefix(final["offset"] + final["length"], final["index"])
+    assert run_story(run, expected)["expectations"][0]["status"] == "happened"
+    assert starts == [0, 2]
+    manifest = json.loads((run / "manifest.json").read_text())
+    manifest["status"] = "completed"
+    (run / "manifest.json").write_text(json.dumps(manifest))
+    assert run_story(run, expected)["terminal"]
+    assert starts == [0, 2]
+    first = storage.entries[1]
+    storage.publish_prefix(first["offset"] + first["length"], first["index"])
+    assert run_story(run, expected)["events"] == []
+
+
+def test_form_version_story_derives_expectations_from_pinned_scenario(tmp_path):
+    import copy
+    from aeroagentsim.assistant.sessions import SessionStore
+    from aeroagentsim.assistant.tools import ToolRunner
+    from aeroagentsim.authoring.templates import TemplateRegistry
+    from aeroagentsim.scenario import load_scenario
+
+    prepared = TemplateRegistry().apply("traffic-accident")
+    loaded = load_scenario(prepared.document, base=prepared.base)
+    document = copy.deepcopy(loaded.document)
+    document["registry"].pop("compile", None)
+    document["registry"]["snapshot"] = "registry.snapshot.json"
+    run_id = "run-" + "b" * 32
+    directory = journal_run(tmp_path / run_id, [], document=document)
+    loaded.compiled.write_snapshot(directory / "registry.snapshot.json")
+    manifest = json.loads((directory / "manifest.json").read_text())
+    manifest.update(studio_workspace="fixture-workspace", workspace_version=2)
+    (directory / "manifest.json").write_text(json.dumps(manifest))
+    sessions = SessionStore(tmp_path)
+    session = sessions.create("fixture-workspace")
+    tools = ToolRunner(None, TemplateRegistry(), sessions, tmp_path)
+    story = tools.run_story(session["id"], run_id)
+    assert story["expectations_source"] == "pinned_run_scenario"
+    assert story["workspace_version"] == 2 and story["plan_version"] is None
+    assert any("traffic-incident" in e["id"] for e in story["expectations"])
+
+
+def test_model_story_compaction_preserves_coverage_and_failure(tmp_path):
+    from aeroagentsim.assistant.tools import compact_json
+
+    run = journal_run(tmp_path / "many", [{"at_ns": i, "items": [event("traffic.incident.activated", {"incident": "incident.01"}, i)]} for i in range(1, 40)] + [
+        {"at_ns": 50, "items": [event("traffic.capture.failed", {"actor": "uav.bravo", "reason": "real failure"}, 50)]}])
+    compact = json.loads(compact_json(run_story(run, [])))
+    assert compact["coverage"]["recorded_events"] == 40
+    assert compact["events_sampled"]
+    assert compact["failure_count"] == 1
+    assert compact["failures"][0]["payload"]["reason"] == "real failure"

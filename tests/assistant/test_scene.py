@@ -219,3 +219,25 @@ def test_random_release_states_how_many_orders_arrive(tmp_path) -> None:
     assert any(w["field"] == "workloads.meal.release" for w in sparse.warnings)
     default = compile_plan(context, {"template": "food-delivery"}, [], tmp_path / "default")
     assert default.summary["workloads"][0]["release"]["expected_released"] == 6 and "note" not in default.summary["workloads"][0]["release"]
+
+
+def test_traffic_scene_has_actual_wind_vehicles_tasks_and_accident(tmp_path):
+    context = CompileContext(WorkspaceStore(tmp_path / "workspaces", None), TemplateRegistry(), None)
+    result = compile_plan(context, {"template": "traffic-accident"}, [
+        {"id": "east-wind", "op": "set_wind", "params": {"speed_mps": 3}},
+        {"id": "accident-time", "op": "set_control", "params": {"control": "accident_time_s", "value": 20}},
+    ], tmp_path / "traffic")
+    assert result.ok, result.errors
+    assert result.summary["environment"]["wind"]["speed_mps"] == 3
+    assert not any(e["plugin"] == "lowalt_tasks" for e in result.document["engines"].values())
+    fleets = {f["id"]: f for f in result.summary["fleets"]}
+    assert fleets["traffic-uavs"]["count"] == 8
+    assert fleets["traffic-road-vehicles"]["count"] == 63
+    assert fleets["traffic-uavs"]["member_states"][0]["position"] is not None
+    assert fleets["traffic-road-vehicles"]["battery_pct"] is None
+    assert sum(w["count"] for w in result.summary["workloads"]) == sum(e["type"] == "aas:TrafficTask" for e in result.document["entities"])
+    event = next(e for e in result.summary["events"] if e["kind"] == "traffic_accident")
+    assert event["at_s"] == 20 and event["place"] == "incident.01"
+    schemas = {e["match"]["schema"] for e in result.expectations}
+    assert {"traffic.incident.activated", "traffic.award.committed", "traffic.capture.stored"} <= schemas
+    assert not any(s.startswith("lowalt.") for s in schemas)

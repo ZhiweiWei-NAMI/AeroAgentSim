@@ -120,7 +120,7 @@ def _tasks_config(document: dict) -> dict:
 
 def _position(entity: dict) -> list | None:
     facts = entity.get("facts", {})
-    for key in ("lowalt.position", "lowalt.site_position", "lowalt.incident_position"):
+    for key in ("lowalt.position", "lowalt.site_position", "lowalt.incident_position", "he.aircraft.position_enu_m", "traffic.road.position_enu_m", "traffic.incident.position_enu_m", "aas.studio.position_enu_m"):
         if key in facts:
             return facts[key]
     return None
@@ -187,11 +187,15 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
         return {"type": type_id, "ancestry": ancestry, "label": type_id}
     def label(identity: str | None) -> str | None:
         return entities.get(identity, {}).get("label", identity)
-    wind_profiles = [p["lowalt.wind"] for e in document.get("engines", {}).values() if e["plugin"] == "environment"
-                     for p in e["config"].get("profiles", {}).values() if "lowalt.wind" in p]
-    speeds = [math.sqrt(sum(v * v for v in p["value"])) for p in wind_profiles if "value" in p]
+    wind_profiles = [v for e in document.get("engines", {}).values() if e["plugin"] == "environment"
+                     for p in e["config"].get("profiles", {}).values() for k, v in p.items()
+                     if k in {"lowalt.wind", "oo:digital_twin.wind.horizontalVelocity"}]
+    def wind_speed(value):
+        vectors = value if isinstance(value[0], list) else [value]
+        return _common([math.sqrt(sum(v * v for v in vector)) for vector in vectors])
+    speeds = [wind_speed(p["value"]) for p in wind_profiles if "value" in p]
     gusts = [{"start_s": g["start_ns"] / SECOND, "end_s": g["end_ns"] / SECOND,
-              "speed_mps": math.sqrt(sum(v * v for v in g["value"]))}
+              "speed_mps": wind_speed(g["value"])}
              for p in wind_profiles for g in p.get("gusts", [])]
     zones = [{"id": e["id"], "label": e.get("label", e["id"]), "kind": e["facts"]["lowalt.zone_kind"]}
              for e in entities.values() if e["type"] == "lowalt:AirspaceZone"]
@@ -293,7 +297,19 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
                                   ("Take the next task and complete its configured route.", "接取下一项任务并完成已配置路线。"))
         routine.append({"kind": kind, "text": en, "text_zh": zh})
     packages = [p.get("document", p) for p in document.get("behaviours", [])]
+    # Plain authored documents may still refer to portable behaviour source files.
+    if directory is not None:
+        import yaml
+        from aeroagentsim.scenario.loader import UniqueLoader
+
+        packages = [yaml.load((directory / p["path"]).read_bytes(), Loader=UniqueLoader) if "path" in p else p for p in packages]
+    traffic = _traffic(document, entities, packages, contract)
+    fleets.extend(traffic["fleets"])
+    workloads.extend(traffic["workloads"])
+    for work in traffic["workloads"]:
+        routine.append({"kind": work["kind"], "text": f"Follow the configured {work['kind']} task and route; recorded events determine the outcome.", "text_zh": f"执行已配置的 {work['kind']} 任务和路线；结果以记录事件为准。"})
     events = []
+    events.extend(traffic["events"])
     for incident in (cooperation or {}).get("incidents", []):
         events.append({"id": incident["id"], "kind": incident["kind"], "label": incident.get("label", EVENT_LABELS[incident["kind"]][0]),
                        "label_zh": incident.get("label_zh", EVENT_LABELS[incident["kind"]][1]), "at_s": incident["at_s"],
@@ -352,14 +368,60 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
             "fleets": fleets, "places": places, "workloads": workloads, "events": events, "rules": rules, "routine": routine,
             "algorithms": copy.deepcopy(document.get("algorithms", {})), "cooperation": cooperation,
             "controls": copy.deepcopy(controls) if controls is not None else {},
+            "origin": copy.deepcopy(document.get("origin")),
+            "traffic": traffic["context"],
             "entity_ids": sorted(e["id"] for e in document.get("entities", [])),
             "entity_facts": {e["id"]: hashlib.sha256(json.dumps(e, sort_keys=True, ensure_ascii=False).encode()).hexdigest() for e in document.get("entities", [])}}
+
+
+def _traffic(document: dict, entities: dict, packages: list[dict], contract) -> dict:
+    fleets, workloads, events = [], [], []
+    for type_id, identity, en, zh in (("aas:TrafficUAV", "traffic-uavs", "Traffic UAVs", "交通无人机"),
+                                      ("aas:TrafficRoadVehicle", "traffic-road-vehicles", "Road vehicles", "道路车辆")):
+        members = [e for e in entities.values() if e["type"] == type_id]
+        if not members:
+            continue
+        # Energy is read in joules; no battery percentage is invented without a capacity.
+        engines = [e["config"] for e in document.get("engines", {}).values() if e["config"].get("type_id") == type_id]
+        capacity = next((e["energy"]["capacity_j"] for e in engines if "capacity_j" in e.get("energy", {})), None)
+        states = [{"id": e["id"], "label": e.get("label", e["id"]), "label_zh": e.get("label_zh", _chinese_label(e.get("label", e["id"]))),
+                   "position": _position(e), "battery_pct": e["facts"]["traffic.uav.energy_j"] / capacity * 100 if capacity is not None and capacity > 0 and "traffic.uav.energy_j" in e["facts"] else None,
+                   "payload_capacity_kg": None, "task_kinds": [], "current_task": _plain_payload(e["facts"].get("traffic.actor.current_task")),
+                   "details": copy.deepcopy(e["facts"])} for e in members]
+        fleets.append({"id": identity, "role": None, "domain": "traffic", "label": en, "label_zh": zh, "count": len(members),
+                       "members": [e["id"] for e in members], "member_states": states, "vehicle_class": type_id,
+                       "task_kinds": [], "start": {"place": None, "label": None}, "battery_pct": _common([s["battery_pct"] for s in states]),
+                       "payload_capacity_kg": None, "contract": contract(type_id)})
+    groups: dict[str, list[dict]] = {}
+    for e in entities.values():
+        if e["type"] == "aas:TrafficTask":
+            groups.setdefault(e["facts"]["traffic.task.kind"], []).append(e)
+    for kind, members in groups.items():
+        ids = [e["id"] for e in members]
+        actors = [e["id"] for e in entities.values() if _plain_payload(e["facts"].get("traffic.actor.current_task")) in ids]
+        workloads.append({"id": "traffic-tasks:" + kind, "domain": "traffic", "kind": kind, "label": kind.replace("_", " "), "label_zh": kind.replace("_", " "),
+                          "count": len(ids), "tasks": ids, "from": actors, "to": [], "release": {"mode": "behaviour"}, "priority": None,
+                          "payload_kg": None, "protected": None, "work_route": None,
+                          "task_states": [{"id": e["id"], "details": copy.deepcopy(e["facts"])} for e in members]})
+    chains = {name: chain for package in packages for name, chain in package.get("chains", {}).items()}
+    bound = {binding["chain"] for package in packages for binding in package.get("bindings", [])}
+    report = chains.get("traffic.incident_report", {}) if "traffic.incident_report" in bound else {}
+    delay = next((a["duration_ns"] / SECOND for t in report.get("transitions", []) for a in t.get("actions", []) if a.get("id") == "accident-time" and a.get("kind") == "delay"), None)
+    incidents = [e for e in entities.values() if e["type"] == "aas:TrafficIncident"]
+    if report:
+        for incident in incidents:
+            events.append({"id": "traffic-incident:" + incident["id"], "domain": "traffic", "kind": "traffic_accident", "label": "Traffic accident", "label_zh": "交通事故",
+                           "at_s": delay if incident["facts"].get("traffic.incident.source_kind") == "authored_staged" else None,
+                           "place": incident["id"], "position": _position(incident), "layer": "setup", "schema": "traffic.incident.activated", "params": {"incident": incident["id"]}})
+    return {"fleets": fleets, "workloads": workloads, "events": events,
+            "context": {"bound_chains": sorted(bound & {name for name in chains if name.startswith("traffic.")}),
+                        "incidents": [{"id": e["id"], "facts": copy.deepcopy(e["facts"])} for e in incidents]}}
 
 
 # Incidents and handoff points already appear as events and places; the provider follows from the helpers' mode.
 MIRRORED = {"cooperation": {"incidents", "handoff_points", "provider"}}
 SECTION_LABELS = {"title": ("Title", "标题"), "city": ("City", "城市"), "duration_s": ("Duration", "时长"), "run_mode": ("Run mode", "运行模式"),
-                  "environment": ("Environment", "环境"), "algorithms": ("Algorithms", "算法"), "cooperation": ("Cooperation rules", "协作规则"), "controls": ("Run controls", "运行控制")}
+                  "environment": ("Environment", "环境"), "algorithms": ("Algorithms", "算法"), "cooperation": ("Cooperation rules", "协作规则"), "controls": ("Run controls", "运行控制"), "origin": ("ENU origin", "ENU 原点")}
 
 
 def _leaf_changes(before: Any, after: Any, prefix: str = "") -> list[dict]:
@@ -387,7 +449,7 @@ def diff(before: dict, after: dict) -> dict:
             fields = [{"name": k, "before": old[identity].get(k), "after": new[identity].get(k)} for k in sorted(old[identity].keys() | new[identity].keys()) if old[identity].get(k) != new[identity].get(k)]
             if fields:
                 result["changed"].append({"kind": kind, "id": identity, "label": new[identity]["label"], "fields": fields})
-    for section in ("title", "city", "duration_s", "run_mode", "environment", "algorithms", "cooperation", "controls"):
+    for section in ("title", "city", "duration_s", "run_mode", "environment", "algorithms", "cooperation", "controls", "origin"):
         old_value, new_value = before.get(section), after.get(section)
         if old_value == new_value:
             continue
@@ -484,6 +546,8 @@ def expectations(document: dict, summary: dict) -> list[dict]:
         return identity
     names = {e["id"]: (e.get("label", e["id"]), e.get("label_zh", e.get("label", e["id"]))) for e in document.get("entities", [])}
     for workload in summary["workloads"]:
+        if workload.get("domain") == "traffic":
+            continue
         times = workload["release"].get("times_s")
         counted = len(workload["tasks"]) > 2
         counts = {"count": len(workload["tasks"]), "released": "lowalt.task.created"} if counted else {}
@@ -545,6 +609,24 @@ def expectations(document: dict, summary: dict) -> list[dict]:
             add("event:" + event["id"], schema, event["params"], event["label"], event["label_zh"], layer="setup", at=event["at_s"])
             for identity, emitted, where, en, zh, at, depends in _operator_steps(event, summary["duration_s"]):
                 add(identity, emitted, where, en, zh, at=at, depends=depends)
+    traffic = summary.get("traffic", {})
+    chains = traffic.get("bound_chains", [])
+    if traffic.get("incidents") and "traffic.incident_report" in chains:
+        from aeroagentsim.packs.traffic_accident.narratives import EVENT_NARRATIVES
+
+        stages = ["traffic.incident.detected", "traffic.broadcast"]
+        if "traffic.capture_execute" in chains:
+            stages += ["traffic.capture.requested", "traffic.capture.stored", "traffic.capture.accepted"]
+        if any("bid" in chain or "award" in chain for chain in chains):
+            stages[2:2] = ["traffic.bid.joined", "traffic.award.committed"]
+        # Some receipts omit optional incident links: scope them to configured UAV actors.
+        actors = [m for f in summary["fleets"] if f.get("domain") == "traffic" and f["vehicle_class"] == "aas:TrafficUAV" for m in f["members"]]
+        for schema in stages:
+            declaration = EVENT_NARRATIVES[schema]
+            where = {"actor": {"$in": actors}} if schema.startswith(("traffic.capture.", "traffic.bid.")) else {"incident": {"$in": [e["id"] for e in traffic["incidents"]]}}
+            en = re.sub(r"\{[^}]+\}", "a configured participant", declaration["template"])
+            zh = re.sub(r"\{[^}]+\}", "已配置对象", declaration["template_zh"])
+            add("traffic:" + schema, schema, where, "If permitted: " + en, "若条件允许：" + zh)
     return result
 
 
@@ -563,6 +645,8 @@ def interactions(summary: dict) -> dict:
         steps.append({"id": identity, "from": a, "to": b, "text": en, "text_zh": zh, "layer": layer,
                       "decided_by": mode if layer == "behaviour" else None, "branch": branch, "at_s": at, "expect": expect})
     for work in summary["workloads"]:
+        if work.get("domain") == "traffic":
+            continue
         fleets = [f for f in summary["fleets"] if work["kind"] in f["task_kinds"]]
         to = fleets[0]["id"] if fleets else "system"
         origin, destination = work["from"][0], work["to"][0]
@@ -604,6 +688,8 @@ def interactions(summary: dict) -> dict:
             if "report_only" in coop["responder"]["order"]:
                 step(prefix + ":report", watcher, "system", "If report-only is chosen, report the incident", "若选择仅报告，则报告事件", mode=mode, expect=prefix + ":reported")
     for event in summary["events"]:
+        if event.get("domain") == "traffic" and not any(lane["id"] == event["place"] for lane in lanes):
+            lanes.append({"id": event["place"], "label": event["label"], "label_zh": event["label_zh"], "kind": "incident"})
         if event["kind"] == "person_fall":
             continue
         if event["kind"] == "wind_gust":
@@ -626,6 +712,9 @@ def interactions(summary: dict) -> dict:
             fleet = next((f["id"] for f in summary["fleets"] if work and work["kind"] in f["task_kinds"]), "system")
             step(identity, "system", event["place"] or fleet, en, zh, at=at, expect=identity,
                  branch={"group": "event:" + event["id"] + ":accepted", "when": "the operator request is accepted / 操作请求被接受"})
+    for expected in expectations({}, summary):
+        if expected["id"].startswith("traffic:"):
+            step(expected["id"], "system", "system", expected["text"], expected["text_zh"], expect=expected["id"])
     return {"lanes": lanes, "steps": steps}
 
 

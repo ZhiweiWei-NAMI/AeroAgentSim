@@ -53,7 +53,12 @@ def run_evidence(tools: ToolRunner, identifier: str, context: dict[str, Any] | N
         story = tools.run_story(identifier, run_id)
     except (OSError, ValueError, KeyError) as error:
         return {"run_id": run_id, "unavailable": str(error)}
+    return story_evidence(run_id, story)
+
+
+def story_evidence(run_id: str, story: dict) -> dict:
     return {"run_id": run_id, "status": story.get("status"), "terminal": story.get("terminal"),
+            **{k: story[k] for k in ("assessment", "coverage", "failures", "workspace_version", "plan_version", "expectations_source", "detail") if k in story},
             "expectations": [{k: row.get(k) for k in ("id", "text", "status", "at_ns", "progress")} | {"recorded": (row.get("explanation") or {}).get("text")} for row in story["expectations"]],
             "events": [{k: e.get(k) for k in ("schema", "text", "at_ns")} for e in story["events"][-40:]]}
 
@@ -115,14 +120,75 @@ class Harness:
         self.sessions.emit(identifier, "notice", text="Turn cancelled; compiled proposals remain available / 对话已取消；已编译的方案仍可查看")
         return True
 
-    def _answer(self, identifier: str, message: dict[str, Any]) -> None:
+    def _grounded_reply(self, identifier: str, text: str, evidence: dict | None) -> str:
+        """Fixed observation actions render recorded facts instead of historical model prose."""
+        session = self.sessions.get(identifier)
+        question = next((m["content"] for m in reversed(session["transcript"]) if m["role"] == "user"), "")
+        zh = str(session["locale"]).startswith("zh")
+        if evidence is not None and evidence.get("coverage") is not None and re.search(r"summari[sz]e|what is happening|总结|现在发生", question, re.I):
+            coverage = evidence["coverage"]
+            rows = evidence.get("expectations", [])
+            happened = sum(row["status"] == "happened" for row in rows)
+            lines = [f"运行 {evidence['run_id']}（{evidence['status']}）记录了 {coverage['recorded_events']} 个事件。" if zh else f"Run {evidence['run_id']} ({evidence['status']}) recorded {coverage['recorded_events']} events."]
+            if rows:
+                lines.append(f"预期步骤已发生 {happened}/{len(rows)}；以各步骤证据为准。" if zh else f"{happened}/{len(rows)} expected steps were recorded; assess the evidence for each step.")
+            else:
+                lines.append("没有配置预期，不能据此判断全部成功。" if zh else "No expectations were configured; this does not establish success.")
+            for schema, count in coverage.get("schemas", {}).items():
+                lines.append(f"- {schema}: {count}")
+            for failure in evidence.get("failures", []):
+                label = failure.get("text_zh") if zh else failure["text"]
+                lines.append(f"- {failure['at_ns'] / 1e9:g} s: {label or failure['text']} — " + json.dumps(failure["payload"], ensure_ascii=False))
+            return "\n\n".join(lines)
+        if isinstance(self.tools, ToolRunner) and question.strip() in {"What should I watch for when I run it?", "运行时我应该关注什么？"}:
+            from .scene import expectations
+
+            document, scene = self.tools._scene(identifier)
+            selected = session["plan_version"]
+            saved = any(r["plan_version"] == selected for r in session["applied"])
+            lines = [("按当前已保存场景观察：" if saved else "按当前选中方案观察：") if zh else ("Watch the current saved scene:" if saved else "Watch the selected proposal:")]
+            total = sum(f["count"] for f in scene["fleets"] if f.get("vehicle_class") != "aas:TrafficRoadVehicle")
+            lines.append(f"无人机总数：{total}。" if zh else f"Total UAVs: {total}.")
+            for fleet in scene["fleets"]:
+                lines.append(f"- {fleet['id']}: {fleet['count']} × {fleet['label_zh'] if zh else fleet['label']}")
+            for place in scene["places"]:
+                if place["role"] == "charging_pad":
+                    lines.append(f"- {place['id']}: " + ("容量 " if zh else "capacity ") + str(place["details"]["lowalt.site_capacity"]) + ", ENU " + json.dumps(place["position"]))
+            lines.extend("- " + row["text_zh" if zh else "text"] for row in expectations(document, scene)[:12])
+            lines.append("这些步骤取决于运行时条件，完成情况以事件记录为准。" if zh else "These steps depend on runtime conditions; recorded events establish the outcome.")
+            return "\n\n".join(lines)
+        if isinstance(self.tools, ToolRunner) and re.search(r"saved draft|current position|changed.*Form|已保存|表单.*修改", question, re.I):
+            # Reject an absence/deletion inference for a real participant named in the reply.
+            current = self.tools.get_current_scene(identifier)
+            identities = (current.get("scene") or {}).get("entity_ids", [])
+            if re.search(r"deleted|removed|no longer exists|不存在|已删除|被删|已移除", text, re.I):
+                named = [identity for identity in identities if identity in text or identity in question]
+                if named:
+                    facts = [self.tools.get_current_scene(identifier, id=identity)["participant"]["entity"] for identity in named]
+                    return ("已保存草稿中仍存在这些对象：\n\n" if zh else "These participants exist in the saved draft:\n\n") + "\n\n".join(json.dumps(entity, ensure_ascii=False) for entity in facts)
+        return text
+
+    def _answer(self, identifier: str, message: dict[str, Any], evidence: dict | None = None) -> None:
         content = message.get("content")
         if not isinstance(content, str) or not content.strip():
             raise ProviderError("PROTOCOL", "empty final completion")
         text, suggestions = split_suggestions(content)
         if not text:
             raise ProviderError("PROTOCOL", "empty final completion")
-        self.sessions.append(identifier, {"role": "assistant", "content": content})
+        grounded = self._grounded_reply(identifier, text, evidence)
+        used_grounded_facts = grounded != text
+        text = grounded
+        session = self.sessions.get(identifier)
+        plan = session["plans"].get(str(session["plan_version"]))
+        if plan is not None:
+            # Validation can finish while the provider is writing its completion.
+            # Render status from the store, replacing the provider's status prose.
+            if not used_grounded_facts and evidence is None:
+                sentences = re.split(r"(?<=[。！？])|(?<=[.!?])\s+|\n", text)
+                text = "\n".join(s.strip() for s in sentences if s.strip() and not re.search(r"\b(?:validat\w*|pending)\b|wait.*confirm|before confirming|校验|验证|等待.*确认", s, re.I))
+            status = plan_status(session, plan, zh=str(session["locale"]).startswith("zh"))
+            text = (text + "\n\n" if text else "") + status
+        self.sessions.append(identifier, {"role": "assistant", "content": text + ("\nSuggestions: " + " | ".join(suggestions) if suggestions else "")})
         self.sessions.emit(identifier, "assistant", text=text, suggestions=suggestions)
 
     def _closing(self, identifier: str) -> str:
@@ -140,12 +206,19 @@ class Harness:
         try:
             session = self.sessions.get(identifier)
             scene = self.tools.get_current_scene(identifier)
-            messages = [{"role": "system", "content": SYSTEM_PROMPT}, state_message(session, scene, context, run_evidence(self.tools, identifier, context))] + recent_history(session["transcript"])
+            evidence = run_evidence(self.tools, identifier, context)
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}, state_message(session, scene, context, evidence)] + recent_history(session["transcript"])
             provider = self.connection.provider()
             schemas = tool_schemas()
             for step in range(self.max_calls + 1):
                 if self._cancelled(identifier, turn):
                     break
+                # Plan selection/application and asynchronous validation are not model history.
+                # Refresh the authoritative state for every completion, including the final one.
+                session = self.sessions.get(identifier)
+                if step:
+                    scene = self.tools.get_current_scene(identifier)
+                messages[1] = state_message(session, scene, context, evidence)
                 exhausted = step == self.max_calls
                 if exhausted:
                     messages.append({"role": "system", "content": "Tool budget exhausted. Give a concise grounded final answer now; mention unfinished work and do not call tools. / 工具预算已用尽，请基于已有结果简要回答并说明尚未完成的工作。"})
@@ -162,13 +235,13 @@ class Harness:
                     raise ProviderError("PROTOCOL", "invalid assistant message")
                 calls = message.get("tool_calls")
                 if not calls:
-                    self._answer(identifier, message)
+                    self._answer(identifier, message, evidence)
                     break
                 if exhausted:
                     # Some models keep asking for tools even when none are offered; the turn still
                     # ends with an answer, the model's own text if it gave any, else the plan's state.
                     content = message.get("content")
-                    self._answer(identifier, {"role": "assistant", "content": content if isinstance(content, str) and content.strip() else self._closing(identifier)})
+                    self._answer(identifier, {"role": "assistant", "content": content if isinstance(content, str) and content.strip() else self._closing(identifier)}, evidence)
                     self.sessions.emit(identifier, "notice", text="The model exhausted this turn's tool budget; review the latest proposal or send another message / 模型已用尽本轮工具预算；请查看最新方案或发送下一条消息")
                     break
                 if not isinstance(calls, list) or len(calls) > 12:
@@ -205,12 +278,22 @@ class Harness:
                         if self.sessions.cancelled(identifier, turn):
                             raise ValueError("Cancelled before tool execution / 工具执行前已取消")
                         result = self.tools.execute(identifier, name, arguments)
+                        if name == "run_story" and isinstance(result, dict) and "expectations" in result:
+                            evidence = story_evidence(arguments["run_id"], result)
                         status = "error" if isinstance(result, dict) and (result.get("ok") is False or "error" in result) else "ok"
                         detail = (f"Plan v{result['version']} / 方案 v{result['version']}" if isinstance(result, dict) and "version" in result else "Result recorded / 结果已记录")
                         if status == "error":
                             detail = "Compilation failed; inspect operation errors / 编译失败；请检查操作错误"
                     except (ValueError, TypeError, KeyError, FileNotFoundError) as error:
-                        result = {"error": str(error), "code": "TOOL_ARGUMENTS", "hint": "Correct this tool request using its schema / 请按工具结构修正请求"}
+                        schema = next((s["function"]["parameters"] for s in schemas if s["function"]["name"] == name), None)
+                        current = self.sessions.get(identifier)
+                        plan = current["plans"].get(str(current["plan_version"]))
+                        from .tools import operation_list
+
+                        result = {"error": str(error), "code": "TOOL_ARGUMENTS", "tool": name,
+                                  "schema": {"required": schema.get("required", []), "fields": {k: {a: v[a] for a in ("type", "enum", "description") if a in v} for k, v in schema.get("properties", {}).items()}} if schema else None,
+                                  "current_operations": operation_list(plan["operations"]) if plan else [],
+                                  "hint": "Use the declared fields/shapes; strict JSON rejects duplicate keys. Failed plans retain their operations: update/remove the listed op ids, do not re-add them / 按所列结构修正，JSON 不允许重复键；失败草稿保留操作，请按标识修改或移除，不要重复添加"}
                         status, detail = "error", str(error)[:240]
                     except Exception as error:
                         LOG.error("Assistant tool %s failed (%s)", name, type(error).__name__)

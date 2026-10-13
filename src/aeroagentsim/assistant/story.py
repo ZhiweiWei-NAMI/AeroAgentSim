@@ -5,6 +5,10 @@ from __future__ import annotations
 import copy
 import json
 import math
+import threading
+from collections import Counter, OrderedDict, defaultdict
+from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +21,131 @@ from aeroagentsim.services.narratives import NarrativeProjector, _entity_id
 from aeroagentsim.services.storage import RunStorage
 
 TERMINAL = {"completed", "stopped", "faulted", "interrupted", "input_timeout"}
-KEY_PREFIXES = ("lowalt.incident.", "lowalt.handoff.", "lowalt.task.", "lowalt.food.", "lowalt.operator.")
+@dataclass
+class StoryIndex:
+    projector: NarrativeProjector
+    cooperation: list[dict]
+    cursor: int = 0
+    last_ns: int | None = None
+    events: list[dict] = field(default_factory=list)
+    by_schema: dict[str, list[dict]] = field(default_factory=lambda: defaultdict(list))
+    seen: set[str] = field(default_factory=set)
+    approaches: dict[str, dict] = field(default_factory=dict)
+    lock: Any = field(default_factory=threading.RLock)
+
+
+# Derived in-memory indexes only: the acknowledged journal is always authoritative.
+_INDEXES: OrderedDict[tuple, StoryIndex] = OrderedDict()
+_INDEX_LOCK = threading.RLock()
+
+
+@lru_cache(maxsize=16)
+def _pinned_expectations(run_dir: Path, identities: tuple) -> list[dict]:
+    from .scene import expectations, summarize
+
+    document = json.loads((run_dir / "scenario.json").read_text())
+    return expectations(document, summarize(document, directory=run_dir))
+
+
+def pinned_expectations(run_dir: Path) -> list[dict]:
+    """The fixed run input supplies expectations for both assistant and Form versions."""
+    run_dir = run_dir.resolve()
+    identities = tuple(_identity(run_dir / name) for name in ("scenario.json", "runtime.registry.json", "behaviour.ir.json"))
+    return copy.deepcopy(_pinned_expectations(run_dir, identities))
+
+
+def _identity(path: Path) -> tuple | None:
+    if not path.exists():
+        return None
+    stat = path.stat()
+    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns
+
+
+def _index(run_dir: Path, storage: RunStorage) -> tuple[tuple, StoryIndex]:
+    journal = run_dir / "journal.jsonl"
+    stat = journal.stat() if journal.exists() else None
+    key = (str(run_dir.resolve()), *(_identity(run_dir / name) for name in
+           ("scenario.json", "runtime.registry.json", "behaviour.ir.json")),
+           (stat.st_dev, stat.st_ino) if stat else None)
+    with _INDEX_LOCK:
+        indexed = _INDEXES.get(key)
+        end = storage.entries[-1]["index"] + 1 if storage.entries else 0
+        if indexed is not None and indexed.cursor > end:
+            del _INDEXES[key]
+            indexed = None  # A shorter acknowledged prefix must never expose later cached events.
+        if indexed is None:
+            document = json.loads((run_dir / "scenario.json").read_text())
+            projector = NarrativeProjector.from_directory(run_dir)
+            coop = [e["config"]["cooperation"] for e in document.get("engines", {}).values()
+                    if e["plugin"] == "lowalt_tasks" and "cooperation" in e["config"]]
+            if coop:
+                from aeroagentsim.packs.lowalt.cooperation import EVENTS
+                for schema, declaration in EVENTS.items():
+                    projector._declarations[schema] = {
+                        "template": declaration.get("template", declaration.get("text")),
+                        "template_zh": declaration.get("template_zh", declaration.get("text_zh")),
+                        "category": declaration.get("category", "emergency"),
+                        "severity": declaration.get("severity", "info"), "entities": declaration.get("entities", []),
+                        **({"position": declaration["position"]} if "position" in declaration else {}),
+                    }
+            indexed = StoryIndex(projector, coop)
+            _INDEXES[key] = indexed
+        _INDEXES.move_to_end(key)
+        while len(_INDEXES) > 8:
+            _INDEXES.popitem(last=False)
+        return key, indexed
+
+
+def _extend(storage: RunStorage, indexed: StoryIndex) -> None:
+    end = storage.entries[-1]["index"] + 1 if storage.entries else 0
+    while indexed.cursor < end:
+        records = storage.records(indexed.cursor, min(500, end - indexed.cursor))
+        if not records:
+            raise ValueError("Committed Story index has a journal gap / 已提交故事日志存在缺口")
+        for raw in records:
+            record = decode_record(raw)
+            instant = record.get("instant")
+            if instant is not None:
+                indexed.last_ns = max(indexed.last_ns, instant.ns) if indexed.last_ns is not None else instant.ns
+            narration = {row["message_id"]: row for row in indexed.projector.consume_decoded(record)}
+            for item in record.get("items", []):
+                proposal = item.get("proposal")
+                if isinstance(proposal, FactWrite) and proposal.key[1] == "lowalt.position":
+                    position = thaw(proposal.value)
+                    if not isinstance(position, list) or len(position) != 3:
+                        raise ValueError("Recorded lowalt position is not an ENU vector / 记录的低空位置不是 ENU 向量")
+                    for coop in indexed.cooperation:
+                        if proposal.key[0].id not in coop["watchers"]["vehicles"]:
+                            continue
+                        for incident in coop["incidents"]:
+                            at_ns = proposal.valid.start.ns
+                            if at_ns < round(incident["at_s"] * 1e9):
+                                continue
+                            distance = math.dist(position[:2], incident["position"][:2])
+                            previous = indexed.approaches.get(incident["id"])
+                            if previous is None or distance < previous["distance_m"]:
+                                indexed.approaches[incident["id"]] = {"vehicle": proposal.key[0].id, "distance_m": distance,
+                                    "at_ns": at_ns, "cut": record["index"], "notice_radius_m": coop["watchers"]["notice_radius_m"]}
+                message = item.get("message")
+                if not isinstance(proposal, Emit) or proposal.kind != "event" or not isinstance(message, Message) or message.kind != "event" or message.id in indexed.seen:
+                    continue
+                payload = thaw(message.payload)
+                if not isinstance(payload, dict):
+                    raise ValueError("Recorded event payload is not an object / 记录的事件载荷不是对象")
+                row = narration.get(message.id)
+                declaration = indexed.projector._declarations.get(message.schema_id)
+                identities = list(dict.fromkeys(identity for name in ("incident", "handoff", "task", "vehicle", "actor", "requester", "helper", "point")
+                                               if name in payload and (identity := _entity_id(payload[name])) is not None))
+                event = {"schema": message.schema_id, "text": row["text"] if row else "Recorded event " + message.schema_id,
+                         "text_zh": row.get("text_zh") if row else "记录事件 " + message.schema_id,
+                         "at_ns": message.at.ns, "cut": record["index"], "entities": row["entities"] if row else identities,
+                         "payload": _value(payload), "hidden": bool(declaration and declaration.get("hidden")),
+                         "severity": row.get("severity") if row else None}
+                indexed.events.append(event)
+                indexed.by_schema[message.schema_id].append(event)
+                indexed.seen.add(message.id)
+                indexed.last_ns = max(indexed.last_ns, message.at.ns) if indexed.last_ns is not None else message.at.ns
+            indexed.cursor = record["index"] + 1
 
 
 def _value(value: Any) -> Any:
@@ -42,7 +170,7 @@ def _explanation(en: str, zh: str, evidence: list[dict] | None = None) -> dict:
 
 
 def _related(event: dict, where: dict) -> bool:
-    shared = set(where) & set(event["payload"]) & {"incident", "handoff", "task", "vehicle"}
+    shared = set(where) & set(event["payload"]) & {"incident", "handoff", "task", "vehicle", "actor", "capture"}
     return bool(shared) and all(_matches(event["payload"][key], where[key]) for key in shared)
 
 
@@ -84,6 +212,11 @@ def _missing(expectation: dict, events: list[dict], approaches: dict[str, dict],
         reason = failures[-1]["payload"].get("reason")
         return _explanation("Recorded task failure" + (": " + str(reason) if reason is not None else "; no reason recorded"),
                             "记录到任务失败" + ("：" + str(reason) if reason is not None else "；未记录原因"), [failures[-1]])
+    traffic_failures = [e for e in related if e["schema"] in {"traffic.capture.failed", "traffic.decision.failed", "traffic.award.conflict"}]
+    if traffic_failures:
+        failure = traffic_failures[-1]
+        return _explanation(failure["text"] + ": " + json.dumps(failure["payload"], ensure_ascii=False),
+                            (failure.get("text_zh") or failure["text"]) + "：" + json.dumps(failure["payload"], ensure_ascii=False), [failure])
     approx = expectation.get("approx_s")
     if terminal and approx is not None and last_ns is not None and last_ns < round(approx * 1e9):
         return _explanation(f"The committed run ends at {last_ns / 1e9:g} s, before the configured step at {approx:g} s. No recorded event.",
@@ -97,87 +230,27 @@ def run_story(run_dir: Path, expectations: list[dict], *, locale: str = "en") ->
     storage.refresh_committed()
     manifest = storage.metadata()
     terminal = manifest.get("status") in TERMINAL
-    document = json.loads((run_dir / "scenario.json").read_text())
-    projector = NarrativeProjector.from_directory(run_dir)
-    # The cooperation module owns its new narrative declarations. The service
-    # projector remains the renderer, including strict missing-placeholder errors.
-    coop_configs = [e["config"]["cooperation"] for e in document.get("engines", {}).values()
-                    if e["plugin"] == "lowalt_tasks" and "cooperation" in e["config"]]
-    if coop_configs:
-        from aeroagentsim.packs.lowalt.cooperation import EVENTS
-        for schema, declaration in EVENTS.items():
-            projector._declarations[schema] = {
-                "template": declaration.get("template", declaration.get("text")),
-                "template_zh": declaration.get("template_zh", declaration.get("text_zh")),
-                "category": declaration.get("category", "emergency"), "severity": declaration.get("severity", "info"),
-                "entities": declaration.get("entities", []),
-                **({"position": declaration["position"]} if "position" in declaration else {}),
-            }
-    events: list[dict] = []
-    seen: set[str] = set()
-    approaches: dict[str, dict] = {}
-    last_ns: int | None = None
-    cursor = 0
-    while True:
-        records = storage.records(cursor, 500)
-        if not records:
-            break
-        for record in records:
-            cursor = record["index"] + 1
-            if "instant" in record:
-                instant = decode_record(record["instant"])
-                last_ns = instant.ns if hasattr(instant, "ns") else last_ns
-            narration = projector.consume(record)
-            narrated_index = 0
-            for item in record.get("items", []):
-                if "proposal" not in item:
-                    continue
-                proposal = decode_record(item["proposal"])
-                if isinstance(proposal, FactWrite):
-                    if proposal.key[1] == "lowalt.position":
-                        position = thaw(proposal.value)
-                        if not isinstance(position, list) or len(position) != 3:
-                            raise ValueError("Recorded lowalt position is not an ENU vector / 记录的低空位置不是 ENU 向量")
-                        for coop in coop_configs:
-                            if proposal.key[0].id not in coop["watchers"]["vehicles"]:
-                                continue
-                            for incident in coop["incidents"]:
-                                at_ns = proposal.valid.start.ns
-                                if at_ns < round(incident["at_s"] * 1e9):
-                                    continue
-                                distance = math.dist(position[:2], incident["position"][:2])
-                                previous = approaches.get(incident["id"])
-                                if previous is None or distance < previous["distance_m"]:
-                                    approaches[incident["id"]] = {"vehicle": proposal.key[0].id, "distance_m": distance,
-                                        "at_ns": at_ns, "cut": record["index"], "notice_radius_m": coop["watchers"]["notice_radius_m"]}
-                    continue
-                if not isinstance(proposal, Emit) or proposal.kind != "event" or "message" not in item:
-                    continue
-                message = decode_record(item["message"])
-                if not isinstance(message, Message) or message.kind != "event" or message.id in seen:
-                    continue
-                seen.add(message.id)
-                payload = thaw(message.payload)
-                if not isinstance(payload, dict):
-                    raise ValueError("Recorded event payload is not an object / 记录的事件载荷不是对象")
-                # Projector rows retain order but omit undeclared/hidden events.
-                declaration = projector._declarations.get(message.schema_id)
-                if declaration is not None and not declaration.get("hidden"):
-                    row = narration[narrated_index]
-                    narrated_index += 1
-                    en, zh, entities = row["text"], row.get("text_zh"), row["entities"]
-                else:
-                    en, zh = "Recorded event " + message.schema_id, "记录事件 " + message.schema_id
-                    entities = list(dict.fromkeys(identity for key in ("incident", "handoff", "task", "vehicle", "requester", "helper", "point") if key in payload and (identity := _entity_id(payload[key])) is not None))
-                events.append({"schema": message.schema_id, "text": en, "text_zh": zh,
-                               "at_ns": message.at.ns, "cut": record["index"], "entities": entities, "payload": _value(payload)})
-                last_ns = max(last_ns, message.at.ns) if last_ns is not None else message.at.ns
+    key, indexed = _index(run_dir, storage)
+    with indexed.lock:
+        try:
+            _extend(storage, indexed)
+        except Exception:
+            # A failed projection is never cached as a successful, partially decoded story.
+            with _INDEX_LOCK:
+                if _INDEXES.get(key) is indexed:
+                    del _INDEXES[key]
+            raise
+        return _outcomes(manifest, expectations, indexed, terminal, locale)
+
+
+def _outcomes(manifest: dict, expectations: list[dict], indexed: StoryIndex, terminal: bool, locale: str) -> dict:
+    events, approaches, last_ns = indexed.events, indexed.approaches, indexed.last_ns
     outcomes = []
     for expected in expectations:
         match = expected["match"]
-        found = [e for e in events if e["schema"] == match["schema"] and _matches(e["payload"], match["where"])]
+        found = [e for e in indexed.by_schema.get(match["schema"], []) if _matches(e["payload"], match["where"])]
         need = match.get("count", 1)
-        released = sum(1 for e in events if e["schema"] == match["released_schema"] and _matches(e["payload"], match["where"])) if match.get("released_schema") else None
+        released = sum(1 for e in indexed.by_schema.get(match["released_schema"], []) if _matches(e["payload"], match["where"])) if match.get("released_schema") else None
         # A counted expectation ("all 6 meals delivered") happens at its last required event.
         event = found[need - 1] if len(found) >= need else None
         outcome = {"id": expected["id"], "text": expected["text"], "text_zh": expected["text_zh"],
@@ -199,6 +272,11 @@ def run_story(run_dir: Path, expectations: list[dict], *, locale: str = "en") ->
     for expected, outcome in zip(expectations, outcomes):
         if outcome["status"] != "happened" and any(other in happened for other in expected.get("alternatives", [])):
             outcome["status"] = "not_taken"
-    return {"run_id": manifest.get("id", run_dir.name), "status": manifest.get("status"), "terminal": terminal, "locale": locale,
-            "expectations": outcomes, "events": [e for e in events if e["schema"].startswith(KEY_PREFIXES)],
+    failures = [e for e in events if e["schema"].endswith((".failed", ".decision_failed", ".conflict"))]
+    assessment = "unassessed" if not outcomes else "incomplete" if failures or any(r["status"] in {"missed", "pending"} for r in outcomes) else "satisfied"
+    return {"run_id": manifest.get("id"), "status": manifest.get("status"), "terminal": terminal, "locale": locale,
+            "expectations": outcomes, "events": [{k: v for k, v in e.items() if k != "hidden"} for e in events if not e["hidden"]],
+            "coverage": {"committed_records": indexed.cursor, "recorded_events": len(events), "schemas": dict(Counter(e["schema"] for e in events))},
+            "assessment": assessment, "failures": copy.deepcopy(failures),
+            "detail": "No configured expectations; recorded events remain available, no success conclusion is implied / 未配置预期，仍可读取事件记录，不能据此判断成功" if not outcomes else None,
             "last_at_ns": last_ns}

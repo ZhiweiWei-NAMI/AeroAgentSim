@@ -11,7 +11,7 @@ from typing import Any
 from aeroagentsim.services.storage import RunStorage
 
 from .connection import now
-from .operations import OperationError, validate_parameters
+from .operations import PLACE_TYPES, OperationError, enum, validate_parameters
 from .operations import obj as object_schema
 from .sessions import SessionStore
 
@@ -45,25 +45,27 @@ def operation_catalog() -> tuple[dict[str, Any], str]:
 
 
 def tool_schemas() -> list[dict[str, Any]]:
+    from .capabilities import CAPABILITY_TOPICS
+
     operations, catalogue = operation_catalog()
     revision = object_schema({
         "note": STRING, "add": operations, "update": operations, "remove": STRINGS,
         "assumptions": STRINGS, "resolve_questions": STRINGS, "add_questions": QUESTIONS,
-        "title": STRING, "summary": STRING,
+        "title": STRING, "summary": STRING, "open_questions": QUESTIONS,
     })
     specs = [
-        ("get_current_scene", "Read the bound project's real draft scene; returns no scene when unbound.", object_schema({})),
+        ("get_current_scene", "Read the saved workspace draft, independent of proposals. Supply id for complete participant facts. An overview is partial, never evidence that an omitted entity was deleted.", object_schema({"id": STRING})),
         ("list_starting_points", "List every scenario template with its control defaults. Use describe_starting_point for control ranges, options and the template scene.", object_schema({})),
         ("describe_starting_point", "Read a template's actual participants and controls.", object_schema({"template_id": STRING}, ("template_id",))),
-        ("list_capabilities", "Read supported operations, parameter limits and installed algorithms.", object_schema({"topic": STRING})),
-        ("find_places", "Find named catalogue places; use their keys in add_place.at or add_incident.at.", object_schema({"query": STRING, "near": {"anyOf": [STRING, {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 3}]}, "role": STRING})),
+        ("list_capabilities", "Read supported operations, parameter limits, configured region extracts and installed algorithms.", object_schema({"topic": enum(CAPABILITY_TOPICS)})),
+        ("find_places", "Find named catalogue places near an existing participant/place id or an ENU position. Catalogue coordinates belong to the shipped Huangpu frame.", object_schema({"query": STRING, "near": {"anyOf": [STRING, {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}]}, "role": enum(PLACE_TYPES)})),
         ("lookup_contract", "Search real AeroGraph types, fields, relations and ancestry.", object_schema({"term": STRING}, ("term",))),
         ("draft_plan", "Compile a proposed plan now. Operations use {id?, op, params}; ids are assigned by the server. Never applies.\n" + catalogue, object_schema({"base": BASE, "title": STRING, "summary": STRING, "operations": operations, "assumptions": STRINGS, "open_questions": QUESTIONS, "note": STRING}, ("base", "title", "summary", "operations"))),
-        ("revise_plan", "Compile a minimal revision. update contains full operations with existing ids; remove lists ids. Leave all other operations intact.\n" + catalogue, revision),
+        ("revise_plan", "Compile a minimal revision. update contains full operations with existing op ids; remove accepts op ids or unambiguous target object/workload ids. Failed compilations retain operations: edit them instead of adding again. open_questions replaces all questions; add_questions/resolve_questions edit them.\n" + catalogue, revision),
         ("restore_operations", "Restore all or selected operation ids from an earlier version; keep unrelated operations.", object_schema({"from_version": {"type": "integer", "minimum": 1}, "op_ids": STRINGS, "note": STRING}, ("from_version", "note"))),
         ("propose_alternatives", "Compile two or three labelled variants of the current plan. Supply complete operations or minimal changes, never both.", object_schema({"variants": {"type": "array", "minItems": 2, "maxItems": 3, "items": object_schema({"label": STRING, "title": STRING, "summary": STRING, "note": STRING, "operations": operations, "changes": revision, "assumptions": STRINGS}, ("label", "title", "summary", "assumptions"))}}, ("variants",))),
-        ("explain_participant", "Explain one real participant's responsibilities, tasks and decision rules.", object_schema({"id": STRING}, ("id",))),
-        ("explain_relation", "Explain recorded or configured links between two real entities.", object_schema({"a": STRING, "b": STRING}, ("a", "b"))),
+        ("explain_participant", "Read full participant facts; auto uses an unapplied proposal, otherwise the saved draft. Choose current for Form edits, proposed for plan review.", object_schema({"id": STRING, "scope": enum(["auto", "current", "proposed"])}, ("id",))),
+        ("explain_relation", "Explain configured links in the saved draft or unapplied proposal.", object_schema({"a": STRING, "b": STRING, "scope": enum(["auto", "current", "proposed"])}, ("a", "b"))),
         ("list_runs", "List recorded runs of this session's bound project.", object_schema({})),
         ("run_story", "Read expectations versus recorded events for a run; never simulate an outcome.", object_schema({"run_id": STRING}, ("run_id",))),
     ]
@@ -96,10 +98,25 @@ def tool_label(name: str, arguments: dict[str, Any]) -> tuple[str, str]:
 
 
 def compact_json(value: Any, budget: int = 6500) -> str:
+    if isinstance(value, dict) and "coverage" in value and "expectations" in value and "events" in value:
+        # The model sees an explicit sample plus full journal coverage, never a raw
+        # string slice that can hide a failure or look like an empty recorded run.
+        events = value["events"]
+        failures = value.get("failures", [])
+        value = {**{k: value[k] for k in ("run_id", "status", "terminal", "assessment", "coverage", "detail", "expectations_source", "workspace_version", "plan_version", "last_at_ns") if k in value},
+                 "expectations": [{k: row[k] for k in ("id", "status", "at_ns", "progress") if k in row} for row in value["expectations"]],
+                 "events": [{k: e[k] for k in ("schema", "text", "at_ns") if k in e} for e in events[-12:]],
+                 "events_sampled": len(events) > 12,
+                 "failures": failures[-8:], "failure_count": len(failures), "failures_sampled": len(failures) > 8}
     raw = json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
     if len(raw) <= budget:
         return raw
-    return json.dumps({"truncated": True, "preview": raw[:budget - 400], "detail": "Result exceeds context budget; query a narrower topic / 结果超出上下文预算；请缩小查询范围"}, ensure_ascii=False)
+    if isinstance(value, dict) and "coverage" in value:
+        value["expectations"] = value["expectations"][:12]
+        value["expectations_sampled"] = True
+        value["failures"] = [{k: row[k] for k in ("schema", "text", "at_ns", "payload") if k in row} for row in value["failures"][-3:]]
+        return json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+    return json.dumps({"truncated": True, "preview": raw[:budget - 400], "detail": "Result exceeds context budget; omitted data is not evidence of absence. Query a specific id or narrower topic / 结果超出预算，省略不代表不存在；请查询具体标识或缩小主题"}, ensure_ascii=False)
 
 
 def operation_diff(before: list[dict[str, Any]], after: list[dict[str, Any]]) -> dict[str, Any]:
@@ -114,13 +131,29 @@ def short_scene(summary: Any) -> Any:
         return summary
     result = {}
     for key, value in summary.items():
-        if isinstance(value, list):
-            result[key] = {"count": len(value), "items": [{k: row[k] for k in ("id", "label", "label_zh", "role", "count", "kind", "start", "at_s", "time_s") if k in row} if isinstance(row, dict) else row for row in value[:6]], "truncated": len(value) > 6}
+        if key == "entity_facts":
+            continue
+        if key == "entity_ids":
+            result[key] = value
+        elif isinstance(value, list):
+            result[key] = {"count": len(value), "ids": [r["id"] for r in value if isinstance(r, dict) and "id" in r],
+                           "items": [{k: row[k] for k in ("id", "label", "label_zh", "role", "count", "kind", "start", "position", "details", "release", "at_s", "time_s") if k in row} if isinstance(row, dict) else row for row in value[:6]], "truncated": len(value) > 6}
         elif key in {"environment", "cooperation", "rules", "algorithms", "counts"}:
             result[key] = value
         elif isinstance(value, (str, int, float, bool)) or value is None:
             result[key] = value
     return result
+
+
+def operation_list(operations: list[dict]) -> list[dict]:
+    return [{"id": op.get("id"), "op": op.get("op"), "target": next((op.get("params", {})[key] for key in ("id", "fleet", "vehicle", "task", "control", "slot", "rule", "extract") if key in op.get("params", {})), None)} for op in operations]
+
+
+def operation_summary(operations: list[dict]) -> str:
+    """Parameter prose is regenerated from restored/revised operations, never old counts."""
+    # Revision additions intentionally have no op id until SessionStore.allocate.
+    # Describe their real operation/parameters without inventing an identifier.
+    return "; ".join((f"{op['id']} " if "id" in op else "") + f"{op['op']}: " + json.dumps(op["params"], ensure_ascii=False, separators=(",", ":")) for op in operations) or "No operations / 无操作"
 
 
 def workspace_operations(operations: list[dict[str, Any]], baseline: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -179,24 +212,38 @@ class ToolRunner:
     def context(self, identifier: str) -> Any:
         from .compiler import CompileContext
 
-        return CompileContext(self.store, self.templates, self.agent_profile, locale=self.sessions.get(identifier)["locale"])
+        return CompileContext(self.store, self.templates, self.agent_profile, locale=self.sessions.get(identifier)["locale"], allow_region=True)
 
     def execute(self, identifier: str, name: str, arguments: dict[str, Any]) -> Any:
         schemas = {row["function"]["name"]: row["function"]["parameters"] for row in tool_schemas()}
         if name not in schemas:
             raise ValueError("Unknown tool; apply and run controls are unavailable / 工具不存在；对话不能确认或运行")
-        validate_arguments(schemas[name], arguments)
+        try:
+            validate_arguments(schemas[name], arguments)
+        except ValueError as error:
+            import re
+
+            match = re.search(r"arguments\.(operations|add|update)\[(\d+)\]", str(error))
+            if match:
+                operation = arguments[match[1]][int(match[2])]
+                if isinstance(operation, dict):
+                    raise ValueError(f"Operation {operation.get('id', match[0])}: {error}") from error
+            raise
         method = getattr(self, name)
         return method(identifier, **arguments)
 
-    def get_current_scene(self, identifier: str) -> dict[str, Any]:
-        from .scene import summarize
+    def get_current_scene(self, identifier: str, id: str | None = None) -> dict[str, Any]:
+        from .scene import explain_participant, summarize
 
         workspace = self.sessions.get(identifier)["workspace_id"]
         if workspace is None:
             return {"scene": None, "detail": "No bound scene yet / 尚未绑定场景"}
         draft = self.store.get(workspace)
-        return {"workspace_id": workspace, "revision": draft["revision"], "scene": summarize(draft["scenario"], directory=self.store.directory(workspace), catalog=self.store.catalog_for(workspace), controls=(draft.get("template") or {}).get("knobs", {}))}
+        summary = summarize(draft["scenario"], directory=self.store.directory(workspace), catalog=self.store.catalog_for(workspace), controls=(draft.get("template") or {}).get("knobs", {}))
+        result = {"workspace_id": workspace, "revision": draft["revision"], "source": "saved_draft"}
+        if id is not None:
+            return {**result, "participant": explain_participant(draft["scenario"], summary, id)}
+        return {**result, "scene": short_scene(summary), "detail": "Overview lists participant ids but samples details; query get_current_scene(id=...) for complete saved facts / 摘要仅采样详情；用 id 查询完整已保存事实"}
 
     def list_starting_points(self, identifier: str) -> list[dict[str, Any]]:
         # Every starting point must fit one tool result; describe_starting_point has the control details.
@@ -218,22 +265,63 @@ class ToolRunner:
 
         from .capabilities import capabilities
 
-        return capabilities(topic, templates=self.templates, algorithms=discover_algorithm_catalog())
+        result = capabilities(topic, templates=self.templates, algorithms=discover_algorithm_catalog())
+        if result.get("topic") == "region":
+            from .regions import catalogue
+
+            result["extracts"] = catalogue()
+            result["form_path"] = "Form → Scene & space → Region / 表单 → 场景与空间 → 区域"
+        return result
 
     def find_places(self, identifier: str, query: str | None = None, near: Any = None, role: str | None = None) -> Any:
         from .places import find_places
+        if isinstance(near, str):
+            from .scene import explain_participant
 
+            session = self.sessions.get(identifier)
+            if session["plan_version"] is not None or session["workspace_id"] is not None:
+                invalid = session["plan_version"] is not None and not session["plans"][str(session["plan_version"])]["compile"]["ok"]
+                if invalid and session["workspace_id"] is None:
+                    from .compiler import resolve_base
+                    from .scene import summarize
+
+                    base = resolve_base(self.context(identifier), self.sessions.plan(identifier)["base"])
+                    document, summary = base.document, summarize(base.document, directory=base.directory)
+                else:
+                    document, summary = self._scene(identifier, "current" if invalid else "auto")
+                if near in summary.get("entity_ids", []) or any(near == f["id"] for f in summary.get("fleets", [])):
+                    participant = explain_participant(document, summary, near)
+                    entity = participant["entity"]
+                    from .scene import _position
+
+                    position = _position(entity) if entity else None
+                    if position is None and participant["fleet"]:
+                        positions = [state["position"] for state in participant["fleet"]["member_states"]]
+                        if positions and all(p == positions[0] for p in positions):
+                            position = positions[0]
+                    if position is None:
+                        raise ValueError(f"near: {near!r} has no single ENU position; select a fleet member / 请选择有空间坐标的具体成员")
+                    near = position
         return find_places(query=query, near=near, role=role, limit=12)
 
     def lookup_contract(self, identifier: str, term: str) -> dict[str, Any]:
         from aeroagentsim.authoring.catalog import ScenarioCatalog
 
         session = self.sessions.get(identifier)
-        if session["plan_version"] is not None:
+        applied = any(r["plan_version"] == session["plan_version"] for r in session["applied"])
+        if applied and session["workspace_id"] is not None:
+            selected = self.store.catalog_for(session["workspace_id"])
+        elif session["plan_version"] is not None and session["plans"][str(session["plan_version"])]["compile"]["ok"]:
             document, _ = self._scene(identifier)
             selected = ScenarioCatalog(document, base=self.sessions.plan_directory(identifier, session["plan_version"]) / "files")
         else:
-            selected = self.store.catalog_for(session["workspace_id"])
+            if session["workspace_id"] is not None or session["plan_version"] is None:
+                selected = self.store.catalog_for(session["workspace_id"])
+            else:
+                from .compiler import resolve_base
+
+                base = resolve_base(self.context(identifier), self.sessions.plan(identifier)["base"])
+                selected = ScenarioCatalog(base.document, base=base.directory)
         result = selected.search(term)
         if "relations" in result:
             relations = result["relations"]
@@ -266,6 +354,7 @@ class ToolRunner:
         previous = session["plans"].get(str(session["plan_version"]))
         ctx = self.context(identifier)
         base = copy.deepcopy(base)
+        requested_base = copy.deepcopy(base)
         if session["workspace_id"] is not None:
             base = {"workspace": session["workspace_id"]}
         resolved = resolve_base(ctx, base)
@@ -284,6 +373,13 @@ class ToolRunner:
         directory = self.sessions.plan_directory(identifier, version)
         directory.parent.mkdir(parents=True, exist_ok=True)
         result = compile_plan(ctx, base, compile_operations, directory, resolved=resolved)
+        if "template" in requested_base and "workspace" in base:
+            result.notes.append(f"Bound workspace preserved; requested template {requested_base['template']!r} was not substituted. Lowalt prerequisites are installed by explicit compiler operations / 保留绑定工作区，未替换为请求模板，低空前置组件通过编译操作安装")
+            record_path = directory / "compile.json"
+            if record_path.is_file():
+                record = json.loads(record_path.read_text())
+                record["notes"] = result.notes
+                record_path.write_text(json.dumps(record, ensure_ascii=False, allow_nan=False))
         comparable = previous is not None and previous["compile"]["ok"] and result.ok
         changes = configuration_differences({"previous": previous["_document"], "current": result.document}) if comparable else []
         # The board renders scene-level differences; operation and raw config deltas stay alongside.
@@ -302,10 +398,12 @@ class ToolRunner:
         if result.ok and self.on_plan is not None:
             self.on_plan(identifier, version)
         if not result.ok:
-            return {"version": version, "ok": False, "errors": result.errors, "hint": "Fix the named operation ids and fields with revise_plan; this draft cannot be confirmed / 请用 revise_plan 修复指定操作和字段；该草稿不能确认"}
+            return {"version": version, "ok": False, "errors": result.errors, "operations": operation_list(operations),
+                    "hint": "All operations below remain in THIS draft, including failed operations. Nothing was applied. Use revise_plan.update with the op id, or remove by op id/target id; do not add the same object again / 所列操作仍在本草稿中，均未应用；请按操作标识修改或按操作/对象标识移除，不要重复新增"}
         compact_diff = {"total_changes": len(changes), "changes": changes[:8], "operations": {key: [{"id": op["id"], "op": op.get("op", op.get("after", {}).get("op"))} for op in rows] for key, rows in operations_changed.items()}}
-        return {"version": version, "ok": True, "validation": "running automatically; the board enables Confirm when it passes", "scene": short_scene(result.summary),
-                "operations": [{"id": op["id"], "op": op["op"]} for op in operations],
+        latest = self.sessions.plan(identifier, version)
+        return {"version": version, "ok": True, "validation": latest["validation"], "base": base, "scene": short_scene(result.summary),
+                "operations": operation_list(operations),
                 "diff_previous": compact_diff, "warnings": result.warnings, "notes": result.notes,
                 "prechecks": result.expectations, "note": note, "variant": variant}
 
@@ -319,11 +417,19 @@ class ToolRunner:
     def _revision(plan: dict[str, Any], changes: dict[str, Any]) -> dict[str, Any]:
         result = {k: copy.deepcopy(plan[k]) for k in ("base", "title", "summary", "operations", "assumptions", "open_questions")}
         known = {op["id"] for op in result["operations"]}
-        remove = changes.get("remove", [])
+        remove = []
+        for selected in changes.get("remove", []):
+            if selected in known:
+                remove.append(selected)
+                continue
+            targets = [op["id"] for op in result["operations"] if selected in [op["params"].get(k) for k in ("id", "fleet", "vehicle", "task")]]
+            if len(targets) != 1:
+                raise ValueError(f"remove: target {selected!r} is absent or ambiguous ({targets}); use an op id. Current operations: {operation_list(result['operations'])} / 请按当前操作标识移除")
+            remove.append(targets[0])
         updates = changes.get("update", [])
         if len(remove) != len(set(remove)) or len({op.get("id") for op in updates}) != len(updates):
             raise ValueError("Duplicate revision ids / 修改标识重复")
-        current = ", ".join(op["id"] for op in result["operations"])
+        current = str(operation_list(result["operations"]))
         for op in updates:
             if op.get("id") not in known or op["id"] in remove:
                 raise ValueError(f"Update must name an existing, retained operation; {op.get('id')!r} is not one. Current ids: {current} / 修改必须指定保留的已有操作；当前标识：{current}")
@@ -339,6 +445,17 @@ class ToolRunner:
         for key in ("assumptions", "title", "summary"):
             if key in changes:
                 result[key] = copy.deepcopy(changes[key])
+        if remove or updates or changes.get("add"):
+            if "summary" not in changes:
+                result["summary"] = operation_summary(result["operations"])
+            if "title" not in changes:
+                result["title"] = "Revised arrangement / 修改后的安排"
+            if "assumptions" not in changes:
+                result["assumptions"] = []  # Old parameter prose cannot be assumed true after edits.
+        if "open_questions" in changes and ("add_questions" in changes or "resolve_questions" in changes):
+            raise ValueError("open_questions replaces all questions; use it alone or use add_questions/resolve_questions / 请单独使用问题替换，或使用增删问题")
+        if "open_questions" in changes:
+            result["open_questions"] = copy.deepcopy(changes["open_questions"])
         questions = result["open_questions"]
         resolved = set(changes.get("resolve_questions", []))
         texts = {q if isinstance(q, str) else q["question"] for q in questions}
@@ -373,6 +490,9 @@ class ToolRunner:
                 following = {later["id"] for later in previous["operations"][index + 1:]}
                 position = next((i for i, current_op in enumerate(arguments["operations"]) if current_op["id"] in following), len(arguments["operations"]))
                 arguments["operations"].insert(position, copy.deepcopy(op))
+            arguments["title"] = f"Restored operations from v{from_version} / 恢复 v{from_version} 的操作"
+            arguments["summary"] = operation_summary(arguments["operations"])
+            arguments["assumptions"] = []
         arguments["note"] = note
         retained = {op["id"] for p in (previous, current) for op in p["operations"]}
         return self._compile(identifier, **arguments, parent=current["version"], retained=retained)
@@ -396,27 +516,33 @@ class ToolRunner:
             self.sessions._event(session, "plan", version=plan["version"], versions=session["alternatives"], note="Compare alternatives / 比较备选方案")
         return {"variants": results, "current_version": plan["version"]}
 
-    def _scene(self, identifier: str) -> tuple[dict[str, Any], Any]:
+    def _scene(self, identifier: str, scope: str = "auto") -> tuple[dict[str, Any], Any]:
         session = self.sessions.get(identifier)
-        if session["plan_version"] is not None:
+        applied = any(record["plan_version"] == session["plan_version"] for record in session["applied"])
+        if session["plan_version"] is not None and (scope == "proposed" or scope == "auto" and not applied):
             plan = self.sessions.plan(identifier)
             if not plan["compile"]["ok"]:
                 raise ValueError("Fix compilation before inspecting the proposed scene / 请先修复编译再检查待确认场景")
             return plan["_document"], plan["scene"]
         if session["workspace_id"] is None:
             raise ValueError("Draft a plan first / 请先提出方案")
-        return self.store.get(session["workspace_id"])["scenario"], self.get_current_scene(identifier)["scene"]
+        from .scene import summarize
 
-    def explain_participant(self, identifier: str, id: str) -> Any:
+        workspace = session["workspace_id"]
+        draft = self.store.get(workspace)
+        document = draft["scenario"]
+        return document, summarize(document, directory=self.store.directory(workspace), catalog=self.store.catalog_for(workspace), controls=(draft.get("template") or {}).get("knobs", {}))
+
+    def explain_participant(self, identifier: str, id: str, scope: str = "auto") -> Any:
         from .scene import explain_participant
 
-        document, summary = self._scene(identifier)
+        document, summary = self._scene(identifier, scope)
         return explain_participant(document, summary, id)
 
-    def explain_relation(self, identifier: str, a: str, b: str) -> Any:
+    def explain_relation(self, identifier: str, a: str, b: str, scope: str = "auto") -> Any:
         from .scene import explain_relation
 
-        document, summary = self._scene(identifier)
+        document, summary = self._scene(identifier, scope)
         return explain_relation(document, summary, a, b)
 
     def list_runs(self, identifier: str) -> list[dict[str, Any]]:
@@ -441,7 +567,11 @@ class ToolRunner:
         if session["workspace_id"] is None or metadata.get("studio_workspace") != session["workspace_id"]:
             raise FileNotFoundError("Run does not belong to this project / 运行不属于此项目")
         applied = next((r for r in reversed(session["applied"]) if r["workspace_id"] == session["workspace_id"] and r["version"] == metadata.get("workspace_version")), None)
-        expectations = self.sessions.expectations_for(session["workspace_id"], metadata.get("workspace_version"))
-        if expectations is None:
-            raise ValueError("This run has no recorded applied-plan expectations / 此运行没有已确认方案的预期记录")
-        return {**run_story(directory, expectations, locale=session["locale"]), "run_id": run_id, "status": metadata["status"], "plan_version": applied["plan_version"] if applied else None}
+        # Every run has a pinned scenario, including versions saved in the Form editor.
+        # Derive from that exact input instead of reusing another plan/version's expectations.
+        from .story import pinned_expectations
+
+        expectations = pinned_expectations(directory)
+        return {**run_story(directory, expectations, locale=session["locale"]), "run_id": run_id, "status": metadata["status"],
+                "expectations_source": "pinned_run_scenario", "workspace_version": metadata.get("workspace_version"),
+                "plan_version": applied["plan_version"] if applied else None}

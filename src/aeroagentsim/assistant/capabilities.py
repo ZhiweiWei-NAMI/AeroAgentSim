@@ -13,7 +13,12 @@ TOPICS = {
     "events": ("Weather and scheduled events", "天气和预设事件"), "responsibilities": ("Cooperation decisions", "协同决策"),
     "rules": ("Safety and medical rules", "安全和医疗规则"), "algorithms": ("Installed algorithms", "已安装算法"),
     "controls": ("Starting-point controls", "起点控件"),
+    "environment": ("Wind and environment", "风场和环境"),
+    "workload": ("Orders and work", "订单和工作"),
+    "region": ("Geographic region", "地理区域"),
 }
+TOPIC_ALIASES = {"wind": "environment", "orders": "workload", "order": "workload", "operation": "all", "operations": "all"}
+CAPABILITY_TOPICS = ["all", *TOPICS, *TOPIC_ALIASES]
 LIMITS = [
     {"text": "Lowalt participants are UAVs; there are no ground courier or ground vehicle authoring operations.", "text_zh": "低空参与者为无人机；没有地面快递员或地面车辆创建操作。"},
     {"text": "Incidents are points, without simulated human biomechanics.", "text_zh": "事件为点状设置，不模拟人体生物力学。"},
@@ -23,6 +28,7 @@ LIMITS = [
     {"text": "Agent decisions require a connected provider. One generated base-fleet member cannot be edited independently; use an explicit added fleet for individual initial states.", "text_zh": "智能体决策需要已连接服务。基础生成机群中的单个成员无法独立编辑；单机初始状态请使用新增显式机群。"},
 ]
 BRIEF = {
+    "set_region": ("Set map region", "设置地图区域"),
     "add_lowalt_components": ("Install lowalt components", "安装低空组件"),
     "set_control": ("Set template control", "设置模板控件"), "set_duration": ("Set duration", "设置时长"),
     "set_run_mode": ("Set input mode", "设置输入模式"), "set_wind": ("Set wind", "设置风速"),
@@ -44,8 +50,11 @@ def _excerpt(text: str, length: int) -> str:
 
 
 def capabilities(topic: str | None, *, templates, algorithms) -> dict:
+    topic = TOPIC_ALIASES.get(topic, topic)
+    if topic == "all":
+        topic = None
     if topic is not None and topic not in TOPICS:
-        raise ValueError("Unknown capability topic / 未知能力主题: " + topic)
+        raise ValueError(f"topic: {topic!r}; valid options: {CAPABILITY_TOPICS} / 请选择列出的能力主题")
     installed = algorithms() if callable(algorithms) else algorithms
     if not isinstance(installed, dict):
         raise TypeError("algorithms must be the installed slot catalogue / algorithms 必须是已安装算法槽目录")
@@ -64,8 +73,12 @@ def capabilities(topic: str | None, *, templates, algorithms) -> dict:
                     {"text": "Meals need kitchens; work tasks need existing routes; agent choices need a connected model.", "text_zh": "餐食需厨房；作业需已有路线；智能体需连接模型。"},
                     {"text": "Confirm saves a draft/version. Runs start separately. Stories use committed evidence. Individual base-fleet edits need an explicit fleet.", "text_zh": "确认保存草稿版本，运行另行启动。故事据已提交证据。基础单机修改需显式机群。"},
                 ]}
+    operation_topic = {"environment": "events", "workload": "tasks"}.get(topic, topic)
+    selected = operation_catalogue(operation_topic)
+    if topic == "environment":
+        selected = [row for row in selected if row["name"] in {"set_wind", "add_gust"}]
     result: dict[str, Any] = {"topic": topic, "label": TOPICS[topic][0], "label_zh": TOPICS[topic][1],
-                              "operations": operation_catalogue(topic), "limits": copy.deepcopy(LIMITS)}
+                              "operations": selected, "limits": copy.deepcopy(LIMITS)}
     if topic == "algorithms":
         result["algorithms"] = copy.deepcopy(installed)
     if topic == "participants":

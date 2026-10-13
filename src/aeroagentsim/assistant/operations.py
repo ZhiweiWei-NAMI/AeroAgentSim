@@ -87,7 +87,9 @@ _spec("add_gust", "events", "Add a timed wind gust.", "添加定时阵风。", o
 _spec("set_rule", "rules", "Change an operational safety or medical rule.", "修改运行安全或医疗规则。", obj({"rule": enum(["battery_reserve_pct", "safety_distance_m", "wind_limit_mps", "medical_preemption"]), "value": {"anyOf": [number(), {"type": "boolean"}]}}, ("rule", "value")), {"rule": "battery_reserve_pct", "value": 30})
 _spec("set_algorithm", "algorithms", "Select an installed decision algorithm for a slot.", "为算法槽选择已安装的决策算法。", obj({"slot": enum(["allocation", "path_planning", "conflict_resolution", "charging"]), "value": STRING}, ("slot", "value")), {"slot": "allocation", "value": "nearest"})
 place = {"id": IDENTIFIER, "role": enum(PLACE_TYPES), "at": AT, "label": STRING, "label_zh": STRING,
-         "capacity": {**COUNT, "default": 1}, "preparation_s": number(exclusiveMinimum=0, default=30), "power_w": number(exclusiveMinimum=0, default=5000)}
+         "capacity": {**COUNT, "default": 1},
+         "preparation_s": number(exclusiveMinimum=0, default=30, description="Kitchens only (role kitchen / lowalt:Restaurant) / 仅厨房适用"),
+         "power_w": number(exclusiveMinimum=0, default=5000, description="Charging pads only / 仅充电站适用")}
 _spec("add_place", "places", "Place a facility at a catalogue place or ENU position.", "在目录地点或 ENU 坐标放置设施。", obj(place, ("id", "role", "at")), {"id": "locker", "role": "handoff_point", "at": "east"})
 _spec("update_place", "places", "Change a facility's position, label or capacity.", "修改设施的位置、名称或容量。", obj({k: v for k, v in place.items() if k != "role"}, ("id",)), {"id": "locker", "at": "north"})
 _spec("remove_place", "places", "Remove an unused facility.", "删除未被使用的设施。", obj({"id": IDENTIFIER}, ("id",)), {"id": "locker"})
@@ -109,6 +111,12 @@ _spec("remove_incident", "events", "Remove a scheduled incident.", "删除已安
 _spec("schedule_event", "events", "Schedule a declared injection or lowalt operator event with its real payload.", "使用真实载荷安排已声明的注入点或低空操作事件。", obj({"event": STRING, "at_s": number(), "params": {"type": "object"}}, ("event", "at_s", "params")), {"event": "restaurant_delay", "at_s": 45, "params": {"restaurant": "restaurant-west", "delay_s": 20}})
 _spec("set_cooperation", "responsibilities", "Merge who notices, decides and helps; agent choices need a connected model.", "合并观察、决策和协助责任；智能体决策需要已连接模型。", COOPERATION, {"watchers": {"vehicles": ["logistics"], "notice_radius_m": 150}, "helpers": {"vehicles": ["couriers"], "mode": "prescribed"}})
 _spec("remove_cooperation", "responsibilities", "Remove cooperation behaviours and their incident setup.", "删除协同行为及其事件设置。", obj({}), {})
+_spec("set_region", "region", "Select WGS84 bounds from a configured OSM extract. Preview uses the Region map compiler; confirmation changes the ENU origin and invalidates the road network.", "从已配置 OSM 源选择 WGS84 范围。预览使用区域地图编译器；确认会改变 ENU 原点并使道路网络失效。",
+      obj({"extract": STRING, "bounds": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4,
+           "description": "[west, south, east, north], WGS84 degrees, wholly inside extract coverage / 必须完全位于源覆盖范围内"},
+           "alt": {"type": "number", "default": 0}, "level_height_m": number(exclusiveMinimum=0, default=3.0)}, ("extract", "bounds")),
+      {"extract": "wujiaochang", "bounds": [121.51, 31.301, 121.52, 31.305]})
+OPERATION_SPECS["set_region"]["assistant_only"] = True
 
 
 class OperationError(ValueError):
@@ -128,13 +136,19 @@ def validate_parameters(value: Any, schema: dict[str, Any], field: str = "params
                     raise OperationError(field + ".op", f"Choose from {sorted(tags)} / 请使用列出的操作")
                 validate_parameters(value, tags[value["op"]], field, tool_input=True)
                 return
+        failures = []
         for choice in branches:
             try:
                 validate_parameters(value, choice, field, tool_input=tool_input)
                 return
-            except OperationError:
-                pass
-        raise OperationError(field, "Value does not match an allowed shape / 值不符合允许的格式")
+            except OperationError as error:
+                failures.append(error)
+        # Preserve the field/options from a matching discriminator instead of hiding them.
+        if isinstance(value, dict):
+            for choice, error in zip(branches, failures):
+                if any(key in value and value[key] in spec.get("enum", []) for key, spec in choice.get("properties", {}).items()):
+                    raise error
+        raise OperationError(field, "Allowed shapes: " + "; ".join(f"{e.field}: {e}" for e in failures))
     kind = schema.get("type")
     if tool_input and kind is None:
         return
@@ -149,8 +163,7 @@ def validate_parameters(value: Any, schema: dict[str, Any], field: str = "params
         if not math.isfinite(value):
             raise OperationError(field, "Finite number required / 需要有限数值")
         bounds = [("minimum", lambda a, b: a < b), ("maximum", lambda a, b: a > b)]
-        if not tool_input:
-            bounds.append(("exclusiveMinimum", lambda a, b: a <= b))
+        bounds.append(("exclusiveMinimum", lambda a, b: a <= b))
         for bound, comparison in bounds:
             if bound in schema and comparison(value, schema[bound]):
                 raise OperationError(field, f"Must satisfy {bound} {schema[bound]} / 数值必须满足此边界")
@@ -163,7 +176,7 @@ def validate_parameters(value: Any, schema: dict[str, Any], field: str = "params
     if kind == "array":
         if len(value) < schema.get("minItems", 0) or len(value) > schema.get("maxItems", 1000 if tool_input else math.inf):
             raise OperationError(field, "Invalid array length / 列表长度无效")
-        if not tool_input and schema.get("uniqueItems") and any(v in value[:i] for i, v in enumerate(value)):
+        if schema.get("uniqueItems") and any(v in value[:i] for i, v in enumerate(value)):
             raise OperationError(field, "Duplicate entries / 存在重复项")
         for i, item in enumerate(value):
             validate_parameters(item, schema.get("items", {}), f"{field}[{i}]", tool_input=tool_input)
@@ -172,9 +185,9 @@ def validate_parameters(value: Any, schema: dict[str, Any], field: str = "params
         missing = [key for key in schema.get("required", []) if key not in value]
         extra = value.keys() - properties.keys() if schema.get("additionalProperties") is False else set()
         if tool_input and (missing or extra):
-            raise OperationError(field, f"missing {sorted(missing)}, unknown {sorted(extra)} / 参数缺失或未声明")
+            raise OperationError(field, f"missing {sorted(missing)}, unknown {sorted(extra)}; valid fields: {list(properties)} / 参数缺失或未声明；允许字段见列表")
         if extra:
-            raise OperationError(f"{field}.{next(iter(extra))}", "Unknown parameter / 未知参数")
+            raise OperationError(f"{field}.{sorted(extra)[0]}", f"Unknown parameter; valid fields: {list(properties)} / 未知参数；允许字段见列表")
         if missing:
             raise OperationError(f"{field}.{missing[0]}", "Required parameter / 缺少必需参数")
         for key, item in value.items():
@@ -189,7 +202,7 @@ def validate_operation(operation: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         raise OperationError("operation", "Supply id, op, params and optional explain / 提供 id、op、params 和可选 explain")
     name = operation[names[0]]
     if not isinstance(name, str) or name not in OPERATION_SPECS:
-        raise OperationError("op", f"Unknown operation {name!r} / 未知操作")
+        raise OperationError("op", f"Unknown operation {name!r}; valid operations: {list(OPERATION_SPECS)} / 未知操作；允许操作见列表")
     for key in ("id", "explain"):
         if key in operation:
             validate_parameters(operation[key], STRING, key)
@@ -199,4 +212,5 @@ def validate_operation(operation: dict[str, Any]) -> tuple[str, dict[str, Any]]:
 
 
 def operation_catalogue(topic: str | None = None) -> list[dict[str, Any]]:
-    return copy.deepcopy([v for v in OPERATION_SPECS.values() if topic is None or v["topic"] == topic])
+    # The forms contract has its own /region writer; do not advertise a plan-only op there.
+    return copy.deepcopy([v for v in OPERATION_SPECS.values() if (topic is not None or not v.get("assistant_only")) and (topic is None or v["topic"] == topic)])

@@ -609,13 +609,16 @@ class NarrativeProjector:
 
     def consume(self, raw_record: dict[str, Any]) -> list[dict[str, Any]]:
         """Narrate newly committed Emit messages once; dedup by message id."""
-        record = expand_record(raw_record)
+        return self.consume_decoded(decode_record(expand_record(raw_record)))
+
+    def consume_decoded(self, record: dict[str, Any]) -> list[dict[str, Any]]:
+        """Share one typed record with other journal projections, without decoding twice."""
         events: list[dict[str, Any]] = []
         for item in record.get("items", []):
             if not isinstance(item, dict):
                 continue
             if "proposal" in item:
-                op = decode_record(item["proposal"])
+                op = item["proposal"]
                 if isinstance(op, Create):
                     key = self._key(op.ref)
                     self._key_hint(key, op.ref.id)
@@ -634,10 +637,10 @@ class NarrativeProjector:
                     self._positions.pop(self._key(op.key[0]), None)
             if "message" not in item:
                 continue
-            proposal = decode_record(item["proposal"]) if "proposal" in item else None
+            proposal = item.get("proposal")
             if not isinstance(proposal, Emit):
                 continue
-            message = decode_record(item["message"])
+            message = item["message"]
             if not isinstance(message, Message) or message.kind != "event":
                 continue
             if message.id in self._seen:
@@ -773,6 +776,8 @@ class NarrativeProjector:
                     entities.append(entity_id)
 
         event: dict[str, Any] = {
+            "message_id": message.id,
+            "schema": message.schema_id,
             "at_ns": str(message.at.ns),
             "category": category,
             "severity": declaration["severity"],

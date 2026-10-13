@@ -188,6 +188,7 @@ def test_story_reads_applied_version_and_recorded_run(api: dict[str, Any], monke
         return {"steps": [{"status": "not_happened", "reason": "Recorded decline / 已记录的拒绝"}]}
 
     monkeypatch.setattr(story, "run_story", recorded)
+    monkeypatch.setattr(story, "pinned_expectations", lambda run_dir: [{"schema": "fixture.incident"}])
     response = client.get(f"/v1/assistant/sessions/{identifier}/story/{run_id}")
     assert response.status_code == 200 and response.json()["plan_version"] == 1
     assert response.json()["steps"][0]["status"] == "not_happened"

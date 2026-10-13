@@ -158,3 +158,39 @@ def test_exhausted_turn_still_closes_with_an_answer(tmp_path: Path, monkeypatch:
     reply = next(e for e in events if e["kind"] == "assistant")
     assert "No proposal" in reply["text"] and len(tools.executed) == 1
     assert any(e["kind"] == "notice" for e in events) and events[-1]["kind"] == "turn_finished"
+
+
+def test_validation_refreshes_between_tool_calls_and_before_publication(tmp_path, monkeypatch):
+    agent, provider, tools, identifier = harness(tmp_path, monkeypatch, [call(), {"role": "assistant", "content": "Validation is still pending. Wait before confirming."}])
+    with agent.sessions.edit(identifier) as session:
+        session["plan_version"] = 1
+        session["plans"]["1"] = {"version": 1, "base": {}, "title": "Current", "summary": "", "operations": [], "assumptions": [], "open_questions": [],
+                                  "compile": {"ok": True}, "validation": {"state": "pending", "errors": []}, "scene": {}}
+    original = tools.execute
+
+    def executed(*args):
+        result = original(*args)
+        agent.sessions.validated(identifier, 1, True, [])
+        return result
+
+    monkeypatch.setattr(tools, "execute", executed)
+    turn = agent.sessions.begin_turn(identifier, "Prepare a proposal")
+    agent.run_turn(identifier, turn["turn"])
+    state = provider.requests[-1]["messages"][1]["content"]
+    assert '"state":"valid"' in state
+    answer = next(e["text"] for e in agent.sessions.get(identifier)["events"] if e["kind"] == "assistant")
+    assert "pending" not in answer and "validated" in answer and "Confirm" in answer
+
+
+def test_run_summary_cannot_deny_recorded_failure(tmp_path, monkeypatch):
+    agent, provider, tools, identifier = harness(tmp_path, monkeypatch, [{"role": "assistant", "content": "No events were recorded; everything succeeded."}])
+    story = {"run_id": "run-real", "status": "completed", "terminal": True, "expectations": [], "events": [], "assessment": "unassessed",
+             "coverage": {"recorded_events": 335, "schemas": {"traffic.incident.activated": 1, "traffic.capture.failed": 1}},
+             "failures": [{"schema": "traffic.capture.failed", "text": "A capture failed", "at_ns": 57_100_000_000, "payload": {"actor": "uav.bravo", "reason": "renderer failed"}}]}
+    tools.run_story = lambda session, run: story
+    context = {"run_id": "run-real"}
+    turn = agent.sessions.begin_turn(identifier, "Summarise what happened in this run compared with the plan.", context)
+    agent.run_turn(identifier, turn["turn"], context)
+    answer = next(e["text"] for e in agent.sessions.get(identifier)["events"] if e["kind"] == "assistant")
+    assert "335" in answer and "renderer failed" in answer and "57.1 s" in answer
+    assert "does not establish success" in answer and "everything succeeded" not in answer

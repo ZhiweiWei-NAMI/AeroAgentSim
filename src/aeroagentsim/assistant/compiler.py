@@ -39,6 +39,7 @@ class CompileContext:
     templates: TemplateRegistry
     agent_profile: str | None
     locale: str = "en"
+    allow_region: bool = False
 
 
 @dataclass
@@ -326,7 +327,7 @@ def _group_id(group: dict) -> str:
 def _group(tasks: dict, identity: str) -> dict:
     matches = [g for g in tasks["generators"] if _group_id(g) == identity]
     if len(matches) != 1:
-        _fail("id", f"Workload {identity!r} is absent or ambiguous; use its summary id", "工作量不存在或有歧义，请使用摘要中的标识")
+        _fail("id", f"Workload {identity!r} is absent or ambiguous; valid workload ids: {[_group_id(g) for g in tasks['generators']]}. Operation ids such as op-N select revise_plan edits, not workloads", "工作量不存在或有歧义，请使用列出的工作量标识；op-N 用于修改方案操作")
     return matches[0]
 
 
@@ -474,6 +475,14 @@ def _admit_task_kind(document: dict, kind: str) -> None:
 
 def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name: str, p: dict,
                      directory: Path, warnings: list[dict], op_id: str) -> None:
+    if name == "set_region":
+        if not ctx.allow_region:
+            _fail("op", "set_region is an assistant proposal operation. Use the Region map's /region preview/apply endpoint for form edits / set_region 用于助手方案；表单请使用区域地图的 /region 预览和应用接口")
+        from .regions import preview
+
+        record = preview(ctx, document, p, directory)
+        warnings.append({"op_id": op_id, "field": "bounds", "message": f"Region origin changes from {record['previous_origin']} to {record['scene']['origin']}; ENU coordinates remain authored relative to the new origin; the road network is invalidated / 区域原点改变，已有 ENU 坐标将相对于新原点解释，道路网络失效"})
+        return
     if name == "add_lowalt_components":
         from aeroagentsim.packs.lowalt.template import install_components
 
@@ -484,7 +493,7 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             _fail("control", "This workspace has no template controls", "此工作区没有模板控件")
         knobs = {k["id"]: k for k in ctx.templates.get(scene.template_id)["knobs"]}
         if p["control"] not in knobs:
-            _fail("control", "Choose a declared control from this starting point", "请选择此起点已声明的控件")
+            _fail("control", f"Choose a declared control: {list(knobs)}", "请选择此起点已声明的控件")
         knob = knobs[p["control"]]
         try:
             _knob_value(knob, p["value"])
@@ -517,28 +526,30 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                 stream.pop("timeout_s", None)
         return
     if name in {"set_wind", "add_gust"}:
-        profiles = [profile["lowalt.wind"] for e in document["engines"].values() if e["plugin"] == "environment"
-                    for profile in e["config"].get("profiles", {}).values() if "lowalt.wind" in profile]
+        profiles = [(key, value) for e in document["engines"].values() if e["plugin"] == "environment"
+                    for profile in e["config"].get("profiles", {}).values() for key, value in profile.items()
+                    if key in {"lowalt.wind", "oo:digital_twin.wind.horizontalVelocity"}]
         if not profiles:
             _fail("speed_mps", "Starting scene has no lowalt wind profile", "起点场景没有低空风场配置")
         if name == "add_gust" and p["end_s"] <= p["start_s"]:
             _fail("end_s", "Gust end must follow start", "阵风结束必须晚于开始")
         if name == "add_gust" and round(p["end_s"] * SECOND) <= round(p["start_s"] * SECOND):
             _fail("end_s", "Gust interval must span at least one nanosecond", "阵风间隔必须至少一纳秒")
-        for profile in profiles:
+        for key, profile in profiles:
+            vector = [float(p["speed_mps"]), 0.0, 0.0] if key == "lowalt.wind" else [[float(p["speed_mps"]), 0.0]]
             if name == "set_wind":
-                profile["value"] = [float(p["speed_mps"]), 0.0, 0.0]
+                profile["value"] = vector
             else:
                 if any(p["start_s"] * SECOND < g["end_ns"] and p["end_s"] * SECOND > g["start_ns"] for g in profile.get("gusts", [])):
                     _fail("start_s", "Gust overlaps an existing interval; choose a separate interval", "阵风与已有时段重叠，请选择独立时段")
                 profile["mode"] = "gust"
-                profile.setdefault("gusts", []).append({"start_ns": round(p["start_s"] * SECOND), "end_ns": round(p["end_s"] * SECOND), "value": [float(p["speed_mps"]), 0.0, 0.0]})
+                profile.setdefault("gusts", []).append({"start_ns": round(p["start_s"] * SECOND), "end_ns": round(p["end_s"] * SECOND), "value": vector})
         return
     if name == "set_algorithm":
         from aeroagentsim.services.algorithm_catalog import discover_algorithm_catalog
         installed = discover_algorithm_catalog()
         if p["value"] not in {a["id"] for a in installed[p["slot"]]}:
-            _fail("value", "Select an installed algorithm from the catalogue", "请选择目录中已安装的算法")
+            _fail("value", f"Valid algorithms for slot {p['slot']}: {[a['id'] for a in installed[p['slot']]]}", "请选择此槽已安装的算法")
         if "algorithms" not in document:
             _fail("slot", "Starting scene has no lowalt algorithm slots", "起点场景没有低空算法槽")
         if p["value"] == "llm" and ctx.agent_profile is None:
@@ -959,20 +970,58 @@ def _schedule_event(document: dict, p: dict, directory: Path) -> None:
     document["bindings"].setdefault("commands", []).append({"schema": "aas.runtime.inject_event", "target": "behaviour", "at_ns": round(p["at_s"] * SECOND), "payload": {"injection_point": point_id, "payload": payload}})
 
 
-def _places_first(operations: list[dict]) -> list[int]:
-    """Application order: new places before the operations that use them.
+def _operation_order(operations: list[dict], document: dict) -> list[int]:
+    """Stable dependency order; authored operation ids/order remain unchanged."""
+    creators: dict[str, int] = {}
+    existing = {e["id"] for e in document.get("entities", [])}
+    for i, operation in enumerate(operations):
+        if not isinstance(operation, dict) or not isinstance(operation.get("params"), dict):
+            continue
+        p, name = operation["params"], operation.get("op")
+        if name in {"add_place", "add_fleet", "add_orders", "add_incident"} and isinstance(p.get("id"), str):
+            creators.setdefault(p["id"], i)
+            if name in {"add_fleet", "add_orders"} and type(p.get("count")) is int and 0 < p["count"] <= 1000:
+                for member in range(1, p["count"] + 1):
+                    creators.setdefault(f"{p['id']}-{member}", i)
+        if name == "set_cooperation":
+            for point in p.get("handoff_points", []):
+                if isinstance(point, dict) and isinstance(point.get("id"), str):
+                    creators.setdefault(point["id"], i)
 
-    Models often list the orders first and the customers they deliver to after. A new place
-    depends on nothing else in the plan, so it is applied first unless an earlier operation
-    moves or removes a place with the same id."""
-    def early(i: int) -> bool:
-        operation = operations[i]
-        if not isinstance(operation, dict) or operation.get("op") != "add_place" or not isinstance(operation.get("params"), dict):
-            return False
-        identity = operation["params"].get("id")
-        return not any(isinstance(o, dict) and o.get("op") in {"update_place", "remove_place"}
-                       and isinstance(o.get("params"), dict) and o["params"].get("id") == identity for o in operations[:i])
-    return sorted(range(len(operations)), key=lambda i: 0 if isinstance(operations[i], dict) and operations[i].get("op") == "add_lowalt_components" else 1 if early(i) else 2)
+    selectors = {"at", "start", "from", "to", "fleet", "vehicle", "task", "destination", "vehicles", "handoff_points", "site", "origin", "restaurant"}
+    def references(value, key=""):
+        if isinstance(value, dict):
+            return set().union(*(references(v, k) for k, v in value.items())) if value else set()
+        if isinstance(value, list):
+            return set().union(*(references(v, key) for v in value)) if value else set()
+        return {value} if key in selectors and isinstance(value, str) else set()
+
+    deps: dict[int, set[int]] = {i: set() for i in range(len(operations))}
+    installers = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "add_lowalt_components"]
+    regions = [i for i, o in enumerate(operations) if isinstance(o, dict) and o.get("op") == "set_region"]
+    for i, operation in enumerate(operations):
+        if not isinstance(operation, dict):
+            continue
+        params = operation.get("params", {})
+        refs = references(params)
+        if operation.get("op") in {"update_place", "remove_place", "set_orders", "remove_orders", "set_incident", "remove_incident"} and isinstance(params, dict):
+            refs.add(params.get("id"))
+        deps[i].update(creators[r] for r in refs if r not in existing and r in creators and creators[r] != i)
+        if installers and i not in installers:
+            deps[i].add(installers[0])
+        if regions and i not in regions and i not in installers:
+            deps[i].add(regions[-1])
+    ordered = []
+    while deps:
+        ready = next((i for i in sorted(deps) if not deps[i]), None)
+        if ready is None:
+            ids = [operations[i].get("id", f"op-{i + 1}") for i in deps]
+            _fail("operations", f"Circular creation references between {ids}; give one creation an explicit position", "创建操作存在循环引用，请为一个创建操作提供明确坐标")
+        ordered.append(ready)
+        deps.pop(ready)
+        for waiting in deps.values():
+            waiting.discard(ready)
+    return ordered
 
 
 def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_dir: Path, *, resolved: BaseScene | None = None) -> CompileResult:
@@ -1040,7 +1089,9 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         if not isinstance(operations, list):
             _fail("operations", "Operations must be a list", "操作必须为列表")
         operations = copy.deepcopy(operations)
-        if operations and not any(e.get("plugin") == "lowalt_tasks" for e in document["engines"].values()) and not any(isinstance(o, dict) and o.get("op") == "add_lowalt_components" for o in operations):
+        lowalt_names = {"add_place", "update_place", "remove_place", "add_fleet", "set_fleet", "set_vehicle", "add_orders", "set_orders", "remove_orders", "set_task", "set_rule", "set_algorithm", "set_cooperation", "remove_cooperation", "add_incident", "set_incident", "remove_incident"}
+        needs_lowalt = any(isinstance(o, dict) and (o.get("op") in lowalt_names or o.get("op") in {"set_wind", "add_gust"} and not any(e.get("plugin") == "environment" for e in document["engines"].values()) or o.get("op") == "schedule_event" and str(o.get("params", {}).get("event", "")).startswith(("lowalt", "restaurant", "close_vertiport", "add_urgent", "change_dropoff", "prioritize_medical", "investigate"))) for o in operations)
+        if needs_lowalt and not any(e.get("plugin") == "lowalt_tasks" for e in document["engines"].values()) and not any(isinstance(o, dict) and o.get("op") == "add_lowalt_components" for o in operations):
             used_ids = [o.get("id") for o in operations if isinstance(o, dict)]
             automatic_id = "auto-lowalt-components"
             while automatic_id in used_ids:
@@ -1049,7 +1100,8 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
             message = "Prepended add_lowalt_components: standard lowalt engines, algorithm slots and rules; no places, fleets or orders; existing entities and origin preserved / 已前置 add_lowalt_components：安装标准低空引擎、算法槽和规则，不生成设施、机群或订单，保留已有实体和原点"
             notes.append(message)
             warnings.append({"op_id": automatic_id, "field": "operations", "message": message})
-        for i in _places_first(operations):
+        created_by: dict[str, str] = {}
+        for i in _operation_order(operations, document):
             operation = operations[i]
             op_id = operation.get("id", f"op-{i + 1}") if isinstance(operation, dict) else f"op-{i + 1}"
             candidate, candidate_controls = copy.deepcopy(document), copy.deepcopy(scene.controls)
@@ -1064,10 +1116,17 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
                     _sync_base_fleet(candidate)
                     expand(candidate)
                 document = candidate
+                if name in {"add_place", "add_fleet", "add_orders", "add_incident"}:
+                    created_by[params["id"]] = op_id
             except (OperationError, ValueError, TypeError, KeyError) as exc:
                 scene.controls = candidate_controls
                 del warnings[warning_count:]
-                errors.append({"op_id": op_id, "field": getattr(exc, "field", "params"), "message": str(exc)})
+                target = operation.get("params", {}).get("id") if isinstance(operation, dict) and isinstance(operation.get("params"), dict) else None
+                owner = created_by.get(target) if isinstance(target, str) else None
+                message = str(exc)
+                if owner is not None and isinstance(operation, dict) and str(operation.get("op", "")).startswith("add_"):
+                    message += f". {target!r} is already added by {owner} in THIS draft; edit {owner} with revise_plan.update instead of adding it again / 该对象已由本草稿操作 {owner} 添加，请修改该操作"
+                errors.append({"op_id": op_id, "field": getattr(exc, "field", "params"), "message": message})
         coop = next((e["config"].get("cooperation") for e in document["engines"].values() if e["plugin"] == "lowalt_tasks"), None)
         if coop is not None and not errors:
             module = _cooperation_module()
@@ -1105,6 +1164,15 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
     result.operations = copy.deepcopy(operations) if isinstance(operations, list) else []
     if result.ok and not base_lowalt and has_lowalt_components(document):
         result.diff_base["added"].insert(0, {"kind": "components", "id": "lowalt_components", "label": "Standard lowalt engines, algorithm slots and rules", "label_zh": "标准低空引擎、算法槽和规则", "op": "add_lowalt_components"})
+    region_plan = files / "region.plan.json"
+    if result.ok and region_plan.is_file():
+        region_record = json.loads(region_plan.read_text())
+        result.summary["region"] = region_record["region"]
+        result.diff_base["changed"].append({"kind": "scene", "id": "region", "label": "Map region", "label_zh": "地图区域",
+                                           "fields": [{"name": "bounds", "after": region_record["region"]["bounds"]},
+                                                      {"name": "origin", "before": region_record["previous_origin"], "after": region_record["scene"]["origin"]}]})
+        if region_record["network_invalidated"]:
+            result.diff_base["removed"].append({"kind": "network", "id": "network.net.xml", "label": "Previous road network", "label_zh": "原道路网络"})
     _write(out_dir / "scenario.json", document)
     _write(out_dir / "compile.json", {**result.to_data(), "base": base, "base_revision": scene.revision if scene else None,
                                       "template_id": scene.template_id if scene else None, "controls": scene.controls if scene else {}})
@@ -1154,10 +1222,17 @@ def apply_plan(ctx: CompileContext, out_dir: Path, *, base: dict, workspace_id: 
             draft = ctx.store.import_template(base["template"], base.get("controls", {}), registry=ctx.templates)
             workspace_id = draft["id"]
         directory = ctx.store.directory(workspace_id)
+        from .regions import apply as apply_region
+
+        region_draft = apply_region(ctx.store, workspace_id, out_dir / "files")
+        if region_draft is not None:
+            draft = region_draft
         _copy_files(out_dir / "files", directory)
         document = _rebase(document, out_dir / "files", directory)
         changes: dict = {"scenario": document, "name": name, "revision": draft["revision"]}
         saved = ctx.store.save(workspace_id, changes)
+        # Preview markers are plan-local; later ordinary plans must not reapply an old region.
+        (directory / "region.plan.json").unlink(missing_ok=True)
         if record["template_id"]:
             saved["template"] = {"id": record["template_id"], "knobs": record["controls"]}
             saved = ctx.store._write(saved)
