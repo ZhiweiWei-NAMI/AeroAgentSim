@@ -1,40 +1,31 @@
 import { ModeSwitch, type EditMode, type Origin } from '../assistant/ModeSwitch';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TemplateApi, type AlgorithmDescriptor, type KnobValue, type ScenarioTemplate } from '../newcomers/api';
 import { TemplateKnobControl } from '../newcomers/TemplateKnobControl';
-import { algorithmSlotLabel } from '../newcomers/presentation';
 import { useI18n } from '../i18n/I18nProvider';
 import { localized } from '../i18n/translate';
 import { ApiError, type Project, type SectionId, type ValidationIssue, type WorkbenchApi } from './api';
-import { FormValidity, getAt, JsonEditor, Leaf, pointer, setAt, TreeForm } from './form';
-import { BehavioursPanel } from '../studio/BehavioursPanel';
-import { StudioApi, type TypeRow, type Workspace } from '../studio/api';
+import { FormValidity, getAt, setAt } from './form';
+import { StudioApi } from '../studio/api';
+import { SECTIONS, issuePointer, issueSection } from './sections/issues';
+import type { SectionProps } from './sections/types';
+import { SpaceSection } from './sections/SpaceSection';
+import { ObjectsSection } from './sections/ObjectsSection';
+import { RelationsSection } from './sections/RelationsSection';
+import { TasksSection } from './sections/TasksSection';
+import { ComponentsSection } from './sections/ComponentsSection';
+import { AlgorithmsSection } from './sections/AlgorithmsSection';
+import { RunSection } from './sections/RunSection';
+
+const SECTION_BODIES: Record<SectionId, (props: SectionProps) => JSX.Element> = {
+  space: SpaceSection, objects: ObjectsSection, relations: RelationsSection, tasks: TasksSection,
+  components: ComponentsSection, algorithms: AlgorithmsSection, run: RunSection,
+};
 
 type Scenario = Record<string, unknown>;
 type Section = SectionId | 'controls' | 'file';
-export const SECTIONS: Array<{ id: SectionId; en: string; zh: string; keys: string[] }> = [
-  { id: 'space', en: 'Scene & space', zh: '场景与空间', keys: ['city', 'presentation', 'region', 'airspace'] },
-  { id: 'objects', en: 'Objects', zh: '对象', keys: ['entities', 'registry'] },
-  { id: 'relations', en: 'Relations & resources', zh: '关系与资源', keys: ['relations', 'resources'] },
-  { id: 'tasks', en: 'Tasks & behaviours', zh: '任务与行为', keys: ['generators', 'behaviours'] },
-  { id: 'components', en: 'Execution components', zh: '执行组件', keys: ['engines', 'bindings'] },
-  { id: 'algorithms', en: 'Algorithms & agents', zh: '算法与智能体', keys: ['algorithms', 'agents', 'decisions'] },
-  { id: 'run', en: 'Run & recording', zh: '运行与记录', keys: ['run', 'outputs', 'ingress_streams'] },
-];
-const SECTION_OF: Record<string, SectionId> = Object.fromEntries(SECTIONS.flatMap(section => section.keys.map(key => [key, section.id])));
-/** Section of a validation issue, from the server or from its authored path. */
-export function issueSection(issue: ValidationIssue): SectionId | undefined {
-  if (issue.section) return issue.section;
-  const head = /^\/?\$?\.?([A-Za-z_]+)/.exec(issue.path ?? '')?.[1] ?? /^([A-Za-z_]+)[.[:]/.exec(issue.message)?.[1];
-  return head ? SECTION_OF[head] : undefined;
-}
-/** Authored `$.entities[3].facts` → JSON pointer `/entities/3/facts`. */
-export function issuePointer(path: string) {
-  if (path.startsWith('/')) return path;
-  return pointer(...path.replace(/^\$/, '').replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean));
-}
+export { SECTIONS, issueSection, issuePointer } from './sections/issues';
 
-const RESOURCE_FACT = /(capacity|open|power|queue|slots|preparation|stock|pads?_|_count)/;
 const localKey = (id: string) => `aas.draft.${id}`;
 /** Authoring preserves float kinds in rule parameters; knob widgets need their numeric value. */
 export function controlValue(value: unknown): KnobValue | undefined {
@@ -85,14 +76,8 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   const [yamlDirty, setYamlDirty] = useState(false), [yamlRevision, setYamlRevision] = useState(project.revision);
   useEffect(() => { onDraft?.(project.id, draft, local); }, [project.id, draft, local, onDraft]);
   const [catalogError, setCatalogError] = useState<string>();
-  const [ruleEditor, setRuleEditor] = useState(false), [catalog, setCatalog] = useState<{ types: TypeRow[]; fields: Record<string, unknown>[]; relations: Record<string, unknown>[] }>();
-  const ruleRoot = useRef<HTMLDivElement>(null), [ruleError, setRuleError] = useState<string>();
-  const reportRuleValidity = useCallback((valid: boolean) => reportValidity('/behaviours', valid), [reportValidity]);
   const studioApi = useMemo(() => new StudioApi(api.base), [api.base]);
-  useEffect(() => { if (!ruleEditor || catalog) return; setRuleError(undefined); void studioApi.request<{ types: TypeRow[]; fields: Record<string, unknown>[]; relations: Record<string, unknown>[] }>(`/v1/studio/types?workspace=${encodeURIComponent(project.id)}`).then(setCatalog).catch(problem => setRuleError(String(problem))); }, [ruleEditor, project.id]);
-  useEffect(() => { if (ruleEditor && catalog) ruleRoot.current?.scrollIntoView({ block: 'start' }); }, [ruleEditor, catalog]);
   const [section, sectionPath] = (requested ?? (project.template ? 'controls' : 'objects')).split(':') as [Section, string | undefined];
-  useEffect(() => () => reportValidity('/behaviours', true), [section, ruleEditor, reportValidity]);
   useEffect(() => { if (sectionPath) setFocus(sectionPath); }, [sectionPath]);
 
   // A newer server draft replaces ours unless we hold unsaved local edits.
@@ -163,7 +148,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     try { const updated = await api.knobs(saved.id, changes, saved.revision); setKnobs({}); localStorage.removeItem(localKey(project.id)); onProject(updated); setMessage({ kind: 'ok', text: 'Controls applied to the draft.', textZh: '控制项已应用到草稿。' }); }
     catch (problem) { fail(problem); } finally { setBusy(undefined); }
   };
-  const jump = (issue: ValidationIssue) => { const target = issueSection(issue); setEntityFilter(''); onSection(`${target ?? 'file'}:${issuePointer(issue.path)}`); setFocus(issuePointer(issue.path)); };
+  const jump = (issue: ValidationIssue) => { const target = issueSection(issue); onSection(`${target ?? 'file'}:${issuePointer(issue.path)}`); setFocus(issuePointer(issue.path)); };
   const discard = () => { localStorage.removeItem(localKey(project.id)); setLocal(false); setRestored(false); setKnobs({}); setYaml(undefined); setYamlDirty(false); setDraft(project.scenario as Scenario); setBaseRevision(project.revision); };
   const loadYaml = async (reload = false) => {
     setBusy('export');
@@ -180,18 +165,11 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
   const validNow = project.validation?.valid && project.validation.revision === project.revision && !local && !controlsDirty && !controlsMissing && !yamlDirty && !invalid.size;
   const versioned = project.latest_version && project.latest_version.revision === project.revision && !local;
 
-  const entities = (Array.isArray(draft.entities) ? draft.entities : []) as Array<Record<string, any>>;
-  const [entityFilter, setEntityFilter] = useState('');
-  const shownEntities = useMemo(() => entities.map((entity, index) => ({ entity, index })).filter(({ entity }) => !entityFilter || `${entity.id} ${entity.label ?? ''} ${entity.type}`.toLowerCase().includes(entityFilter.toLowerCase())), [entities, entityFilter]);
-  const [openEntity, setOpenEntity] = useState<number>();
-  useEffect(() => { const match = /^\/entities\/(\d+)/.exec(focus ?? ''); if (match) setOpenEntity(Number(match[1])); }, [focus]);
-
   const nav: Array<{ id: Section; label: string }> = [
     ...(project.template ? [{ id: 'controls' as Section, label: L('Scenario controls', '场景控制项') }] : []),
     ...SECTIONS.map(item => ({ id: item.id as Section, label: zh ? item.zh : item.en })),
     { id: 'file', label: L('File (YAML)', '文件（YAML）') },
   ];
-  const keysPresent = (keys: string[]) => keys.filter(key => key in draft);
   const sectionBody = () => {
     if (section === 'controls') {
       if (!template) return <p className="hint" role={catalogError ? 'alert' : 'status'}>{catalogError ?? L('Loading the scenario controls…', '正在加载场景控制项…')}</p>;
@@ -219,100 +197,9 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
             </div></>}
       </>;
     }
-    const meta = SECTIONS.find(item => item.id === section)!;
-    if (section === 'objects') return <>
-      <p className="hint">{L('Concrete instances in this world. Each has an identity, a contract type, an initial state and a visual binding.', '世界中的具体实例：每个都有身份、契约类型、初始状态和视觉绑定。')}</p>
-      {draft.generators && typeof draft.generators === 'object' && <><h4>{L('Generated fleets', '批量生成的机队')}</h4>
-        {Object.entries(draft.generators as Record<string, any>).map(([name, generator]) => <div key={name}>
-          <Leaf path={pointer('generators', name, 'count')} label={`${name} · ${L('count', '数量')}`} value={generator.count} onChange={edit} focus={focus} />
-          <Leaf path={pointer('generators', name, 'type')} label={`${name} · ${L('type', '类型')}`} value={generator.type} onChange={edit} focus={focus} readOnly />
-          <details open={focus?.startsWith(pointer('generators', name))}><summary>{L('Initial state & positions', '初始状态与位置')}</summary>
-            <TreeForm value={Object.fromEntries(Object.entries(generator).filter(([key]) => key !== 'count' && key !== 'type'))} path={pointer('generators', name)} onChange={edit} focus={focus} />
-          </details>
-          {onInspectContract && <button className="wb-btn small ghost" onClick={() => onInspectContract(generator.type)}>{L('Inspect type contract', '查看类型契约')}</button>}
-        </div>)}</>}
-      <h4>{L('Instances', '实例')} <span className="wb-tag">{entities.length}</span></h4>
-      <input className="wb-search" aria-label={L('Filter instances', '筛选实例')} placeholder={L('Filter by id, label or type', '按 id、名称或类型筛选')} value={entityFilter} onChange={event => setEntityFilter(event.target.value)} />
-      <table className="wb-table" style={{ marginTop: 8 }}><thead><tr><th>{L('Instance', '实例')}</th><th>{L('Type', '类型')}</th><th /></tr></thead><tbody>
-        {shownEntities.slice(0, 400).map(({ entity, index }) => <Fragment key={index}>
-          <tr data-path={pointer('entities', index)} style={focus?.startsWith(pointer('entities', index)) ? { background: 'rgba(224,69,58,.08)' } : undefined}>
-            <td><b>{entity.label ?? entity.id}</b><div className="wb-mono" style={{ fontSize: 11, color: 'var(--wb-muted)' }}>{entity.id}</div></td>
-            <td className="wb-mono" style={{ fontSize: 11 }}>{entity.type}</td>
-            <td><button className="wb-btn small" onClick={() => setOpenEntity(openEntity === index ? undefined : index)}>{openEntity === index ? L('Close', '收起') : L('Edit', '编辑')}</button></td>
-          </tr>
-          {openEntity === index && <tr><td colSpan={3}><TreeForm value={entity} path={pointer('entities', index)} onChange={edit} focus={focus} />
-            {onInspectContract && <button className="wb-btn small ghost" onClick={() => onInspectContract(entity.type)}>{L('Inspect type contract', '查看类型契约')}</button>}</td></tr>}
-        </Fragment>)}
-      </tbody></table>
-      {shownEntities.length > 400 && <p className="hint">{L(`Showing 400 of ${shownEntities.length}; filter to find others.`, `显示前 400 个（共 ${shownEntities.length} 个），请筛选查找其余。`)}</p>}
-    </>;
-    if (section === 'relations') {
-      const resources = entities.map((entity, index) => ({ entity, index })).filter(({ entity }) => Object.keys(entity.facts ?? {}).some(key => RESOURCE_FACT.test(key)));
-      return <>
-        <p className="hint">{L('Facilities and their capacities, open state and service resources. Relations are facts on the instances below.', '设施及其容量、开放状态和服务资源。关系以下列实例上的事实表示。')}</p>
-        {keysPresent(['relations', 'resources']).map(key => <div key={key}><h4>{key}</h4><TreeForm value={draft[key]} path={pointer(key)} label={key} onChange={edit} focus={focus} /></div>)}
-        {!resources.length && <div className="wb-empty">{L('No resource facts in this scenario.', '该场景中没有资源类事实。')}</div>}
-        {resources.map(({ entity, index }) => <details key={index} open={focus?.startsWith(pointer('entities', index))}><summary><b>{entity.label ?? entity.id}</b> <span className="wb-tag wb-mono">{entity.type}</span></summary>
-          {Object.entries(entity.facts ?? {}).filter(([key]) => RESOURCE_FACT.test(key)).map(([key, value]) => <Leaf key={key} path={pointer('entities', index, 'facts', key)} label={key} value={value} onChange={edit} focus={focus} />)}
-        </details>)}
-      </>;
-    }
-    if (section === 'tasks') {
-      const behaviours = (Array.isArray(draft.behaviours) ? draft.behaviours : []) as Array<Record<string, any>>;
-      const taskConfig = (draft.engines as Record<string, any> | undefined)?.tasks?.config;
-      return <>
-        <p className="hint">{L('What work appears and the rules that decide what is allowed: predicates with parameters, and event chains.', '会出现哪些工作，以及决定允许做什么的规则：带参数的谓词与事件链。')}</p>
-        {taskConfig?.generators && <><h4>{L('Task arrivals', '任务到达')}</h4><TreeForm value={taskConfig.generators} path={pointer('engines', 'tasks', 'config', 'generators')} onChange={edit} focus={focus} /></>}
-        {behaviours.map((behaviour, b) => <div key={b}>
-          <h4>{L('Rules', '规则')} · <span className="wb-mono">{behaviour.id ?? b}</span></h4>
-          {Object.entries(behaviour.predicates ?? {}).map(([name, predicate]: [string, any]) => <details key={name} open><summary><b>{name}</b></summary>
-            {predicate?.parameters ? Object.entries(predicate.parameters).map(([key, value]) => <Leaf key={key} path={pointer('behaviours', b, 'predicates', name, 'parameters', key)} label={key} value={value} onChange={edit} focus={focus} />) : <p className="hint">{L('No parameters.', '无参数。')}</p>}
-          </details>)}
-          {behaviour.chains && <><h4>{L('Event chains', '事件链')}</h4><div className="wb-card-meta">{Object.keys(behaviour.chains).map(chain => <span key={chain} className="wb-tag wb-mono">{chain}</span>)}</div></>}
-        </div>)}
-        <div style={{ marginTop: 14 }}><button className="wb-btn" aria-pressed={ruleEditor} onClick={() => setRuleEditor(value => !value)}>{ruleEditor ? L('Hide the rule editor', '收起规则编辑器') : L('Edit predicates, triggers and event chains…', '编辑谓词、触发条件和事件链…')}</button></div>
-        {ruleEditor && (catalog ? <div className="wb-rule-editor" ref={ruleRoot}><BehavioursPanel api={studioApi} workspace={{ ...project, scenario: draft } as unknown as Workspace} scenario={draft} types={catalog.types} fields={catalog.fields} relations={catalog.relations}
-            onChange={scenario => { setDraft(scenario); setLocal(true); }} onApply={workspace => onProject(workspace as unknown as Project)}
-            save={async () => { const saved = await saveDraft(); if (!saved) throw Error(L('Save failed', '保存失败')); return saved as unknown as Workspace; }} onValidityChange={reportRuleValidity}
-            issues={issues.filter(issue => issueSection(issue) === 'tasks')} /></div> : <p className="hint" role={ruleError ? 'alert' : 'status'}>{ruleError ?? L('Loading the contract catalog…', '正在加载契约目录…')}</p>)}
-        {!behaviours.length && !taskConfig && <div className="wb-empty">{L('No task or behaviour definitions.', '没有任务或行为定义。')}</div>}
-      </>;
-    }
-    if (section === 'algorithms') {
-      const slots = (draft.algorithms ?? {}) as Record<string, string>;
-      return <>
-        <p className="hint">{L('Which method chooses plans. Each slot is used by the components listed with it. Changing a slot changes the next run, never a running world.', '用哪种方法选择方案。每个插槽作用于对应的组件。修改只影响下一次运行，不会改变正在运行的世界。')}</p>
-        {Object.entries(slots).map(([slot, chosen]) => {
-          const options = (algorithms ?? []).filter(item => item.slot === slot);
-          const users = Object.entries((draft.engines ?? {}) as Record<string, any>).filter(([, engine]) => engine?.config?.algorithm_config !== undefined || JSON.stringify(engine?.config ?? {}).includes(slot)).map(([name]) => name);
-          const current = options.find(item => item.id === chosen);
-          return <div key={slot} style={{ marginBottom: 10 }}>
-            <Leaf path={pointer('algorithms', slot)} label={algorithmSlotLabel(slot as never, locale)} value={chosen} options={options.map(item => item.id)} onChange={edit} focus={focus} />
-            {current && <p className="hint">{(zh ? current.description_zh : undefined) ?? current.description}</p>}
-            {users.length > 0 && <div className="wb-card-meta">{users.map(user => <span key={user} className="wb-tag">{L('used by', '作用于')} {user}</span>)}</div>}
-          </div>;
-        })}
-        {!Object.keys(slots).length && <div className="wb-empty">{L('This scenario declares no algorithm slots.', '该场景未声明算法插槽。')}</div>}
-        {keysPresent(['agents', 'decisions']).map(key => <div key={key}><h4>{key}</h4><TreeForm value={draft[key]} path={pointer(key)} label={key} onChange={edit} focus={focus} /></div>)}
-      </>;
-    }
-    const keys = keysPresent(meta.keys);
-    return <>
-      <p className="hint">{section === 'space' ? L('Geographic scope, city assets and how types are drawn in the scene.', '地理范围、城市素材以及类型在场景中的呈现方式。')
-        : section === 'components' ? L('Engines that compute state, and which engine owns (writes) which fields.', '计算状态的引擎，以及哪个引擎拥有（写入）哪些字段。')
-        : L('Duration, stepping, random seed, inputs and what is recorded.', '时长、步进、随机种子、输入源以及记录内容。')}</p>
-      {section === 'space' && <Leaf path="/city" label={L('City', '城市')} value={(draft.city as string | undefined) ?? 'none'} options={['huangpu', 'none']} onChange={(path, value) => edit(path, value === 'none' ? undefined : value)} focus={focus} />}
-      {keys.filter(key => !(section === 'space' && key === 'city')).map(key => <div key={key}><h4 className="wb-mono">{key}</h4>
-        {section === 'components' && key === 'engines' ? Object.entries(draft.engines as Record<string, any>).map(([name, engine]) => <details key={name} open={focus?.startsWith(pointer('engines', name) + '/')}><summary><b>{name}</b> <span className="wb-tag wb-mono">{engine.plugin}</span></summary>
-          {JSON.stringify(engine.config ?? {}).length > 6000
-            ? <JsonEditor label={`${name} config`} value={engine.config} path={pointer('engines', name, 'config')} focus={focus} onApply={value => edit(pointer('engines', name, 'config'), value)} />
-            : <TreeForm value={engine.config ?? {}} path={pointer('engines', name, 'config')} onChange={edit} focus={focus} />}
-        </details>)
-          : (getAt(draft, '/' + key) && typeof getAt(draft, '/' + key) === 'object' && JSON.stringify(getAt(draft, '/' + key)).length > 6000)
-            ? <JsonEditor label={key} value={getAt(draft, '/' + key)} path={'/' + key} focus={focus} onApply={value => edit('/' + key, value)} />
-            : <TreeForm value={getAt(draft, '/' + key)} path={'/' + key} label={key} onChange={edit} focus={focus} />}
-      </div>)}
-    </>;
+    const props: SectionProps = { api, studioApi, project, draft, edit, replaceDraft: scenario => { setDraft(scenario); setLocal(true); }, focus, zh, locale, L, issues, onProject, saveDraft, reportValidity, onInspectContract, algorithms };
+    const Body = SECTION_BODIES[section as SectionId];
+    return <Body {...props} />;
   };
 
   return <FormValidity.Provider value={reportValidity}><aside className="wb-panel wb-right is-wide wb-glass" aria-label={L('Configure scenario', '配置场景')} data-testid="wb-config" data-morph={morph}>
