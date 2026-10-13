@@ -87,8 +87,9 @@ export function IncidentsBlock({ config, api, project, onProject, saveDraft, foc
         <StagedNumber label={`${L('Time', '时间')} (s)`} value={editTime} min={0} onChange={setEditTime} />
       </div>
       {!editReady && <p className="hint" style={{ color: 'var(--wb-warn)' }}>{editTimeProblem ?? L('Give a position and a time to enable the change.', '请填写位置与时间后才能修改。')}</p>}
-      {editReady && api && project && onProject && saveDraft && <OpApply api={api} project={project} onProject={onProject} saveDraft={saveDraft}
-        operations={[operation('set_incident', { id: editId, at: parseAt(editAt), time_s: Number(editTime) })]}
+      {api && project && onProject && saveDraft && <OpApply api={api} project={project} onProject={onProject} saveDraft={saveDraft}
+        operations={editReady ? [operation('set_incident', { id: editId, at: parseAt(editAt), time_s: Number(editTime) })] : undefined}
+        missing={!editReady ? editTimeProblem ?? L('Give a position and a time to enable the change.', '请填写位置与时间后才能修改。') : undefined}
         label={L('Preview incident change', '预览事件修改')} labelZh="预览事件修改" primary small
         onApplied={() => setEditing(undefined)} />}
     </div>}

@@ -56,14 +56,16 @@ def test_draft_to_yaml_real_validation_and_persistence(store: WorkspaceStore) ->
     w = placed(store)
     assert store.validate(w["id"])["valid"]
     exported = yaml.safe_load(store.export(w["id"]))
-    assert exported == w["scenario"]
+    assert exported["format"] == "aeroagentsim.studio/v1"
+    assert exported["geography"]["network_state"] == "none"
+    assert exported["scenario"] == w["scenario"]
     other = store.create("import")
     assert (
-        store.import_yaml(other["id"], yaml.safe_dump(exported))["scenario"] == exported
+        store.import_yaml(other["id"], yaml.safe_dump(exported))["scenario"] == w["scenario"]
     )
     restarted = WorkspaceStore(store.root, ONTOLOGY)
-    assert restarted.get(w["id"])["scenario"] == exported
-    assert {b["writer"] for b in exported["bindings"]["exact"]} == {
+    assert restarted.get(w["id"])["scenario"] == w["scenario"]
+    assert {b["writer"] for b in exported["scenario"]["bindings"]["exact"]} == {
         "motion",
         "operations",
     }
@@ -132,7 +134,7 @@ def test_writer_conflict_is_real_diagnostic(store: WorkspaceStore) -> None:
     assert result["valid"] is False
     assert result["errors"]
     # The YAML repair editor must still open the real invalid saved draft.
-    assert yaml.safe_load(store.export(w["id"])) == doc
+    assert yaml.safe_load(store.export(w["id"]))["scenario"] == doc
 
 
 def test_catalog_and_real_run_replay(tmp_path: Path) -> None:

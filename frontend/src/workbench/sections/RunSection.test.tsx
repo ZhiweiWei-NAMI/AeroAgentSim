@@ -3,21 +3,23 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { RunSection } from './RunSection';
 import type { Operation, OperationPreview } from './operations';
+import type { Project } from '../api';
 
 const L = (en: string, _zh: string) => en;
 const edit = vi.fn();
 const onProject = vi.fn();
-const saveDraft = vi.fn(async () => ({ id: 'w1', revision: 7, scenario: {} }));
+const project: Project = { id: 'w1', name: 'Test project', revision: 7, updated_at: '', latest_version: null, dirty: true, scenario: {} };
+const saveDraft = vi.fn(async () => project);
 const previewOperations = vi.fn(async (_api: unknown, _project: unknown, operations: Operation[]): Promise<OperationPreview> =>
   ({ diff: { added: operations.map(op => ({ label: op.op })), changed: [], removed: [] }, notes: [] }));
-const applyOperations = vi.fn(async () => ({ id: 'w1', revision: 8, scenario: {} }));
+const applyOperations = vi.fn(async (_api: unknown, _project: unknown, _operations: Operation[]) => ({ ...project, revision: 8 }));
 
 vi.mock('./operations', async (importOriginal: () => Promise<typeof import('./operations')>) => {
   const actual = await importOriginal();
   return {
     ...actual,
     previewOperations: (api: unknown, project: { id: string; revision: number }, operations: Operation[]) => previewOperations(api, project, operations),
-    applyOperations,
+    applyOperations: (api: unknown, project: unknown, operations: Operation[]) => applyOperations(api, project, operations),
   };
 });
 

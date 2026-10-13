@@ -48,6 +48,7 @@ it('jumps a validation issue to its field even when the objects filter excludes 
 it('blocks saving and validation while a numeric input is invalid', async () => {
   const { api } = setup();
   fireEvent.change(screen.getByRole('textbox', { name: /until_ns/ }), { target: { value: '' } });
+  fireEvent.blur(screen.getByRole('textbox', { name: /until_ns/ }));
   await waitFor(() => expect(screen.getByTestId('wb-validate')).toBeDisabled());
   expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
   expect(api.save).not.toHaveBeenCalled();
@@ -99,6 +100,7 @@ it('clears the old field error highlight when the revision validates successfull
   expect(screen.queryByTestId('wb-issues')).toBeNull();
   expect(screen.getByText('Revision 2 is valid. Save it as a version to run it.')).toBeVisible();
   fireEvent.change(input, { target: { value: '3' } });
+  fireEvent.blur(input);
   await waitFor(() => expect(screen.queryByText('Revision 2 is valid. Save it as a version to run it.')).toBeNull());
   expect(screen.getByTestId('wb-save-version')).toBeDisabled();
 });
@@ -120,9 +122,10 @@ it('publishes unsaved coordinate edits for preview without saving or initializin
  const onDraft = vi.fn(), save = vi.fn();
  const initial = { ...project, scenario: { ...project.scenario, entities: [{ id: 'drone', type: 'lowalt:UAV', facts: { 'lowalt.position': [10, 20, 30] } }] } };
  render(<ConfigPanel api={{ base: '/api', save } as unknown as WorkbenchApi} project={initial} onProject={vi.fn()} onDraft={onDraft} onInitialize={vi.fn()} initializing={false} section="objects" onSection={vi.fn()} onClose={vi.fn()} />);
- fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+ fireEvent.click(within(document.querySelector('[data-path="/entities/0"]')!).getByRole('button', { name: 'Edit' }));
  const coordinate = document.querySelector<HTMLInputElement>('[data-path="/entities/0/facts/lowalt.position"] input')!;
  fireEvent.change(coordinate, { target: { value: '120, 20, 30' } });
+ fireEvent.blur(coordinate);
  await waitFor(() => expect(onDraft).toHaveBeenLastCalledWith(initial.id, expect.objectContaining({ entities: [expect.objectContaining({ facts: { 'lowalt.position': [120, 20, 30] } })] }), true));
  expect(save).not.toHaveBeenCalled();
 });
@@ -146,6 +149,7 @@ it('a 409 save opens Compare and merge: local edits stay, choices are per sectio
   }
   render(<I18nProvider><Harness409 /></I18nProvider>);
   fireEvent.change(await screen.findByRole('textbox', { name: /until_ns/ }), { target: { value: '777' } });
+  fireEvent.blur(screen.getByRole('textbox', { name: /until_ns/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
   const merge = await screen.findByTestId('wb-merge');
   expect(merge).toHaveTextContent('Compare and merge');

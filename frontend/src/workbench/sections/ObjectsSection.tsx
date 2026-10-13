@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { Leaf, pointer, TreeForm } from '../form';
 import type { SectionProps } from './types';
 import './objects.css';
@@ -25,7 +25,7 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
   const [openEntity, setOpenEntity] = useState<number>();
   const [adding, setAdding] = useState(false);
   const [addingPlace, setAddingPlace] = useState(false);
-  const [editingPlace, setEditingPlace] = useState<Record<string, any>>();
+  const [editingPlace, setEditingPlace] = useState<ComponentProps<typeof AddPlace>['editing']>();
   const [removing, setRemoving] = useState<string>();
   // A jump to an instance clears the filter so the row is visible, and opens it.
   useEffect(() => { const match = /^\/entities\/(\d+)/.exec(focus ?? ''); if (match) { setEntityFilter(''); setOpenEntity(Number(match[1])); } }, [focus]);
@@ -57,12 +57,7 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
     {lowalt && addingPlace && !editingPlace && <AddPlace api={api} project={project} draft={draft} project_detail={project as never} onProject={onProject} L={L} onClose={() => setAddingPlace(false)} />}
     {lowalt && editingPlace && <AddPlace api={api} project={project} draft={draft} project_detail={project as never} onProject={onProject} L={L}
       onClose={() => setEditingPlace(undefined)}
-      editing={{
-        id: String(editingPlace.id),
-        ...(editingPlace.capacity !== undefined ? { capacity: editingPlace.capacity } : {}),
-        ...(editingPlace.preparation_s !== undefined ? { preparation_s: editingPlace.preparation_s } : {}),
-        ...(editingPlace.power_w !== undefined ? { power_w: editingPlace.power_w } : {}),
-      }} />}
+      editing={editingPlace} />}
     {adding && <AddObjects api={api} studioApi={studioApi} project={project} draft={draft} project_detail={project as never} onProject={onProject} L={L} onClose={() => setAdding(false)} />}
     <Fleets api={api} studioApi={studioApi} project={project} draft={draft} onProject={onProject} L={L} />
     {lowalt && !!places.length && <>
@@ -74,9 +69,10 @@ export function ObjectsSection({ api, studioApi, project, draft, edit, focus, L,
           <td>
             <button className="wb-btn small" onClick={() => { setEditingPlace({
               id: entity.id,
-              ...(typeof entity.facts?.lowalt?.site_capacity === 'number' ? { capacity: entity.facts.lowalt.site_capacity } : {}),
-              ...(typeof entity.facts?.lowalt?.food_preparation_s === 'number' ? { preparation_s: entity.facts.lowalt.food_preparation_s } : {}),
-              ...(typeof entity.facts?.lowalt?.pad_power_w === 'number' ? { power_w: entity.facts.lowalt.pad_power_w } : {}),
+              position: entity.facts['lowalt.site_position'],
+              ...(typeof entity.facts['lowalt.site_capacity'] === 'number' ? { capacity: entity.facts['lowalt.site_capacity'] } : {}),
+              ...(typeof entity.facts['lowalt.food_preparation_s'] === 'number' ? { preparation_s: entity.facts['lowalt.food_preparation_s'] } : {}),
+              ...(typeof entity.facts['lowalt.pad_power_w'] === 'number' ? { power_w: entity.facts['lowalt.pad_power_w'] } : {}),
             }); setAddingPlace(false); }}>{L('Edit', '编辑')}</button>
             {' '}<button className="wb-btn small danger" onClick={() => { setRemoving(entity.id); setEditingPlace(undefined); setOpenEntity(undefined); }}>{L('Remove', '移除')}</button>
           </td>

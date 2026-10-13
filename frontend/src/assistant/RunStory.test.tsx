@@ -36,6 +36,13 @@ it('treats a check whose expected count is 0 (progress total 0) as not evaluated
   expect(row.className).not.toContain('is-happened');
   expect(row.textContent).toMatch(/not evaluated/);
   expect(screen.getByTestId('as-story').textContent).toMatch(/0\s*\/\s*0/);
+  expect(screen.queryByText('Everything the plan expected happened')).toBeNull();
+});
+
+it('does not claim success when the run has no evaluated expectations', () => {
+  renderStory([]);
+  expect(screen.getByText('Run ended')).toBeVisible();
+  expect(screen.queryByText('Everything the plan expected happened')).toBeNull();
 });
 
 it('keeps the neutral wording in Chinese', () => {
@@ -51,7 +58,7 @@ it('still scores real successes and misses normally', () => {
     { id: 'a', text: 'A', status: 'happened' },
     { id: 'b', text: 'B', status: 'missed' },
   ]);
-  expect(screen.getByTestId('as-story-a').className).toContain('is-happened');
-  expect(screen.getByTestId('as-story-b').className).toContain('is-missed');
+  expect(screen.getByTestId('as-story-happened').className).toContain('is-happened');
+  expect(screen.getByTestId('as-story-missed').className).toContain('is-missed');
   expect(screen.getByTestId('as-story').textContent).toMatch(/1 expected step did not happen/);
 });

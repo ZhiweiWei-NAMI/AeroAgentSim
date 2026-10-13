@@ -112,7 +112,7 @@ export function ConfigPanel({ api, project, onProject, onInitialize, initializin
     return () => abort.abort();
   }, [api, project.template?.id]);
 
-  const edit = (path: string, value: unknown) => { setDraft(previous => setAt(previous, path, value)); setLocal(true); };
+  const edit = (path: string, value: unknown) => { setDraft(previous => setAt(previous, path, value)); setLocal(true); setMessage(previous => previous?.kind === 'ok' ? undefined : previous); };
   const issues: ValidationIssue[] = project.validation && project.validation.revision === project.revision && !project.validation.valid ? project.validation.issues ?? project.validation.errors.map(message => ({ source: 'scenario', path: '$', message })) : [];
   const issueSections = new Set(issues.map(issueSection));
   const fail = (problem: unknown) => setMessage({ kind: 'error', text: problem instanceof ApiError ? problem.detail : String(problem) });

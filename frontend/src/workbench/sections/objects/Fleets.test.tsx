@@ -7,7 +7,7 @@ import type { Operation, OperationPreview } from '../operations';
 const L = (en: string) => en;
 const onProject = vi.fn();
 const onRemoved = vi.fn();
-const applyOperations = vi.fn(async () => ({ id: 'w1', revision: 9, scenario: {} }));
+const applyOperations = vi.fn(async (_api: unknown, _project: unknown, _operations: Operation[]) => ({ id: 'w1', revision: 9, scenario: {} }));
 const previewOperations = vi.fn(async (_api: unknown, _project: { id: string; revision: number }, operations: Operation[]): Promise<OperationPreview> => ({
   diff: {
     added: [], changed: [],
@@ -20,14 +20,14 @@ const previewOperations = vi.fn(async (_api: unknown, _project: { id: string; re
   notes: [],
 }));
 // A remove endpoint exists in the fallback path; it must never be called when C11 works.
-const studioRequest = vi.fn(async () => { throw new Error('fallback remove must not run'); });
+const studioRequest = vi.fn(async (_path: string, _body?: unknown) => { throw new Error('fallback remove must not run'); });
 
 vi.mock('../operations', async (importOriginal: () => Promise<typeof import('../operations')>) => {
   const actual = await importOriginal();
   return {
     ...actual,
     previewOperations: (api: unknown, project: { id: string; revision: number }, operations: Operation[]) => previewOperations(api, project, operations),
-    applyOperations,
+    applyOperations: (api: unknown, project: unknown, operations: Operation[]) => applyOperations(api, project, operations),
   };
 });
 
@@ -88,4 +88,15 @@ it('never mutates the draft directly: no edit call can wipe the scenario', () =>
   // Nothing in this section accepts a draft edit path; the generator list stays intact.
   expect(screen.getByTestId('wb-fleet-generated').textContent).toContain('will generate 2');
   expect(screen.getByTestId('wb-fleet').textContent).toContain('couriers');
+});
+
+it('shows a validation rejection without switching to per-member removal', async () => {
+  previewOperations.mockRejectedValueOnce(new Error('HTTP 422: fleet still has a protected dependent'));
+  renderFleets();
+  fireEvent.click(screen.getByTestId('wb-fleet-remove'));
+  fireEvent.click(screen.getByRole('button', { name: 'Preview removal' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('protected dependent');
+  expect(screen.queryByTestId('wb-fleet-fallback')).toBeNull();
+  expect(studioRequest).not.toHaveBeenCalled();
+  expect(applyOperations).not.toHaveBeenCalled();
 });

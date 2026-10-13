@@ -41,7 +41,7 @@ export function RunStory({ story, startNs, terminal, expectations, planVersion, 
     <div className="as-story-score">
       <strong className="wb-mono">{happened}<small>/{total}</small></strong>
       <div>
-        <span>{ended ? missed ? L(`${missed} expected step${missed === 1 ? '' : 's'} did not happen`, `${missed} 个预期步骤未发生`) : happened === total ? L('Everything the plan expected happened', '方案预期的步骤全部发生') : L('Run ended', '运行已结束') : L('Watching the run', '正在跟踪运行')}</span>
+        <span>{ended ? missed ? L(`${missed} expected step${missed === 1 ? '' : 's'} did not happen`, `${missed} 个预期步骤未发生`) : total > 0 && happened === total ? L('Everything the plan expected happened', '方案预期的步骤全部发生') : L('Run ended', '运行已结束') : L('Watching the run', '正在跟踪运行')}</span>
         <small className="as-story-plan" data-testid="as-story-plan">{recordedVersion !== null
           ? followsShown ? L(`Against plan v${recordedVersion}`, `对照方案 v${recordedVersion}`)
             : L(`This run followed plan v${recordedVersion}, not the v${planVersion} shown here.`, `这次运行遵循的是方案 v${recordedVersion}，而非当前显示的 v${planVersion}。`)

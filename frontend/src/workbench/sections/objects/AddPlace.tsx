@@ -29,7 +29,7 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
   /** Full workspace (region + compiled scene), used only for the pick-on-map origin. */
   project_detail?: { region?: unknown; scene?: unknown };
   onProject: (project: Project) => void; L: (en: string, zh: string) => string; onClose: () => void;
-  editing?: { id: string; capacity?: number; preparation_s?: number; power_w?: number };
+  editing?: { id: string; position?: [number, number, number]; capacity?: number; preparation_s?: number; power_w?: number };
 }) {
   const entities = (Array.isArray(draft.entities) ? draft.entities : []) as Array<Record<string, any>>;
   const facilities = entities.filter(entity => entity.facts && ('lowalt.site_position' in entity.facts || 'lowalt.position' in entity.facts));
@@ -40,9 +40,9 @@ export function AddPlace({ api, project, draft, project_detail, onProject, L, on
   const [labelZh, setLabelZh] = useState('');
   const [mode, setMode] = useState<PositionMode>(editing?.position ? 'enu' : 'centre');
   const [facilityId, setFacilityId] = useState('');
-  const [east, setEast] = useState(editing?.position ? String(editing.position[0] ?? 0) : '0');
-  const [north, setNorth] = useState(editing?.position ? String(editing.position[1] ?? 0) : '0');
-  const [up, setUp] = useState(editing?.position ? String(editing.position[2] ?? 0) : '0');
+  const [east, setEast] = useState(editing?.position ? String(editing.position[0]) : '0');
+  const [north, setNorth] = useState(editing?.position ? String(editing.position[1]) : '0');
+  const [up, setUp] = useState(editing?.position ? String(editing.position[2]) : '0');
   const [capacity, setCapacity] = useState(editing?.capacity !== undefined ? String(editing.capacity) : '');
   const [preparation, setPreparation] = useState(editing?.preparation_s !== undefined ? String(editing.preparation_s) : '');
   const [power, setPower] = useState(editing?.power_w !== undefined ? String(editing.power_w) : '');

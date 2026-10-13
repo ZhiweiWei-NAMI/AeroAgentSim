@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { ObjectsSection } from './ObjectsSection';
@@ -65,4 +65,14 @@ it('keeps the fleet remove control and generation rule explanation', () => {
   expect(screen.getByText(/owned by the template/i)).toBeTruthy();
   // Per-member removal with the server dependency preview; no client-side fleet wipe (T1-009/T4-08).
   expect(screen.getAllByRole('button', { name: 'Remove' }).length).toBe(3);
+});
+
+it('opens the place editor at the saved ENU position instead of moving it to the origin', () => {
+  setup({ entities: [{ id: 'pad-west', type: 'lowalt:ChargingPad', facts: { 'lowalt.site_position': [-25, 40, 10], 'lowalt.pad_power_w': 5000 } }] });
+  fireEvent.click(within(screen.getAllByRole('table')[0]).getByRole('button', { name: 'Edit' }));
+  const editor = within(screen.getByTestId('wb-add-place'));
+  expect(editor.getByLabelText('position')).toHaveValue('enu');
+  expect(editor.getByLabelText('east (m)')).toHaveValue('-25');
+  expect(editor.getByLabelText('north (m)')).toHaveValue('40');
+  expect(editor.getByLabelText('up (m)')).toHaveValue('10');
 });

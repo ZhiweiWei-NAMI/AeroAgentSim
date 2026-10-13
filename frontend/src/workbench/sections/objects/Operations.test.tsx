@@ -4,6 +4,7 @@ import { I18nProvider } from '../../../i18n/I18nProvider';
 import { LowaltStart } from './LowaltStart';
 import { AddPlace } from './AddPlace';
 import { AddFleet } from './AddFleet';
+import type { WorkbenchApi } from '../../api';
 
 const scroll = Element.prototype.scrollIntoView;
 beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); });
@@ -22,13 +23,13 @@ function operationsApi(overrides: Record<string, unknown> = {}) {
     }),
     project: vi.fn().mockResolvedValue({ ...project, revision: 8 }),
     ...overrides,
-  } as never;
+  };
 }
 
 it('LowaltStart previews the C11 dry-run diff and disables Apply until previewed again', async () => {
   const api = operationsApi();
   const onProject = vi.fn();
-  render(<I18nProvider><LowaltStart api={api} project={project as never} draft={{}} onProject={onProject} L={L} /></I18nProvider>);
+  render(<I18nProvider><LowaltStart api={api as unknown as WorkbenchApi} project={project as never} draft={{}} onProject={onProject} L={L} /></I18nProvider>);
   expect(screen.queryByRole('button', { name: 'Apply' })).toBeNull(); // nothing without a shown diff
   fireEvent.click(screen.getByRole('button', { name: /Add standard low-altitude components/ }));
   await waitFor(() => expect(api.request).toHaveBeenCalled());
@@ -46,7 +47,7 @@ it('LowaltStart previews the C11 dry-run diff and disables Apply until previewed
 it('AddPlace sends an add_place operation with role-specific fields only, after a dry run', async () => {
   const api = operationsApi();
   const onProject = vi.fn();
-  render(<I18nProvider><AddPlace api={api} project={project as never} draft={draft} onProject={onProject} L={L} onClose={() => undefined} /></I18nProvider>);
+  render(<I18nProvider><AddPlace api={api as unknown as WorkbenchApi} project={project as never} draft={draft} onProject={onProject} L={L} onClose={() => undefined} /></I18nProvider>);
   // Prerequisite shown inline: no role chosen yet.
   expect(screen.getByText(/Choose a role to continue/)).toBeTruthy();
   const preview = screen.getByRole('button', { name: /Preview dry-run diff/ });
@@ -79,7 +80,7 @@ it('AddFleet previews a set_fleet shrink and names exactly the members to be rem
     { id: 'couriers-2', type: 'lowalt:UAV', facts: {} },
     { id: 'couriers-3', type: 'lowalt:UAV', facts: {} },
   ] } as never;
-  render(<I18nProvider><AddFleet api={api} project={project as never} draft={fleetDraft}
+  render(<I18nProvider><AddFleet api={api as unknown as WorkbenchApi} project={project as never} draft={fleetDraft}
     onProject={onProject} L={L} onClose={() => undefined}
     editing={{ id: 'couriers', count: 3 }} /></I18nProvider>);
   expect(screen.getByText(/couriers-1, couriers-2, couriers-3/)).toBeTruthy();

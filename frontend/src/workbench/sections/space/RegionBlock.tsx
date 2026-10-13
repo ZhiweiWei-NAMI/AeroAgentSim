@@ -189,9 +189,7 @@ export function RegionBlock({ project, api, draft, edit, issues, onProject, save
   // Design ④: state comes from the server. The workspace record's `network_state`
   // ("none" | "generated" | "stale") is authoritative when present; only when the server does not
   // send it yet do we fall back to the C13 capability inference (T1-003).
-  const serverNetworkState = typeof (project as { network_state?: unknown }).network_state === 'string'
-    ? (project as { network_state: string }).network_state
-    : undefined;
+  const serverNetworkState = project.network_state;
   const networkState: 'none' | 'generated' | 'stale' = serverNetworkState === 'none' || serverNetworkState === 'generated' || serverNetworkState === 'stale'
     ? serverNetworkState
     : !network

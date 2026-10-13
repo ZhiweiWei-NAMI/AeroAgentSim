@@ -194,6 +194,7 @@ export function OrderStreams({ config, draft, edit, focus, L, api, project, onPr
     </div>
     <OpApply api={api} project={project} onProject={onProject} saveDraft={saveDraft}
       operations={stageOperations}
+      missing={missing}
       label={L('Add order stream', '添加订单流')} labelZh="添加订单流" primary small
       onApplied={() => { setStaged(undefined); setId(''); }} />
     {!generators.length && <div className="wb-empty">{L('No order streams yet.', '还没有订单流。')}</div>}

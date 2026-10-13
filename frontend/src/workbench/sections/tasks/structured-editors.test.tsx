@@ -5,12 +5,14 @@ import { OrderStreams } from './OrderStreams';
 import { CooperationEditor } from './Cooperation';
 import { WeatherBlock } from './Weather';
 import type { Operation, OperationPreview } from '../operations';
+import type { Project } from '../../api';
 
 const L = (en: string, _zh: string) => en;
 const edit = vi.fn();
 const replaceDraft = vi.fn();
 const onProject = vi.fn();
-const saveDraft = vi.fn(async () => ({ id: 'w1', revision: 7, scenario: {} }));
+const project: Project = { id: 'w1', name: 'Test project', revision: 7, updated_at: '', latest_version: null, dirty: true, scenario: {} };
+const saveDraft = vi.fn(async () => project);
 const previewOperations = vi.fn(async (_api: unknown, _project: { id: string; revision: number }, operations: Operation[]): Promise<OperationPreview> =>
   ({ diff: { added: operations.map(op => ({ label: op.op })), changed: [], removed: [] }, notes: [] }));
 const applyOperations = vi.fn(async (_api: unknown, _project: unknown, _operations: Operation[]) => ({ id: 'w1', revision: 8, scenario: {} }));
@@ -20,7 +22,7 @@ vi.mock('../operations', async (importOriginal: () => Promise<typeof import('../
   return {
     ...actual,
     previewOperations: (api: unknown, project: { id: string; revision: number }, operations: Operation[]) => previewOperations(api, project, operations),
-    applyOperations,
+    applyOperations: (api: unknown, project: unknown, operations: Operation[]) => applyOperations(api, project, operations),
   };
 });
 

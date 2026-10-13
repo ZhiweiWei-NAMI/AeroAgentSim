@@ -23,10 +23,13 @@ def test_serve_cli_sets_a_bounded_graceful_shutdown(tmp_path: Path, monkeypatch:
     calls = []
     monkeypatch.setattr("aeroagentsim.services.app.create_app", lambda *args, **kwargs: app)
     monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: calls.append((args, kwargs)))
+    # cli.main writes its console origin; keep it out of later real camera tests.
+    monkeypatch.setattr(cli.os, "environ", cli.os.environ.copy())
     monkeypatch.delenv("AEROAGENTSIM_CONSOLE_URL", raising=False)
     monkeypatch.setattr(sys, "argv", ["aeroagentsim", "serve", "--out", str(tmp_path), "--port", "18482"])
     cli.main()
     assert calls == [((app,), {"host": "127.0.0.1", "port": 18482, "timeout_graceful_shutdown": 5})]
+    assert cli.os.environ["AEROAGENTSIM_CONSOLE_URL"] == "http://127.0.0.1:18482"
 
 
 def test_uvicorn_shutdown_cancels_an_open_stream_before_lifespan_cleanup() -> None:

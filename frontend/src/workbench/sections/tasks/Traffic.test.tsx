@@ -1,22 +1,24 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { I18nProvider } from '../../i18n/I18nProvider';
+import { I18nProvider } from '../../../i18n/I18nProvider';
 import { IncidentsBlock } from './Traffic';
 import type { Operation, OperationPreview } from '../operations';
+import type { Project } from '../../api';
 
 const L = (en: string) => en;
 const onProject = vi.fn();
-const saveDraft = vi.fn(async () => ({ id: 'w1', revision: 7, scenario: {} }));
+const project: Project = { id: 'w1', name: 'Test project', revision: 7, updated_at: '', latest_version: null, dirty: true, scenario: {} };
+const saveDraft = vi.fn(async () => project);
 const previewOperations = vi.fn(async (_api: unknown, _project: { id: string; revision: number }, operations: Operation[]): Promise<OperationPreview> =>
   ({ diff: { changed: operations.map(op => ({ label: op.op, fields: [{ name: 'time_s', before: 90, after: 120 }] })), added: [], removed: [] }, notes: [] }));
-const applyOperations = vi.fn(async () => ({ id: 'w1', revision: 8, scenario: {} }));
+const applyOperations = vi.fn(async (_api: unknown, _project: unknown, _operations: Operation[]) => ({ ...project, revision: 8 }));
 
 vi.mock('../operations', async (importOriginal: () => Promise<typeof import('../operations')>) => {
   const actual = await importOriginal();
   return {
     ...actual,
     previewOperations: (api: unknown, project: { id: string; revision: number }, operations: Operation[]) => previewOperations(api, project, operations),
-    applyOperations,
+    applyOperations: (api: unknown, project: unknown, operations: Operation[]) => applyOperations(api, project, operations),
   };
 });
 
@@ -71,7 +73,7 @@ it('rejects an invalid time inline instead of coercing it', () => {
   fireEvent.change(panel.querySelector('input[aria-label="Incident position"]')!, { target: { value: 'street-east' } });
   fireEvent.change(panel.querySelector('input[aria-label="Time (s)"]')!, { target: { value: '-5' } });
   expect(screen.getByRole('button', { name: 'Preview incident change' })).toBeDisabled();
-  expect(screen.getByText(/Give a position and a time/)).toBeTruthy();
+  expect(screen.getAllByText(/Cannot be below 0/).length).toBeGreaterThan(0);
 });
 
 it('degrades to a read-only note when the operations client is not wired', () => {

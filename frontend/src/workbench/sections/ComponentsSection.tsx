@@ -26,7 +26,7 @@ export function ComponentsSection({ api, project, draft, edit, focus, zh, L, onP
     {environment && <><h4>{L('Weather & traffic', '天气与交通')}</h4>
       <WeatherBlock environmentName={environment.name} environment={environment.engine} draft={draft} edit={edit} focus={focus} L={L} {...opProps} />
       <TrafficBlock draft={draft} edit={edit} focus={focus} L={L} />
-      {config && tasks && <IncidentsBlock config={config} engineName={tasks.name} api={api} project={project} onProject={onProject} saveDraft={saveDraft} edit={edit} focus={focus} L={L} />}
+      {config && tasks && <IncidentsBlock config={config} api={api} project={project} onProject={onProject} saveDraft={saveDraft} focus={focus} L={L} />}
       {!sumo && hasTrafficEngine && <p className="hint">{L('No SUMO engine is configured, so road traffic here (if any) is scripted or decorative, never a SUMO simulation.', '未配置 SUMO 引擎，因此这里的道路交通（如有）是脚本或装饰性的，绝不是 SUMO 仿真。')}</p>}
     </>}
     {!environment && <><h4>{L('Weather & traffic', '天气与交通')}</h4>

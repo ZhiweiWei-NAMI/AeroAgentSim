@@ -75,7 +75,7 @@ export function Fleets({ api, studioApi, project, draft, onProject, L, onRemoved
             L={L} entityId={removing.member} onDone={() => { setRemoving(undefined); onRemoved?.(); }} />
         </div>
       : <RemoveFleet api={api} project={project} draft={draft} onProject={onProject} studioApi={studioApi} L={L}
-          fleet={removing.fleet} onDone={() => { setRemoving(undefined); onRemoved?.(); }} />)}
+          fleet={removing.fleet} onRemoved={onRemoved} onDone={() => { setRemoving(undefined); onRemoved?.(); }} />)}
   </>;
 }
 
@@ -83,10 +83,10 @@ export function Fleets({ api, studioApi, project, draft, onProject, L, onRemoved
  * dependents disappear, confirmation is required, and apply returns the server draft. If this server
  * predates the op (422 "unknown operation"), the flow falls back to the per-member dialog instead of
  * guessing the effect client-side. */
-export function RemoveFleet({ api, studioApi, project, draft, onProject, L, fleet, onDone }: {
+export function RemoveFleet({ api, studioApi, project, draft, onProject, L, fleet, onDone, onRemoved }: {
   api: WorkbenchApi; studioApi: { request<T = unknown>(path: string, body?: unknown): Promise<T> };
   project: Project; draft: Scenario; onProject: (project: Project) => void;
-  L: (en: string, zh: string) => string; fleet: string; onDone: () => void;
+  L: (en: string, zh: string) => string; fleet: string; onDone: () => void; onRemoved?: () => void;
 }) {
   const [preview, setPreview] = useState<{ added: number; changed: number; removed: Array<{ label?: string; label_zh?: string; id?: string; kind?: string }>; notes: string[] }>();
   const [stale, setStale] = useState(false);
@@ -103,7 +103,7 @@ export function RemoveFleet({ api, studioApi, project, draft, onProject, L, flee
     } catch (problem) {
       const detail = operationProblem(problem);
       // Unknown op (this server has no remove_fleet yet): offer the per-member path instead.
-      if (problem instanceof Error && /HTTP 422:/.test(problem.message)) {
+      if (problem instanceof Error && /HTTP 422:/.test(problem.message) && /(?:unknown|unsupported) operation/i.test(detail.message)) {
         setFallback(true);
         setFallbackMember(members[0]);
         return;
@@ -119,7 +119,7 @@ export function RemoveFleet({ api, studioApi, project, draft, onProject, L, flee
       onDone();
     } catch (problem) {
       const detail = operationProblem(problem);
-      if (/HTTP 422:/.test(problem instanceof Error ? problem.message : '')) { setFallback(true); setPreview(undefined); setFallbackMember(members[0]); return; }
+      if (problem instanceof Error && /HTTP 422:/.test(problem.message) && /(?:unknown|unsupported) operation/i.test(detail.message)) { setFallback(true); setPreview(undefined); setFallbackMember(members[0]); return; }
       setError(detail.message);
       if (problem instanceof Error && /HTTP 409:/.test(problem.message)) setStale(true);
     } finally { setBusy(undefined); }

@@ -31,6 +31,7 @@ export interface Workspace {
   demo_console?: {capture_mode:string;city_available:boolean;scene?:import('../scene/presentation').ScenePresentation};
   id: string; name: string; scenario: Scenario; scene?: CityScene; registry_catalog?:{types:TypeRow[];fields:Array<Record<string,any>&{id:string}>;schemas:Record<string,any>};
   region?: { extract: string; bounds: number[]; alt: number; level_height_m: number };
+  network_state?: 'none' | 'generated' | 'stale';
   validation?: { revision?: number; scope?: string; valid: boolean; errors: string[]; issues?:Array<{source:string;path:string;message:string}> };
 }
 export interface TypeRow { id: string; name?: string; parents: string[]; abstract: boolean; directory?: string }

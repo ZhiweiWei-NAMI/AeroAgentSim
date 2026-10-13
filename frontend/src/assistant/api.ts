@@ -88,7 +88,7 @@ export interface SessionRow { id: string; title: string; workspace_id: string | 
 /** One expectation checked against the committed journal (assistant/story.py). */
 export interface StoryEvidence { schema?: string; text?: string; text_zh?: string; at_ns?: string | number; cut?: number }
 export interface StoryItem {
-  id: string; text: string; text_zh?: string; status: 'happened' | 'missed' | 'pending' | 'not_taken'; progress?: { done: number; total: number; configured?: number };
+  id: string; text: string; text_zh?: string; status: 'happened' | 'missed' | 'pending' | 'not_taken' | 'not_evaluated'; progress?: { done: number; total: number; configured?: number };
   at_ns?: string | number | null; cut?: number | null; evidence?: StoryEvidence | null;
   explanation?: { text: string; text_zh?: string; evidence?: StoryEvidence[] } | null;
 }

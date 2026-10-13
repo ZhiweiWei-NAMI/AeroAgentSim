@@ -114,9 +114,9 @@ it('shows per-operation errors with a Revise affordance and never crashes the bo
   // Confirm stays disabled for a rejected version.
   expect(screen.getByTestId('as-confirm')).toBeDisabled();
   // Revise names the operation, field and problem to the assistant.
-  fireEvent.click(within(errors).getByTestId('as-revise'));
+  fireEvent.click(within(errors).getAllByTestId('as-revise')[0]);
   await waitFor(() => expect(reviseAssistant.send).toHaveBeenCalledWith(expect.stringContaining('op-2')));
-  expect(String(reviseAssistant.send.mock.calls[0][0])).toContain('speed_mps');
+  expect(String(vi.mocked(reviseAssistant.send).mock.calls[0][0])).toContain('speed_mps');
 });
 
 const applied = [{ plan_version: 6, workspace_id: 'w1', version: 3, revision: 1, applied_at: '2025-01-01T00:00:00Z',
