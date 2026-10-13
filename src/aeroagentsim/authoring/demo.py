@@ -19,20 +19,21 @@ CITY_ASSET_ID = "traffic-city-assets/v1"
 def city_assets() -> tuple[Path, dict[str, dict[str, Any]]]:
     from aeroagentsim.assets import selected, traffic_root
 
-    root = traffic_root()
-    if root is None:
-        root = demo_source("traffic-accident") / "inputs/lite-city"
-        return root, {
-            name: {"asset_id": "traffic-lite-city/v1"}
-            for name in ("scene.json", "ATTRIBUTION.txt")
-        }
     if not os.environ.get("AEROAGENTSIM_TRAFFIC_ASSET_ROOT"):
+        # Select and validate the installed inventory once per lookup. Calling
+        # traffic_root() first scans the same pack and every file a second time.
         pack = selected()
-        assert pack is not None
-        return root, {
+        if pack is None:
+            return demo_source("traffic-accident") / "inputs/lite-city", {
+                name: {"asset_id": "traffic-lite-city/v1"}
+                for name in ("scene.json", "ATTRIBUTION.txt")
+            }
+        return Path(pack["directory"]) / "assets", {
             row["path"].removeprefix("assets/"): {"asset_id": pack["id"] + "/" + row["path"]}
             for row in pack["files"] if row["path"].startswith("assets/")
         }
+    root = traffic_root()
+    assert root is not None  # The explicit override was selected above.
     inventory = json.loads(
         (demo_source("traffic-accident") / "inputs/city-manifest.json").read_bytes()
     )
