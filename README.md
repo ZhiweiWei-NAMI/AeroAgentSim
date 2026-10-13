@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/media/logo.png" alt="AeroAgentSim" width="160"></p>
 
-<p align="center"><b>Simulate a city's low-altitude businesses, change the rules and algorithms, and watch the consequences.</b></p>
+<p align="center"><b>Simulate a city's low-altitude drone businesses in 3D. Describe a scenario in one sentence: a model such as DeepSeek builds it, you confirm, and the simulation runs.</b></p>
 
 <p align="center">
   <a href="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/actions/workflows/tests.yml/badge.svg"></a>
@@ -9,23 +9,46 @@
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
 </p>
 
+<p align="center"><img src="docs/demos/deepseek-chinese-instruction/demo.gif" alt="DeepSeek turns one Chinese instruction into a food-delivery scenario; the user confirms, the run finishes with all 6 orders delivered" width="900"></p>
 
-<p align="center"><img src="docs/media/workbench-city.png" alt="Running city-day workbench with hovering object list, inspector, relation graph and timeline" width="1100"></p>
+<p align="center"><i>One Chinese instruction → DeepSeek drafts the scenario → the user confirms → 6 of 6 orders delivered through a wind gust.</i><br><a href="docs/demos/deepseek-chinese-instruction/README.md">Full recording, transcript and logs</a></p>
 
-[Watch the six workbench walkthroughs](docs/media/README.md): configure, run, introduce an event, explain its cause, inspect photos and compare records.
+## What it does
 
+- **Build a scenario by describing it.** The assistant reads the platform's real templates, places and rules, proposes a plan, and changes nothing until you confirm. Works with any OpenAI-compatible model, including DeepSeek.
+- **Nine ready-made worlds.** Parcel, medical and meal delivery, power-line inspection, crop spraying, air taxis, security patrol, a traffic accident and a shared city day.
+- **See why things happen.** Change rules and algorithms, run again, and trace every result to recorded events in a 3D city with replay.
 
-## Try it in three commands
+## Start
 
-Python 3.10+ and Node.js 22 with npm. The parcel scenario needs no GPU, Docker or account.
+Python 3.10+ and Node.js 22 with npm. No GPU, Docker or account needed.
 
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git && cd AeroAgentSim
 python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./aerokernel -e '.[server]'
-(cd frontend && npm ci && npm run build) && aeroagentsim run-template parcel-delivery
+(cd frontend && npm ci && npm run build) && aeroagentsim serve --frontend frontend/dist
 ```
 
-The last command opens the project in the workbench: choose **Validate → Save version → Initialize → Start**. Add `--headless` to run directly in the terminal. `aeroagentsim templates` lists all nine scenarios. [Install](docs/getting-started/install.md) covers Windows and Chromium setup for traffic-accident and city-day camera capture. [中文](README_CN.md)
+Open <http://127.0.0.1:8002>. [Install](docs/getting-started/install.md) covers Windows and the Chromium needed for camera capture. [中文](README_CN.md)
+
+## Connect DeepSeek and try one sentence
+
+1. Click **Describe a scenario in your own words** (or press <kbd>A</kbd>).
+2. Enter endpoint `https://api.deepseek.com/v1`, a DeepSeek model such as `deepseek-chat`, and your API key, then press **Connect and test**.
+3. Type:
+
+   > 帮我搭一个外卖无人机配送仿真：3架无人机给6个订单送餐，中途刮一阵大风，仿真10分钟，看看能否全部送达。
+
+4. Review the plan, answer its questions (for example "订单固定为 6 单，其余问题都用默认值。"), then **Confirm and apply → Initialize → Start**. The **Story** tab checks the plan against what actually happened.
+
+The key stays on the server and is never sent back to the browser. To preset the model for everyone using this server:
+
+```bash
+AEROAGENTSIM_ASSISTANT_BASE_URL=https://api.deepseek.com/v1 AEROAGENTSIM_ASSISTANT_MODEL=deepseek-chat \
+AEROAGENTSIM_ASSISTANT_API_KEY=sk-... aeroagentsim serve --frontend frontend/dist
+```
+
+No model? `aeroagentsim run-template parcel-delivery` opens a ready-made scenario: **Validate → Save version → Initialize → Start**. [Assistant guide](docs/guides/assistant.md) · [Six workbench walkthroughs](docs/media/README.md)
 
 ## Pick a scenario
 

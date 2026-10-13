@@ -11,9 +11,14 @@ The assistant uses any OpenAI-compatible chat endpoint. Open the assistant
 (**Assistant** in the top bar, or <kbd>A</kbd>) and fill in the endpoint, the
 model name and, if the endpoint needs one, an API key. **Connect and test**
 saves the connection and sends a short test request; the light next to the
-model name shows the result. The key is stored on
-the server under `<runs>/assistant/` with owner-only permissions and is never
-returned to the browser.
+model name shows the result. The key is stored on the server under
+`<runs>/assistant/` with owner-only permissions and is never returned to the
+browser.
+
+For DeepSeek, use endpoint `https://api.deepseek.com/v1`, a DeepSeek chat model
+such as `deepseek-chat`, and your API key. A recorded end-to-end example, from
+one Chinese instruction to a finished run, with its transcript and logs, is in
+[docs/demos/deepseek-chinese-instruction](../demos/deepseek-chinese-instruction/README.md).
 
 An operator can configure the connection instead:
 

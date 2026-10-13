@@ -1,0 +1,937 @@
+{
+  "run_id": "run-d06be960af0c4a3ba0263fbc0857f3ad",
+  "status": "completed",
+  "terminal": true,
+  "locale": "zh-CN",
+  "expectations": [
+    {
+      "id": "workload:meal:created",
+      "text": "Meal orders are released (6 configured)",
+      "text_zh": "外卖订单按计划发布（共配置 6 个）",
+      "status": "happened",
+      "at_ns": 69841114029,
+      "cut": 869,
+      "evidence": {
+        "text": "New meal order for Meal customer 1",
+        "text_zh": "新增前往餐食收货点 1的外卖订单",
+        "schema": "lowalt.task.created",
+        "payload": {
+          "destination": "customer-1",
+          "kind": "food",
+          "origin": "restaurant-west",
+          "priority": 1,
+          "task": "meal-6"
+        }
+      },
+      "explanation": null,
+      "progress": {
+        "done": 6,
+        "total": 6
+      }
+    },
+    {
+      "id": "workload:meal:assigned",
+      "text": "Each released meal order is assigned a UAV",
+      "text_zh": "每个已发布的外卖订单都分配到无人机",
+      "status": "happened",
+      "at_ns": 163000000000,
+      "cut": 2081,
+      "evidence": {
+        "text": "Meal courier 1 was assigned the meal order for Meal customer 1",
+        "text_zh": "送餐无人机 1获派前往餐食收货点 1的外卖订单",
+        "schema": "lowalt.task.assigned",
+        "payload": {
+          "algorithm": "nearest",
+          "task": "meal-6",
+          "vehicle": "drone-1"
+        }
+      },
+      "explanation": null,
+      "progress": {
+        "done": 6,
+        "total": 6
+      }
+    },
+    {
+      "id": "workload:meal:picked_up",
+      "text": "Pick up after release and preparation (each released meal order)",
+      "text_zh": "释放并准备好后接取任务（每个已发布的外卖订单）",
+      "status": "happened",
+      "at_ns": 236000000000,
+      "cut": 3014,
+      "evidence": {
+        "text": "Meal courier 3 picked up the meal order at East Roof kitchen",
+        "text_zh": "送餐无人机 3在东侧屋顶餐厅厨房接取外卖订单",
+        "schema": "lowalt.task.picked_up",
+        "payload": {
+          "task": "meal-4",
+          "vehicle": "drone-3"
+        }
+      },
+      "explanation": null,
+      "progress": {
+        "done": 6,
+        "total": 6
+      }
+    },
+    {
+      "id": "workload:meal:completed",
+      "text": "Every released meal order is completed (6 configured)",
+      "text_zh": "每个已发布的外卖订单都完成（共配置 6 个）",
+      "status": "happened",
+      "at_ns": 267000000000,
+      "cut": 3409,
+      "evidence": {
+        "text": "Meal courier 3 delivered the meal to Meal customer 2 (226.3 s)",
+        "text_zh": "送餐无人机 3在餐食收货点 2送达餐食（耗时 226.3 秒）",
+        "schema": "lowalt.task.completed",
+        "payload": {
+          "latency_s": 226.340984739,
+          "task": "meal-4",
+          "vehicle": "drone-3"
+        }
+      },
+      "explanation": null,
+      "progress": {
+        "done": 6,
+        "total": 6
+      }
+    },
+    {
+      "id": "event:wind-gust-1:fleet:paused",
+      "text": "Pause flight when wind exceeds the limit",
+      "text_zh": "风速超限时暂停飞行",
+      "status": "happened",
+      "at_ns": 171000000000,
+      "cut": 2188,
+      "evidence": {
+        "text": "Flight held: wind exceeds vehicle limit",
+        "text_zh": "飞行暂停：风速超过飞行器上限",
+        "schema": "lowalt.weather.hold",
+        "payload": {
+          "reason": "wind exceeds vehicle limit",
+          "vehicle": "drone-1",
+          "wind_mps": 14.0
+        }
+      },
+      "explanation": null,
+      "progress": {
+        "done": 3,
+        "total": 3
+      }
+    },
+    {
+      "id": "event:wind-gust-1:fleet:resumed",
+      "text": "Resume flight when wind drops within the limit",
+      "text_zh": "风速降至上限内后恢复飞行",
+      "status": "happened",
+      "at_ns": 201000000000,
+      "cut": 2563,
+      "evidence": {
+        "text": "Flight released: wind within vehicle limit",
+        "text_zh": "飞行恢复：风速恢复到允许范围",
+        "schema": "lowalt.weather.release",
+        "payload": {
+          "reason": "wind within vehicle limit",
+          "vehicle": "drone-1",
+          "wind_mps": 4.0
+        }
+      },
+      "explanation": null,
+      "progress": {
+        "done": 3,
+        "total": 3
+      }
+    }
+  ],
+  "events": [
+    {
+      "schema": "lowalt.task.created",
+      "text": "New meal order for Meal customer 1",
+      "text_zh": "新增前往餐食收货点 1的外卖订单",
+      "at_ns": 2000000000,
+      "cut": 29,
+      "entities": [
+        "meal-1"
+      ],
+      "payload": {
+        "destination": "customer-1",
+        "kind": "food",
+        "origin": "restaurant-east",
+        "priority": 1,
+        "task": "meal-1"
+      }
+    },
+    {
+      "schema": "lowalt.task.created",
+      "text": "New meal order for Meal customer 1",
+      "text_zh": "新增前往餐食收货点 1的外卖订单",
+      "at_ns": 2000000000,
+      "cut": 29,
+      "entities": [
+        "meal-2"
+      ],
+      "payload": {
+        "destination": "customer-1",
+        "kind": "food",
+        "origin": "restaurant-east",
+        "priority": 1,
+        "task": "meal-2"
+      }
+    },
+    {
+      "schema": "lowalt.food.preparation_started",
+      "text": "East Roof kitchen started preparing Meal order 1",
+      "text_zh": "东侧屋顶餐厅厨房开始制作外卖订单 1",
+      "at_ns": 3000000000,
+      "cut": 41,
+      "entities": [
+        "restaurant-east",
+        "meal-1"
+      ],
+      "payload": {
+        "ready_ns": 38000000000,
+        "restaurant": "restaurant-east",
+        "task": "meal-1"
+      }
+    },
+    {
+      "schema": "lowalt.food.ready",
+      "text": "Meal order 1 is ready at East Roof kitchen after 35 seconds of preparation",
+      "text_zh": "东侧屋顶餐厅厨房完成外卖订单 1，备餐耗时 35 秒",
+      "at_ns": 38000000000,
+      "cut": 464,
+      "entities": [
+        "restaurant-east",
+        "meal-1"
+      ],
+      "payload": {
+        "preparation_s": 35.0,
+        "restaurant": "restaurant-east",
+        "task": "meal-1"
+      }
+    },
+    {
+      "schema": "lowalt.food.preparation_started",
+      "text": "East Roof kitchen started preparing Meal order 2",
+      "text_zh": "东侧屋顶餐厅厨房开始制作外卖订单 2",
+      "at_ns": 38000000000,
+      "cut": 464,
+      "entities": [
+        "restaurant-east",
+        "meal-2"
+      ],
+      "payload": {
+        "ready_ns": 73000000000,
+        "restaurant": "restaurant-east",
+        "task": "meal-2"
+      }
+    },
+    {
+      "schema": "lowalt.task.assigned",
+      "text": "Meal courier 2 was assigned the meal order for Meal customer 1",
+      "text_zh": "送餐无人机 2获派前往餐食收货点 1的外卖订单",
+      "at_ns": 39000000000,
+      "cut": 476,
+      "entities": [
+        "meal-1",
+        "drone-2"
+      ],
+      "payload": {
+        "algorithm": "nearest",
+        "task": "meal-1",
+        "vehicle": "drone-2"
+      }
+    },
+    {
+      "schema": "lowalt.task.started",
+      "text": "Meal courier 2 is heading to East Roof kitchen for the meal order",
+      "text_zh": "送餐无人机 2前往东侧屋顶餐厅厨房执行外卖订单",
+      "at_ns": 40000000000,
+      "cut": 488,
+      "entities": [
+        "meal-1",
+        "drone-2"
+      ],
+      "payload": {
+        "task": "meal-1",
+        "vehicle": "drone-2"
+      }
+    },
+    {
+      "schema": "lowalt.task.created",
+      "text": "New meal order for Meal customer 3",
+      "text_zh": "新增前往餐食收货点 3的外卖订单",
+      "at_ns": 40659015261,
+      "cut": 503,
+      "entities": [
+        "meal-3"
+      ],
+      "payload": {
+        "destination": "customer-3",
+        "kind": "food",
+        "origin": "restaurant-east",
+        "priority": 1,
+        "task": "meal-3"
+      }
+    },
+    {
+      "schema": "lowalt.task.created",
+      "text": "New meal order for Meal customer 2",
+      "text_zh": "新增前往餐食收货点 2的外卖订单",
+      "at_ns": 40659015261,
+      "cut": 503,
+      "entities": [
+        "meal-4"
+      ],
+      "payload": {
+        "destination": "customer-2",
+        "kind": "food",
+        "origin": "restaurant-east",
+        "priority": 1,
+        "task": "meal-4"
+      }
+    },
+    {
+      "schema": "lowalt.task.picked_up",
+      "text": "Meal courier 2 picked up the meal order at East Roof kitchen",
+      "text_zh": "送餐无人机 2在东侧屋顶餐厅厨房接取外卖订单",
+      "at_ns": 42000000000,
+      "cut": 525,
+      "entities": [
+        "meal-1",
+        "drone-2"
+      ],
+      "payload": {
+        "task": "meal-1",
+        "vehicle": "drone-2"
+      }
+    },
+    {
+      "schema": "lowalt.task.created",
+      "text": "New meal order for Meal customer 1",
+      "text_zh": "新增前往餐食收货点 1的外卖订单",
+      "at_ns": 69841114029,
+      "cut": 869,
+      "entities": [
+        "meal-5"
+      ],
+      "payload": {
+        "destination": "customer-1",
+        "kind": "food",
+        "origin": "restaurant-west",
+        "priority": 1,
+        "task": "meal-5"
+      }
+    },
+    {
+      "schema": "lowalt.task.created",
+      "text": "New meal order for Meal customer 1",
+      "text_zh": "新增前往餐食收货点 1的外卖订单",
+      "at_ns": 69841114029,
+      "cut": 869,
+      "entities": [
+        "meal-6"
+      ],
+      "payload": {
+        "destination": "customer-1",
+        "kind": "food",
+        "origin": "restaurant-west",
+        "priority": 1,
+        "task": "meal-6"
+      }
+    },
+    {
+      "schema": "lowalt.food.preparation_started",
+      "text": "West Plaza kitchen started preparing Meal order 5",
+      "text_zh": "西广场餐厅厨房开始制作外卖订单 5",
+      "at_ns": 70000000000,
+      "cut": 877,
+      "entities": [
+        "restaurant-west",
+        "meal-5"
+      ],
+      "payload": {
+        "ready_ns": 95000000000,
+        "restaurant": "restaurant-west",
+        "task": "meal-5"
+      }
+    },
+    {
+      "schema": "lowalt.food.ready",
+      "text": "Meal order 2 is ready at East Roof kitchen after 35 seconds of preparation",
+      "text_zh": "东侧屋顶餐厅厨房完成外卖订单 2，备餐耗时 35 秒",
+      "at_ns": 73000000000,
+      "cut": 914,
+      "entities": [
+        "restaurant-east",
+        "meal-2"
+      ],
+      "payload": {
+        "preparation_s": 35.0,
+        "restaurant": "restaurant-east",
+        "task": "meal-2"
+      }
+    },
+    {
+      "schema": "lowalt.food.preparation_started",
+      "text": "East Roof kitchen started preparing Meal order 3",
+      "text_zh": "东侧屋顶餐厅厨房开始制作外卖订单 3",
+      "at_ns": 73000000000,
+      "cut": 914,
+      "entities": [
+        "restaurant-east",
+        "meal-3"
+      ],
+      "payload": {
+        "ready_ns": 108000000000,
+        "restaurant": "restaurant-east",
+        "task": "meal-3"
+      }
+    },
+    {
+      "schema": "lowalt.task.assigned",
+      "text": "Meal courier 1 was assigned the meal order for Meal customer 1",
+      "text_zh": "送餐无人机 1获派前往餐食收货点 1的外卖订单",
+      "at_ns": 74000000000,
+      "cut": 926,
+      "entities": [
+        "meal-2",
+        "drone-1"
+      ],
+      "payload": {
+        "algorithm": "nearest",
+        "task": "meal-2",
+        "vehicle": "drone-1"
+      }
+    },
+    {
+      "schema": "lowalt.task.started",
+      "text": "Meal courier 1 is heading to East Roof kitchen for the meal order",
+      "text_zh": "送餐无人机 1前往东侧屋顶餐厅厨房执行外卖订单",
+      "at_ns": 75000000000,
+      "cut": 938,
+      "entities": [
+        "meal-2",
+        "drone-1"
+      ],
+      "payload": {
+        "task": "meal-2",
+        "vehicle": "drone-1"
+      }
+    },
+    {
+      "schema": "lowalt.task.completed",
+      "text": "Meal courier 2 delivered the meal to Meal customer 1 (87 s)",
+      "text_zh": "送餐无人机 2在餐食收货点 1送达餐食（耗时 87 秒）",
+      "at_ns": 89000000000,
+      "cut": 1119,
+      "entities": [
+        "meal-1",
+        "drone-2"
+      ],
+      "payload": {
+        "latency_s": 87.0,
+        "task": "meal-1",
+        "vehicle": "drone-2"
+      }
+    },
+    {
+      "schema": "lowalt.food.delivered",
+      "text": "Meal courier 2 delivered Meal order 1 to Meal customer 1, 51 seconds after preparation",
+      "text_zh": "送餐无人机 2已将外卖订单 1送达餐食收货点 1，出餐后耗时 51 秒",
+      "at_ns": 89000000000,
+      "cut": 1119,
+      "entities": [
+        "meal-1",
+        "drone-2",
+        "customer-1"
+      ],
+      "payload": {
+        "deadline_ns": 242000000000,
+        "destination": "customer-1",
+        "on_time": true,
+        "ready_to_delivery_s": 51.0,
+        "task": "meal-1",
+        "vehicle": "drone-2"
+      }
+    },
+    {
+      "schema": "lowalt.food.ready",
+      "text": "Meal order 5 is ready at West Plaza kitchen after 25 seconds of preparation",
+      "text_zh": "西广场餐厅厨房完成外卖订单 5，备餐耗时 25 秒",
+      "at_ns": 95000000000,
+      "cut": 1192,
+      "entities": [
+        "restaurant-west",
+        "meal-5"
+      ],
+      "payload": {
+        "preparation_s": 25.0,
+        "restaurant": "restaurant-west",
+        "task": "meal-5"
+      }
+    },
+    {
+      "schema": "lowalt.food.preparation_started",
+      "text": "West Plaza kitchen started preparing Meal order 6",
+      "text_zh": "西广场餐厅厨房开始制作外卖订单 6",
+      "at_ns": 95000000000,
+      "cut": 1192,
+      "entities": [
+        "restaurant-west",
+        "meal-6"
+      ],
+      "payload": {
+        "ready_ns": 120000000000,
+        "restaurant": "restaurant-west",
+        "task": "meal-6"
+      }
+    },
+    {
+      "schema": "lowalt.task.assigned",
+      "text": "Meal courier 3 was assigned the meal order for Meal customer 1",
+      "text_zh": "送餐无人机 3获派前往餐食收货点 1的外卖订单",
+      "at_ns": 96000000000,
+      "cut": 1204,
+      "entities": [
+        "meal-5",
+        "drone-3"
+      ],
+      "payload": {
+        "algorithm": "nearest",
+        "task": "meal-5",
+        "vehicle": "drone-3"
+      }
+    },
+    {
+      "schema": "lowalt.task.started",
+      "text": "Meal courier 3 is heading to West Plaza kitchen for the meal order",
+      "text_zh": "送餐无人机 3前往西广场餐厅厨房执行外卖订单",
+      "at_ns": 97000000000,
+      "cut": 1216,
+      "entities": [
+        "meal-5",
+        "drone-3"
+      ],
+      "payload": {
+        "task": "meal-5",
+        "vehicle": "drone-3"
+      }
+    },
+    {
+      "schema": "lowalt.food.ready",
+      "text": "Meal order 3 is ready at East Roof kitchen after 35 seconds of preparation",
+      "text_zh": "东侧屋顶餐厅厨房完成外卖订单 3，备餐耗时 35 秒",
+      "at_ns": 108000000000,
+      "cut": 1357,
+      "entities": [
+        "restaurant-east",
+        "meal-3"
+      ],
+      "payload": {
+        "preparation_s": 35.0,
+        "restaurant": "restaurant-east",
+        "task": "meal-3"
+      }
+    },
+    {
+      "schema": "lowalt.food.preparation_started",
+      "text": "East Roof kitchen started preparing Meal order 4",
+      "text_zh": "东侧屋顶餐厅厨房开始制作外卖订单 4",
+      "at_ns": 108000000000,
+      "cut": 1357,
+      "entities": [
+        "restaurant-east",
+        "meal-4"
+      ],
+      "payload": {
+        "ready_ns": 143000000000,
+        "restaurant": "restaurant-east",
+        "task": "meal-4"
+      }
+    },
+    {
+      "schema": "lowalt.task.assigned",
+      "text": "Meal courier 2 was assigned the meal order for Meal customer 3",
+      "text_zh": "送餐无人机 2获派前往餐食收货点 3的外卖订单",
+      "at_ns": 109000000000,
+      "cut": 1369,
+      "entities": [
+        "meal-3",
+        "drone-2"
+      ],
+      "payload": {
+        "algorithm": "nearest",
+        "task": "meal-3",
+        "vehicle": "drone-2"
+      }
+    },
+    {
+      "schema": "lowalt.task.started",
+      "text": "Meal courier 2 is heading to East Roof kitchen for the meal order",
+      "text_zh": "送餐无人机 2前往东侧屋顶餐厅厨房执行外卖订单",
+      "at_ns": 110000000000,
+      "cut": 1381,
+      "entities": [
+        "meal-3",
+        "drone-2"
+      ],
+      "payload": {
+        "task": "meal-3",
+        "vehicle": "drone-2"
+      }
+    },
+    {
+      "schema": "lowalt.task.picked_up",
+      "text": "Meal courier 1 picked up the meal order at East Roof kitchen",
+      "text_zh": "送餐无人机 1在东侧屋顶餐厅厨房接取外卖订单",
+      "at_ns": 116000000000,
+      "cut": 1462,
+      "entities": [
+        "meal-2",
+        "drone-1"
+      ],
+      "payload": {
+        "task": "meal-2",
+        "vehicle": "drone-1"
+      }
+    },
+    {
+      "schema": "lowalt.food.ready",
+      "text": "Meal order 6 is ready at West Plaza kitchen after 25 seconds of preparation",
+      "text_zh": "西广场餐厅厨房完成外卖订单 6，备餐耗时 25 秒",
+      "at_ns": 120000000000,
+      "cut": 1514,
+      "entities": [
+        "restaurant-west",
+        "meal-6"
+      ],
+      "payload": {
+        "preparation_s": 25.0,
+        "restaurant": "restaurant-west",
+        "task": "meal-6"
+      }
+    },
+    {
+      "schema": "lowalt.task.picked_up",
+      "text": "Meal courier 3 picked up the meal order at West Plaza kitchen",
+      "text_zh": "送餐无人机 3在西广场餐厅厨房接取外卖订单",
+      "at_ns": 123000000000,
+      "cut": 1555,
+      "entities": [
+        "meal-5",
+        "drone-3"
+      ],
+      "payload": {
+        "task": "meal-5",
+        "vehicle": "drone-3"
+      }
+    },
+    {
+      "schema": "lowalt.food.ready",
+      "text": "Meal order 4 is ready at East Roof kitchen after 35 seconds of preparation",
+      "text_zh": "东侧屋顶餐厅厨房完成外卖订单 4，备餐耗时 35 秒",
+      "at_ns": 143000000000,
+      "cut": 1817,
+      "entities": [
+        "restaurant-east",
+        "meal-4"
+      ],
+      "payload": {
+        "preparation_s": 35.0,
+        "restaurant": "restaurant-east",
+        "task": "meal-4"
+      }
+    },
+    {
+      "schema": "lowalt.task.completed",
+      "text": "Meal courier 3 delivered the meal to Meal customer 1 (87.2 s)",
+      "text_zh": "送餐无人机 3在餐食收货点 1送达餐食（耗时 87.2 秒）",
+      "at_ns": 157000000000,
+      "cut": 2000,
+      "entities": [
+        "meal-5",
+        "drone-3"
+      ],
+      "payload": {
+        "latency_s": 87.158885971,
+        "task": "meal-5",
+        "vehicle": "drone-3"
+      }
+    },
+    {
+      "schema": "lowalt.food.delivered",
+      "text": "Meal courier 3 delivered Meal order 5 to Meal customer 1, 62 seconds after preparation",
+      "text_zh": "送餐无人机 3已将外卖订单 5送达餐食收货点 1，出餐后耗时 62 秒",
+      "at_ns": 157000000000,
+      "cut": 2000,
+      "entities": [
+        "meal-5",
+        "drone-3",
+        "customer-1"
+      ],
+      "payload": {
+        "deadline_ns": 309841114029,
+        "destination": "customer-1",
+        "on_time": true,
+        "ready_to_delivery_s": 62.0,
+        "task": "meal-5",
+        "vehicle": "drone-3"
+      }
+    },
+    {
+      "schema": "lowalt.task.assigned",
+      "text": "Meal courier 3 was assigned the meal order for Meal customer 2",
+      "text_zh": "送餐无人机 3获派前往餐食收货点 2的外卖订单",
+      "at_ns": 157000000000,
+      "cut": 2000,
+      "entities": [
+        "meal-4",
+        "drone-3"
+      ],
+      "payload": {
+        "algorithm": "nearest",
+        "task": "meal-4",
+        "vehicle": "drone-3"
+      }
+    },
+    {
+      "schema": "lowalt.task.started",
+      "text": "Meal courier 3 is heading to East Roof kitchen for the meal order",
+      "text_zh": "送餐无人机 3前往东侧屋顶餐厅厨房执行外卖订单",
+      "at_ns": 158000000000,
+      "cut": 2012,
+      "entities": [
+        "meal-4",
+        "drone-3"
+      ],
+      "payload": {
+        "task": "meal-4",
+        "vehicle": "drone-3"
+      }
+    },
+    {
+      "schema": "lowalt.task.picked_up",
+      "text": "Meal courier 2 picked up the meal order at East Roof kitchen",
+      "text_zh": "送餐无人机 2在东侧屋顶餐厅厨房接取外卖订单",
+      "at_ns": 161000000000,
+      "cut": 2053,
+      "entities": [
+        "meal-3",
+        "drone-2"
+      ],
+      "payload": {
+        "task": "meal-3",
+        "vehicle": "drone-2"
+      }
+    },
+    {
+      "schema": "lowalt.task.completed",
+      "text": "Meal courier 1 delivered the meal to Meal customer 1 (161 s)",
+      "text_zh": "送餐无人机 1在餐食收货点 1送达餐食（耗时 161 秒）",
+      "at_ns": 163000000000,
+      "cut": 2081,
+      "entities": [
+        "meal-2",
+        "drone-1"
+      ],
+      "payload": {
+        "latency_s": 161.0,
+        "task": "meal-2",
+        "vehicle": "drone-1"
+      }
+    },
+    {
+      "schema": "lowalt.food.delivered",
+      "text": "Meal courier 1 delivered Meal order 2 to Meal customer 1, 90 seconds after preparation",
+      "text_zh": "送餐无人机 1已将外卖订单 2送达餐食收货点 1，出餐后耗时 90 秒",
+      "at_ns": 163000000000,
+      "cut": 2081,
+      "entities": [
+        "meal-2",
+        "drone-1",
+        "customer-1"
+      ],
+      "payload": {
+        "deadline_ns": 242000000000,
+        "destination": "customer-1",
+        "on_time": true,
+        "ready_to_delivery_s": 90.0,
+        "task": "meal-2",
+        "vehicle": "drone-1"
+      }
+    },
+    {
+      "schema": "lowalt.task.assigned",
+      "text": "Meal courier 1 was assigned the meal order for Meal customer 1",
+      "text_zh": "送餐无人机 1获派前往餐食收货点 1的外卖订单",
+      "at_ns": 163000000000,
+      "cut": 2081,
+      "entities": [
+        "meal-6",
+        "drone-1"
+      ],
+      "payload": {
+        "algorithm": "nearest",
+        "task": "meal-6",
+        "vehicle": "drone-1"
+      }
+    },
+    {
+      "schema": "lowalt.task.started",
+      "text": "Meal courier 1 is heading to West Plaza kitchen for the meal order",
+      "text_zh": "送餐无人机 1前往西广场餐厅厨房执行外卖订单",
+      "at_ns": 164000000000,
+      "cut": 2093,
+      "entities": [
+        "meal-6",
+        "drone-1"
+      ],
+      "payload": {
+        "task": "meal-6",
+        "vehicle": "drone-1"
+      }
+    },
+    {
+      "schema": "lowalt.task.picked_up",
+      "text": "Meal courier 1 picked up the meal order at West Plaza kitchen",
+      "text_zh": "送餐无人机 1在西广场餐厅厨房接取外卖订单",
+      "at_ns": 228000000000,
+      "cut": 2911,
+      "entities": [
+        "meal-6",
+        "drone-1"
+      ],
+      "payload": {
+        "task": "meal-6",
+        "vehicle": "drone-1"
+      }
+    },
+    {
+      "schema": "lowalt.task.completed",
+      "text": "Meal courier 2 delivered the meal to Meal customer 3 (192.3 s)",
+      "text_zh": "送餐无人机 2在餐食收货点 3送达餐食（耗时 192.3 秒）",
+      "at_ns": 233000000000,
+      "cut": 2976,
+      "entities": [
+        "meal-3",
+        "drone-2"
+      ],
+      "payload": {
+        "latency_s": 192.340984739,
+        "task": "meal-3",
+        "vehicle": "drone-2"
+      }
+    },
+    {
+      "schema": "lowalt.food.delivered",
+      "text": "Meal courier 2 delivered Meal order 3 to Meal customer 3, 125 seconds after preparation",
+      "text_zh": "送餐无人机 2已将外卖订单 3送达餐食收货点 3，出餐后耗时 125 秒",
+      "at_ns": 233000000000,
+      "cut": 2976,
+      "entities": [
+        "meal-3",
+        "drone-2",
+        "customer-3"
+      ],
+      "payload": {
+        "deadline_ns": 280659015261,
+        "destination": "customer-3",
+        "on_time": true,
+        "ready_to_delivery_s": 125.0,
+        "task": "meal-3",
+        "vehicle": "drone-2"
+      }
+    },
+    {
+      "schema": "lowalt.task.picked_up",
+      "text": "Meal courier 3 picked up the meal order at East Roof kitchen",
+      "text_zh": "送餐无人机 3在东侧屋顶餐厅厨房接取外卖订单",
+      "at_ns": 236000000000,
+      "cut": 3014,
+      "entities": [
+        "meal-4",
+        "drone-3"
+      ],
+      "payload": {
+        "task": "meal-4",
+        "vehicle": "drone-3"
+      }
+    },
+    {
+      "schema": "lowalt.task.completed",
+      "text": "Meal courier 1 delivered the meal to Meal customer 1 (192.2 s)",
+      "text_zh": "送餐无人机 1在餐食收货点 1送达餐食（耗时 192.2 秒）",
+      "at_ns": 262000000000,
+      "cut": 3347,
+      "entities": [
+        "meal-6",
+        "drone-1"
+      ],
+      "payload": {
+        "latency_s": 192.158885971,
+        "task": "meal-6",
+        "vehicle": "drone-1"
+      }
+    },
+    {
+      "schema": "lowalt.food.delivered",
+      "text": "Meal courier 1 delivered Meal order 6 to Meal customer 1, 142 seconds after preparation",
+      "text_zh": "送餐无人机 1已将外卖订单 6送达餐食收货点 1，出餐后耗时 142 秒",
+      "at_ns": 262000000000,
+      "cut": 3347,
+      "entities": [
+        "meal-6",
+        "drone-1",
+        "customer-1"
+      ],
+      "payload": {
+        "deadline_ns": 309841114029,
+        "destination": "customer-1",
+        "on_time": true,
+        "ready_to_delivery_s": 142.0,
+        "task": "meal-6",
+        "vehicle": "drone-1"
+      }
+    },
+    {
+      "schema": "lowalt.task.completed",
+      "text": "Meal courier 3 delivered the meal to Meal customer 2 (226.3 s)",
+      "text_zh": "送餐无人机 3在餐食收货点 2送达餐食（耗时 226.3 秒）",
+      "at_ns": 267000000000,
+      "cut": 3409,
+      "entities": [
+        "meal-4",
+        "drone-3"
+      ],
+      "payload": {
+        "latency_s": 226.340984739,
+        "task": "meal-4",
+        "vehicle": "drone-3"
+      }
+    },
+    {
+      "schema": "lowalt.food.delivered",
+      "text": "Meal courier 3 delivered Meal order 4 to Meal customer 2, 124 seconds after preparation",
+      "text_zh": "送餐无人机 3已将外卖订单 4送达餐食收货点 2，出餐后耗时 124 秒",
+      "at_ns": 267000000000,
+      "cut": 3409,
+      "entities": [
+        "meal-4",
+        "drone-3",
+        "customer-2"
+      ],
+      "payload": {
+        "deadline_ns": 280659015261,
+        "destination": "customer-2",
+        "on_time": true,
+        "ready_to_delivery_s": 124.0,
+        "task": "meal-4",
+        "vehicle": "drone-3"
+      }
+    }
+  ],
+  "last_at_ns": 600000000000,
+  "plan_version": 2
+}

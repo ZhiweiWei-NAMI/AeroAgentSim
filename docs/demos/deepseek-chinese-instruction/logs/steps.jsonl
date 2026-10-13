@@ -1,0 +1,16 @@
+{"t_s":0.3,"at":"2026-10-13T01:56:42.314Z","step":"open","app":"http://127.0.0.1:18972"}
+{"t_s":24.6,"at":"2026-10-13T01:57:06.613Z","step":"connected","endpoint":"http://127.0.0.1:8788/v1","model":"deepseek-v4-pro","api_key":"none"}
+{"t_s":61.7,"at":"2026-10-13T01:57:43.693Z","step":"instruction_sent","text":"帮我搭一个外卖无人机配送仿真：3架无人机给6个订单送餐，中途刮一阵大风，仿真10分钟，看看能否全部送达。"}
+{"t_s":96,"at":"2026-10-13T01:58:18.038Z","step":"plan_ready","validation":"valid","plan":"提议方案 · V1 未应用"}
+{"t_s":120.4,"at":"2026-10-13T01:58:42.397Z","step":"open_questions","count":2}
+{"t_s":129.1,"at":"2026-10-13T01:58:51.098Z","step":"confirmation_sent","text":"订单固定为 6 单，其余问题都用默认值。"}
+{"t_s":145.5,"at":"2026-10-13T01:59:07.533Z","step":"plan_after_confirmation","validation":"valid","plan":"提议方案 · V2 未应用"}
+{"t_s":145.5,"at":"2026-10-13T01:59:07.535Z","step":"plan_versions","before":"提议方案 · V1 未应用","after":"提议方案 · V2 未应用"}
+{"t_s":159.3,"at":"2026-10-13T01:59:21.315Z","step":"applied","url":"http://127.0.0.1:18972/w/studio-8e145b5119954f70b3c370cc17eeda1a?panel=assistant&assistant=assist-23a73a3635ef46739cb081f4f777d63d"}
+{"t_s":164.6,"at":"2026-10-13T01:59:26.590Z","step":"initialized","url":"http://127.0.0.1:18972/w/studio-8e145b5119954f70b3c370cc17eeda1a?panel=assistant&assistant=assist-23a73a3635ef46739cb081f4f777d63d&run=run-d06be960af0c4a3ba0263fbc0857f3ad&mode=live"}
+{"t_s":178.1,"at":"2026-10-13T01:59:40.144Z","step":"started","speed":"10x"}
+{"t_s":178.1,"at":"2026-10-13T01:59:40.148Z","step":"run_status","status":"initialized"}
+{"t_s":180.4,"at":"2026-10-13T01:59:42.418Z","step":"run_status","status":"running"}
+{"t_s":240.1,"at":"2026-10-13T02:00:42.171Z","step":"run_status","status":"completed"}
+{"t_s":261.4,"at":"2026-10-13T02:01:03.439Z","step":"result","story":"6/6\n方案预期的步骤全部发生\n01:10\n外卖订单按计划发布（共配置 6 个）\n\n新增前往餐食收货点 1的外卖订单\n\n02:43\n每个已发布的外卖订单都分配到无人机\n\n送餐无人机 1获派前往餐食收货点 1的外卖订单\n\n02:51\n风速超限时暂停飞行\n\n飞行暂停：风速超过飞行器上限\n\n03:21\n风速降至上限内后恢复飞行\n\n飞行恢复：风速恢复到允许范围\n\n03:56\n释放并准备好后接取任务（每个已发布的外卖订单）\n\n送餐无人机 3在东侧屋顶餐厅厨房接取外卖订单\n\n04:27\n每个已发布的外卖订单都完成（共配置 6 个）\n\n送餐无人机 3在餐食收货点 2送达餐食（耗时 226.3 秒）\n\n关键记录事件（48）","kpis":"已生成任务\n6\n已完成任务\n6\n平均任务用时\n157.7s\n准时率\n100%\n能量消耗\n175.3kJ"}
+{"t_s":271.2,"at":"2026-10-13T02:01:13.185Z","step":"done","url":"http://127.0.0.1:18972/w/studio-8e145b5119954f70b3c370cc17eeda1a?panel=assistant&assistant=assist-23a73a3635ef46739cb081f4f777d63d&run=run-d06be960af0c4a3ba0263fbc0857f3ad&mode=live"}

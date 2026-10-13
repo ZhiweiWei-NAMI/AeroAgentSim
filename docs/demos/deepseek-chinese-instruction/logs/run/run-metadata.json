@@ -1,0 +1,205 @@
+{
+  "behaviour_packages": [
+    "lowalt.rules@5",
+    "lowalt.operator@1"
+  ],
+  "configuration_digest": "286d27b949c3aa141de60a817a20e01a09df3f3b3b087d0be978e5c730ece6b9",
+  "epoch": "0",
+  "final_cursor": 7446,
+  "id": "run-d06be960af0c4a3ba0263fbc0857f3ad",
+  "journal_codec": "positional-deflate",
+  "journal_codec_id": "canonical-deflate/v1",
+  "journal_major": 2,
+  "journal_minor": 1,
+  "kernel_run_id": "food-delivery",
+  "provenance": "lean",
+  "registry_id": "food-delivery/registry",
+  "scenario": "food-delivery",
+  "status": "completed",
+  "studio_revision": 4,
+  "studio_workspace": "studio-8e145b5119954f70b3c370cc17eeda1a",
+  "template": {
+    "id": "food-delivery",
+    "knobs": {
+      "allocator": "nearest",
+      "delivery_window_s": 240.0,
+      "fleet_size": 3,
+      "kitchen_capacity": 1,
+      "order_rate": 0.075,
+      "preparation_east_s": 35.0,
+      "preparation_west_s": 25.0,
+      "run_mode": "scheduled",
+      "wind_speed": 4.0
+    },
+    "title": "Restaurant meal delivery",
+    "title_zh": "餐厅外卖配送"
+  },
+  "until_ns": "600000000000",
+  "workspace_digest": "sha256:449228dcef5aad4cff2540f8052314ae37612c25bf03a8cb4f50dc9139a2baff",
+  "workspace_name": "外卖配送：3 架无人机 + 6 单 + 中途阵风（10 分钟）",
+  "workspace_version": 1,
+  "title": "Restaurant meal delivery",
+  "title_zh": "餐厅外卖配送",
+  "template_title_zh": "餐厅外卖配送",
+  "knobs": {
+    "allocator": "nearest",
+    "delivery_window_s": 240.0,
+    "fleet_size": 3,
+    "kitchen_capacity": 1,
+    "order_rate": 0.075,
+    "preparation_east_s": 35.0,
+    "preparation_west_s": 25.0,
+    "run_mode": "scheduled",
+    "wind_speed": 4.0
+  },
+  "algorithms": {
+    "allocation": "nearest",
+    "charging": "threshold_return",
+    "conflict_resolution": "hold_and_go",
+    "path_planning": "corridor_astar"
+  },
+  "kpis": {
+    "tasks_created": {
+      "value": 6,
+      "unit": "count",
+      "label": "Tasks created"
+    },
+    "tasks_assigned": {
+      "value": 6,
+      "unit": "count",
+      "label": "Tasks assigned"
+    },
+    "tasks_completed": {
+      "value": 6,
+      "unit": "count",
+      "label": "Tasks completed"
+    },
+    "tasks_failed": {
+      "value": 0,
+      "unit": "count",
+      "label": "Tasks failed"
+    },
+    "completion_rate": {
+      "value": 1.0,
+      "unit": "ratio",
+      "label": "Completed tasks / created tasks"
+    },
+    "mean_task_latency_s": {
+      "value": 157.66662356999998,
+      "unit": "s",
+      "label": "Mean task latency"
+    },
+    "p95_task_latency_s": {
+      "value": 217.840984739,
+      "unit": "s",
+      "label": "95th percentile task latency"
+    },
+    "medical_mean_task_latency_s": {
+      "value": null,
+      "unit": "s",
+      "label": "Mean medical task latency / 医疗任务平均耗时"
+    },
+    "medical_p95_task_latency_s": {
+      "value": null,
+      "unit": "s",
+      "label": "95th percentile medical task latency / 医疗任务耗时第95百分位"
+    },
+    "on_time_rate": {
+      "value": 1.0,
+      "unit": "ratio",
+      "label": "On-time rate over deliveries with a committed deadline"
+    },
+    "energy_used_kj": {
+      "value": 175.30477664762887,
+      "unit": "kJ",
+      "label": "Energy used"
+    },
+    "distance_flown_km": {
+      "value": 5.875799490890168,
+      "unit": "km",
+      "label": "Distance flown"
+    },
+    "spraying_distance_m": {
+      "value": null,
+      "unit": "m",
+      "label": "Completed spraying segment distance / 已完成喷洒航段距离"
+    },
+    "battery_swaps": {
+      "value": null,
+      "unit": "count",
+      "label": "Battery swaps completed / 已完成换电"
+    },
+    "inspection_observations": {
+      "value": null,
+      "unit": "count",
+      "label": "Inspection observations / 巡检观测次数"
+    },
+    "patrol_visits": {
+      "value": null,
+      "unit": "count",
+      "label": "Patrol visits / 巡逻到访次数"
+    },
+    "separation_conflicts": {
+      "value": 1,
+      "unit": "count",
+      "label": "Separation conflicts"
+    },
+    "geofence_violations": {
+      "value": 0,
+      "unit": "count",
+      "label": "Geofence violations"
+    },
+    "weather_holds": {
+      "value": 3,
+      "unit": "count",
+      "label": "Weather holds"
+    },
+    "accident_reported": {
+      "value": 0,
+      "unit": "count",
+      "label": "Accidents reported"
+    },
+    "award_committed": {
+      "value": 0,
+      "unit": "count",
+      "label": "Awards committed"
+    },
+    "captures_stored": {
+      "value": 0,
+      "unit": "count",
+      "label": "Captures stored"
+    },
+    "uploads_accepted": {
+      "value": 0,
+      "unit": "count",
+      "label": "Uploads accepted"
+    },
+    "incidents_occurred": {
+      "value": 0,
+      "unit": "count",
+      "label": "Cooperation incidents occurred / 协作事件已发生"
+    },
+    "incidents_noticed": {
+      "value": 0,
+      "unit": "count",
+      "label": "Cooperation incidents noticed / 协作事件已发现"
+    },
+    "incidents_photographed": {
+      "value": 0,
+      "unit": "count",
+      "label": "Cooperation incidents photographed / 协作事件已拍摄"
+    },
+    "incident_response_s": {
+      "value": null,
+      "unit": "s",
+      "label": "Mean cooperation incident response / 平均协作事件响应时间"
+    },
+    "handoffs_completed": {
+      "value": 0,
+      "unit": "count",
+      "label": "Handoffs completed / 已完成交接"
+    }
+  },
+  "template_id": "food-delivery",
+  "template_title": "Restaurant meal delivery"
+}

@@ -1,0 +1,6954 @@
+{
+  "algorithms": {
+    "allocation": "nearest",
+    "charging": "threshold_return",
+    "conflict_resolution": "hold_and_go",
+    "path_planning": "corridor_astar"
+  },
+  "behaviours": [
+    {
+      "bindings": [
+        {
+          "chain": "battery_reserve",
+          "id": "battery-reserve",
+          "match": {
+            "uav": {
+              "is_a": "lowalt:UAV"
+            }
+          },
+          "multiplicity": "once_per_entity",
+          "on_unbind": "retain_until_terminal",
+          "variables": {}
+        },
+        {
+          "chain": "no_fly_zone",
+          "id": "no-fly-zone",
+          "match": {
+            "uav": {
+              "is_a": "lowalt:UAV"
+            },
+            "zone": {
+              "field": "lowalt.zone_kind",
+              "in": [
+                "no_fly",
+                "restricted"
+              ],
+              "is_a": "lowalt:AirspaceZone"
+            }
+          },
+          "multiplicity": "once_per_entity",
+          "on_unbind": "retain_until_terminal",
+          "variables": {}
+        },
+        {
+          "chain": "separation",
+          "id": "separation",
+          "match": {
+            "uav": {
+              "is_a": "lowalt:UAV"
+            }
+          },
+          "multiplicity": "once_per_entity",
+          "on_unbind": "retain_until_terminal",
+          "variables": {}
+        },
+        {
+          "chain": "wind_limit",
+          "id": "wind-limit",
+          "match": {
+            "uav": {
+              "is_a": "lowalt:UAV"
+            }
+          },
+          "multiplicity": "once_per_entity",
+          "on_unbind": "retain_until_terminal",
+          "variables": {}
+        }
+      ],
+      "budgets": {
+        "max_creations_per_instance": 8,
+        "max_instances": 4000,
+        "max_timers_per_instance": 8,
+        "max_transitions_per_instance_per_ns": 64
+      },
+      "chains": {
+        "battery_reserve": {
+          "initial": "monitoring",
+          "preconditions": [],
+          "roles": {
+            "uav": "lowalt:UAV"
+          },
+          "states": [
+            "monitoring",
+            "returning",
+            "waiting"
+          ],
+          "terminal": [],
+          "transitions": [
+            {
+              "actions": [],
+              "from": "monitoring",
+              "id": "armed",
+              "on": {
+                "instance": "activated"
+              },
+              "priority": 0,
+              "to": "monitoring"
+            },
+            {
+              "actions": [
+                {
+                  "entity": {
+                    "$role": "uav"
+                  },
+                  "field": "lowalt.returning_to_charge",
+                  "id": "recalling",
+                  "kind": "set",
+                  "value": true
+                },
+                {
+                  "id": "battery-low",
+                  "kind": "emit",
+                  "payload": {
+                    "soc": {
+                      "field": "lowalt.soc",
+                      "path": [],
+                      "role": "uav"
+                    },
+                    "vehicle": {
+                      "$id": "uav"
+                    }
+                  },
+                  "schema": "lowalt.energy.low",
+                  "topic": "lowalt.events"
+                },
+                {
+                  "capability": "lowalt.energy.return_to_pad",
+                  "id": "recall",
+                  "kind": "command",
+                  "payload": {
+                    "reason": "battery below reserve",
+                    "vehicle": {
+                      "$id": "uav"
+                    }
+                  }
+                }
+              ],
+              "from": "monitoring",
+              "id": "low",
+              "on": {
+                "edge": "while",
+                "predicate": "battery_below_reserve"
+              },
+              "priority": 0,
+              "to": "returning"
+            },
+            {
+              "actions": [
+                {
+                  "entity": {
+                    "$role": "uav"
+                  },
+                  "field": "lowalt.returning_to_charge",
+                  "id": "ready",
+                  "kind": "set",
+                  "value": false
+                }
+              ],
+              "from": "returning",
+              "id": "charged",
+              "on": {
+                "receipt": "recall",
+                "status": "succeeded"
+              },
+              "priority": 0,
+              "to": "monitoring"
+            },
+            {
+              "actions": [
+                {
+                  "entity": {
+                    "$role": "uav"
+                  },
+                  "field": "lowalt.returning_to_charge",
+                  "id": "recall-rejected",
+                  "kind": "set",
+                  "value": false
+                }
+              ],
+              "from": "returning",
+              "id": "recall-failed",
+              "on": {
+                "receipt": "recall",
+                "status": [
+                  "failed",
+                  "rejected",
+                  "canceled"
+                ]
+              },
+              "priority": 0,
+              "to": "waiting"
+            },
+            {
+              "actions": [],
+              "from": "waiting",
+              "id": "recharged",
+              "on": {
+                "edge": "exited",
+                "predicate": "battery_below_reserve"
+              },
+              "priority": 0,
+              "to": "monitoring"
+            }
+          ],
+          "trigger": {
+            "instance": "activated"
+          }
+        },
+        "no_fly_zone": {
+          "initial": "monitoring",
+          "preconditions": [],
+          "roles": {
+            "uav": "lowalt:UAV",
+            "zone": "lowalt:AirspaceZone"
+          },
+          "states": [
+            "monitoring",
+            "rerouting"
+          ],
+          "terminal": [],
+          "transitions": [
+            {
+              "actions": [],
+              "from": "monitoring",
+              "id": "armed",
+              "on": {
+                "instance": "activated"
+              },
+              "priority": 0,
+              "to": "monitoring"
+            },
+            {
+              "actions": [
+                {
+                  "id": "geofence",
+                  "kind": "emit",
+                  "payload": {
+                    "vehicle": {
+                      "$id": "uav"
+                    },
+                    "zone": {
+                      "$id": "zone"
+                    }
+                  },
+                  "schema": "lowalt.airspace.geofence_entered",
+                  "topic": "lowalt.events"
+                },
+                {
+                  "capability": "lowalt.airspace.flight_control",
+                  "id": "reroute",
+                  "kind": "command",
+                  "payload": {
+                    "action": "reroute",
+                    "reason": "no-fly zone",
+                    "vehicle": {
+                      "$id": "uav"
+                    }
+                  }
+                }
+              ],
+              "from": "monitoring",
+              "id": "entered-zone",
+              "on": {
+                "edge": "entered",
+                "predicate": "inside_no_fly_zone"
+              },
+              "priority": 0,
+              "to": "rerouting"
+            },
+            {
+              "actions": [],
+              "from": "rerouting",
+              "id": "left-zone",
+              "on": {
+                "edge": "exited",
+                "predicate": "inside_no_fly_zone"
+              },
+              "priority": 0,
+              "to": "monitoring"
+            }
+          ],
+          "trigger": {
+            "instance": "activated"
+          }
+        },
+        "separation": {
+          "initial": "monitoring",
+          "preconditions": [],
+          "roles": {
+            "uav": "lowalt:UAV"
+          },
+          "states": [
+            "monitoring",
+            "resolving"
+          ],
+          "terminal": [],
+          "transitions": [
+            {
+              "actions": [],
+              "from": "monitoring",
+              "id": "armed",
+              "on": {
+                "instance": "activated"
+              },
+              "priority": 0,
+              "to": "monitoring"
+            },
+            {
+              "actions": [
+                {
+                  "id": "conflict",
+                  "kind": "emit",
+                  "payload": {
+                    "a": {
+                      "$id": "uav"
+                    },
+                    "b": {
+                      "field": "lowalt.conflict_partner",
+                      "path": [],
+                      "role": "uav"
+                    },
+                    "horizontal_m": {
+                      "field": "lowalt.conflict_gap_m",
+                      "path": [
+                        0
+                      ],
+                      "role": "uav"
+                    },
+                    "vertical_m": {
+                      "field": "lowalt.conflict_gap_m",
+                      "path": [
+                        1
+                      ],
+                      "role": "uav"
+                    }
+                  },
+                  "schema": "lowalt.airspace.conflict",
+                  "topic": "lowalt.events"
+                },
+                {
+                  "capability": "lowalt.airspace.resolve_conflict",
+                  "id": "resolve",
+                  "kind": "command",
+                  "payload": {
+                    "a": {
+                      "$id": "uav"
+                    },
+                    "b": {
+                      "field": "lowalt.conflict_partner",
+                      "path": [],
+                      "role": "uav"
+                    }
+                  }
+                }
+              ],
+              "from": "monitoring",
+              "id": "too-close",
+              "on": {
+                "edge": "while",
+                "predicate": "closer_than_safety_distance"
+              },
+              "priority": 0,
+              "to": "resolving"
+            },
+            {
+              "actions": [
+                {
+                  "id": "resolved",
+                  "kind": "emit",
+                  "payload": {
+                    "a": {
+                      "$trigger": "result.a"
+                    },
+                    "action": {
+                      "$trigger": "result.action"
+                    },
+                    "b": {
+                      "$trigger": "result.b"
+                    }
+                  },
+                  "schema": "lowalt.airspace.conflict_resolved",
+                  "topic": "lowalt.events"
+                }
+              ],
+              "from": "resolving",
+              "id": "separated",
+              "on": {
+                "receipt": "resolve",
+                "status": "succeeded"
+              },
+              "priority": 0,
+              "to": "monitoring"
+            },
+            {
+              "actions": [],
+              "from": "resolving",
+              "id": "resolve-failed",
+              "on": {
+                "receipt": "resolve",
+                "status": [
+                  "failed",
+                  "rejected",
+                  "canceled"
+                ]
+              },
+              "priority": 0,
+              "to": "monitoring"
+            }
+          ],
+          "trigger": {
+            "instance": "activated"
+          }
+        },
+        "wind_limit": {
+          "initial": "flying",
+          "preconditions": [],
+          "roles": {
+            "uav": "lowalt:UAV"
+          },
+          "states": [
+            "flying",
+            "held"
+          ],
+          "terminal": [],
+          "transitions": [
+            {
+              "actions": [],
+              "from": "flying",
+              "id": "armed",
+              "on": {
+                "instance": "activated"
+              },
+              "priority": 0,
+              "to": "flying"
+            },
+            {
+              "actions": [
+                {
+                  "entity": {
+                    "$role": "uav"
+                  },
+                  "field": "lowalt.weather_held",
+                  "id": "grounded",
+                  "kind": "set",
+                  "value": true
+                },
+                {
+                  "id": "weather-hold",
+                  "kind": "emit",
+                  "payload": {
+                    "reason": "wind exceeds vehicle limit",
+                    "vehicle": {
+                      "$id": "uav"
+                    },
+                    "wind_mps": {
+                      "field": "lowalt.wind_mps",
+                      "path": [],
+                      "role": "uav"
+                    }
+                  },
+                  "schema": "lowalt.weather.hold",
+                  "topic": "lowalt.events"
+                },
+                {
+                  "capability": "lowalt.airspace.flight_control",
+                  "id": "hold",
+                  "kind": "command",
+                  "payload": {
+                    "action": "hold",
+                    "reason": "weather",
+                    "vehicle": {
+                      "$id": "uav"
+                    }
+                  }
+                }
+              ],
+              "from": "flying",
+              "id": "too-windy",
+              "on": {
+                "edge": "while",
+                "predicate": "wind_above_limit"
+              },
+              "priority": 0,
+              "to": "held"
+            },
+            {
+              "actions": [
+                {
+                  "entity": {
+                    "$role": "uav"
+                  },
+                  "field": "lowalt.weather_held",
+                  "id": "cleared",
+                  "kind": "set",
+                  "value": false
+                },
+                {
+                  "id": "weather-release",
+                  "kind": "emit",
+                  "payload": {
+                    "reason": "wind within vehicle limit",
+                    "vehicle": {
+                      "$id": "uav"
+                    },
+                    "wind_mps": {
+                      "field": "lowalt.wind_mps",
+                      "path": [],
+                      "role": "uav"
+                    }
+                  },
+                  "schema": "lowalt.weather.release",
+                  "topic": "lowalt.events"
+                },
+                {
+                  "capability": "lowalt.airspace.flight_control",
+                  "id": "release",
+                  "kind": "command",
+                  "payload": {
+                    "action": "release",
+                    "reason": "weather",
+                    "vehicle": {
+                      "$id": "uav"
+                    }
+                  }
+                }
+              ],
+              "from": "held",
+              "id": "calm",
+              "on": {
+                "edge": "exited",
+                "predicate": "wind_above_limit"
+              },
+              "priority": 0,
+              "to": "flying"
+            }
+          ],
+          "trigger": {
+            "instance": "activated"
+          }
+        }
+      },
+      "evaluator": {
+        "dialect": "original",
+        "version": "aerograph-predicate/1"
+      },
+      "format": "aeroagentsim.behaviour-package/v1",
+      "id": "lowalt.rules",
+      "predicates": {
+        "battery_below_reserve": {
+          "expression": {
+            "args": [
+              {
+                "args": [
+                  {
+                    "field": "lowalt.soc",
+                    "path": [],
+                    "role": "uav"
+                  },
+                  {
+                    "literal": 100.0
+                  }
+                ],
+                "op": "mul"
+              },
+              {
+                "parameter": "reserve_percent"
+              }
+            ],
+            "op": "lt"
+          },
+          "parameters": {
+            "reserve_percent": 20.0
+          },
+          "profile": "committed_reactive/v1",
+          "roles": {
+            "uav": "lowalt:UAV"
+          }
+        },
+        "closer_than_safety_distance": {
+          "expression": {
+            "args": [
+              {
+                "args": [
+                  {
+                    "field": "lowalt.conflict_partner",
+                    "path": [],
+                    "role": "uav"
+                  },
+                  {
+                    "literal": ""
+                  }
+                ],
+                "op": "ne"
+              },
+              {
+                "args": [
+                  {
+                    "field": "lowalt.conflict_gap_m",
+                    "path": [
+                      0
+                    ],
+                    "role": "uav"
+                  },
+                  {
+                    "parameter": "horizontal_m"
+                  }
+                ],
+                "op": "lt"
+              }
+            ],
+            "op": "and"
+          },
+          "parameters": {
+            "horizontal_m": 20.0
+          },
+          "profile": "committed_reactive/v1",
+          "roles": {
+            "uav": "lowalt:UAV"
+          }
+        },
+        "inside_no_fly_zone": {
+          "expression": {
+            "args": [
+              {
+                "field": "lowalt.breached_zones",
+                "path": [],
+                "role": "uav"
+              },
+              {
+                "field": "lowalt.zone_id",
+                "path": [],
+                "role": "zone"
+              }
+            ],
+            "op": "contains"
+          },
+          "profile": "committed_reactive/v1",
+          "roles": {
+            "uav": "lowalt:UAV",
+            "zone": "lowalt:AirspaceZone"
+          }
+        },
+        "wind_above_limit": {
+          "expression": {
+            "args": [
+              {
+                "args": [
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.vehicle_class",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "literal": "parcel"
+                      }
+                    ],
+                    "op": "eq"
+                  },
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.wind_mps",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "parameter": "parcel_limit_mps"
+                      }
+                    ],
+                    "op": "gt"
+                  }
+                ],
+                "op": "and"
+              },
+              {
+                "args": [
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.vehicle_class",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "literal": "medical"
+                      }
+                    ],
+                    "op": "eq"
+                  },
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.wind_mps",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "parameter": "medical_limit_mps"
+                      }
+                    ],
+                    "op": "gt"
+                  }
+                ],
+                "op": "and"
+              },
+              {
+                "args": [
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.vehicle_class",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "literal": "inspection"
+                      }
+                    ],
+                    "op": "eq"
+                  },
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.wind_mps",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "parameter": "inspection_limit_mps"
+                      }
+                    ],
+                    "op": "gt"
+                  }
+                ],
+                "op": "and"
+              },
+              {
+                "args": [
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.vehicle_class",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "literal": "survey"
+                      }
+                    ],
+                    "op": "eq"
+                  },
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.wind_mps",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "parameter": "survey_limit_mps"
+                      }
+                    ],
+                    "op": "gt"
+                  }
+                ],
+                "op": "and"
+              },
+              {
+                "args": [
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.vehicle_class",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "literal": "spraying"
+                      }
+                    ],
+                    "op": "eq"
+                  },
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.wind_mps",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "parameter": "spraying_limit_mps"
+                      }
+                    ],
+                    "op": "gt"
+                  }
+                ],
+                "op": "and"
+              },
+              {
+                "args": [
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.vehicle_class",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "literal": "passenger"
+                      }
+                    ],
+                    "op": "eq"
+                  },
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.wind_mps",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "parameter": "passenger_limit_mps"
+                      }
+                    ],
+                    "op": "gt"
+                  }
+                ],
+                "op": "and"
+              },
+              {
+                "args": [
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.vehicle_class",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "literal": "patrol"
+                      }
+                    ],
+                    "op": "eq"
+                  },
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.wind_mps",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "parameter": "patrol_limit_mps"
+                      }
+                    ],
+                    "op": "gt"
+                  }
+                ],
+                "op": "and"
+              },
+              {
+                "args": [
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.vehicle_class",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "literal": "incident_response"
+                      }
+                    ],
+                    "op": "eq"
+                  },
+                  {
+                    "args": [
+                      {
+                        "field": "lowalt.wind_mps",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "parameter": "incident_response_limit_mps"
+                      }
+                    ],
+                    "op": "gt"
+                  }
+                ],
+                "op": "and"
+              }
+            ],
+            "op": "or"
+          },
+          "parameters": {
+            "incident_response_limit_mps": 14.0,
+            "inspection_limit_mps": 6.0,
+            "medical_limit_mps": 12.0,
+            "parcel_limit_mps": 12.0,
+            "passenger_limit_mps": 15.0,
+            "patrol_limit_mps": 12.0,
+            "spraying_limit_mps": 5.0,
+            "survey_limit_mps": 6.0
+          },
+          "profile": "committed_reactive/v1",
+          "roles": {
+            "uav": "lowalt:UAV"
+          }
+        }
+      },
+      "registry": {
+        "snapshot": "registry.snapshot.json"
+      },
+      "revision": 5
+    },
+    {
+      "bindings": [],
+      "budgets": {
+        "max_creations_per_instance": 8,
+        "max_instances": 100,
+        "max_timers_per_instance": 8,
+        "max_transitions_per_instance_per_ns": 64
+      },
+      "chains": {},
+      "evaluator": {
+        "dialect": "original",
+        "version": "aerograph-predicate/1"
+      },
+      "format": "aeroagentsim.behaviour-package/v1",
+      "id": "lowalt.operator",
+      "injection_points": [
+        {
+          "command": "aas.runtime.inject_event",
+          "emits": "lowalt.operator.restaurant_delay",
+          "id": "restaurant_delay",
+          "stream_id": "operator",
+          "target": "behaviour",
+          "topic": "lowalt.events"
+        }
+      ],
+      "predicates": {},
+      "registry": {
+        "snapshot": "registry.snapshot.json"
+      },
+      "revision": 1
+    }
+  ],
+  "bindings": {
+    "commands": [],
+    "lifecycle": [
+      {
+        "controller": "tasks",
+        "type": "lowalt:UAV"
+      },
+      {
+        "controller": "tasks",
+        "type": "lowalt:Site"
+      },
+      {
+        "controller": "tasks",
+        "type": "lowalt:AirspaceZone"
+      },
+      {
+        "controller": "tasks",
+        "type": "lowalt:Task"
+      },
+      {
+        "controller": "environment",
+        "type": "lowalt:Environment"
+      },
+      {
+        "controller": "behaviour",
+        "ids": "behaviour:*",
+        "type": "aas:BehaviourInstance"
+      }
+    ],
+    "rules": [
+      {
+        "fields": [
+          "lowalt.position",
+          "lowalt.velocity"
+        ],
+        "type": "lowalt:UAV",
+        "writer": "motion"
+      },
+      {
+        "fields": [
+          "lowalt.soc",
+          "lowalt.charging",
+          "lowalt.energy_used_j",
+          "lowalt.distance_m",
+          "lowalt.motion_energy_j"
+        ],
+        "type": "lowalt:UAV",
+        "writer": "energy"
+      },
+      {
+        "fields": [
+          "lowalt.membership",
+          "lowalt.conflicts",
+          "lowalt.wind_mps",
+          "lowalt.breached_zones",
+          "lowalt.conflict_partner",
+          "lowalt.conflict_gap_m"
+        ],
+        "type": "lowalt:UAV",
+        "writer": "airspace"
+      },
+      {
+        "fields": [
+          "lowalt.capacity_j",
+          "lowalt.payload_kg",
+          "lowalt.payload_capacity_kg",
+          "lowalt.vehicle_class"
+        ],
+        "type": "lowalt:UAV",
+        "writer": "tasks"
+      },
+      {
+        "fields": [
+          "lowalt.site_position",
+          "lowalt.site_open",
+          "lowalt.site_capacity"
+        ],
+        "type": "lowalt:Site",
+        "writer": "tasks"
+      },
+      {
+        "fields": [
+          "lowalt.pad_power_w"
+        ],
+        "type": "lowalt:ChargingPad",
+        "writer": "tasks"
+      },
+      {
+        "fields": [
+          "lowalt.task_state",
+          "lowalt.task_kind",
+          "lowalt.task_priority",
+          "lowalt.task_origin",
+          "lowalt.task_destination",
+          "lowalt.task_created_ns",
+          "lowalt.task_vehicle",
+          "lowalt.task_payload_kg"
+        ],
+        "type": "lowalt:Task",
+        "writer": "tasks"
+      },
+      {
+        "fields": [
+          "lowalt.zone_kind",
+          "lowalt.zone_lower",
+          "lowalt.zone_upper",
+          "lowalt.zone_start_ns",
+          "lowalt.zone_end_ns",
+          "lowalt.zone_dynamic"
+        ],
+        "type": "lowalt:AirspaceZone",
+        "writer": "tasks"
+      },
+      {
+        "fields": [
+          "lowalt.zone_active",
+          "lowalt.zone_id"
+        ],
+        "type": "lowalt:AirspaceZone",
+        "writer": "airspace"
+      },
+      {
+        "fields": [
+          "lowalt.wind"
+        ],
+        "type": "lowalt:Environment",
+        "writer": "environment"
+      },
+      {
+        "fields": [
+          "lowalt.weather_held",
+          "lowalt.wind_limit_mps",
+          "lowalt.returning_to_charge"
+        ],
+        "type": "lowalt:UAV",
+        "writer": "behaviour"
+      },
+      {
+        "fields": [
+          "lowalt.food_preparation_s"
+        ],
+        "type": "lowalt:Restaurant",
+        "writer": "tasks"
+      },
+      {
+        "fields": [
+          "lowalt.food_preparation_started_ns",
+          "lowalt.food_expected_ready_ns",
+          "lowalt.food_ready_ns",
+          "lowalt.food_picked_up_ns",
+          "lowalt.food_delivered_ns",
+          "lowalt.food_deadline_ns"
+        ],
+        "type": "lowalt:FoodOrder",
+        "writer": "tasks"
+      },
+      {
+        "fields": [
+          "aas.behaviour.template_id",
+          "aas.behaviour.binding_id",
+          "aas.behaviour.roles",
+          "aas.behaviour.state",
+          "aas.behaviour.revision",
+          "aas.behaviour.status",
+          "aas.behaviour.children"
+        ],
+        "ids": "behaviour:*",
+        "type": "aas:BehaviourInstance",
+        "writer": "behaviour"
+      }
+    ],
+    "samples": []
+  },
+  "city": "huangpu",
+  "engines": {
+    "airspace": {
+      "config": {
+        "activation_events": [],
+        "algorithm_config": {
+          "charging": {
+            "threshold": 1.0
+          },
+          "path_planning": {
+            "grid_m": 20.0
+          }
+        },
+        "algorithms": {
+          "allocation": "nearest",
+          "charging": "threshold_return",
+          "conflict_resolution": "hold_and_go",
+          "path_planning": "corridor_astar"
+        },
+        "motion": {
+          "hold": "lowalt.motion.hold",
+          "move_to": "lowalt.motion.move_to",
+          "stop": "lowalt.motion.stop",
+          "target": "motion"
+        },
+        "separation_horizontal_m": 20.0,
+        "separation_vertical_m": 8.0,
+        "tick_ns": 1000000000
+      },
+      "plugin": "lowalt_airspace"
+    },
+    "behaviour": {
+      "config": {
+        "capabilities": {
+          "lowalt.airspace.flight_control": {
+            "schema": "lowalt.airspace.flight_control",
+            "target": "airspace"
+          },
+          "lowalt.airspace.resolve_conflict": {
+            "schema": "lowalt.airspace.resolve_conflict",
+            "target": "airspace"
+          },
+          "lowalt.energy.return_to_pad": {
+            "schema": "lowalt.energy.return_to_pad",
+            "target": "energy"
+          }
+        },
+        "packages": [
+          {
+            "dependencies": {
+              "battery_below_reserve": [
+                [
+                  "uav",
+                  "lowalt.soc"
+                ]
+              ],
+              "closer_than_safety_distance": [
+                [
+                  "uav",
+                  "lowalt.conflict_gap_m"
+                ],
+                [
+                  "uav",
+                  "lowalt.conflict_partner"
+                ]
+              ],
+              "inside_no_fly_zone": [
+                [
+                  "uav",
+                  "lowalt.breached_zones"
+                ],
+                [
+                  "zone",
+                  "lowalt.zone_id"
+                ]
+              ],
+              "wind_above_limit": [
+                [
+                  "uav",
+                  "lowalt.vehicle_class"
+                ],
+                [
+                  "uav",
+                  "lowalt.wind_mps"
+                ]
+              ]
+            },
+            "document": {
+              "bindings": [
+                {
+                  "chain": "battery_reserve",
+                  "id": "battery-reserve",
+                  "match": {
+                    "uav": {
+                      "is_a": "lowalt:UAV"
+                    }
+                  },
+                  "multiplicity": "once_per_entity",
+                  "on_unbind": "retain_until_terminal",
+                  "variables": {}
+                },
+                {
+                  "chain": "no_fly_zone",
+                  "id": "no-fly-zone",
+                  "match": {
+                    "uav": {
+                      "is_a": "lowalt:UAV"
+                    },
+                    "zone": {
+                      "field": "lowalt.zone_kind",
+                      "in": [
+                        "no_fly",
+                        "restricted"
+                      ],
+                      "is_a": "lowalt:AirspaceZone"
+                    }
+                  },
+                  "multiplicity": "once_per_entity",
+                  "on_unbind": "retain_until_terminal",
+                  "variables": {}
+                },
+                {
+                  "chain": "separation",
+                  "id": "separation",
+                  "match": {
+                    "uav": {
+                      "is_a": "lowalt:UAV"
+                    }
+                  },
+                  "multiplicity": "once_per_entity",
+                  "on_unbind": "retain_until_terminal",
+                  "variables": {}
+                },
+                {
+                  "chain": "wind_limit",
+                  "id": "wind-limit",
+                  "match": {
+                    "uav": {
+                      "is_a": "lowalt:UAV"
+                    }
+                  },
+                  "multiplicity": "once_per_entity",
+                  "on_unbind": "retain_until_terminal",
+                  "variables": {}
+                }
+              ],
+              "budgets": {
+                "max_creations_per_instance": 8,
+                "max_instances": 4000,
+                "max_timers_per_instance": 8,
+                "max_transitions_per_instance_per_ns": 64
+              },
+              "chains": {
+                "battery_reserve": {
+                  "initial": "monitoring",
+                  "preconditions": [],
+                  "roles": {
+                    "uav": "lowalt:UAV"
+                  },
+                  "states": [
+                    "monitoring",
+                    "returning",
+                    "waiting"
+                  ],
+                  "terminal": [],
+                  "transitions": [
+                    {
+                      "actions": [],
+                      "from": "monitoring",
+                      "id": "armed",
+                      "on": {
+                        "instance": "activated"
+                      },
+                      "priority": 0,
+                      "to": "monitoring"
+                    },
+                    {
+                      "actions": [
+                        {
+                          "entity": {
+                            "$role": "uav"
+                          },
+                          "field": "lowalt.returning_to_charge",
+                          "id": "recalling",
+                          "kind": "set",
+                          "value": true
+                        },
+                        {
+                          "id": "battery-low",
+                          "kind": "emit",
+                          "payload": {
+                            "soc": {
+                              "field": "lowalt.soc",
+                              "path": [],
+                              "role": "uav"
+                            },
+                            "vehicle": {
+                              "$id": "uav"
+                            }
+                          },
+                          "schema": "lowalt.energy.low",
+                          "topic": "lowalt.events"
+                        },
+                        {
+                          "capability": "lowalt.energy.return_to_pad",
+                          "id": "recall",
+                          "kind": "command",
+                          "payload": {
+                            "reason": "battery below reserve",
+                            "vehicle": {
+                              "$id": "uav"
+                            }
+                          }
+                        }
+                      ],
+                      "from": "monitoring",
+                      "id": "low",
+                      "on": {
+                        "edge": "while",
+                        "predicate": "battery_below_reserve"
+                      },
+                      "priority": 0,
+                      "to": "returning"
+                    },
+                    {
+                      "actions": [
+                        {
+                          "entity": {
+                            "$role": "uav"
+                          },
+                          "field": "lowalt.returning_to_charge",
+                          "id": "ready",
+                          "kind": "set",
+                          "value": false
+                        }
+                      ],
+                      "from": "returning",
+                      "id": "charged",
+                      "on": {
+                        "receipt": "recall",
+                        "status": "succeeded"
+                      },
+                      "priority": 0,
+                      "to": "monitoring"
+                    },
+                    {
+                      "actions": [
+                        {
+                          "entity": {
+                            "$role": "uav"
+                          },
+                          "field": "lowalt.returning_to_charge",
+                          "id": "recall-rejected",
+                          "kind": "set",
+                          "value": false
+                        }
+                      ],
+                      "from": "returning",
+                      "id": "recall-failed",
+                      "on": {
+                        "receipt": "recall",
+                        "status": [
+                          "failed",
+                          "rejected",
+                          "canceled"
+                        ]
+                      },
+                      "priority": 0,
+                      "to": "waiting"
+                    },
+                    {
+                      "actions": [],
+                      "from": "waiting",
+                      "id": "recharged",
+                      "on": {
+                        "edge": "exited",
+                        "predicate": "battery_below_reserve"
+                      },
+                      "priority": 0,
+                      "to": "monitoring"
+                    }
+                  ],
+                  "trigger": {
+                    "instance": "activated"
+                  }
+                },
+                "no_fly_zone": {
+                  "initial": "monitoring",
+                  "preconditions": [],
+                  "roles": {
+                    "uav": "lowalt:UAV",
+                    "zone": "lowalt:AirspaceZone"
+                  },
+                  "states": [
+                    "monitoring",
+                    "rerouting"
+                  ],
+                  "terminal": [],
+                  "transitions": [
+                    {
+                      "actions": [],
+                      "from": "monitoring",
+                      "id": "armed",
+                      "on": {
+                        "instance": "activated"
+                      },
+                      "priority": 0,
+                      "to": "monitoring"
+                    },
+                    {
+                      "actions": [
+                        {
+                          "id": "geofence",
+                          "kind": "emit",
+                          "payload": {
+                            "vehicle": {
+                              "$id": "uav"
+                            },
+                            "zone": {
+                              "$id": "zone"
+                            }
+                          },
+                          "schema": "lowalt.airspace.geofence_entered",
+                          "topic": "lowalt.events"
+                        },
+                        {
+                          "capability": "lowalt.airspace.flight_control",
+                          "id": "reroute",
+                          "kind": "command",
+                          "payload": {
+                            "action": "reroute",
+                            "reason": "no-fly zone",
+                            "vehicle": {
+                              "$id": "uav"
+                            }
+                          }
+                        }
+                      ],
+                      "from": "monitoring",
+                      "id": "entered-zone",
+                      "on": {
+                        "edge": "entered",
+                        "predicate": "inside_no_fly_zone"
+                      },
+                      "priority": 0,
+                      "to": "rerouting"
+                    },
+                    {
+                      "actions": [],
+                      "from": "rerouting",
+                      "id": "left-zone",
+                      "on": {
+                        "edge": "exited",
+                        "predicate": "inside_no_fly_zone"
+                      },
+                      "priority": 0,
+                      "to": "monitoring"
+                    }
+                  ],
+                  "trigger": {
+                    "instance": "activated"
+                  }
+                },
+                "separation": {
+                  "initial": "monitoring",
+                  "preconditions": [],
+                  "roles": {
+                    "uav": "lowalt:UAV"
+                  },
+                  "states": [
+                    "monitoring",
+                    "resolving"
+                  ],
+                  "terminal": [],
+                  "transitions": [
+                    {
+                      "actions": [],
+                      "from": "monitoring",
+                      "id": "armed",
+                      "on": {
+                        "instance": "activated"
+                      },
+                      "priority": 0,
+                      "to": "monitoring"
+                    },
+                    {
+                      "actions": [
+                        {
+                          "id": "conflict",
+                          "kind": "emit",
+                          "payload": {
+                            "a": {
+                              "$id": "uav"
+                            },
+                            "b": {
+                              "field": "lowalt.conflict_partner",
+                              "path": [],
+                              "role": "uav"
+                            },
+                            "horizontal_m": {
+                              "field": "lowalt.conflict_gap_m",
+                              "path": [
+                                0
+                              ],
+                              "role": "uav"
+                            },
+                            "vertical_m": {
+                              "field": "lowalt.conflict_gap_m",
+                              "path": [
+                                1
+                              ],
+                              "role": "uav"
+                            }
+                          },
+                          "schema": "lowalt.airspace.conflict",
+                          "topic": "lowalt.events"
+                        },
+                        {
+                          "capability": "lowalt.airspace.resolve_conflict",
+                          "id": "resolve",
+                          "kind": "command",
+                          "payload": {
+                            "a": {
+                              "$id": "uav"
+                            },
+                            "b": {
+                              "field": "lowalt.conflict_partner",
+                              "path": [],
+                              "role": "uav"
+                            }
+                          }
+                        }
+                      ],
+                      "from": "monitoring",
+                      "id": "too-close",
+                      "on": {
+                        "edge": "while",
+                        "predicate": "closer_than_safety_distance"
+                      },
+                      "priority": 0,
+                      "to": "resolving"
+                    },
+                    {
+                      "actions": [
+                        {
+                          "id": "resolved",
+                          "kind": "emit",
+                          "payload": {
+                            "a": {
+                              "$trigger": "result.a"
+                            },
+                            "action": {
+                              "$trigger": "result.action"
+                            },
+                            "b": {
+                              "$trigger": "result.b"
+                            }
+                          },
+                          "schema": "lowalt.airspace.conflict_resolved",
+                          "topic": "lowalt.events"
+                        }
+                      ],
+                      "from": "resolving",
+                      "id": "separated",
+                      "on": {
+                        "receipt": "resolve",
+                        "status": "succeeded"
+                      },
+                      "priority": 0,
+                      "to": "monitoring"
+                    },
+                    {
+                      "actions": [],
+                      "from": "resolving",
+                      "id": "resolve-failed",
+                      "on": {
+                        "receipt": "resolve",
+                        "status": [
+                          "failed",
+                          "rejected",
+                          "canceled"
+                        ]
+                      },
+                      "priority": 0,
+                      "to": "monitoring"
+                    }
+                  ],
+                  "trigger": {
+                    "instance": "activated"
+                  }
+                },
+                "wind_limit": {
+                  "initial": "flying",
+                  "preconditions": [],
+                  "roles": {
+                    "uav": "lowalt:UAV"
+                  },
+                  "states": [
+                    "flying",
+                    "held"
+                  ],
+                  "terminal": [],
+                  "transitions": [
+                    {
+                      "actions": [],
+                      "from": "flying",
+                      "id": "armed",
+                      "on": {
+                        "instance": "activated"
+                      },
+                      "priority": 0,
+                      "to": "flying"
+                    },
+                    {
+                      "actions": [
+                        {
+                          "entity": {
+                            "$role": "uav"
+                          },
+                          "field": "lowalt.weather_held",
+                          "id": "grounded",
+                          "kind": "set",
+                          "value": true
+                        },
+                        {
+                          "id": "weather-hold",
+                          "kind": "emit",
+                          "payload": {
+                            "reason": "wind exceeds vehicle limit",
+                            "vehicle": {
+                              "$id": "uav"
+                            },
+                            "wind_mps": {
+                              "field": "lowalt.wind_mps",
+                              "path": [],
+                              "role": "uav"
+                            }
+                          },
+                          "schema": "lowalt.weather.hold",
+                          "topic": "lowalt.events"
+                        },
+                        {
+                          "capability": "lowalt.airspace.flight_control",
+                          "id": "hold",
+                          "kind": "command",
+                          "payload": {
+                            "action": "hold",
+                            "reason": "weather",
+                            "vehicle": {
+                              "$id": "uav"
+                            }
+                          }
+                        }
+                      ],
+                      "from": "flying",
+                      "id": "too-windy",
+                      "on": {
+                        "edge": "while",
+                        "predicate": "wind_above_limit"
+                      },
+                      "priority": 0,
+                      "to": "held"
+                    },
+                    {
+                      "actions": [
+                        {
+                          "entity": {
+                            "$role": "uav"
+                          },
+                          "field": "lowalt.weather_held",
+                          "id": "cleared",
+                          "kind": "set",
+                          "value": false
+                        },
+                        {
+                          "id": "weather-release",
+                          "kind": "emit",
+                          "payload": {
+                            "reason": "wind within vehicle limit",
+                            "vehicle": {
+                              "$id": "uav"
+                            },
+                            "wind_mps": {
+                              "field": "lowalt.wind_mps",
+                              "path": [],
+                              "role": "uav"
+                            }
+                          },
+                          "schema": "lowalt.weather.release",
+                          "topic": "lowalt.events"
+                        },
+                        {
+                          "capability": "lowalt.airspace.flight_control",
+                          "id": "release",
+                          "kind": "command",
+                          "payload": {
+                            "action": "release",
+                            "reason": "weather",
+                            "vehicle": {
+                              "$id": "uav"
+                            }
+                          }
+                        }
+                      ],
+                      "from": "held",
+                      "id": "calm",
+                      "on": {
+                        "edge": "exited",
+                        "predicate": "wind_above_limit"
+                      },
+                      "priority": 0,
+                      "to": "flying"
+                    }
+                  ],
+                  "trigger": {
+                    "instance": "activated"
+                  }
+                }
+              },
+              "evaluator": {
+                "dialect": "original",
+                "version": "aerograph-predicate/1"
+              },
+              "format": "aeroagentsim.behaviour-package/v1",
+              "id": "lowalt.rules",
+              "predicates": {
+                "battery_below_reserve": {
+                  "expression": {
+                    "args": [
+                      {
+                        "args": [
+                          {
+                            "field": "lowalt.soc",
+                            "path": [],
+                            "role": "uav"
+                          },
+                          {
+                            "literal": 100.0
+                          }
+                        ],
+                        "op": "mul"
+                      },
+                      {
+                        "parameter": "reserve_percent"
+                      }
+                    ],
+                    "op": "lt"
+                  },
+                  "parameters": {
+                    "reserve_percent": 20.0
+                  },
+                  "profile": "committed_reactive/v1",
+                  "roles": {
+                    "uav": "lowalt:UAV"
+                  }
+                },
+                "closer_than_safety_distance": {
+                  "expression": {
+                    "args": [
+                      {
+                        "args": [
+                          {
+                            "field": "lowalt.conflict_partner",
+                            "path": [],
+                            "role": "uav"
+                          },
+                          {
+                            "literal": ""
+                          }
+                        ],
+                        "op": "ne"
+                      },
+                      {
+                        "args": [
+                          {
+                            "field": "lowalt.conflict_gap_m",
+                            "path": [
+                              0
+                            ],
+                            "role": "uav"
+                          },
+                          {
+                            "parameter": "horizontal_m"
+                          }
+                        ],
+                        "op": "lt"
+                      }
+                    ],
+                    "op": "and"
+                  },
+                  "parameters": {
+                    "horizontal_m": 20.0
+                  },
+                  "profile": "committed_reactive/v1",
+                  "roles": {
+                    "uav": "lowalt:UAV"
+                  }
+                },
+                "inside_no_fly_zone": {
+                  "expression": {
+                    "args": [
+                      {
+                        "field": "lowalt.breached_zones",
+                        "path": [],
+                        "role": "uav"
+                      },
+                      {
+                        "field": "lowalt.zone_id",
+                        "path": [],
+                        "role": "zone"
+                      }
+                    ],
+                    "op": "contains"
+                  },
+                  "profile": "committed_reactive/v1",
+                  "roles": {
+                    "uav": "lowalt:UAV",
+                    "zone": "lowalt:AirspaceZone"
+                  }
+                },
+                "wind_above_limit": {
+                  "expression": {
+                    "args": [
+                      {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.vehicle_class",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "literal": "parcel"
+                              }
+                            ],
+                            "op": "eq"
+                          },
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.wind_mps",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "parameter": "parcel_limit_mps"
+                              }
+                            ],
+                            "op": "gt"
+                          }
+                        ],
+                        "op": "and"
+                      },
+                      {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.vehicle_class",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "literal": "medical"
+                              }
+                            ],
+                            "op": "eq"
+                          },
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.wind_mps",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "parameter": "medical_limit_mps"
+                              }
+                            ],
+                            "op": "gt"
+                          }
+                        ],
+                        "op": "and"
+                      },
+                      {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.vehicle_class",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "literal": "inspection"
+                              }
+                            ],
+                            "op": "eq"
+                          },
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.wind_mps",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "parameter": "inspection_limit_mps"
+                              }
+                            ],
+                            "op": "gt"
+                          }
+                        ],
+                        "op": "and"
+                      },
+                      {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.vehicle_class",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "literal": "survey"
+                              }
+                            ],
+                            "op": "eq"
+                          },
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.wind_mps",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "parameter": "survey_limit_mps"
+                              }
+                            ],
+                            "op": "gt"
+                          }
+                        ],
+                        "op": "and"
+                      },
+                      {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.vehicle_class",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "literal": "spraying"
+                              }
+                            ],
+                            "op": "eq"
+                          },
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.wind_mps",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "parameter": "spraying_limit_mps"
+                              }
+                            ],
+                            "op": "gt"
+                          }
+                        ],
+                        "op": "and"
+                      },
+                      {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.vehicle_class",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "literal": "passenger"
+                              }
+                            ],
+                            "op": "eq"
+                          },
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.wind_mps",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "parameter": "passenger_limit_mps"
+                              }
+                            ],
+                            "op": "gt"
+                          }
+                        ],
+                        "op": "and"
+                      },
+                      {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.vehicle_class",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "literal": "patrol"
+                              }
+                            ],
+                            "op": "eq"
+                          },
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.wind_mps",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "parameter": "patrol_limit_mps"
+                              }
+                            ],
+                            "op": "gt"
+                          }
+                        ],
+                        "op": "and"
+                      },
+                      {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.vehicle_class",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "literal": "incident_response"
+                              }
+                            ],
+                            "op": "eq"
+                          },
+                          {
+                            "args": [
+                              {
+                                "field": "lowalt.wind_mps",
+                                "path": [],
+                                "role": "uav"
+                              },
+                              {
+                                "parameter": "incident_response_limit_mps"
+                              }
+                            ],
+                            "op": "gt"
+                          }
+                        ],
+                        "op": "and"
+                      }
+                    ],
+                    "op": "or"
+                  },
+                  "parameters": {
+                    "incident_response_limit_mps": 14.0,
+                    "inspection_limit_mps": 6.0,
+                    "medical_limit_mps": 12.0,
+                    "parcel_limit_mps": 12.0,
+                    "passenger_limit_mps": 15.0,
+                    "patrol_limit_mps": 12.0,
+                    "spraying_limit_mps": 5.0,
+                    "survey_limit_mps": 6.0
+                  },
+                  "profile": "committed_reactive/v1",
+                  "roles": {
+                    "uav": "lowalt:UAV"
+                  }
+                }
+              },
+              "registry": {
+                "snapshot": "registry.snapshot.json"
+              },
+              "revision": 5
+            },
+            "evaluator": {
+              "version": "aerograph-predicate/1"
+            },
+            "format": "aeroagentsim.behaviour-ir/v1",
+            "package_id": "lowalt.rules@5",
+            "source": "/tmp/aas-demo/final/runs/assistant/sessions/assist-23a73a3635ef46739cb081f4f777d63d/plans/v2/files:$.behaviours[0]"
+          },
+          {
+            "dependencies": {},
+            "document": {
+              "bindings": [],
+              "budgets": {
+                "max_creations_per_instance": 8,
+                "max_instances": 100,
+                "max_timers_per_instance": 8,
+                "max_transitions_per_instance_per_ns": 64
+              },
+              "chains": {},
+              "evaluator": {
+                "dialect": "original",
+                "version": "aerograph-predicate/1"
+              },
+              "format": "aeroagentsim.behaviour-package/v1",
+              "id": "lowalt.operator",
+              "injection_points": [
+                {
+                  "command": "aas.runtime.inject_event",
+                  "emits": "lowalt.operator.restaurant_delay",
+                  "id": "restaurant_delay",
+                  "stream_id": "operator",
+                  "target": "behaviour",
+                  "topic": "lowalt.events"
+                }
+              ],
+              "predicates": {},
+              "registry": {
+                "snapshot": "registry.snapshot.json"
+              },
+              "revision": 1
+            },
+            "evaluator": {
+              "version": "aerograph-predicate/1"
+            },
+            "format": "aeroagentsim.behaviour-ir/v1",
+            "package_id": "lowalt.operator@1",
+            "source": "/tmp/aas-demo/final/runs/assistant/sessions/assist-23a73a3635ef46739cb081f4f777d63d/plans/v2/files:$.behaviours[1]"
+          }
+        ],
+        "produces": []
+      },
+      "plugin": "behaviour"
+    },
+    "energy": {
+      "config": {
+        "algorithm_config": {
+          "charging": {
+            "threshold": 1.0
+          },
+          "path_planning": {
+            "grid_m": 20.0
+          }
+        },
+        "algorithms": {
+          "allocation": "nearest",
+          "charging": "threshold_return",
+          "conflict_resolution": "hold_and_go",
+          "path_planning": "corridor_astar"
+        },
+        "charge_radius_m": 2.0,
+        "charging_target_soc": 0.9,
+        "headwind_w_per_mps": 5.0,
+        "idle_w": 50.0,
+        "motion": {
+          "hold": "lowalt.motion.hold",
+          "move_to": "lowalt.motion.move_to",
+          "stop": "lowalt.motion.stop",
+          "target": "motion"
+        },
+        "payload_w_per_kg": 8.0,
+        "per_m_j": 12.0,
+        "speed_w_per_mps": 2.0,
+        "tick_ns": 1000000000
+      },
+      "plugin": "lowalt_energy"
+    },
+    "environment": {
+      "config": {
+        "lifecycle": true,
+        "produces": [
+          "lowalt.wind"
+        ],
+        "profiles": {
+          "weather": {
+            "lowalt.wind": {
+              "gusts": [
+                {
+                  "end_ns": 200000000000,
+                  "start_ns": 170000000000,
+                  "value": [
+                    14.0,
+                    0.0,
+                    0.0
+                  ]
+                }
+              ],
+              "mode": "gust",
+              "value": [
+                4.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "plugin": "environment"
+    },
+    "motion": {
+      "config": {
+        "arrival_payload": {
+          "entity": "$entity",
+          "position": "$position"
+        },
+        "arrival_schema": "lowalt.motion.arrived",
+        "arrival_topic": "lowalt.events",
+        "commands": {
+          "hold": "lowalt.motion.hold",
+          "move_to": "lowalt.motion.move_to",
+          "stop": "lowalt.motion.stop"
+        },
+        "energy": {
+          "capacity_j": 240000.0,
+          "idle_w": 50.0,
+          "per_m_j": 12.0
+        },
+        "energy_field": "lowalt.motion_energy_j",
+        "frame": {
+          "convention": "enu",
+          "transform_revision": "lowalt.district/v1",
+          "unit": "m"
+        },
+        "lifecycle": false,
+        "max_accel_m_s2": 8.0,
+        "max_speed_m_s": 20.0,
+        "model": "enu_point_mass",
+        "position_field": "lowalt.position",
+        "result_fields": {
+          "entity": "entity",
+          "position": "position",
+          "reason": "reason"
+        },
+        "step_ns": 1000000000,
+        "type_id": "lowalt:UAV",
+        "velocity_field": "lowalt.velocity"
+      },
+      "plugin": "kinematic"
+    },
+    "tasks": {
+      "config": {
+        "algorithm_config": {
+          "charging": {
+            "threshold": 1.0
+          },
+          "path_planning": {
+            "grid_m": 20.0
+          }
+        },
+        "algorithms": {
+          "allocation": "nearest",
+          "charging": "threshold_return",
+          "conflict_resolution": "hold_and_go",
+          "path_planning": "corridor_astar"
+        },
+        "arrival_radius_m": 0.5,
+        "charging_resume_soc": 0.9,
+        "cruise_altitudes": {
+          "parcel": 125.0
+        },
+        "dispatch_min_soc": 0.2,
+        "generators": [
+          {
+            "arrivals": {
+              "burst_size": 2,
+              "end_ns": 100000000000,
+              "mode": "poisson",
+              "rate_per_s": 0.075,
+              "start_ns": 0
+            },
+            "delivery_window_s": 240.0,
+            "destinations": [
+              "customer-1",
+              "customer-2",
+              "customer-3"
+            ],
+            "kind": "food",
+            "origins": [
+              "restaurant-west",
+              "restaurant-east"
+            ],
+            "payload_kg": 0.8,
+            "priority": 1,
+            "tasks": [
+              "meal-1",
+              "meal-2",
+              "meal-3",
+              "meal-4",
+              "meal-5",
+              "meal-6"
+            ]
+          }
+        ],
+        "motion": {
+          "hold": "lowalt.motion.hold",
+          "move_to": "lowalt.motion.move_to",
+          "stop": "lowalt.motion.stop",
+          "target": "motion"
+        },
+        "tick_ns": 1000000000,
+        "vehicle_kinds": {
+          "parcel": [
+            "food"
+          ]
+        }
+      },
+      "plugin": "lowalt_tasks"
+    }
+  },
+  "entities": [
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.food_preparation_s": 25.0,
+        "lowalt.site_capacity": 1,
+        "lowalt.site_open": true,
+        "lowalt.site_position": [
+          -13.05,
+          -100.037,
+          0.0
+        ]
+      },
+      "id": "restaurant-west",
+      "label": "West Plaza kitchen",
+      "label_zh": "西广场餐厅厨房",
+      "type": "lowalt:Restaurant"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.food_preparation_s": 35.0,
+        "lowalt.site_capacity": 1,
+        "lowalt.site_open": true,
+        "lowalt.site_position": [
+          328.337,
+          -136.882,
+          12.0
+        ]
+      },
+      "id": "restaurant-east",
+      "label": "East Roof kitchen",
+      "label_zh": "东侧屋顶餐厅厨房",
+      "type": "lowalt:Restaurant"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.pad_power_w": 5000.0,
+        "lowalt.site_capacity": 1,
+        "lowalt.site_open": true,
+        "lowalt.site_position": [
+          -13.05,
+          -100.037,
+          0.0
+        ]
+      },
+      "id": "pad-west",
+      "label": "West kitchen charging pad",
+      "label_zh": "西侧厨房充电位",
+      "type": "lowalt:ChargingPad"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.pad_power_w": 5000.0,
+        "lowalt.site_capacity": 1,
+        "lowalt.site_open": true,
+        "lowalt.site_position": [
+          328.337,
+          -136.882,
+          12.0
+        ]
+      },
+      "id": "pad-east",
+      "label": "East kitchen charging pad",
+      "label_zh": "东侧厨房充电位",
+      "type": "lowalt:ChargingPad"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.site_capacity": 1,
+        "lowalt.site_open": true,
+        "lowalt.site_position": [
+          -86.612,
+          76.526,
+          12.0
+        ]
+      },
+      "id": "customer-1",
+      "label": "Meal customer 1",
+      "label_zh": "餐食收货点 1",
+      "type": "lowalt:Customer"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.site_capacity": 1,
+        "lowalt.site_open": true,
+        "lowalt.site_position": [
+          247.588,
+          73.959,
+          75.0
+        ]
+      },
+      "id": "customer-2",
+      "label": "Meal customer 2",
+      "label_zh": "餐食收货点 2",
+      "type": "lowalt:Customer"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.site_capacity": 1,
+        "lowalt.site_open": true,
+        "lowalt.site_position": [
+          93.756,
+          104.218,
+          12.0
+        ]
+      },
+      "id": "customer-3",
+      "label": "Meal customer 3",
+      "label_zh": "餐食收货点 3",
+      "type": "lowalt:Customer"
+    },
+    {
+      "facts": {},
+      "id": "weather",
+      "type": "lowalt:Environment"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.task_created_ns": 0,
+        "lowalt.task_destination": "customer-1",
+        "lowalt.task_kind": "food",
+        "lowalt.task_origin": "restaurant-west",
+        "lowalt.task_payload_kg": 0.8,
+        "lowalt.task_priority": 1,
+        "lowalt.task_state": "unreleased",
+        "lowalt.task_vehicle": ""
+      },
+      "id": "meal-1",
+      "label": "Meal order 1",
+      "label_zh": "外卖订单 1",
+      "type": "lowalt:FoodOrder"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.task_created_ns": 0,
+        "lowalt.task_destination": "customer-1",
+        "lowalt.task_kind": "food",
+        "lowalt.task_origin": "restaurant-west",
+        "lowalt.task_payload_kg": 0.8,
+        "lowalt.task_priority": 1,
+        "lowalt.task_state": "unreleased",
+        "lowalt.task_vehicle": ""
+      },
+      "id": "meal-2",
+      "label": "Meal order 2",
+      "label_zh": "外卖订单 2",
+      "type": "lowalt:FoodOrder"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.task_created_ns": 0,
+        "lowalt.task_destination": "customer-1",
+        "lowalt.task_kind": "food",
+        "lowalt.task_origin": "restaurant-west",
+        "lowalt.task_payload_kg": 0.8,
+        "lowalt.task_priority": 1,
+        "lowalt.task_state": "unreleased",
+        "lowalt.task_vehicle": ""
+      },
+      "id": "meal-3",
+      "label": "Meal order 3",
+      "label_zh": "外卖订单 3",
+      "type": "lowalt:FoodOrder"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.task_created_ns": 0,
+        "lowalt.task_destination": "customer-1",
+        "lowalt.task_kind": "food",
+        "lowalt.task_origin": "restaurant-west",
+        "lowalt.task_payload_kg": 0.8,
+        "lowalt.task_priority": 1,
+        "lowalt.task_state": "unreleased",
+        "lowalt.task_vehicle": ""
+      },
+      "id": "meal-4",
+      "label": "Meal order 4",
+      "label_zh": "外卖订单 4",
+      "type": "lowalt:FoodOrder"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.task_created_ns": 0,
+        "lowalt.task_destination": "customer-1",
+        "lowalt.task_kind": "food",
+        "lowalt.task_origin": "restaurant-west",
+        "lowalt.task_payload_kg": 0.8,
+        "lowalt.task_priority": 1,
+        "lowalt.task_state": "unreleased",
+        "lowalt.task_vehicle": ""
+      },
+      "id": "meal-5",
+      "label": "Meal order 5",
+      "label_zh": "外卖订单 5",
+      "type": "lowalt:FoodOrder"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.task_created_ns": 0,
+        "lowalt.task_destination": "customer-1",
+        "lowalt.task_kind": "food",
+        "lowalt.task_origin": "restaurant-west",
+        "lowalt.task_payload_kg": 0.8,
+        "lowalt.task_priority": 1,
+        "lowalt.task_state": "unreleased",
+        "lowalt.task_vehicle": ""
+      },
+      "id": "meal-6",
+      "label": "Meal order 6",
+      "label_zh": "外卖订单 6",
+      "type": "lowalt:FoodOrder"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.capacity_j": 240000.0,
+        "lowalt.charging": false,
+        "lowalt.conflicts": [],
+        "lowalt.distance_m": 0.0,
+        "lowalt.energy_used_j": 0.0,
+        "lowalt.membership": [],
+        "lowalt.motion_energy_j": 240000.0,
+        "lowalt.payload_capacity_kg": 3.0,
+        "lowalt.payload_kg": 0.0,
+        "lowalt.position": [
+          -13.05,
+          -100.037,
+          0.0
+        ],
+        "lowalt.returning_to_charge": false,
+        "lowalt.soc": 1.0,
+        "lowalt.vehicle_class": "parcel",
+        "lowalt.velocity": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "lowalt.weather_held": false,
+        "lowalt.wind_limit_mps": 12.0
+      },
+      "id": "drone-1",
+      "label": "Meal courier 1",
+      "label_zh": "送餐无人机 1",
+      "type": "lowalt:UAV",
+      "vehicle_class": "parcel"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.capacity_j": 240000.0,
+        "lowalt.charging": false,
+        "lowalt.conflicts": [],
+        "lowalt.distance_m": 0.0,
+        "lowalt.energy_used_j": 0.0,
+        "lowalt.membership": [],
+        "lowalt.motion_energy_j": 240000.0,
+        "lowalt.payload_capacity_kg": 3.0,
+        "lowalt.payload_kg": 0.0,
+        "lowalt.position": [
+          328.337,
+          -136.882,
+          12.0
+        ],
+        "lowalt.returning_to_charge": false,
+        "lowalt.soc": 1.0,
+        "lowalt.vehicle_class": "parcel",
+        "lowalt.velocity": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "lowalt.weather_held": false,
+        "lowalt.wind_limit_mps": 12.0
+      },
+      "id": "drone-2",
+      "label": "Meal courier 2",
+      "label_zh": "送餐无人机 2",
+      "type": "lowalt:UAV",
+      "vehicle_class": "parcel"
+    },
+    {
+      "business": "logistics",
+      "facts": {
+        "lowalt.capacity_j": 240000.0,
+        "lowalt.charging": false,
+        "lowalt.conflicts": [],
+        "lowalt.distance_m": 0.0,
+        "lowalt.energy_used_j": 0.0,
+        "lowalt.membership": [],
+        "lowalt.motion_energy_j": 240000.0,
+        "lowalt.payload_capacity_kg": 3.0,
+        "lowalt.payload_kg": 0.0,
+        "lowalt.position": [
+          -13.05,
+          -65.037,
+          0.0
+        ],
+        "lowalt.returning_to_charge": false,
+        "lowalt.soc": 1.0,
+        "lowalt.vehicle_class": "parcel",
+        "lowalt.velocity": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "lowalt.weather_held": false,
+        "lowalt.wind_limit_mps": 12.0
+      },
+      "id": "drone-3",
+      "label": "Meal courier 3",
+      "label_zh": "送餐无人机 3",
+      "type": "lowalt:UAV",
+      "vehicle_class": "parcel"
+    }
+  ],
+  "format": "aeroagentsim.scenario/v1",
+  "generators": {
+    "fleet": {
+      "business": "logistics",
+      "count": 3,
+      "facts": {
+        "lowalt.capacity_j": 240000.0,
+        "lowalt.charging": false,
+        "lowalt.conflicts": [],
+        "lowalt.distance_m": 0.0,
+        "lowalt.energy_used_j": 0.0,
+        "lowalt.membership": [],
+        "lowalt.motion_energy_j": 240000.0,
+        "lowalt.payload_capacity_kg": 3.0,
+        "lowalt.payload_kg": 0.0,
+        "lowalt.returning_to_charge": false,
+        "lowalt.soc": 1.0,
+        "lowalt.vehicle_class": "parcel",
+        "lowalt.velocity": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "lowalt.weather_held": false,
+        "lowalt.wind_limit_mps": 12.0
+      },
+      "label": "Meal courier {index}",
+      "label_zh": "送餐无人机 {index}",
+      "prefix": "drone-",
+      "spacing_m": 35.0,
+      "starts": [
+        [
+          -13.05,
+          -100.037,
+          0.0
+        ],
+        [
+          328.337,
+          -136.882,
+          12.0
+        ]
+      ],
+      "type": "lowalt:UAV",
+      "vehicle_class": "parcel"
+    }
+  },
+  "id": "food-delivery",
+  "ingress_streams": [
+    {
+      "engine_ids": [
+        "behaviour"
+      ],
+      "id": "operator",
+      "initial_watermark_ns": 600000000000,
+      "lateness": "reject",
+      "mapping_id": "canonical",
+      "timeout_s": 10.0
+    }
+  ],
+  "outputs": {
+    "durability": "flush"
+  },
+  "presentation": [
+    {
+      "frame": "enu",
+      "positionField": "lowalt.position",
+      "typeId": "lowalt:UAV",
+      "visual": {
+        "color": "#50c9ff",
+        "kind": "marker",
+        "scale": 2.0
+      }
+    },
+    {
+      "frame": "enu",
+      "positionField": "lowalt.site_position",
+      "typeId": "lowalt:Site",
+      "visual": {
+        "color": "#ffc658",
+        "kind": "marker",
+        "scale": 3.0
+      }
+    }
+  ],
+  "registry": {
+    "fields": [
+      {
+        "id": "lowalt.position",
+        "metadata": {
+          "frame": "enu",
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "transform_revision": "lowalt.district/v1",
+          "unit": "m"
+        },
+        "schema": {
+          "items": {
+            "type": "number"
+          },
+          "length": 3,
+          "type": "vector"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.velocity",
+        "metadata": {
+          "frame": "enu",
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "transform_revision": "lowalt.district/v1",
+          "unit": "m/s"
+        },
+        "schema": {
+          "items": {
+            "type": "number"
+          },
+          "length": 3,
+          "type": "vector"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.soc",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.capacity_j",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "J"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.motion_energy_j",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "J"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.payload_kg",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "kg"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.payload_capacity_kg",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "kg"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.energy_used_j",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "J"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.distance_m",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "m"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.vehicle_class",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.wind_mps",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "m/s"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.wind_limit_mps",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "m/s"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.conflict_partner",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.conflict_gap_m",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "m"
+        },
+        "schema": {
+          "items": {
+            "type": "number"
+          },
+          "length": 2,
+          "type": "vector"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.membership",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.conflicts",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.breached_zones",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.weather_held",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "boolean"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.charging",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "boolean"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.returning_to_charge",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "boolean"
+        },
+        "type": "lowalt:UAV"
+      },
+      {
+        "id": "lowalt.site_position",
+        "metadata": {
+          "frame": "enu",
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "transform_revision": "lowalt.district/v1",
+          "unit": "m"
+        },
+        "schema": {
+          "items": {
+            "type": "number"
+          },
+          "length": 3,
+          "type": "vector"
+        },
+        "type": "lowalt:Site"
+      },
+      {
+        "id": "lowalt.site_open",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "boolean"
+        },
+        "type": "lowalt:Site"
+      },
+      {
+        "id": "lowalt.site_capacity",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:Site"
+      },
+      {
+        "id": "lowalt.food_preparation_s",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "s"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:Restaurant"
+      },
+      {
+        "id": "lowalt.food_preparation_started_ns",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "ns"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:FoodOrder"
+      },
+      {
+        "id": "lowalt.food_expected_ready_ns",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "ns"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:FoodOrder"
+      },
+      {
+        "id": "lowalt.food_ready_ns",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "ns"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:FoodOrder"
+      },
+      {
+        "id": "lowalt.food_picked_up_ns",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "ns"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:FoodOrder"
+      },
+      {
+        "id": "lowalt.food_delivered_ns",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "ns"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:FoodOrder"
+      },
+      {
+        "id": "lowalt.food_deadline_ns",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "ns"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:FoodOrder"
+      },
+      {
+        "id": "lowalt.pad_power_w",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "W"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:ChargingPad"
+      },
+      {
+        "id": "lowalt.wind",
+        "metadata": {
+          "frame": "enu",
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "transform_revision": "lowalt.district/v1",
+          "unit": "m/s"
+        },
+        "schema": {
+          "items": {
+            "type": "number"
+          },
+          "length": 3,
+          "type": "vector"
+        },
+        "type": "lowalt:Environment"
+      },
+      {
+        "id": "lowalt.zone_id",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "lowalt:AirspaceZone"
+      },
+      {
+        "id": "lowalt.zone_kind",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "enum": [
+            "no_fly",
+            "restricted",
+            "altitude_band",
+            "corridor"
+          ],
+          "type": "string"
+        },
+        "type": "lowalt:AirspaceZone"
+      },
+      {
+        "id": "lowalt.zone_lower",
+        "metadata": {
+          "frame": "enu",
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "transform_revision": "lowalt.district/v1",
+          "unit": "m"
+        },
+        "schema": {
+          "items": {
+            "type": "number"
+          },
+          "length": 3,
+          "type": "vector"
+        },
+        "type": "lowalt:AirspaceZone"
+      },
+      {
+        "id": "lowalt.zone_upper",
+        "metadata": {
+          "frame": "enu",
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "transform_revision": "lowalt.district/v1",
+          "unit": "m"
+        },
+        "schema": {
+          "items": {
+            "type": "number"
+          },
+          "length": 3,
+          "type": "vector"
+        },
+        "type": "lowalt:AirspaceZone"
+      },
+      {
+        "id": "lowalt.zone_start_ns",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "ns"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:AirspaceZone"
+      },
+      {
+        "id": "lowalt.zone_end_ns",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "ns"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:AirspaceZone"
+      },
+      {
+        "id": "lowalt.zone_active",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "boolean"
+        },
+        "type": "lowalt:AirspaceZone"
+      },
+      {
+        "id": "lowalt.zone_dynamic",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "boolean"
+        },
+        "type": "lowalt:AirspaceZone"
+      },
+      {
+        "id": "lowalt.task_kind",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "enum": [
+            "parcel",
+            "food",
+            "medical",
+            "inspection",
+            "survey",
+            "spraying",
+            "passenger",
+            "patrol",
+            "incident_response"
+          ],
+          "type": "string"
+        },
+        "type": "lowalt:Task"
+      },
+      {
+        "id": "lowalt.task_state",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "lowalt:Task"
+      },
+      {
+        "id": "lowalt.task_origin",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "lowalt:Task"
+      },
+      {
+        "id": "lowalt.task_destination",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "lowalt:Task"
+      },
+      {
+        "id": "lowalt.task_vehicle",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "lowalt:Task"
+      },
+      {
+        "id": "lowalt.task_payload_kg",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "kg"
+        },
+        "schema": {
+          "type": "number"
+        },
+        "type": "lowalt:Task"
+      },
+      {
+        "id": "lowalt.task_priority",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "1"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:Task"
+      },
+      {
+        "id": "lowalt.task_created_ns",
+        "metadata": {
+          "role": "observation",
+          "time_semantics": "canonical computation; half-open validity",
+          "unit": "ns"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "lowalt:Task"
+      },
+      {
+        "id": "aas.behaviour.template_id",
+        "metadata": {
+          "role": "behaviour"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "aas:BehaviourInstance"
+      },
+      {
+        "id": "aas.behaviour.binding_id",
+        "metadata": {
+          "role": "behaviour"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "aas:BehaviourInstance"
+      },
+      {
+        "id": "aas.behaviour.roles",
+        "metadata": {
+          "role": "behaviour"
+        },
+        "schema": {
+          "extra": true,
+          "members": {},
+          "required": [],
+          "type": "record"
+        },
+        "type": "aas:BehaviourInstance"
+      },
+      {
+        "id": "aas.behaviour.state",
+        "metadata": {
+          "role": "behaviour"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "aas:BehaviourInstance"
+      },
+      {
+        "id": "aas.behaviour.revision",
+        "metadata": {
+          "role": "behaviour"
+        },
+        "schema": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "aas:BehaviourInstance"
+      },
+      {
+        "id": "aas.behaviour.status",
+        "metadata": {
+          "role": "behaviour"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "type": "aas:BehaviourInstance"
+      },
+      {
+        "id": "aas.behaviour.children",
+        "metadata": {
+          "role": "behaviour"
+        },
+        "schema": {
+          "extra": true,
+          "members": {},
+          "required": [],
+          "type": "record"
+        },
+        "type": "aas:BehaviourInstance"
+      }
+    ],
+    "messages": [
+      {
+        "id": "lowalt.food.preparation_started",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "ready_ns": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "restaurant": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "restaurant",
+            "ready_ns"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "restaurant"
+            ],
+            "type_id": "lowalt:Restaurant"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.food.ready",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "preparation_s": {
+              "type": "number"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "restaurant": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "restaurant",
+            "preparation_s"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "restaurant"
+            ],
+            "type_id": "lowalt:Restaurant"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.food.preparation_delayed",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "delay_s": {
+              "type": "number"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "restaurant": {
+              "type": "string"
+            },
+            "tasks": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "restaurant",
+            "delay_s",
+            "tasks"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "restaurant"
+            ],
+            "type_id": "lowalt:Restaurant"
+          },
+          {
+            "path": [
+              "tasks",
+              "*"
+            ],
+            "type_id": "lowalt:Task"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.food.delivered",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "deadline_ns": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "destination": {
+              "type": "string"
+            },
+            "on_time": {
+              "type": "boolean"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "ready_to_delivery_s": {
+              "type": "number"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle",
+            "destination",
+            "deadline_ns",
+            "ready_to_delivery_s",
+            "on_time"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          },
+          {
+            "path": [
+              "destination"
+            ],
+            "type_id": "lowalt:Site"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.operator.restaurant_delay",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "delay_s": {
+              "minimum": 0.001,
+              "type": "number"
+            },
+            "restaurant": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "restaurant",
+            "delay_s"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "restaurant"
+            ],
+            "type_id": "lowalt:Restaurant"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.task.created",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "destination": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "origin": {
+              "type": "string"
+            },
+            "priority": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "kind",
+            "priority"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "origin"
+            ],
+            "type_id": "lowalt:Site"
+          },
+          {
+            "path": [
+              "destination"
+            ],
+            "type_id": "lowalt:Site"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.task.assigned",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "algorithm": {
+              "type": "string"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle",
+            "algorithm"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.task.started",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.task.picked_up",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.task.completed",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "latency_s": {
+              "type": "number"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle",
+            "latency_s"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.task.preempted",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            },
+            "urgent_task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle",
+            "urgent_task"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.task.resumed",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.task.replanned",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            },
+            "zone": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle",
+            "reason"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.inspection.observed",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "distance_m": {
+              "type": "number"
+            },
+            "position": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle",
+            "position",
+            "distance_m"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.spraying.applied",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "distance_m": {
+              "type": "number"
+            },
+            "position": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle",
+            "position",
+            "distance_m"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.patrol.visited",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "position": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle",
+            "position"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.site.closed",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "site": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "site"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "site"
+            ],
+            "type_id": "lowalt:Site"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.operator.close_vertiport",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "site": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "site"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "site"
+            ],
+            "type_id": "lowalt:Site"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.operator.add_urgent_order",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "destination": {
+              "type": "string"
+            },
+            "origin": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "origin",
+            "destination"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "origin"
+            ],
+            "type_id": "lowalt:Site"
+          },
+          {
+            "path": [
+              "destination"
+            ],
+            "type_id": "lowalt:Site"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.operator.investigate",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "destination": {
+              "type": "string"
+            },
+            "origin": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "origin",
+            "destination"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "origin"
+            ],
+            "type_id": "lowalt:Site"
+          },
+          {
+            "path": [
+              "destination"
+            ],
+            "type_id": "lowalt:Site"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.energy.swap_started",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "pad": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "vehicle",
+            "pad"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.energy.swap_finished",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "pad": {
+              "type": "string"
+            },
+            "soc": {
+              "type": "number"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "vehicle",
+            "pad",
+            "soc"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.mobility.pad_wait",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "site": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "vehicle",
+            "site"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          },
+          {
+            "path": [
+              "site"
+            ],
+            "type_id": "lowalt:Site"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.task.failed",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "reason"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.airspace.conflict",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "a": {
+              "type": "string"
+            },
+            "b": {
+              "type": "string"
+            },
+            "horizontal_m": {
+              "type": "number"
+            },
+            "vertical_m": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "a",
+            "b",
+            "horizontal_m",
+            "vertical_m"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.airspace.conflict_resolved",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "a": {
+              "type": "string"
+            },
+            "action": {
+              "type": "string"
+            },
+            "b": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "a",
+            "b",
+            "action"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.airspace.geofence_entered",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "vehicle": {
+              "type": "string"
+            },
+            "zone": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "vehicle",
+            "zone"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.airspace.zone_activated",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "reason": {
+              "type": "string"
+            },
+            "zone": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "zone",
+            "reason"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.airspace.zone_deactivated",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "reason": {
+              "type": "string"
+            },
+            "zone": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "zone",
+            "reason"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.energy.low",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "soc": {
+              "type": "number"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "vehicle",
+            "soc"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.energy.charging_started",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "pad": {
+              "type": "string"
+            },
+            "soc": {
+              "type": "number"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "vehicle",
+            "pad",
+            "soc"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.energy.charging_finished",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "pad": {
+              "type": "string"
+            },
+            "soc": {
+              "type": "number"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "vehicle",
+            "pad",
+            "soc"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.weather.hold",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "reason": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            },
+            "wind_mps": {
+              "type": "number"
+            },
+            "zone": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.weather.release",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "reason": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            },
+            "wind_mps": {
+              "type": "number"
+            },
+            "zone": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.control",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "action": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "target": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            },
+            "until_ns": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "vehicle",
+            "action",
+            "reason"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "vehicle"
+            ],
+            "type_id": "lowalt:UAV"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.allocation.request",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "tasks_json": {
+              "type": "string"
+            },
+            "vehicles_json": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "tasks_json",
+            "vehicles_json"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.allocation.result",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "assignments_json": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "assignments_json"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.motion.arrived",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "entity": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            }
+          },
+          "required": [
+            "entity",
+            "position"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "cancel_support": false,
+        "feedback_schema": {
+          "extra": false,
+          "members": {
+            "entity": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "record"
+        },
+        "id": "lowalt.motion.move_to",
+        "kind": "command",
+        "result_schema": {
+          "extra": false,
+          "members": {
+            "entity": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "record"
+        },
+        "schema": {
+          "extra": false,
+          "members": {
+            "entity": {
+              "type": "string"
+            },
+            "target": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            }
+          },
+          "required": [
+            "entity",
+            "target"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "cancel_support": false,
+        "feedback_schema": {
+          "extra": false,
+          "members": {
+            "entity": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "record"
+        },
+        "id": "lowalt.motion.hold",
+        "kind": "command",
+        "result_schema": {
+          "extra": false,
+          "members": {
+            "entity": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "record"
+        },
+        "schema": {
+          "extra": false,
+          "members": {
+            "entity": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "entity"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "cancel_support": false,
+        "feedback_schema": {
+          "extra": false,
+          "members": {
+            "entity": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "record"
+        },
+        "id": "lowalt.motion.stop",
+        "kind": "command",
+        "result_schema": {
+          "extra": false,
+          "members": {
+            "entity": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "type": "number"
+              },
+              "length": 3,
+              "type": "vector"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "record"
+        },
+        "schema": {
+          "extra": false,
+          "members": {
+            "entity": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "entity"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "cancel_support": false,
+        "id": "lowalt.airspace.activate",
+        "kind": "command",
+        "result_schema": {
+          "extra": false,
+          "members": {
+            "active": {
+              "type": "boolean"
+            },
+            "zone": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "zone",
+            "active"
+          ],
+          "type": "record"
+        },
+        "schema": {
+          "extra": false,
+          "members": {
+            "active": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "zone": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "zone",
+            "active",
+            "reason"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "cancel_support": false,
+        "id": "lowalt.energy.return_to_pad",
+        "kind": "command",
+        "result_schema": {
+          "extra": false,
+          "members": {
+            "pad": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "soc": {
+              "type": "number"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "record"
+        },
+        "schema": {
+          "extra": false,
+          "members": {
+            "reason": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "vehicle",
+            "reason"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "cancel_support": false,
+        "id": "lowalt.airspace.resolve_conflict",
+        "kind": "command",
+        "result_schema": {
+          "extra": false,
+          "members": {
+            "a": {
+              "type": "string"
+            },
+            "action": {
+              "type": "string"
+            },
+            "b": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "record"
+        },
+        "schema": {
+          "extra": false,
+          "members": {
+            "a": {
+              "type": "string"
+            },
+            "b": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "a",
+            "b"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "cancel_support": false,
+        "id": "lowalt.airspace.flight_control",
+        "kind": "command",
+        "result_schema": {
+          "extra": false,
+          "members": {
+            "action": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "record"
+        },
+        "schema": {
+          "extra": false,
+          "members": {
+            "action": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "vehicle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "vehicle",
+            "action",
+            "reason"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.operator.change_dropoff",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "destination": {
+              "target_type": "lowalt:Customer",
+              "type": "ref"
+            },
+            "task": {
+              "target_type": "lowalt:Task",
+              "type": "ref"
+            }
+          },
+          "required": [
+            "task",
+            "destination"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.operator.prioritize_medical",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "priority": {
+              "maximum": 1000,
+              "minimum": 101,
+              "type": "integer"
+            },
+            "task": {
+              "target_type": "lowalt:Task",
+              "type": "ref"
+            }
+          },
+          "required": [
+            "task",
+            "priority"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.operator.report_defect",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "site": {
+              "target_type": "lowalt:Site",
+              "type": "ref"
+            },
+            "task": {
+              "target_type": "lowalt:Task",
+              "type": "ref"
+            }
+          },
+          "required": [
+            "task",
+            "site"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.operator.pause_spraying",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "duration_s": {
+              "maximum": 120,
+              "minimum": 1,
+              "type": "number"
+            },
+            "task": {
+              "target_type": "lowalt:Task",
+              "type": "ref"
+            }
+          },
+          "required": [
+            "task",
+            "duration_s"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.operator.close_air_taxi_port",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "site": {
+              "target_type": "lowalt:Vertiport",
+              "type": "ref"
+            }
+          },
+          "required": [
+            "site"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.operator.rejected",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "operation": {
+              "type": "string"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "operation",
+            "reason",
+            "provenance"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "lowalt.parcel.dropoff_changed",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "destination": {
+              "type": "string"
+            },
+            "previous": {
+              "type": "string"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "previous",
+            "destination"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "destination"
+            ],
+            "type_id": "lowalt:Site"
+          },
+          {
+            "path": [
+              "previous"
+            ],
+            "type_id": "lowalt:Site"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.medical.prioritized",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "priority": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "priority"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.inspection.defect_reported",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "site": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "site"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          },
+          {
+            "path": [
+              "site"
+            ],
+            "type_id": "lowalt:Site"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.spraying.paused",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            },
+            "until_ns": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "task",
+            "until_ns"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          }
+        ]
+      },
+      {
+        "id": "lowalt.spraying.resumed",
+        "kind": "event",
+        "schema": {
+          "extra": false,
+          "members": {
+            "provenance": {
+              "extra": false,
+              "members": {
+                "event_key": {
+                  "type": "string"
+                },
+                "message_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parent_event_keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "message_ids"
+              ],
+              "type": "record"
+            },
+            "task": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "record"
+        },
+        "subjects": [
+          {
+            "path": [
+              "task"
+            ],
+            "type_id": "lowalt:Task"
+          }
+        ]
+      },
+      {
+        "id": "aas.behaviour.sample_signal",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {
+            "from_ns": {
+              "type": "integer"
+            },
+            "predicate": {
+              "type": "string"
+            },
+            "to_ns": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "predicate",
+            "from_ns",
+            "to_ns"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.behaviour.created",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {
+            "bindingId": {
+              "type": "string"
+            },
+            "children": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "instanceId": {
+              "type": "string"
+            },
+            "lifecycle": {
+              "enum": [
+                "created",
+                "transitioned",
+                "completed",
+                "failed",
+                "canceled"
+              ],
+              "type": "string"
+            },
+            "op": {
+              "enum": [
+                "assert",
+                "close"
+              ],
+              "type": "string"
+            },
+            "packageDigest": {
+              "type": "string"
+            },
+            "revision": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "roles": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "state": {
+              "type": "string"
+            },
+            "templateId": {
+              "type": "string"
+            },
+            "transitionId": {
+              "nullable": true,
+              "type": "string"
+            },
+            "trigger": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "validFrom": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "validTo": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "nullable": true,
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "variables": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            }
+          },
+          "required": [
+            "validFrom",
+            "validTo",
+            "op",
+            "instanceId",
+            "templateId",
+            "bindingId",
+            "packageDigest",
+            "roles",
+            "lifecycle",
+            "state",
+            "revision",
+            "variables",
+            "children",
+            "transitionId",
+            "trigger"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.behaviour.transitioned",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {
+            "bindingId": {
+              "type": "string"
+            },
+            "children": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "instanceId": {
+              "type": "string"
+            },
+            "lifecycle": {
+              "enum": [
+                "created",
+                "transitioned",
+                "completed",
+                "failed",
+                "canceled"
+              ],
+              "type": "string"
+            },
+            "op": {
+              "enum": [
+                "assert",
+                "close"
+              ],
+              "type": "string"
+            },
+            "packageDigest": {
+              "type": "string"
+            },
+            "revision": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "roles": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "state": {
+              "type": "string"
+            },
+            "templateId": {
+              "type": "string"
+            },
+            "transitionId": {
+              "nullable": true,
+              "type": "string"
+            },
+            "trigger": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "validFrom": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "validTo": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "nullable": true,
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "variables": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            }
+          },
+          "required": [
+            "validFrom",
+            "validTo",
+            "op",
+            "instanceId",
+            "templateId",
+            "bindingId",
+            "packageDigest",
+            "roles",
+            "lifecycle",
+            "state",
+            "revision",
+            "variables",
+            "children",
+            "transitionId",
+            "trigger"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.behaviour.completed",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {
+            "bindingId": {
+              "type": "string"
+            },
+            "children": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "instanceId": {
+              "type": "string"
+            },
+            "lifecycle": {
+              "enum": [
+                "created",
+                "transitioned",
+                "completed",
+                "failed",
+                "canceled"
+              ],
+              "type": "string"
+            },
+            "op": {
+              "enum": [
+                "assert",
+                "close"
+              ],
+              "type": "string"
+            },
+            "packageDigest": {
+              "type": "string"
+            },
+            "revision": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "roles": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "state": {
+              "type": "string"
+            },
+            "templateId": {
+              "type": "string"
+            },
+            "transitionId": {
+              "nullable": true,
+              "type": "string"
+            },
+            "trigger": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "validFrom": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "validTo": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "nullable": true,
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "variables": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            }
+          },
+          "required": [
+            "validFrom",
+            "validTo",
+            "op",
+            "instanceId",
+            "templateId",
+            "bindingId",
+            "packageDigest",
+            "roles",
+            "lifecycle",
+            "state",
+            "revision",
+            "variables",
+            "children",
+            "transitionId",
+            "trigger"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.behaviour.failed",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {
+            "bindingId": {
+              "type": "string"
+            },
+            "children": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "instanceId": {
+              "type": "string"
+            },
+            "lifecycle": {
+              "enum": [
+                "created",
+                "transitioned",
+                "completed",
+                "failed",
+                "canceled"
+              ],
+              "type": "string"
+            },
+            "op": {
+              "enum": [
+                "assert",
+                "close"
+              ],
+              "type": "string"
+            },
+            "packageDigest": {
+              "type": "string"
+            },
+            "revision": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "roles": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "state": {
+              "type": "string"
+            },
+            "templateId": {
+              "type": "string"
+            },
+            "transitionId": {
+              "nullable": true,
+              "type": "string"
+            },
+            "trigger": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "validFrom": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "validTo": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "nullable": true,
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "variables": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            }
+          },
+          "required": [
+            "validFrom",
+            "validTo",
+            "op",
+            "instanceId",
+            "templateId",
+            "bindingId",
+            "packageDigest",
+            "roles",
+            "lifecycle",
+            "state",
+            "revision",
+            "variables",
+            "children",
+            "transitionId",
+            "trigger"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.behaviour.canceled",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {
+            "bindingId": {
+              "type": "string"
+            },
+            "children": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "instanceId": {
+              "type": "string"
+            },
+            "lifecycle": {
+              "enum": [
+                "created",
+                "transitioned",
+                "completed",
+                "failed",
+                "canceled"
+              ],
+              "type": "string"
+            },
+            "op": {
+              "enum": [
+                "assert",
+                "close"
+              ],
+              "type": "string"
+            },
+            "packageDigest": {
+              "type": "string"
+            },
+            "revision": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "roles": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "state": {
+              "type": "string"
+            },
+            "templateId": {
+              "type": "string"
+            },
+            "transitionId": {
+              "nullable": true,
+              "type": "string"
+            },
+            "trigger": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "validFrom": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "validTo": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "nullable": true,
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "variables": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            }
+          },
+          "required": [
+            "validFrom",
+            "validTo",
+            "op",
+            "instanceId",
+            "templateId",
+            "bindingId",
+            "packageDigest",
+            "roles",
+            "lifecycle",
+            "state",
+            "revision",
+            "variables",
+            "children",
+            "transitionId",
+            "trigger"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.behaviour.predicate_evaluated",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {
+            "acquired": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "contextId": {
+              "type": "string"
+            },
+            "diagnostics": {
+              "items": {
+                "extra": true,
+                "members": {},
+                "required": [],
+                "type": "record"
+              },
+              "type": "array"
+            },
+            "evaluatedAt": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "op": {
+              "enum": [
+                "assert",
+                "close"
+              ],
+              "type": "string"
+            },
+            "predicateId": {
+              "type": "string"
+            },
+            "profile": {
+              "enum": [
+                "committed_reactive/v1",
+                "aerograph_sampled/v1"
+              ],
+              "type": "string"
+            },
+            "readCut": {
+              "extra": true,
+              "members": {
+                "at": {
+                  "extra": true,
+                  "members": {
+                    "microstep": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "ns": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ns",
+                    "microstep"
+                  ],
+                  "type": "record"
+                },
+                "index": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "index",
+                "at"
+              ],
+              "type": "record"
+            },
+            "roles": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            },
+            "status": {
+              "enum": [
+                "known",
+                "required_input",
+                "invalid_input"
+              ],
+              "type": "string"
+            },
+            "validFrom": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "validTo": {
+              "extra": true,
+              "members": {
+                "microstep": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ns": {
+                  "type": "string"
+                }
+              },
+              "nullable": true,
+              "required": [
+                "ns",
+                "microstep"
+              ],
+              "type": "record"
+            },
+            "value": {
+              "nullable": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "validFrom",
+            "validTo",
+            "op",
+            "contextId",
+            "predicateId",
+            "roles",
+            "profile",
+            "status",
+            "value",
+            "diagnostics",
+            "evaluatedAt",
+            "readCut",
+            "acquired"
+          ],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.behaviour.sampled_evidence",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {},
+          "required": [],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.behaviour.conflict",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {},
+          "required": [],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.behaviour.action_conflict",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {},
+          "required": [],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.behaviour.action_started",
+        "kind": "event",
+        "schema": {
+          "extra": true,
+          "members": {},
+          "required": [],
+          "type": "record"
+        }
+      },
+      {
+        "id": "aas.runtime.inject_event",
+        "kind": "command",
+        "result_schema": {
+          "extra": true,
+          "members": {},
+          "required": [],
+          "type": "record"
+        },
+        "schema": {
+          "extra": true,
+          "members": {
+            "injection_point": {
+              "type": "string"
+            },
+            "payload": {
+              "extra": true,
+              "members": {},
+              "required": [],
+              "type": "record"
+            }
+          },
+          "required": [
+            "injection_point",
+            "payload"
+          ],
+          "type": "record"
+        }
+      }
+    ],
+    "snapshot": "registry.snapshot.json",
+    "types": [
+      {
+        "abstract": false,
+        "id": "lowalt:UAV",
+        "parents": [
+          "oo:UAV"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:Site",
+        "parents": [
+          "oo:ModelObject"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:Customer",
+        "parents": [
+          "lowalt:Site"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:Restaurant",
+        "parents": [
+          "lowalt:Site"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:Field",
+        "parents": [
+          "lowalt:Site"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:Vertiport",
+        "parents": [
+          "lowalt:Site",
+          "oo:Facility"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:Depot",
+        "parents": [
+          "lowalt:Vertiport"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:ChargingPad",
+        "parents": [
+          "lowalt:Site"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:AirspaceZone",
+        "parents": [
+          "oo:ModelObject"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:Task",
+        "parents": [
+          "oo:Task"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:FoodOrder",
+        "parents": [
+          "lowalt:Task"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "lowalt:Environment",
+        "parents": [
+          "oo:ModelObject"
+        ]
+      },
+      {
+        "abstract": false,
+        "id": "aas:BehaviourInstance",
+        "parents": []
+      }
+    ]
+  },
+  "run": {
+    "advance_ns": 10000000000,
+    "pacing": "fast",
+    "seed": 42,
+    "until_ns": 600000000000
+  }
+}

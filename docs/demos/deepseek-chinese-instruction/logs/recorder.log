@@ -1,0 +1,17 @@
+[   0.3s] open {"app":"http://127.0.0.1:18972"}
+[  24.6s] connected {"endpoint":"http://127.0.0.1:8788/v1","model":"deepseek-v4-pro","api_key":"none"}
+[  61.7s] instruction_sent {"text":"帮我搭一个外卖无人机配送仿真：3架无人机给6个订单送餐，中途刮一阵大风，仿真10分钟，看看能否全部送达。"}
+[  96.0s] plan_ready {"validation":"valid","plan":"提议方案 · V1 未应用"}
+[ 120.4s] open_questions {"count":2}
+[ 129.1s] confirmation_sent {"text":"订单固定为 6 单，其余问题都用默认值。"}
+[ 145.5s] plan_after_confirmation {"validation":"valid","plan":"提议方案 · V2 未应用"}
+[ 145.5s] plan_versions {"before":"提议方案 · V1 未应用","after":"提议方案 · V2 未应用"}
+[ 159.3s] applied {"url":"http://127.0.0.1:18972/w/studio-8e145b5119954f70b3c370cc17eeda1a?panel=assistant&assistant=assist-23a73a3635ef46739cb081f4f777d63d"}
+[ 164.6s] initialized {"url":"http://127.0.0.1:18972/w/studio-8e145b5119954f70b3c370cc17eeda1a?panel=assistant&assistant=assist-23a73a3635ef46739cb081f4f777d63d&run=run-d06be960af0c4a3ba0263fbc0857f3ad&mode=live"}
+[ 178.1s] started {"speed":"10x"}
+[ 178.1s] run_status {"status":"initialized"}
+[ 180.4s] run_status {"status":"running"}
+[ 240.1s] run_status {"status":"completed"}
+[ 261.4s] result {"story":"6/6\n方案预期的步骤全部发生\n01:10\n外卖订单按计划发布（共配置 6 个）\n\n新增前往餐食收货点 1的外卖订单\n\n02:43\n每个已发布的外卖订单都分配到无人机\n\n送餐无人机 1获派前往餐食收货点 1的外卖订单\n\n02:51\n风速超限时暂停飞行\n\n飞行暂停：风速超过飞行器上限\n\n03:21\n风速降至上限内后恢复飞行\n\n飞行恢复：风速恢复到允许范围\n\n03:56\n释放并准备好后接取任务（每个已发布的外卖订单）\n\n送餐无人机 3在东侧屋顶餐厅厨房接取外卖订单\n\n04:27\n每个已发布的外卖订单都完成（共配置 6 个）\n\n送餐无人机 3在餐食收货点 2送达餐食（耗时 226.3 秒）\n\n关键记录事件（48）","kpis":"已生成任务\n6\n已完成任务\n6\n平均任务用时\n157.7s\n准时率\n100%\n能量消耗\n175.3kJ"}
+[ 271.2s] done {"url":"http://127.0.0.1:18972/w/studio-8e145b5119954f70b3c370cc17eeda1a?panel=assistant&assistant=assist-23a73a3635ef46739cb081f4f777d63d&run=run-d06be960af0c4a3ba0263fbc0857f3ad&mode=live"}
+exit 0

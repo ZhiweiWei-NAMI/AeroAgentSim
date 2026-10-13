@@ -5,7 +5,10 @@
 *.db-wal
 runtime/
 logs/
+# Recorded demos keep their execution logs beside the recording.
+!docs/demos/*/logs/
 *.log
+!docs/demos/*/logs/*.log
 optimization_log.txt
 
 # --- Project-specific generated data ---

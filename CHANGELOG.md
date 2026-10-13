@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Describe a scenario, confirm, run.** The workbench assistant turns plain Chinese or English into a validated plan with any OpenAI-compatible model, shows its assumptions and open questions, and changes the project only on **Confirm and apply**. The Story tab checks the plan against the recorded run. [Recorded DeepSeek demo with transcript and logs](docs/demos/deepseek-chinese-instruction/README.md).
+- **Assistant robustness.** New places apply before the orders that use them; a turn that exhausts its tool budget still ends with an answer; scene summaries state how many randomly released orders will actually arrive.
+- **Workbench fixes.** Guide links open referenced docs in place, graph type filters name their vocabulary, the crop field sits on open ground beyond the detailed city, idle delivery drones read "Delivery", and rates show as percentages.
+
 ## 2.1.0 — 2026-10-11
 
 - **Operational workbench.** Saved workspaces first, revision-bound authoring, top-level runtime controls, searchable explorer, resizable graph/city views and contextual inspection.

@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/media/logo.png" alt="AeroAgentSim" width="160"></p>
 
-<p align="center"><b>模拟一座城市的低空业务，调整规则与算法，观察变化如何发生。</b></p>
+<p align="center"><b>在 3D 城市中模拟低空无人机业务。用一句话描述场景：DeepSeek 等大模型负责搭建，你确认后即可运行仿真。</b></p>
 
 <p align="center">
   <a href="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/actions/workflows/tests.yml"><img alt="测试" src="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/actions/workflows/tests.yml/badge.svg"></a>
@@ -9,23 +9,46 @@
   <a href="LICENSE"><img alt="许可证：Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
 </p>
 
+<p align="center"><img src="docs/demos/deepseek-chinese-instruction/demo.gif" alt="DeepSeek 把一句中文指令搭建成外卖配送场景；用户确认后运行，6 单全部送达" width="900"></p>
 
-<p align="center"><img src="docs/media/workbench-food-zh.png" alt="外卖配送工作台：选中的送餐无人机、对象列表、检查器与时间轴" width="1100"></p>
+<p align="center"><i>一句中文指令 → DeepSeek 起草场景 → 用户确认 → 经历阵风后 6 单全部送达。</i><br><a href="docs/demos/deepseek-chinese-instruction/README.md">完整录屏、对话记录与日志</a></p>
 
-[查看六段工作台演示](docs/media/README.md)：配置、运行、引入事件、追踪原因、查看照片和对比记录。
+## 它能做什么
 
+- **说一句话就能搭场景。** 助手读取平台真实的模板、地点和规则，给出方案；在你确认之前不会改动任何内容。支持任何 OpenAI 兼容接口的模型，包括 DeepSeek。
+- **九个现成场景。** 包裹、医疗与外卖配送，电力巡检，农田喷洒，空中出租车，安防巡逻，交通事故，以及多业务共享的城市一天。
+- **看清结果的原因。** 修改规则和算法后重新运行，在可回放的 3D 城市中把每个结果追溯到记录的事件。
 
-## 三条命令开始
+## 开始
 
-需要 Python 3.10+、Node.js 22 和 npm。包裹配送场景无需 GPU、Docker 或账户。
+需要 Python 3.10+、Node.js 22 和 npm，无需 GPU、Docker 或账户。
 
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git && cd AeroAgentSim
 python -m venv .venv && source .venv/bin/activate && python -m pip install -e ./aerokernel -e '.[server]'
-(cd frontend && npm ci && npm run build) && aeroagentsim run-template parcel-delivery
+(cd frontend && npm ci && npm run build) && aeroagentsim serve --frontend frontend/dist
 ```
 
-最后一条命令在工作台中打开该项目，依次选择 **验证 → 保存版本 → 初始化 → 开始** 即可启动。加上 `--headless` 可直接在终端运行。`aeroagentsim templates` 列出全部九个场景。[安装指南](docs/getting-started/install.md) 包含 Windows 设置，以及交通事故和城市综合场景拍摄所需的 Chromium 配置。[English](README.md)
+打开 <http://127.0.0.1:8002>。[安装指南](docs/getting-started/install.md) 包含 Windows 设置和拍摄所需的 Chromium 配置。[English](README.md)
+
+## 连接 DeepSeek，试一句话
+
+1. 点击 **用你自己的话描述一个场景**（或按 <kbd>A</kbd>）。
+2. 填写接口地址 `https://api.deepseek.com/v1`、DeepSeek 模型名（如 `deepseek-chat`）和 API 密钥，点击 **连接并测试**。
+3. 输入：
+
+   > 帮我搭一个外卖无人机配送仿真：3架无人机给6个订单送餐，中途刮一阵大风，仿真10分钟，看看能否全部送达。
+
+4. 查看方案并回答它的问题（例如“订单固定为 6 单，其余问题都用默认值。”），然后依次 **确认并应用 → 初始化 → 启动**。**经过** 标签页会把方案预期与实际记录逐条对照。
+
+密钥只保存在服务器上，不会返回浏览器。如需为这台服务器的所有用户预设模型：
+
+```bash
+AEROAGENTSIM_ASSISTANT_BASE_URL=https://api.deepseek.com/v1 AEROAGENTSIM_ASSISTANT_MODEL=deepseek-chat \
+AEROAGENTSIM_ASSISTANT_API_KEY=sk-... aeroagentsim serve --frontend frontend/dist
+```
+
+不接模型？运行 `aeroagentsim run-template parcel-delivery` 打开现成场景，依次 **验证 → 保存版本 → 初始化 → 启动**。[助手指南](docs/guides/assistant.md) · [六段工作台演示](docs/media/README.md)
 
 ## 选择一个场景
 
