@@ -3,8 +3,8 @@ interface GeographicOrigin { readonly latitude_deg: number; readonly longitude_d
 type StaticLayer = "buildings" | "roads" | "terrain";
 interface TraceTarget { readonly kind: "building" | "road"; readonly id: string; }
 
-export const MESH_PACK_SCHEMA = "aeroagentsim.osm2world-mesh-pack/v1";
-export const MAX_PACK_CHUNK_BYTES = 64 * 1024 * 1024;
+const MESH_PACK_SCHEMA = "aeroagentsim.osm2world-mesh-pack/v1";
+const MAX_PACK_CHUNK_BYTES = 64 * 1024 * 1024;
 /** Opaque file reference: the name is not a content hash and is never checked. */
 export interface PackFile { readonly asset_id: string; readonly size_bytes: number; }
 export interface PackedMaterial {

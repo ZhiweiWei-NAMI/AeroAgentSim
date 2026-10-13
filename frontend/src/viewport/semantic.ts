@@ -68,18 +68,11 @@ function vector3(value: unknown, context: string): [number, number, number] {
   return [value[0], value[1], value[2]];
 }
 
-function kindOf(entity: EntityState): string {
-  const key = entity.key;
-  return `${key.id}:${key.generation}`;
-}
-
-export const entityIdOf = (entity: EntityState): string => kindOf(entity);
-
 /**
  * Registered field metadata lookup. Returns the declared schema metadata for
  * a field id so zone kinds are validated against the registry, not a constant.
  */
-export function zoneKindEnum(header: RunHeader): string[] | undefined {
+function zoneKindEnum(header: RunHeader): string[] | undefined {
   const field = header.fields.find(field => field.fieldId === 'lowalt.zone_kind');
   if (!field) return undefined;
   const schema = field.schema;
@@ -197,10 +190,6 @@ export function humanizeId(id: string, typeName: string, locale = 'en-US'): stri
  * `lowalt.task_vehicle` reference, or a `current_task`/`assigned_task` graph
  * edge when the scenario authors one. Only real references are used.
  */
-export function isLowaltTask(entity: EntityState, header: Pick<RunHeader, 'types'>): boolean {
-  return entity.typeId === 'lowalt:Task' || header.types.some(type => type.typeId === entity.typeId && type.ancestors.includes('lowalt:Task'));
-}
-
 export function taskByVehicle(store: { header: RunHeader; entities: Map<string, EntityState>; edges: Map<string, { relationId: string; source: EntityKey; target: EntityKey; op: string }> }): Map<string, EntityState> {
   const map = new Map<string, EntityState>();
   const taskTypes = new Set(['lowalt:Task', ...store.header.types.filter(type => type.ancestors.includes('lowalt:Task')).map(type => type.typeId)]);
