@@ -12,6 +12,7 @@ import { SemanticLayer } from './semantic-layer';
 import {activeZones,semanticSites} from './semantic';
 import {ProceduralDistrict} from '../scene/procedural-district';
 import { pipeline, PRESETS, type Quality } from './pipeline';
+import { QualityMaterials } from './quality-materials';
 import { setupScene } from './scene';
 import { scenePresentation, type ScenePresentation } from '../scene/presentation';
 import { loadSceneLayer } from '../scene/city-layer';
@@ -93,6 +94,7 @@ export class Viewport {
   private home?: { position: T.Vector3; target: T.Vector3 };
   private lastLegend = '';
   private cityGeometryRevision = 0;
+  private qualityMaterials = new QualityMaterials();
   constructor(private container: HTMLElement, private header: RunHeader, private options: ViewportOptions = {}) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'high-performance' });
@@ -199,6 +201,7 @@ export class Viewport {
     this.options.onStatus?.([...new Set([...this.assetIssues,this.lastStatus])].filter(Boolean).map(item=>this.displayStatus(item)).join(' | '));
   }
   private applyCityDisplay(object: T.Object3D) {
+    this.qualityMaterials.apply(object, this.quality === 'low');
     object.traverse(node=>{if(node instanceof T.Mesh)for(const material of Array.isArray(node.material)?node.material:[node.material]){
       const uniform=material.userData.displayDusk as {value:number}|undefined;if(uniform)uniform.value=this.dusk?1:0;
     }});
@@ -270,6 +273,8 @@ export class Viewport {
   }
   private applyPreset() {
     const preset = PRESETS[this.quality]; this.renderer.setPixelRatio(Math.min(devicePixelRatio, preset.ratio));
+    this.qualityMaterials.apply(this.staticRoot, this.quality === 'low');
+    this.qualityMaterials.apply(this.lighting.ground, this.quality === 'low');
     this.renderer.shadowMap.enabled = this.quality !== 'low'; this.lighting.sun.shadow.mapSize.set(preset.shadow, preset.shadow);
     this.lighting.sun.shadow.map?.dispose(); this.lighting.sun.shadow.map = null; this.container.dataset.quality = this.quality;
   }
@@ -441,7 +446,7 @@ export class Viewport {
     this.renderer.domElement.removeEventListener('pointerdown',this.cameraInteraction,true);this.renderer.domElement.removeEventListener('wheel',this.cameraInteraction,true);
     this.renderer.domElement.removeEventListener('pointerdown',this.pointerDown);this.renderer.domElement.removeEventListener('pointerup',this.pointerUp);
     this.renderer.domElement.removeEventListener('pointermove',this.pointerMove);
-    this.controls.dispose();this.occlusion.dispose();this.layer.dispose();this.assets.dispose();disposeObject(this.scene);this.lighting.dispose();this.environment?.dispose();
+    this.controls.dispose();this.occlusion.dispose();this.layer.dispose();this.qualityMaterials.dispose();this.assets.dispose();disposeObject(this.scene);this.lighting.dispose();this.environment?.dispose();
     this.district?.dispose();
     if(this.semanticLayer){this.semanticLayer.dispose();}
     this.gpuTimer?.dispose();this.composer.dispose();this.renderer.dispose();this.renderer.domElement.remove();this.overlay.remove();

@@ -35,6 +35,7 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
   daySky.name = 'display-day-sky'; scene.add(daySky); sky.visible = false;
   renderer.toneMappingExposure = 1.12;
   const groundMaterial = new T.MeshStandardMaterial({ color: '#d3c7b3', roughness: 0.96 });
+  groundMaterial.userData.lambertCompatible = true;
   groundMaterial.onBeforeCompile = shader => {
     shader.vertexShader = 'varying vec2 displayGroundXZ;\n' + shader.vertexShader;
     shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ndisplayGroundXZ = (modelMatrix * vec4(position,1.0)).xz;');
