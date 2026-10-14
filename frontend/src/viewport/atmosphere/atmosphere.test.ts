@@ -179,11 +179,12 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
   it.each(['high', 'low'] as const)('keeps a continuous %s plume across schedule wraps and late activation', async quality => {
     const layer = new IncidentFX(quality); await layer.ready;
     const fire = { ...conditions.incidents[0], startS: 90 };
+    const rate = quality === 'high' ? 2.0 : 0.8, lifeS = 24;
     for (const age of [1, 20, 26, 39.9, 40, 53.4, 80, 120]) {
       layer.update([{ ...fire, activeS: age, sinceS: age }], 90 + age, camera, new Map());
       const smoke = meshes(layer.root.children[0])[1];
       // Reference emission times, independent of the circular slot implementation.
-      const alive = Array.from({ length: Math.floor(age * 1.2) + 1 }, (_, i) => age - i / 1.2).filter(value => value >= 0 && value < 26).length;
+      const alive = Array.from({ length: Math.floor(age * rate) + 1 }, (_, i) => age - i / rate).filter(value => value >= 0 && value < lifeS).length;
       expect(smoke.count).toBe(alive);
       expect(matrices(smoke).every(Number.isFinite)).toBe(true);
       const cells = smoke.geometry.getAttribute('puffCell').array as Float32Array;
@@ -193,6 +194,7 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     layer.update([{ ...fire, phase: 'ended', activeS: 121, sinceS: 1 }], 211, camera, new Map());
     expect(meshes(layer.root.children[0])[1].count).toBeGreaterThan(0);
     layer.update([{ ...fire, phase: 'ended', activeS: 146, sinceS: 26 }], 236, camera, new Map());
+    // 26 s after ending, every puff from the 24 s lifetime has expired.
     expect(meshes(layer.root.children[0])[1].count).toBe(0);
     layer.dispose();
   });

@@ -12,7 +12,8 @@ import type { Quality } from '../pipeline';
  */
 
 const FLAME_MIN = 5, FLAME_MAX = 7;
-const SMOKE_LIFETIME_S = 26, SMOKE_HIGH = 48, SMOKE_LOW = 16, SMOKE_RATE = 1.2;
+// Connected plume (finding 8): 2.0 puffs/s at high quality (limit 56, life 24 s), 0.8/s at low (limit 18).
+const SMOKE_LIFETIME_S = 24, SMOKE_HIGH = 56, SMOKE_LOW = 18, SMOKE_RATE_HIGH = 2.0, SMOKE_RATE_LOW = 0.8;
 const AREA = new T.Color('#ff6a3d'), ENDED = new T.Color('#8b95a1');
 const SMOKE_BASE = new T.Color('#3b3632'), SMOKE_MID = new T.Color('#8f8a84'), SMOKE_HIGH_TONE = new T.Color('#b9b6b1');
 
@@ -125,8 +126,9 @@ const smokeMaterial = (map: T.Texture, ambient: T.Color) => new T.ShaderMaterial
     }`,
 });
 
-/** Fragment-shader width for the ring line: ≥ 0.8 m in world units, ≥ 1 px (fwidth) on screen. */
-const ringWidth = 'max(0.8/uRadius,fwidth(d))';
+/** Fragment-shader width for the ring line: ~0.8 m at close range (0.4/R in d-units), a crisp
+ *  ~1.5 px line far away (0.75·fwidth) (finding 7). */
+const ringWidth = 'max(0.4/uRadius,0.75*fwidth(d))';
 
 /** Ground decal: dashed outer ring plus a radial inner fill, depth-tested with polygon offset. */
 const ringMaterial = (occluded: boolean) => new T.ShaderMaterial({
@@ -388,19 +390,21 @@ export class IncidentFX {
     if (!this.smoke) { visual.smoke.visible = false; return; }
     const capacity = visual.smoke.instanceMatrix.count;
     const windEast = this.wind.x, windNorth = this.wind.y;
-    const limit = this.quality === 'low' ? SMOKE_LOW : SMOKE_HIGH;
+    const high = this.quality !== 'low';
+    const rate = high ? SMOKE_RATE_HIGH : SMOKE_RATE_LOW;
+    const limit = high ? SMOKE_HIGH : SMOKE_LOW;
     const ended = row.phase === 'ended';
     const elapsed = row.activeS, window = ended ? row.activeS - row.sinceS : row.activeS;
     let count = 0;
     for (let slot = 0; slot < limit && count < capacity; slot++) {
-      const born = slot / SMOKE_RATE;
+      const born = slot / rate;
       if (window < born) break;
       // Equivalent to floor((window - born) / (limit / RATE)), without subtractive
       // rounding losing the emission exactly at a low-quality period boundary.
-      const k = Math.floor((window * SMOKE_RATE - slot) / limit);
-      // Low's 13.3 s period is shorter than the lifetime: both k and k-1 can survive.
+      const k = Math.floor((window * rate - slot) / limit);
+      // Low's 22.5 s period is shorter than the lifetime: both k and k-1 can survive.
       for (let cycle = k; cycle >= Math.max(0, k - 1) && count < capacity; cycle--) {
-        const age = elapsed - (slot + cycle * limit) / SMOKE_RATE;
+        const age = elapsed - (slot + cycle * limit) / rate;
         if (age < 0 || age >= SMOKE_LIFETIME_S) continue;
         this.writePuff(visual, count++, seed, slot, age, simSeconds, camera, windEast, windNorth, baseHeight);
       }
@@ -414,12 +418,13 @@ export class IncidentFX {
   private writePuff(visual: Visual, count: number, seed: number, slot: number, age: number, simSeconds: number, camera: T.Camera, windEast: number, windNorth: number, baseHeight: number) {
     const life = age / SMOKE_LIFETIME_S;
     const seedA = fxHash(seed, slot * 8 + 1), seedB = fxHash(seed, slot * 8 + 2), seedC = fxHash(seed, slot * 8 + 3);
-    // Rise 2.6 m/s slowing with height; drift = wind × 0.9 × min(1, age/4) — the plume first
-    // rises vertically, then visibly bends downwind.
-    const risen = 2.6 * age * (1 - 0.2 * life), drift = 0.9 * Math.min(1, age / 4) * age;
+    // Rise ~2.6 m/s slowing with height: ≥ 15 m before the column bends downwind.
+    // Drift ramps in with min(1, age/5), so young puffs climb straight out of the flames.
+    const risen = 2.6 * age * (1 - 0.2 * life), drift = 0.9 * Math.min(1, age / 5) * age;
     const jitterX = (seedA - 0.5) * 6 + Math.sin(simSeconds * 0.2 + seedB * 6) * 1.5;
     const jitterZ = (seedB - 0.5) * 6 + Math.cos(simSeconds * 0.17 + seedC * 6) * 1.5;
-    const size = 8 + 32 * life;
+    // Dense dark root (finding 8): in the first 3 s the puff grows 5 → 12 m just above the flames.
+    const size = age < 3 ? 5 + (12 - 5) * (age / 3) : 12 + (34 - 12) * ((age - 3) / (SMOKE_LIFETIME_S - 3));
     this.quaternion.copy(camera.quaternion);
     QUARTER_TURN.setFromQuaternion(this.quaternion, 'YXZ');
     QUARTER_TURN.z = simSeconds * (0.1 + seedC * 0.2) + seedA * Math.PI * 2;
@@ -429,8 +434,10 @@ export class IncidentFX {
     this.matrix.compose(this.position, this.quaternion, this.scale);
     visual.smoke.setMatrixAt(count, this.matrix);
     const tint = life < 0.5 ? this.color.copy(SMOKE_BASE).lerp(SMOKE_MID, life * 2) : this.color.copy(SMOKE_MID).lerp(SMOKE_HIGH_TONE, (life - 0.5) * 2);
-    // Alpha peaks at 0.55 near the base and fades as the puff rises and lightens.
-    visual.tint.setXYZW(count, tint.r, tint.g, tint.b, life < 0.15 ? (life / 0.15) * 0.55 : (1 - (life - 0.15) / 0.85) * 0.55);
+    // Alpha peaks at 0.6 in the first 3 s (the darkest tint keeps the root dense), then the
+    // authored 0 → 0.42 in the first 15 % of life and a fade as the puff rises and lightens.
+    const alpha = age < 3 ? 0.6 - 0.18 * (age / 3) : life < 0.15 ? (life / 0.15) * 0.42 : (1 - (life - 0.15) / 0.85) * 0.42;
+    visual.tint.setXYZW(count, tint.r, tint.g, tint.b, alpha);
     visual.cells.setX(count, Math.floor(fxHash(seed, slot * 8 + 4) * 4));
   }
   setWind(east: number, north: number) { this.wind.set(east, north); }

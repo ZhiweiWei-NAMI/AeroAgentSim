@@ -14,6 +14,7 @@
 .wb-wind-row { display: grid; gap: 4px; }
 /* Weather "From" compass and the Conditions presets reuse the shared wb-choice pills; keep them compact in-card. */
 .wb-conditions .wb-choice, .wb-weather .wb-choice { padding: 2px 8px; font-size: 11px; }
+.wb-conditions .wb-choice-group, .wb-weather .wb-choice-group { flex-direction: column; }
 .wb-form-section { min-width: 0; padding-block-end: 1.5rem; }
 .wb-form-stack { display: grid; gap: .5rem; min-width: 0; }
 .wb-form-field select[multiple] { height: auto; }
@@ -37,4 +38,11 @@
 .wb-compass-centre { display: inline-flex; align-items: center; justify-content: center; }
 .wb-compass-arrow { fill: var(--wb-ink, #14202e); }
 .wb-conditions-summary { margin: 0; color: var(--wb-muted); }
+/* Conditions fieldset: three equal columns (Rain | Visibility | Light), each a vertical chip
+   group; the Custom input appears inline under its column only when Custom is selected.
+   Preview sits at the bottom-left of the fieldset on its own row, like the Background wind card. */
+.wb-conditions-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.wb-conditions-col { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.wb-choice-col { flex-direction: column; align-items: stretch; }
+.wb-choice-col .wb-choice { width: max-content; }
 .wb-card-preview { justify-content: flex-start; margin-block: 0; }

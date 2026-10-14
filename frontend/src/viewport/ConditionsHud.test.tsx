@@ -18,7 +18,7 @@ it('renders the wind card, gust line, intensity bar and active-condition chips i
   expect(screen.getByText('Gust until 01:30')).toBeTruthy();
   expect(screen.getByRole('img', { name: 'Wind intensity' }).querySelectorAll('i.on')).toHaveLength(3);
   expect(screen.getByText('Fire active')).toBeTruthy();
-  expect(screen.getByText('Rain · moderate · 4 mm/h')).toBeTruthy();
+  expect(screen.getByText('Moderate rain · 4 mm/h')).toBeTruthy();
   expect(screen.getByText('Fog · 500 m')).toBeTruthy();
   expect(screen.queryByText(/Preview at/)).toBeNull();
   const needle = document.querySelector('.wb-cond-dial-needle') as SVGLineElement;
@@ -35,17 +35,17 @@ it('uses the Chinese compass wind line, mist copy and the plural fire copy', () 
   })} zh mode="run" />);
   expect(screen.getByTestId('wb-conditions-wind')).toHaveTextContent('西北风 6.2 m/s');
   expect(screen.getByText('2 处火情')).toBeTruthy();
-  expect(screen.getByText('降雨 · 中雨 · 4 mm/h')).toBeTruthy();
-  expect(screen.getByText('轻雾 · 2 公里')).toBeTruthy();
+  expect(screen.getByText('中雨 · 4 mm/h')).toBeTruthy();
+  expect(screen.getByText('轻雾 · 2 km')).toBeTruthy();
 });
 
 it('shows the preview chip first and keeps the note behind the (i) toggle', () => {
   render(<ConditionsHud conditions={conditions()} zh={false} mode="preview" atS={110} />);
   const chips = [...screen.getByTestId('wb-conditions-hud').querySelectorAll('.wb-cond-chip')];
   expect(chips[0]).toHaveTextContent('Preview at 01:50');
-  expect(screen.queryByText(/Visual only/)).toBeNull();
+  expect(screen.queryByText(/visual only/i)).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'About the visual-only note' }));
-  expect(screen.getByText(/Visual only — shown in the 3D view/)).toBeTruthy();
+  expect(screen.getByText(/Wind is simulated\./)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'About the visual-only note' })).toHaveAttribute('aria-expanded', 'true');
 });
 

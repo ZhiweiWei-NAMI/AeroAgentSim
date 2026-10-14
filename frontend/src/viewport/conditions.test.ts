@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RunHeader } from '../contracts/viewer-feed';
-import { compassPoint, conditionsAt, conditionsFromDraft, incidentLabel, previewMoment, windFromDeg } from './conditions';
+import { compassPoint, conditionsAt, conditionsFromDraft, formatMmH, formatVisibility, incidentLabel, previewMoment, windFromDeg } from './conditions';
 
 const header = (): RunHeader => ({
   contract: 'aeroagentsim.viewer-feed/v1', runId: 'r', registryDigest: 'd',
@@ -53,6 +53,44 @@ describe('conditionsAt', () => {
     ]), '0');
     expect(conditions.incidents[0].phase).toBe('pending');
     expect(conditions.incidents[0].activeS).toBe(0);
+  });
+  it('derives legacy incidents (no incident_active field) from the committed response state', () => {
+    const legacy = (state: string) => cut([
+      entity('fire', 'lowalt:Incident', {
+        'lowalt.incident_kind': 'fire', 'lowalt.incident_position': [0, 0, 0],
+        'lowalt.incident_time_ns': '60000000000', 'lowalt.incident_end_ns': '120000000000', 'lowalt.incident_state': state,
+      }),
+    ]);
+    // A committed non-pending response means it occurred; legacy incidents never end.
+    expect(conditionsAt(legacy('occurred'), '90000000000').incidents[0]).toMatchObject({ phase: 'active', sinceS: 30 });
+    // Before the start time it stays pending, even with a committed response state.
+    expect(conditionsAt(legacy('occurred'), '0').incidents[0].phase).toBe('pending');
+    // "pending" response state before the start time stays pending (initial cut).
+    expect(conditionsAt(legacy('pending'), '30000000000').incidents[0].phase).toBe('pending');
+  });
+  it('carries label and label_zh and picks the pin label by locale', () => {
+    const localized = header();
+    localized.entities = [{ id: 'fire-a', type: 'lowalt:Incident', label: 'Building fire', label_zh: '建筑火情' }];
+    const rows = cut([entity('fire-a', 'lowalt:Incident', {
+      'lowalt.incident_kind': 'fire', 'lowalt.incident_position': [0, 0, 0],
+      'lowalt.incident_time_ns': '0', 'lowalt.incident_active': true,
+    })]);
+    const row = conditionsAt(rows, '20000000000', localized).incidents[0];
+    expect(row).toMatchObject({ label: 'Building fire', labelZh: '建筑火情' });
+    expect(incidentLabel(row, true)).toBe('建筑火情 · 已持续 00:20');
+    expect(incidentLabel(row, false)).toBe('Building fire · Active 00:20');
+    // Unlabelled incidents fall back to the kind's default label.
+    const plain = conditionsAt(cut([entity('fire-b', 'lowalt:Incident', {
+      'lowalt.incident_kind': 'fire', 'lowalt.incident_position': [0, 0, 0], 'lowalt.incident_time_ns': '0', 'lowalt.incident_active': true,
+    })]), '20000000000').incidents[0];
+    expect(incidentLabel(plain, false)).toBe('Building fire · Active 00:20');
+    expect(incidentLabel(plain, true)).toBe('建筑火情 · 已持续 00:20');
+    expect(incidentLabel({ ...plain, phase: 'ended' }, true)).toBe('火情 · 已结束');
+  });
+  it('formats SI units with bounded precision in both languages', () => {
+    expect(formatMmH(4)).toBe('4'); expect(formatMmH(7.6)).toBe('8'); expect(formatMmH(0.6)).toBe('0.6');
+    expect(formatVisibility(800)).toBe('800 m'); expect(formatVisibility(2000)).toBe('2 km'); expect(formatVisibility(5000)).toBe('5 km');
+    expect(formatVisibility(1500)).toBe('1.5 km');
   });
   it('keeps elapsed time for a zero-start incident and reads oo wind with later engine gusts', () => {
     const feedHeader = header();

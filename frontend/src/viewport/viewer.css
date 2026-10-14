@@ -56,33 +56,40 @@
 .viewport-city-progress small{font-size:10px;color:#aebfce}
 
 /* Conditions HUD (run viewport bottom-left of the visible scene frame, above the playback bar;
-   ScenePreview positions its own copy) */
-.wb-cond-hud { position: absolute; left: 12px; bottom: 12px; z-index: 6; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px; padding: 8px 10px;
+   ScenePreview positions its own copy). One compact row, width: max-content, capped to the
+   visible scene width so it never sits under a panel (review findings 4 and 9). */
+.wb-cond-hud { position: absolute; left: 12px; bottom: 12px; z-index: 6; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px; padding: 6px 10px;
+  width: max-content; max-width: calc(100% - var(--wb-cond-left-inset, 0px) - var(--wb-cond-right-inset, 0px));
   background: var(--wb-glass, rgba(250, 252, 255, .84)); color: var(--wb-ink, #14202e); border: 1px solid rgba(255, 255, 255, .6);
   border-radius: var(--wb-radius, 14px); box-shadow: var(--wb-shadow, 0 10px 30px rgba(9, 20, 36, .22)); backdrop-filter: blur(16px) saturate(1.25);
-  font: 12px system-ui; max-width: calc(100% - 24px); box-sizing: border-box; }
-/* Anchored to the visible scene frame (right of the Objects panel) like the KPI cards;
-   without a workbench frame it stays at the plain viewport edge. */
-.wb .viewport-conditions { position: absolute; z-index: 6;
+  font: 12px system-ui; box-sizing: border-box; pointer-events: auto; }
+/* Anchored to the visible scene frame (right of the Objects panel) like the KPI cards, with
+   --wb-left-space / --wb-dock; without a workbench frame it stays at the plain viewport edge. */
+.wb .viewport-conditions { position: absolute; z-index: 6; pointer-events: none;
   left: calc(var(--wb-left-space, var(--wb-left)) + var(--wb-gap) * 2);
+  right: calc(var(--wb-right-space, var(--wb-right)) + var(--wb-gap) * 2);
   bottom: calc(var(--wb-dock) + var(--wb-gap) * 2 + 48px); }
-.viewport-conditions .wb-cond-hud { position: static; }
+.viewport-conditions .wb-cond-hud { position: static; left: auto; bottom: auto; max-width: 100%; }
 .wb-cond-hud.preview { position: absolute; left: 16px; bottom: 16px; }
+.wb-cond-hud.preview { max-width: max(240px, calc(100% - 32px)); }
 @media (max-width: 719px) { .wb-cond-hud { flex-wrap: wrap; } }
 .wb-cond-wind { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
 .wb-cond-wind-text { display: flex; flex-direction: row; gap: 8px; align-items: center; white-space: nowrap; }
 .wb-cond-wind-line { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
 .wb-cond-gust { color: var(--wb-warn, #e8a317); white-space: nowrap; }
-.wb-cond-dial { width: 28px; height: 28px; }
+.wb-cond-dial { width: 36px; height: 36px; }
 .wb-cond-dial-face { fill: #0b1e2e; stroke: #7799aa88; }
 .wb-cond-dial-tick { stroke: #9db9ca; stroke-width: 1; }
 .wb-cond-dial-needle { stroke: #a4edff; stroke-width: 2; stroke-linecap: round; transform-origin: 18px 18px; transition: transform 180ms ease-out; }
 .wb-cond-bar { display: inline-flex; gap: 2px; }
 .wb-cond-bar i { width: 10px; height: 4px; border-radius: 1px; background: #385164; }
 .wb-cond-bar i.on { background: #67d9ea; }
-.wb-cond-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.wb-cond-chip { padding: 1px 7px; border-radius: 999px; background: #223c4d14; border: 1px solid #7799aa44; white-space: nowrap; }
-.wb-cond-chip.warn { border-color: var(--wb-warn, #e8a317); color: var(--wb-warn, #e8a317); }
-.wb-cond-info { all: unset; cursor: pointer; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #7799aa88; text-align: center; line-height: 12px; font-size: 9px; font-style: italic; font-family: serif; }
+/* Plain text segments split by thin 1 px dividers; only the Fire chip keeps a warm outline. */
+.wb-cond-chips { display: inline-flex; flex-wrap: nowrap; gap: 0; align-items: center; white-space: nowrap; }
+.wb-cond-chip { padding: 0 8px; border-right: 1px solid #7799aa33; white-space: nowrap; }
+.wb-cond-chip:first-child { padding-left: 0; }
+.wb-cond-chip.warn { border: 1px solid var(--wb-warn, #e8a317); color: var(--wb-warn, #e8a317); border-radius: 999px; padding: 0 7px; margin: 0 4px; }
+.wb-cond-chip.warn + .wb-cond-chip { border-left: none; }
+.wb-cond-info { all: unset; cursor: pointer; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #7799aa88; text-align: center; line-height: 12px; font-size: 9px; font-style: italic; font-family: serif; pointer-events: auto; }
 .wb-cond-note { margin: 0; color: var(--wb-muted, #5b6b7d); font-size: 10px; }
 @media (prefers-reduced-motion: reduce) { .wb-cond-dial-needle { transition: none; } }

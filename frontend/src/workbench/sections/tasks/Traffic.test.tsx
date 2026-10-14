@@ -37,15 +37,15 @@ it('prefills the actual server position and previews an incident change across p
   const panel = screen.getByTestId('wb-incident-edit');
   expect(within(panel).getByLabelText('Incident position')).toHaveValue('20,40,0');
   for (const value of ['120', '120.', '120.5']) {
-    fireEvent.change(within(panel).getByLabelText('Time (s)'), { target: { value } });
-    expect(within(panel).getByLabelText('Time (s)')).toHaveValue(value);
+    fireEvent.change(within(panel).getByLabelText('Starts at (s)'), { target: { value } });
+    expect(within(panel).getByLabelText('Starts at (s)')).toHaveValue(value);
   }
   fireEvent.click(within(panel).getByRole('button', { name: 'Preview' }));
   await within(panel).findByRole('button', { name: 'Confirm' });
   view.rerender(element({ config: structuredClone(config) }));
   expect(within(panel).getByRole('button', { name: 'Confirm' })).toBeEnabled();
   expect(previewOperations.mock.calls[0][2][0]).toMatchObject({ op: 'set_incident', params: { id: 'fall-east', at: [20, 40, 0], time_s: 120.5 } });
-  fireEvent.change(within(panel).getByLabelText('Time (s)'), { target: { value: '121' } });
+  fireEvent.change(within(panel).getByLabelText('Starts at (s)'), { target: { value: '121' } });
   expect(within(panel).getByRole('status')).toHaveTextContent('Out of date');
 });
 
@@ -66,7 +66,7 @@ it('renders only Chinese numeric validation after touch (T4-R2-014)', () => {
   window.localStorage.setItem('aeroagentsim.locale', 'zh-CN');
   render(element({ L: (_en, zh) => zh }));
   expect(screen.queryByRole('alert')).toBeNull();
-  fireEvent.change(screen.getByLabelText('时间 (s)'), { target: { value: '-1' } });
+  fireEvent.change(screen.getByLabelText('开始时间 (s)'), { target: { value: '-1' } });
   expect(screen.getAllByRole('alert')).toHaveLength(1);
   expect(screen.getByRole('alert')).toHaveTextContent('不能小于 0。');
   expect(screen.queryByText(/Cannot be below/)).toBeNull();
@@ -117,7 +117,7 @@ it('lists incidents as "Fire · 01:30–04:00 · r 30 m" style rows and validate
   fireEvent.click(screen.getByRole('button', { name: 'Change' }));
   const panel = screen.getByTestId('wb-incident-edit');
   fireEvent.change(within(panel).getByLabelText('Affected radius (m)'), { target: { value: '900' } });
-  expect(screen.getByRole('alert')).toHaveTextContent('between 1 and 500 m');
+  expect(screen.getByRole('alert')).toHaveTextContent('Cannot exceed 500.');
   expect(within(panel).getByRole('button', { name: 'Preview' })).toBeDisabled();
   fireEvent.change(within(panel).getByLabelText('Affected radius (m)'), { target: { value: '30' } });
   fireEvent.change(within(panel).getByLabelText('Ends at (s)'), { target: { value: '60' } });
@@ -131,7 +131,7 @@ it('restores a closed incident editor independently of the staged new incident',
   fireEvent.change(screen.getByLabelText('Incident position'), { target: { value: '10,20,5' } });
   fireEvent.click(screen.getByRole('button', { name: 'Change' }));
   const editing = within(screen.getByTestId('wb-incident-edit'));
-  fireEvent.change(editing.getByLabelText('Time (s)'), { target: { value: '120.5' } });
+  fireEvent.change(editing.getByLabelText('Starts at (s)'), { target: { value: '120.5' } });
   fireEvent.change(editing.getByLabelText('Incident position'), { target: { value: '30,40,7' } });
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   first.unmount();
@@ -140,10 +140,10 @@ it('restores a closed incident editor independently of the staged new incident',
   expect(screen.getByLabelText('Incident position')).toHaveValue('10,20,5');
   fireEvent.click(screen.getByRole('button', { name: 'Change' }));
   const reopened = within(screen.getByTestId('wb-incident-edit'));
-  expect(reopened.getByLabelText('Time (s)')).toHaveValue('120.5');
+  expect(reopened.getByLabelText('Starts at (s)')).toHaveValue('120.5');
   expect(reopened.getByLabelText('Incident position')).toHaveValue('30,40,7');
   expect(screen.getAllByText('Restored unsaved inputs')).toHaveLength(2);
   fireEvent.click(reopened.getByRole('button', { name: 'Discard' }));
-  expect(reopened.getByLabelText('Time (s)')).toHaveValue('90');
+  expect(reopened.getByLabelText('Starts at (s)')).toHaveValue('90');
   expect(screen.getByLabelText('Incident ID')).toHaveValue('pending-new');
 });

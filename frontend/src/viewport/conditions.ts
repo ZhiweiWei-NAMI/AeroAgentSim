@@ -13,8 +13,18 @@ export interface Conditions {
   precipitationMmH: number;
   visibilityM: number | null;
   light: 'day' | 'dusk';
-  incidents: Array<{ id: string; kind: 'fire' | 'person_fall'; label: string; position: [number, number, number]; radiusM: number;
+  incidents: Array<{ id: string; kind: 'fire' | 'person_fall'; label: string; labelZh?: string; position: [number, number, number]; radiusM: number;
     phase: 'pending' | 'active' | 'ended'; sinceS: number; activeS: number; response?: string; startS?: number }>;
+}
+
+/** SI symbols in both languages. Speed 1 decimal; rain integer ≥ 1 else 1 decimal; visibility m below 1000 else km. */
+export function formatMmH(mmH: number): string {
+  return mmH >= 1 ? String(Math.round(mmH)) : mmH.toFixed(1);
+}
+export function formatVisibility(m: number): string {
+  if (m < 1000) return `${Math.round(m)} m`;
+  const km = m / 1000;
+  return `${Number.isInteger(km) ? km : km.toFixed(1)} km`;
 }
 
 type Cut = { entities: Map<string, { key: { id: string; generation: number | string }; typeId: string; fields: Map<string, { value: unknown }> }>; header?: RunHeader };
@@ -94,16 +104,25 @@ export function conditionsAt(entities: Cut['entities'] | Cut, ns: string, header
     const startNs = integer(field(entity, 'lowalt.incident_time_ns'));
     const endNs = integer(field(entity, 'lowalt.incident_end_ns'));
     if (startNs === undefined) continue;
-    const active = field(entity, 'lowalt.incident_active') === true;
-    const end = endNs !== undefined && endNs >= 0n ? endNs : undefined;
-    const phase: Conditions['incidents'][number]['phase'] = !active && at < startNs ? 'pending' : active ? 'active' : 'ended';
+    const activeField = field(entity, 'lowalt.incident_active');
+    const state = text(field(entity, 'lowalt.incident_state'));
+    // A missing incident_active field means a legacy recording: derive activation from the
+    // committed response state (anything other than "pending" means it occurred), and treat
+    // legacy incidents as never ended. Explicit false stays an ended-or-pending fact.
+    const legacy = typeof activeField !== 'boolean';
+    const active = legacy ? state !== 'pending' : activeField === true;
+    const end = legacy || endNs === undefined || endNs < 0n ? undefined : endNs;
+    // Pending stays at the initial cut, before the occurrence wake commits (at < start time).
+    const phase: Conditions['incidents'][number]['phase'] = at < startNs ? 'pending' : active ? 'active' : 'ended';
     const sinceNs = active ? startNs : end ?? startNs;
     const sinceS = Math.max(0, Number(at - sinceNs) / 1e9);
     // Activation age keeps advancing after ending; activeS - sinceS is the emission window.
     const activeS = Math.max(0, Number(at - startNs) / 1e9);
-    const label = header?.entities?.find(row => row.id === entity.key.id && row.type === entity.typeId)?.label ?? entity.key.id;
+    const authored = header?.entities?.find(row => row.id === entity.key.id && row.type === entity.typeId);
+    const label = authored?.label ?? entity.key.id;
+    const labelZh = authored?.label_zh;
     const response = text(field(entity, 'lowalt.incident_responder')) || undefined;
-    incidents.push({ id: entity.key.id, kind, label, position: position as [number, number, number], radiusM: scalar(field(entity, 'lowalt.incident_radius_m')) ?? (kind === 'fire' ? 30 : 6), phase, sinceS, activeS, response, startS: Number(startNs) / 1e9 });
+    incidents.push({ id: entity.key.id, kind, label, labelZh, position: position as [number, number, number], radiusM: scalar(field(entity, 'lowalt.incident_radius_m')) ?? (kind === 'fire' ? 30 : 6), phase, sinceS, activeS, response, startS: Number(startNs) / 1e9 });
   }
   return { wind: windAt(cut, ns), precipitationMmH, visibilityM, light, incidents };
 }
@@ -157,7 +176,8 @@ export function conditionsFromDraft(scenario: Record<string, any>, previewS: num
     const phase = at < sToNs(startS) ? 'pending' as const : endS !== undefined && at >= sToNs(endS) ? 'ended' as const : 'active' as const;
     const sinceS = Math.max(0, (phase === 'active' ? previewS - startS : phase === 'ended' ? previewS - endS! : startS - previewS));
     const kind = incident.kind === 'fire' ? 'fire' as const : 'person_fall' as const;
-    incidents.push({ id: String(incident.id), kind, label: String(incident.label ?? incident.id), position: incident.position as [number, number, number],
+    incidents.push({ id: String(incident.id), kind, label: String(incident.label ?? incident.id), labelZh: typeof incident.label_zh === 'string' ? incident.label_zh : undefined,
+      position: incident.position as [number, number, number],
       radiusM: typeof incident.radius_m === 'number' ? incident.radius_m : kind === 'fire' ? 30 : 6, phase, sinceS, activeS: Math.max(0, previewS - startS), startS });
   }
   const wind = windOf(vectors, gust);
@@ -176,10 +196,12 @@ export function compassPointZh(fromDeg: number): string {
 }
 
 /** Shared phase copy for the run's entity labels and the draft's incident pins. */
-export function incidentLabel(row: Conditions['incidents'][number], zh: boolean, label = row.label): string {
+export function incidentLabel(row: Conditions['incidents'][number], zh: boolean, label = (zh ? row.labelZh : undefined) ?? row.label): string {
   const clock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-  const kind = row.kind === 'fire' ? zh ? '火情' : 'Fire' : zh ? '人员跌倒' : 'Person fell';
+  const kind = row.kind === 'fire' ? zh ? '火情' : 'Fire' : zh ? '行人跌倒' : 'Person fell';
+  // Unlabelled incidents keep the kind's default label ("Building fire" / "建筑火情" for fire).
+  const name = !label || label === row.id ? (row.kind === 'fire' ? zh ? '建筑火情' : 'Building fire' : kind) : label;
   if (row.phase === 'pending') return zh ? `${kind} ${clock(row.startS!)} 开始` : `${kind} at ${clock(row.startS!)}`;
   if (row.phase === 'ended') return `${kind} · ${zh ? '已结束' : 'ended'}`;
-  return `${label} · ${zh ? '已持续' : 'Active'} ${clock(row.sinceS)}`;
+  return `${name} · ${zh ? '已持续' : 'Active'} ${clock(row.sinceS)}`;
 }

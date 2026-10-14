@@ -100,7 +100,7 @@ describe('viewport bilingual controls', () => {
     expect(camera).toHaveValue('chase');
     expect(within(camera).getByRole('option', { name: '事件导播' })).toHaveValue('cinematic');
     expect(within(screen.getByLabelText('视图画质')).getByRole('option', { name: '均衡' })).toHaveValue('med');
-    expect(within(screen.getByLabelText('显示光照')).getByRole('option', { name: '黄昏 · 仅显示' })).toHaveValue('dusk');
+    expect(within(screen.getByLabelText('显示光照')).getByRole('option', { name: '黄昏' })).toHaveValue('dusk');
     expect(instance.onConditions).toHaveBeenCalled();
     const toggle = screen.getByLabelText('展开或收起检查器');
     fireEvent.click(toggle);

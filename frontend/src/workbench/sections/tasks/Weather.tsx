@@ -3,6 +3,7 @@ import type { SectionProps } from '../types';
 import { canonicalJson, operation } from '../operations';
 import { useStagedForm } from '../useStagedForm';
 import { COMPASS_POINTS, nsToS, pointDeg, pointOfDeg, weatherOf, windFromDeg, windSpeed, type Draft } from './model';
+import { formatMmH, formatVisibility } from '../../../viewport/conditions';
 import { OpApply, Prerequisite, StagedFormNote, StagedNumber, parseStagedNumber, stagedNumberProblem, type FormNavigation } from './op-ui';
 import { gustProblem, rainPresetOf, visibilityPresetOf, weatherParams } from './ops';
 
@@ -11,8 +12,6 @@ interface Props extends FormNavigation {
   api: SectionProps['api']; project: SectionProps['project']; onProject: SectionProps['onProject']; saveDraft: SectionProps['saveDraft']; zh: boolean;
 }
 
-const VISUAL_ONLY_NOTE = 'Visual only — shown in the 3D view and UAV captures; flight, sensing and task outcomes don\'t use it.';
-const VISUAL_ONLY_NOTE_ZH = '仅为视觉呈现——显示在三维视图和无人机拍摄中；飞行、感知和任务结果不使用它。';
 const RAIN_PRESETS = ['none', 'light', 'moderate', 'heavy', 'custom'] as const;
 const VISIBILITY_PRESETS = ['clear', 'haze', 'mist', 'fog', 'dense', 'custom'] as const;
 /** 3×3 rose layout: NW N NE / W • E / SW S SE. */
@@ -21,22 +20,24 @@ const COMPASS_ARIA: Record<string, [string, string]> = {
   N: ['From north', '北方向来风'], NE: ['From north-east', '东北方向来风'], E: ['From east', '东方向来风'], SE: ['From south-east', '东南方向来风'],
   S: ['From south', '南方向来风'], SW: ['From south-west', '西南方向来风'], W: ['From west', '西方向来风'], NW: ['From north-west', '西北方向来风'],
 };
+/** The compass buttons keep the letters in en and the Chinese names in zh (copy decisions). */
+const COMPASS_ZH: Record<string, string> = { N: '北', NE: '东北', E: '东', SE: '东南', S: '南', SW: '西南', W: '西', NW: '西北' };
 
-const rainLabel = (preset: string, mmH: number, L: Props['L']) => preset === 'none' ? L('None', '无') : preset === 'light' ? `Light · ${mmH} mm/h`
-  : preset === 'moderate' ? `Moderate · ${mmH} mm/h` : preset === 'heavy' ? `Heavy · ${mmH} mm/h` : L('Custom', '自定义');
-const rainLabelZh = (preset: string, mmH: number) => preset === 'none' ? '无' : preset === 'light' ? `小雨 · ${mmH} mm/h`
-  : preset === 'moderate' ? `中雨 · ${mmH} mm/h` : preset === 'heavy' ? `大雨 · ${mmH} mm/h` : '自定义';
-const visibilityLabel = (preset: string, m: number | null, L: Props['L']) => preset === 'clear' ? L('Clear', '晴')
-  : preset === 'haze' ? L('Haze · 5 km', '霾 · 5 公里') : preset === 'mist' ? L('Mist · 2 km', '轻雾 · 2 公里')
-    : preset === 'fog' ? L('Fog · 500 m', '雾 · 500 米') : preset === 'dense' ? L('Dense fog · 150 m', '浓雾 · 150 米') : L('Custom', '自定义');
+const rainLabel = (preset: string, mmH: number, L: Props['L']) => preset === 'none' ? L('None', '无') : preset === 'light' ? `Light rain · ${formatMmH(mmH)} mm/h`
+  : preset === 'moderate' ? `Moderate rain · ${formatMmH(mmH)} mm/h` : preset === 'heavy' ? `Heavy rain · ${formatMmH(mmH)} mm/h` : L('Custom', '自定义');
+const rainLabelZh = (preset: string, mmH: number) => preset === 'none' ? '无' : preset === 'light' ? `小雨 · ${formatMmH(mmH)} mm/h`
+  : preset === 'moderate' ? `中雨 · ${formatMmH(mmH)} mm/h` : preset === 'heavy' ? `大雨 · ${formatMmH(mmH)} mm/h` : '自定义';
+const visibilityLabel = (preset: string, m: number | null, L: Props['L']) => preset === 'clear' ? L('Clear', '无雾')
+  : preset === 'haze' ? L(`Haze · ${formatVisibility(5000)}`, `霾 · ${formatVisibility(5000)}`) : preset === 'mist' ? L(`Mist · ${formatVisibility(2000)}`, `轻雾 · ${formatVisibility(2000)}`)
+    : preset === 'fog' ? L(`Fog · ${formatVisibility(500)}`, `雾 · ${formatVisibility(500)}`) : preset === 'dense' ? L(`Dense fog · ${formatVisibility(150)}`, `浓雾 · ${formatVisibility(150)}`) : L('Custom', '自定义');
 
 /** One-line summary of what the staged conditions will show in the 3D view. */
 function stagedSummary(rain: string, mmH: number, visibility: string, m: number | null, light: string, zh: boolean): string {
   const parts: string[] = [];
   if (rain === 'none') parts.push(zh ? '无雨' : 'no rain');
-  else parts.push(zh ? `${rain === 'light' ? '小雨' : rain === 'moderate' ? '中雨' : '大雨'}雨线` : `${rain} rain streaks`);
-  if (visibility === 'clear') parts.push(zh ? '晴朗天空' : 'a clear sky');
-  else parts.push(zh ? `能见度约 ${m} 米的雾` : `fog limiting view to ~${m} m`);
+  else parts.push(zh ? `${rain === 'light' ? '小雨' : rain === 'moderate' ? '中雨' : '大雨'} ${formatMmH(mmH)} mm/h` : `${rain} rain ${formatMmH(mmH)} mm/h`);
+  if (visibility === 'clear') parts.push(zh ? '无雾' : 'a clear sky');
+  else parts.push(zh ? `${formatVisibility(m ?? 0)}能见度` : `fog limiting view to ${formatVisibility(m ?? 0)}`);
   parts.push(light === 'dusk' ? zh ? '黄昏光照' : 'dusk light' : zh ? '白天光照' : 'day light');
   return zh ? `将显示：${parts.join('、')}。` : `Will show: ${parts.join(', ')}.`;
 }
@@ -50,7 +51,7 @@ function CompassRose({ value, onSelect, zh }: { value: string; onSelect: (point:
         </span>
       : <button key={point} type="button" className={`wb-choice wb-compass-point${value === point ? ' active' : ''}`} aria-pressed={value === point}
           aria-label={COMPASS_ARIA[point][zh ? 1 : 0]}
-          onClick={() => onSelect(point)}>{point}</button>))}
+          onClick={() => onSelect(point)}>{zh ? COMPASS_ZH[point] : point}</button>))}
   </div>;
 }
 
@@ -119,8 +120,7 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
   const opProps = { api, project, onProject, saveDraft };
   if (!slots.length) return <div className="wb-empty">{L('No wind profile is configured. Add the standard low-altitude components in Objects.', '尚未配置风场，请在“对象”中添加标准低空组件。')}</div>;
   return <div className="wb-weather wb-form-section" data-testid="wb-weather">
-    <p className="hint">{zh ? VISUAL_ONLY_NOTE_ZH : VISUAL_ONLY_NOTE}</p>
-    <fieldset className="wb-form-card"><legend className="wb-form-card-title">{L('Background wind', '背景风')}</legend>
+    <fieldset className="wb-form-card wb-form-card-wind"><legend className="wb-form-card-title">{L('Background wind', '背景风')}</legend>
       <StagedFormNote form={backgroundForm} L={L} />
       <div className="wb-form-grid">
         <StagedNumber label={`${L('Background speed', '背景风速')} (m/s)`} value={backgroundText} min={0} onChange={speed => setBackground({ speed })} />
@@ -132,39 +132,51 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
         <div className="wb-form-actions wb-card-preview"><OpApply {...opProps} operations={windOperations} label={L('Preview', '预览')} primary small onApplied={() => backgroundForm.clear(backgroundForm.values)} /></div>
       </div>
       {commonSpeed === undefined && <p className="hint">{L('Enter a speed to apply to all configured wind profiles.', '请输入要应用到所有风场的风速。')}</p>}
+      {/* The wind card's own honesty line: wind IS a simulation input (copy decisions). */}
+      <p className="hint" role="note">{zh ? '风与阵风是仿真输入，会影响飞行等待与能耗。' : 'Wind and gusts are simulation inputs: they affect flight holds and energy.'}</p>
     </fieldset>
     <fieldset className="wb-form-card wb-conditions"><legend className="wb-form-card-title">{L('Conditions', '天气条件')}</legend>
       <p className="hint wb-conditions-summary" data-testid="wb-conditions-summary">{stagedSummary(rainPreset, rainValue, visibilityPreset, currentWeather.visibilityM, conditions.light ?? currentWeather.light, zh)}</p>
+      {/* Scoped honesty note (copy decisions): sits under the Conditions fieldset summary,
+          NOT under the card title or the wind controls. */}
+      <p className="hint" role="note">{zh
+        ? '降雨、能见度与光照：仅为视觉呈现——显示在三维视图和无人机拍摄中；飞行、感知和任务结果不使用它。'
+        : 'Rain, visibility and light: visual only — shown in the 3D view and UAV captures; flight, sensing and task outcomes don\'t use it.'}</p>
       <StagedFormNote form={conditionsForm} L={L} />
-      <div className="wb-form-grid">
-        <div className="wb-form-field"><span className="wb-label">{L('Rain', '降雨')}</span>
-          <div className="wb-choice-group" role="group" aria-label={L('Rain preset', '降雨预设')} data-testid="wb-rain-presets">
+      {/* Three equal columns: Rain | Visibility | Light, each a vertical chip group whose
+          Custom input appears inline under the column only when Custom is selected. */}
+      <div className="wb-conditions-grid">
+        <div className="wb-conditions-col">
+          <span className="wb-label">{L('Rain', '降雨')}</span>
+          <div className="wb-choice-group wb-choice-col" role="group" aria-label={L('Rain preset', '降雨预设')} data-testid="wb-rain-presets">
             {RAIN_PRESETS.map(preset => <button key={preset} type="button" className="wb-choice" aria-pressed={rainPreset === preset}
               onClick={() => setConditions({ rain: preset })}>
               {preset === 'custom' ? L('Custom', '自定义') : zh ? rainLabelZh(preset, rainValueOf(preset)) : rainLabel(preset, rainValueOf(preset), L)}
             </button>)}
           </div>
+          {rainPreset === 'custom' && <StagedNumber label={`${L('Rain rate', '降雨强度')} (mm/h)`} value={conditions.rainCustom ?? String(currentWeather.precipitationMmH)}
+            min={0} max={100} onChange={rainCustom => setConditions({ rainCustom })} />}
         </div>
-        {rainPreset === 'custom' && <StagedNumber label={`${L('Rain rate', '降雨强度')} (mm/h)`} value={conditions.rainCustom ?? String(currentWeather.precipitationMmH)}
-          min={0} max={100} onChange={rainCustom => setConditions({ rainCustom })} />}
-        <div className="wb-form-field"><span className="wb-label">{L('Visibility', '能见度')}</span>
-          <div className="wb-choice-group" role="group" aria-label={L('Visibility preset', '能见度预设')} data-testid="wb-visibility-presets">
+        <div className="wb-conditions-col">
+          <span className="wb-label">{L('Visibility', '能见度')}</span>
+          <div className="wb-choice-group wb-choice-col" role="group" aria-label={L('Visibility preset', '能见度预设')} data-testid="wb-visibility-presets">
             {VISIBILITY_PRESETS.map(preset => <button key={preset} type="button" className="wb-choice" aria-pressed={visibilityPreset === preset}
               onClick={() => setConditions({ visibility: preset })}>
               {preset === 'custom' ? L('Custom', '自定义') : visibilityLabel(preset, currentWeather.visibilityM, L)}
             </button>)}
           </div>
+          {visibilityPreset === 'custom' && <StagedNumber label={`${L('Visibility', '能见度')} (m)`} value={conditions.visibilityCustom ?? String(currentWeather.visibilityM ?? '')}
+            min={50} max={50000} onChange={visibilityCustom => setConditions({ visibilityCustom })} />}
         </div>
-        {visibilityPreset === 'custom' && <StagedNumber label={`${L('Visibility', '能见度')} (m)`} value={conditions.visibilityCustom ?? String(currentWeather.visibilityM ?? '')}
-          min={50} max={50000} onChange={visibilityCustom => setConditions({ visibilityCustom })} />}
-        <div className="wb-form-field"><span className="wb-label">{L('Light', '光照')}</span>
-          <div className="wb-choice-group" role="group" aria-label={L('Time-of-day lighting', '时段光照')} data-testid="wb-light-presets">
+        <div className="wb-conditions-col">
+          <span className="wb-label">{L('Light', '光照')}</span>
+          <div className="wb-choice-group wb-choice-col" role="group" aria-label={L('Time-of-day lighting', '时段光照')} data-testid="wb-light-presets">
             {['day', 'dusk'].map(preset => <button key={preset} type="button" className="wb-choice" aria-pressed={(conditions.light ?? currentWeather.light) === preset}
               onClick={() => setConditions({ light: preset })}>{preset === 'day' ? L('Day', '白天') : L('Dusk', '黄昏')}</button>)}
           </div>
         </div>
-        <div className="wb-form-actions wb-card-preview"><OpApply {...opProps} operations={conditionsOperations} label={L('Preview', '预览')} primary small onApplied={() => conditionsForm.clear(conditionsForm.values)} /></div>
       </div>
+      <div className="wb-form-actions wb-card-preview"><OpApply {...opProps} operations={conditionsOperations} label={L('Preview', '预览')} primary small onApplied={() => conditionsForm.clear(conditionsForm.values)} /></div>
     </fieldset>
     <fieldset className="wb-form-card wb-gust-add"><legend className="wb-form-card-title">{L('Add gust', '添加阵风')}</legend>
       <StagedFormNote form={gustForm} L={L} />

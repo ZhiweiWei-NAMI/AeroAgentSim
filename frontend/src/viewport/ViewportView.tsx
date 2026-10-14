@@ -180,7 +180,7 @@ export function ViewportView(props: Props) {
         <option value="low">{t('Low')}</option><option value="med">{t('Balanced')}</option><option value="high">{t('High')}</option>
       </select>{fps!==undefined&&<span>{t('{fps} FPS', {fps:fps.toFixed(0)})}</span>}
       <select aria-label={t('Display lighting')} value={urlLighting==='day'||urlLighting==='dusk'?urlLighting:lighting} onChange={event=>{const value=urlLighting==='day'||urlLighting==='dusk'?urlLighting:event.target.value as 'scene'|'day'|'dusk';setLighting(value);viewport.current?.setLightingOverride(value);}}>
-        <option value="scene">{t('Scene')}</option><option value="day">{t('Day · display')}</option><option value="dusk">{t('Dusk · display')}</option></select>
+        <option value="scene">{t('Scene')}</option><option value="day">{t('Day')}</option><option value="dusk">{t('Dusk')}</option></select>
       <button aria-label={t('Toggle inspector')} aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>{t('Inspector')} {collapsed?'＋':'−'}</button>
     </div>}
     {conditions&&<div className="viewport-conditions"><ConditionsHud conditions={conditions} zh={locale.startsWith('zh')} mode="run" /></div>}

@@ -364,9 +364,9 @@ it('sends one set_weather with rain, visibility and light presets, and reads cur
     'lowalt.precipitation': { mode: 'constant', value: 4 / 3600 },
     'lowalt.visibility': { mode: 'constant', value: 500 },
   } } } } }));
-  expect(chip('wb-rain-presets', 'Moderate · 4 mm/h')).toHaveAttribute('aria-pressed', 'true');
+  expect(chip('wb-rain-presets', 'Moderate rain · 4 mm/h')).toHaveAttribute('aria-pressed', 'true');
   expect(chip('wb-visibility-presets', 'Fog · 500 m')).toHaveAttribute('aria-pressed', 'true');
-  fireEvent.click(chip('wb-rain-presets', 'Heavy · 10 mm/h'));
+  fireEvent.click(chip('wb-rain-presets', 'Heavy rain · 10 mm/h'));
   fireEvent.click(chip('wb-visibility-presets', 'Mist · 2 km'));
   fireEvent.click(chip('wb-light-presets', 'Dusk'));
   fireEvent.click(within(conditionsForm()).getByRole('button', { name: 'Preview' }));
@@ -378,9 +378,11 @@ it('sends one set_weather with rain, visibility and light presets, and reads cur
   await waitFor(() => expect(onProject).toHaveBeenCalled());
 });
 
-it('writes explicit zero and clear values and includes the visual-only note', async () => {
+it('writes explicit zero and clear values and includes the scoped visual-only note', async () => {
   render(weather());
-  expect(screen.getByText(/Visual only — shown in the 3D view/)).toBeTruthy();
+  // The note sits under the Conditions fieldset (findings/copy decisions), not under the wind card.
+  expect(within(conditionsForm()).getByText(/Rain, visibility and light: visual only/)).toBeTruthy();
+  expect(within(screen.getByTestId('wb-weather')).getByText(/Wind and gusts are simulation inputs/)).toBeTruthy();
   expect(chip('wb-rain-presets', 'None')).toHaveAttribute('aria-pressed', 'true');
   expect(chip('wb-visibility-presets', 'Clear')).toHaveAttribute('aria-pressed', 'true');
   fireEvent.click(within(conditionsForm()).getByRole('button', { name: 'Preview' }));

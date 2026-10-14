@@ -54,7 +54,7 @@ it('the plume leans with the authored wind: from NW means it drifts to the SE (+
     smoke.getMatrixAt(i, matrix); matrix.decompose(position, quaternion, scale);
     maxEast = Math.max(maxEast, position.x);
     maxSouth = Math.max(maxSouth, position.z); // ENU south maps to +z
-    expect(scale.x + 1e-6).toBeGreaterThanOrEqual(8); expect(scale.x).toBeLessThanOrEqual(40.001);
+    expect(scale.x + 1e-6).toBeGreaterThanOrEqual(5); expect(scale.x).toBeLessThanOrEqual(34.001);
   }
 
   // From NW → drifts to the SE: +east (world +x) and −north (world +z).

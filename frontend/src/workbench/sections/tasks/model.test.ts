@@ -78,10 +78,14 @@ describe('C11 operation parameters', () => {
     expect(incidentProblem({ time_s: '90', end_s: '240', radius_m: '30', duration_s: 360 }, false)).toEqual({});
     expect(incidentProblem({ time_s: '90', end_s: '60', radius_m: '30' }, false)?.end_s).toMatch(/after start/);
     expect(incidentProblem({ time_s: '90', end_s: '400', radius_m: '30', duration_s: 360 }, false)?.end_s).toMatch(/360/);
-    expect(incidentProblem({ time_s: '90', radius_m: '900' }, false)?.radius_m).toMatch(/1 and 500/);
+    expect(incidentProblem({ time_s: '90', radius_m: '900' }, false)?.radius_m).toMatch(/500/);
     expect(incidentProblem({ time_s: '90', radius_m: '0' }, false)?.radius_m).toBeTruthy();
-    expect(incidentProblem({ time_s: '90', radius_m: '900' }, true)?.radius_m).toContain('影响半径');
-    expect(incidentProblem({ time_s: '90', end_s: '' }, false)).toEqual({});
+    // A blank or non-numeric radius is a hard error; a blank end stays optional.
+    expect(incidentProblem({ time_s: '90', radius_m: '' }, false)?.radius_m).toMatch(/Required/);
+    expect(incidentProblem({ time_s: '90', radius_m: 'wide' }, false)?.radius_m).toMatch(/finite number/);
+    expect(incidentProblem({ time_s: '90', end_s: 'late' }, false)?.end_s).toMatch(/finite number/);
+    expect(incidentProblem({ time_s: '90', radius_m: '900' }, true)?.radius_m).toContain('不能大于');
+    expect(incidentProblem({ time_s: '90', radius_m: '30', end_s: '' }, false)).toEqual({});
   });
 
   it('maps weather presets to one explicit set_weather parameter set', () => {

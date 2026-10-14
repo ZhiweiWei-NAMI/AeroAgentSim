@@ -284,6 +284,13 @@ export class EntityLayer {
     for (const batch of this.batches.values()) { batch.keys = []; for(const mesh of batch.meshes)mesh.count=0; if(batch.far){batch.far.keys=[];batch.far.mesh.count=0;} }
     const width=this.overlay.clientWidth,height=this.overlay.clientHeight;
     const visibleLabels=new Set<string>();
+    // Pin anchors (world space, at pin height) reserved as fixed obstacles for this frame.
+    const pinAnchors: T.Vector3[] = [];
+    for (const row of incidents ?? []) {
+      if (row.phase === 'pending') continue;
+      const spot = this.positions.get(row.id) ?? worldPosition(row.position, 'enu', this.header.origin).sub(renderOrigin);
+      pinAnchors.push(new T.Vector3(spot.x, Math.max(spot.y, occlusion?.liftCamera(spot, 0).y ?? spot.y) + 14, spot.z));
+    }
     const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean; incident?: Conditions['incidents'][number] }> = [];
     for (const [id, entity] of store.entities) {
       let binding = resolveBinding(this.header, entity.typeId); if (!binding) continue;
@@ -365,6 +372,16 @@ export class EntityLayer {
     const frame = wb?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
     const safe = frame && frame.width > 0 ? relative(frame) : { left: 8, right: width - 8, top: 8, bottom: height - 8 };
     const obstacles = wb ? [...wb.querySelectorAll('.wb-panel, .wb-camera, .wb-graph, .wb-history, .wb-waiting')].map(node => relative(node.getBoundingClientRect())) : [];
+    // The incident pin is a fixed high-priority obstacle: entity labels move away from it
+    // (finding 6) instead of stacking on the fire pin. Reserves a rect around the pin's
+    // projected anchor, sized to cover the disc and its label.
+    const pinObstacles: LabelRect[] = pinAnchors.map(pin => {
+      const projected = this.labelProjected.copy(pin).project(camera);
+      if (projected.z < -1 || projected.z > 1) return { left: -1, right: -1, top: -1, bottom: -1 };
+      const px = (projected.x + 1) * width / 2, py = (1 - projected.y) * height / 2;
+      const pad = 34; // covers the 26 px disc plus its label line
+      return { left: px - pad, right: px + pad, top: py - pad, bottom: py + pad * 1.5 };
+    }).filter(rect => rect.right > rect.left);
     candidates.sort((a,b)=>Number(b.selected)-Number(a.selected)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
     for(const item of candidates) {
       if(this.semantic&&!item.interest)continue;
@@ -385,8 +402,9 @@ export class EntityLayer {
       let semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header,this.locale):item.key.id;
       if (item.incident) {
         const row = item.incident, zh = this.locale.startsWith('zh');
-        const label = zh ? store.entities.get(item.id)?.authoredLabel?.label_zh ?? row.label : row.label;
-        semanticText = incidentLabel(row, zh, label);
+        const authored = store.entities.get(item.id)?.authoredLabel;
+        // locale picks label vs label_zh; incidentLabel fills the kind's default otherwise.
+        semanticText = incidentLabel(row, zh, zh ? authored?.label_zh ?? authored?.label : authored?.label);
       }
       if(this.semantic){const style=businessStyle(semanticVehicle(store.entities.get(item.id)!,this.semanticTasks.get(item.id)));label.dataset.glyph=style.glyph;label.style.borderColor=style.color;}
       else {delete label.dataset.glyph;label.style.borderColor='';}
@@ -395,7 +413,9 @@ export class EntityLayer {
       // Business-interest labels used to bypass collision avoidance entirely;
       // colocated task-active UAVs obscured each other. Measure the actual label.
       label.style.maxWidth = `${Math.max(0, safe.right - safe.left)}px`;
-      const placed = placeLabel(x, y, label.offsetWidth, label.offsetHeight, safe, [...obstacles, ...occupied], item.selected);
+      // The incident's own label sits just above its pin by design; other labels move away.
+      const avoid = item.incident ? [...obstacles, ...occupied] : [...obstacles, ...pinObstacles, ...occupied];
+      const placed = placeLabel(x, y, label.offsetWidth, label.offsetHeight, safe, avoid, item.selected);
       if (!placed) continue;
       visibleLabels.add(item.id);
       const left=`${placed.x}px`,top=`${placed.y}px`;

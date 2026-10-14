@@ -10,7 +10,7 @@ import { pointer, TreeForm } from '../../form';
 
 /** Incident kinds and their labels (spec §4: kind chips "Person fell" / "Fire"). */
 function incidentKindLabel(kind: string, L: SectionProps['L']): string {
-  return kind === 'person_fall' ? L('Person fell', '人员跌倒') : kind === 'fire' ? L('Fire', '火情') : L('Unsupported incident kind', '不支持的事件类型');
+  return kind === 'person_fall' ? L('Person fell', '行人跌倒') : kind === 'fire' ? L('Fire', '火情') : L('Unsupported incident kind', '不支持的事件类型');
 }
 
 /** Traffic sources retain their actual provenance. */
@@ -67,7 +67,7 @@ function IncidentKindFields({ fields, touched, problems, zh, L, onKind, onField 
     </div>
     <StagedNumber label={`${L('Affected radius', '影响半径')} (m)`} value={fields.radius} min={1} max={500} problem={problems.radius_m}
       showError={touched.has('radius')} onChange={value => onField('radius', value)} />
-    <StagedNumber label={`${L('Ends at', '结束于')} (s)`} value={fields.end} min={0} max={undefined} allowEmpty problem={problems.end_s}
+    <StagedNumber label={`${L('Ends at', '结束时间')} (s)`} value={fields.end} min={0} max={undefined} allowEmpty problem={problems.end_s}
       showError={touched.has('end')} onChange={value => onField('end', value)} />
     <p className="hint" role="note">{zh ? '火情是视觉与调度标记；不模拟燃烧与烟雾扩散。' : 'The fire is a visual and scheduling marker; combustion and smoke spread are not simulated.'}</p>
   </>;
@@ -81,11 +81,12 @@ function incidentFields(incident: Draft): IncidentFields {
     end: incident.end_s === undefined ? '' : String(incident.end_s) };
 }
 
-/** set_incident params; only fields the staged buffer actually carries are sent. */
+/** set_incident params; only fields the staged buffer actually carries are sent.
+ *  Clearing "Ends at" sends `end_s: null` — the backend removes the end; omission preserves it. */
 function incidentParams(fields: IncidentFields, previous?: Draft): Record<string, unknown> {
   const at = parseIncidentPosition(fields.at);
   return { kind: fields.kind, at: at ?? previous?.at, time_s: parseStagedNumber(fields.time), radius_m: parseStagedNumber(fields.radius),
-    ...(fields.end.trim() === '' ? {} : { end_s: parseStagedNumber(fields.end) }) };
+    ...(fields.end.trim() === '' ? { end_s: null } : { end_s: parseStagedNumber(fields.end) }) };
 }
 
 function IncidentEditForm({ incident, wiring, duration_s, L, zh, onClose }: { incident: Draft; wiring: IncidentWiring; duration_s?: number; L: SectionProps['L']; zh: boolean; onClose: () => void }) {
@@ -101,7 +102,7 @@ function IncidentEditForm({ incident, wiring, duration_s, L, zh, onClose }: { in
     <p className="hint">{L(`Change incident "${incident.id}". Review the changes before applying.`, `修改事件“${incident.id}”，应用前请核对变更。`)}</p>
     <StagedFormNote form={form} L={L} onDiscard={() => setTouched(false)} />
     <IncidentPosition L={L} value={fields.at} touched={touched} onChange={at => { setTouched(true); form.setValues(previous => ({ ...previous, at })); }} />
-    <StagedNumber label={`${L('Time', '时间')} (s)`} value={fields.time} min={0} max={duration_s} onChange={time => form.setValues(previous => ({ ...previous, time }))} />
+    <StagedNumber label={`${L('Starts at', '开始时间')} (s)`} value={fields.time} min={0} max={duration_s} onChange={time => form.setValues(previous => ({ ...previous, time }))} />
     <IncidentKindFields fields={fields} touched={touched ? new Set(['radius', 'end']) : new Set()} problems={problems} zh={zh} L={L}
       onKind={kind => { form.setValues(previous => {
         const radius = previous.radius === '' || previous.radius === String(incidentRadiusDefault(incident.kind ?? 'person_fall')) ? String(incidentRadiusDefault(kind)) : previous.radius;
@@ -164,7 +165,7 @@ export function IncidentsBlock({ config, api, project, onProject, saveDraft, dur
         {touched.has('id') && !fields.id.trim() && <span role="alert" className="hint wb-field-error">{L('Required.', '必填。')}</span>}
       </label>
       <IncidentPosition L={L} value={fields.at} touched={touched.has('at')} onChange={value => update('at', value)} />
-      <StagedNumber label={`${L('Time', '时间')} (s)`} value={fields.time} min={0} max={duration_s} onChange={value => update('time', value)} />
+      <StagedNumber label={`${L('Starts at', '开始时间')} (s)`} value={fields.time} min={0} max={duration_s} onChange={value => update('time', value)} />
       <IncidentKindFields fields={fields} touched={touched.has('radius') || touched.has('end') ? new Set(['radius', 'end']) : new Set()} problems={problems} zh={zh} L={L}
         onKind={value => { const radius = fields.radius === '' || fields.radius === String(incidentRadiusDefault(kind)) ? String(incidentRadiusDefault(value)) : fields.radius;
           setTouched(previous => new Set([...previous, 'radius'])); form.setValues(previous => ({ ...previous, kind: value, radius })); }}
