@@ -22,6 +22,7 @@ import { translate } from '../i18n/translate';
 import type {DirectorTarget} from './business-director';
 import { workbenchLayoutKey } from './label-placement';
 import { AtmosphereLayer } from './atmosphere';
+import { IncidentSurface } from './atmosphere/surface-height';
 import { conditionsAt, type Conditions } from './conditions';
 export type { CameraMode } from '../scene/camera-director';
 // Look down far enough to retain city context when following an airborne unit.
@@ -71,6 +72,7 @@ export class Viewport {
   private environment?: T.WebGLRenderTarget;
   private staticRoot = new T.Group();
   private occlusion = new StaticOcclusion();
+  private incidentSurface = new IncidentSurface();
   private origin = new T.Vector3();
   private framed = false;
   private director = new CameraDirector();
@@ -150,7 +152,7 @@ export class Viewport {
       if(presentation.city)this.options.onCityProgress?.({phase:'roads',loaded:0,total:0});
       if(presentation.attribution)this.setAttribution(presentation.attribution);
       if(presentation.city?.kind==='osm2world')this.setAttribution('© OpenStreetMap contributors · ODbL · Procedural display materials');
-      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;if(object.parent!==this.staticRoot)this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);if(object.name==='city'&&object.userData.geometryRevision!==undefined&&object.userData.geometryRevision!==this.cityGeometryRevision){this.cityGeometryRevision=object.userData.geometryRevision;this.occlusion.setObjects(this.staticRoot.children);}else this.occlusion.addObjects([object]);this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city=object.userData.loading?'loading':'loaded';container.dataset.cityProgress=JSON.stringify(object.userData.progress??{});this.options.onCityProgress?.(object.userData.loading?object.userData.progress:undefined);container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});this.options.onCityIssue?.(undefined);}},this.status)
+      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;if(object.parent!==this.staticRoot)this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);if(object.name==='city'&&object.userData.geometryRevision!==undefined&&object.userData.geometryRevision!==this.cityGeometryRevision){this.cityGeometryRevision=object.userData.geometryRevision;this.occlusion.setObjects(this.staticRoot.children);}else this.occlusion.addObjects([object]);this.incidentSurface.setObjects(this.staticRoot);this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city=object.userData.loading?'loading':'loaded';container.dataset.cityProgress=JSON.stringify(object.userData.progress??{});this.options.onCityProgress?.(object.userData.loading?object.userData.progress:undefined);container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});this.options.onCityIssue?.(undefined);}},this.status)
         .catch(error=>{if(!this.disposed){this.options.onCityProgress?.(undefined);this.status(String(error));if(presentation?.city)this.options.onCityIssue?.(String(error));options.onError?.(error);}});
       if(presentation.hdri)void this.assets.hdri(presentation.hdri,this.renderer).then(environment=>{
         if(this.disposed){environment.dispose();return;}this.environment=environment;this.scene.environment=environment.texture;this.revision++;container.dataset.ibl='hdri';
@@ -379,7 +381,7 @@ export class Viewport {
       const shift=this.controls.target.clone();shift.y=0;this.origin.add(shift);this.camera.position.sub(shift);this.controls.target.sub(shift);
       if(this.cameraTransition){this.cameraTransition.position.sub(shift);this.cameraTransition.target.sub(shift);}
       this.staticRoot.position.copy(this.origin).negate();
-      this.staticRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.revision++;
+      this.staticRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.incidentSurface.setObjects(this.staticRoot);this.revision++;
       this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion,undefined,next?.incidents);
     }
     this.lighting.update(this.controls.target);
@@ -462,11 +464,9 @@ export class Viewport {
     for (const start of this.ringStarts.values()) if (now - start < 600) return true;
     return false;
   }
-  /** Roof height under an ENU point, from the same progressive bounds the camera lift uses. */
-  private roofProbe = new T.Vector3();
+  /** Sample actual city triangles, cached between progressive geometry updates. */
   private roofHeight = (east: number, north: number): number => {
-    const probe = this.roofProbe.set(east - this.origin.x, 0, -north - this.origin.z);
-    return Math.max(0, this.occlusion.liftCamera(probe, 0).y);
+    return this.incidentSurface.heightAt(east - this.origin.x, -north - this.origin.z, this.lighting.ground.position.y);
   };
   /** Legend from actual business kinds present in the committed cut, plus active zones. */
   private emitLegend(store: FeedStore) {

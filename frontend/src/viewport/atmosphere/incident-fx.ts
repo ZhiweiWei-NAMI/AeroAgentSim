@@ -37,72 +37,92 @@ interface Visual {
 const glowMaterial = () => new T.ShaderMaterial({
   transparent: true, depthWrite: false, depthTest: true, blending: T.AdditiveBlending,
   polygonOffset: true, polygonOffsetFactor: -4,
-  uniforms: { uTime: { value: 0 } },
+  uniforms: { uTime: { value: 0 }, uRamp: { value: 1 } },
   vertexShader: `varying vec2 glowUv;void main(){glowUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-  fragmentShader: `uniform float uTime;varying vec2 glowUv;
+  fragmentShader: `uniform float uTime;uniform float uRamp;varying vec2 glowUv;
     float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
     void main(){float d=length(glowUv-0.5)*2.0;
     // Sim-time flicker: two incommensurate sines on the hashed phase keep the disc alive.
     float flicker=0.75+0.25*sin(uTime*7.3+hash(vec2(3.0,7.0)))*sin(uTime*11.1+hash(vec2(5.0,1.0)));
-    float alpha=smoothstep(1.0,0.0,d)*0.35*flicker;
-    if(alpha<=0.004)discard;gl_FragColor=vec4(1.0,0.541,0.169,alpha);}`,
+    float alpha=(1.0-smoothstep(0.0,1.0,d))*0.35*flicker*uRamp;
+    if(alpha<=0.004)discard;gl_FragColor=vec4(1.0,0.254,0.024,alpha);${OUTPUT_F}}`,
 });
 
 // Chunks must start on their own lines for Three's shader preprocessor.
 const FOG_PARS_V = '\n#include <fog_pars_vertex>\n', FOG_V = '\n#include <fog_vertex>\n',
   FOG_PARS_F = '\n#include <fog_pars_fragment>\n', FOG_F = '\n#include <fog_fragment>\n';
+// The run composer handles display conversion; direct previews/captures need these chunks.
+const OUTPUT_F = '\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n';
+
+// Emissive flames lose intensity through fog, while retaining their orange hue.
+// Adding fog colour to an additive core would brighten the fog itself.
+const FOG_VISIBILITY = `float visibility=1.0;
+  #ifdef USE_FOG
+    #ifdef FOG_EXP2
+      visibility=exp(-fogDensity*fogDensity*vFogDepth*vFogDepth);
+    #else
+      visibility=1.0-smoothstep(fogNear,fogFar,vFogDepth);
+    #endif
+  #endif
+`;
 
 /**
- * One instanced quad per flame, drawn twice with `uPass`: pass 0 is the flame body in
+ * One instanced quad per flame, drawn twice with `uCore`: pass 0 is the flame body in
  * NormalBlending (orange stays orange on a light, foggy sky), pass 1 is a small additive
- * core at ≤ 0.6 alpha. Straight-alpha premultiplied output: vec4(rgb × a, a).
+ * core at ≤ 0.6 alpha. Premultiplied output matches the material's blend factors.
  * Colours: #ffd27a only in the lowest 20 %, body #ff8a2b, tips #e2461b into a hint of
  * dark smoke at the very top.
  */
 const flameMaterial = (additiveCore = false) => new T.ShaderMaterial({
-  transparent: true, depthWrite: false, blending: additiveCore ? T.AdditiveBlending : T.NormalBlending, fog: true, side: T.DoubleSide, forceSinglePass: true,
-  uniforms: T.UniformsUtils.merge([T.UniformsLib.fog, { uTime: { value: 0 }, uRamp: { value: 1 } }]),
-  vertexShader: `attribute float flamePass;varying vec2 flameUv;varying float pass;${FOG_PARS_V}
-    void main(){flameUv=uv;pass=flamePass;
+  transparent: true, depthWrite: false, premultipliedAlpha: true, blending: additiveCore ? T.AdditiveBlending : T.NormalBlending, fog: true, side: T.DoubleSide, forceSinglePass: true,
+  uniforms: T.UniformsUtils.merge([T.UniformsLib.fog, { uTime: { value: 0 }, uRamp: { value: 1 }, uCore: { value: additiveCore ? 1 : 0 } }]),
+  vertexShader: `varying vec2 flameUv;${FOG_PARS_V}
+    void main(){flameUv=uv;
     vec4 mvPosition=modelViewMatrix*instanceMatrix*vec4(position,1.0);
     gl_Position=projectionMatrix*mvPosition;${FOG_V}}`,
   // Two octaves of scrolling value noise times a teardrop mask; colour core → tip by height.
-  fragmentShader: `uniform float uTime;uniform float uRamp;varying vec2 flameUv;varying float pass;${FOG_PARS_F}
+  fragmentShader: `uniform float uTime;uniform float uRamp;uniform float uCore;varying vec2 flameUv;${FOG_PARS_F}
     float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
     float a=fract(sin(dot(i,vec2(127.1,311.7)))*43758.5453),b=fract(sin(dot(i+vec2(1,0),vec2(127.1,311.7)))*43758.5453),
     c=fract(sin(dot(i+vec2(0,1),vec2(127.1,311.7)))*43758.5453),d=fract(sin(dot(i+vec2(1,1),vec2(127.1,311.7)))*43758.5453);
     return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
     void main(){vec2 uv=flameUv;float t=uTime;
     float n=noise(uv*3.0+vec2(t*0.9,-t*1.6))*0.6+noise(uv*7.0-vec2(t*1.4,t*2.2))*0.4;
-    float teardrop=1.0-smoothstep(0.0,0.55*pow(1.0-uv.y,0.7),abs(uv.x-0.5)*2.0);
-    float mask=smoothstep(1.0,0.25,uv.y)*teardrop*(0.55+0.45*n);
-    float core=teardrop*smoothstep(1.0,0.0,uv.y)*smoothstep(0.75,0.2,abs(uv.x-0.5)*2.0)*(0.5+0.5*n);
-    float alpha=(pass<0.5?min(0.85,mask*1.15):min(0.6,core*0.6))*uRamp;
+    float teardrop=1.0-smoothstep(0.0,max(0.001,0.9*pow(max(0.0,1.0-uv.y),0.7)),abs(uv.x-0.5)*2.0);
+    float mask=(1.0-smoothstep(0.25,1.0,uv.y))*teardrop*(0.55+0.45*n);
+    float core=teardrop*(1.0-smoothstep(0.0,1.0,uv.y))*(1.0-smoothstep(0.2,0.75,abs(uv.x-0.5)*2.0))*(0.5+0.5*n);
+    ${FOG_VISIBILITY}
+    float alpha=(uCore<0.5?min(0.85,mask*1.15):min(0.6,core*0.6))*uRamp*visibility;
     if(alpha<=0.01)discard;
     // #ffd27a → #ff8a2b → #e2461b → hint of #3b3632 at the very top.
-    vec3 color=mix(mix(vec3(1.0,0.824,0.478),vec3(1.0,0.541,0.169),clamp(uv.y*5.0,0.0,1.0)),
-      vec3(0.886,0.275,0.106),smoothstep(0.45,0.95,uv.y));
-    color=mix(color,vec3(0.231,0.212,0.196),smoothstep(0.9,1.0,uv.y)*0.35);
-    if(pass>0.5)color=mix(color,vec3(1.0,0.824,0.478),0.5);    gl_FragColor=vec4(color*alpha,alpha);${FOG_F}
-    #ifdef USE_FOG
-      gl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor*(1.0-fogFactor),fogFactor);
-      gl_FragColor.a*=1.0-fogFactor;
-    #endif
-    }`,
+    // Palette in the renderer's linear colour space.
+    vec3 color=mix(mix(vec3(1.0,0.644,0.195),vec3(1.0,0.254,0.024),clamp(uv.y*5.0,0.0,1.0)),
+      vec3(0.761,0.061,0.011),smoothstep(0.45,0.95,uv.y));
+    color=mix(color,vec3(0.044,0.037,0.032),smoothstep(0.9,1.0,uv.y)*0.35);
+    if(uCore>0.5)color=mix(color,vec3(1.0,0.644,0.195),0.5);
+    gl_FragColor=vec4(color,alpha);${OUTPUT_F}
+    gl_FragColor.rgb*=alpha;}`,
 });
 
-const smokeMaterial = (map: T.Texture) => new T.ShaderMaterial({
+const smokeMaterial = (map: T.Texture, ambient: T.Color) => new T.ShaderMaterial({
   transparent: true, depthWrite: false, depthTest: true, fog: true,
-  uniforms: { ...T.UniformsUtils.clone(T.UniformsLib.fog), uMap: { value: map } },
+  uniforms: { ...T.UniformsUtils.clone(T.UniformsLib.fog), uMap: { value: map }, uAmbient: { value: ambient } },
   vertexShader: `attribute vec4 puffTint;attribute float puffCell;varying vec2 puffUv;varying vec4 puffColor;${FOG_PARS_V}
     void main(){puffUv=uv*0.5+vec2(mod(puffCell,2.0),floor(puffCell/2.0))*0.5;puffColor=puffTint;
     vec4 mvPosition=modelViewMatrix*instanceMatrix*vec4(position,1.0);
     gl_Position=projectionMatrix*mvPosition;${FOG_V}}`,
-  // The atlas is white RGB with density in alpha: luminance × alpha × tint, straight
-  // alpha (vec4(tint, alpha) — not premultiplied RGB) with NormalBlending.
-  fragmentShader: `uniform sampler2D uMap;varying vec2 puffUv;varying vec4 puffColor;${FOG_PARS_F}
-    void main(){vec4 puff=texture2D(uMap,puffUv);float alpha=dot(puff.rgb,vec3(0.2126,0.7152,0.0722))*puff.a*puffColor.a;
-    if(alpha<=0.002)discard;gl_FragColor=vec4(puffColor.rgb,alpha);${FOG_F}}`,
+  // White RGB carries density in alpha. Soften that density into a connected
+  // plume, still capped by the authored 0.55 puff opacity, with straight alpha.
+  fragmentShader: `uniform sampler2D uMap;uniform vec3 uAmbient;varying vec2 puffUv;varying vec4 puffColor;${FOG_PARS_F}
+    void main(){vec4 puff=texture2D(uMap,puffUv);float alpha=sqrt(dot(puff.rgb,vec3(0.2126,0.7152,0.0722))*puff.a)*puffColor.a;
+    if(alpha<=0.002)discard;gl_FragColor=vec4(puffColor.rgb*uAmbient,alpha);${OUTPUT_F}
+    ${FOG_VISIBILITY}
+    #ifdef USE_FOG
+      // Art direction: keep the dark plume readable in the foggy overview and
+      // fade it out at distance, without changing the scene's visibility density.
+      gl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,1.0-sqrt(visibility));
+    #endif
+    }`,
 });
 
 /** Fragment-shader width for the ring line: ≥ 0.8 m in world units, ≥ 1 px (fwidth) on screen. */
@@ -124,7 +144,7 @@ const ringMaterial = (occluded: boolean) => new T.ShaderMaterial({
     // The line is an annulus; the independent radial gradient shares this draw call.
     float alpha=max(0.0,1.0-d)*0.10*uFill;
     if(abs(d-1.0)<width&&fract(angle*16.0)<=0.6&&angle<uReveal)alpha=uOpacity;
-    if(alpha<=0.002)discard;gl_FragColor=vec4(uColor,alpha);${FOG_F}}`,
+    if(alpha<=0.002)discard;gl_FragColor=vec4(uColor,alpha);${OUTPUT_F}${FOG_F}}`,
 });
 
 /** Two-tone flame (or person) glyph on a disc with a 2 px white ring, drawn once to a 64 px canvas. */
@@ -167,6 +187,7 @@ export class IncidentFX {
   private flames = flameMaterial();
   private flameCore = flameMaterial(true);
   private smoke?: T.ShaderMaterial;
+  private smokeAmbient = new T.Color('#ffffff');
   private plane = new T.PlaneGeometry(1, 1);
   private ringGeometry = new T.PlaneGeometry(2, 2).rotateX(-Math.PI / 2);
   private leaderGeometry = new T.BufferGeometry().setFromPoints([new T.Vector3(), new T.Vector3(0, 14, 0)]);
@@ -185,7 +206,7 @@ export class IncidentFX {
     if (options.annotations) pinUsers++;
     this.ready = smokeAtlas().then(texture => {
       if (this.disposed) return;
-      this.smoke = smokeMaterial(texture ?? proceduralSmokeAtlas());
+      this.smoke = smokeMaterial(texture ?? proceduralSmokeAtlas(), this.smokeAmbient);
       for (const visual of this.visuals.values()) { visual.smoke.material.dispose(); visual.smoke.material = this.smoke; }
       // The atlas usually lands after the first frames; tell the owner's idle
       // renderer to redraw, or the plume stays invisible until the camera moves.
@@ -208,10 +229,6 @@ export class IncidentFX {
     flames.count = flameCount; flames.frustumCulled = false; flames.renderOrder = 4;
     const flameCoreMesh = new T.InstancedMesh(this.plane, this.flameCore.clone(), flameCount);
     flameCoreMesh.count = flameCount; flameCoreMesh.frustumCulled = false; flameCoreMesh.renderOrder = 4;
-    const passes = new T.InstancedBufferAttribute(new Float32Array(flameCount * 2), 1);
-    for (let i = 0; i < flameCount; i++) { passes.setX(i, 0); passes.setX(flameCount + i, 1); }
-    flames.geometry.setAttribute('flamePass', passes);
-    flameCoreMesh.geometry.setAttribute('flamePass', passes);
     // Per-fire puff storage: instance attributes ride a private geometry clone.
     const capacity = SMOKE_HIGH;
     const geometry = new T.InstancedBufferGeometry();
@@ -271,10 +288,16 @@ export class IncidentFX {
       // glow and smoke base ride the roof height.
       visual.unit.position.copy(this.position);
       const roofY = Math.max(roofHeight?.(row.position[0], row.position[1]) ?? -(origin?.y ?? 0), this.position.y);
+      const baseY = roofY - visual.unit.position.y;
+      const baseHeight = T.MathUtils.clamp(8 * Math.sqrt(row.radiusM / 30), 5, 12);
       // Ring draw-in: 0.6 s wall-clock, once per activation (spec §5). Grey tint after ending.
       const start = ringStart.get(row.id), drawIn = !reduced && start !== undefined ? Math.min(1, (performance.now() - start) / 600) : 1;
       if (visual.annotation) {
         const { ring, ringOccluded, pin, label } = visual.annotation, ringMat = ring.material;
+        ring.position.y = -(origin?.y ?? 0) - visual.unit.position.y + 0.15;
+        if (ringOccluded) ringOccluded.position.y = ring.position.y;
+        pin.position.y = baseY + 14;
+        visual.annotation.leader.position.y = baseY;
         const ringColor = ended ? ENDED : row.kind === 'fire' ? AREA : '#d55e00';
         const ringOpacity = ended ? 0.5 : 0.85, ringFill = ended ? 0 : drawIn;
         ring.visible = !pending;
@@ -301,7 +324,7 @@ export class IncidentFX {
         if (label && this.options.preview) {
           const overlay = this.options.preview.overlay;
           label.textContent = incidentLabel(row, this.options.preview.locale().startsWith('zh'));
-          this.position.copy(visual.unit.position); this.position.y += 16; this.position.project(camera);
+          this.position.copy(visual.unit.position); this.position.y += pin.position.y + 2; this.position.project(camera);
           label.hidden = this.position.z < -1 || this.position.z > 1 || Math.abs(this.position.x) > 0.96 || Math.abs(this.position.y) > 0.96;
           label.style.left = `${(this.position.x + 1) * overlay.clientWidth / 2}px`;
           label.style.top = `${(1 - this.position.y) * overlay.clientHeight / 2 - 14}px`;
@@ -316,9 +339,10 @@ export class IncidentFX {
         visual.glow.visible = burning;
         if (burning) {
           visual.glow.material.uniforms.uTime.value = simSeconds;
+          visual.glow.material.uniforms.uRamp.value = ramp;
           const glowRadius = Math.max(row.radiusM * 0.35, 3);
-          visual.glow.scale.setScalar(glowRadius);
-          visual.glow.position.y = roofY - visual.unit.position.y + 0.1;
+          visual.glow.scale.setScalar(glowRadius * 2);
+          visual.glow.position.y = baseY + 0.1;
         }
       }
       if (burning) {
@@ -327,8 +351,7 @@ export class IncidentFX {
           mesh.material.uniforms.uRamp.value = ramp;
         }
         // Height 5–12 m scaled by sqrt(radius/30); cluster radius min(0.2·R, 6 m); width 0.8 × height.
-        const scaleByRadius = Math.sqrt(row.radiusM / 30);
-        const baseHeight = Math.min(12, Math.max(5, 8 * scaleByRadius)), cluster = Math.min(0.2 * row.radiusM, 6);
+        const cluster = Math.min(0.2 * row.radiusM, 6);
         for (let i = 0; i < visual.flames.count; i++) {
           const angle = fxHash(seed, i * 4 + 2) * Math.PI * 2, radius = fxHash(seed, i * 4 + 3) * cluster;
           // Camera-facing billboards, each rotated about its own vertical axis.
@@ -340,12 +363,15 @@ export class IncidentFX {
           this.position.set(Math.cos(angle) * radius, roofY - visual.unit.position.y + this.scale.y / 2, Math.sin(angle) * radius);
           this.matrix.compose(this.position, this.quaternion, this.scale);
           visual.flames.setMatrixAt(i, this.matrix);
+          this.scale.set(this.scale.x * 0.35, this.scale.y * 0.55, 1);
+          this.position.y = baseY + this.scale.y / 2;
+          this.matrix.compose(this.position, this.quaternion, this.scale);
           visual.flameCore.setMatrixAt(i, this.matrix);
         }
         visual.flames.instanceMatrix.needsUpdate = true;
         visual.flameCore.instanceMatrix.needsUpdate = true;
       }
-      if (row.kind === 'fire' && !pending) this.writeSmoke(visual, seed, simSeconds, camera, row, roofY - visual.unit.position.y);      else { visual.smoke.visible = false; visual.smoke.count = 0; }
+      if (row.kind === 'fire' && !pending) this.writeSmoke(visual, seed, simSeconds, camera, row, baseY + baseHeight);      else { visual.smoke.visible = false; visual.smoke.count = 0; }
     }
     for (const [id, visual] of this.visuals) if (!shown.has(id)) { this.disposeVisual(visual); this.visuals.delete(id); }
     // One warm PointLight per scene for the nearest active fire.
@@ -390,7 +416,7 @@ export class IncidentFX {
     const seedA = fxHash(seed, slot * 8 + 1), seedB = fxHash(seed, slot * 8 + 2), seedC = fxHash(seed, slot * 8 + 3);
     // Rise 2.6 m/s slowing with height; drift = wind × 0.9 × min(1, age/4) — the plume first
     // rises vertically, then visibly bends downwind.
-    const risen = 2.6 * age * (1 - 0.45 * life), drift = 0.9 * Math.min(1, age / 4) * age;
+    const risen = 2.6 * age * (1 - 0.2 * life), drift = 0.9 * Math.min(1, age / 4) * age;
     const jitterX = (seedA - 0.5) * 6 + Math.sin(simSeconds * 0.2 + seedB * 6) * 1.5;
     const jitterZ = (seedB - 0.5) * 6 + Math.cos(simSeconds * 0.17 + seedC * 6) * 1.5;
     const size = 8 + 32 * life;
@@ -408,13 +434,14 @@ export class IncidentFX {
     visual.cells.setX(count, Math.floor(fxHash(seed, slot * 8 + 4) * 4));
   }
   setWind(east: number, north: number) { this.wind.set(east, north); }
+  setSmokeLight(ambient: T.Color) { this.smokeAmbient.copy(ambient); }
   private wind = new T.Vector2();
   private disposeVisual(visual: Visual) {
     visual.unit.removeFromParent(); visual.flames.material.dispose();
     visual.flames.dispose(); visual.flameCore.material.dispose(); visual.flameCore.dispose(); visual.smoke.dispose(); visual.glow?.material.dispose();
     visual.smoke.geometry.dispose(); if (visual.smoke.material !== this.smoke) visual.smoke.material.dispose();
     if (visual.annotation) {
-      visual.annotation.ring.material.dispose(); visual.annotation.pin.material.dispose(); visual.annotation.leader.material.dispose(); visual.annotation.label?.remove();
+      visual.annotation.ring.material.dispose(); visual.annotation.ringOccluded?.material.dispose(); visual.annotation.pin.material.dispose(); visual.annotation.leader.material.dispose(); visual.annotation.label?.remove();
     }
     visual.light?.dispose();
   }

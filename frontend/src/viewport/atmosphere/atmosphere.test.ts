@@ -8,6 +8,7 @@ import { fxHash, fxSeed } from './fx-shared';
 import type { Conditions } from '../conditions';
 import { AtmosphereLayer } from './index';
 import { worldPosition } from '../coordinates';
+import { QualityMaterials } from '../quality-materials';
 
 vi.mock('three', async importOriginal => {
   const three = await importOriginal<typeof import('three')>();
@@ -136,6 +137,45 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     applyWeatherMaterials(lowCity, 1, false); expect(low.color.r).toBeLessThan(lowColor.r);
     applyWeatherMaterials(lowCity, 0, false); expect(low.color.toArray()).toEqual(lowColor.toArray());
   });
+  it('preserves finite wet colours and exact dry colours when quality drops after rain starts', () => {
+    const material = new T.MeshStandardMaterial({ color: '#34383d', roughness: 0.92 });
+    const city = new T.Mesh(new T.PlaneGeometry(), material), dry = material.color.clone();
+    const quality = new QualityMaterials();
+    applyWeatherMaterials(city, 0.5, true);
+    quality.apply(city, true); // real low-quality path JSON-clones the wet userData
+    applyWeatherMaterials(city, 0.5, true);
+    const cheap = city.material as unknown as T.MeshLambertMaterial;
+    expect(cheap.color.toArray().every(Number.isFinite)).toBe(true);
+    expect(cheap.color.toArray()).toEqual(dry.clone().multiplyScalar(0.96).toArray());
+    // Ordinary material cloning must also carry a reversible, precise baseline.
+    const clone = cheap.clone(), copied = new T.Mesh(city.geometry, clone);
+    applyWeatherMaterials(copied, 0, false);
+    expect(clone.color.toArray()).toEqual(dry.toArray());
+    applyWeatherMaterials(city, 0, false);
+    quality.apply(city, false); applyWeatherMaterials(city, 0, false);
+    expect(city.material).toBe(material);
+    expect(material.color.toArray()).toEqual(dry.toArray());
+    expect(material.roughness).toBe(0.92);
+    quality.dispose(); clone.dispose(); city.geometry.dispose(); material.dispose();
+  });
+  it('shades smoke with the actual display lights, including an override of journaled dusk', async () => {
+    const scene = new T.Scene(), render = renderer(), rig = setupScene(render, scene);
+    const layer = new AtmosphereLayer(scene, render, 'low'); await layer.ready;
+    const dusk = { ...conditions, light: 'dusk' as const };
+    rig.setAtmosphere({ dusk: false, rain: 0.5, visibilityM: 500 });
+    layer.update(dusk, 12.5, camera);
+    const smoke = meshes(layer.root.children[0].children[0])[1];
+    const dayTint = smoke.material.uniforms.uAmbient.value.clone() as T.Color;
+    rig.setAtmosphere({ dusk: true, rain: 0.5, visibilityM: 500 });
+    layer.update(dusk, 12.5, camera);
+    const tint = smoke.material.uniforms.uAmbient.value as T.Color;
+    expect(tint.r).toBeLessThan(dayTint.r); expect(tint.g).toBeLessThan(dayTint.g); expect(tint.b).toBeLessThan(dayTint.b);
+    // The display override, rather than the unchanged journaled Conditions.light, drives shading.
+    rig.setAtmosphere({ dusk: false, rain: 0.5, visibilityM: 500 });
+    layer.update(dusk, 12.5, camera);
+    expect(tint.toArray()).toEqual(dayTint.toArray());
+    layer.dispose(); rig.dispose();
+  });
   it.each(['high', 'low'] as const)('keeps a continuous %s plume across schedule wraps and late activation', async quality => {
     const layer = new IncidentFX(quality); await layer.ready;
     const fire = { ...conditions.incidents[0], startS: 90 };
@@ -183,7 +223,7 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     expect(roof).toHaveBeenCalledWith(20, 40);
     expect(overlay.textContent).toBe('Fire at 01:30');
     const pin = preview.root.children[0].children.find(node => node instanceof T.Sprite) as T.Sprite;
-    expect(pin.scale.x).toBeCloseTo(26 / 1800 * 2); expect(pin.position.y).toBe(14);
+    expect(pin.scale.x).toBeCloseTo(26 / 1800 * 2); expect(pin.position.y).toBe(49);
     expect(pin.material.fog).toBe(false);
     expect(meshes(preview.root.children[0]).every(mesh => !mesh.visible)).toBe(true);
     preview.update(conditions.incidents, 12.5, camera, new Map());

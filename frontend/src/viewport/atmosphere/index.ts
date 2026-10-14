@@ -32,6 +32,8 @@ export class AtmosphereLayer {
   };
   private lastPreview?: { dusk: boolean; rain: number; visibilityM: number | null };
   private previewFog = new T.FogExp2(0xffffff);
+  private fill?: T.HemisphereLight;
+  private smokeAmbient = new T.Color();
   constructor(private scene: T.Scene, private renderer: T.WebGLRenderer, quality: Quality, options: AtmosphereOptions = { annotations: true }) {
     this.incidents = new IncidentFX(quality, { ...options, onReady: () => options.onReady?.() });
     this.ready = this.incidents.ready;
@@ -39,6 +41,7 @@ export class AtmosphereLayer {
     this.root.add(this.incidents.root, this.rain.mesh);
     if (options.annotations) { this.wind = new WindStreaks(quality); this.root.add(this.wind.mesh); }
     scene.add(this.root);
+    scene.traverse(node => { if (node instanceof T.HemisphereLight) this.fill = node; });
     // Full rigs are driven by the owner's setAtmosphere path; previews retain their simple lights.
     if (!scene.userData.lighting?.setAtmosphere) {
       const lights: NonNullable<typeof this.preview>['lights'] = [];
@@ -55,6 +58,13 @@ export class AtmosphereLayer {
   setPinHeightCss(heightCssPx: number) { this.incidents.setPinScale(heightCssPx); }
   update(conditions: Conditions, simSeconds: number, camera: T.Camera,
     roofHeight?: (east: number, north: number) => number, ringStart?: Map<string, number>, origin?: T.Vector3) {
+    if (this.preview) this.applyPreview(conditions);
+    // Smoke reflects the existing rig's ambient light rather than emitting its
+    // palette at full brightness. Average the sky/ground light for soft volume sprites.
+    if (this.fill) {
+      this.smokeAmbient.copy(this.fill.color).add(this.fill.groundColor).multiplyScalar(this.fill.intensity * 0.5);
+      this.incidents.setSmokeLight(this.smokeAmbient);
+    }
     this.incidents.setWind(conditions.wind?.east ?? 0, conditions.wind?.north ?? 0);
     // The pin is screen-space: size it from the container's CSS height (the drawing buffer
     // would double-count devicePixelRatio).
@@ -64,7 +74,6 @@ export class AtmosphereLayer {
     this.incidents.update(conditions.incidents, simSeconds, camera, ring, origin, roofHeight);
     this.rain.update(conditions.precipitationMmH, simSeconds, camera, conditions.wind ?? undefined);
     this.wind?.update(conditions.wind, simSeconds, camera);
-    if (this.preview) this.applyPreview(conditions);
   }
   private applyPreview(conditions: Conditions) {
     const dusk = conditions.light === 'dusk', rain = Math.min(conditions.precipitationMmH / 8, 1), visibilityM = conditions.visibilityM;

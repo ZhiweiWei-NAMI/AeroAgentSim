@@ -107,13 +107,16 @@ export function applyWeatherMaterials(object: T.Object3D, wet: number, dusk: boo
     if (uniform) uniform.value = dusk ? 1 : 0;
     const standard = material as T.MeshStandardMaterial;
     if (!(standard.color instanceof T.Color)) continue;
-    const base = standard.userData.weatherBase as { color: T.Color; roughness?: number } | undefined;
+    // Material.copy/clone JSON-copies userData. A Color there becomes a hex number;
+    // Color.copy(number) then produces NaNs that fog and tone mapping propagate.
+    // Store the exact linear RGB components so quality changes preserve the dry finish.
+    const base = standard.userData.weatherBase as { color: [number, number, number]; roughness?: number } | undefined;
     if (wet <= 0) {
-      if (base) { standard.color.copy(base.color); if (base.roughness !== undefined) standard.roughness = base.roughness; delete standard.userData.weatherBase; }
+      if (base) { standard.color.fromArray(base.color); if (base.roughness !== undefined) standard.roughness = base.roughness; delete standard.userData.weatherBase; }
       continue;
     }
-    const source = base ?? (standard.userData.weatherBase = { color: standard.color.clone(), roughness: standard.roughness });
-    standard.color.copy(source.color).multiplyScalar(1 - 0.08 * wet);
+    const source = base ?? (standard.userData.weatherBase = { color: standard.color.toArray(), roughness: standard.roughness });
+    standard.color.fromArray(source.color).multiplyScalar(1 - 0.08 * wet);
     if (source.roughness !== undefined) standard.roughness = Math.max(0, source.roughness - 0.1 * wet);
   } });
 }

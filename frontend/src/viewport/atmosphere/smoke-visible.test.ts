@@ -63,7 +63,7 @@ it('the plume leans with the authored wind: from NW means it drifts to the SE (+
   layer.dispose();
 });
 
-it('rings, fills and glow sit at ground level; only flames and smoke ride the roof height', async () => {
+it('keeps the ring on the ground while flames, glow, smoke and the pin use the roof', async () => {
   const layer = new IncidentFX('high', { annotations: true });
   await layer.ready;
   const roof = vi.fn(() => 25);
@@ -79,9 +79,32 @@ it('rings, fills and glow sit at ground level; only flames and smoke ride the ro
   const glow = unit.children.find(node => node instanceof T.Mesh && !(node instanceof T.InstancedMesh)) as T.Mesh;
   expect(glow).toBeTruthy();
   expect((glow.material as T.Material).depthTest).toBe(true);
+  expect(glow.position.y).toBeCloseTo(25.1);
   const rings = unit.children.filter(node => (node as T.Mesh).isMesh === true && !(node instanceof T.InstancedMesh))
     .map(node => (node as T.Mesh).material as T.ShaderMaterial);
   expect(rings.some(material => material.depthFunc === T.GreaterDepth)).toBe(true);
   expect(rings.some(material => material.uniforms.uOpacity?.value >= 0.85)).toBe(true);
+  const smoke = smokeOf(layer); smoke.getMatrixAt(0, matrix); matrix.decompose(position, quaternion, scale);
+  expect(position.y).toBeGreaterThan(25 + 5); // emission starts above the flames, not in their base
+  const pin = unit.children.find(node => node instanceof T.Sprite) as T.Sprite;
+  expect(pin.position.y).toBe(39);
+  layer.dispose();
+});
+
+it('keeps the additive core small and selects its pass independently of shared quad attributes', async () => {
+  const layer = new IncidentFX('high'); await layer.ready;
+  layer.update([fire(20)], 20, camera, new Map());
+  const [body, , core] = layer.root.children[0].children.filter(node => node instanceof T.InstancedMesh) as T.InstancedMesh<T.BufferGeometry, T.ShaderMaterial>[];
+  expect(body.material.uniforms.uCore.value).toBe(0);
+  expect(core.material.uniforms.uCore.value).toBe(1);
+  expect(body.material.premultipliedAlpha).toBe(true); expect(core.material.premultipliedAlpha).toBe(true);
+  const a = new T.Matrix4(), b = new T.Matrix4(), bodySize = new T.Vector3(), coreSize = new T.Vector3(), base = new T.Vector3(), glowBase = new T.Vector3(), quaternion = new T.Quaternion();
+  for (let i = 0; i < body.count; i++) {
+    body.getMatrixAt(i, a); core.getMatrixAt(i, b);
+    a.decompose(base, quaternion, bodySize); b.decompose(glowBase, quaternion, coreSize);
+    expect(coreSize.x / bodySize.x).toBeCloseTo(0.35);
+    expect(coreSize.y / bodySize.y).toBeCloseTo(0.55);
+    expect(glowBase.y - coreSize.y / 2).toBeCloseTo(base.y - bodySize.y / 2);
+  }
   layer.dispose();
 });
