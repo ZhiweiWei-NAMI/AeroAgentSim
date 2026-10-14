@@ -13,7 +13,8 @@ import type { Quality } from '../pipeline';
 
 const FLAME_MIN = 5, FLAME_MAX = 7;
 // Connected plume (finding 8): 2.0 puffs/s at high quality (limit 56, life 24 s), 0.8/s at low (limit 18).
-const SMOKE_LIFETIME_S = 24, SMOKE_HIGH = 56, SMOKE_LOW = 18, SMOKE_RATE_HIGH = 2.0, SMOKE_RATE_LOW = 0.8;
+// Low quality keeps the same emission rate with a shorter life: a shorter plume, never a sparser one.
+const SMOKE_RATE = 2.0, SMOKE_LIFE_HIGH_S = 24, SMOKE_LIFE_LOW_S = 9, SMOKE_HIGH = 56, SMOKE_LOW = 18;
 const AREA = new T.Color('#ff6a3d'), ENDED = new T.Color('#8b95a1');
 const SMOKE_BASE = new T.Color('#3b3632'), SMOKE_MID = new T.Color('#8f8a84'), SMOKE_HIGH_TONE = new T.Color('#b9b6b1');
 
@@ -105,26 +106,39 @@ const flameMaterial = (additiveCore = false) => new T.ShaderMaterial({
     gl_FragColor.rgb*=alpha;}`,
 });
 
-const smokeMaterial = (map: T.Texture, ambient: T.Color) => new T.ShaderMaterial({
+// Scattered ambient/sky light: smoke reads LIGHTER than the dark dusk ground and darker than
+// the light day ground. Rain greys both toward the same wet tone (0.3·r).
+const SMOKE_LIGHT_DAY = new T.Color('#8f8a84'), SMOKE_LIGHT_DUSK = new T.Color('#5d5a63'), SMOKE_LIGHT_RAIN = new T.Color('#7d8288');
+const GLOW_ORANGE = new T.Color('#ff8a2b');
+
+const smokeMaterial = () => new T.ShaderMaterial({
   transparent: true, depthWrite: false, depthTest: true, fog: true,
-  uniforms: { ...T.UniformsUtils.clone(T.UniformsLib.fog), uMap: { value: map }, uAmbient: { value: ambient } },
-  vertexShader: `attribute vec4 puffTint;attribute float puffCell;varying vec2 puffUv;varying vec4 puffColor;${FOG_PARS_V}
+  uniforms: { ...T.UniformsUtils.clone(T.UniformsLib.fog), uMap: { value: null as unknown as T.Texture },
+    uSmokeLight: { value: new T.Color('#5d5a63') }, uGlow: { value: GLOW_ORANGE.clone() },
+    uGlowStrength: { value: 0.55 }, uScatter: { value: 0.55 }, uFlameTop: { value: 10 } },
+  vertexShader: `attribute vec4 puffTint;attribute float puffCell;varying vec2 puffUv;varying vec4 puffColor;varying float puffHeight;${FOG_PARS_V}
     void main(){puffUv=uv*0.5+vec2(mod(puffCell,2.0),floor(puffCell/2.0))*0.5;puffColor=puffTint;
+    puffHeight=instanceMatrix[3].y;
     vec4 mvPosition=modelViewMatrix*instanceMatrix*vec4(position,1.0);
     gl_Position=projectionMatrix*mvPosition;${FOG_V}}`,
-  // White RGB carries density in alpha. Soften that density into a connected
-  // plume, still capped by the authored 0.55 puff opacity, with straight alpha.
-  fragmentShader: `uniform sampler2D uMap;uniform vec3 uAmbient;varying vec2 puffUv;varying vec4 puffColor;${FOG_PARS_F}
-    void main(){vec4 puff=texture2D(uMap,puffUv);float alpha=sqrt(dot(puff.rgb,vec3(0.2126,0.7152,0.0722))*puff.a)*puffColor.a;
-    if(alpha<=0.002)discard;gl_FragColor=vec4(puffColor.rgb*uAmbient,alpha);${OUTPUT_F}
+  // Smoke is art-directed, not shaded by the rig: the plume scatters the ambient city/sky
+  // light (mix with uSmokeLight) and the fire underlights the root while the flames burn.
+  fragmentShader: `uniform sampler2D uMap;uniform vec3 uSmokeLight;uniform vec3 uGlow;uniform float uGlowStrength;uniform float uScatter;uniform float uFlameTop;varying vec2 puffUv;varying vec4 puffColor;varying float puffHeight;${FOG_PARS_F}
+    void main(){vec4 puff=texture2D(uMap,puffUv);float alpha=puff.a*puffColor.a;
+    if(alpha<=0.002)discard;
+    vec3 base=puffColor.rgb;
+    vec3 lit=mix(base,uSmokeLight,uScatter);
+    float under=uGlowStrength*exp(-max(puffHeight-uFlameTop,0.0)/14.0);
+    vec3 color=lit+uGlow*under*0.8;
+    gl_FragColor=vec4(color,alpha);${OUTPUT_F}
     ${FOG_VISIBILITY}
     #ifdef USE_FOG
-      // Art direction: keep the dark plume readable in the foggy overview and
-      // fade it out at distance, without changing the scene's visibility density.
-      gl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,1.0-sqrt(visibility));
+      // Same fog response as the city (no sqrt), so smoke and buildings agree at distance.
+      gl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,1.0-visibility);
     #endif
     }`,
 });
+
 
 /** Fragment-shader width for the ring line: ~0.8 m at close range (0.4/R in d-units), a crisp
  *  ~1.5 px line far away (0.75·fwidth) (finding 7). */
@@ -189,7 +203,7 @@ export class IncidentFX {
   private flames = flameMaterial();
   private flameCore = flameMaterial(true);
   private smoke?: T.ShaderMaterial;
-  private smokeAmbient = new T.Color('#ffffff');
+  private smokeLightScratch = new T.Color();
   private plane = new T.PlaneGeometry(1, 1);
   private ringGeometry = new T.PlaneGeometry(2, 2).rotateX(-Math.PI / 2);
   private leaderGeometry = new T.BufferGeometry().setFromPoints([new T.Vector3(), new T.Vector3(0, 14, 0)]);
@@ -208,7 +222,8 @@ export class IncidentFX {
     if (options.annotations) pinUsers++;
     this.ready = smokeAtlas().then(texture => {
       if (this.disposed) return;
-      this.smoke = smokeMaterial(texture ?? proceduralSmokeAtlas(), this.smokeAmbient);
+      this.smoke = smokeMaterial();
+      this.smoke.uniforms.uMap.value = texture ?? proceduralSmokeAtlas();
       for (const visual of this.visuals.values()) { visual.smoke.material.dispose(); visual.smoke.material = this.smoke; }
       // The atlas usually lands after the first frames; tell the owner's idle
       // renderer to redraw, or the plume stays invisible until the camera moves.
@@ -272,7 +287,7 @@ export class IncidentFX {
   }
   update(rows: Conditions['incidents'], simSeconds: number, camera: T.Camera, ringStart: Map<string, number>, origin?: T.Vector3, roofHeight?: (east: number, north: number) => number) {
     if (this.disposed) return;
-    if (!rows.length && !this.visuals.size) return;
+    if (!rows.length && !this.visuals.size) { this.flameRamp = 0; return; }
     const shown = this.shown; shown.clear();
     const reduced = (this.reducedMotion ??= matchMedia('(prefers-reduced-motion: reduce)')).matches;
     const pinScale = this.pinScale / camera.projectionMatrix.elements[5];
@@ -348,6 +363,8 @@ export class IncidentFX {
         }
       }
       if (burning) {
+        this.flameRamp = Math.max(this.flameRamp, ramp);
+        this.setFlameTop(baseHeight);
         for (const mesh of [visual.flames, visual.flameCore] as T.InstancedMesh<T.PlaneGeometry, T.ShaderMaterial>[]) {
           mesh.material.uniforms.uTime.value = simSeconds;
           mesh.material.uniforms.uRamp.value = ramp;
@@ -391,7 +408,7 @@ export class IncidentFX {
     const capacity = visual.smoke.instanceMatrix.count;
     const windEast = this.wind.x, windNorth = this.wind.y;
     const high = this.quality !== 'low';
-    const rate = high ? SMOKE_RATE_HIGH : SMOKE_RATE_LOW;
+    const rate = SMOKE_RATE, lifetime = high ? SMOKE_LIFE_HIGH_S : SMOKE_LIFE_LOW_S;
     const limit = high ? SMOKE_HIGH : SMOKE_LOW;
     const ended = row.phase === 'ended';
     const elapsed = row.activeS, window = ended ? row.activeS - row.sinceS : row.activeS;
@@ -402,11 +419,11 @@ export class IncidentFX {
       // Equivalent to floor((window - born) / (limit / RATE)), without subtractive
       // rounding losing the emission exactly at a low-quality period boundary.
       const k = Math.floor((window * rate - slot) / limit);
-      // Low's 22.5 s period is shorter than the lifetime: both k and k-1 can survive.
+      // A period shorter than the lifetime lets both k and k-1 survive.
       for (let cycle = k; cycle >= Math.max(0, k - 1) && count < capacity; cycle--) {
         const age = elapsed - (slot + cycle * limit) / rate;
-        if (age < 0 || age >= SMOKE_LIFETIME_S) continue;
-        this.writePuff(visual, count++, seed, slot, age, simSeconds, camera, windEast, windNorth, baseHeight);
+        if (age < 0 || age >= lifetime) continue;
+        this.writePuff(visual, count++, seed, slot, age, lifetime, simSeconds, camera, windEast, windNorth, baseHeight);
       }
     }
     visual.smoke.count = count;
@@ -415,16 +432,17 @@ export class IncidentFX {
     visual.tint.needsUpdate = true; visual.cells.needsUpdate = true;
     visual.smoke.visible = count > 0;
   }
-  private writePuff(visual: Visual, count: number, seed: number, slot: number, age: number, simSeconds: number, camera: T.Camera, windEast: number, windNorth: number, baseHeight: number) {
-    const life = age / SMOKE_LIFETIME_S;
+  private writePuff(visual: Visual, count: number, seed: number, slot: number, age: number, lifetime: number, simSeconds: number, camera: T.Camera, windEast: number, windNorth: number, baseHeight: number) {
+    const life = age / lifetime;
     const seedA = fxHash(seed, slot * 8 + 1), seedB = fxHash(seed, slot * 8 + 2), seedC = fxHash(seed, slot * 8 + 3);
     // Rise ~2.6 m/s slowing with height: ≥ 15 m before the column bends downwind.
-    // Drift ramps in with min(1, age/5), so young puffs climb straight out of the flames.
-    const risen = 2.6 * age * (1 - 0.2 * life), drift = 0.9 * Math.min(1, age / 5) * age;
+    // Drift (0.55 × wind) ramps in with min(1, age/6), so young puffs climb straight out of the flames
+    // and the column stays dense near the fire instead of streaming away as thin wisps.
+    const risen = 2.6 * age * (1 - 0.2 * age / SMOKE_LIFE_HIGH_S), drift = 0.55 * Math.min(1, age / 6) * age;
     const jitterX = (seedA - 0.5) * 6 + Math.sin(simSeconds * 0.2 + seedB * 6) * 1.5;
     const jitterZ = (seedB - 0.5) * 6 + Math.cos(simSeconds * 0.17 + seedC * 6) * 1.5;
     // Dense dark root (finding 8): in the first 3 s the puff grows 5 → 12 m just above the flames.
-    const size = age < 3 ? 5 + (12 - 5) * (age / 3) : 12 + (34 - 12) * ((age - 3) / (SMOKE_LIFETIME_S - 3));
+    const size = age < 3 ? 5 + (12 - 5) * (age / 3) : 12 + (30 - 12) * ((age - 3) / (SMOKE_LIFE_HIGH_S - 3));
     this.quaternion.copy(camera.quaternion);
     QUARTER_TURN.setFromQuaternion(this.quaternion, 'YXZ');
     QUARTER_TURN.z = simSeconds * (0.1 + seedC * 0.2) + seedA * Math.PI * 2;
@@ -434,14 +452,25 @@ export class IncidentFX {
     this.matrix.compose(this.position, this.quaternion, this.scale);
     visual.smoke.setMatrixAt(count, this.matrix);
     const tint = life < 0.5 ? this.color.copy(SMOKE_BASE).lerp(SMOKE_MID, life * 2) : this.color.copy(SMOKE_MID).lerp(SMOKE_HIGH_TONE, (life - 0.5) * 2);
-    // Alpha peaks at 0.6 in the first 3 s (the darkest tint keeps the root dense), then the
-    // authored 0 → 0.42 in the first 15 % of life and a fade as the puff rises and lightens.
-    const alpha = age < 3 ? 0.6 - 0.18 * (age / 3) : life < 0.15 ? (life / 0.15) * 0.42 : (1 - (life - 0.15) / 0.85) * 0.42;
+    // Dense root (0.62 for 3 s), body held at 0.5 to 45 % of life, then a linear fade as it lightens.
+    const alpha = age < 3 ? 0.62 - 0.12 * (age / 3) : life < 0.45 ? 0.5 : 0.5 * (1 - (life - 0.45) / 0.55);
     visual.tint.setXYZW(count, tint.r, tint.g, tint.b, alpha);
     visual.cells.setX(count, Math.floor(fxHash(seed, slot * 8 + 4) * 4));
   }
   setWind(east: number, north: number) { this.wind.set(east, north); }
-  setSmokeLight(ambient: T.Color) { this.smokeAmbient.copy(ambient); }
+  /** Art-directed smoke lighting: scattered ambient colour, day/dusk scatter mix and the
+   *  fire underlight strength (which fades with the flame ramp). No allocation per frame. */
+  setSmokeLight(dusk: boolean, rain: number) {
+    if (!this.smoke) return;
+    const u = this.smoke.uniforms;
+    u.uSmokeLight.value.copy(this.smokeLightScratch.copy(dusk ? SMOKE_LIGHT_DUSK : SMOKE_LIGHT_DAY).lerp(SMOKE_LIGHT_RAIN, 0.3 * Math.min(1, Math.max(0, rain))));
+    u.uScatter.value = dusk ? 0.55 : 0.25;
+    // The underlight fades with the flames: the ramp comes from this frame's fires.
+    u.uGlowStrength.value = (dusk ? 0.55 : 0.25) * this.flameRamp;
+  }
+  setFlameTop(heightM: number) { if (this.smoke) this.smoke.uniforms.uFlameTop.value = heightM; }
+  /** Max flame ramp across this frame's burning fires (0 once the last fire ends). */
+  private flameRamp = 0;
   private wind = new T.Vector2();
   private disposeVisual(visual: Visual) {
     visual.unit.removeFromParent(); visual.flames.material.dispose();

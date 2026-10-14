@@ -165,16 +165,42 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     rig.setAtmosphere({ dusk: false, rain: 0.5, visibilityM: 500 });
     layer.update(dusk, 12.5, camera);
     const smoke = meshes(layer.root.children[0].children[0])[1];
-    const dayTint = smoke.material.uniforms.uAmbient.value.clone() as T.Color;
+    expect((smoke.material.uniforms.uAmbient ?? { value: null }).value).toBeUndefined(); // uAmbient is gone
+    const dayLight = smoke.material.uniforms.uSmokeLight.value.clone() as T.Color;
+    expect(dayLight.getHex()).toBe(new T.Color('#8f8a84').lerp(new T.Color('#7d8288'), 0.15).getHex());
+    expect(smoke.material.uniforms.uScatter.value).toBe(0.25);
+    expect(smoke.material.uniforms.uGlowStrength.value).toBeGreaterThan(0); // flames are burning
     rig.setAtmosphere({ dusk: true, rain: 0.5, visibilityM: 500 });
     layer.update(dusk, 12.5, camera);
-    const tint = smoke.material.uniforms.uAmbient.value as T.Color;
-    expect(tint.r).toBeLessThan(dayTint.r); expect(tint.g).toBeLessThan(dayTint.g); expect(tint.b).toBeLessThan(dayTint.b);
+    const light = smoke.material.uniforms.uSmokeLight.value as T.Color;
+    expect(light.r).toBeLessThan(dayLight.r); expect(light.g).toBeLessThan(dayLight.g); expect(light.b).toBeLessThan(dayLight.b);
+    expect(smoke.material.uniforms.uScatter.value).toBe(0.55);
     // The display override, rather than the unchanged journaled Conditions.light, drives shading.
     rig.setAtmosphere({ dusk: false, rain: 0.5, visibilityM: 500 });
     layer.update(dusk, 12.5, camera);
-    expect(tint.toArray()).toEqual(dayTint.toArray());
+    expect(smoke.material.uniforms.uSmokeLight.value.toArray()).toEqual(dayLight.toArray());
+    expect(smoke.material.uniforms.uScatter.value).toBe(0.25);
     layer.dispose(); rig.dispose();
+  });
+  it('fades the fire underlight with the flame ramp and keeps a constant glow colour', async () => {
+    const layer = new IncidentFX('med'); await layer.ready;
+    const fire = { ...conditions.incidents[0], startS: 0 };
+    layer.update([{ ...fire, activeS: 3, sinceS: 3 }], 3, camera, new Map()); // ramp 1
+    const smoke = meshes(layer.root.children[0])[1].material as T.ShaderMaterial;
+    layer.setSmokeLight(false, 0); // day, after update so this frame's ramp applies
+    const burning = smoke.uniforms.uGlowStrength.value as number;
+    expect(burning).toBeCloseTo(0.25);
+    expect((smoke.uniforms.uGlow.value as T.Color).getHex()).toBe(new T.Color('#ff8a2b').getHex());
+    const flameTop = smoke.uniforms.uFlameTop.value as number;
+    expect(flameTop).toBeGreaterThan(0);
+    layer.setSmokeLight(true, 0);
+    expect(smoke.uniforms.uGlowStrength.value).toBeCloseTo(0.55);
+    // Fire ended 4 s ago → ramp 0, no underlight.
+    layer.update([{ ...fire, phase: 'ended', activeS: 12, sinceS: 4 }], 12, camera, new Map());
+    layer.setSmokeLight(false, 0);
+    expect(smoke.uniforms.uGlowStrength.value).toBe(0);
+    expect(smoke.uniforms.uFlameTop.value).toBe(flameTop); // stays at the last flame height
+    layer.dispose();
   });
   it.each(['high', 'low'] as const)('keeps a continuous %s plume across schedule wraps and late activation', async quality => {
     const layer = new IncidentFX(quality); await layer.ready;

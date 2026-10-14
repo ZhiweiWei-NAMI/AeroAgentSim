@@ -71,6 +71,8 @@
   bottom: calc(var(--wb-dock) + var(--wb-gap) * 2 + 48px); }
 .viewport-conditions .wb-cond-hud { position: static; left: auto; bottom: auto; max-width: 100%; }
 .scene-preview-conditions .wb-cond-hud.preview { position: static; left: auto; bottom: auto; max-width: 100%; }
+/* Left-aligned, never stretched: width:max-content must not expand to the frame width. */
+.scene-preview-conditions { display: flex; align-items: flex-start; }
 @media (max-width: 719px) { .wb-cond-hud { flex-wrap: wrap; } }
 .wb-cond-wind { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
 .wb-cond-wind-text { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; white-space: nowrap; }

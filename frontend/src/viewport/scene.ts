@@ -96,6 +96,7 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
     daySky.material.uniforms.horizon.value.copy(scene.fog!.color);
     scene.background = scene.fog === artFog ? horizon : weatherFog.color;
     scene.userData.weatherWet = rain;
+    scene.userData.dusk = dusk;
   };
   scene.userData.lighting = { setAtmosphere };
   setAtmosphere({ dusk: false, rain: 0, visibilityM: null });
