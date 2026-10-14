@@ -41,14 +41,14 @@ export class Rain {
           // Closed-form fall: each seed is a fixed phase in a 90 m column, reset when it passes the ground.
           float span=${(RADIUS * 2).toFixed(1)};
           float column=dropSeed.x*span-${RADIUS}.0;
-          float height=mod(dropSeed.y*${HEIGHT}.0+uTime*${FALL_MPS}.0,${HEIGHT}.0);
+          float height=mod(dropSeed.y*${HEIGHT}.0-uTime*${FALL_MPS}.0,${HEIGHT}.0);
           float depth=fract(dropSeed.x*7.31)*span-${RADIUS}.0;
-          vec3 world=uCenter+vec3(column+uSlant.x*(${HEIGHT}.0-height)*0.5,height,depth);
-          vec4 view=modelViewMatrix*vec4(world,1.0);
-          float length=1.1+uSlant.length()*2.0;
-          vec3 cameraRight=vec3(viewMatrix[0][0],viewMatrix[1][0],viewMatrix[2][0]);
+          vec2 drift=uSlant*(${HEIGHT}.0-height)*0.5;
+          vec3 world=uCenter+vec3(column+drift.x,height,depth+drift.y);
+          float dropLength=1.1+length(uSlant)*2.0;
           vec3 fall=normalize(vec3(uSlant.x*0.5,-1.0,uSlant.y*0.5));
-          view.xyz+=cameraRight*position.x*0.02+fall*position.y*length;
+          vec4 view=modelViewMatrix*vec4(world+fall*position.y*dropLength,1.0);
+          view.x+=position.x*0.02;
           gl_Position=projectionMatrix*view;
           dropFade=1.0-length(vec2(column,depth))/${RADIUS}.0;
         }`,
@@ -57,7 +57,7 @@ export class Rain {
         gl_FragColor=vec4(0.788,0.839,0.890,alpha);}`,
     });
     this.mesh = new T.Mesh(this.geometry, this.material);
-    this.mesh.frustumCulled = false; this.mesh.renderOrder = 3;
+    this.mesh.frustumCulled = false; this.mesh.renderOrder = 3; this.mesh.visible = false;
   }
   setQuality(quality: Quality) { this.quality = quality; }
   update(rateMmH: number, simSeconds: number, camera: T.Camera, wind?: { east: number; north: number }) {
@@ -77,6 +77,7 @@ export class Rain {
     const lean = wind && speed > 0 ? Math.min(2, speed * 0.12) : 0;
     this.material.uniforms.uSlant.value.set(wind ? wind.east / (speed || 1) * lean : 0, wind ? -wind.north / (speed || 1) * lean : 0);
     this.material.uniforms.uCenter.value.copy(camera.position);
+    this.material.uniforms.uCenter.value.y = 0;
     this.material.uniforms.uOpacity.value = rateMmH < RATE_HIGH_MM_H ? 0.22 : 0.35;
   }
   dispose() {

@@ -477,6 +477,8 @@ def _admit_task_kind(document: dict, kind: str) -> None:
 def _wind_vector(speed: float, from_deg: float, key: str) -> list:
     """ENU vector of the wind coming FROM from_deg (meteorological, clockwise from north)."""
     east, north = -speed * math.sin(math.radians(from_deg)), -speed * math.cos(math.radians(from_deg))
+    east = 0.0 if abs(east) < speed * 1e-12 else east
+    north = 0.0 if abs(north) < speed * 1e-12 else north
     return [east, north, 0.0] if key == "lowalt.wind" else [[east, north]]
 
 
@@ -575,7 +577,11 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             if name == "set_wind" and "from_deg" in p:
                 vector = _wind_vector(p["speed_mps"], p["from_deg"], key)
             else:
-                vector = [float(p["speed_mps"]), 0.0, 0.0] if key == "lowalt.wind" else [[float(p["speed_mps"]), 0.0]]
+                from aeroagentsim.assistant.wind import from_deg
+
+                current = profile["value"] if key == "lowalt.wind" else profile["value"][0]
+                direction = from_deg(current[0], current[1])
+                vector = _wind_vector(p["speed_mps"], 270 if direction is None else direction, key)
             if name == "set_wind":
                 profile["value"] = vector
             else:
@@ -591,13 +597,22 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         # oo:PrecipitationField is a separate field-type entity and visibility
         # has no environmental-field declaration, so no second weather entity.
         _overlay(document)
-        owner, config = _engine(document, "environment")
+        environments_with_profiles = [(name, engine["config"]) for name, engine in document["engines"].items()
+                                      if engine["plugin"] == "environment"]
         environments = [e for e in document["entities"] if e["type"] == "lowalt:Environment"]
-        if not environments or not any(e["id"] in config["profiles"] for e in environments):
+        configured = [(name, config) for name, config in environments_with_profiles
+                      if any(e["id"] in config.get("profiles", {}) for e in environments)]
+        if not configured:
             _fail("base", "Starting scene has no lowalt weather entity", "起点场景没有低空气象实体")
-        values = {"lowalt.precipitation": float(p["precipitation_mm_h"]) / 3600,  # kg m-2 s-1; 1 mm/h = 1/3600
-                  "lowalt.visibility": 50000.0 if p.get("visibility_m") is None else float(p["visibility_m"]),
-                  "lowalt.light": p["light"]}
+        owner, config = configured[0]
+        environments = [e for e in environments if e["id"] in config["profiles"]]
+        values = {}
+        if "precipitation_mm_h" in p:
+            values["lowalt.precipitation"] = float(p["precipitation_mm_h"]) / 3600  # kg m-2 s-1
+        if "visibility_m" in p:
+            values["lowalt.visibility"] = 50000.0 if p["visibility_m"] is None else float(p["visibility_m"])
+        if "light" in p:
+            values["lowalt.light"] = p["light"]
         for key, value in values.items():
             if key not in config["produces"]:
                 config["produces"].append(key)
@@ -1275,7 +1290,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         if not isinstance(operations, list):
             _fail("operations", "Operations must be a list", "操作必须为列表")
         operations = copy.deepcopy(operations)
-        lowalt_names = {"add_place", "update_place", "remove_place", "add_fleet", "set_fleet", "remove_fleet", "set_vehicle", "add_orders", "set_orders", "remove_orders", "set_task", "set_rule", "set_algorithm", "set_cooperation", "remove_cooperation", "add_incident", "set_incident", "remove_incident", "set_weather"}
+        lowalt_names = {"add_place", "update_place", "remove_place", "add_fleet", "set_fleet", "remove_fleet", "set_vehicle", "add_orders", "set_orders", "remove_orders", "set_task", "set_rule", "set_algorithm", "set_cooperation", "remove_cooperation", "add_incident", "set_incident", "remove_incident"}
         needs_lowalt = any(isinstance(o, dict) and (o.get("op") in lowalt_names or o.get("op") in {"set_wind", "add_gust"} and not any(e.get("plugin") == "environment" for e in document["engines"].values()) or o.get("op") == "schedule_event" and str(o.get("params", {}).get("event", "")).startswith(("lowalt", "restaurant", "close_vertiport", "add_urgent", "change_dropoff", "prioritize_medical", "investigate"))) for o in operations)
         if needs_lowalt and not any(e.get("plugin") == "lowalt_tasks" for e in document["engines"].values()) and not any(isinstance(o, dict) and o.get("op") == "add_lowalt_components" for o in operations):
             used_ids = [o.get("id") for o in operations if isinstance(o, dict)]

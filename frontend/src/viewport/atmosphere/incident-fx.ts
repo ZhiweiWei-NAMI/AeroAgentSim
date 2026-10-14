@@ -18,8 +18,8 @@ const SMOKE_BASE = new T.Color('#3b3632'), SMOKE_MID = new T.Color('#8f8a84'), S
 type Row = Conditions['incidents'][number] & { seed: number };
 
 interface Visual {
-  unit: T.Group; ring: T.Mesh; fill: T.Mesh; flames: T.InstancedMesh; smoke: T.InstancedMesh;
-  tint: T.InstancedBufferAttribute; pin: T.Sprite; leader: T.Line; light?: T.PointLight;
+  unit: T.Group; ring: T.Mesh<T.PlaneGeometry, T.ShaderMaterial>; flames: T.InstancedMesh<T.PlaneGeometry, T.ShaderMaterial>; smoke: T.InstancedMesh<T.InstancedBufferGeometry, T.Material>;
+  tint: T.InstancedBufferAttribute; pin: T.Sprite; leader: T.Line<T.BufferGeometry, T.LineBasicMaterial>; light?: T.PointLight; active: boolean;
 }
 
 const flameMaterial = () => new T.ShaderMaterial({
@@ -46,38 +46,33 @@ const smokeMaterial = (map: T.Texture) => new T.ShaderMaterial({
   transparent: true, depthWrite: false,
   uniforms: { uMap: { value: map } },
   vertexShader: `attribute vec4 puffTint;varying vec2 puffUv;varying vec4 puffColor;
-    void main(){puffUv=uv;puffColor=puffTint;
+    void main(){puffUv=uv*0.5;puffColor=puffTint;
     gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.0);}`,
   fragmentShader: `uniform sampler2D uMap;varying vec2 puffUv;varying vec4 puffColor;
-    void main(){float alpha=texture2D(uMap,puffUv).a*puffColor.a;
+    void main(){vec4 puff=texture2D(uMap,puffUv);float alpha=dot(puff.rgb,vec3(0.2126,0.7152,0.0722))*puff.a*puffColor.a;
     if(alpha<=0.002)discard;gl_FragColor=vec4(puffColor.rgb,alpha);}`,
 });
 
 /** Ground decal: dashed 12-segment outer ring plus a radial inner fill, depth-tested with polygon offset. */
 const ringMaterial = () => new T.ShaderMaterial({
   transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2,
-  uniforms: { uColor: { value: AREA.clone() }, uOpacity: { value: 0.85 } },
+  uniforms: { uColor: { value: AREA.clone() }, uOpacity: { value: 0.85 }, uRadius: { value: 30 }, uFill: { value: 1 } },
   vertexShader: 'varying vec2 ringUv;void main(){ringUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-  fragmentShader: `uniform vec3 uColor;uniform float uOpacity;varying vec2 ringUv;
-    void main(){float angle=atan(ringUv.y-0.5,ringUv.x-0.5);
-    if(fract((angle/6.28318530718+0.5)*12.0)>0.55)discard;
-    gl_FragColor=vec4(uColor,uOpacity);}`,
-});
-
-const fillMaterial = () => new T.ShaderMaterial({
-  transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, side: T.DoubleSide,
-  uniforms: { uColor: { value: AREA.clone() } },
-  vertexShader: 'varying vec2 fillUv;void main(){fillUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-  fragmentShader: `uniform vec3 uColor;varying vec2 fillUv;
-    void main(){float d=length(fillUv-0.5)*2.0;gl_FragColor=vec4(uColor,(1.0-d)*0.12);}`,
+  fragmentShader: `uniform vec3 uColor;uniform float uOpacity;uniform float uRadius;uniform float uFill;varying vec2 ringUv;
+    void main(){float d=length(ringUv-0.5)*2.0;if(d>1.0)discard;
+    float angle=atan(ringUv.y-0.5,ringUv.x-0.5);
+    float width=max(1.5/uRadius,fwidth(d)*1.5);
+    float alpha=(1.0-d)*0.12*uFill;
+    if(d>1.0-width&&fract((angle/6.28318530718+0.5)*12.0)<=0.55)alpha=uOpacity;
+    if(alpha<=0.002)discard;gl_FragColor=vec4(uColor,alpha);}`,
 });
 
 /** Two-tone flame (or person) glyph on a disc with a 2 px white ring, drawn once to a canvas texture. */
-function pinTexture(kind: 'fire' | 'person_fall'): T.Texture {
+function pinTexture(kind: 'fire' | 'person_fall', ended = false): T.Texture {
   const size = 44, canvas = document.createElement('canvas'); canvas.width = canvas.height = size;
   const context = canvas.getContext('2d')!;
   context.beginPath(); context.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
-  context.fillStyle = kind === 'fire' ? '#e2461b' : '#d55e00'; context.fill();
+  context.fillStyle = ended ? '#8b95a1' : kind === 'fire' ? '#e2461b' : '#d55e00'; context.fill();
   context.lineWidth = 2; context.strokeStyle = '#ffffff'; context.stroke();
   context.fillStyle = '#ffd27a';
   if (kind === 'fire') {
@@ -95,32 +90,35 @@ function pinTexture(kind: 'fire' | 'person_fall'): T.Texture {
   return texture;
 }
 
-let pinTextures: Partial<Record<'fire' | 'person_fall', T.Texture>> | undefined;
+let pinTextures: Partial<Record<'fire' | 'person_fall' | 'fire-ended' | 'person_fall-ended', T.Texture>> | undefined;
+let pinUsers = 0;
 
 const QUARTER_TURN = new T.Euler();
 
 export class IncidentFX {
   readonly root = new T.Group();
+  readonly ready: Promise<void>;
   private quality: Quality;
   private visuals = new Map<string, Visual>();
   private flames = flameMaterial();
   private smoke?: T.ShaderMaterial;
   private plane = new T.PlaneGeometry(1, 1);
   private ringGeometry = new T.PlaneGeometry(2, 2).rotateX(-Math.PI / 2);
-  private fillGeometry = new T.CircleGeometry(1, 48).rotateX(-Math.PI / 2);
   private leaderGeometry = new T.BufferGeometry().setFromPoints([new T.Vector3(), new T.Vector3(0, 1, 0)]);
   private matrix = new T.Matrix4();
   private quaternion = new T.Quaternion();
   private scale = new T.Vector3();
   private position = new T.Vector3();
+  private color = new T.Color();
+  private vertical = new T.Vector3(0, 1, 0);
   private disposed = false;
   constructor(quality: Quality) {
     this.quality = quality;
-    pinTextures ??= { fire: pinTexture('fire'), person_fall: pinTexture('person_fall') };
-    void smokeAtlas().then(texture => {
+    pinUsers++;
+    this.ready = smokeAtlas().then(texture => {
       if (this.disposed) return;
       this.smoke = smokeMaterial(texture ?? proceduralSmokeAtlas());
-      for (const visual of this.visuals.values()) visual.smoke.material = this.smoke;
+      for (const visual of this.visuals.values()) { visual.smoke.material.dispose(); visual.smoke.material = this.smoke; }
     });
   }
   setQuality(quality: Quality) {
@@ -129,11 +127,12 @@ export class IncidentFX {
     for (const visual of this.visuals.values()) if (visual.light) visual.light.visible = false;
   }
   private create(row: Row): Visual {
+    pinTextures ??= { fire: pinTexture('fire'), person_fall: pinTexture('person_fall'), 'fire-ended': pinTexture('fire', true), 'person_fall-ended': pinTexture('person_fall', true) };
     const unit = new T.Group(); unit.name = `fx-incident-${row.id}`;
     const ring = new T.Mesh(this.ringGeometry, ringMaterial());
-    const fill = new T.Mesh(this.fillGeometry, fillMaterial()); fill.renderOrder = 2; ring.renderOrder = 3;
+    ring.renderOrder = 3;
     const flameCount = Math.round(FLAME_MIN + fxHash(row.seed, 1) * (FLAME_MAX - FLAME_MIN));
-    const flames = new T.InstancedMesh(this.plane, this.flames, flameCount);
+    const flames = new T.InstancedMesh(this.plane, this.flames.clone(), flameCount);
     flames.count = flameCount; flames.frustumCulled = false; flames.renderOrder = 4;
     // Per-fire puff storage: instance attributes ride a private geometry clone.
     const capacity = SMOKE_HIGH;
@@ -149,53 +148,59 @@ export class IncidentFX {
     pin.scale.set(0.022, 0.022, 1); pin.renderOrder = 12; pin.center.set(0.5, 1);
     const leader = new T.Line(this.leaderGeometry, new T.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.6, depthTest: false }));
     leader.renderOrder = 11; leader.frustumCulled = false;
-    unit.add(ring, fill, flames, smoke, pin, leader);
-    const visual: Visual = { unit, ring, fill, flames, smoke, tint, pin, leader };
-    if (this.quality !== 'low' && row.kind === 'fire') {
+    unit.add(ring, flames, smoke, pin, leader);
+    const visual: Visual = { unit, ring, flames, smoke, tint, pin, leader, active: false };
+    if (row.kind === 'fire') {
       visual.light = new T.PointLight('#ff8a2b', 2.5, row.radiusM * 3);
       visual.light.visible = false; unit.add(visual.light);
     }
     this.root.add(unit);
+    this.visuals.set(row.id, visual);
     return visual;
   }
   update(rows: Conditions['incidents'], simSeconds: number, camera: T.Camera, ringStart: Map<string, number>, origin?: T.Vector3, roofHeight?: (east: number, north: number) => number) {
     if (this.disposed) return;
+    if (!rows.length && !this.visuals.size) return;
     const shown = new Set<string>();
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     for (const row of rows) {
       shown.add(row.id);
       const seed = fxSeed(row.id);
       const visual = this.visuals.get(row.id) ?? this.create({ ...row, seed });
+      const pinKind = row.phase === 'ended' ? `${row.kind}-ended` as const : row.kind;
+      visual.pin.material.map = pinTextures![pinKind]!;
       if (row.phase === 'pending') { visual.unit.visible = false; continue; }
       visual.unit.visible = true;
       const ended = row.phase === 'ended';
       // Render axes: east, up, south, relative to the render origin. Roofs by projection, not draping.
-      const east = row.position[0] - (origin?.x ?? 0), north = row.position[1] - (origin?.y ?? 0);
-      const groundY = Math.max(roofHeight?.(east, north) ?? 0, 0);
-      visual.unit.position.set(east, groundY, -north);
+      const east = row.position[0] - (origin?.x ?? 0), south = -row.position[1] - (origin?.z ?? 0);
+      const groundY = Math.max(roofHeight?.(row.position[0], row.position[1]) ?? row.position[2], 0) - (origin?.y ?? 0);
+      visual.unit.position.set(east, groundY, south);
       // Ring draw-in: 0.6 s wall-clock, once per activation (spec §5). Grey tint after ending.
       const start = ringStart.get(row.id), drawIn = !reduced && start !== undefined ? Math.min(1, (performance.now() - start) / 600) : 1;
-      const ringMat = visual.ring.material as T.ShaderMaterial, fillMat = visual.fill.material as T.ShaderMaterial;
-      ringMat.uniforms.uColor.value.copy(ended ? ENDED : AREA);
+      const ringMat = visual.ring.material as T.ShaderMaterial;
+      ringMat.uniforms.uColor.value.set(ended ? ENDED : row.kind === 'fire' ? AREA : '#d55e00');
       ringMat.uniforms.uOpacity.value = (ended ? 0.5 : 0.85) * drawIn;
+      ringMat.uniforms.uRadius.value = row.radiusM;
+      ringMat.uniforms.uFill.value = ended ? 0 : drawIn;
       visual.ring.scale.setScalar(row.radiusM);
       visual.ring.rotation.y = -drawIn * Math.PI / 6; // reveals the last of the 12 dashes clockwise
-      visual.fill.visible = !ended;
-      fillMat.uniforms.uColor.value.copy(ended ? ENDED : AREA);
       // Flames: ramp 3 s in sim time after activation, fade 4 s after ending.
-      const burning = row.kind === 'fire' && !ended;
+      const burning = row.kind === 'fire' && (!ended || row.sinceS < 4);
+      visual.active = row.kind === 'fire' && row.phase === 'active';
       visual.flames.visible = burning;
       if (burning) {
-        const ramp = Math.min(1, row.sinceS / 3);
-        this.flames.uniforms.uTime.value = simSeconds;
-        this.flames.uniforms.uRamp.value = ramp;
+        const ramp = ended ? Math.max(0, 1 - row.sinceS / 4) : Math.min(1, row.sinceS / 3);
+        const material = visual.flames.material as T.ShaderMaterial;
+        material.uniforms.uTime.value = simSeconds;
+        material.uniforms.uRamp.value = ramp;
         const height = Math.min(9, Math.max(3, row.radiusM * 0.25)), cluster = row.radiusM * 0.25;
         for (let i = 0; i < visual.flames.count; i++) {
           const angle = fxHash(seed, i * 4 + 2) * Math.PI * 2, radius = fxHash(seed, i * 4 + 3) * cluster;
           // Camera-facing billboards, each rotated about its own vertical axis.
           this.quaternion.copy(camera.quaternion);
           QUARTER_TURN.setFromQuaternion(this.quaternion, 'YXZ');
-          this.quaternion.setFromAxisAngle(new T.Vector3(0, 1, 0), QUARTER_TURN.y + angle + Math.sin(simSeconds * 0.6 + i) * 0.15);
+          this.quaternion.setFromAxisAngle(this.vertical, QUARTER_TURN.y + angle + Math.sin(simSeconds * 0.6 + i) * 0.15);
           this.scale.set(height * 0.55, height * (0.8 + 0.4 * fxHash(seed, i * 4 + 4)), 1);
           this.position.set(Math.cos(angle) * radius, this.scale.y / 2, Math.sin(angle) * radius);
           this.matrix.compose(this.position, this.quaternion, this.scale);
@@ -203,7 +208,8 @@ export class IncidentFX {
         }
         visual.flames.instanceMatrix.needsUpdate = true;
       }
-      this.writeSmoke(visual, row.id, seed, simSeconds, ended, camera, row.sinceS);
+      if (row.kind === 'fire') this.writeSmoke(visual, seed, simSeconds, camera, row);
+      else { visual.smoke.visible = false; visual.smoke.count = 0; }
       // Pin: max(roof height, 0) + 14 m above the ground point, leader line down to it.
       const pinHeight = 14;
       visual.pin.position.set(0, pinHeight, 0);
@@ -211,33 +217,36 @@ export class IncidentFX {
       const points = this.leaderGeometry.attributes.position as T.BufferAttribute;
       points.setXYZ(0, 0, pinHeight - 0.55, 0); points.setXYZ(1, 0, 0, 0); points.needsUpdate = true;
     }
-    for (const [id, visual] of this.visuals) if (!shown.has(id)) { visual.unit.removeFromParent(); this.visuals.delete(id); }
+    for (const [id, visual] of this.visuals) if (!shown.has(id)) { this.disposeVisual(visual); this.visuals.delete(id); }
     // One warm PointLight per scene for the nearest active fire.
     let nearest: Visual | undefined, distance = Infinity;
-    if (this.quality !== 'low') for (const visual of this.visuals.values()) {
-      if (!visual.light || visual.unit.visible !== true) continue;
+    if (this.quality === 'high') for (const visual of this.visuals.values()) {
+      if (!visual.light || !visual.active || visual.unit.visible !== true) continue;
       const d = visual.unit.position.distanceToSquared(camera.position);
       if (d < distance) { distance = d; nearest = visual; }
     }
     for (const visual of this.visuals.values()) if (visual.light) visual.light.visible = visual === nearest;
   }
   /** Puffs are closed-form in (age, seed): position, size, spin and alpha need no history. */
-  private writeSmoke(visual: Visual, id: string, seed: number, simSeconds: number, ended: boolean, camera: T.Camera, sinceS: number) {
+  private writeSmoke(visual: Visual, seed: number, simSeconds: number, camera: T.Camera, row: Conditions['incidents'][number]) {
     if (!this.smoke) { visual.smoke.visible = false; return; }
     const capacity = visual.smoke.instanceMatrix.count;
     const windEast = this.wind.x, windNorth = this.wind.y;
     const limit = this.quality === 'low' ? SMOKE_LOW : SMOKE_HIGH;
     const period = limit / SMOKE_RATE; // deterministic emission schedule across one lifetime
+    const ended = row.phase === 'ended';
+    const startS = row.startS ?? (ended ? undefined : simSeconds - row.sinceS);
+    const emissionS = ended ? simSeconds - row.sinceS : simSeconds;
     let count = 0;
     for (let slot = 0; slot < limit && count < capacity; slot++) {
       // Emission is a repeating closed-form schedule (period = limit / rate); a puff
       // exists while 0 ≤ age < lifetime, so the plume is the same at any seek.
       const born = slot / SMOKE_RATE;
-      // Emission is a repeating closed-form schedule (period = limit / rate); a puff
-      // exists while 0 ≤ age < lifetime, so the plume is the same at any seek.
-      const cycle = Math.floor((sinceS - born) / period) + 1;
+      const cycle = Math.floor((emissionS - born) / period);
+      const emittedAt = born + cycle * period;
+      if (startS !== undefined && emittedAt < startS) continue;
       // After ending emission stops: the remaining puffs live out their life (spec §3.1).
-      const age = ended ? sinceS + born : sinceS - born - cycle * period;
+      const age = simSeconds - emittedAt;
       if (age < 0 || age > SMOKE_LIFETIME_S) continue;
       const life = age / SMOKE_LIFETIME_S;
       const seedA = fxHash(seed, slot * 8 + 1), seedB = fxHash(seed, slot * 8 + 2), seedC = fxHash(seed, slot * 8 + 3);
@@ -255,7 +264,7 @@ export class IncidentFX {
       this.scale.set(size, size, 1);
       this.matrix.compose(this.position, this.quaternion, this.scale);
       visual.smoke.setMatrixAt(count, this.matrix);
-      const tint = life < 0.5 ? this.base.clone().lerp(this.mid, life * 2) : this.mid.clone().lerp(this.high, (life - 0.5) * 2);
+      const tint = life < 0.5 ? this.color.copy(this.base).lerp(this.mid, life * 2) : this.color.copy(this.mid).lerp(this.high, (life - 0.5) * 2);
       visual.tint.setXYZW(count, tint.r, tint.g, tint.b, life < 0.15 ? (life / 0.15) * 0.42 : (1 - (life - 0.15) / 0.85) * 0.42);
       count++;
     }
@@ -270,15 +279,24 @@ export class IncidentFX {
   private base = SMOKE_BASE;
   private mid = SMOKE_MID;
   private high = SMOKE_HIGH_TONE;
+  private disposeVisual(visual: Visual) {
+    visual.unit.removeFromParent(); visual.ring.material.dispose(); visual.flames.material.dispose();
+    visual.flames.dispose(); visual.smoke.dispose();
+    visual.smoke.geometry.dispose(); if (visual.smoke.material !== this.smoke) visual.smoke.material.dispose();
+    visual.pin.material.dispose(); visual.leader.material.dispose();
+  }
   dispose() {
+    if (this.disposed) return;
     this.disposed = true;
     for (const visual of this.visuals.values()) {
-      visual.unit.removeFromParent();
-      (visual.smoke.geometry as T.InstancedBufferGeometry).dispose();
+      this.disposeVisual(visual);
     }
     this.visuals.clear();
     this.flames.dispose(); this.smoke?.dispose();
-    for (const texture of Object.values(pinTextures ?? {})) texture?.dispose();
-    pinTextures = undefined;
+    this.plane.dispose(); this.ringGeometry.dispose(); this.leaderGeometry.dispose();
+    if (--pinUsers === 0) {
+      for (const texture of Object.values(pinTextures ?? {})) texture?.dispose();
+      pinTextures = undefined;
+    }
   }
 }

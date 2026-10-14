@@ -452,11 +452,18 @@ def header(directory: Path) -> dict[str, Any]:
                 intervals = sorted({
                     (gust["start_ns"], gust["end_ns"])
                     for profile in spec.get("config", {}).get("profiles", {}).values()
-                    for authored in profile.values()
+                    for field_id, authored in profile.items()
+                    if field_id in {"lowalt.wind", "oo:digital_twin.wind.horizontalVelocity"}
                     for gust in authored.get("gusts", [])
                 })
                 if intervals:
-                    row["gusts"] = [[start, end] for start, end in intervals]
+                    gusts: list[list[int]] = []
+                    for start, end in intervals:
+                        if gusts and start <= gusts[-1][1]:
+                            gusts[-1][1] = max(gusts[-1][1], end)
+                        else:
+                            gusts.append([start, end])
+                    row["gusts"] = gusts
             rows.append(row)
         result["engines"] = rows
     if "epoch" in metadata:
@@ -492,12 +499,9 @@ def header(directory: Path) -> dict[str, Any]:
     from aeroagentsim.authoring.replay import scene_header
 
     result.update(scene_header(directory, ""))
-    # Authored time-of-day light is display metadata (spec §6): journaled on the
-    # lowalt weather entity, surfaced here as scene.lighting for the viewer.
+    # Journaled presentation light also supplies the header's initial scene look.
     light = next((entity["facts"]["lowalt.light"] for entity in scenario.get("entities", [])
                   if entity.get("type") == "lowalt:Environment" and "lowalt.light" in entity.get("facts", {})), None)
-    if light in {"day", "dusk"}:
-        result.setdefault("scene", {})["lighting"] = light
     if scenario.get("city") == "huangpu" and not (directory / "studio-scene.json").is_file():
         from aeroagentsim.assets import installed
         from aeroagentsim.authoring.demo import city_presentation, detailed_city
@@ -529,6 +533,8 @@ def header(directory: Path) -> dict[str, Any]:
                 if kind is not None:
                     binding["visual"] = {**binding["visual"], "catalog": kind}
     subject_spec = scenario["registry"]
+    if light in {"day", "dusk"}:
+        result.setdefault("scene", {})["lighting"] = light
     declared = dict(subject_spec.get("message_subjects", {}))
     declared.update(
         {

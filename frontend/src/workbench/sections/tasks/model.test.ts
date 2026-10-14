@@ -97,13 +97,13 @@ describe('C11 operation parameters', () => {
   });
 
   it('derives meteorological wind direction, presets and clocks from the draft', () => {
-    expect(windFromDeg([-4.24, -4.24, 0])).toBe(315);
+    expect(windFromDeg([4.24, -4.24, 0])).toBe(315);
     expect(windFromDeg([6, 0, 0])).toBe(270);
-    expect(windFromDeg([0, 0, 0])).toBeUndefined();
+    expect(windFromDeg([0, 0, 0])).toBe(270);
     expect(pointDeg('NW')).toBe(315); expect(pointOfDeg(225)).toBe('SW'); expect(pointOfDeg(350)).toBe('N');
     expect(weatherOf({ config: { profiles: { weather: { 'lowalt.precipitation': { mode: 'constant', value: 4 / 3600 } } } } }))
       .toEqual({ precipitationMmH: 4, visibilityM: null, light: 'day' });
-    expect(weatherOf({ config: { profiles: { weather: { 'lowalt.visibility': { mode: 'constant', value: 50000 }, 'lowalt.light': 'dusk' } } } }))
+    expect(weatherOf({ config: { profiles: { weather: { 'lowalt.visibility': { mode: 'constant', value: 50000 }, 'lowalt.light': { mode: 'constant', value: 'dusk' } } } } }))
       .toEqual({ precipitationMmH: 0, visibilityM: null, light: 'dusk' });
     expect(weatherOf({})).toEqual({ precipitationMmH: 0, visibilityM: null, light: 'day' });
     expect(clockS(90)).toBe('01:30'); expect(clockS(240)).toBe('04:00'); expect(clockS(undefined)).toBe('—');

@@ -1,5 +1,6 @@
 /** Structures shared by the Tasks/Components forms; they mirror what the assistant compiler writes
  *  (src/aeroagentsim/assistant/{operations,compiler}.py) so manual edits and assistant edits stay equivalent. */
+import { windFromDeg as fromDegrees } from '../../../viewport/conditions';
 export const SECOND = 1e9;
 
 export const TASK_KINDS = ['parcel', 'food', 'medical', 'inspection', 'survey', 'spraying', 'passenger', 'patrol', 'incident_response'] as const;
@@ -87,8 +88,9 @@ export function windDirection(value: unknown): number | undefined {
 export function windFromDeg(value: unknown): number | undefined {
   const vec = Array.isArray(value) ? value : [];
   const x = scalarNumber(vec[0]), y = scalarNumber(vec[1]);
-  if (x === undefined || y === undefined || (x === 0 && y === 0)) return undefined;
-  return Number((((Math.atan2(-x, -y) * 180) / Math.PI + 360) % 360).toFixed(1));
+  if (x === undefined || y === undefined) return undefined;
+  if (x === 0 && y === 0) return 270;
+  return Number(fromDegrees(x, y).toFixed(1));
 }
 
 export const COMPASS_POINTS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
@@ -99,9 +101,9 @@ export const pointOfDeg = (deg: number): string => COMPASS_POINTS[Math.round(((d
 export function weatherOf(environment: Draft): { precipitationMmH: number; visibilityM: number | null; light: 'day' | 'dusk' } {
   const profiles = (environment?.config?.profiles ?? {}) as Record<string, Draft>;
   for (const profile of Object.values(profiles)) {
-    const precipitation = scalarNumber(profile?.['lowalt.precipitation']);
-    const visibility = scalarNumber(profile?.['lowalt.visibility']);
-    const light = profile?.['lowalt.light'];
+    const precipitation = scalarNumber(profile?.['lowalt.precipitation']?.value);
+    const visibility = scalarNumber(profile?.['lowalt.visibility']?.value);
+    const light = profile?.['lowalt.light']?.value;
     if (precipitation !== undefined || visibility !== undefined || light !== undefined)
       return { precipitationMmH: precipitation === undefined ? 0 : Math.round(precipitation * 3600 * 100) / 100,
         visibilityM: visibility === undefined || visibility >= 50000 ? null : visibility, light: light === 'dusk' ? 'dusk' : 'day' };

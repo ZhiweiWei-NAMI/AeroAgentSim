@@ -1,5 +1,5 @@
 import * as T from 'three';
-import { BloomEffect, EffectComposer, EffectPass, OutlineEffect, RenderPass, SMAAEffect, SMAAPreset, ToneMappingEffect, ToneMappingMode } from 'postprocessing';
+import { SelectiveBloomEffect, EffectComposer, EffectPass, OutlineEffect, RenderPass, SMAAEffect, SMAAPreset, ToneMappingEffect, ToneMappingMode } from 'postprocessing';
 import { N8AOPostPass } from '../scene/vendor/N8AO';
 export type Quality = 'low' | 'med' | 'high';
 // Software rasterizers need a smaller drawing buffer, even on a DPR=1 screen.
@@ -18,15 +18,19 @@ export function pipeline(renderer: T.WebGLRenderer, scene: T.Scene, camera: T.Pe
   }
   const outline = new OutlineEffect(scene, camera, { edgeStrength: 2, visibleEdgeColor: 0x9ce9ff, hiddenEdgeColor: 0x436172, blur: quality !== 'low', xRay: false });
   const tone = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC });
-  // Weather/fire FX (viewport/atmosphere) glow by colour alone and must never
-  // enter this pass: their materials keep alpha/emissive below the threshold and
-  // their layers stay out of any outline selection.
+  const bloom = quality === 'low' ? undefined : new SelectiveBloomEffect(scene, camera, { intensity: 0.09, luminanceThreshold: 1.3, mipmapBlur: true });
+  if (bloom) bloom.inverted = true;
+  // Weather/fire FX glow by colour alone; explicitly mask them out of bloom.
   // A zero-intensity bloom still executes its luminance and mipmap passes. Low
   // quality keeps selection and tone mapping, without bloom/blur/SMAA buffers.
   composer.addPass(quality === 'low' ? new EffectPass(camera, outline, tone) : new EffectPass(camera, outline,
-    new BloomEffect({ intensity: 0.09, luminanceThreshold: 1.3, mipmapBlur: true }), tone,
+    bloom!, tone,
     new SMAAEffect({ preset: quality === 'high' ? SMAAPreset.HIGH : SMAAPreset.MEDIUM })));
-  return Object.assign(composer, { outline, setDusk: (dusk: boolean) => {
+  return Object.assign(composer, { outline, excludeBloom: (root: T.Object3D) => {
+    if (!bloom) return;
+    bloom.selection.clear();
+    root.traverse(node => { if (node instanceof T.Mesh || node instanceof T.Sprite || node instanceof T.Line) bloom.selection.add(node); });
+  }, setDusk: (dusk: boolean) => {
     if(ao){ao.configuration.aoRadius=dusk?3:2;ao.configuration.intensity=dusk?1.4:0.65;}
   } });
 }

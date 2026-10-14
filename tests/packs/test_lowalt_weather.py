@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 from typing import Any
 
@@ -15,11 +16,17 @@ BASE = Path(__file__).resolve().parents[2] / "scenarios/templates/parcel-deliver
 
 
 def _document(directory: Path, *, weather: bool) -> dict[str, Any]:
+    from aeroagentsim.packs.lowalt.cooperation import merge_contract_snapshot
+
     document = copy.deepcopy(_base_document())
+    snapshot = directory / "cooperation.registry.json"
+    snapshot.write_text(json.dumps(merge_contract_snapshot(json.loads((BASE / "registry.snapshot.json").read_text()))))
+    document["registry"]["snapshot"] = str(snapshot)
     config = document["engines"]["tasks"]["config"]
     config["cooperation"]["incidents"][0]["at_s"] = 2.0
     config["cooperation"]["incidents"][0]["end_s"] = 5.0
     if weather:
+        document["registry"]["fields"].extend(row for row in overlay()["fields"] if row["id"] in {"lowalt.precipitation", "lowalt.visibility", "lowalt.light"})
         environment = document["engines"]["environment"]["config"]
         environment["produces"] += ["lowalt.precipitation", "lowalt.visibility", "lowalt.light"]
         environment["profiles"]["weather"].update({
@@ -48,7 +55,6 @@ def _base_document() -> dict[str, Any]:
         "helpers": {"vehicles": [], "ask_radius_m": 1000.0, "mode": "prescribed", "rules": {"accept_when": "idle", "min_battery_pct": 25.0}, "selection": "nearest"},
         "photograph": {"dwell_s": 2.0, "altitude_m": 35.0},
     }
-    config["generators"] = []
     return document
 
 
@@ -78,10 +84,10 @@ def test_incident_active_and_ended_are_journaled(tmp_path: Path) -> None:
     occurred = _events(records, "lowalt.incident.occurred")
     ended = _events(records, "lowalt.incident.ended")
     assert [int(m["at"]["ns"]) for m in occurred] == [2 * 10**9]
-    assert [int(m["at"]["ns"]) for m in ended] == [60 * 10**9]
+    assert [int(m["at"]["ns"]) for m in ended] == [5 * 10**9]
     assert _fact_values(records, "incident-1", "lowalt.incident_active") == [False, True, False]
     assert _fact_values(records, "incident-1", "lowalt.incident_radius_m") == [40.0]
-    assert _fact_values(records, "incident-1", "lowalt.incident_end_ns") == [60 * 10**9]
+    assert _fact_values(records, "incident-1", "lowalt.incident_end_ns") == [5 * 10**9]
     # Response phases stay independent of the visual active flag.
     assert _fact_values(records, "incident-1", "lowalt.incident_state") == ["pending", "occurred", "noticed", "reported"]
 
@@ -134,3 +140,29 @@ def test_overlay_declares_weather_and_incident_fields() -> None:
     assert fields["lowalt.precipitation"]["metadata"]["aerograph"] == "oo:digital_twin.precipitation.waterMassFlux"
     assert fields["lowalt.visibility"]["metadata"]["aerograph"] == "he.weather.visibility_m"
     assert fields["lowalt.light"]["metadata"]["role"] == "presentation"
+
+
+def test_capture_snapshot_retains_journaled_nonspatial_weather(tmp_path: Path) -> None:
+    from aerokernel import Stamp
+
+    from aeroagentsim.observations.committed import committed_scene
+    from aeroagentsim.observations.contracts import CaptureRequest
+
+    directory = tmp_path / "photograph"
+    scenario = load_scenario(_document(tmp_path, weather=True), base=BASE)
+    with RunSession(scenario, directory) as session:
+        session.start()
+        session.run_until(4 * 10**9)
+        view = session.simulation.kernel.view()
+        actor = next(ref for ref in view._store.lives if ref.id == "drone-1")
+        request = CaptureRequest("weather-photo", actor.run_id, actor, view.cut,
+                                 {"revision": "fixture", "eye": [0, 0, 50], "target": [200, 0, 0]},
+                                 "weather-fixture", Stamp("canonical", view.cut.instant.ns, 1, "canonical"), 128, 96, 10)
+        snapshot = committed_scene(view._store, request, header(directory))
+    weather = next(entity for entity in snapshot["entities"] if entity["key"]["id"] == "weather")
+    facts = {field["fieldId"]: field for field in weather["fields"]}
+    assert facts["lowalt.precipitation"]["value"] == 4 / 3600
+    assert facts["lowalt.visibility"]["value"] == 500
+    assert facts["lowalt.light"]["value"] == "dusk"
+    assert all(facts[field]["producer"] == "environment" and facts[field]["validFrom"]["ns"] == "0"
+               for field in ("lowalt.precipitation", "lowalt.visibility", "lowalt.light"))

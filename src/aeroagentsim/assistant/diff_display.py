@@ -21,8 +21,8 @@ KIND_LABELS = {
 FIELD_LABELS = {
     "wind.speed_mps": ("Wind speed", "风速"), "speed_mps": ("Wind speed", "风速"),
     "from_deg": ("Wind from direction (clockwise from north)", "风的来向（自北顺时针）"),
-    "precipitation_mm_h": ("Rain (mm/h)", "降雨（毫米/小时）"),
-    "visibility_m": ("Visibility (m)", "能见度（米）"),
+    "precipitation_mm_h": ("Rain", "降雨"),
+    "visibility_m": ("Visibility", "能见度"),
     "light": ("Light", "光照"),
     "radius_m": ("Affected radius", "受影响半径"),
     "end_s": ("Ends at", "结束时间"),
@@ -90,7 +90,7 @@ FIELD_LABELS = {
     "wind_speed": ("Wind speed", "风速"), "wind_limit": ("Wind limit", "风速上限"),
     "order_rate": ("Order rate", "订单速率"), "fleet_size": ("Fleet size", "机群规模"),
 }
-UNITS_ZH = {"m/s": "米/秒", "m": "米", "s": "秒", "ns": "纳秒", "kg": "千克", "W": "瓦", "J": "焦耳", "%": "%", "°": "度", "/s": "每秒"}
+UNITS_ZH = {"m/s": "米/秒", "mm/h": "毫米/小时", "m": "米", "s": "秒", "ns": "纳秒", "kg": "千克", "W": "瓦", "J": "焦耳", "%": "%", "°": "度", "/s": "每秒"}
 ENUM_LABELS = {
     "scheduled": ("Scheduled", "预设"), "interactive": ("Interactive", "交互"),
     "poisson": ("Random arrivals (Poisson)", "随机到达（泊松）"),

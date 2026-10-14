@@ -69,8 +69,9 @@ export function ViewportView(props: Props) {
   const catalogNotice=(props.store.header as typeof props.store.header & {catalogNotice?:string}).catalogNotice;
   // Latest derived conditions from the FX layer; only fired when the rounded values change.
   const [conditions,setConditions]=useState<Conditions>();
-  useEffect(()=>{const unsubscribe=viewport.current?.onConditions(setConditions);return()=>unsubscribe?.();},[]);
   useEffect(()=>{
+    let unsubscribeConditions: (() => void) | undefined;
+    setConditions(undefined);
     let frame=0,last=performance.now(),notify=last,lastSeek='',lastNotified='';
     let actionFramed=false,interacted=false;
     const director=new BusinessDirector();let shot:DirectorTarget|undefined,autoActive=false,wasPaused=false;
@@ -91,6 +92,7 @@ export function ViewportView(props: Props) {
         semantic:props.simple===true,showAllLabels:showAllLabels,
         onLegend:(entries,zones)=>{setLegend(entries);setZoneCount(zones);},
       });
+      unsubscribeConditions=viewport.current.onConditions(setConditions);
       props.onViewport?.(viewport.current);
       viewport.current.setLightingOverride(lighting);viewport.current.setCameraMode(mode ?? props.mode);viewport.current.setSelection(props.selected);viewport.current.setHighlights(props.highlights??[]);
       const animate=(now:number)=>{
@@ -134,7 +136,7 @@ export function ViewportView(props: Props) {
         }catch(error){current.current.onError(error);}
       };frame=requestAnimationFrame(animate);
     }catch(error){props.onError(error);}
-    return()=>{container?.removeEventListener('pointerdown',preserveCamera);cancelAnimationFrame(frame);current.current.onViewport?.(undefined);viewport.current?.dispose();viewport.current=undefined;eventCut.current=undefined;container?.closest('.viewer-main')?.removeAttribute('data-inspector-collapsed');};
+    return()=>{unsubscribeConditions?.();container?.removeEventListener('pointerdown',preserveCamera);cancelAnimationFrame(frame);current.current.onViewport?.(undefined);viewport.current?.dispose();viewport.current=undefined;eventCut.current=undefined;container?.closest('.viewer-main')?.removeAttribute('data-inspector-collapsed');};
   },[props.store,props.clock]);
   useEffect(()=>{viewport.current?.setSelection(props.selected);},[props.selected]);
   const highlightKey=(props.highlights??[]).map(key=>`${key.id}:${key.generation}`).join('|');
@@ -177,11 +179,11 @@ export function ViewportView(props: Props) {
       <select aria-label={t('View quality')} value={quality} onChange={event=>{const q=event.target.value as Quality;setQuality(q);viewport.current?.setQuality(q,true);}}>
         <option value="low">{t('Low')}</option><option value="med">{t('Balanced')}</option><option value="high">{t('High')}</option>
       </select>{fps!==undefined&&<span>{t('{fps} FPS', {fps:fps.toFixed(0)})}</span>}
-      <select aria-label={t('Display lighting')} value={urlLighting==='day'||urlLighting==='dusk'?urlLighting:lighting} onChange={event=>{const value=event.target.value as 'scene'|'day'|'dusk';setLighting(value);viewport.current?.setLightingOverride(value);}}>
+      <select aria-label={t('Display lighting')} value={urlLighting==='day'||urlLighting==='dusk'?urlLighting:lighting} onChange={event=>{const value=urlLighting==='day'||urlLighting==='dusk'?urlLighting:event.target.value as 'scene'|'day'|'dusk';setLighting(value);viewport.current?.setLightingOverride(value);}}>
         <option value="scene">{t('Scene')}</option><option value="day">{t('Day · display')}</option><option value="dusk">{t('Dusk · display')}</option></select>
       <button aria-label={t('Toggle inspector')} aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>{t('Inspector')} {collapsed?'＋':'−'}</button>
     </div>}
-    {!props.simple&&!props.bare&&conditions&&<div className="viewport-conditions"><ConditionsHud conditions={conditions} zh={locale.startsWith('zh')} mode="run" /></div>}
+    {conditions&&<div className="viewport-conditions"><ConditionsHud conditions={conditions} zh={locale.startsWith('zh')} mode="run" /></div>}
     {!props.simple&&!props.bare&&<div className="scene-status"><span>{t('Buildings, lighting and symbols are display effects.')}</span>{status&&<details><summary>{t('Display details')}</summary><div>{status}</div></details>}</div>}
     {props.simple&&!props.bare&&<div className="semantic-legend" data-testid="semantic-legend" aria-label={t('Map legend')}>
       <div className="semantic-legend-title">{t('Airspace & operations')}</div>

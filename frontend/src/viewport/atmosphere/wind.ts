@@ -39,25 +39,23 @@ export class WindStreaks {
           // Advection × 1.0 along the wind; the length scales with speed; streaks wrap in the camera volume.
           vec2 direction=uSpeed>0.0?uWind/uSpeed:vec2(0.0);
           float wrap=${SPAN}.0;
-          vec2 flat=vec2(streakSeed.x*wrap,fract(streakSeed.y*3.0)*wrap)-wrap*0.5;
-          flat+=direction*uTime*uSpeed;
-          flat=mod(flat+wrap*0.5,wrap)-wrap*0.5;
+          vec2 offset=vec2(streakSeed.x*wrap,fract(streakSeed.y*3.0)*wrap)-wrap*0.5;
+          offset+=direction*uTime*uSpeed;
+          offset=mod(offset+wrap*0.5,wrap)-wrap*0.5;
           float altitude=${ALT_MIN}.0+fract(streakSeed.x*13.7)*(${ALT_MAX}.0-${ALT_MIN}.0);
-          vec4 view=modelViewMatrix*vec4(uCenter+vec3(flat.x,altitude,flat.y),1.0);
-          float length=0.6+uSpeed*0.25;
+          float streakLength=0.6+uSpeed*0.25;
           vec3 along=vec3(direction.x,0.0,direction.y);
-          vec3 cameraRight=vec3(viewMatrix[0][0],viewMatrix[1][0],viewMatrix[2][0]);
-          vec3 corner=cameraRight*position.x*0.06+along*position.y*length;
-          view.xyz+=corner;
+          vec4 view=modelViewMatrix*vec4(uCenter+vec3(offset.x,altitude,offset.y)+along*position.y*streakLength,1.0);
+          view.x+=position.x*0.06;
           gl_Position=projectionMatrix*view;
-          streakFade=(1.0-distance(flat,vec2(0.0))/(${SPAN}.0*0.5))*(0.4+0.6*fract(streakSeed.y*7.3));
+          streakFade=(1.0-distance(offset,vec2(0.0))/(${SPAN}.0*0.5))*(0.4+0.6*fract(streakSeed.y*7.3));
         }`,
       fragmentShader: `varying float streakFade;
         void main(){float alpha=0.16*streakFade;if(alpha<=0.004)discard;
         gl_FragColor=vec4(0.910,0.953,1.0,alpha);}`,
     });
     this.mesh = new T.Mesh(this.geometry, this.material);
-    this.mesh.frustumCulled = false; this.mesh.renderOrder = 2;
+    this.mesh.frustumCulled = false; this.mesh.renderOrder = 2; this.mesh.visible = false;
   }
   setQuality(quality: Quality) { this.quality = quality; }
   update(wind: { east: number; north: number; speed: number } | null, simSeconds: number, camera: T.Camera) {
@@ -70,9 +68,10 @@ export class WindStreaks {
     for (let i = 0; i < count; i++) seeds.setXY(i, fxHash(104729, i * 2 + 1), fxHash(104729, i * 2 + 2));
     seeds.needsUpdate = true;
     this.material.uniforms.uTime.value = simSeconds;
-    this.material.uniforms.uWind.value.set(wind.east, wind.north);
+    this.material.uniforms.uWind.value.set(wind.east, -wind.north);
     this.material.uniforms.uSpeed.value = speed;
     this.material.uniforms.uCenter.value.copy(camera.position);
+    this.material.uniforms.uCenter.value.y = 0;
   }
   dispose() {
     this.geometry.dispose(); this.material.dispose(); this.mesh.removeFromParent();

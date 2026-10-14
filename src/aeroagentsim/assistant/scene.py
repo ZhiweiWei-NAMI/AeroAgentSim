@@ -212,6 +212,19 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
     gusts = [{"start_s": g["start_ns"] / SECOND, "end_s": g["end_ns"] / SECOND,
               "speed_mps": wind_speed(g["value"])}
              for p in wind_profiles for g in p.get("gusts", [])]
+    weather = {}
+    for engine, spec in document.get("engines", {}).items():
+        if spec["plugin"] != "environment":
+            continue
+        for identity, profiles in spec["config"].get("profiles", {}).items():
+            values = {}
+            for field, name in (("lowalt.precipitation", "precipitation_mm_h"),
+                                ("lowalt.visibility", "visibility_m"), ("lowalt.light", "light")):
+                if field in profiles:
+                    value = profiles[field]["value"]
+                    values[name] = value * 3600 if field == "lowalt.precipitation" else value
+            if values:
+                weather[engine + "." + identity] = values
     zones = [{"id": e["id"], "label": e.get("label", e["id"]), "kind": e["facts"]["lowalt.zone_kind"]}
              for e in entities.values() if e["type"] == "lowalt:AirspaceZone"]
     places = []
@@ -379,7 +392,7 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
     run_mode = "interactive" if any(s["id"] == "operator" and s["initial_watermark_ns"] == 0 for s in streams) else "scheduled"
     return {"title": document.get("title", document.get("id")), "city": document.get("city"),
             "duration_s": document["run"]["until_ns"] / SECOND, "run_mode": run_mode,
-            "environment": {"wind": {"speed_mps": _common(speeds), "gusts": gusts, "profiles": wind_details}, "zones": zones},
+            "environment": {"wind": {"speed_mps": _common(speeds), "gusts": gusts, "profiles": wind_details}, "zones": zones, **({"weather": weather} if weather else {})},
             "fleets": fleets, "places": places, "workloads": workloads, "events": events, "rules": rules, "routine": routine,
             "algorithms": copy.deepcopy(document.get("algorithms", {})), "cooperation": cooperation,
             "controls": copy.deepcopy(controls) if controls is not None else {},
@@ -441,7 +454,7 @@ SECTION_LABELS = {"title": ("Title", "标题"), "city": ("City", "城市"), "dur
 
 def _leaf_changes(before: Any, after: Any, prefix: str = "") -> list[dict]:
     """Changed leaves as dotted names; display labels are derived and never a change of their own."""
-    if isinstance(before, dict) and isinstance(after, dict) or prefix.startswith("wind.profiles.") and (isinstance(before, dict) and after is None or before is None and isinstance(after, dict)):
+    if isinstance(before, dict) and isinstance(after, dict) or prefix.startswith(("wind.profiles.", "weather")) and (isinstance(before, dict) and after is None or before is None and isinstance(after, dict)):
         before, after = before if before is not None else {}, after if after is not None else {}
         return [row for key in sorted(before.keys() | after.keys()) if key != "labels"
                 for row in _leaf_changes(before.get(key), after.get(key), f"{prefix}.{key}" if prefix else key)]

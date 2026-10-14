@@ -378,7 +378,7 @@ it('sends one set_weather with rain, visibility and light presets, and reads cur
   await waitFor(() => expect(onProject).toHaveBeenCalled());
 });
 
-it('writes explicit zero and clear values and includes the visual-only note', () => {
+it('writes explicit zero and clear values and includes the visual-only note', async () => {
   render(weather());
   expect(screen.getByText(/Visual only — shown in the 3D view/)).toBeTruthy();
   expect(chip('wb-rain-presets', 'None')).toHaveAttribute('aria-pressed', 'true');
@@ -389,7 +389,7 @@ it('writes explicit zero and clear values and includes the visual-only note', ()
 });
 
 it('sends from_deg only when the user changed the wind direction', async () => {
-  render(weather({ environment: { config: { profiles: { weather: { 'lowalt.wind': { mode: 'constant', value: [-4.24, -4.24, 0] } } } } } }));
+  render(weather({ environment: { config: { profiles: { weather: { 'lowalt.wind': { mode: 'constant', value: [6 / Math.SQRT2, -6 / Math.SQRT2, 0] } } } } } }));
   expect(screen.getByLabelText('Degrees (°)')).toHaveValue('315');
   expect(screen.getByRole('button', { name: 'NW' })).toHaveAttribute('aria-pressed', 'true');
   fireEvent.click(within(windForm()).getByRole('button', { name: 'Preview' }));
@@ -397,7 +397,7 @@ it('sends from_deg only when the user changed the wind direction', async () => {
   expect(previewOperations.mock.calls[0][2][0].params).toEqual({ speed_mps: 6 });
   fireEvent.click(screen.getByRole('button', { name: 'SW' }));
   expect(screen.getByLabelText('Degrees (°)')).toHaveValue('225');
-  fireEvent.click(within(windForm()).getByRole('button', { name: 'Preview' }));
+  fireEvent.click(within(windForm()).getByRole('button', { name: 'Preview again' }));
   await within(windForm()).findByRole('button', { name: 'Confirm' });
   expect(previewOperations.mock.calls[1][2][0].params).toEqual({ speed_mps: 6, from_deg: 225 });
 });

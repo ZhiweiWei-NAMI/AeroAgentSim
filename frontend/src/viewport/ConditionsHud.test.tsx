@@ -13,7 +13,7 @@ const conditions = (override: Partial<Conditions> = {}): Conditions => ({
 });
 
 it('renders the wind card, gust line, intensity bar and active-condition chips in run mode', () => {
-  render(<ConditionsHud conditions={conditions({ wind: { east: -6, north: 0, speed: 6.2, fromDeg: 315, gust: true } })} zh={false} mode="run" atS={90} />);
+  render(<ConditionsHud conditions={conditions({ wind: { east: -6, north: 0, speed: 6.2, fromDeg: 315, gust: true, gustEndS: 90 } })} zh={false} mode="run" />);
   expect(screen.getByTestId('wb-conditions-wind')).toHaveTextContent('Wind 6.2 m/s · from NW');
   expect(screen.getByText('Gust · until 01:30')).toBeTruthy();
   expect(screen.getByRole('img', { name: 'Wind intensity' }).querySelectorAll('i.on')).toHaveLength(3);

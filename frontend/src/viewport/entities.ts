@@ -13,6 +13,7 @@ import { selectCatalogModel, fitModel, yawFromVelocity, type CatalogModel, type 
 import { semanticVehicle, businessStyle, semanticLabel, labelInterest, taskByVehicle, activeZones } from './semantic';
 import {PayloadLayer} from './operational-loads';
 import { RecentActivity } from './recent-activity';
+import type { Conditions } from './conditions';
 
 /** A task counts as active unless its committed state says it is finished. */
 function isFinishedTask(task: { fields: Map<string, { value: unknown }> }): boolean {
@@ -269,7 +270,7 @@ export class EntityLayer {
     if(changed){mesh.setMatrixAt(index,matrix);mesh.userData.viewportChanged=true;}
   }
   update(store: FeedStore, ns: string, camera: T.Camera, selected?: EntityKey, showTrails = true,
-    renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion, aimCamera?: () => void) {
+    renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion, aimCamera?: () => void, incidents?: Conditions['incidents']) {
     this.transformsChanged=false;this.catalogUsage.clear();
     if(this.semantic){
       const stamp=`${store.revision}/${ns}`;
@@ -283,7 +284,7 @@ export class EntityLayer {
     for (const batch of this.batches.values()) { batch.keys = []; for(const mesh of batch.meshes)mesh.count=0; if(batch.far){batch.far.keys=[];batch.far.mesh.count=0;} }
     const width=this.overlay.clientWidth,height=this.overlay.clientHeight;
     const visibleLabels=new Set<string>();
-    const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean }> = [];
+    const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean; incident?: Conditions['incidents'][number] }> = [];
     for (const [id, entity] of store.entities) {
       let binding = resolveBinding(this.header, entity.typeId); if (!binding) continue;
       if(this.semantic&&entity.typeId==='lowalt:UAV'&&binding.visual.kind==='marker'){
@@ -291,7 +292,6 @@ export class EntityLayer {
         if(style.label){let options=this.semanticBindings.get(binding);if(!options){options=new Map();this.semanticBindings.set(binding,options);}let styled=options.get(style.label);if(!styled){styled={...binding,visual:{...binding.visual,color:style.color}};options.set(style.label,styled);this.glyphs.set(styled,style.glyph);}binding=styled;}
       }
       const sample = store.sample(entity.key, binding.positionField, ns); if (!sample) continue;
-      if (this.hideIncidentMarkers && entity.typeId === 'lowalt:Incident') { this.positions.set(id, worldPosition(sample, binding.frame, this.header.origin).sub(renderOrigin)); continue; }
       const position = worldPosition(sample, binding.frame, this.header.origin).sub(renderOrigin); this.positions.set(id, position);
       const catalogued = this.catalogBinding(binding, entity, id, store, position.distanceTo(camera.position));
       if (catalogued) binding = catalogued;
@@ -302,7 +302,7 @@ export class EntityLayer {
       if(orientation)this.dummy.quaternion.copy(worldOrientation(orientation,binding.frame));else this.dummy.quaternion.identity();
       if (orientation) this.orientations.set(id, this.dummy.quaternion.clone());
       this.dummy.scale.setScalar(binding.visual.scale ?? 1);
-      if (binding.visual.kind !== 'label') {
+      if (binding.visual.kind !== 'label' && !(this.hideIncidentMarkers && entity.typeId === 'lowalt:Incident')) {
         const batch = this.batches.get(binding) ?? this.createBatch(binding, Math.max(64, store.entities.size));
         const isSelected=!!selected&&entityId(selected)===id||this.highlighted.has(id);
         const far=batch.far&&!isSelected&&(position.distanceTo(camera.position)>(batch.farDistance??100)||batch.keys.length>=(batch.farDistance?80:48))?batch.far:undefined;
@@ -329,7 +329,11 @@ export class EntityLayer {
         }
       }
       const isSelected=!!selected && entityId(selected)===id;
-      candidates.push({id,key:entity.key,position,selected:isSelected,forced:binding.visual.kind==='label'||this.highlighted.has(id)});
+      const incident = incidents?.find(row => row.id === entity.key.id);
+      if (incident?.phase === 'pending') continue;
+      const labelPosition = incident ? position.clone() : position;
+      if (incident) labelPosition.y = Math.max(position.y, occlusion?.liftCamera(position, 0).y ?? position.y) + 14;
+      candidates.push({id,key:entity.key,position:labelPosition,selected:isSelected,forced:!!incident||binding.visual.kind==='label'||this.highlighted.has(id),interest:!!incident,incident});
     }
     // Camera follow uses these exact sampled poses; labels must project through
     // that same final camera transform, rather than the previous frame's view.
@@ -340,6 +344,7 @@ export class EntityLayer {
     // raycast hover or when show-all is on. Expert mode keeps forced labels.
     const entityHover=this.hoverId!==undefined&&this.positions.has(this.hoverId)?this.hoverId:undefined;
     for(const item of candidates){
+      if (item.incident) continue;
       if(this.semantic&&!item.selected){
         const entity=store.entities.get(item.id)!;
         const task=this.semanticTasks.get(item.id);
@@ -377,7 +382,13 @@ export class EntityLayer {
       }
       let label=this.labels.get(item.id);
       if(!label){label=document.createElement('button');label.className='entity-label';label.dataset.entityId=item.key.id;label.onclick=()=>this.onSelect(item.key);this.overlay.append(label);this.labels.set(item.id,label);}
-      const semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header,this.locale):item.key.id;
+      let semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header,this.locale):item.key.id;
+      if (item.incident) {
+        const row = item.incident, zh = this.locale.startsWith('zh'), total = Math.floor(row.sinceS);
+        const clock = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+        const label = zh ? store.entities.get(item.id)?.authoredLabel?.label_zh ?? row.label : row.label;
+        semanticText = row.phase === 'ended' ? `${row.kind === 'fire' ? zh ? '火情' : 'Fire' : zh ? '人员跌倒' : 'Person fell'} · ${zh ? '已结束' : 'ended'}` : `${label} · ${zh ? '已发生' : 'Active'} ${clock}`;
+      }
       if(this.semantic){const style=businessStyle(semanticVehicle(store.entities.get(item.id)!,this.semanticTasks.get(item.id)));label.dataset.glyph=style.glyph;label.style.borderColor=style.color;}
       else {delete label.dataset.glyph;label.style.borderColor='';}
       if(label.textContent!==semanticText)label.textContent=semanticText;

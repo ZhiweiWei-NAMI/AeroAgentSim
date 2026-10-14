@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { RunHeader } from '../contracts/viewer-feed';
-import { compassPoint, conditionsAt, conditionsFromDraft, windFromDeg } from './conditions';
+import { compassPoint, conditionsAt, conditionsFromDraft, previewMoment, windFromDeg } from './conditions';
 
 const header = (): RunHeader => ({
   contract: 'aeroagentsim.viewer-feed/v1', runId: 'r', registryDigest: 'd',
   types: [{ typeId: 'lowalt:Incident', displayName: 'Incident', ancestors: ['oo:Incident'] }],
+  entities: [{ id: 'fire-a', type: 'lowalt:Incident', label: 'Building fire' }],
   fields: [], presentation: [],
-  engines: [{ id: 'weather', plugin: 'environment', gusts: [[60_000_000_000, 90_000_000_000]] }],
+  engines: [{ id: 'weather', plugin: 'environment', gusts: [[60_000_000_000, 150_000_000_000]] }],
   start: { ns: '0', microstep: 0 },
 });
 
@@ -35,7 +36,7 @@ describe('conditionsAt', () => {
     expect(conditions).toMatchObject({ precipitationMmH: 4, visibilityM: 500, light: 'dusk' });
     expect(conditions.wind).toMatchObject({ speed: 6, fromDeg: 270, gust: true });
     expect(conditions.incidents).toHaveLength(1);
-    expect(conditions.incidents[0]).toMatchObject({ id: 'fire-a', kind: 'fire', phase: 'active', radiusM: 30, sinceS: 30, response: 'uav-1' });
+    expect(conditions.incidents[0]).toMatchObject({ id: 'fire-a', kind: 'fire', label: 'Building fire', phase: 'active', radiusM: 30, sinceS: 30, response: 'uav-1' });
   });
   it('treats absent fields as clear day, 50000 m visibility as clear and marks ended incidents', () => {
     const conditions = conditionsAt(cut([
@@ -51,6 +52,17 @@ describe('conditionsAt', () => {
     ]), '0');
     expect(conditions.incidents[0].phase).toBe('pending');
   });
+  it('keeps elapsed time for a zero-start incident and reads oo wind with later engine gusts', () => {
+    const feedHeader = header();
+    feedHeader.engines = [{ id: 'empty', plugin: 'environment' }, ...feedHeader.engines!];
+    const conditions = conditionsAt(cut([
+      entity('wind', 'oo:WindField', { 'oo:digital_twin.wind.horizontalVelocity': [[6, -6]] }),
+      entity('fire', 'lowalt:Incident', { 'lowalt.incident_kind': 'fire', 'lowalt.incident_position': [0, 0, 0], 'lowalt.incident_time_ns': 0, 'lowalt.incident_end_ns': -1, 'lowalt.incident_active': true }),
+    ]), '120000000000', feedHeader);
+    expect(conditions.incidents[0]).toMatchObject({ phase: 'active', sinceS: 120, startS: 0 });
+    expect(conditions.wind).toMatchObject({ fromDeg: 315, gust: true, gustEndS: 150 });
+    expect(conditionsAt(cut([entity('wind', 'oo:WindField', { 'oo:digital_twin.wind.horizontalVelocity': [[6, -6]] })]), '150000000000', feedHeader).wind?.gust).toBe(false);
+  });
 });
 
 describe('conditionsFromDraft', () => {
@@ -61,15 +73,23 @@ describe('conditionsFromDraft', () => {
     } } } } },
     cooperation: { incidents: [{ id: 'fire-a', kind: 'fire', position: [20, 40, 0], at_s: 90, radius_m: 30 }] },
   };
-  it('freezes the draft at the preview moment, inside a gust', () => {
+  it('uses half-open gust intervals and incident elapsed time at the preview cut', () => {
     expect(conditionsFromDraft(scenario, 90)).toMatchObject({ precipitationMmH: 4, visibilityM: 500 });
-    expect(conditionsFromDraft(scenario, 90).wind).toMatchObject({ speed: 9, gust: true, fromDeg: 270 });
-    expect(conditionsFromDraft(scenario, 90).incidents[0]).toMatchObject({ phase: 'active', sinceS: 10 });
+    expect(conditionsFromDraft(scenario, 80).wind).toMatchObject({ speed: 9, gust: true, fromDeg: 270 });
+    expect(conditionsFromDraft(scenario, 90).wind).toMatchObject({ speed: 6, gust: false, fromDeg: 270 });
+    expect(conditionsFromDraft(scenario, 100).incidents[0]).toMatchObject({ phase: 'active', sinceS: 10 });
   });
   it('preview moment defaults to the first incident start + 20 s', () => {
-    const outside = conditionsFromDraft(scenario, 90);
+    expect(previewMoment(scenario)).toBe(110);
+    const outside = conditionsFromDraft(scenario, previewMoment(scenario));
     expect(outside.incidents).toHaveLength(1);
-    expect(conditionsFromDraft({}, 0).wind).toMatchObject({ speed: 0, fromDeg: 270, gust: false });
+    expect(outside.incidents[0].sinceS).toBe(20);
+    expect(conditionsFromDraft({}, 0).wind).toBeNull();
+  });
+  it('reads incidents from the authored task engine and daylight from journaled profiles', () => {
+    const draft = { engines: { ...scenario.engines, tasks: { plugin: 'lowalt_tasks', config: { cooperation: scenario.cooperation } } }, scene: { lighting: 'dusk' } };
+    expect(previewMoment(draft)).toBe(110);
+    expect(conditionsFromDraft(draft, 110)).toMatchObject({ light: 'day', incidents: [{ id: 'fire-a', phase: 'active', sinceS: 20 }] });
   });
 });
 

@@ -9,6 +9,7 @@ import type { Workspace } from './api';
 import { PlanOverlayView, type PreviewOverlay } from './plan-overlay';
 import { PreviewHologram } from './hologram';
 import { AtmosphereLayer } from '../viewport/atmosphere';
+import { applyWeatherMaterials } from '../viewport/atmosphere/sky-weather';
 import { conditionsFromDraft, previewMoment } from '../viewport/conditions';
 import { ConditionsHud } from '../viewport/ConditionsHud';
 
@@ -134,6 +135,10 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
     const cleanup = () => { if (cleaned) return; cleaned = true; abort.abort(); cancelAnimationFrame(frame); window.clearTimeout(driftTimer); document.removeEventListener('visibilitychange', visibility); observer?.disconnect(); layoutObserver?.disconnect(); overlayView?.dispose(); hologram?.dispose(); atmosphere?.dispose(); controls?.dispose(); disposePreview(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); ctx.current = undefined; };
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.toneMappingExposure = 1;
+      const fill = new THREE.HemisphereLight(0xffffff, 0x65705b, 2);
+      const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(100, 200, 80); scene.add(fill, sun);
+      scene.userData.lighting = { scene, renderer, sun, fill, horizon: (scene.background as THREE.Color).clone() };
       renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.domElement.setAttribute('aria-hidden', 'true'); host.append(renderer.domElement);
       // Ground covers what is actually authored (region, entities, fleets) and later the loaded city — never a fixed square.
       const authored = authoredPositions(ws.scenario);
@@ -155,7 +160,10 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         controls!.update();
         const animating = overlayView?.render(now);
         const drifting = hologram?.advance(now);
-        atmosphere?.update(previewConditions, previewS, camera);
+        const scenario = latest.current.workspace.scenario, atS = previewMoment(scenario), conditions = conditionsFromDraft(scenario, atS);
+        atmosphere?.update(conditions, atS, camera);
+        const buildings = scene.getObjectByName('layer-buildings');
+        if (buildings) applyWeatherMaterials(buildings, scene.userData.weatherWet, conditions.light === 'dusk');
         renderer!.render(scene, camera);
         if (firstFrame) { setRendered(true); firstFrame = false; }
         if (animating) invalidate();
@@ -168,6 +176,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       controls.addEventListener('change', invalidate);
       // Draft preview wears the same atmosphere: incident pins/rings/flames/smoke at the frozen moment.
       atmosphere = new AtmosphereLayer(scene, renderer!, 'med');
+      void atmosphere.ready.then(invalidate).catch(problem => { if (!abort.signal.aborted) setError({ kind: 'runtime', detail: String(problem) }); });
       atmosphere.update(previewConditions, previewS, camera);
       const shownCity = cityScene(ws);
       let userMoved = false, framedCity = false;
@@ -182,8 +191,6 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         return visiblePreviewFrame(full, rightPanels, leftPanels, toolbar);
       };
       const fitView = () => { overlayView?.cancelFrame(); const box = bounds.clone(); if (overlayView) box.union(overlayView.bounds()); framePreview(camera, box, controls!.target, visibleFrame()); controls!.update(); invalidate(); };
-      scene.add(new THREE.HemisphereLight(0xffffff, 0x65705b, 2));
-      const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(100, 200, 80); scene.add(sun);
       const groups = Object.fromEntries(LAYER_NAMES.map(name => { const group = new THREE.Group(); group.name = `layer-${name}`; scene.add(group); return [name, group]; })) as Record<LayerName, THREE.Group>;
       const fitGround = (box: THREE.Box3) => {
         hologram?.release(groups.ground);
@@ -295,6 +302,10 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   }, [sceneKey]);
 
   // Visibility only: no disposal, no network, camera untouched. The first time buildings are shown they load once.
+  useEffect(() => {
+    ctx.current?.invalidate();
+  }, [previewConditions, previewS]);
+
   useEffect(() => {
     const current = ctx.current; if (!current) return;
     LAYER_NAMES.forEach((name, index) => { current.groups[name].visible = layerKey[index] === '1'; });

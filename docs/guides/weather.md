@@ -33,8 +33,8 @@ profiles on the same `lowalt:Environment` entity that carries
 - These are **visual only** — shown in the 3D view and UAV captures; flight,
   sensing and task outcomes don't use them (仅为视觉呈现——显示在三维视图和
   无人机拍摄中；飞行、感知和任务结果不使用它们).
-- `light` is display metadata: the projector surfaces it as `scene.lighting`
-  in the run header for the viewer.
+- `lowalt.light` is a journaled presentation field. The viewer follows its value
+  at the viewed cut; the run header's `scene.lighting` echoes its initial value.
 - `set_wind.from_deg` states the meteorological direction the wind comes FROM
   (clockwise from north); the compiler converts it to the ENU vector. Gusts
   keep the background direction.

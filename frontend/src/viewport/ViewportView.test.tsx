@@ -92,8 +92,8 @@ describe('viewport bilingual controls', () => {
     expect(instance.setQuality).toHaveBeenLastCalledWith('high', true);
     fireEvent.change(screen.getByLabelText('Display lighting'), { target: { value: 'dusk' } });
     expect(instance.setLightingOverride).toHaveBeenLastCalledWith('dusk');
-    expect(within(screen.getByLabelText('显示光照')).getByRole('option', { name: '场景' })).toHaveValue('scene');
     fireEvent.click(screen.getByRole('button', { name: 'locale' }));
+    expect(within(screen.getByLabelText('显示光照')).getByRole('option', { name: '场景' })).toHaveValue('scene');
     expect(renderer.instances).toHaveLength(1);
     expect(instance.setLocale).toHaveBeenLastCalledWith('zh-CN');
     const camera = screen.getByLabelText('视图镜头');

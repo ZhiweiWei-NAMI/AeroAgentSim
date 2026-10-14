@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import type { Conditions } from './conditions';
+import { compassPoint, type Conditions } from './conditions';
 
 /** mm:ss clock text shared with the workbench forms (kept here to avoid importing workbench code into the viewport). */
 const clockS = (seconds: number): string => {
   const total = Math.max(0, Math.round(seconds)), m = Math.floor(total / 60), s = total % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
-const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
-const pointOfDeg = (deg: number): string => COMPASS[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
-const INTENSITY = [2, 5, 8, 12, Infinity] as const;const VISUAL_ONLY_EN = 'Visual only — shown in the 3D view and UAV captures; flight, sensing and task outcomes don\'t use it.';
+const INTENSITY = [0, 2, 5, 8, 12] as const;
+const VISUAL_ONLY_EN = 'Visual only — shown in the 3D view and UAV captures; flight, sensing and task outcomes don\'t use it.';
 const VISUAL_ONLY_ZH = '仅为视觉呈现——显示在三维视图和无人机拍摄中；飞行、感知和任务结果不使用它。';
 
 /** Wind compass dial (36 px, needle points downwind) with a 180 ms ease-out, disabled under prefers-reduced-motion (spec §5). */
@@ -27,11 +26,11 @@ export function ConditionsHud({ conditions, zh, mode, atS }: { conditions: Condi
   const wind = conditions.wind;
   const chips: Array<{ key: string; text: string; warn?: boolean }> = [];
   if (mode === 'preview') chips.push({ key: 'preview', text: `${zh ? '预览时刻' : 'Preview at'} ${clockS(atS ?? 0)}` });
+  const fires = conditions.incidents.filter(row => row.kind === 'fire' && row.phase === 'active');
+  if (fires.length) chips.push({ key: 'fire', warn: true, text: `${zh ? '火情' : 'Fire'} ×${fires.length}` });
   for (const incident of conditions.incidents) {
     if (incident.phase !== 'active') continue;
-    chips.push(incident.kind === 'fire'
-      ? { key: incident.id, warn: true, text: `${zh ? '火情' : 'Fire'} ×${conditions.incidents.filter(row => row.kind === 'fire' && row.phase === 'active').length}` }
-      : { key: incident.id, text: zh ? '人员跌倒' : 'Person fell' });
+    if (incident.kind === 'person_fall') chips.push({ key: incident.id, text: zh ? '人员跌倒' : 'Person fell' });
   }
   if (conditions.precipitationMmH > 0) {
     const level = conditions.precipitationMmH < 2.5 ? zh ? '小雨' : 'light' : conditions.precipitationMmH < 7.6 ? zh ? '中雨' : 'moderate' : zh ? '大雨' : 'heavy';
@@ -46,8 +45,8 @@ export function ConditionsHud({ conditions, zh, mode, atS }: { conditions: Condi
     {wind && <div className="wb-cond-wind" data-testid="wb-conditions-wind">
       <WindDial fromDeg={wind.fromDeg} />
       <div className="wb-cond-wind-text">
-        <span>{zh ? `风 ${wind.speed.toFixed(1)} m/s · 来自${pointOfDeg(wind.fromDeg)}` : `Wind ${wind.speed.toFixed(1)} m/s · from ${pointOfDeg(wind.fromDeg)}`}</span>
-        {wind.gust && <span className="wb-cond-gust">{zh ? `阵风 · 至 ${clockS(atS ?? 0)}` : `Gust · until ${clockS(atS ?? 0)}`}</span>}
+        <span>{zh ? `风 ${wind.speed.toFixed(1)} m/s · 来自${compassPoint(wind.fromDeg)}` : `Wind ${wind.speed.toFixed(1)} m/s · from ${compassPoint(wind.fromDeg)}`}</span>
+        {wind.gust && <span className="wb-cond-gust">{zh ? '阵风' : 'Gust'}{wind.gustEndS !== undefined && ` · ${zh ? '至' : 'until'} ${clockS(wind.gustEndS)}`}</span>}
         <span className="wb-cond-bar" role="img" aria-label={zh ? '风速强度' : 'Wind intensity'}>
           {[0, 1, 2, 3, 4].map(index => <i key={index} className={wind.speed >= INTENSITY[index] ? 'on' : ''} />)}
         </span>

@@ -22,6 +22,7 @@ import { translate } from '../i18n/translate';
 import type {DirectorTarget} from './business-director';
 import { workbenchLayoutKey } from './label-placement';
 import { AtmosphereLayer } from './atmosphere';
+import { applyWeatherMaterials } from './atmosphere/sky-weather';
 import { conditionsAt, type Conditions } from './conditions';
 export type { CameraMode } from '../scene/camera-director';
 // Look down far enough to retain city context when following an airborne unit.
@@ -132,6 +133,7 @@ export class Viewport {
     this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.applyPreset();
     // One atmosphere module serves the run view, captures and the draft preview.
     this.atmosphere = new AtmosphereLayer(this.scene, this.renderer, this.quality);
+    void this.atmosphere.ready.then(() => { this.revision++; }).catch(error => options.onError?.(error));
     this.observer = new ResizeObserver(this.resize); this.observer.observe(container);
     const sceneFrame = container.closest('.wb')?.querySelector('.wb-scene-frame');
     if (sceneFrame) this.observer.observe(sceneFrame);
@@ -213,17 +215,7 @@ export class Viewport {
   private applyCityDisplay(object: T.Object3D) {
     this.qualityMaterials.apply(object, this.quality === 'low');
     const wet = this.scene.userData.weatherWet as number | undefined ?? 0;
-    object.traverse(node=>{if(node instanceof T.Mesh)for(const material of Array.isArray(node.material)?node.material:[node.material]){
-      const uniform=material.userData.displayDusk as {value:number}|undefined;if(uniform)uniform.value=this.dusk?1:0;
-      // Wet city look (≤8 % darker, roughness −0.1), reverted exactly when the rain stops.
-      const standard=material as T.MeshStandardMaterial;
-      if(standard.roughness===undefined)continue;
-      const base=standard.userData.weatherBase as {color:number;roughness:number}|undefined;
-      if(wet<=0){if(base){standard.color.setHex(base.color);standard.roughness=base.roughness;delete standard.userData.weatherBase;}continue;}
-      const source=base??(standard.userData.weatherBase={color:standard.color.getHex(),roughness:standard.roughness});
-      standard.color.setHex(source.color).multiplyScalar(1-0.08*wet);
-      standard.roughness=source.roughness-0.1*wet;
-    }});
+    applyWeatherMaterials(object, wet, this.dusk);
   }
   /** Scene/Dusk/Day display lighting: 'scene' follows journaled Conditions.light; URL param still overrides. */
   setLightingOverride(mode: 'scene' | 'day' | 'dusk') {
@@ -309,7 +301,7 @@ export class Viewport {
   }
   private applyPreset() {
     const preset = PRESETS[this.quality]; this.renderer.setPixelRatio(Math.min(devicePixelRatio, preset.ratio));
-    this.qualityMaterials.apply(this.staticRoot, this.quality === 'low');
+    this.applyCityDisplay(this.staticRoot);
     this.qualityMaterials.apply(this.lighting.ground, this.quality === 'low');
     this.renderer.shadowMap.enabled = this.quality !== 'low'; this.lighting.sun.shadow.mapSize.set(preset.shadow, preset.shadow);
     this.lighting.sun.shadow.map?.dispose(); this.lighting.sun.shadow.map = null; this.container.dataset.quality = this.quality;
@@ -325,7 +317,7 @@ export class Viewport {
     if(this.mode==='orbit')this.controls.update();
     const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.camera.position.toArray()}/${this.camera.quaternion.toArray()}/${this.controls.target.toArray()}/${workbenchLayoutKey(this.container)}`;
     const continuousShot=this.mode==='cinematic'&&!this.options.semantic;
-    if(!continuousShot&&!this.cameraTransition&&(this.mode==='orbit'||this.cameraSettled)&&frameKey===this.lastFrame){this.container.dataset.idle='true';return;}
+    if(!continuousShot&&!this.cameraTransition&&(this.mode==='orbit'||this.cameraSettled)&&frameKey===this.lastFrame&&(!this.atmosphere||!this.ringAnimationActive())){this.container.dataset.idle='true';return;}
     this.lastFrame=frameKey;this.container.dataset.idle='false';
     this.district?.update(store,this.origin);
     const chosen = this.mode === 'cinematic' ? (this.businessShot ? this.businessShot.entity : (this.options.semantic ? this.selected : this.director.choose(store,ns,deltaSeconds,this.selected))) : this.selected;
@@ -356,17 +348,20 @@ export class Viewport {
         this.camera.lookAt(this.controls.target);
       }
     };
-    this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion, aimCamera);
+    const next = this.atmosphere ? conditionsAt(store.entities, ns, this.header) : undefined;
+    this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion, aimCamera, next?.incidents);
     // Conditions derive from the journaled cut only; a paused clock keeps them (and the frame) still.
-    const simSeconds = Number(BigInt(ns) - BigInt(this.header.start.ns)) / 1e9;
-    const next = conditionsAt(store.entities, ns, this.header);
-    this.latestConditions = next;
-    this.atmosphere?.update(next, simSeconds, this.camera, (east, north) => this.roofHeight(east, north), this.atmosphereRingStart(next), this.origin);
-    // The wet city look re-applies only when the rain amount changes, not every frame.
-    const wetKey = String(this.scene.userData.weatherWet ?? 0);
-    if (wetKey !== this.lastWet) { this.lastWet = wetKey; this.applyCityDisplay(this.staticRoot); }
-    this.applyLighting();
-    this.emitConditions();
+    if (this.atmosphere && next) {
+      const simSeconds = Number(BigInt(ns)) / 1e9;
+      this.latestConditions = next;
+      this.applyLighting();
+      this.atmosphere.update(next, simSeconds, this.camera, (east, north) => this.roofHeight(east, north), this.atmosphereRingStart(next), this.origin, this.dusk ? 'dusk' : 'day');
+      this.composer.excludeBloom(this.atmosphere.root);
+      // The wet city look re-applies only when the rain amount changes, not every frame.
+      const wetKey = String(this.scene.userData.weatherWet);
+      if (wetKey !== this.lastWet) { this.lastWet = wetKey; this.applyCityDisplay(this.staticRoot); }
+      this.emitConditions();
+    }
     if(this.semanticLayer&&this.layer.semantic){
       this.semanticLayer.update(store,ns,this.origin);
       this.semanticLayer.root.visible=true;
@@ -382,7 +377,7 @@ export class Viewport {
       if(this.cameraTransition){this.cameraTransition.position.sub(shift);this.cameraTransition.target.sub(shift);}
       this.staticRoot.position.copy(this.origin).negate();
       this.staticRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.revision++;
-      this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion);
+      this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion,undefined,next?.incidents);
     }
     this.lighting.update(this.controls.target);
     this.composer.outline.selection.set(this.layer.selection.length?this.layer.selection:this.layer.ring.visible?[this.layer.ring]:[]);
@@ -434,8 +429,8 @@ export class Viewport {
   }
   /** Rounded shallow compare so the HUD subscription does not fire every frame. */
   private conditionsKey(conditions: Conditions): string {
-    return JSON.stringify([conditions.wind && [conditions.wind.east.toFixed(1), conditions.wind.north.toFixed(1), conditions.wind.fromDeg.toFixed(0), conditions.wind.gust],
-      conditions.precipitationMmH, conditions.visibilityM, conditions.light, conditions.incidents.map(item => [item.id, item.phase, item.sinceS.toFixed(0), item.response ?? ''])]);
+    return JSON.stringify([conditions.wind && [conditions.wind.east.toFixed(1), conditions.wind.north.toFixed(1), conditions.wind.fromDeg.toFixed(0), conditions.wind.gust, conditions.wind.gustEndS],
+      conditions.precipitationMmH, conditions.visibilityM, conditions.light, conditions.incidents.map(item => [item.id, item.kind, item.label, item.position, item.radiusM, item.phase, item.sinceS.toFixed(0), item.response ?? ''])]);
   }
   private lastConditionsKey = '';
   private emitConditions() {
@@ -449,13 +444,21 @@ export class Viewport {
   private atmosphereRingStart(conditions: Conditions): Map<string, number> {
     const now = performance.now();
     for (const incident of conditions.incidents) {
-      const seen = this.ringStarts.get(incident.id);
-      if (seen === undefined) this.ringStarts.set(incident.id, now);
+      if (incident.phase === 'active' && this.ringPhases.get(incident.id) !== 'active') this.ringStarts.set(incident.id, now);
+      if (incident.phase !== 'active') this.ringStarts.delete(incident.id);
+      this.ringPhases.set(incident.id, incident.phase);
     }
-    for (const id of [...this.ringStarts.keys()]) if (!conditions.incidents.some(item => item.id === id)) this.ringStarts.delete(id);
+    for (const id of this.ringPhases.keys()) if (!conditions.incidents.some(item => item.id === id)) { this.ringStarts.delete(id); this.ringPhases.delete(id); }
     return this.ringStarts;
   }
   private ringStarts = new Map<string, number>();
+  private ringPhases = new Map<string, Conditions['incidents'][number]['phase']>();
+  private ringAnimationActive(): boolean {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    const now = performance.now();
+    for (const start of this.ringStarts.values()) if (now - start < 600) return true;
+    return false;
+  }
   /** Roof height under an ENU point, from the same progressive bounds the camera lift uses. */
   private roofHeight(east: number, north: number): number {
     const probe = new T.Vector3(east - this.origin.x, 0, -north - this.origin.z);

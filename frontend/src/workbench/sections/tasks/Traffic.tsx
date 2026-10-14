@@ -4,12 +4,12 @@ import type { SectionProps } from '../types';
 import { operation } from '../operations';
 import { useStagedForm } from '../useStagedForm';
 import { clockS, type Draft } from './model';
-import { OpApply, StagedFormNote, StagedNumber, parseIncidentPosition, parseStagedNumber, stagedNumberProblem } from './op-ui';
+import { OpApply, StagedFormNote, StagedNumber, parseStagedNumber, stagedNumberProblem } from './op-ui';
 import { INCIDENT_KINDS, incidentProblem, incidentRadiusDefault } from './ops';
 import { pointer, TreeForm } from '../../form';
 
 /** Incident kinds and their labels (spec §4: kind chips "Person fell" / "Fire"). */
-export function incidentKindLabel(kind: string, L: SectionProps['L']): string {
+function incidentKindLabel(kind: string, L: SectionProps['L']): string {
   return kind === 'person_fall' ? L('Person fell', '人员跌倒') : kind === 'fire' ? L('Fire', '火情') : L('Unsupported incident kind', '不支持的事件类型');
 }
 
@@ -77,14 +77,14 @@ function incidentFields(incident: Draft): IncidentFields {
   const at = incident.at ?? incident.position;
   return { id: incident.id, at: typeof at === 'string' ? at : Array.isArray(at) ? at.join(',') : '',
     time: incident.at_s === undefined ? '' : String(incident.at_s),
-    kind: incident.kind ?? 'person_fall', radius: incident.radius_m === undefined ? '' : String(incident.radius_m),
+    kind: incident.kind ?? 'person_fall', radius: String(incident.radius_m ?? incidentRadiusDefault(incident.kind ?? 'person_fall')),
     end: incident.end_s === undefined ? '' : String(incident.end_s) };
 }
 
 /** set_incident params; only fields the staged buffer actually carries are sent. */
 function incidentParams(fields: IncidentFields, previous?: Draft): Record<string, unknown> {
   const at = parseIncidentPosition(fields.at);
-  return { at: at ?? previous?.at, time_s: parseStagedNumber(fields.time), radius_m: parseStagedNumber(fields.radius),
+  return { kind: fields.kind, at: at ?? previous?.at, time_s: parseStagedNumber(fields.time), radius_m: parseStagedNumber(fields.radius),
     ...(fields.end.trim() === '' ? {} : { end_s: parseStagedNumber(fields.end) }) };
 }
 

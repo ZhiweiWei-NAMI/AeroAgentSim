@@ -58,6 +58,7 @@
 /* Conditions HUD (run viewport bottom-left, above the mission overlay; ScenePreview positions its own copy) */
 .wb-cond-hud { position: absolute; left: 12px; bottom: 12px; z-index: 6; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;
   background: #10283dd9; color: #e4f4fd; border: 1px solid #7799aa88; border-radius: 8px; font: 12px system-ui; box-shadow: 0 2px 8px #14263533; max-width: 260px; }
+.viewport-conditions { position: absolute; left: 12px; bottom: 64px; z-index: 6; }
 .viewport-conditions .wb-cond-hud { position: static; }
 .wb-cond-hud.preview { position: absolute; left: 16px; bottom: 16px; }
 .wb-cond-wind { display: flex; gap: 8px; align-items: center; }

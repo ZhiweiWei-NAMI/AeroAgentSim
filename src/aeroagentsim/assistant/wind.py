@@ -13,7 +13,7 @@ import re
 def from_deg(east: float, north: float) -> float | None:
     """Meteorological origin direction (clockwise from north) of a travel vector; None when calm."""
     speed2 = east * east + north * north
-    return None if speed2 <= 1e-12 else round(math.degrees(math.atan2(-east, -north)) % 360, 6)
+    return None if speed2 == 0 else math.degrees(math.atan2(-east, -north)) % 360
 
 
 def vector_text(vector: dict, *, zh: bool = False) -> str:
@@ -25,14 +25,11 @@ def vector_text(vector: dict, *, zh: bool = False) -> str:
     if east == north == 0:
         direction = "无水平流向" if zh else "no horizontal flow"
     else:
-        origin = from_deg(east, north)
-        compass = ("北", "东北", "东", "东南", "南", "西南", "西", "西北") if zh else ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
-        name = compass[round(origin / 45) % 8] if origin is not None else ""
         angle = math.degrees(math.atan2(north, east)) % 360
         en = ("north" if north > 0 else "south" if north < 0 else "") + ("east" if east > 0 else "west" if east < 0 else "")
         cn = ("东" if east > 0 else "西" if east < 0 else "") + ("北" if north > 0 else "南" if north < 0 else "")
-        direction = (f"来自{name}方向（来向 {origin:g} 度，自北顺时针），吹向{cn}（矢量流向，自东向逆时针 {angle:g} 度）" if zh else
-                     f"from {name} ({origin:g}° clockwise from north, meteorological), toward {en} (vector travel, {angle:g}° counterclockwise from east)")
+        direction = (f"吹向{cn}（矢量流向，自东向逆时针 {angle:g} 度）" if zh else
+                     f"toward {en} (vector travel direction, {angle:g}° counterclockwise from east)")
     return f"{direction}; {raw} {'米/秒' if zh else 'm/s'}"
 
 

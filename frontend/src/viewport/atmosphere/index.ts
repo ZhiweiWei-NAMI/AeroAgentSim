@@ -15,12 +15,14 @@ import type { Quality } from '../pipeline';
  */
 export class AtmosphereLayer {
   readonly root = new T.Group();
+  readonly ready: Promise<void>;
   private incidents: IncidentFX;
   private rain: Rain;
   private wind: WindStreaks;
   private skyTarget?: SkyTarget;
   constructor(scene: T.Scene, renderer: T.WebGLRenderer, quality: Quality) {
     this.incidents = new IncidentFX(quality);
+    this.ready = this.incidents.ready;
     this.rain = new Rain(quality);
     this.wind = new WindStreaks(quality);
     this.root.add(this.incidents.root, this.rain.mesh, this.wind.mesh);
@@ -35,13 +37,13 @@ export class AtmosphereLayer {
     this.wind.setQuality(quality);
   }
   update(conditions: Conditions, simSeconds: number, camera: T.Camera,
-    roofHeight?: (east: number, north: number) => number, ringStart?: Map<string, number>, origin?: T.Vector3) {
+    roofHeight?: (east: number, north: number) => number, ringStart?: Map<string, number>, origin?: T.Vector3, light = conditions.light) {
     this.incidents.setWind(conditions.wind?.east ?? 0, conditions.wind?.north ?? 0);
     const ring = ringStart ?? new Map();
     this.incidents.update(conditions.incidents, simSeconds, camera, ring, origin, roofHeight);
     this.rain.update(conditions.precipitationMmH, simSeconds, camera, conditions.wind ?? undefined);
     this.wind.update(conditions.wind, simSeconds, camera);
-    if (this.skyTarget) applySkyWeather(this.skyTarget, conditions, conditions.light === 'dusk');
+    if (this.skyTarget) applySkyWeather(this.skyTarget, conditions, light === 'dusk');
   }
   dispose() {
     this.incidents.dispose(); this.rain.dispose(); this.wind.dispose();

@@ -4,6 +4,7 @@ import { I18nProvider } from '../../../i18n/I18nProvider';
 import { IncidentsBlock, parseIncidentPosition } from './Traffic';
 import type { Operation, OperationPreview } from '../operations';
 import type { Project } from '../../api';
+import type { Draft } from './model';
 
 const L = (en: string, _zh: string) => en;
 const onProject = vi.fn();
@@ -19,7 +20,7 @@ vi.mock('../operations', async (importOriginal: () => Promise<typeof import('../
     applyOperations: (api: unknown, project: unknown, operations: Operation[]) => applyOperations(api, project, operations),
   };
 });
-const config = { cooperation: { incidents: [{ id: 'fall-east', kind: 'person_fall', position: [20, 40, 0], at_s: 90 }] } };
+const config: Draft = { cooperation: { incidents: [{ id: 'fall-east', kind: 'person_fall', position: [20, 40, 0], at_s: 90 }] } };
 const props = { config, api: {} as never, project, onProject, saveDraft, L, duration_s: 360 };
 const element = (override: Partial<typeof props> = {}) => <I18nProvider><IncidentsBlock {...props} {...override} /></I18nProvider>;
 beforeEach(() => {

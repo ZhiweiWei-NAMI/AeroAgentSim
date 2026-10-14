@@ -52,6 +52,7 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
   const grid = new T.GridHelper(800, 80, '#9aa9af', '#9aa9af');
   grid.material.transparent = true; grid.material.opacity = 0.09; grid.name = 'display-grid'; scene.add(grid);
   scene.userData.lighting = { scene, renderer, sun, fill, sky, daySky, horizon };
+  scene.userData.weatherBase = { sun: sun.intensity, fill: fill.intensity, exposure: renderer.toneMappingExposure };
   return { sun, grid, ground, sky, daySky, horizon, setDusk: (value: boolean) => {
     sunDirection.set(value ? -0.8 : 0.8, value ? 0.16 : 0.9, value ? -0.35 : 0.3).normalize();
     sky.visible=value; daySky.visible=!value; renderer.toneMappingExposure=value?1:1.12;
@@ -64,6 +65,7 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
     fill.groundColor.set(value?'#777c70':'#b8b4a3');
     groundMaterial.color.set(value?'#bbbcb4':'#d3c7b3');
     if(scene.fog instanceof T.Fog){scene.fog.near=value?850:500;scene.fog.far=value?4200:2000;scene.fog.color.copy(horizon);}
+    scene.userData.weatherBase = { sun: sun.intensity, fill: fill.intensity, exposure: renderer.toneMappingExposure };
   }, update: (target: T.Vector3) => {
     const texel = 500 / sun.shadow.mapSize.x;
     sun.target.position.set(Math.round(target.x / texel) * texel, target.y, Math.round(target.z / texel) * texel);
