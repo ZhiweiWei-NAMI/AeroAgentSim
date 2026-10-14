@@ -190,11 +190,24 @@ class OpenAIProvider:
             raise ProviderError("WALL_TIMEOUT", "positive finite wall timeout required")
         if type(max_tokens) is not int or max_tokens <= 0:
             raise ProviderError("PROTOCOL", "positive max_tokens required")
+        # OpenCode Go / DeepSeek thinking mode: tools[].function.strict often yields
+        # empty tool_calls (reasoning only). tool_choice=required is rejected with HTTP 400.
+        # Strip strict for opencode.ai so chat/completions returns function calls.
+        outbound_tools = tools
+        if self.host == "opencode.ai" and tools:
+            outbound_tools = []
+            for tool in tools:
+                if not isinstance(tool, dict) or tool.get("type") != "function":
+                    outbound_tools.append(tool)
+                    continue
+                function = dict(tool.get("function") or {})
+                function.pop("strict", None)
+                outbound_tools.append({**tool, "function": function})
         payload = json.dumps(
             {
                 "model": self.model,
                 "messages": messages,
-                "tools": tools,
+                "tools": outbound_tools,
                 "max_tokens": max_tokens,
                 "stream": False,
             },

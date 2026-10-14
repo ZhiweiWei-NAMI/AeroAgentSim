@@ -1,0 +1,313 @@
+format: aeroagentsim.scenario/v1
+id: rooftop-flood
+city: huangpu
+registry:
+  snapshot: ../templates/parcel-delivery/registry.snapshot.json
+algorithms: {}
+engines:
+  tasks:
+    plugin: lowalt_tasks
+    config:
+      rescue:
+        scene_base: lowalt
+        provider:
+          mode: stub
+          model: stub-rescue/v1
+          responses:
+            propose_roles:
+            - message:
+                role: assistant
+                content: null
+                tool_calls:
+                - id: c1
+                  type: function
+                  function:
+                    name: propose_roles
+                    arguments: '{"roles": ["inspect", "relay", "deliver"], "available_after_s":
+                      0, "reason": "stub"}'
+              usage:
+                prompt_tokens: 0
+                completion_tokens: 0
+                total_tokens: 0
+            - message:
+                role: assistant
+                content: null
+                tool_calls:
+                - id: c1
+                  type: function
+                  function:
+                    name: propose_roles
+                    arguments: '{"roles": ["inspect", "relay", "deliver"], "available_after_s":
+                      0, "reason": "stub"}'
+              usage:
+                prompt_tokens: 0
+                completion_tokens: 0
+                total_tokens: 0
+            - message:
+                role: assistant
+                content: null
+                tool_calls:
+                - id: c1
+                  type: function
+                  function:
+                    name: propose_roles
+                    arguments: '{"roles": ["inspect", "relay", "deliver"], "available_after_s":
+                      0, "reason": "stub"}'
+              usage:
+                prompt_tokens: 0
+                completion_tokens: 0
+                total_tokens: 0
+            - message:
+                role: assistant
+                content: null
+                tool_calls:
+                - id: c1
+                  type: function
+                  function:
+                    name: propose_roles
+                    arguments: '{"roles": ["inspect", "relay", "deliver"], "available_after_s":
+                      0, "reason": "stub"}'
+              usage:
+                prompt_tokens: 0
+                completion_tokens: 0
+                total_tokens: 0
+            - message:
+                role: assistant
+                content: null
+                tool_calls:
+                - id: c1
+                  type: function
+                  function:
+                    name: propose_roles
+                    arguments: '{"roles": ["inspect", "relay", "deliver"], "available_after_s":
+                      0, "reason": "stub"}'
+              usage:
+                prompt_tokens: 0
+                completion_tokens: 0
+                total_tokens: 0
+            propose_plan:
+            - message:
+                role: assistant
+                content: null
+                tool_calls:
+                - id: c1
+                  type: function
+                  function:
+                    name: propose_plan
+                    arguments: '{"actions": [{"id": "a1", "role": "inspect", "after":
+                      []}, {"id": "a2", "role": "relay", "after": []}], "reason":
+                      "stub phase1"}'
+              usage:
+                prompt_tokens: 0
+                completion_tokens: 0
+                total_tokens: 0
+            - message:
+                role: assistant
+                content: null
+                tool_calls:
+                - id: c1
+                  type: function
+                  function:
+                    name: propose_plan
+                    arguments: '{"actions": [{"id": "a3", "role": "deliver", "after":
+                      []}], "reason": "stub phase2"}'
+              usage:
+                prompt_tokens: 0
+                completion_tokens: 0
+                total_tokens: 0
+            - message:
+                role: assistant
+                content: null
+                tool_calls:
+                - id: c1
+                  type: function
+                  function:
+                    name: propose_plan
+                    arguments: '{"actions": [{"id": "a3", "role": "deliver", "after":
+                      []}], "reason": "stub phase2"}'
+              usage:
+                prompt_tokens: 0
+                completion_tokens: 0
+                total_tokens: 0
+            - message:
+                role: assistant
+                content: null
+                tool_calls:
+                - id: c1
+                  type: function
+                  function:
+                    name: propose_plan
+                    arguments: '{"actions": [{"id": "a3", "role": "deliver", "after":
+                      []}], "reason": "stub phase2"}'
+              usage:
+                prompt_tokens: 0
+                completion_tokens: 0
+                total_tokens: 0
+            - message:
+                role: assistant
+                content: null
+                tool_calls:
+                - id: c1
+                  type: function
+                  function:
+                    name: propose_plan
+                    arguments: '{"actions": [{"id": "a3", "role": "deliver", "after":
+                      []}], "reason": "stub phase2"}'
+              usage:
+                prompt_tokens: 0
+                completion_tokens: 0
+                total_tokens: 0
+        incident: R7
+        at_s: 5
+        description: 道路被洪水切断，屋顶出现疑似求援人员；先复查并经中继报告，确认后投送应急物资，保留已有关键救援承诺。
+        observation: positive
+        inspect_s: 5
+        delivery_s: 3
+        payload_kg: 1.0
+        deadline_s: 240
+        inspect_position:
+        - -24.81
+        - -204.65
+        - 28.0
+        relay_position:
+        - 30.0
+        - -130.0
+        - 70.0
+        flood_bounds:
+        - -95.0
+        - -300.0
+        - 0.0
+        - 120.0
+        - 20.0
+        - 1.5
+        flooded_roads:
+        - start:
+          - 79.763
+          - -34.314
+          - 0.0
+          end:
+          - 82.926
+          - -50.964
+          - 0.0
+        - start:
+          - 82.926
+          - -50.964
+          - 0.0
+          end:
+          - 84.935
+          - -62.738
+          - 0.0
+        - start:
+          - 84.935
+          - -62.738
+          - 0.0
+          end:
+          - 90.407
+          - -84.804
+          - 0.0
+        - start:
+          - 90.407
+          - -84.804
+          - 0.0
+          end:
+          - 92.296
+          - -94.886
+          - 0.0
+        - start:
+          - 92.296
+          - -94.886
+          - 0.0
+          end:
+          - 93.667
+          - -104.944
+          - 0.0
+        - start:
+          - 93.667
+          - -104.944
+          - 0.0
+          end:
+          - 96.399
+          - -120.624
+          - 0.0
+        - start:
+          - 96.399
+          - -120.624
+          - 0.0
+          end:
+          - 100.106
+          - -135.062
+          - 0.0
+        - start:
+          - 100.106
+          - -135.062
+          - 0.0
+          end:
+          - 103.312
+          - -146.423
+          - 0.0
+        sites:
+        - id: R7
+          label: R7·屋顶疑似受困点
+          position:
+          - -24.81
+          - -204.65
+          - 15.0
+        - id: R3-origin
+          label: R3·应急物资出发点
+          position:
+          - -25.0
+          - -160.0
+          - 50.0
+        - id: R3-destination
+          label: R3·既有救援点
+          position:
+          - -200.0
+          - 250.0
+          - 70.0
+        - id: command-center
+          label: 指挥与补能点
+          kind: ChargingPad
+          position:
+          - 100.0
+          - 20.0
+          - 2.0
+        existing_task:
+          id: R3
+          origin: R3-origin
+          destination: R3-destination
+        vehicles:
+          U1:
+            position:
+            - -25.0
+            - -160.0
+            - 50.0
+            capabilities:
+            - deliver
+            protected_task: R3
+          U2:
+            position:
+            - -100.0
+            - -260.0
+            - 70.0
+            capabilities:
+            - inspect
+          U3:
+            position:
+            - 60.0
+            - -100.0
+            - 80.0
+            capabilities:
+            - relay
+          U4:
+            position:
+            - 120.0
+            - -250.0
+            - 70.0
+            capabilities:
+            - deliver
+            payload_kg: 1.0
+run:
+  seed: 42
+  until_ns: 120000000000
+  advance_ns: 1000000000
+  pacing: fast

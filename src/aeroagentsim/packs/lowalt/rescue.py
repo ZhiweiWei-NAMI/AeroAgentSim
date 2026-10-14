@@ -144,7 +144,7 @@ def decision_graph(client: JournalClient, options: dict) -> Any:
                   "Plan the next executable phase: inspect obtains new evidence; relay provides the damaged site's report/ack channel and stays occupied; "
                   "deliver consumes cargo and needs a positive report already received by the center. A suspected person is not confirmed. "
                   "Infer which actions are needed from the mission and evidence, and express their dependencies; independent work may run concurrently. "
-                  "Return actions=[] if the evidence rules out rescue or remains too uncertain to authorize further work. Preserve existing commitments.")
+                  "Return actions=[] if the evidence rules out rescue or remains too uncertain to authorize further work. Preserve existing commitments. Phase rule: if evidence is suspected, propose ONLY inspect and relay (never deliver). If evidence is positive (positive report already received by the center), propose relay and deliver (deliver after relay); do not re-inspect. Always call propose_plan exactly once with the tool.")
         messages = [{"role": "system", "content": prompt}, {"role": "user", "content": json.dumps(observation, ensure_ascii=False)}]
         tool = {"type": "function", "function": {"name": name, "description": "Submit your proposed rescue contribution; execution remains with the simulator.", "strict": True, "parameters": schema}}
         if participation is not None:
