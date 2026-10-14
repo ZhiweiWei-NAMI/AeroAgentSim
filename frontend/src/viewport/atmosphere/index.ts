@@ -9,6 +9,9 @@ export type { AtmosphereOptions } from './incident-fx';
 
 const FOG_DAY = new T.Color('#c3c9cf'), FOG_DUSK = new T.Color('#6f6a73'), WARM = new T.Color('#ffba79');
 
+/** Pin disc size in CSS px (screen-space sprite, see IncidentFX.setPinScale). */
+export const PIN_CSS_PX = 26;
+
 /**
  * One atmosphere module for the run viewport, captures and the draft preview.
  * Every effect is a closed-form function of (journaled cut, simulation time):
@@ -30,7 +33,7 @@ export class AtmosphereLayer {
   private lastPreview?: { dusk: boolean; rain: number; visibilityM: number | null };
   private previewFog = new T.FogExp2(0xffffff);
   constructor(private scene: T.Scene, private renderer: T.WebGLRenderer, quality: Quality, options: AtmosphereOptions = { annotations: true }) {
-    this.incidents = new IncidentFX(quality, options);
+    this.incidents = new IncidentFX(quality, { ...options, onReady: () => options.onReady?.() });
     this.ready = this.incidents.ready;
     this.rain = new Rain(quality);
     this.root.add(this.incidents.root, this.rain.mesh);
@@ -49,10 +52,14 @@ export class AtmosphereLayer {
     this.rain.setQuality(quality);
     this.wind?.setQuality(quality);
   }
+  setPinHeightCss(heightCssPx: number) { this.incidents.setPinScale(heightCssPx); }
   update(conditions: Conditions, simSeconds: number, camera: T.Camera,
     roofHeight?: (east: number, north: number) => number, ringStart?: Map<string, number>, origin?: T.Vector3) {
     this.incidents.setWind(conditions.wind?.east ?? 0, conditions.wind?.north ?? 0);
-    this.incidents.setPinScale(this.renderer.domElement.height, this.renderer.getPixelRatio());
+    // The pin is screen-space: size it from the container's CSS height (the drawing buffer
+    // would double-count devicePixelRatio).
+    const dom = this.renderer.domElement;
+    this.incidents.setPinScale(dom.clientHeight || Math.round(dom.height / this.renderer.getPixelRatio()));
     const ring = ringStart ?? this.emptyRing;
     this.incidents.update(conditions.incidents, simSeconds, camera, ring, origin, roofHeight);
     this.rain.update(conditions.precipitationMmH, simSeconds, camera, conditions.wind ?? undefined);

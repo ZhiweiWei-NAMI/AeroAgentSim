@@ -15,6 +15,44 @@ const VISUAL_ONLY_NOTE = 'Visual only — shown in the 3D view and UAV captures;
 const VISUAL_ONLY_NOTE_ZH = '仅为视觉呈现——显示在三维视图和无人机拍摄中；飞行、感知和任务结果不使用它。';
 const RAIN_PRESETS = ['none', 'light', 'moderate', 'heavy', 'custom'] as const;
 const VISIBILITY_PRESETS = ['clear', 'haze', 'mist', 'fog', 'dense', 'custom'] as const;
+/** 3×3 rose layout: NW N NE / W • E / SW S SE. */
+const ROSE_ROWS: Array<Array<string | null>> = [['NW', 'N', 'NE'], ['W', null, 'E'], ['SW', 'S', 'SE']];
+const COMPASS_ARIA: Record<string, [string, string]> = {
+  N: ['From north', '北方向来风'], NE: ['From north-east', '东北方向来风'], E: ['From east', '东方向来风'], SE: ['From south-east', '东南方向来风'],
+  S: ['From south', '南方向来风'], SW: ['From south-west', '西南方向来风'], W: ['From west', '西方向来风'], NW: ['From north-west', '西北方向来风'],
+};
+
+const rainLabel = (preset: string, mmH: number, L: Props['L']) => preset === 'none' ? L('None', '无') : preset === 'light' ? `Light · ${mmH} mm/h`
+  : preset === 'moderate' ? `Moderate · ${mmH} mm/h` : preset === 'heavy' ? `Heavy · ${mmH} mm/h` : L('Custom', '自定义');
+const rainLabelZh = (preset: string, mmH: number) => preset === 'none' ? '无' : preset === 'light' ? `小雨 · ${mmH} mm/h`
+  : preset === 'moderate' ? `中雨 · ${mmH} mm/h` : preset === 'heavy' ? `大雨 · ${mmH} mm/h` : '自定义';
+const visibilityLabel = (preset: string, m: number | null, L: Props['L']) => preset === 'clear' ? L('Clear', '晴')
+  : preset === 'haze' ? L('Haze · 5 km', '霾 · 5 公里') : preset === 'mist' ? L('Mist · 2 km', '轻雾 · 2 公里')
+    : preset === 'fog' ? L('Fog · 500 m', '雾 · 500 米') : preset === 'dense' ? L('Dense fog · 150 m', '浓雾 · 150 米') : L('Custom', '自定义');
+
+/** One-line summary of what the staged conditions will show in the 3D view. */
+function stagedSummary(rain: string, mmH: number, visibility: string, m: number | null, light: string, zh: boolean): string {
+  const parts: string[] = [];
+  if (rain === 'none') parts.push(zh ? '无雨' : 'no rain');
+  else parts.push(zh ? `${rain === 'light' ? '小雨' : rain === 'moderate' ? '中雨' : '大雨'}雨线` : `${rain} rain streaks`);
+  if (visibility === 'clear') parts.push(zh ? '晴朗天空' : 'a clear sky');
+  else parts.push(zh ? `能见度约 ${m} 米的雾` : `fog limiting view to ~${m} m`);
+  parts.push(light === 'dusk' ? zh ? '黄昏光照' : 'dusk light' : zh ? '白天光照' : 'day light');
+  return zh ? `将显示：${parts.join('、')}。` : `Will show: ${parts.join(', ')}.`;
+}
+
+/** Compact 3×3 compass rose with a downwind arrow in the centre cell. */
+function CompassRose({ value, onSelect, zh }: { value: string; onSelect: (point: string) => void; zh: boolean }) {
+  return <div className="wb-compass-rose" role="group" aria-label={zh ? '风向（来向）' : 'Wind from direction'} data-testid="wb-wind-from">
+    {ROSE_ROWS.flatMap((row, rowIndex) => row.map((point, columnIndex) => point === null
+      ? <span key={`${rowIndex}:${columnIndex}`} className="wb-compass-centre" aria-hidden="true">
+          <svg width={12} height={12} viewBox="0 0 12 12"><path d="M6 1 L9 9 L6 7 L3 9 Z" transform={`rotate(${(pointDeg(value) + 180) % 360} 6 6)`} className="wb-compass-arrow" /></svg>
+        </span>
+      : <button key={point} type="button" className={`wb-choice wb-compass-point${value === point ? ' active' : ''}`} aria-pressed={value === point}
+          aria-label={COMPASS_ARIA[point][zh ? 1 : 0]}
+          onClick={() => onSelect(point)}>{point}</button>))}
+  </div>;
+}
 
 /** The weather operations affect all configured wind profiles; the review lists their actual changes. */
 export function WeatherBlock({ environmentName: _name, environment, draft, edit: _edit, focus: _focus, L, api, project, onProject, saveDraft, zh = false, goTo }: Props) {
@@ -60,9 +98,15 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
   const conditions = conditionsForm.values;
   const setConditions = (change: Partial<{ rain: string; visibility: string; light: string; rainCustom: string; visibilityCustom: string }>) =>
     conditionsForm.setValues(previous => ({ ...previous, ...change }));
+  const rainPreset = conditions.rain ?? rainPresetOf(currentWeather.precipitationMmH);
+  const visibilityPreset = conditions.visibility ?? visibilityPresetOf(currentWeather.visibilityM);
+  // Each chip shows its own value: Light · 1 mm/h, Fog · 500 m, …
+  const rainValueOf = (preset: string) => preset === 'none' ? 0 : preset === 'light' ? 1 : preset === 'moderate' ? 4 : preset === 'heavy' ? 10
+    : parseStagedNumber(conditions.rainCustom ?? String(currentWeather.precipitationMmH)) ?? currentWeather.precipitationMmH;
+  const rainValue = rainValueOf(rainPreset);
   const stagedWeather = weatherParams({
-    rain: conditions.rain ?? rainPresetOf(currentWeather.precipitationMmH),
-    visibility: conditions.visibility ?? visibilityPresetOf(currentWeather.visibilityM),
+    rain: rainPreset,
+    visibility: visibilityPreset,
     light: conditions.light ?? currentWeather.light,
     rainCustom: conditions.rainCustom ?? String(currentWeather.precipitationMmH),
     visibilityCustom: conditions.visibilityCustom ?? String(currentWeather.visibilityM ?? ''),
@@ -81,41 +125,37 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
       <div className="wb-form-grid">
         <StagedNumber label={`${L('Background speed', '背景风速')} (m/s)`} value={backgroundText} min={0} onChange={speed => setBackground({ speed })} />
         <div className="wb-form-field"><span className="wb-label">{L('From', '风向')}</span>
-          <div className="wb-choice-group" role="group" aria-label={L('Wind from direction', '风向（来向）')} data-testid="wb-wind-from">
-            {COMPASS_POINTS.map(point => <button key={point} type="button" className="wb-choice" aria-pressed={fromPoint === point}
-              onClick={() => setBackground({ from: point, degrees: String(pointDeg(point)) })}>{point}</button>)}
-          </div>
+          <CompassRose value={fromPoint} zh={zh} onSelect={point => setBackground({ from: point, degrees: String(pointDeg(point)) })} />
         </div>
-        <StagedNumber label={`${L('Degrees', '角度')} (°)`} value={fromDegrees} min={0} max={360} problem={fromDegreeProblem}
+        <StagedNumber label={`${L('From', '风向')} (°)`} value={fromDegrees} min={0} max={360} problem={fromDegreeProblem}
           showError={fromChanged} onChange={degrees => setBackground({ degrees, from: pointOfDeg(parseStagedNumber(degrees) ?? 0) })} />
-        <OpApply {...opProps} operations={windOperations} label={L('Preview', '预览')} primary small onApplied={() => backgroundForm.clear(backgroundForm.values)} />
+        <div className="wb-form-actions wb-card-preview"><OpApply {...opProps} operations={windOperations} label={L('Preview', '预览')} primary small onApplied={() => backgroundForm.clear(backgroundForm.values)} /></div>
       </div>
       {commonSpeed === undefined && <p className="hint">{L('Enter a speed to apply to all configured wind profiles.', '请输入要应用到所有风场的风速。')}</p>}
     </fieldset>
     <fieldset className="wb-form-card wb-conditions"><legend className="wb-form-card-title">{L('Conditions', '天气条件')}</legend>
+      <p className="hint wb-conditions-summary" data-testid="wb-conditions-summary">{stagedSummary(rainPreset, rainValue, visibilityPreset, currentWeather.visibilityM, conditions.light ?? currentWeather.light, zh)}</p>
       <StagedFormNote form={conditionsForm} L={L} />
       <div className="wb-form-grid">
         <div className="wb-form-field"><span className="wb-label">{L('Rain', '降雨')}</span>
           <div className="wb-choice-group" role="group" aria-label={L('Rain preset', '降雨预设')} data-testid="wb-rain-presets">
-            {RAIN_PRESETS.map(preset => <button key={preset} type="button" className="wb-choice" aria-pressed={(conditions.rain ?? rainPresetOf(currentWeather.precipitationMmH)) === preset}
+            {RAIN_PRESETS.map(preset => <button key={preset} type="button" className="wb-choice" aria-pressed={rainPreset === preset}
               onClick={() => setConditions({ rain: preset })}>
-              {preset === 'none' ? L('None', '无') : preset === 'light' ? L('Light', '小雨') : preset === 'moderate' ? L('Moderate', '中雨')
-                : preset === 'heavy' ? L('Heavy', '大雨') : L('Custom', '自定义')}
+              {preset === 'custom' ? L('Custom', '自定义') : zh ? rainLabelZh(preset, rainValueOf(preset)) : rainLabel(preset, rainValueOf(preset), L)}
             </button>)}
           </div>
         </div>
-        {(conditions.rain ?? rainPresetOf(currentWeather.precipitationMmH)) === 'custom' && <StagedNumber label={`${L('Rain rate', '降雨强度')} (mm/h)`} value={conditions.rainCustom ?? String(currentWeather.precipitationMmH)}
+        {rainPreset === 'custom' && <StagedNumber label={`${L('Rain rate', '降雨强度')} (mm/h)`} value={conditions.rainCustom ?? String(currentWeather.precipitationMmH)}
           min={0} max={100} onChange={rainCustom => setConditions({ rainCustom })} />}
         <div className="wb-form-field"><span className="wb-label">{L('Visibility', '能见度')}</span>
           <div className="wb-choice-group" role="group" aria-label={L('Visibility preset', '能见度预设')} data-testid="wb-visibility-presets">
-            {VISIBILITY_PRESETS.map(preset => <button key={preset} type="button" className="wb-choice" aria-pressed={(conditions.visibility ?? visibilityPresetOf(currentWeather.visibilityM)) === preset}
+            {VISIBILITY_PRESETS.map(preset => <button key={preset} type="button" className="wb-choice" aria-pressed={visibilityPreset === preset}
               onClick={() => setConditions({ visibility: preset })}>
-              {preset === 'clear' ? L('Clear', '晴') : preset === 'haze' ? L('Haze 5 km', '霾 5 公里') : preset === 'mist' ? L('Mist 2 km', '轻雾 2 公里')
-                : preset === 'fog' ? L('Fog 500 m', '雾 500 米') : preset === 'dense' ? L('Dense fog 150 m', '浓雾 150 米') : L('Custom', '自定义')}
+              {preset === 'custom' ? L('Custom', '自定义') : visibilityLabel(preset, currentWeather.visibilityM, L)}
             </button>)}
           </div>
         </div>
-        {(conditions.visibility ?? visibilityPresetOf(currentWeather.visibilityM)) === 'custom' && <StagedNumber label={`${L('Visibility', '能见度')} (m)`} value={conditions.visibilityCustom ?? String(currentWeather.visibilityM ?? '')}
+        {visibilityPreset === 'custom' && <StagedNumber label={`${L('Visibility', '能见度')} (m)`} value={conditions.visibilityCustom ?? String(currentWeather.visibilityM ?? '')}
           min={50} max={50000} onChange={visibilityCustom => setConditions({ visibilityCustom })} />}
         <div className="wb-form-field"><span className="wb-label">{L('Light', '光照')}</span>
           <div className="wb-choice-group" role="group" aria-label={L('Time-of-day lighting', '时段光照')} data-testid="wb-light-presets">
@@ -123,7 +163,7 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
               onClick={() => setConditions({ light: preset })}>{preset === 'day' ? L('Day', '白天') : L('Dusk', '黄昏')}</button>)}
           </div>
         </div>
-        <OpApply {...opProps} operations={conditionsOperations} label={L('Preview', '预览')} primary small onApplied={() => conditionsForm.clear(conditionsForm.values)} />
+        <div className="wb-form-actions wb-card-preview"><OpApply {...opProps} operations={conditionsOperations} label={L('Preview', '预览')} primary small onApplied={() => conditionsForm.clear(conditionsForm.values)} /></div>
       </div>
     </fieldset>
     <fieldset className="wb-form-card wb-gust-add"><legend className="wb-form-card-title">{L('Add gust', '添加阵风')}</legend>
@@ -136,7 +176,7 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
         <StagedNumber label={`${L('Start', '开始')} (s)`} value={start} min={0} problem={errors?.start_s} onChange={text => setGust(previous => ({ ...previous, start: text }))} />
         <StagedNumber label={`${L('End', '结束')} (s)`} value={end} min={0} problem={endProblem} showError={gust.start !== undefined || gust.end !== undefined} onChange={text => setGust(previous => ({ ...previous, end: text }))} />
         <StagedNumber label={`${L('Speed', '风速')} (m/s)`} value={speed} min={0} problem={errors?.speed_mps} onChange={text => setGust(previous => ({ ...previous, speed: text }))} />
-        <OpApply {...opProps} operations={gustOperations} label={L('Preview', '预览')} primary small onApplied={() => gustForm.clear(gustForm.values)} />
+        <div className="wb-form-actions wb-card-preview"><OpApply {...opProps} operations={gustOperations} label={L('Preview', '预览')} primary small onApplied={() => gustForm.clear(gustForm.values)} /></div>
       </div>
       {intervalProblem && !Object.keys(gust).length && <p className="hint wb-form-prerequisite">{intervalProblem}</p>}
     </fieldset>

@@ -15,14 +15,28 @@ const conditions = (override: Partial<Conditions> = {}): Conditions => ({
 it('renders the wind card, gust line, intensity bar and active-condition chips in run mode', () => {
   render(<ConditionsHud conditions={conditions({ wind: { east: -6, north: 0, speed: 6.2, fromDeg: 315, gust: true, gustEndS: 90 } })} zh={false} mode="run" />);
   expect(screen.getByTestId('wb-conditions-wind')).toHaveTextContent('Wind 6.2 m/s · from NW');
-  expect(screen.getByText('Gust · until 01:30')).toBeTruthy();
+  expect(screen.getByText('Gust until 01:30')).toBeTruthy();
   expect(screen.getByRole('img', { name: 'Wind intensity' }).querySelectorAll('i.on')).toHaveLength(3);
-  expect(screen.getByText(/Fire ×1/)).toBeTruthy();
-  expect(screen.getByText('Rain moderate 4 mm/h')).toBeTruthy();
-  expect(screen.getByText('Fog 500 m')).toBeTruthy();
+  expect(screen.getByText('Fire active')).toBeTruthy();
+  expect(screen.getByText('Rain · moderate · 4 mm/h')).toBeTruthy();
+  expect(screen.getByText('Fog · 500 m')).toBeTruthy();
   expect(screen.queryByText(/Preview at/)).toBeNull();
   const needle = document.querySelector('.wb-cond-dial-needle') as SVGLineElement;
   expect(needle.style.transform).toBe('rotate(135deg)');
+});
+
+it('uses the Chinese compass wind line, mist copy and the plural fire copy', () => {
+  render(<ConditionsHud conditions={conditions({
+    visibilityM: 2000,
+    incidents: [
+      { id: 'fire-1', kind: 'fire', label: 'F1', position: [0, 0, 0], radiusM: 30, phase: 'active', sinceS: 10, activeS: 10 },
+      { id: 'fire-2', kind: 'fire', label: 'F2', position: [5, 5, 0], radiusM: 30, phase: 'active', sinceS: 10, activeS: 10 },
+    ],
+  })} zh mode="run" />);
+  expect(screen.getByTestId('wb-conditions-wind')).toHaveTextContent('西北风 6.2 m/s');
+  expect(screen.getByText('2 处火情')).toBeTruthy();
+  expect(screen.getByText('降雨 · 中雨 · 4 mm/h')).toBeTruthy();
+  expect(screen.getByText('轻雾 · 2 公里')).toBeTruthy();
 });
 
 it('shows the preview chip first and keeps the note behind the (i) toggle', () => {

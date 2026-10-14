@@ -177,7 +177,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       controls.addEventListener('change', invalidate);
       // Draft preview wears the same atmosphere: incident pins/rings/flames/smoke at the frozen moment.
       atmosphereLabels = document.createElement('div'); atmosphereLabels.className = 'viewport-labels'; host.append(atmosphereLabels);
-      atmosphere = new AtmosphereLayer(scene, renderer!, 'med', { annotations: true, preview: { overlay: atmosphereLabels, locale: () => latest.current.locale } });
+      atmosphere = new AtmosphereLayer(scene, renderer!, 'med', { annotations: true, preview: { overlay: atmosphereLabels, locale: () => latest.current.locale }, onReady: invalidate });
       void atmosphere.ready.then(invalidate).catch(problem => { if (!abort.signal.aborted) setError({ kind: 'runtime', detail: String(problem) }); });
       atmosphere.update(previewConditions, previewS, camera);
       const shownCity = cityScene(ws);

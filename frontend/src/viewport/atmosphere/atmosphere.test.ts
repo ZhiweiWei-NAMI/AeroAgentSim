@@ -165,9 +165,9 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     const matrix = new T.Matrix4(), position = new T.Vector3(), quaternion = new T.Quaternion(), scale = new T.Vector3();
     for (let i = 0; i < flames.count; i++) {
       flames.getMatrixAt(i, matrix); matrix.decompose(position, quaternion, scale);
-      expect(Math.hypot(position.x, position.z)).toBeLessThanOrEqual(8);
-      expect(scale.y).toBeGreaterThanOrEqual(3); expect(scale.y).toBeLessThanOrEqual(9.000001);
-      expect(scale.x / scale.y).toBeCloseTo(0.55);
+      expect(Math.hypot(position.x, position.z)).toBeLessThanOrEqual(6);
+      expect(scale.y).toBeGreaterThanOrEqual(5); expect(scale.y).toBeLessThanOrEqual(12.000001);
+      expect(scale.x / scale.y).toBeCloseTo(0.8);
     }
     layer.dispose();
   });
@@ -178,16 +178,17 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     const overlay = document.createElement('div'), preview = new IncidentFX('med', { annotations: true, preview: { overlay, locale: () => 'en-US' } }); await preview.ready;
     const origin = new T.Vector3(2000, 10, -2000), roof = vi.fn(() => 25);
     preview.setPinScale(1800, 2); preview.update([pending], 0, camera, new Map(), origin, roof);
-    expect(preview.root.children[0].position.toArray()).toEqual(worldPosition(pending.position, 'enu').sub(origin).setY(25).toArray());
+    // The unit sits at ground level; the roof height feeds flames/glow/smoke, not the decal unit.
+    expect(preview.root.children[0].position.toArray()).toEqual(worldPosition(pending.position, 'enu').sub(origin).toArray());
     expect(roof).toHaveBeenCalledWith(20, 40);
     expect(overlay.textContent).toBe('Fire at 01:30');
     const pin = preview.root.children[0].children.find(node => node instanceof T.Sprite) as T.Sprite;
-    expect(pin.scale.x).toBeCloseTo(22 / 1800 * 2); expect(pin.position.y).toBe(14);
+    expect(pin.scale.x).toBeCloseTo(26 / 1800 * 2); expect(pin.position.y).toBe(14);
     expect(pin.material.fog).toBe(false);
     expect(meshes(preview.root.children[0]).every(mesh => !mesh.visible)).toBe(true);
     preview.update(conditions.incidents, 12.5, camera, new Map());
     expect(overlay.textContent).toBe('Building fire · Active 00:05');
-    const ring = preview.root.children[0].children.find(node => node instanceof T.Mesh && !(node instanceof T.InstancedMesh)) as T.Mesh<T.BufferGeometry, T.ShaderMaterial>;
+    const ring = preview.root.children[0].children.find(node => node instanceof T.Mesh && !(node instanceof T.InstancedMesh) && (node as T.Mesh).material instanceof T.ShaderMaterial && (node as T.Mesh<T.BufferGeometry, T.ShaderMaterial>).material.uniforms.uReveal) as T.Mesh<T.BufferGeometry, T.ShaderMaterial>;
     vi.spyOn(performance, 'now').mockReturnValue(300);
     preview.update(conditions.incidents, 12.5, camera, new Map([['fire-a', 0]]));
     expect(ring.material.uniforms.uReveal.value).toBe(0.5); expect(ring.rotation.y).toBe(0);
@@ -200,7 +201,7 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     expect(layer.root.children).toHaveLength(2); // incident group + rain; no wind volume
     const unit = layer.root.children[0].children[0];
     expect(unit.children.some(node => node instanceof T.Sprite || node instanceof T.Line)).toBe(false);
-    expect(unit.children.filter(node => node instanceof T.Mesh)).toEqual(meshes(unit));
+    expect(unit.children.filter(node => node instanceof T.InstancedMesh)).toEqual(meshes(unit));
     for (const mesh of meshes(unit)) {
       expect(mesh.visible).toBe(true); expect(mesh.material.fog).toBe(true);
       expect(mesh.material.uniforms).toHaveProperty('fogDensity');

@@ -202,6 +202,7 @@ export class CaptureRenderer {
     this.layer.setCatalog(parseModelCatalog(header.modelCatalog)); this.scene.add(this.layer.root);
     // Captures show the same smoke/rain/fog as the run viewport: the cut's journaled conditions.
     this.atmosphere = new AtmosphereLayer(this.scene,this.renderer,'low',{ annotations: false });
+    // The atlas must be live before the first photograph or the plume is missing from captures.
     await this.atmosphere.ready;
     this.composer = pipeline(this.renderer,this.scene,this.camera,'low');
     // Shader compilation is sensor initialization, not a warm-up photograph.

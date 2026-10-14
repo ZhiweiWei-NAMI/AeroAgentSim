@@ -47,7 +47,7 @@ export class Rain {
           float depth=fract(dropSeed.x*7.31)*span-${RADIUS}.0;
           vec2 drift=uSlant*(${HEIGHT}.0-height)*0.5;
           vec3 world=uCenter+vec3(column+drift.x,height,depth+drift.y);
-          float dropLength=1.1+length(uSlant)*2.0;
+          float dropLength=1.2+length(uSlant)*2.0;
           vec3 fall=normalize(vec3(uSlant.x*0.5,-1.0,uSlant.y*0.5));
           vec4 view=modelViewMatrix*vec4(world+fall*position.y*dropLength,1.0);
           view.x+=position.x*0.02;
@@ -74,7 +74,8 @@ export class Rain {
     this.material.uniforms.uSlant.value.set(wind ? wind.east / (speed || 1) * lean : 0, wind ? -wind.north / (speed || 1) * lean : 0);
     this.material.uniforms.uCenter.value.copy(camera.position);
     this.material.uniforms.uCenter.value.y = 0;
-    this.material.uniforms.uOpacity.value = rateMmH < RATE_HIGH_MM_H ? 0.22 : 0.35;
+    // Streaks read but stay subtle: 0.22 light, 0.30 moderate, 0.38 heavy.
+    this.material.uniforms.uOpacity.value = rateMmH < RATE_HIGH_MM_H ? 0.22 : rateMmH < RATE_HEAVY_MM_H ? 0.3 : 0.38;
   }
   dispose() {
     this.geometry.dispose(); this.material.dispose(); this.mesh.removeFromParent();

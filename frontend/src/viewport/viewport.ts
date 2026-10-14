@@ -131,8 +131,9 @@ export class Viewport {
     if(options.semantic){this.semanticLayer=new SemanticLayer(header,{locale:options.locale,onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
     this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.applyPreset();
     // One atmosphere module serves the run view, captures and the draft preview.
-    this.atmosphere = new AtmosphereLayer(this.scene, this.renderer, this.quality, { annotations: true });
-    void this.atmosphere.ready.then(() => { this.revision++; }).catch(error => options.onError?.(error));
+    // The atlas load lands after the first frames; revision++ invalidates the idle renderer.
+    this.atmosphere = new AtmosphereLayer(this.scene, this.renderer, this.quality, { annotations: true, onReady: () => { this.revision++; } });
+    void this.atmosphere.ready.catch(error => options.onError?.(error));
     this.observer = new ResizeObserver(this.resize); this.observer.observe(container);
     const sceneFrame = container.closest('.wb')?.querySelector('.wb-scene-frame');
     if (sceneFrame) this.observer.observe(sceneFrame);

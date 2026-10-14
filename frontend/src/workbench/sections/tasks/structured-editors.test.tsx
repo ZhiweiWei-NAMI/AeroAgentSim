@@ -364,10 +364,10 @@ it('sends one set_weather with rain, visibility and light presets, and reads cur
     'lowalt.precipitation': { mode: 'constant', value: 4 / 3600 },
     'lowalt.visibility': { mode: 'constant', value: 500 },
   } } } } }));
-  expect(chip('wb-rain-presets', 'Moderate')).toHaveAttribute('aria-pressed', 'true');
-  expect(chip('wb-visibility-presets', 'Fog 500 m')).toHaveAttribute('aria-pressed', 'true');
-  fireEvent.click(chip('wb-rain-presets', 'Heavy'));
-  fireEvent.click(chip('wb-visibility-presets', 'Mist 2 km'));
+  expect(chip('wb-rain-presets', 'Moderate · 4 mm/h')).toHaveAttribute('aria-pressed', 'true');
+  expect(chip('wb-visibility-presets', 'Fog · 500 m')).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(chip('wb-rain-presets', 'Heavy · 10 mm/h'));
+  fireEvent.click(chip('wb-visibility-presets', 'Mist · 2 km'));
   fireEvent.click(chip('wb-light-presets', 'Dusk'));
   fireEvent.click(within(conditionsForm()).getByRole('button', { name: 'Preview' }));
   await within(conditionsForm()).findByRole('button', { name: 'Confirm' });
@@ -390,13 +390,13 @@ it('writes explicit zero and clear values and includes the visual-only note', as
 
 it('sends from_deg only when the user changed the wind direction', async () => {
   render(weather({ environment: { config: { profiles: { weather: { 'lowalt.wind': { mode: 'constant', value: [6 / Math.SQRT2, -6 / Math.SQRT2, 0] } } } } } }));
-  expect(screen.getByLabelText('Degrees (°)')).toHaveValue('315');
-  expect(screen.getByRole('button', { name: 'NW' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByLabelText('From (°)')).toHaveValue('315');
+  expect(screen.getByRole('button', { name: 'From north-west' })).toHaveAttribute('aria-pressed', 'true');
   fireEvent.click(within(windForm()).getByRole('button', { name: 'Preview' }));
   await within(windForm()).findByRole('button', { name: 'Confirm' });
   expect(previewOperations.mock.calls[0][2][0].params).toEqual({ speed_mps: 6 });
-  fireEvent.click(screen.getByRole('button', { name: 'SW' }));
-  expect(screen.getByLabelText('Degrees (°)')).toHaveValue('225');
+  fireEvent.click(screen.getByRole('button', { name: 'From south-west' }));
+  expect(screen.getByLabelText('From (°)')).toHaveValue('225');
   fireEvent.click(within(windForm()).getByRole('button', { name: 'Preview again' }));
   await within(windForm()).findByRole('button', { name: 'Confirm' });
   expect(previewOperations.mock.calls[1][2][0].params).toEqual({ speed_mps: 6, from_deg: 225 });

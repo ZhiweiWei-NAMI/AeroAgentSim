@@ -123,6 +123,7 @@ export function previewMoment(scenario: Record<string, any>): number {
 }
 
 const compass: Array<[string, number]> = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]];
+const compassZh = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
 /** `conditionsFromDraft` mirrors the compiler: constant profiles on the lowalt:Environment weather entity. */
 export function conditionsFromDraft(scenario: Record<string, any>, previewS: number): Conditions {
   const at = sToNs(previewS);
@@ -167,6 +168,11 @@ export function conditionsFromDraft(scenario: Record<string, any>, previewS: num
 /** Eight-point compass name for a meteorological from-direction. */
 export function compassPoint(fromDeg: number): string {
   return compass[Math.round((((fromDeg % 360) + 360) % 360) / 45) % 8][0];
+}
+
+/** Chinese compass name for the wind line: “西北风 6.0 m/s”. */
+export function compassPointZh(fromDeg: number): string {
+  return compassZh[Math.round((((fromDeg % 360) + 360) % 360) / 45) % 8];
 }
 
 /** Shared phase copy for the run's entity labels and the draft's incident pins. */
