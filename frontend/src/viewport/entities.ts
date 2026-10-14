@@ -53,6 +53,8 @@ export class EntityLayer {
   /** Semantic overlay policy (newcomer mode); inert defaults keep Expert behavior. */
   semantic = false;
   showAllLabels = false;
+  /** Incidents get the atmosphere pin/ring instead of the plain marker; labels stay readable. */
+  hideIncidentMarkers = false;
   locale = 'en-US';
   private hoverId?: string;
   private semanticTasks = new Map<string, EntityState>();
@@ -289,6 +291,7 @@ export class EntityLayer {
         if(style.label){let options=this.semanticBindings.get(binding);if(!options){options=new Map();this.semanticBindings.set(binding,options);}let styled=options.get(style.label);if(!styled){styled={...binding,visual:{...binding.visual,color:style.color}};options.set(style.label,styled);this.glyphs.set(styled,style.glyph);}binding=styled;}
       }
       const sample = store.sample(entity.key, binding.positionField, ns); if (!sample) continue;
+      if (this.hideIncidentMarkers && entity.typeId === 'lowalt:Incident') { this.positions.set(id, worldPosition(sample, binding.frame, this.header.origin).sub(renderOrigin)); continue; }
       const position = worldPosition(sample, binding.frame, this.header.origin).sub(renderOrigin); this.positions.set(id, position);
       const catalogued = this.catalogBinding(binding, entity, id, store, position.distanceTo(camera.position));
       if (catalogued) binding = catalogued;

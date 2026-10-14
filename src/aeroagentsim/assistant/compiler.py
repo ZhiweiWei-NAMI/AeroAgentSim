@@ -7,6 +7,7 @@ import difflib
 import hashlib
 import importlib
 import json
+import math
 import re
 import shutil
 from dataclasses import dataclass, field
@@ -473,6 +474,12 @@ def _admit_task_kind(document: dict, kind: str) -> None:
             row["schema"]["enum"] = [value for value in TASK_KINDS if value in enum or value == kind]
 
 
+def _wind_vector(speed: float, from_deg: float, key: str) -> list:
+    """ENU vector of the wind coming FROM from_deg (meteorological, clockwise from north)."""
+    east, north = -speed * math.sin(math.radians(from_deg)), -speed * math.cos(math.radians(from_deg))
+    return [east, north, 0.0] if key == "lowalt.wind" else [[east, north]]
+
+
 def _sync_initial_wind(document: dict, profiles: list[tuple[str, str, dict]]) -> None:
     """An authored initial wind must equal its profile at t=0, including a zero-start gust."""
     for identity, key, profile in profiles:
@@ -565,7 +572,10 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         if name == "add_gust" and round(p["end_s"] * SECOND) <= round(p["start_s"] * SECOND):
             _fail("end_s", "Gust interval must span at least one nanosecond", "阵风间隔必须至少一纳秒")
         for _, key, profile in profiles:
-            vector = [float(p["speed_mps"]), 0.0, 0.0] if key == "lowalt.wind" else [[float(p["speed_mps"]), 0.0]]
+            if name == "set_wind" and "from_deg" in p:
+                vector = _wind_vector(p["speed_mps"], p["from_deg"], key)
+            else:
+                vector = [float(p["speed_mps"]), 0.0, 0.0] if key == "lowalt.wind" else [[float(p["speed_mps"]), 0.0]]
             if name == "set_wind":
                 profile["value"] = vector
             else:
@@ -574,6 +584,31 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                 profile["mode"] = "gust"
                 profile.setdefault("gusts", []).append({"start_ns": round(p["start_s"] * SECOND), "end_ns": round(p["end_s"] * SECOND), "value": vector})
         _sync_initial_wind(document, profiles)
+        return
+    if name == "set_weather":
+        # Visual-only presentation journaled on the existing lowalt:Environment
+        # entity that already carries wind (spec §6): AeroGraph's
+        # oo:PrecipitationField is a separate field-type entity and visibility
+        # has no environmental-field declaration, so no second weather entity.
+        _overlay(document)
+        owner, config = _engine(document, "environment")
+        environments = [e for e in document["entities"] if e["type"] == "lowalt:Environment"]
+        if not environments or not any(e["id"] in config["profiles"] for e in environments):
+            _fail("base", "Starting scene has no lowalt weather entity", "起点场景没有低空气象实体")
+        values = {"lowalt.precipitation": float(p["precipitation_mm_h"]) / 3600,  # kg m-2 s-1; 1 mm/h = 1/3600
+                  "lowalt.visibility": 50000.0 if p.get("visibility_m") is None else float(p["visibility_m"]),
+                  "lowalt.light": p["light"]}
+        for key, value in values.items():
+            if key not in config["produces"]:
+                config["produces"].append(key)
+            for environment in environments:
+                config["profiles"].setdefault(environment["id"], {})[key] = {"mode": "constant", "value": value}
+                environment["facts"][key] = copy.deepcopy(value)
+            rule = next((r for r in document["bindings"].setdefault("rules", []) if r.get("writer") == owner and r.get("type") == "lowalt:Environment"), None)
+            if rule is None:
+                document["bindings"].setdefault("rules", []).append({"writer": owner, "type": "lowalt:Environment", "fields": [key]})
+            elif key not in rule["fields"]:
+                rule["fields"].append(key)
         return
     if name == "set_algorithm":
         from aeroagentsim.services.algorithm_catalog import discover_algorithm_catalog
@@ -870,8 +905,10 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             if incident is not None:
                 _fail("id", "Incident id already used", "事件标识已被使用")
             _unique(document, p["id"])
-            incident = {"id": p["id"], "kind": p["kind"], "label": p.get("label", "Person fell on the street"),
-                        "label_zh": p.get("label_zh", "行人在街道跌倒")}
+            incident = {"id": p["id"], "kind": p["kind"],
+                        "label": p.get("label", "Building fire" if p["kind"] == "fire" else "Person fell on the street"),
+                        "label_zh": p.get("label_zh", "建筑火情" if p["kind"] == "fire" else "行人在街道跌倒")}
+            incident.setdefault("radius_m", 30 if p["kind"] == "fire" else 6)
             coop["incidents"].append(incident)
         elif incident is None:
             _fail("id", "Incident does not exist", "事件不存在")
@@ -882,9 +919,16 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             incident["position"] = _position(document, p["at"], "at")
         if "time_s" in p:
             incident["at_s"] = float(p["time_s"])
-        for key in ("kind", "label", "label_zh"):
+        for key in ("kind", "label", "label_zh", "radius_m"):
             if key in p:
                 incident[key] = p[key]
+        if "end_s" in p:
+            end = float(p["end_s"])
+            if end <= incident.get("at_s", 0):
+                _fail("end_s", "Incident end must follow its start", "事件结束必须晚于开始")
+            if round(end * SECOND) > document["run"]["until_ns"]:
+                _fail("end_s", f"Incident end is beyond the {document['run']['until_ns'] / SECOND:g} s run", f"事件结束超出 {document['run']['until_ns'] / SECOND:g} 秒运行")
+            incident["end_s"] = end
         return
     if name == "set_cooperation":
         coop = _cooperation(document)
@@ -1118,6 +1162,8 @@ def _time_bounds(document: dict, operations: list[dict], errors: list[dict], war
                 check(params[key], "params." + key, op_id)
         if name in {"add_incident", "set_incident"} and incidents.get(params["id"]) and incident_owners.get(params["id"]) is operation:
             check(incidents[params["id"]]["at_s"], "params.time_s", op_id)
+            if "end_s" in incidents[params["id"]]:
+                check(incidents[params["id"]]["end_s"], "params.end_s", op_id)
         if name == "set_task" and task_owners.get(params["task"]) is operation and params["task"] in task_times:
             ns = task_times[params["task"]]
             check(ns / SECOND, "params.release_s", op_id, ns=ns)
@@ -1152,6 +1198,8 @@ def _time_bounds(document: dict, operations: list[dict], errors: list[dict], war
                     existing.append((f"workloads.{_group_id(group)}.release", max(times)))
             for incident in config.get("cooperation", {}).get("incidents", []):
                 existing.append((f"incidents.{incident['id']}.time_s", round(incident["at_s"] * SECOND)))
+                if "end_s" in incident:
+                    existing.append((f"incidents.{incident['id']}.end_s", round(incident["end_s"] * SECOND)))
     for command in document.get("bindings", {}).get("commands", []):
         existing.append((f"events.{command['schema']}.at_s", command["at_ns"]))
     explicit_times = {time for _, time in authored}
@@ -1227,7 +1275,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
         if not isinstance(operations, list):
             _fail("operations", "Operations must be a list", "操作必须为列表")
         operations = copy.deepcopy(operations)
-        lowalt_names = {"add_place", "update_place", "remove_place", "add_fleet", "set_fleet", "remove_fleet", "set_vehicle", "add_orders", "set_orders", "remove_orders", "set_task", "set_rule", "set_algorithm", "set_cooperation", "remove_cooperation", "add_incident", "set_incident", "remove_incident"}
+        lowalt_names = {"add_place", "update_place", "remove_place", "add_fleet", "set_fleet", "remove_fleet", "set_vehicle", "add_orders", "set_orders", "remove_orders", "set_task", "set_rule", "set_algorithm", "set_cooperation", "remove_cooperation", "add_incident", "set_incident", "remove_incident", "set_weather"}
         needs_lowalt = any(isinstance(o, dict) and (o.get("op") in lowalt_names or o.get("op") in {"set_wind", "add_gust"} and not any(e.get("plugin") == "environment" for e in document["engines"].values()) or o.get("op") == "schedule_event" and str(o.get("params", {}).get("event", "")).startswith(("lowalt", "restaurant", "close_vertiport", "add_urgent", "change_dropoff", "prioritize_medical", "investigate"))) for o in operations)
         if needs_lowalt and not any(e.get("plugin") == "lowalt_tasks" for e in document["engines"].values()) and not any(isinstance(o, dict) and o.get("op") == "add_lowalt_components" for o in operations):
             used_ids = [o.get("id") for o in operations if isinstance(o, dict)]

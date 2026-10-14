@@ -442,11 +442,23 @@ def header(directory: Path) -> dict[str, Any]:
     # explains each one and derives what it controls from fact producers.
     engines = scenario.get("engines")
     if isinstance(engines, dict):
-        result["engines"] = [
-            {"id": name, "plugin": spec["plugin"]}
-            for name, spec in engines.items()
-            if isinstance(spec, dict) and isinstance(spec.get("plugin"), str)
-        ]
+        rows = []
+        for name, spec in engines.items():
+            if not (isinstance(spec, dict) and isinstance(spec.get("plugin"), str)):
+                continue
+            row: dict[str, Any] = {"id": name, "plugin": spec["plugin"]}
+            if spec["plugin"] == "environment":
+                # Authored gust intervals for the viewer's wind widget (spec §6).
+                intervals = sorted({
+                    (gust["start_ns"], gust["end_ns"])
+                    for profile in spec.get("config", {}).get("profiles", {}).values()
+                    for authored in profile.values()
+                    for gust in authored.get("gusts", [])
+                })
+                if intervals:
+                    row["gusts"] = [[start, end] for start, end in intervals]
+            rows.append(row)
+        result["engines"] = rows
     if "epoch" in metadata:
         result["epoch"] = metadata["epoch"]
     ir_path = directory / "behaviour.ir.json"
@@ -480,6 +492,12 @@ def header(directory: Path) -> dict[str, Any]:
     from aeroagentsim.authoring.replay import scene_header
 
     result.update(scene_header(directory, ""))
+    # Authored time-of-day light is display metadata (spec §6): journaled on the
+    # lowalt weather entity, surfaced here as scene.lighting for the viewer.
+    light = next((entity["facts"]["lowalt.light"] for entity in scenario.get("entities", [])
+                  if entity.get("type") == "lowalt:Environment" and "lowalt.light" in entity.get("facts", {})), None)
+    if light in {"day", "dusk"}:
+        result.setdefault("scene", {})["lighting"] = light
     if scenario.get("city") == "huangpu" and not (directory / "studio-scene.json").is_file():
         from aeroagentsim.assets import installed
         from aeroagentsim.authoring.demo import city_presentation, detailed_city

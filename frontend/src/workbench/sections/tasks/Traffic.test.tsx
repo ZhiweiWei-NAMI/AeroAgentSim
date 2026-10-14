@@ -90,6 +90,40 @@ it('offers a visible read-only explanation when editing is not wired', () => {
   expect(screen.queryByRole('button', { name: 'Preview removal' })).toBeNull();
 });
 
+it('adds a fire incident with kind chip, kind radius default and an end time (spec §4)', async () => {
+  const form = () => screen.getByLabelText('Incident ID').closest('.wb-form-stack') as HTMLElement;
+  render(element());
+  fireEvent.click(within(form()).getByRole('button', { name: 'Fire' }));
+  expect(within(form()).getByLabelText('Affected radius (m)')).toHaveValue('30');
+  expect(within(form()).getByText(/visual and scheduling marker/)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('Incident ID'), { target: { value: 'fire-north' } });
+  fireEvent.change(screen.getByLabelText('Incident position'), { target: { value: 'street-north' } });
+  fireEvent.change(within(form()).getByLabelText('Ends at (s)'), { target: { value: '240' } });
+  fireEvent.click(within(form()).getByRole('button', { name: 'Preview' }));
+  await within(form()).findByRole('button', { name: 'Confirm' });
+  expect(previewOperations.mock.calls[0][2][0]).toMatchObject({ op: 'add_incident', params: { id: 'fire-north', kind: 'fire', radius_m: 30, time_s: 90, end_s: 240 } });
+  fireEvent.click(within(form()).getByRole('button', { name: 'Confirm' }));
+  await waitFor(() => expect(applyOperations).toHaveBeenCalled());
+});
+
+it('lists incidents as "Fire · 01:30–04:00 · r 30 m" style rows and validates radius and end', () => {
+  render(element({ config: { cooperation: { incidents: [
+    { id: 'fire-1', kind: 'fire', position: [20, 40, 0], at_s: 90, end_s: 240, radius_m: 30 },
+  ] } } }));
+  expect(screen.getByTestId('wb-incident')).toHaveTextContent('Fire');
+  expect(screen.getByTestId('wb-incident')).toHaveTextContent('01:30–04:00');
+  expect(screen.getByTestId('wb-incident')).toHaveTextContent('r 30 m');
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+  const panel = screen.getByTestId('wb-incident-edit');
+  fireEvent.change(within(panel).getByLabelText('Affected radius (m)'), { target: { value: '900' } });
+  expect(screen.getByRole('alert')).toHaveTextContent('between 1 and 500 m');
+  expect(within(panel).getByRole('button', { name: 'Preview' })).toBeDisabled();
+  fireEvent.change(within(panel).getByLabelText('Affected radius (m)'), { target: { value: '30' } });
+  fireEvent.change(within(panel).getByLabelText('Ends at (s)'), { target: { value: '60' } });
+  expect(screen.getByRole('alert')).toHaveTextContent('End must be after start.');
+  expect(previewOperations).not.toHaveBeenCalled();
+});
+
 it('restores a closed incident editor independently of the staged new incident', () => {
   const first = render(element());
   fireEvent.change(screen.getByLabelText('Incident ID'), { target: { value: 'pending-new' } });

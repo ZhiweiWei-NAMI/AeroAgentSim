@@ -82,3 +82,36 @@ export function windDirection(value: unknown): number | undefined {
   if (x === undefined || y === undefined || (x === 0 && y === 0)) return undefined;
   return Number((((Math.atan2(y, x) * 180) / Math.PI + 360) % 360).toFixed(1));
 }
+
+/** Meteorological FROM-direction (deg clockwise from north), matching set_wind.from_deg (spec §7). */
+export function windFromDeg(value: unknown): number | undefined {
+  const vec = Array.isArray(value) ? value : [];
+  const x = scalarNumber(vec[0]), y = scalarNumber(vec[1]);
+  if (x === undefined || y === undefined || (x === 0 && y === 0)) return undefined;
+  return Number((((Math.atan2(-x, -y) * 180) / Math.PI + 360) % 360).toFixed(1));
+}
+
+export const COMPASS_POINTS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
+export const pointDeg = (point: string): number => (COMPASS_POINTS.indexOf(point as typeof COMPASS_POINTS[number]) * 45 + 360) % 360;
+export const pointOfDeg = (deg: number): string => COMPASS_POINTS[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
+
+/** Weather profile on the lowalt:Environment entity (spec §7): kg m⁻² s⁻¹ ×3600 → mm/h, 50000 m = clear. */
+export function weatherOf(environment: Draft): { precipitationMmH: number; visibilityM: number | null; light: 'day' | 'dusk' } {
+  const profiles = (environment?.config?.profiles ?? {}) as Record<string, Draft>;
+  for (const profile of Object.values(profiles)) {
+    const precipitation = scalarNumber(profile?.['lowalt.precipitation']);
+    const visibility = scalarNumber(profile?.['lowalt.visibility']);
+    const light = profile?.['lowalt.light'];
+    if (precipitation !== undefined || visibility !== undefined || light !== undefined)
+      return { precipitationMmH: precipitation === undefined ? 0 : Math.round(precipitation * 3600 * 100) / 100,
+        visibilityM: visibility === undefined || visibility >= 50000 ? null : visibility, light: light === 'dusk' ? 'dusk' : 'day' };
+  }
+  return { precipitationMmH: 0, visibilityM: null, light: 'day' };
+}
+
+/** Clock text mm:ss for HUD chips and incident rows; seconds fall back to one decimal. */
+export function clockS(seconds: number | undefined): string {
+  if (seconds === undefined || !Number.isFinite(seconds)) return '—';
+  const total = Math.max(0, Math.round(seconds)), m = Math.floor(total / 60), s = total % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}

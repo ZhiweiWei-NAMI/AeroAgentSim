@@ -24,7 +24,8 @@ RULE_LABELS = {
     "medical_preemption": ("Medical preemption", "医疗任务抢占", None),
 }
 EVENT_LABELS = {
-    "person_fall": ("Person falls", "行人跌倒"), "close_vertiport": ("Close vertiport", "关闭起降场"),
+    "person_fall": ("Person falls", "行人跌倒"), "fire": ("Building fire", "建筑火情"),
+    "close_vertiport": ("Close vertiport", "关闭起降场"),
     "add_urgent_order": ("Add urgent order", "新增紧急订单"), "restaurant_delay": ("Kitchen delay", "厨房延迟"),
     "change_dropoff": ("Change drop-off", "更改收货点"), "prioritize_medical": ("Prioritize medical task", "提高医疗任务优先级"),
     "investigate": ("Investigate incident", "调查事件"),

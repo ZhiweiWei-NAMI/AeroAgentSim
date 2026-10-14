@@ -21,6 +21,8 @@ import { CameraDirector, type CameraMode } from '../scene/camera-director';
 import { translate } from '../i18n/translate';
 import type {DirectorTarget} from './business-director';
 import { workbenchLayoutKey } from './label-placement';
+import { AtmosphereLayer } from './atmosphere';
+import { conditionsAt, type Conditions } from './conditions';
 export type { CameraMode } from '../scene/camera-director';
 // Look down far enough to retain city context when following an airborne unit.
 export const FOLLOW_CAMERA_OFFSET = [22, 48, 24] as const;
@@ -95,6 +97,11 @@ export class Viewport {
   private lastLegend = '';
   private cityGeometryRevision = 0;
   private qualityMaterials = new QualityMaterials();
+  private atmosphere?: AtmosphereLayer;
+  private latestConditions?: Conditions;
+  private conditionsListeners = new Set<(c: Conditions) => void>();
+  private lightingOverride: 'scene' | 'day' | 'dusk' = 'scene';
+  private lastWet = '';
   constructor(private container: HTMLElement, private header: RunHeader, private options: ViewportOptions = {}) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'high-performance' });
@@ -116,12 +123,15 @@ export class Viewport {
     this.lighting = setupScene(this.renderer, this.scene); this.assets = new Assets(this.renderer, options);
     this.layer = new EntityLayer(header, this.assets, this.overlay, key => options.onSelect?.(key), error => options.onError?.(error), this.status);
     this.layer.locale = options.locale ?? 'en-US';
+    this.layer.hideIncidentMarkers = true; // the atmosphere pin replaces the plain incident marker
     try{this.layer.setCatalog(parseModelCatalog(header.modelCatalog));}catch(error){this.status(`Model catalog unavailable: ${String(error)} · stand-ins active`);}
     if(options.semantic!==undefined)this.layer.semantic=options.semantic;
     if(options.showAllLabels!==undefined)this.layer.showAllLabels=options.showAllLabels;
     this.scene.add(this.layer.root, this.staticRoot);
     if(options.semantic){this.semanticLayer=new SemanticLayer(header,{locale:options.locale,onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
     this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.applyPreset();
+    // One atmosphere module serves the run view, captures and the draft preview.
+    this.atmosphere = new AtmosphereLayer(this.scene, this.renderer, this.quality);
     this.observer = new ResizeObserver(this.resize); this.observer.observe(container);
     const sceneFrame = container.closest('.wb')?.querySelector('.wb-scene-frame');
     if (sceneFrame) this.observer.observe(sceneFrame);
@@ -202,9 +212,35 @@ export class Viewport {
   }
   private applyCityDisplay(object: T.Object3D) {
     this.qualityMaterials.apply(object, this.quality === 'low');
+    const wet = this.scene.userData.weatherWet as number | undefined ?? 0;
     object.traverse(node=>{if(node instanceof T.Mesh)for(const material of Array.isArray(node.material)?node.material:[node.material]){
       const uniform=material.userData.displayDusk as {value:number}|undefined;if(uniform)uniform.value=this.dusk?1:0;
+      // Wet city look (≤8 % darker, roughness −0.1), reverted exactly when the rain stops.
+      const standard=material as T.MeshStandardMaterial;
+      if(standard.roughness===undefined)continue;
+      const base=standard.userData.weatherBase as {color:number;roughness:number}|undefined;
+      if(wet<=0){if(base){standard.color.setHex(base.color);standard.roughness=base.roughness;delete standard.userData.weatherBase;}continue;}
+      const source=base??(standard.userData.weatherBase={color:standard.color.getHex(),roughness:standard.roughness});
+      standard.color.setHex(source.color).multiplyScalar(1-0.08*wet);
+      standard.roughness=source.roughness-0.1*wet;
     }});
+  }
+  /** Scene/Dusk/Day display lighting: 'scene' follows journaled Conditions.light; URL param still overrides. */
+  setLightingOverride(mode: 'scene' | 'day' | 'dusk') {
+    if (this.lightingOverride === mode) return;
+    this.lightingOverride = mode; this.applyLighting(); this.revision++;
+  }
+  private applyLighting() {
+    const dusk = this.lightingOverride === 'dusk' || (this.lightingOverride === 'scene' && this.latestConditions?.light === 'dusk');
+    if (dusk !== this.dusk) this.setDusk(dusk);
+  }
+  /** Latest frame's derived conditions, for the HUD. */
+  conditions(): Conditions | undefined { return this.latestConditions; }
+  /** Fires only when the derived conditions change (shallow compare of rounded values). */
+  onConditions(cb: (c: Conditions) => void): () => void {
+    this.conditionsListeners.add(cb);
+    if (this.latestConditions) cb(this.latestConditions);
+    return () => this.conditionsListeners.delete(cb);
   }
   setDusk(dusk: boolean) {
     this.dusk=dusk;this.lighting.setDusk(dusk);this.composer.setDusk(dusk);this.applyCityDisplay(this.staticRoot);this.revision++;
@@ -269,7 +305,7 @@ export class Viewport {
     if(manual)this.manualQuality=true;
     if (quality === this.quality) return;
     this.revision++; this.quality = quality; this.composer.dispose(); this.composer = pipeline(this.renderer, this.scene, this.camera, quality);
-    this.composer.setDusk(this.dusk);this.applyPreset(); this.resize(); this.qualityTime = this.qualityFrames = 0; this.options.onQuality?.(quality);
+    this.composer.setDusk(this.dusk);this.applyPreset(); this.atmosphere?.setQuality(quality); this.resize(); this.qualityTime = this.qualityFrames = 0; this.options.onQuality?.(quality);
   }
   private applyPreset() {
     const preset = PRESETS[this.quality]; this.renderer.setPixelRatio(Math.min(devicePixelRatio, preset.ratio));
@@ -321,6 +357,16 @@ export class Viewport {
       }
     };
     this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion, aimCamera);
+    // Conditions derive from the journaled cut only; a paused clock keeps them (and the frame) still.
+    const simSeconds = Number(BigInt(ns) - BigInt(this.header.start.ns)) / 1e9;
+    const next = conditionsAt(store.entities, ns, this.header);
+    this.latestConditions = next;
+    this.atmosphere?.update(next, simSeconds, this.camera, (east, north) => this.roofHeight(east, north), this.atmosphereRingStart(next), this.origin);
+    // The wet city look re-applies only when the rain amount changes, not every frame.
+    const wetKey = String(this.scene.userData.weatherWet ?? 0);
+    if (wetKey !== this.lastWet) { this.lastWet = wetKey; this.applyCityDisplay(this.staticRoot); }
+    this.applyLighting();
+    this.emitConditions();
     if(this.semanticLayer&&this.layer.semantic){
       this.semanticLayer.update(store,ns,this.origin);
       this.semanticLayer.root.visible=true;
@@ -386,6 +432,35 @@ export class Viewport {
       }
     }
   }
+  /** Rounded shallow compare so the HUD subscription does not fire every frame. */
+  private conditionsKey(conditions: Conditions): string {
+    return JSON.stringify([conditions.wind && [conditions.wind.east.toFixed(1), conditions.wind.north.toFixed(1), conditions.wind.fromDeg.toFixed(0), conditions.wind.gust],
+      conditions.precipitationMmH, conditions.visibilityM, conditions.light, conditions.incidents.map(item => [item.id, item.phase, item.sinceS.toFixed(0), item.response ?? ''])]);
+  }
+  private lastConditionsKey = '';
+  private emitConditions() {
+    if (!this.latestConditions) return;
+    const key = this.conditionsKey(this.latestConditions);
+    if (key === this.lastConditionsKey) return;
+    this.lastConditionsKey = key;
+    for (const listener of this.conditionsListeners) listener(this.latestConditions);
+  }
+  /** One-shot ring draw-in timestamps, in wall-clock, per activation. */
+  private atmosphereRingStart(conditions: Conditions): Map<string, number> {
+    const now = performance.now();
+    for (const incident of conditions.incidents) {
+      const seen = this.ringStarts.get(incident.id);
+      if (seen === undefined) this.ringStarts.set(incident.id, now);
+    }
+    for (const id of [...this.ringStarts.keys()]) if (!conditions.incidents.some(item => item.id === id)) this.ringStarts.delete(id);
+    return this.ringStarts;
+  }
+  private ringStarts = new Map<string, number>();
+  /** Roof height under an ENU point, from the same progressive bounds the camera lift uses. */
+  private roofHeight(east: number, north: number): number {
+    const probe = new T.Vector3(east - this.origin.x, 0, -north - this.origin.z);
+    return Math.max(0, this.occlusion.liftCamera(probe, 0).y);
+  }
   /** Legend from actual business kinds present in the committed cut, plus active zones. */
   private emitLegend(store: FeedStore) {
     const entries = new Map<string, string>();
@@ -447,6 +522,7 @@ export class Viewport {
     this.renderer.domElement.removeEventListener('pointerdown',this.pointerDown);this.renderer.domElement.removeEventListener('pointerup',this.pointerUp);
     this.renderer.domElement.removeEventListener('pointermove',this.pointerMove);
     this.controls.dispose();this.occlusion.dispose();this.layer.dispose();this.qualityMaterials.dispose();this.assets.dispose();disposeObject(this.scene);this.lighting.dispose();this.environment?.dispose();
+    this.atmosphere?.dispose();
     this.district?.dispose();
     if(this.semanticLayer){this.semanticLayer.dispose();}
     this.gpuTimer?.dispose();this.composer.dispose();this.renderer.dispose();this.renderer.domElement.remove();this.overlay.remove();

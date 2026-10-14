@@ -82,11 +82,14 @@ _spec("add_lowalt_components", "controls", "Install the standard lowalt engines,
 _spec("set_control", "controls", "Set a declared starting-point control.", "设置起点模板已声明的控件。", obj({"control": STRING, "value": {}}, ("control", "value")), {"control": "fleet_size", "value": 4})
 _spec("set_duration", "controls", "Set the run horizon in seconds.", "设置仿真时长（秒）。", obj({"seconds": number(exclusiveMinimum=0)}, ("seconds",)), {"seconds": 360})
 _spec("set_run_mode", "controls", "Choose scheduled or interactive operator input.", "选择预设或交互操作输入。", obj({"mode": enum(["scheduled", "interactive"])}, ("mode",)), {"mode": "scheduled"})
-_spec("set_wind", "events", "Set the background wind speed.", "设置背景风速。", obj({"speed_mps": number()}, ("speed_mps",)), {"speed_mps": 3})
+_spec("set_wind", "events", "Set the background wind speed and optionally the meteorological direction it comes FROM (clockwise from north).", "设置背景风速，可选设置风的来向（自北顺时针）。", obj({"speed_mps": number(), "from_deg": number(0, 360)}, ("speed_mps",)), {"speed_mps": 3, "from_deg": 270})
 _spec("add_gust", "events", "Add a timed wind gust.", "添加定时阵风。", obj({"start_s": number(), "end_s": number(exclusiveMinimum=0), "speed_mps": number()}, ("start_s", "end_s", "speed_mps")), {"start_s": 60, "end_s": 90, "speed_mps": 9})
 _spec("remove_gust", "events", "Remove a configured gust by its zero-based index or start time from matching wind profiles.", "按从零开始的索引或开始时间删除匹配风场中的阵风。",
       {**obj({"index": {"type": "integer", "minimum": 0}, "start_s": number()}),
        "anyOf": [obj({"index": {"type": "integer", "minimum": 0}}, ("index",)), obj({"start_s": number()}, ("start_s",))]}, {"start_s": 60})
+_spec("set_weather", "events", "Set visual weather conditions: rain, visibility and time-of-day light. Visual only — shown in the 3D view and UAV captures; flight, sensing and task outcomes don't use it.", "设置视觉天气：降雨、能见度和时段光照。仅为视觉呈现——显示在三维视图和无人机拍摄中；飞行、感知和任务结果不使用它。",
+      {"type": "object", "properties": {"precipitation_mm_h": number(0, 100), "visibility_m": {"anyOf": [number(50, 50000), {"type": "null"}]}, "light": enum(["day", "dusk"])}, "required": [], "additionalProperties": False},
+      {"precipitation_mm_h": 4, "visibility_m": 500, "light": "day"})
 _spec("set_rule", "rules", "Change an operational safety or medical rule.", "修改运行安全或医疗规则。", obj({"rule": enum(["battery_reserve_pct", "safety_distance_m", "wind_limit_mps", "medical_preemption"]), "value": {"anyOf": [number(), {"type": "boolean"}]}}, ("rule", "value")), {"rule": "battery_reserve_pct", "value": 30})
 _spec("set_algorithm", "algorithms", "Select an installed decision algorithm for a slot.", "为算法槽选择已安装的决策算法。", obj({"slot": enum(["allocation", "path_planning", "conflict_resolution", "charging"]), "value": STRING}, ("slot", "value")), {"slot": "allocation", "value": "nearest"})
 place = {"id": IDENTIFIER, "role": enum(PLACE_TYPES), "at": AT, "label": STRING, "label_zh": STRING,
@@ -108,8 +111,10 @@ _spec("add_orders", "tasks", "Schedule tasks between real facilities; meals requ
 _spec("set_orders", "tasks", "Revise an existing workload without replacing other workloads.", "修改已有工作量并保留其他工作量。", obj({k: v for k, v in orders.items() if k != "kind"}, ("id",)), {"id": "parcels", "priority": 5})
 _spec("remove_orders", "tasks", "Remove a workload and its task entities.", "删除一组工作量及其任务实体。", obj({"id": IDENTIFIER}, ("id",)), {"id": "parcels"})
 _spec("set_task", "tasks", "Change a single task's destination, release time or priority.", "修改单个任务的目的地、释放时间或优先级。", obj({"task": IDENTIFIER, "destination": STRING, "release_s": number(), "priority": {"type": "integer", "minimum": 0}}, ("task",)), {"task": "parcels-1", "release_s": 15})
-incident = {"id": IDENTIFIER, "kind": enum(["person_fall"]), "at": AT, "time_s": number(), "label": STRING, "label_zh": STRING}
-_spec("add_incident", "events", "Schedule a point incident such as a person falling.", "安排点状事件，例如行人跌倒。", obj(incident, ("id", "kind", "at", "time_s")), {"id": "fall", "kind": "person_fall", "at": "street-east", "time_s": 90})
+incident = {"id": IDENTIFIER, "kind": enum(["person_fall", "fire"]), "at": AT, "time_s": number(), "label": STRING, "label_zh": STRING,
+            "radius_m": number(1, 500, description="Affected-area radius; default 30 for fire, 6 for person_fall / 受影响半径"),
+            "end_s": number(exclusiveMinimum=0, description="Optional end time; must be after time_s and within the run / 可选结束时间")}
+_spec("add_incident", "events", "Schedule a point incident such as a person falling or a building fire. The fire is a visual and scheduling marker; combustion and smoke spread are not simulated.", "安排点状事件，例如行人跌倒或建筑火情。火情是视觉与调度标记；不模拟燃烧与烟雾扩散。", obj(incident, ("id", "kind", "at", "time_s")), {"id": "fire", "kind": "fire", "at": "street-east", "time_s": 90})
 _spec("set_incident", "events", "Revise a scheduled incident.", "修改已安排的事件。", obj(incident, ("id",)), {"id": "fall", "time_s": 120})
 _spec("remove_incident", "events", "Remove a scheduled incident.", "删除已安排的事件。", obj({"id": IDENTIFIER}, ("id",)), {"id": "fall"})
 _spec("schedule_event", "events", "Schedule a declared injection or lowalt operator event with its real payload.", "使用真实载荷安排已声明的注入点或低空操作事件。", obj({"event": STRING, "at_s": number(), "params": {"type": "object"}}, ("event", "at_s", "params")), {"event": "restaurant_delay", "at_s": 45, "params": {"restaurant": "restaurant-west", "delay_s": 20}})
@@ -158,7 +163,7 @@ def validate_parameters(value: Any, schema: dict[str, Any], field: str = "params
         return
     valid = {"object": isinstance(value, dict), "array": isinstance(value, list), "string": isinstance(value, str),
              "number": type(value) in (int, float), "integer": type(value) is int, "boolean": type(value) is bool,
-             "null": tool_input and value is None}
+             "null": value is None}
     if kind is not None and not valid.get(kind, False):
         raise OperationError(field, f"Expected {kind} / 需要 {kind}")
     if "enum" in schema and value not in schema["enum"]:

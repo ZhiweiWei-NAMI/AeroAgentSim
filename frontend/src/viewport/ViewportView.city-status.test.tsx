@@ -12,7 +12,8 @@ vi.mock('./viewport', async () => {
   const { vi: mock } = await import('vitest');
   return { Viewport: class {
     camera = { fov: 48, aspect: 1, position: { x: 0, y: 0, z: 0 } };
-    setCameraMode = mock.fn(); setDusk = mock.fn(); setSelection = mock.fn(); setHighlights = mock.fn();
+    setCameraMode = mock.fn(); setDusk = mock.fn(); setLightingOverride = mock.fn(); setSelection = mock.fn(); setHighlights = mock.fn();
+    onConditions = mock.fn(() => () => {});
     setSemantic = mock.fn(); setLocale = mock.fn(); setQuality = mock.fn(); focusPosition = mock.fn();
     render = mock.fn(); dispose = mock.fn(); setDirectorTarget = mock.fn(); fitRegion = mock.fn();
     constructor(public container: HTMLElement, _header: unknown, public options: any) {

@@ -12,6 +12,8 @@
 .wb-coop details, .wb-weather details, .wb-traffic details { margin: 4px 0; }
 .wb-coop summary, .wb-weather summary, .wb-traffic summary, .wb-order-row summary { cursor: pointer; }
 .wb-wind-row { display: grid; gap: 4px; }
+/* Weather "From" compass and the Conditions presets reuse the shared wb-choice pills; keep them compact in-card. */
+.wb-conditions .wb-choice, .wb-weather .wb-choice { padding: 2px 8px; font-size: 11px; }
 .wb-form-section { min-width: 0; padding-block-end: 1.5rem; }
 .wb-form-stack { display: grid; gap: .5rem; min-width: 0; }
 .wb-form-field select[multiple] { height: auto; }

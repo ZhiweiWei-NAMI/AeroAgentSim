@@ -8,6 +8,9 @@ import { loadTrafficCity, type CityProgress } from '../scene/traffic-city';
 import type { Workspace } from './api';
 import { PlanOverlayView, type PreviewOverlay } from './plan-overlay';
 import { PreviewHologram } from './hologram';
+import { AtmosphereLayer } from '../viewport/atmosphere';
+import { conditionsFromDraft, previewMoment } from '../viewport/conditions';
+import { ConditionsHud } from '../viewport/ConditionsHud';
 
 type LayerName = 'ground' | 'buildings' | 'roads' | 'entities' | 'airspace';
 const LAYER_NAMES: LayerName[] = ['ground', 'buildings', 'roads', 'entities', 'airspace'];
@@ -100,6 +103,9 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   const latest = useRef({ workspace, layers, overlay }); latest.current = { workspace, layers, overlay };
   const [error, setError] = useState<{ kind: 'descriptor' | 'runtime'; detail?: string }>(), [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<CityProgress>(), [rendered, setRendered] = useState(false);
+  // The draft preview freezes the authored conditions at the preview moment (spec §4).
+  const previewS = useMemo(() => previewMoment(workspace.scenario), [workspace.scenario]);
+  const previewConditions = useMemo(() => conditionsFromDraft(workspace.scenario ?? {}, previewS), [workspace.scenario, previewS]);
   // The shared city follows the draft's declared city (choosing none hides it).
   const cityScene = (ws: Workspace) => ws.scenario?.city === 'huangpu' ? ws.demo_console?.scene : undefined;
   const city = cityScene(workspace);
@@ -119,12 +125,13 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
     const finishLoad = () => { pendingBuildings--; if (!abort.signal.aborted) setLoading(pendingBuildings > 0); };
     let assets: Assets | undefined, renderer: THREE.WebGLRenderer | undefined, controls: OrbitControls | undefined, observer: ResizeObserver | undefined, layoutObserver: MutationObserver | undefined, frame = 0;
     let cleaned = false, overlayView: PlanOverlayView | undefined, hologram: PreviewHologram | undefined, driftTimer = 0;
+    let atmosphere: AtmosphereLayer | undefined;
     const visibility = () => {
       if (document.hidden) { cancelAnimationFrame(frame); frame = 0; window.clearTimeout(driftTimer); driftTimer = 0; }
       else ctx.current?.invalidate();
     };
     document.addEventListener('visibilitychange', visibility);
-    const cleanup = () => { if (cleaned) return; cleaned = true; abort.abort(); cancelAnimationFrame(frame); window.clearTimeout(driftTimer); document.removeEventListener('visibilitychange', visibility); observer?.disconnect(); layoutObserver?.disconnect(); overlayView?.dispose(); hologram?.dispose(); controls?.dispose(); disposePreview(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); ctx.current = undefined; };
+    const cleanup = () => { if (cleaned) return; cleaned = true; abort.abort(); cancelAnimationFrame(frame); window.clearTimeout(driftTimer); document.removeEventListener('visibilitychange', visibility); observer?.disconnect(); layoutObserver?.disconnect(); overlayView?.dispose(); hologram?.dispose(); atmosphere?.dispose(); controls?.dispose(); disposePreview(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); ctx.current = undefined; };
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.domElement.setAttribute('aria-hidden', 'true'); host.append(renderer.domElement);
@@ -148,6 +155,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         controls!.update();
         const animating = overlayView?.render(now);
         const drifting = hologram?.advance(now);
+        atmosphere?.update(previewConditions, previewS, camera);
         renderer!.render(scene, camera);
         if (firstFrame) { setRendered(true); firstFrame = false; }
         if (animating) invalidate();
@@ -158,6 +166,9 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         if (!frame && !abort.signal.aborted && !document.hidden) frame = requestAnimationFrame(draw);
       };
       controls.addEventListener('change', invalidate);
+      // Draft preview wears the same atmosphere: incident pins/rings/flames/smoke at the frozen moment.
+      atmosphere = new AtmosphereLayer(scene, renderer!, 'med');
+      atmosphere.update(previewConditions, previewS, camera);
       const shownCity = cityScene(ws);
       let userMoved = false, framedCity = false;
       controls.addEventListener('start', () => { userMoved = true; overlayView?.interact(true); });
@@ -360,6 +371,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
     {planeNote}
     {noObjects}
     {status}
+    <div className="scene-preview-conditions" data-testid="preview-conditions"><ConditionsHud conditions={previewConditions} zh={zh} mode="preview" atS={previewS} /></div>
     <div className="studio-preview-fit"><button className="wb-btn" onClick={() => ctx.current?.fitView()}>{zh ? '查看完整场景' : 'Fit scene'}</button><span>{overlay ? overlay.tone === 'proposed' ? (zh ? '提议方案 · 尚未应用' : 'Proposed plan · not applied') : (zh ? '场景已配置 · 未运行' : 'Configured scene · not running') : (zh ? '标记显示配置位置与机队起点' : 'Markers show configured positions and fleet starts')}</span></div>
     {error && <div className="studio-preview-error" role="alert">{error.kind === 'descriptor' ? t('Studio city preview requires a traffic-city descriptor') : t('Scene preview could not load: {error}', { error: error.detail })}</div>}
   </div>;
@@ -369,6 +381,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       {planeNote}
       {noObjects}
       {status}
+      <div className="scene-preview-conditions" data-testid="preview-conditions"><ConditionsHud conditions={previewConditions} zh={zh} mode="preview" atS={previewS} /></div>
       {error && <div className="studio-preview-error" role="alert">{error.kind === 'descriptor' ? t('Studio city preview requires a traffic-city descriptor') : t('Scene preview could not load: {error}', { error: error.detail })}</div>}
     </div>
   </>;

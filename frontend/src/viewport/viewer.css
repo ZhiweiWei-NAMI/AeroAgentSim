@@ -54,3 +54,25 @@
 .viewport-city-progress strong{font-weight:500}
 .viewport-city-progress progress{width:100%;height:4px;accent-color:#5bb9df}
 .viewport-city-progress small{font-size:10px;color:#aebfce}
+
+/* Conditions HUD (run viewport bottom-left, above the mission overlay; ScenePreview positions its own copy) */
+.wb-cond-hud { position: absolute; left: 12px; bottom: 12px; z-index: 6; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;
+  background: #10283dd9; color: #e4f4fd; border: 1px solid #7799aa88; border-radius: 8px; font: 12px system-ui; box-shadow: 0 2px 8px #14263533; max-width: 260px; }
+.viewport-conditions .wb-cond-hud { position: static; }
+.wb-cond-hud.preview { position: absolute; left: 16px; bottom: 16px; }
+.wb-cond-wind { display: flex; gap: 8px; align-items: center; }
+.wb-cond-wind-text { display: flex; flex-direction: column; gap: 2px; }
+.wb-cond-gust { color: var(--wb-warn, #e8a317); }
+.wb-cond-dial-face { fill: #0b1e2e; stroke: #7799aa88; }
+.wb-cond-dial-n { fill: #9db9ca; font: 8px system-ui; text-anchor: middle; }
+.wb-cond-dial-tick { stroke: #9db9ca; stroke-width: 1; }
+.wb-cond-dial-needle { stroke: #a4edff; stroke-width: 2; stroke-linecap: round; transform-origin: 18px 18px; transition: transform 180ms ease-out; }
+.wb-cond-bar { display: inline-flex; gap: 2px; }
+.wb-cond-bar i { width: 10px; height: 4px; border-radius: 1px; background: #385164; }
+.wb-cond-bar i.on { background: #67d9ea; }
+.wb-cond-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.wb-cond-chip { padding: 1px 7px; border-radius: 999px; background: #223c4d88; border: 1px solid #7799aa55; white-space: nowrap; }
+.wb-cond-chip.warn { border-color: var(--wb-warn, #e8a317); color: var(--wb-warn, #e8a317); }
+.wb-cond-info { all: unset; cursor: pointer; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #7799aa88; text-align: center; line-height: 12px; font-size: 9px; font-style: italic; font-family: serif; }
+.wb-cond-note { margin: 0; color: #9db9ca; font-size: 10px; }
+@media (prefers-reduced-motion: reduce) { .wb-cond-dial-needle { transition: none; } }

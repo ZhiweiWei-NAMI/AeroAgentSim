@@ -51,7 +51,8 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; ground.receiveShadow = true; ground.name = 'display-ground'; scene.add(ground);
   const grid = new T.GridHelper(800, 80, '#9aa9af', '#9aa9af');
   grid.material.transparent = true; grid.material.opacity = 0.09; grid.name = 'display-grid'; scene.add(grid);
-  return { sun, grid, ground, setDusk: (value: boolean) => {
+  scene.userData.lighting = { scene, renderer, sun, fill, sky, daySky, horizon };
+  return { sun, grid, ground, sky, daySky, horizon, setDusk: (value: boolean) => {
     sunDirection.set(value ? -0.8 : 0.8, value ? 0.16 : 0.9, value ? -0.35 : 0.3).normalize();
     sky.visible=value; daySky.visible=!value; renderer.toneMappingExposure=value?1:1.12;
     sky.material.uniforms.sunPosition.value.copy(sunDirection);

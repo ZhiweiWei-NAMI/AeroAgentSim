@@ -18,6 +18,9 @@ export function pipeline(renderer: T.WebGLRenderer, scene: T.Scene, camera: T.Pe
   }
   const outline = new OutlineEffect(scene, camera, { edgeStrength: 2, visibleEdgeColor: 0x9ce9ff, hiddenEdgeColor: 0x436172, blur: quality !== 'low', xRay: false });
   const tone = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC });
+  // Weather/fire FX (viewport/atmosphere) glow by colour alone and must never
+  // enter this pass: their materials keep alpha/emissive below the threshold and
+  // their layers stay out of any outline selection.
   // A zero-intensity bloom still executes its luminance and mipmap passes. Low
   // quality keeps selection and tone mapping, without bloom/blur/SMAA buffers.
   composer.addPass(quality === 'low' ? new EffectPass(camera, outline, tone) : new EffectPass(camera, outline,

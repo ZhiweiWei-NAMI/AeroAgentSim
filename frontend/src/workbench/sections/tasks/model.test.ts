@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { engineOf, handoffPointIds, nsToS, orderStreamId, scalarNumber, siteIds, taskConfig, vehicleIds, windDirection, windSpeed } from './model';
-import { addOrdersParams, cooperationParams, gustProblem, unknownEndpoints } from './ops';
+import { engineOf, clockS, handoffPointIds, nsToS, orderStreamId, pointDeg, pointOfDeg, scalarNumber, siteIds, taskConfig, vehicleIds, weatherOf, windDirection, windFromDeg, windSpeed } from './model';
+import { addOrdersParams, cooperationParams, gustProblem, incidentProblem, rainPresetOf, unknownEndpoints, visibilityPresetOf, weatherParams } from './ops';
 
 const draft = {
   entities: [
@@ -72,5 +72,40 @@ describe('C11 operation parameters', () => {
     expect(gustProblem({ start_s: '300', end_s: '400', speed_mps: '9', duration_s: 360 }, false)?.end_s).toMatch(/360/);
     expect(gustProblem({ start_s: '1', end_s: '2', speed_mps: '-1', duration_s: 360 }, true)?.speed_mps).toContain('请输入');
     expect(gustProblem({ start_s: '0x10', end_s: '20', speed_mps: '9', duration_s: 360 }, false)?.start_s).toBeTruthy();
+  });
+
+  it('validates incident radius and end against start and the run horizon', () => {
+    expect(incidentProblem({ time_s: '90', end_s: '240', radius_m: '30', duration_s: 360 }, false)).toEqual({});
+    expect(incidentProblem({ time_s: '90', end_s: '60', radius_m: '30' }, false)?.end_s).toMatch(/after start/);
+    expect(incidentProblem({ time_s: '90', end_s: '400', radius_m: '30', duration_s: 360 }, false)?.end_s).toMatch(/360/);
+    expect(incidentProblem({ time_s: '90', radius_m: '900' }, false)?.radius_m).toMatch(/1 and 500/);
+    expect(incidentProblem({ time_s: '90', radius_m: '0' }, false)?.radius_m).toBeTruthy();
+    expect(incidentProblem({ time_s: '90', radius_m: '900' }, true)?.radius_m).toContain('影响半径');
+    expect(incidentProblem({ time_s: '90', end_s: '' }, false)).toEqual({});
+  });
+
+  it('maps weather presets to one explicit set_weather parameter set', () => {
+    expect(weatherParams({ rain: 'moderate', visibility: 'fog', light: 'day', rainCustom: '', visibilityCustom: '' })).toEqual({ precipitation_mm_h: 4, visibility_m: 500, light: 'day' });
+    expect(weatherParams({ rain: 'none', visibility: 'clear', light: 'dusk', rainCustom: '', visibilityCustom: '' })).toEqual({ precipitation_mm_h: 0, visibility_m: null, light: 'dusk' });
+    expect(weatherParams({ rain: 'custom', visibility: 'custom', light: 'day', rainCustom: '7.5', visibilityCustom: '800' })).toEqual({ precipitation_mm_h: 7.5, visibility_m: 800, light: 'day' });
+    expect(weatherParams({ rain: 'custom', visibility: 'fog', light: 'day', rainCustom: 'wet', visibilityCustom: '' })).toBeUndefined();
+    expect(rainPresetOf(0)).toBe('none'); expect(rainPresetOf(1)).toBe('light'); expect(rainPresetOf(4)).toBe('moderate');
+    expect(rainPresetOf(10)).toBe('heavy'); expect(rainPresetOf(6)).toBe('custom');
+    expect(visibilityPresetOf(null)).toBe('clear'); expect(visibilityPresetOf(50000)).toBe('clear');
+    expect(visibilityPresetOf(5000)).toBe('haze'); expect(visibilityPresetOf(2000)).toBe('mist');
+    expect(visibilityPresetOf(500)).toBe('fog'); expect(visibilityPresetOf(150)).toBe('dense'); expect(visibilityPresetOf(800)).toBe('custom');
+  });
+
+  it('derives meteorological wind direction, presets and clocks from the draft', () => {
+    expect(windFromDeg([-4.24, -4.24, 0])).toBe(315);
+    expect(windFromDeg([6, 0, 0])).toBe(270);
+    expect(windFromDeg([0, 0, 0])).toBeUndefined();
+    expect(pointDeg('NW')).toBe(315); expect(pointOfDeg(225)).toBe('SW'); expect(pointOfDeg(350)).toBe('N');
+    expect(weatherOf({ config: { profiles: { weather: { 'lowalt.precipitation': { mode: 'constant', value: 4 / 3600 } } } } }))
+      .toEqual({ precipitationMmH: 4, visibilityM: null, light: 'day' });
+    expect(weatherOf({ config: { profiles: { weather: { 'lowalt.visibility': { mode: 'constant', value: 50000 }, 'lowalt.light': 'dusk' } } } }))
+      .toEqual({ precipitationMmH: 0, visibilityM: null, light: 'dusk' });
+    expect(weatherOf({})).toEqual({ precipitationMmH: 0, visibilityM: null, light: 'day' });
+    expect(clockS(90)).toBe('01:30'); expect(clockS(240)).toBe('04:00'); expect(clockS(undefined)).toBe('—');
   });
 });

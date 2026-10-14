@@ -19,6 +19,7 @@ LABELS = {
     "set_vehicle": ("Edit drone", "修改无人机"), "add_orders": ("Add orders", "添加订单"), "set_orders": ("Edit orders", "修改订单"),
     "remove_orders": ("Remove orders", "移除订单"), "set_task": ("Edit task", "修改任务"),
     "set_wind": ("Background wind", "背景风"), "add_gust": ("Wind gust", "阵风"), "remove_gust": ("Remove wind gust", "移除阵风"),
+    "set_weather": ("Weather display", "天气显示"),
     "set_duration": ("Run duration", "运行时长"), "set_run_mode": ("Run mode", "运行模式"),
     "set_cooperation": ("Cooperation", "协作安排"), "remove_cooperation": ("Remove cooperation", "移除协作"),
     "add_incident": ("Schedule incident", "安排事件"), "set_incident": ("Edit incident", "修改事件"), "remove_incident": ("Remove incident", "移除事件"),
@@ -34,6 +35,7 @@ PARAMETERS = {
     "delivery_window_s": ("delivery window", "配送时间窗"), "priority": ("priority", "优先级"),
     "from": ("from", "从"), "to": ("to", "至"), "release": ("release", "发布时间"),
     "seconds": ("", ""), "speed_mps": ("speed", "风速"), "start_s": ("start", "开始"), "end_s": ("end", "结束"),
+    "from_deg": ("from", "来向"), "precipitation_mm_h": ("rain", "降雨"), "visibility_m": ("visibility", "能见度"), "light": ("light", "光照"),
     "time_s": ("time", "时间"), "at_s": ("time", "时间"), "release_s": ("release", "发布时间"),
     "extract": ("source", "地图源"), "bounds": ("bounds", "范围"), "alt": ("altitude", "海拔"),
     "level_height_m": ("floor height", "层高"), "destination": ("destination", "目的地"),
@@ -54,6 +56,7 @@ VALUES = {
     "meal_courier": ("meal courier", "送餐无人机"), "parcel_drone": ("parcel drone", "包裹无人机"), "medical_drone": ("medical drone", "医疗无人机"),
     "inspection_drone": ("inspection drone", "巡检无人机"), "patrol_drone": ("patrol drone", "巡逻无人机"), "air_taxi": ("air taxi", "空中出租车"), "sprayer": ("sprayer", "植保无人机"),
     "parcel": ("parcel", "包裹"), "food": ("food", "餐食"), "medical": ("medical", "医疗"), "person_fall": ("person falling", "行人跌倒"),
+    "fire": ("fire", "火情"), "day": ("day", "白天"), "dusk": ("dusk", "黄昏"),
     "inspection": ("inspection", "巡检"), "survey": ("survey", "测绘"), "spraying": ("spraying", "植保"), "passenger": ("passenger", "客运"), "patrol": ("patrol", "巡逻"), "incident_response": ("incident response", "事件响应"),
     "center": ("centre", "中心"), "centre": ("centre", "中心"), "middle": ("centre", "中心"),
     "prescribed": ("prescribed", "预设"), "agent": ("agent", "智能体"), "interactive": ("interactive", "交互"), "scripted": ("scripted", "预设"),
@@ -61,6 +64,7 @@ VALUES = {
     "battery_reserve_pct": ("battery reserve", "预留电量"), "safety_distance_m": ("safety distance", "安全间距"), "wind_limit_mps": ("wind limit", "风速上限"), "medical_preemption": ("medical preemption", "医疗抢占"),
 }
 UNITS = {"seconds": "s", "start_s": "s", "end_s": "s", "time_s": "s", "at_s": "s", "release_s": "s", "preparation_s": "s", "delivery_window_s": "s", "dwell_s": "s",
+         "radius_m": "m", "precipitation_mm_h": "mm/h", "visibility_m": "m",
          "speed_mps": "m/s", "battery_pct": "%", "min_battery_pct": "%", "power_w": "W", "payload_kg": "kg", "payload_capacity_kg": "kg",
          "alt": "m", "level_height_m": "m", "notice_radius_m": "m", "ask_radius_m": "m", "max_response_distance_m": "m", "altitude_m": "m"}
 

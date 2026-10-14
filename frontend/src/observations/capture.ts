@@ -10,6 +10,8 @@ import { Assets, disposeObject } from '../viewport/assets';
 import { EntityLayer } from '../viewport/entities';
 import { setupScene } from '../viewport/scene';
 import { pipeline } from '../viewport/pipeline';
+import { AtmosphereLayer } from '../viewport/atmosphere';
+import { conditionsAt } from '../viewport/conditions';
 import { loadSceneLayer } from '../scene/city-layer';
 import { isLiteCityScene } from '../viewport/procedural-traffic';
 import { parseModelCatalog } from '../viewport/model-catalog';
@@ -159,6 +161,7 @@ export class CaptureRenderer {
   private scene?: T.Scene;
   private assets?: Assets;
   private layer?: EntityLayer;
+  private atmosphere?: AtmosphereLayer;
   private lighting?: ReturnType<typeof setupScene>;
   private composer?: ReturnType<typeof pipeline>;
   private hdr?: T.WebGLRenderTarget;
@@ -196,6 +199,8 @@ export class CaptureRenderer {
     if (header.scene?.hdri) {this.hdr = await this.assets.hdri(header.scene.hdri,this.renderer);this.scene.environment = this.hdr.texture;}
     this.layer = new EntityLayer(header,this.assets,document.createElement('div'),() => {},error => this.failures.push(String(error)),status);
     this.layer.setCatalog(parseModelCatalog(header.modelCatalog)); this.scene.add(this.layer.root);
+    // Captures show the same smoke/rain/fog as the run viewport: the cut's journaled conditions.
+    this.atmosphere = new AtmosphereLayer(this.scene,this.renderer,'low');
     this.composer = pipeline(this.renderer,this.scene,this.camera,'low');
     // Shader compilation is sensor initialization, not a warm-up photograph.
     await this.renderer.compileAsync(this.scene,this.camera);
@@ -207,6 +212,20 @@ export class CaptureRenderer {
     else delete this.mount.dataset.buildings;
   }
 
+  private applyCityDisplay(object: T.Object3D) {
+    const wet = this.scene?.userData.weatherWet as number | undefined ?? 0;
+    object.traverse(node=>{if(node instanceof T.Mesh)for(const material of Array.isArray(node.material)?node.material:[node.material]){
+      const uniform=material.userData.displayDusk as {value:number}|undefined;if(uniform)uniform.value=this.dusk?1:0;
+      const standard=material as T.MeshStandardMaterial;
+      if(standard.roughness===undefined)continue;
+      const base=standard.userData.weatherBase as {color:number;roughness:number}|undefined;
+      if(wet<=0){if(base){standard.color.setHex(base.color);standard.roughness=base.roughness;delete standard.userData.weatherBase;}continue;}
+      const source=base??(standard.userData.weatherBase={color:standard.color.getHex(),roughness:standard.roughness});
+      standard.color.setHex(source.color).multiplyScalar(1-0.08*wet);
+      standard.roughness=source.roughness-0.1*wet;
+    }});
+  }
+  private dusk = false;
   async render(api: RunsApi, assetManifestUrl: string, input: CaptureInput): Promise<CaptureResult> {
     const request = object(input.request);
     if (typeof request.asset_digest !== 'string' || !request.asset_digest) throw Error('Capture request asset set ID is missing');
@@ -303,6 +322,11 @@ export class CaptureRenderer {
       } while (true);
       // Catalog selection can change after its needed tier becomes available.
       this.layer!.update(store,ns,this.camera,undefined,false); check();
+      // Conditions at the capture cut drive the same atmosphere layer as the run viewport.
+      const atmosphereConditions = conditionsAt(store.entities,ns,header);
+      this.dusk = atmosphereConditions.light==='dusk';
+      this.atmosphere!.update(atmosphereConditions,Number(BigInt(ns)-BigInt(header.start.ns))/1e9,this.camera);
+      this.applyCityDisplay(this.scene!);
       this.composer!.render(0); this.renderer!.getContext().finish(); check();
       let canvas = this.renderer!.domElement;
       if (oblique || input.label) {
@@ -340,7 +364,8 @@ export class CaptureRenderer {
   }
   dispose() {
     this.layer?.dispose();if(this.scene)disposeObject(this.scene);this.lighting?.dispose();this.hdr?.dispose();this.assets?.dispose();this.composer?.dispose();this.renderer?.dispose();
-    this.layer=undefined;this.scene=undefined;this.lighting=undefined;this.hdr=undefined;this.assets=undefined;this.composer=undefined;this.renderer=undefined;this.signature=undefined;this.failures=[];
+    this.atmosphere?.dispose();
+    this.layer=undefined;this.scene=undefined;this.lighting=undefined;this.hdr=undefined;this.assets=undefined;this.composer=undefined;this.renderer=undefined;this.atmosphere=undefined;this.signature=undefined;this.failures=[];
     for(const key of ['rendered','city','buildings','sourceCut','camera']) delete this.mount.dataset[key];
     this.mount.replaceChildren();
   }

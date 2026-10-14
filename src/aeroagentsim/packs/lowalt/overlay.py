@@ -52,11 +52,17 @@ def target(type_id: str) -> dict[str, str]:
 
 INCIDENT_FIELDS = tuple("lowalt.incident_" + name for name in (
     "kind", "position", "state", "time_ns", "noticed_by", "responder",
+    "radius_m", "end_ns", "active",
 ))
 HANDOFF_FIELDS = tuple("lowalt.handoff_" + name for name in (
     "state", "task", "from", "to", "point",
 ))
 COOP_OPTIONS = ("respond_now", "request_handoff", "finish_then_respond", "report_only")
+# AeroGraph kind mapping for lowalt:Incident. The scenario loader's
+# registry.types[] contract carries only id/parents/abstract, so type metadata
+# cannot ride the registry route; oo:Incident is declared as the parent type and
+# the per-kind AeroGraph identity is recorded here (spec §0.2/§6).
+AEROGRAPH_KINDS = {"fire": "oo:FireIncident", "person_fall": "oo:Incident"}
 
 
 def cooperation_overlay() -> dict[str, Any]:
@@ -74,6 +80,7 @@ def cooperation_overlay() -> dict[str, Any]:
             ("kind", STRING, "1"), ("position", VECTOR, "m"),
             ("state", {"type": "string", "enum": ["pending", "occurred", "noticed", "responding", "photographed", "reported", "decision_failed"]}, "1"),
             ("time_ns", INT, "ns"), ("noticed_by", STRING, "1"), ("responder", STRING, "1"),
+            ("radius_m", NUMBER, "m"), ("end_ns", {"type": "integer", "minimum": -1}, "ns"), ("active", BOOL, "1"),
         )),
         ("Handoff", (
             ("state", {"type": "string", "enum": ["idle", "requested", "accepted", "declined", "dropped", "transferred", "failed"]}, "1"),
@@ -96,6 +103,7 @@ def cooperation_overlay() -> dict[str, Any]:
         "incident.responding": {"incident": STRING, "vehicle": STRING, "position": VECTOR},
         "incident.photographed": {"incident": STRING, "vehicle": STRING, "position": VECTOR},
         "incident.reported": {"incident": STRING, "vehicle": STRING},
+        "incident.ended": {"incident": STRING, "kind": STRING, "position": VECTOR},
         "handoff.requested": {**base, "candidates": STRINGS},
         "handoff.offer": {**base, "helper": STRING, "accepted": BOOL, "reason": STRING, "mode": STRING},
         "handoff.accepted": {**handoff, "others": STRINGS},
@@ -460,6 +468,16 @@ def overlay() -> dict[str, Any]:
         add(name, "FoodOrder", INT, "ns")
     add("pad_power_w", "ChargingPad", NUMBER, "W")
     add("wind", "Environment", VECTOR, "m/s")
+    # Weather lives on the lowalt:Environment entity that already carries wind:
+    # AeroGraph's oo:PrecipitationField is a separate field-type entity and has
+    # no environmental visibility declaration, so a second weather entity system
+    # is avoided (spec §6).
+    add("precipitation", "Environment", NUMBER, "kg m-2 s-1")
+    fields[-1]["metadata"].update(aerograph="oo:digital_twin.precipitation.waterMassFlux", display_unit="mm/h (×3600)")
+    add("visibility", "Environment", NUMBER, "m")
+    fields[-1]["metadata"].update(aerograph="he.weather.visibility_m")
+    add("light", "Environment", STRING)
+    fields[-1]["metadata"].update(role="presentation")
     add("zone_id", "AirspaceZone", STRING)
     add(
         "zone_kind",

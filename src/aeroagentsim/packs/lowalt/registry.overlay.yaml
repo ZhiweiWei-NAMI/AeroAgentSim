@@ -308,6 +308,33 @@ fields:
     time_semantics: canonical computation; half-open validity
     frame: enu
     transform_revision: lowalt.district/v1
+# Weather lives on the lowalt:Environment entity that already carries wind:
+# AeroGraph's oo:PrecipitationField is a separate field-type entity and has no
+# environmental visibility declaration, so a second weather entity system is avoided.
+- id: lowalt.precipitation
+  type: lowalt:Environment
+  schema: *id002
+  metadata:
+    role: observation
+    unit: kg m-2 s-1
+    time_semantics: canonical computation; half-open validity
+    aerograph: oo:digital_twin.precipitation.waterMassFlux
+    display_unit: mm/h (×3600)
+- id: lowalt.visibility
+  type: lowalt:Environment
+  schema: *id002
+  metadata:
+    role: observation
+    unit: m
+    time_semantics: canonical computation; half-open validity
+    aerograph: he.weather.visibility_m
+- id: lowalt.light
+  type: lowalt:Environment
+  schema: *id003
+  metadata:
+    role: presentation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
 - id: lowalt.zone_id
   type: lowalt:AirspaceZone
   schema: *id003
