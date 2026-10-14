@@ -1,5 +1,20 @@
 import * as T from 'three';
 
+/** Keep numeric values separate from texture/vector uniform shapes. One shared
+ * instance supplies simulation time to every effect. Three only needs `value`. */
+export class ScalarUniform {
+  declare value: number;
+  // Establish a fractional numeric field before assigning the actual uniform value.
+  constructor(value = 0) { this.value = 0.1; this.value = value; }
+}
+export function scalarUniforms(material: T.ShaderMaterial): T.ShaderMaterial {
+  for (const key in material.uniforms) {
+    const value = material.uniforms[key].value;
+    if (typeof value === 'number') material.uniforms[key] = new ScalarUniform(value);
+  }
+  return material;
+}
+
 /** Deterministic 0..1 hash — every particle is a closed-form function of (seed, index), never accumulated. */
 export function fxHash(seed: number, index: number): number {
   let value = Math.imul(seed ^ index, 2654435761);

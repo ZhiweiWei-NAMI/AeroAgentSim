@@ -145,5 +145,5 @@ it('restores a closed incident editor independently of the staged new incident',
   expect(screen.getAllByText('Restored unsaved inputs')).toHaveLength(2);
   fireEvent.click(reopened.getByRole('button', { name: 'Discard' }));
   expect(reopened.getByLabelText('Starts at (s)')).toHaveValue('90');
-  expect(screen.getByLabelText('Incident ID')).toHaveValue('pending-new');
+  expect(within(screen.getByRole('group', { name: 'Add incident' })).getByLabelText('Incident ID')).toHaveValue('pending-new');
 });

@@ -1,5 +1,5 @@
 import * as T from 'three';
-import { fxHash } from './fx-shared';
+import { fxHash, ScalarUniform, scalarUniforms } from './fx-shared';
 import type { Quality } from '../pipeline';
 
 /**
@@ -23,6 +23,7 @@ export class Rain {
   private geometry: T.InstancedBufferGeometry;
   private material: T.ShaderMaterial;
   private quality: Quality;
+  private windEast = NaN; private windNorth = NaN;
   constructor(quality: Quality) {
     this.quality = quality;
     const quad = new T.PlaneGeometry(1, 1);
@@ -59,20 +60,27 @@ export class Rain {
         void main(){float alpha=uOpacity*dropFade;if(alpha<=0.004)discard;
         gl_FragColor=vec4(0.788,0.839,0.890,alpha);}`,
     });
+    scalarUniforms(this.material);
     this.mesh = new T.Mesh(this.geometry, this.material);
     this.mesh.frustumCulled = false; this.mesh.renderOrder = 3; this.mesh.visible = false;
   }
   setQuality(quality: Quality) { this.quality = quality; }
-  update(rateMmH: number, simSeconds: number, camera: T.Camera, wind?: { east: number; north: number }) {
+  update(rateMmH: number, simTime: number | ScalarUniform, camera: T.Camera, wind?: { east: number; north: number }) {
     const count = rateMmH > 0 ? rainCount(rateMmH, this.quality) : 0;
-    const speed = wind ? Math.hypot(wind.east, wind.north) : 0;
     this.geometry.instanceCount = count;
     this.mesh.visible = count > 0;
     if (!count) return;
-    this.material.uniforms.uTime.value = simSeconds;
+    if (typeof simTime === 'number') this.material.uniforms.uTime.value = simTime; else this.material.uniforms.uTime = simTime;
     // Rain slants with the same wind vector the smoke and streaks use (scaled for a 120 m column).
-    const lean = wind && speed > 0 ? Math.min(2, speed * 0.12) : 0;
-    this.material.uniforms.uSlant.value.set(wind ? wind.east / (speed || 1) * lean : 0, wind ? -wind.north / (speed || 1) * lean : 0);
+    const east = wind?.east ?? 0, north = wind?.north ?? 0;
+    if (east !== this.windEast || north !== this.windNorth) {
+      const speed = Math.hypot(east, north);
+      if (speed > 0) {
+        const lean = Math.min(2, speed * 0.12);
+        this.material.uniforms.uSlant.value.set(east / speed * lean, -north / speed * lean);
+      } else this.material.uniforms.uSlant.value.set(0, 0);
+      this.windEast = east; this.windNorth = north;
+    }
     this.material.uniforms.uCenter.value.copy(camera.position);
     this.material.uniforms.uCenter.value.y = 0;
     // Streaks read but stay subtle: 0.22 light, 0.30 moderate, 0.38 heavy.

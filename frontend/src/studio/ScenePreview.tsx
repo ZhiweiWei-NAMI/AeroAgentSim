@@ -135,7 +135,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
     document.addEventListener('visibilitychange', visibility);
     const cleanup = () => { if (cleaned) return; cleaned = true; abort.abort(); cancelAnimationFrame(frame); window.clearTimeout(driftTimer); document.removeEventListener('visibilitychange', visibility); observer?.disconnect(); layoutObserver?.disconnect(); overlayView?.dispose(); hologram?.dispose(); atmosphere?.dispose(); atmosphereLabels?.remove(); controls?.dispose(); disposePreview(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); ctx.current = undefined; };
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true });
       renderer.toneMappingExposure = 1;
       const fill = new THREE.HemisphereLight(0xffffff, 0x65705b, 2);
       const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(100, 200, 80); scene.add(fill, sun);

@@ -32,10 +32,12 @@ type Cut = { entities: Map<string, { key: { id: string; generation: number | str
 const scalar = (value: unknown): number | undefined => typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 const text = (value: unknown): string | undefined => typeof value === 'string' && value ? value : undefined;
 const field = (entity: { fields: Map<string, { value: unknown }> }, id: string) => entity.fields.get(id)?.value;
-const integer = (value: unknown): bigint | undefined => {
-  if (typeof value === 'number' && Number.isSafeInteger(value)) return BigInt(value);
+const INTEGER = /^-?\d+$/;
+const integer = (value: unknown): number | bigint | undefined => {
+  if (typeof value === 'number' && Number.isSafeInteger(value)) return value;
   const token = typeof value === 'string' ? value : value && typeof value === 'object' ? (value as { $integer?: unknown }).$integer : undefined;
-  return typeof token === 'string' && /^-?\d+$/.test(token) ? BigInt(token) : undefined;
+  if (typeof token !== 'string' || !INTEGER.test(token)) return undefined;
+  const number = Number(token); return Number.isSafeInteger(number) ? number : BigInt(token);
 };
 const windVectors = (value: unknown): Array<[number, number]> => {
   if (!Array.isArray(value)) return [];
@@ -58,36 +60,69 @@ export function windFromDeg(east: number, north: number): number {
   return ((Math.atan2(-east, -north) * 180) / Math.PI + 360) % 360;
 }
 
-function windAt(cut: Cut, ns?: string): Conditions['wind'] {
-  const values: Array<[number, number]> = [];
-  for (const entity of cut.entities.values()) {
-    values.push(...windVectors(field(entity, 'lowalt.wind') ?? field(entity, 'oo:digital_twin.wind.horizontalVelocity')));
-  }
-  if (!values.length) return null;
-  // All configured wind profiles receive the same op; average keeps one display vector honest.
-  const gustEndS = ns !== undefined ? gustEnd(cut.header, ns) : undefined;
-  const wind = windOf(values, gustEndS !== undefined);
-  if (wind && gustEndS !== undefined) wind.gustEndS = gustEndS;
-  return wind;
-}
-
 /** Gust is true only when the run header's authored gust intervals contain the cut — never guessed. */
 function gustEnd(header: RunHeader | undefined, ns: string): number | undefined {
   if (!header?.engines) return undefined;
-  const at = BigInt(ns);
+  const number = Number(ns), at = Number.isSafeInteger(number) ? number : BigInt(ns);
   let latest: number | undefined;
   for (const engine of header.engines) {
     if (engine.plugin !== 'environment') continue;
-    for (const [start, end] of engine.gusts ?? []) if (BigInt(start) <= at && at < BigInt(end)) latest = Math.max(latest ?? end, end);
+    if (engine.gusts) for (let i = 0; i < engine.gusts.length; i++) {
+      const interval = engine.gusts[i], start = interval[0], end = interval[1];
+      if (start <= at && at < end) latest = Math.max(latest ?? end, end);
+    }
   }
   return latest === undefined ? undefined : latest / 1e9;
 }
 
 export function conditionsAt(entities: Cut['entities'] | Cut, ns: string, header?: RunHeader): Conditions {
-  const cut: Cut = entities instanceof Map ? { entities, header } : { ...entities, header: header ?? entities.header };
+  const map = entities instanceof Map ? entities : entities.entities;
+  return deriveConditions(map, ns, header ?? (entities instanceof Map ? undefined : entities.header),
+    { wind: null, precipitationMmH: 0, visibilityM: null, light: 'day', incidents: [] },
+    { east: 0, north: 0, speed: 0, fromDeg: 270, gust: false });
+}
+
+/** This cache owns its mutable result. Only HUD notifications take snapshots. */
+export class ConditionsCache {
+  private entities?: Cut['entities'];
+  private header?: RunHeader;
+  private ns?: string;
+  private revision = -1;
+  private value: Conditions = { wind: null, precipitationMmH: 0, visibilityM: null, light: 'day', incidents: [] };
+  private wind: NonNullable<Conditions['wind']> = { east: 0, north: 0, speed: 0, fromDeg: 270, gust: false };
+  at(entities: Cut['entities'], ns: string, revision: number, header?: RunHeader): Conditions {
+    if (this.entities !== entities || this.header !== header || this.ns !== ns || this.revision !== revision) {
+      deriveConditions(entities, ns, header, this.value, this.wind);
+      this.entities = entities; this.header = header; this.ns = ns; this.revision = revision;
+    }
+    return this.value;
+  }
+}
+
+/** Indexed at journal ingestion, so playback only visits weather/incident entities. */
+export function isConditionField(id: string): boolean {
+  return id === 'lowalt.wind' || id === 'oo:digital_twin.wind.horizontalVelocity'
+    || id === 'lowalt.precipitation' || id === 'lowalt.visibility' || id === 'lowalt.light' || id.startsWith('lowalt.incident_');
+}
+
+function deriveConditions(entities: Cut['entities'], ns: string, header: RunHeader | undefined, result: Conditions,
+  wind: NonNullable<Conditions['wind']>): Conditions {
   let precipitationMmH = 0, visibilityM: number | null = null, light: 'day' | 'dusk' = 'day';
-  const incidents: Conditions['incidents'] = [];
-  for (const entity of cut.entities.values()) {
+  const incidents = result.incidents;
+  let incidentCount = 0, eastSum = 0, northSum = 0, vectorCount = 0;
+  for (const entity of entities.values()) {
+    const velocity = field(entity, 'lowalt.wind') ?? field(entity, 'oo:digital_twin.wind.horizontalVelocity');
+    if (Array.isArray(velocity)) {
+      if (Array.isArray(velocity[0])) {
+        for (let i = 0; i < velocity.length; i++) {
+          const row = velocity[i], east = scalar(row[0]), north = scalar(row[1]);
+          if (east !== undefined && north !== undefined) { eastSum += east; northSum += north; vectorCount++; }
+        }
+      } else {
+        const east = scalar(velocity[0]), north = scalar(velocity[1]);
+        if (east !== undefined && north !== undefined) { eastSum += east; northSum += north; vectorCount++; }
+      }
+    }
     const rain = scalar(field(entity, 'lowalt.precipitation'));
     if (rain !== undefined) precipitationMmH = rain * 3600;
     const visibility = scalar(field(entity, 'lowalt.visibility'));
@@ -95,8 +130,8 @@ export function conditionsAt(entities: Cut['entities'] | Cut, ns: string, header
     const value = text(field(entity, 'lowalt.light'));
     if (value === 'dusk' || value === 'day') light = value;
   }
-  const at = BigInt(ns);
-  for (const entity of cut.entities.values()) {
+  const number = Number(ns), at = Number.isSafeInteger(number) ? number : BigInt(ns);
+  for (const entity of entities.values()) {
     if (entity.typeId !== 'lowalt:Incident') continue;
     const position = field(entity, 'lowalt.incident_position');
     if (!Array.isArray(position) || position.length !== 3 || !position.every(Number.isFinite)) continue;
@@ -115,16 +150,32 @@ export function conditionsAt(entities: Cut['entities'] | Cut, ns: string, header
     // Pending stays at the initial cut, before the occurrence wake commits (at < start time).
     const phase: Conditions['incidents'][number]['phase'] = at < startNs ? 'pending' : active ? 'active' : 'ended';
     const sinceNs = active ? startNs : end ?? startNs;
-    const sinceS = Math.max(0, Number(at - sinceNs) / 1e9);
+    const sinceS = Math.max(0, (typeof at === 'number' && typeof sinceNs === 'number' ? at - sinceNs : Number(BigInt(at) - BigInt(sinceNs))) / 1e9);
     // Activation age keeps advancing after ending; activeS - sinceS is the emission window.
-    const activeS = Math.max(0, Number(at - startNs) / 1e9);
-    const authored = header?.entities?.find(row => row.id === entity.key.id && row.type === entity.typeId);
+    const activeS = Math.max(0, (typeof at === 'number' && typeof startNs === 'number' ? at - startNs : Number(BigInt(at) - BigInt(startNs))) / 1e9);
+    let authored: NonNullable<RunHeader['entities']>[number] | undefined;
+    if (header?.entities) for (let i = 0; i < header.entities.length; i++) {
+      const row = header.entities[i];
+      if (row.id === entity.key.id && row.type === entity.typeId) { authored = row; break; }
+    }
     const label = authored?.label ?? entity.key.id;
     const labelZh = authored?.label_zh;
     const response = text(field(entity, 'lowalt.incident_responder')) || undefined;
-    incidents.push({ id: entity.key.id, kind, label, labelZh, position: position as [number, number, number], radiusM: scalar(field(entity, 'lowalt.incident_radius_m')) ?? (kind === 'fire' ? 30 : 6), phase, sinceS, activeS, response, startS: Number(startNs) / 1e9 });
+    let incident = incidents[incidentCount];
+    if (!incident) incidents[incidentCount] = incident = { id: '', kind, label: '', position: [0,0,0], radiusM: 0, phase, sinceS: 0, activeS: 0 };
+    incident.id = entity.key.id; incident.kind = kind; incident.label = label; incident.labelZh = labelZh;
+    incident.position = position as [number, number, number]; incident.radiusM = scalar(field(entity, 'lowalt.incident_radius_m')) ?? (kind === 'fire' ? 30 : 6);
+    incident.phase = phase; incident.sinceS = sinceS; incident.activeS = activeS; incident.response = response; incident.startS = Number(startNs) / 1e9;
+    incidentCount++;
   }
-  return { wind: windAt(cut, ns), precipitationMmH, visibilityM, light, incidents };
+  incidents.length = incidentCount;
+  result.precipitationMmH = precipitationMmH; result.visibilityM = visibilityM; result.light = light;
+  if (vectorCount) {
+    wind.east = eastSum / vectorCount; wind.north = northSum / vectorCount;
+    wind.speed = Math.hypot(wind.east, wind.north); wind.fromDeg = windFromDeg(wind.east, wind.north);
+    wind.gustEndS = gustEnd(header, ns); wind.gust = wind.gustEndS !== undefined; result.wind = wind;
+  } else result.wind = null;
+  return result;
 }
 
 const sToNs = (s: number) => Math.round(s * 1e9);

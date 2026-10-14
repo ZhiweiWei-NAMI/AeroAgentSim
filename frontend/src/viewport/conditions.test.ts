@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { RunHeader } from '../contracts/viewer-feed';
-import { compassPoint, conditionsAt, conditionsFromDraft, formatMmH, formatVisibility, incidentLabel, previewMoment, windFromDeg } from './conditions';
+import { ConditionsCache, compassPoint, conditionsAt, conditionsFromDraft, formatMmH, formatVisibility, incidentLabel, previewMoment, windFromDeg } from './conditions';
 
 const header = (): RunHeader => ({
   contract: 'aeroagentsim.viewer-feed/v1', runId: 'r', registryDigest: 'd',
@@ -166,4 +166,30 @@ describe('wind direction helpers', () => {
     expect(compassPoint(292)).toBe('W');
     expect(compassPoint(315)).toBe('NW');
   });
+});
+
+
+it('caches by exact cut and revision, reuses storage, and invalidates same-time corrections', () => {
+  const h = header(), cache = new ConditionsCache();
+  const weather = entity('weather', 'lowalt:Environment', { 'lowalt.wind': [6, 0, 0], 'lowalt.precipitation': 4 / 3600 });
+  const fire = entity('fire-a', 'lowalt:Incident', { 'lowalt.incident_position': [0,0,0], 'lowalt.incident_kind': 'fire',
+    'lowalt.incident_time_ns': '0', 'lowalt.incident_active': true });
+  const rows = cut([weather, fire]), c = cache.at(rows, '30000000000', 1, h), wind = c.wind, incident = c.incidents[0];
+  const scan = vi.spyOn(rows, 'values');
+  for (let i = 0; i < 300; i++) expect(cache.at(rows, '30000000000', 1, h)).toBe(c);
+  expect(scan).not.toHaveBeenCalled();
+  cache.at(rows, '31000000000', 2, h);
+  expect(c.wind).toBe(wind); expect(c.incidents[0]).toBe(incident); expect(incident.sinceS).toBe(31);
+  weather.fields.set('lowalt.wind', { value: [0, 9, 0] });
+  cache.at(rows, '31000000000', 3, h); expect(c.wind?.north).toBe(9);
+  expect(c).toEqual(conditionsAt(rows, '31000000000', h));
+  cache.at(rows, '30000000000', 4, h); expect(incident.sinceS).toBe(30);
+});
+
+it('retains nanosecond boundary precision beyond safe integer time', () => {
+  const start = 9007199254740993n, rows = cut([entity('fire-a', 'lowalt:Incident', {
+    'lowalt.incident_position': [0,0,0], 'lowalt.incident_time_ns': start.toString(), 'lowalt.incident_active': true,
+  })]);
+  expect(conditionsAt(rows, (start - 1n).toString()).incidents[0].phase).toBe('pending');
+  expect(conditionsAt(rows, (start + 1n).toString()).incidents[0].sinceS).toBe(1e-9);
 });

@@ -89,3 +89,18 @@ it('moves UAV labels away from a fixed incident pin (the pin wins label collisio
     expect(right < 400 - 34 || left > 400 + 34).toBe(true);
   } finally { layer.dispose(); width.mockRestore(); height.mockRestore(); }
 });
+
+it('refreshes panel obstacles only when the viewport layout changes', () => {
+  const header: RunHeader = { contract: 'aeroagentsim.viewer-feed/v1', runId: 'layout', registryDigest: 'd', start: { ns: '0', microstep: 0 }, fields: [], types: [], presentation: [] };
+  const wb = document.createElement('div'); wb.className = 'wb';
+  const overlay = document.createElement('div'), panel = document.createElement('aside'); panel.className = 'wb-panel'; wb.append(overlay, panel);
+  Object.defineProperties(overlay, { clientWidth: { value: 800 }, clientHeight: { value: 600 } });
+  const measure = vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 180, 600));
+  const layer = new EntityLayer(header, {} as Assets, overlay, () => {}, () => {}), store = new FeedStore(header), camera = new T.PerspectiveCamera(), origin = new T.Vector3();
+  try {
+    for (let i = 0; i < 300; i++) layer.update(store, '0', camera, undefined, false, origin, undefined, undefined, undefined, undefined, 'layout-a');
+    expect(measure).toHaveBeenCalledTimes(1);
+    layer.update(store, '0', camera, undefined, false, origin, undefined, undefined, undefined, undefined, 'layout-b');
+    expect(measure).toHaveBeenCalledTimes(2);
+  } finally { layer.dispose(); }
+});

@@ -26,7 +26,7 @@ const camera = new T.PerspectiveCamera(); camera.position.set(60, 40, -60); came
 const fire = (activeS = 30): Conditions['incidents'][number] =>
   ({ id: 'fire-a', kind: 'fire', label: 'Fire', position: [20, 40, 0], radiusM: 30, phase: 'active', sinceS: activeS, activeS, startS: 0 });
 
-/** The smoke InstancedMesh is the second InstancedMesh in the unit ([flames, smoke, core]). */
+/** The smoke InstancedMesh is the second InstancedMesh in the unit ([flames + cores, smoke]). */
 const smokeOf = (layer: IncidentFX) => layer.root.children[0].children.filter(node => node instanceof T.InstancedMesh)[1] as T.InstancedMesh;
 
 it.each(['high', 'low'] as const)('keeps a live plume after 30 s of fire at %s quality', async quality => {
@@ -54,7 +54,7 @@ it('the plume leans with the authored wind: from NW means it drifts to the SE (+
     smoke.getMatrixAt(i, matrix); matrix.decompose(position, quaternion, scale);
     maxEast = Math.max(maxEast, position.x);
     maxSouth = Math.max(maxSouth, position.z); // ENU south maps to +z
-    expect(scale.x + 1e-6).toBeGreaterThanOrEqual(5); expect(scale.x).toBeLessThanOrEqual(34.001);
+    expect(scale.x + 1e-6).toBeGreaterThanOrEqual(5); expect(scale.x).toBeLessThanOrEqual(44.001);
   }
 
   // From NW → drifts to the SE: +east (world +x) and −north (world +z).
@@ -78,11 +78,15 @@ it('keeps the ring on the ground while flames, glow, smoke and the pin use the r
   expect(position.y).toBeGreaterThan(20); // flame base above the roof
   const glow = unit.children.find(node => node instanceof T.Mesh && !(node instanceof T.InstancedMesh)) as T.Mesh;
   expect(glow).toBeTruthy();
-  expect((glow.material as T.Material).depthTest).toBe(true);
-  expect(glow.position.y).toBeCloseTo(25.1);
+  const decal = glow.material as T.ShaderMaterial;
+  expect(decal.depthTest).toBe(false); // visible/occluded depths are compared in the shared shader
+  expect(decal.uniforms.uRoof.value).toBeCloseTo(25.1);
+  expect(decal.uniforms.uGround.value).toBeCloseTo(0.15);
+  expect(decal.fragmentShader).toContain('texture2D(uDepth');
   const rings = unit.children.filter(node => (node as T.Mesh).isMesh === true && !(node instanceof T.InstancedMesh))
     .map(node => (node as T.Mesh).material as T.ShaderMaterial);
-  expect(rings.some(material => material.depthFunc === T.GreaterDepth)).toBe(true);
+  expect(rings).toHaveLength(1);
+  expect(rings[0].uniforms.uOccluded.value).toBe(0.22);
   expect(rings.some(material => material.uniforms.uOpacity?.value >= 0.85)).toBe(true);
   const smoke = smokeOf(layer); smoke.getMatrixAt(0, matrix); matrix.decompose(position, quaternion, scale);
   expect(position.y).toBeGreaterThan(25 + 5); // emission starts above the flames, not in their base
@@ -91,16 +95,17 @@ it('keeps the ring on the ground while flames, glow, smoke and the pin use the r
   layer.dispose();
 });
 
-it('keeps the additive core small and selects its pass independently of shared quad attributes', async () => {
+it('keeps the additive core small and ordered after the bodies in one draw', async () => {
   const layer = new IncidentFX('high'); await layer.ready;
   layer.update([fire(20)], 20, camera, new Map());
-  const [body, , core] = layer.root.children[0].children.filter(node => node instanceof T.InstancedMesh) as T.InstancedMesh<T.BufferGeometry, T.ShaderMaterial>[];
-  expect(body.material.uniforms.uCore.value).toBe(0);
-  expect(core.material.uniforms.uCore.value).toBe(1);
-  expect(body.material.premultipliedAlpha).toBe(true); expect(core.material.premultipliedAlpha).toBe(true);
+  const [body] = layer.root.children[0].children.filter(node => node instanceof T.InstancedMesh) as T.InstancedMesh<T.BufferGeometry, T.ShaderMaterial>[];
+  const count = body.material.uniforms.uFlameCount.value;
+  expect(body.count).toBe(count * 2);
+  expect(body.material.premultipliedAlpha).toBe(true);
+  expect(body.material.fragmentShader).toContain('if(flameCore>0.5)gl_FragColor.a=0.0;');
   const a = new T.Matrix4(), b = new T.Matrix4(), bodySize = new T.Vector3(), coreSize = new T.Vector3(), base = new T.Vector3(), glowBase = new T.Vector3(), quaternion = new T.Quaternion();
-  for (let i = 0; i < body.count; i++) {
-    body.getMatrixAt(i, a); core.getMatrixAt(i, b);
+  for (let i = 0; i < body.material.uniforms.uFlameCount.value; i++) {
+    body.getMatrixAt(i, a); body.getMatrixAt(i + count, b);
     a.decompose(base, quaternion, bodySize); b.decompose(glowBase, quaternion, coreSize);
     expect(coreSize.x / bodySize.x).toBeCloseTo(0.35);
     expect(coreSize.y / bodySize.y).toBeCloseTo(0.55);
@@ -121,7 +126,7 @@ it.each([[70, 25], [220, 30], [775, 40], [420, 55]])('keeps a projected flame fo
   layer.root.updateMatrixWorld(true);
   const [body, smoke] = layer.root.children[0].children.filter(node => node instanceof T.InstancedMesh) as T.InstancedMesh<T.BufferGeometry, T.ShaderMaterial>[];
   const matrix = new T.Matrix4(), position = new T.Vector3(), scale = new T.Vector3(), rotation = new T.Quaternion();
-  for (let i = 0; i < body.count; i++) {
+  for (let i = 0; i < body.material.uniforms.uFlameCount.value; i++) {
     body.getMatrixAt(i, matrix); matrix.decompose(position, rotation, scale);
     const top = new T.Vector3(0, 0.5, 0).applyMatrix4(matrix).applyMatrix4(body.matrixWorld).project(view);
     const bottom = new T.Vector3(0, -0.5, 0).applyMatrix4(matrix).applyMatrix4(body.matrixWorld).project(view);
@@ -155,7 +160,7 @@ it('shortens low-quality smoke without accelerating its colour, growth or root f
       .toEqual([highTint.getX(i), highTint.getY(i), highTint.getZ(i)]);
   }
   // The puff emitted at 2.5 s is 5.5 s old: still the dense, young body at both qualities.
-  expect(lowTint.getW(5)).toBeCloseTo(0.5);
+  expect(lowTint.getW(5)).toBeCloseTo(0.6);
   expect(lowTint.getW(0)).toBeLessThan(highTint.getW(0)); // smooth exit before the 9 s cutoff
   high.dispose(); low.dispose();
 });

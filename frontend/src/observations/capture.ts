@@ -217,11 +217,17 @@ export class CaptureRenderer {
     else delete this.mount.dataset.buildings;
   }
 
+  private lastCity?: T.Object3D;
+  private lastWet = NaN;
+  private lastDusk?: boolean;
   private applyCityDisplay(object: T.Object3D) {
     const wet = this.scene?.userData.weatherWet as number | undefined ?? 0;
+    if (this.lastCity === object && this.lastWet === wet && this.lastDusk === this.dusk) return;
+    this.lastCity = object; this.lastWet = wet; this.lastDusk = this.dusk;
     applyWeatherMaterials(object, wet, this.dusk);
   }
   private dusk = false;
+  private atmosphereState = { dusk: false, rain: NaN, visibilityM: null as number | null };
   async render(api: RunsApi, assetManifestUrl: string, input: CaptureInput): Promise<CaptureResult> {
     const request = object(input.request);
     if (typeof request.asset_digest !== 'string' || !request.asset_digest) throw Error('Capture request asset set ID is missing');
@@ -321,7 +327,11 @@ export class CaptureRenderer {
       this.layer!.update(store,ns,this.camera,undefined,false,undefined,undefined,undefined,atmosphereConditions.incidents); check();
       // Conditions at the capture cut drive the same atmosphere layer as the run viewport.
       this.dusk = atmosphereConditions.light==='dusk';
-      this.lighting!.setAtmosphere({ dusk: this.dusk, rain: Math.min(atmosphereConditions.precipitationMmH / 8, 1), visibilityM: atmosphereConditions.visibilityM });
+      const state = this.atmosphereState, rain = Math.min(atmosphereConditions.precipitationMmH / 8, 1);
+      if (state.dusk !== this.dusk || state.rain !== rain || state.visibilityM !== atmosphereConditions.visibilityM) {
+        state.dusk = this.dusk; state.rain = rain; state.visibilityM = atmosphereConditions.visibilityM;
+        this.lighting!.setAtmosphere(state);
+      }
       this.composer!.setDusk(this.dusk);
       this.atmosphere!.update(atmosphereConditions,Number(BigInt(ns))/1e9,this.camera);
       this.composer!.excludeBloom(this.atmosphere!.root);
@@ -344,6 +354,7 @@ export class CaptureRenderer {
     finally {clearTimeout(timer);abort.abort();}
   }
   dispose() {
+    this.atmosphereState.rain = NaN; this.lastCity = undefined;
     this.layer?.dispose();if(this.scene)disposeObject(this.scene);this.lighting?.dispose();this.hdr?.dispose();this.assets?.dispose();this.composer?.dispose();this.renderer?.dispose();
     this.atmosphere?.dispose();
     this.layer=undefined;this.scene=undefined;this.lighting=undefined;this.hdr=undefined;this.assets=undefined;this.composer=undefined;this.renderer=undefined;this.atmosphere=undefined;this.signature=undefined;this.failures=[];

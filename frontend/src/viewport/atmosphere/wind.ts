@@ -1,5 +1,5 @@
 import * as T from 'three';
-import { fxHash } from './fx-shared';
+import { fxHash, ScalarUniform, scalarUniforms } from './fx-shared';
 import type { Quality } from '../pipeline';
 
 /**
@@ -56,17 +56,18 @@ export class WindStreaks {
         void main(){float alpha=0.16*streakFade;if(alpha<=0.004)discard;
         gl_FragColor=vec4(0.910,0.953,1.0,alpha);}`,
     });
+    scalarUniforms(this.material);
     this.mesh = new T.Mesh(this.geometry, this.material);
     this.mesh.frustumCulled = false; this.mesh.renderOrder = 2; this.mesh.visible = false;
   }
   setQuality(quality: Quality) { this.quality = quality; }
-  update(wind: { east: number; north: number; speed: number } | null, simSeconds: number, camera: T.Camera) {
+  update(wind: { east: number; north: number; speed: number } | null, simTime: number | ScalarUniform, camera: T.Camera) {
     const speed = wind?.speed ?? 0;
     const count = streakCount(speed, this.quality);
     this.geometry.instanceCount = count;
     this.mesh.visible = count > 0;
     if (!count || !wind) return;
-    this.material.uniforms.uTime.value = simSeconds;
+    if (typeof simTime === 'number') this.material.uniforms.uTime.value = simTime; else this.material.uniforms.uTime = simTime;
     this.material.uniforms.uWind.value.set(wind.east, -wind.north);
     this.material.uniforms.uSpeed.value = speed;
     this.material.uniforms.uCenter.value.copy(camera.position);

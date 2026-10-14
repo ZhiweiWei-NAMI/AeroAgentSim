@@ -3,6 +3,7 @@ import type { Conditions } from '../conditions';
 import { IncidentFX, type AtmosphereOptions } from './incident-fx';
 import { Rain } from './rain';
 import { WindStreaks } from './wind';
+import { ScalarUniform } from './fx-shared';
 import { observerFogOffset, visibilityFog } from '../scene';
 import type { Quality } from '../pipeline';
 export type { AtmosphereOptions } from './incident-fx';
@@ -25,6 +26,10 @@ export class AtmosphereLayer {
   private incidents: IncidentFX;
   private rain: Rain;
   private wind?: WindStreaks;
+  private time = new ScalarUniform();
+  private pinHeight = 0;
+  private windEast = NaN;
+  private windNorth = NaN;
   private emptyRing = new Map<string, number>();
   private preview?: {
     background: T.Scene['background']; fog: T.Scene['fog']; horizon: T.Color; exposure: number;
@@ -33,6 +38,7 @@ export class AtmosphereLayer {
   private lastPreview?: { dusk: boolean; rain: number; visibilityM: number | null; observerOffsetM: number };
   private previewFog = new T.Fog(0xffffff);
   constructor(private scene: T.Scene, private renderer: T.WebGLRenderer, quality: Quality, options: AtmosphereOptions = { annotations: true }) {
+    this.root.userData.structureRevision = 0;
     this.incidents = new IncidentFX(quality, { ...options, onReady: () => options.onReady?.() });
     this.ready = this.incidents.ready;
     this.rain = new Rain(quality);
@@ -52,24 +58,30 @@ export class AtmosphereLayer {
     this.rain.setQuality(quality);
     this.wind?.setQuality(quality);
   }
+  invalidateSurface() { this.incidents.invalidateSurface(); }
   setPinHeightCss(heightCssPx: number) { this.incidents.setPinScale(heightCssPx); }
   update(conditions: Conditions, simSeconds: number, camera: T.Camera,
     roofHeight?: (east: number, north: number) => number, ringStart?: Map<string, number>, origin?: T.Vector3, orbitTarget?: T.Vector3) {
     if (this.preview) this.applyPreview(conditions, orbitTarget ? observerFogOffset(camera, orbitTarget) : 0);
-    this.incidents.setWind(conditions.wind?.east ?? 0, conditions.wind?.north ?? 0);
+    this.time.value = simSeconds;
+    const east = conditions.wind?.east ?? 0, north = conditions.wind?.north ?? 0;
+    if (east !== this.windEast || north !== this.windNorth) {
+      this.incidents.setWind(east, north); this.windEast = east; this.windNorth = north;
+    }
     // The pin is screen-space: size it from the container's CSS height (the drawing buffer
     // would double-count devicePixelRatio).
     const dom = this.renderer.domElement;
-    this.incidents.setPinScale(dom.clientHeight || Math.round(dom.height / this.renderer.getPixelRatio()));
+    const height = dom.clientHeight || Math.round(dom.height / this.renderer.getPixelRatio());
+    if (height !== this.pinHeight) { this.pinHeight = height; this.incidents.setPinScale(height); }
     const ring = ringStart ?? this.emptyRing;
-    this.incidents.update(conditions.incidents, simSeconds, camera, ring, origin, roofHeight);
+    this.incidents.update(conditions.incidents, this.time, camera, ring, origin, roofHeight);
+    this.root.userData.structureRevision = this.incidents.structureRevision;
     // Smoke lighting art direction follows the same dusk/rain inputs the display lighting rig
     // already applied (the Scene/Day/Dusk override included) — journaled light only via it —
     // and the flame ramp this frame's fires wrote, so the underlight dies with the flames.
-    this.incidents.setSmokeLight(this.scene.userData.dusk === true,
-      this.scene.userData.weatherWet as number | undefined ?? Math.min(conditions.precipitationMmH / 8, 1));
-    this.rain.update(conditions.precipitationMmH, simSeconds, camera, conditions.wind ?? undefined);
-    this.wind?.update(conditions.wind, simSeconds, camera);
+    this.incidents.setSmokeLight(this.scene, conditions);
+    this.rain.update(conditions.precipitationMmH, this.time, camera, conditions.wind ?? undefined);
+    this.wind?.update(conditions.wind, this.time, camera);
   }
   private applyPreview(conditions: Conditions, observerOffsetM: number) {
     const dusk = conditions.light === 'dusk', rain = Math.min(conditions.precipitationMmH / 8, 1), visibilityM = conditions.visibilityM;

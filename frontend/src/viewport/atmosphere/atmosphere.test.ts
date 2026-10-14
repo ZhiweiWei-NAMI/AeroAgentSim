@@ -167,19 +167,19 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     const smoke = meshes(layer.root.children[0].children[0])[1];
     expect(smoke.material.uniforms).not.toHaveProperty('uAmbient');
     const dayLight = smoke.material.uniforms.uSmokeLight.value.clone() as T.Color;
-    expect(dayLight.getHex()).toBe(new T.Color('#8f8a84').lerp(new T.Color('#7d8288'), 0.15).getHex());
-    expect(smoke.material.uniforms.uScatter.value).toBe(0.25);
+    expect(dayLight.getHex()).toBe(new T.Color('#3a3733').lerp(new T.Color('#34373b'), 0.15).getHex());
+    expect(smoke.material.uniforms.uScatter.value).toBe(0.15);
     expect(smoke.material.uniforms.uGlowStrength.value).toBeGreaterThan(0); // flames are burning
     rig.setAtmosphere({ dusk: true, rain: 0.5, visibilityM: 500 });
     layer.update(dusk, 12.5, camera);
     const light = smoke.material.uniforms.uSmokeLight.value as T.Color;
-    expect(light.r).toBeLessThan(dayLight.r); expect(light.g).toBeLessThan(dayLight.g); expect(light.b).toBeLessThan(dayLight.b);
-    expect(smoke.material.uniforms.uScatter.value).toBe(0.55);
+    expect(light.getHex()).toBe(new T.Color('#2a2830').lerp(new T.Color('#34373b'), 0.15).getHex());
+    expect(smoke.material.uniforms.uScatter.value).toBe(0.25);
     // The display override, rather than the unchanged journaled Conditions.light, drives shading.
     rig.setAtmosphere({ dusk: false, rain: 0.5, visibilityM: 500 });
     layer.update(dusk, 12.5, camera);
     expect(smoke.material.uniforms.uSmokeLight.value.toArray()).toEqual(dayLight.toArray());
-    expect(smoke.material.uniforms.uScatter.value).toBe(0.25);
+    expect(smoke.material.uniforms.uScatter.value).toBe(0.15);
     layer.dispose(); rig.dispose();
   });
   it('fades the fire underlight with the flame ramp and keeps a constant glow colour', async () => {
@@ -231,11 +231,34 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     expect(flames.material.uniforms.uRamp.value).toBe(1);
     expect(endedFlames.material.uniforms.uRamp.value).toBe(0.5);
     const matrix = new T.Matrix4(), position = new T.Vector3(), quaternion = new T.Quaternion(), scale = new T.Vector3();
-    for (let i = 0; i < flames.count; i++) {
+    for (let i = 0; i < flames.material.uniforms.uFlameCount.value; i++) {
       flames.getMatrixAt(i, matrix); matrix.decompose(position, quaternion, scale);
       expect(Math.hypot(position.x, position.z)).toBeLessThanOrEqual(6);
       expect(scale.y).toBeGreaterThanOrEqual(5); expect(scale.y).toBeLessThanOrEqual(12.000001);
       expect(scale.x / scale.y).toBeCloseTo(0.8);
+    }
+    layer.dispose();
+  });
+  it('blends upright flames toward steep cameras and keeps their narrow cores in the same draw', async () => {
+    const layer = new IncidentFX('high'); await layer.ready;
+    const view = new T.PerspectiveCamera(), matrix = new T.Matrix4(), position = new T.Vector3(),
+      rotation = new T.Quaternion(), bodyScale = new T.Vector3(), coreScale = new T.Vector3(), up = new T.Vector3();
+    for (const [pitch, tilt] of [[45, 0], [62.5, 31.25], [80, 80]]) {
+      const radians = pitch * Math.PI / 180;
+      view.position.set(0, 70 * Math.sin(radians), 70 * Math.cos(radians)); view.lookAt(0, 0, 0);
+      layer.update(conditions.incidents, 12.5, view, new Map());
+      const flames = meshes(layer.root.children[0])[0], count = flames.material.uniforms.uFlameCount.value;
+      expect(flames.count).toBe(count * 2);
+      for (let i = 0; i < count; i++) {
+        flames.getMatrixAt(i, matrix); matrix.decompose(position, rotation, bodyScale);
+        up.set(0, 1, 0).applyQuaternion(rotation);
+        expect(Math.acos(T.MathUtils.clamp(up.y, -1, 1)) * 180 / Math.PI).toBeCloseTo(tilt, 3);
+        const bodyRotation = rotation.clone();
+        flames.getMatrixAt(i + count, matrix); matrix.decompose(position, rotation, coreScale);
+        expect(rotation.angleTo(bodyRotation)).toBeLessThan(0.001);
+        expect(coreScale.x / bodyScale.x).toBeCloseTo(0.35);
+        expect(coreScale.y / bodyScale.y).toBeCloseTo(0.55);
+      }
     }
     layer.dispose();
   });

@@ -5,7 +5,7 @@ import { resolveBinding, entityId } from './bindings';
 import { modelGlyph } from './model-glyph';
 import { proceduralModel } from './procedural-traffic';
 import { Assets } from './assets';
-import { placeLabel, type LabelRect } from './label-placement';
+import { LabelPlacer, pooledRect } from './label-placement';
 import type { StaticOcclusion } from './occlusion';
 import { worldOrientation, worldPosition } from './coordinates';
 import type { EntityState } from './feed-store';
@@ -75,6 +75,11 @@ export class EntityLayer {
   private labelProjected = new T.Vector3();
   private labelEndpoint = new T.Vector3();
   private labelDirection = new T.Vector3();
+  private labelPlacer = new LabelPlacer();
+  private labelLayout?: string;
+  private labelWidth = -1;
+  private labelHeight = -1;
+  private pinAnchors: Array<{ pin: T.Vector3; base: T.Vector3 }> = [];
   private lastTrail = '';
   /** Display-model catalog of the installed pack; empty keeps the procedural/single-asset display. */
   private catalog: ModelCatalog = {};
@@ -270,7 +275,7 @@ export class EntityLayer {
     if(changed){mesh.setMatrixAt(index,matrix);mesh.userData.viewportChanged=true;}
   }
   update(store: FeedStore, ns: string, camera: T.Camera, selected?: EntityKey, showTrails = true,
-    renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion, aimCamera?: () => void, incidents?: Conditions['incidents'], incidentRoofHeight?: (east: number, north: number) => number) {
+    renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion, aimCamera?: () => void, incidents?: Conditions['incidents'], incidentRoofHeight?: (east: number, north: number) => number, layoutKey?: string) {
     this.transformsChanged=false;this.catalogUsage.clear();
     if(this.semantic){
       const stamp=`${store.revision}/${ns}`;
@@ -285,12 +290,13 @@ export class EntityLayer {
     const width=this.overlay.clientWidth,height=this.overlay.clientHeight;
     const visibleLabels=new Set<string>();
     // Pin anchors (world space, at pin height) reserved as fixed obstacles for this frame.
-    const pinAnchors: Array<{ pin: T.Vector3; base: T.Vector3 }> = [];
+    const pinAnchors = this.pinAnchors; let pinCount = 0;
     for (const row of incidents ?? []) {
       if (row.phase === 'pending') continue;
-      const spot = this.positions.get(row.id) ?? worldPosition(row.position, 'enu', this.header.origin).sub(renderOrigin);
-      const base = new T.Vector3(spot.x, Math.max(spot.y, incidentRoofHeight?.(row.position[0], row.position[1]) ?? occlusion?.liftCamera(spot, 0).y ?? spot.y), spot.z);
-      pinAnchors.push({ pin: base.clone().add(new T.Vector3(0, 14, 0)), base });
+      const anchor = pinAnchors[pinCount] ?? (pinAnchors[pinCount] = { pin: new T.Vector3(), base: new T.Vector3() }); pinCount++;
+      const spot = worldPosition(row.position, 'enu', this.header.origin, anchor.base).sub(renderOrigin);
+      spot.y = Math.max(spot.y, incidentRoofHeight?.(row.position[0], row.position[1]) ?? occlusion?.liftCamera(spot, 0).y ?? spot.y);
+      anchor.pin.copy(spot); anchor.pin.y += 14;
     }
     const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean; incident?: Conditions['incidents'][number] }> = [];
     for (const [id, entity] of store.entities) {
@@ -367,27 +373,38 @@ export class EntityLayer {
     }
     const labelsStarted = performance.now();
     camera.updateMatrixWorld();
-    const occupied: Array<{ left: number; right: number; top: number; bottom: number }>=[];let labelAttempts=0;
-    const wb = this.overlay.closest('.wb'), overlayRect = this.overlay.getBoundingClientRect();
-    const relative = (rect: DOMRect): LabelRect => ({ left: rect.left - overlayRect.left, right: rect.right - overlayRect.left, top: rect.top - overlayRect.top, bottom: rect.bottom - overlayRect.top });
-    const frame = wb?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
-    const safe = frame && frame.width > 0 ? relative(frame) : { left: 8, right: width - 8, top: 8, bottom: height - 8 };
-    const obstacles = wb ? [...wb.querySelectorAll('.wb-panel, .wb-camera, .wb-graph, .wb-history, .wb-waiting')].map(node => relative(node.getBoundingClientRect())) : [];
-    // The incident pin is a fixed high-priority obstacle: entity labels move away from it
-    // (finding 6) instead of stacking on the fire pin. Reserves a rect around the pin's
-    // projected anchor, sized to cover the disc and its label.
-    const pinObstacles: LabelRect[] = pinAnchors.map(({ pin, base }) => {
-      const projected = this.labelProjected.copy(pin).project(camera);
-      if (projected.z < -1 || projected.z > 1) return { left: -1, right: -1, top: -1, bottom: -1 };
-      const px = (projected.x + 1) * width / 2, py = (1 - projected.y) * height / 2;
-      const pad = 34; // covers the 26 px disc plus its label line
-      const leader = this.labelProjected.copy(base).project(camera);
-      return { left: px - pad, right: px + pad, top: py - pad, bottom: Math.max(py + pad * 1.5, (1 - leader.y) * height / 2 + 4) };
-    }).filter(rect => rect.right > rect.left);
+    const placer = this.labelPlacer; placer.occupiedCount = 0; let labelAttempts = 0;
+    const safe = placer.safe;
+    if (layoutKey === undefined || layoutKey !== this.labelLayout || width !== this.labelWidth || height !== this.labelHeight) {
+      this.labelLayout = layoutKey; this.labelWidth = width; this.labelHeight = height;
+      const wb = this.overlay.closest('.wb'), overlayRect = this.overlay.getBoundingClientRect();
+      const frame = wb?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
+      if (frame && frame.width > 0) {
+        safe.left = frame.left - overlayRect.left; safe.right = frame.right - overlayRect.left;
+        safe.top = frame.top - overlayRect.top; safe.bottom = frame.bottom - overlayRect.top;
+      } else { safe.left = 8; safe.right = width - 8; safe.top = 8; safe.bottom = height - 8; }
+      const panels = wb?.querySelectorAll('.wb-panel, .wb-camera, .wb-graph, .wb-history, .wb-waiting');
+      placer.panelCount = panels?.length ?? 0;
+      for (let i = 0; i < placer.panelCount; i++) {
+        const dom = panels![i].getBoundingClientRect(), rect = pooledRect(placer.panels, i);
+        rect.left = dom.left - overlayRect.left; rect.right = dom.right - overlayRect.left;
+        rect.top = dom.top - overlayRect.top; rect.bottom = dom.bottom - overlayRect.top;
+      }
+    }
+    // Fixed pin/leader obstacles reuse vectors and rectangles across frames.
+    placer.pinCount = 0;
+    for (let i = 0; i < pinCount; i++) {
+      const { pin, base } = pinAnchors[i], projected = this.labelProjected.copy(pin).project(camera);
+      if (projected.z < -1 || projected.z > 1) continue;
+      const px = (projected.x + 1) * width / 2, py = (1 - projected.y) * height / 2, pad = 34;
+      const leader = this.labelProjected.copy(base).project(camera), rect = pooledRect(placer.pins, placer.pinCount++);
+      rect.left = px - pad; rect.right = px + pad; rect.top = py - pad;
+      rect.bottom = Math.max(py + pad * 1.5, (1 - leader.y) * height / 2 + 4);
+    }
     candidates.sort((a,b)=>Number(!!b.incident)-Number(!!a.incident)||Number(b.selected)-Number(a.selected)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
     for(const item of candidates) {
       if(this.semantic&&!item.interest)continue;
-      if(!item.interest&&!item.selected&&!item.forced&&(occupied.length>=12||labelAttempts>=32))continue;
+      if(!item.interest&&!item.selected&&!item.forced&&(placer.occupiedCount>=12||labelAttempts>=32))continue;
       const world=this.labelWorld.copy(item.position);world.y+=2;
       const projected=this.labelProjected.copy(world).project(camera);
       if(projected.z<-1||projected.z>1||Math.abs(projected.x)>0.96||Math.abs(projected.y)>0.96)continue;
@@ -416,13 +433,12 @@ export class EntityLayer {
       // colocated task-active UAVs obscured each other. Measure the actual label.
       label.style.maxWidth = `${Math.max(0, safe.right - safe.left)}px`;
       // The incident's own label sits just above its pin by design; other labels move away.
-      const avoid = item.incident ? [...obstacles, ...occupied] : [...obstacles, ...pinObstacles, ...occupied];
-      const placed = placeLabel(x, y, label.offsetWidth, label.offsetHeight, safe, avoid, item.selected, item.incident ? [] : pinObstacles);
+      const placed = placer.place(x, y, label.offsetWidth, label.offsetHeight, item.selected, !item.incident);
       if (!placed) continue;
       visibleLabels.add(item.id);
       const left=`${placed.x}px`,top=`${placed.y}px`;
       if(label.style.left!==left)label.style.left=left;if(label.style.top!==top)label.style.top=top;
-      label.classList.toggle('selected',item.selected);occupied.push(placed.box);
+      label.classList.toggle('selected',item.selected);Object.assign(pooledRect(placer.occupied, placer.occupiedCount++), placed.box);
     }
     for(const [id,label] of this.labels)if(!visibleLabels.has(id)&&!label.hidden)label.hidden=true;
     // Keep a small reusable label pool; retired generations cannot accumulate DOM.
