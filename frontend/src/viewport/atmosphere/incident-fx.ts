@@ -19,7 +19,8 @@ const FLAME_MIN_CSS_PX = 40;
 // Low quality keeps the same emission rate with a shorter life: a shorter plume, never a sparser one.
 const SMOKE_RATE = 2.0, SMOKE_LIFE_HIGH_S = 24, SMOKE_LIFE_LOW_S = 9, SMOKE_HIGH = 56, SMOKE_LOW = 18;
 const AREA = new T.Color('#ff6a3d'), ENDED = new T.Color('#8b95a1');
-const SMOKE_BASE = new T.Color('#3b3632'), SMOKE_MID = new T.Color('#8f8a84'), SMOKE_HIGH_TONE = new T.Color('#b9b6b1');
+// Smoke absorbs: a charcoal body stays clearly below the luminance of a hazy, fog-lit city.
+const SMOKE_BASE = new T.Color('#1c1a19'), SMOKE_MID = new T.Color('#2f2c2a'), SMOKE_HIGH_TONE = new T.Color('#4a4643');
 
 type Row = Conditions['incidents'][number] & { seed: number };
 export interface AtmosphereOptions {
@@ -111,7 +112,7 @@ const flameMaterial = (additiveCore = false) => new T.ShaderMaterial({
 
 // Scattered ambient/sky light: smoke reads LIGHTER than the dark dusk ground and darker than
 // the light day ground. Rain greys both toward the same wet tone (0.3·r).
-const SMOKE_LIGHT_DAY = new T.Color('#8f8a84'), SMOKE_LIGHT_DUSK = new T.Color('#5d5a63'), SMOKE_LIGHT_RAIN = new T.Color('#7d8288');
+const SMOKE_LIGHT_DAY = new T.Color('#3a3733'), SMOKE_LIGHT_DUSK = new T.Color('#2a2830'), SMOKE_LIGHT_RAIN = new T.Color('#34373b');
 const GLOW_ORANGE = new T.Color('#ff8a2b');
 
 const smokeMaterial = () => new T.ShaderMaterial({
@@ -132,12 +133,15 @@ const smokeMaterial = () => new T.ShaderMaterial({
     // close-view alpha, and restore the former sqrt density below 32–8 raster pixels.
     float footprint=max(fwidth(puffUv.x),fwidth(puffUv.y));
     float coverage=smoothstep(0.5/32.0,0.5/8.0,footprint);
-    float alpha=mix(puff.a,sqrt(puff.a),coverage)*puffColor.a;
+    // Density curve: the soft atlas averages ~0.3 alpha, so puff cores are pushed toward solid.
+    float density=mix(puff.a,sqrt(puff.a),coverage);
+    float alpha=smoothstep(0.0,0.55,density)*puffColor.a;
     if(alpha<=0.002)discard;
     vec3 base=puffColor.rgb;
     vec3 lit=mix(base,uSmokeLight,uScatter);
-    float under=uGlowStrength*exp(-max(puffHeight-uFlameTop,0.0)/14.0);
-    vec3 color=lit+uGlow*under*0.8;
+    // The fire underlights only the root (6 m falloff); a low, wind-bent plume must not turn orange.
+    float under=uGlowStrength*exp(-max(puffHeight-uFlameTop,0.0)/5.0);
+    vec3 color=lit+uGlow*under*0.35;
     gl_FragColor=vec4(color,alpha);${OUTPUT_F}
     ${FOG_VISIBILITY}
     #ifdef USE_FOG
@@ -464,8 +468,8 @@ export class IncidentFX {
     const risen = 2.6 * age * (1 - 0.2 * age / SMOKE_LIFE_HIGH_S), drift = 0.55 * Math.min(1, age / 6) * age;
     const jitterX = (seedA - 0.5) * 6 + Math.sin(simSeconds * 0.2 + seedB * 6) * 1.5;
     const jitterZ = (seedB - 0.5) * 6 + Math.cos(simSeconds * 0.17 + seedC * 6) * 1.5;
-    // Dense dark root (finding 8): in the first 3 s the puff grows 5 → 12 m just above the flames.
-    const size = age < 3 ? 5 + (12 - 5) * (age / 3) : 12 + (30 - 12) * ((age - 3) / (SMOKE_LIFE_HIGH_S - 3));
+    // Dense dark root: in the first 3 s the puff grows 6 → 14 m just above the flames, then billows to 44 m.
+    const size = age < 3 ? 6 + (14 - 6) * (age / 3) : 14 + (44 - 14) * ((age - 3) / (SMOKE_LIFE_HIGH_S - 3));
     this.quaternion.copy(camera.quaternion);
     QUARTER_TURN.setFromQuaternion(this.quaternion, 'YXZ');
     QUARTER_TURN.z = simSeconds * (0.1 + seedC * 0.2) + seedA * Math.PI * 2;
@@ -475,8 +479,8 @@ export class IncidentFX {
     this.matrix.compose(this.position, this.quaternion, this.scale);
     visual.smoke.setMatrixAt(count, this.matrix);
     const tint = life < 0.5 ? this.color.copy(SMOKE_BASE).lerp(SMOKE_MID, life * 2) : this.color.copy(SMOKE_MID).lerp(SMOKE_HIGH_TONE, (life - 0.5) * 2);
-    // Dense root (0.62 for 3 s), body held at 0.5 to 45 % of life, then a linear fade as it lightens.
-    let alpha = age < 3 ? 0.62 - 0.12 * (age / 3) : life < 0.45 ? 0.5 : 0.5 * (1 - (life - 0.45) / 0.55);
+    // Dense root (0.72 for 3 s), body held at 0.6 to 45 % of life, then a linear fade as it lightens.
+    let alpha = age < 3 ? 0.72 - 0.12 * (age / 3) : life < 0.45 ? 0.6 : 0.6 * (1 - (life - 0.45) / 0.55);
     // Keep the dark body until the final 3 s of the shorter low-quality lifetime.
     if (lifetime < SMOKE_LIFE_HIGH_S) alpha *= 1 - T.MathUtils.smoothstep(age, lifetime - 3, lifetime);
     visual.tint.setXYZW(count, tint.r, tint.g, tint.b, alpha);
@@ -489,7 +493,7 @@ export class IncidentFX {
     if (!this.smoke) return;
     const u = this.smoke.uniforms;
     u.uSmokeLight.value.copy(this.smokeLightScratch.copy(dusk ? SMOKE_LIGHT_DUSK : SMOKE_LIGHT_DAY).lerp(SMOKE_LIGHT_RAIN, 0.3 * Math.min(1, Math.max(0, rain))));
-    u.uScatter.value = dusk ? 0.55 : 0.25;
+    u.uScatter.value = dusk ? 0.25 : 0.15;
     // The underlight fades with the flames: the ramp comes from this frame's fires.
     u.uGlowStrength.value = (dusk ? 0.55 : 0.25) * this.flameRamp;
   }
