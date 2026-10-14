@@ -647,6 +647,7 @@ export default {
   'Incident kind': '事件类型',
   'From': '来自', 'Degrees': '角度', 'Rain rate': '降雨强度', 'Rain': '降雨', 'Visibility': '能见度',
   'Conditions': '天气条件', 'None': '无', 'Custom': '自定义', 'Clear': '无雾', 'Day': '白天', 'Dusk': '黄昏',
+  'day': '白天', 'dusk': '黄昏',
   'Haze 5 km': '霾 5 公里', 'Mist 2 km': '轻雾 2 公里', 'Fog 500 m': '雾 500 米', 'Dense fog 150 m': '浓雾 150 米',
   'Light': '光照', 'Moderate': '中雨', 'Heavy': '大雨', 'Ends at': '结束时间', 'Affected radius': '影响半径', 'Fire': '火情', 'Person fell': '行人跌倒',
   'Starts at': '开始时间',

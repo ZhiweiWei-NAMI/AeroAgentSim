@@ -35,7 +35,8 @@ export class Rain {
     this.geometry.setAttribute('dropSeed', seeds);
     this.geometry.instanceCount = 0;
     this.material = new T.ShaderMaterial({
-      transparent: true, depthWrite: false,
+      // Falling quads reverse the plane's winding in camera space; keep one visible pass.
+      transparent: true, depthWrite: false, side: T.DoubleSide, forceSinglePass: true,
       uniforms: { uTime: { value: 0 }, uSlant: { value: new T.Vector2() }, uOpacity: { value: 0.28 }, uCenter: { value: new T.Vector3() } },
       vertexShader: `attribute vec2 dropSeed;uniform float uTime;uniform vec2 uSlant;uniform vec3 uCenter;
         varying float dropFade;

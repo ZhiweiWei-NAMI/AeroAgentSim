@@ -215,8 +215,7 @@ export class IncidentFX {
       options.onReady?.();
     });
   }
-  /** True screen-space 26 CSS px: with `sizeAttenuation: false` three's sprite shader scales
-   *  by −mvPosition.z, so the NDC height is scale; the clip-space factor is viewportHeight/2. */
+  /** NDC pin height; update cancels the camera's vertical projection scale as well as distance. */
   setPinScale(heightCssPx: number, _pixelRatio?: number) { this.pinScale = 26 / Math.max(1, heightCssPx) * 2; }
   setQuality(quality: Quality) {
     this.quality = quality;
@@ -276,6 +275,7 @@ export class IncidentFX {
     if (!rows.length && !this.visuals.size) return;
     const shown = this.shown; shown.clear();
     const reduced = (this.reducedMotion ??= matchMedia('(prefers-reduced-motion: reduce)')).matches;
+    const pinScale = this.pinScale / camera.projectionMatrix.elements[5];
     if (this.options.preview) camera.updateMatrixWorld();
     for (const row of rows) {
       // A run's pending incidents allocate nothing. Only the draft shows their grey pins.
@@ -322,7 +322,7 @@ export class IncidentFX {
         }
         const pinKind = pending || ended ? `${row.kind}-ended` as const : row.kind;
         pin.material.map = pinTextures![pinKind]!;
-        pin.scale.set(this.pinScale, this.pinScale, 1);
+        pin.scale.set(pinScale, pinScale, 1);
         if (label && this.options.preview) {
           const overlay = this.options.preview.overlay;
           label.textContent = incidentLabel(row, this.options.preview.locale().startsWith('zh'));

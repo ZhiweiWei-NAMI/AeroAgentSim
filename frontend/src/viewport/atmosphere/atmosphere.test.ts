@@ -3,7 +3,7 @@ import * as T from 'three';
 import { IncidentFX } from './incident-fx';
 import { Rain, rainCount } from './rain';
 import { WindStreaks, streakCount } from './wind';
-import { applyWeatherMaterials, fogDensity, setupScene } from '../scene';
+import { applyWeatherMaterials, fogDensity, observerFogOffset, setupScene } from '../scene';
 import { fxHash, fxSeed } from './fx-shared';
 import type { Conditions } from '../conditions';
 import { AtmosphereLayer } from './index';
@@ -106,8 +106,8 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     const scene = new T.Scene(), render = renderer(), rig = setupScene(render, scene), art = scene.fog;
     const clear = { dusk: false, rain: 0, visibilityM: null };
     rig.setAtmosphere({ dusk: false, rain: 0.5, visibilityM: 500 });
-    expect(scene.fog).toBeInstanceOf(T.FogExp2);
-    expect((scene.fog as unknown as T.FogExp2).density).toBeCloseTo(fogDensity(500));
+    expect(scene.fog).toBeInstanceOf(T.Fog);
+    expect(scene.fog).toMatchObject({ near: 0, far: 500 / 0.95 });
     rig.setDusk(true);
     expect(rig.sun.intensity).toBeCloseTo(1.5 * (1 - 0.45 * 0.5));
     expect(render.toneMappingExposure).toBeCloseTo(1 - 0.15 * 0.5);
@@ -225,7 +225,7 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     expect(roof).toHaveBeenCalledWith(20, 40);
     expect(overlay.textContent).toBe('Fire at 01:30');
     const pin = preview.root.children[0].children.find(node => node instanceof T.Sprite) as T.Sprite;
-    expect(pin.scale.x).toBeCloseTo(26 / 1800 * 2); expect(pin.position.y).toBe(49);
+    expect(pin.scale.x * camera.projectionMatrix.elements[5] * 1800 / 2).toBeCloseTo(26); expect(pin.position.y).toBe(49);
     expect(pin.material.fog).toBe(false);
     expect(meshes(preview.root.children[0]).every(mesh => !mesh.visible)).toBe(true);
     preview.update(conditions.incidents, 12.5, camera, new Map());
@@ -248,7 +248,8 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
       expect(mesh.visible).toBe(true); expect(mesh.material.fog).toBe(true);
       expect(mesh.material.uniforms).toHaveProperty('fogDensity');
     }
-    expect(scene.fog).toBeInstanceOf(T.FogExp2);
+    expect(scene.fog).toBeInstanceOf(T.Fog);
+    expect(scene.fog).toMatchObject({ near: 0, far: 500 / 0.95 });
     layer.dispose(); rig.dispose();
   });
   it('applies draft fog and dusk to existing lights and restores the original clear scene exactly', async () => {
@@ -258,12 +259,56 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     const sunColor = sun.color.clone(), fillColor = fill.color.clone();
     const layer = new AtmosphereLayer(scene, render, 'med'); await layer.ready;
     layer.update({ ...conditions, light: 'dusk', precipitationMmH: 0 }, 12.5, camera);
-    expect(scene.fog).toBeInstanceOf(T.FogExp2); expect((scene.fog as unknown as T.FogExp2).density).toBeCloseTo(fogDensity(500));
+    expect(scene.fog).toBeInstanceOf(T.Fog); expect(scene.fog).toMatchObject({ near: 0, far: 500 / 0.95 });
     expect(sun.intensity).toBe(1.25); expect(fill.intensity).toBe(1); expect(sun.color.equals(sunColor)).toBe(false);
     layer.update({ ...conditions, precipitationMmH: 0, visibilityM: null }, 12.5, camera);
     expect(scene.background).toBe(background); expect(scene.fog).toBe(fog);
     expect(sun.intensity).toBe(2.5); expect(fill.intensity).toBe(2);
     expect(sun.color.toArray()).toEqual(sunColor.toArray()); expect(fill.color.toArray()).toEqual(fillColor.toArray());
+    layer.dispose();
+  });
+  it.each(['rig', 'preview'] as const)('updates %s observer fog only beyond 5 m and retains denser art fog', async mode => {
+    const scene = new T.Scene(), render = renderer(), camera = new T.PerspectiveCamera(), target = new T.Vector3();
+    const rig = mode === 'rig' ? setupScene(render, scene) : undefined;
+    if (!rig) scene.fog = new T.Fog('#aaaabb', 850, 4200);
+    const art = scene.fog;
+    const layer = rig ? undefined : new AtmosphereLayer(scene, render, 'med');
+    await layer?.ready;
+    const update = (visibilityM: number | null) => {
+      if (rig) rig.setAtmosphere({ dusk: true, rain: 0.5, visibilityM, observerOffsetM: observerFogOffset(camera, target) });
+      else layer!.update({ ...conditions, light: 'dusk', visibilityM }, 12.5, camera, undefined, undefined, undefined, target);
+    };
+    camera.position.set(0, 0, 1000); update(800);
+    const weather = scene.fog;
+    expect(weather).toBeInstanceOf(T.Fog); expect(weather).not.toBe(art);
+    expect(weather).toMatchObject({ near: 850, far: 850 + 800 / 0.95 });
+    camera.position.z += 5; update(800);
+    expect(scene.fog).toBe(weather); expect(weather).toMatchObject({ near: 850 });
+    camera.position.z += 1; update(800);
+    expect(scene.fog).toBe(weather); expect(weather).toMatchObject({ near: 856, far: 856 + 800 / 0.95 });
+    camera.position.set(0, 0, 100); update(800);
+    expect(weather).toMatchObject({ near: 0, far: 800 / 0.95 });
+    update(5000); expect(scene.fog).toBe(art);
+    update(null); expect(scene.fog).toBe(art);
+    layer?.dispose(); rig?.dispose();
+  });
+  it.each([[900, 2, 45, 1], [800, 1, 60, 1], [500, 2, 35, 1.5]])('keeps the pin at 26 CSS px with height %s, DPR %s, FOV %s and zoom %s', async (height, dpr, fov, zoom) => {
+    const scene = new T.Scene(), render = renderer();
+    render.domElement = { clientHeight: height, height: height * dpr } as HTMLCanvasElement;
+    render.getPixelRatio = () => dpr;
+    const camera = new T.PerspectiveCamera(fov, 1.6); camera.zoom = zoom; camera.updateProjectionMatrix();
+    const layer = new AtmosphereLayer(scene, render, 'med'); await layer.ready;
+    const cssSize = () => {
+      layer.update(conditions, 12.5, camera);
+      const pin = layer.root.children[0].children[0].children.find(node => node instanceof T.Sprite) as T.Sprite;
+      // Project the same camera-facing corners as Three's non-attenuating sprite shader.
+      const half = pin.scale.y * 100 / 2;
+      const top = new T.Vector3(0, half, -100).project(camera), bottom = new T.Vector3(0, -half, -100).project(camera);
+      return (top.y - bottom.y) * height / 2;
+    };
+    expect(cssSize()).toBeCloseTo(26);
+    camera.setViewOffset(1440, height, 240, 0, 900, height * 0.8);
+    expect(cssSize()).toBeCloseTo(26);
     layer.dispose();
   });
 });

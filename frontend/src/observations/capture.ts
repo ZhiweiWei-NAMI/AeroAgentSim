@@ -70,7 +70,7 @@ export function obliqueCamera(manifest: ObjectData, key: EntityKey, positionFiel
   return {eye,target,subject};
 }
 
-/** Bilingual sensor annotation remains attached to downloaded artifact bytes. */
+/** Bilingual caption derived from the capture request's measured pose and cut. */
 export function obliqueCaption(request: ObjectData): [string,string] {
   const camera=object(request.camera), subject=recordedCameraPose(camera.subject), actor=object(request.actor), source=object(request.source_cut);
   const point=(value:unknown)=>vector(value).map(v=>v.toFixed(1)).join(', ');
@@ -271,7 +271,7 @@ export class CaptureRenderer {
       // snapshot actor pose. Interpret it exactly; do not rewrite the request.
       const oblique = manifest.revision === 'uav-gimbal-oblique/v1';
       const nadir = manifest.preset === 'actor-nadir' || manifest.revision === 'traffic-nadir/v1' || manifest.revision === 'traffic-city-nadir/v1';
-      let eye: [number,number,number], target: [number,number,number], resolvedSubject: ReturnType<typeof obliqueCamera>['subject'] | undefined;
+      let eye: [number,number,number], target: [number,number,number];
       if (nadir || oblique) {
         if (nadir && manifest.revision !== 'traffic-nadir/v1' && (manifest.revision !== 'traffic-city-nadir/v1' || manifest.frame !== 'enu')) throw Error('Unsupported actor-nadir camera revision/frame');
         const snapshot = object(manifest.snapshot), cut = object(snapshot.cut);
@@ -281,7 +281,7 @@ export class CaptureRenderer {
         if (!binding) throw Error('Actor-nadir needs a spatial actor');
         if (oblique) {
           const resolved=obliqueCamera(manifest,key,binding.positionField,(key,field)=>store.sample(key,field));
-          ({eye,target}=resolved);resolvedSubject=resolved.subject;
+          ({eye,target}=resolved);
         }
         else {
           eye = vector(store.sample(key, binding.positionField)); target = [eye[0],eye[1],0];
@@ -327,30 +327,11 @@ export class CaptureRenderer {
       if (city) this.applyCityDisplay(city);
       this.composer!.render(0); this.renderer!.getContext().finish(); check();
       let canvas = this.renderer!.domElement;
-      if (oblique || input.label) {
+      // Sensor pixels contain weather and fire, while identity and cut stay in request metadata.
+      if (input.label) {
         const labeled = document.createElement('canvas');labeled.width=width;labeled.height=height;
         const context=labeled.getContext('2d');if(!context)throw Error('PNG readback canvas unavailable');
         context.drawImage(canvas,0,0);
-        if (oblique) {
-          const subject=resolvedSubject!;
-          const captions=obliqueCaption({...request,camera:{...manifest,eye,target,subject:{id:subject.key.id,generation:subject.key.generation,field:subject.field,position:subject.position}}});
-          context.fillStyle='rgba(5,18,29,0.86)';context.fillRect(0,0,width,48);
-          context.fillStyle='#fff';context.font='13px sans-serif';captions.forEach((line,i)=>context.fillText(line,10,18+i*20,width-20));
-          const project=(point:[number,number,number])=>{const p=worldPosition(point,'enu').project(this.camera);return {x:(p.x+1)*width/2,y:(1-p.y)*height/2,visible:p.z>=-1&&p.z<=1&&Math.abs(p.x)<1&&Math.abs(p.y)<1};};
-          const center=project(subject.position);
-          // An identity marker denotes a committed incident coordinate. It does
-          // not invent crash damage or a physical effect absent from the journal.
-          if(center.visible){context.strokeStyle='#ffd56a';context.lineWidth=2;context.beginPath();context.arc(center.x,center.y,10,0,Math.PI*2);context.stroke();}
-          let label=0;
-          for(const item of store.entities.values()){
-            if(item.fields.get('traffic.actor.role')?.value!=='incident')continue;
-            const binding=resolveBinding(header,item.typeId);if(!binding)continue;
-            const point=project(vector(store.sample(item.key,binding.positionField)));if(!point.visible)continue;
-            const text=item.key.id, x=Math.max(8,Math.min(width-190,point.x+30)), y=Math.max(68,Math.min(height-10,point.y-40-label*30));label++;
-            context.strokeStyle='#ffd56a';context.lineWidth=1.5;context.beginPath();context.arc(point.x,point.y,6,0,Math.PI*2);context.moveTo(point.x+6,point.y);context.lineTo(x,y-5);context.stroke();
-            context.fillStyle='rgba(5,18,29,0.9)';context.fillRect(x-4,y-19,184,24);context.fillStyle='#ffd56a';context.font='13px monospace';context.fillText(text,x,y-3);
-          }
-        }
         if(input.label){context.fillStyle='#fff';context.font='12px monospace';context.fillText(input.label,4,height-6);}
         canvas=labeled;
       }

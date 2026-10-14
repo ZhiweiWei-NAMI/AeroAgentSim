@@ -3,7 +3,7 @@ import type { Conditions } from '../conditions';
 import { IncidentFX, type AtmosphereOptions } from './incident-fx';
 import { Rain } from './rain';
 import { WindStreaks } from './wind';
-import { fogDensity } from '../scene';
+import { observerFogOffset, visibilityFog } from '../scene';
 import type { Quality } from '../pipeline';
 export type { AtmosphereOptions } from './incident-fx';
 
@@ -30,8 +30,8 @@ export class AtmosphereLayer {
     background: T.Scene['background']; fog: T.Scene['fog']; horizon: T.Color; exposure: number;
     lights: Array<{ light: T.Light; intensity: number; color: T.Color }>;
   };
-  private lastPreview?: { dusk: boolean; rain: number; visibilityM: number | null };
-  private previewFog = new T.FogExp2(0xffffff);
+  private lastPreview?: { dusk: boolean; rain: number; visibilityM: number | null; observerOffsetM: number };
+  private previewFog = new T.Fog(0xffffff);
   private fill?: T.HemisphereLight;
   private smokeAmbient = new T.Color();
   constructor(private scene: T.Scene, private renderer: T.WebGLRenderer, quality: Quality, options: AtmosphereOptions = { annotations: true }) {
@@ -57,8 +57,8 @@ export class AtmosphereLayer {
   }
   setPinHeightCss(heightCssPx: number) { this.incidents.setPinScale(heightCssPx); }
   update(conditions: Conditions, simSeconds: number, camera: T.Camera,
-    roofHeight?: (east: number, north: number) => number, ringStart?: Map<string, number>, origin?: T.Vector3) {
-    if (this.preview) this.applyPreview(conditions);
+    roofHeight?: (east: number, north: number) => number, ringStart?: Map<string, number>, origin?: T.Vector3, orbitTarget?: T.Vector3) {
+    if (this.preview) this.applyPreview(conditions, orbitTarget ? observerFogOffset(camera, orbitTarget) : 0);
     // Smoke reflects the existing rig's ambient light rather than emitting its
     // palette at full brightness. Average the sky/ground light for soft volume sprites.
     if (this.fill) {
@@ -75,18 +75,19 @@ export class AtmosphereLayer {
     this.rain.update(conditions.precipitationMmH, simSeconds, camera, conditions.wind ?? undefined);
     this.wind?.update(conditions.wind, simSeconds, camera);
   }
-  private applyPreview(conditions: Conditions) {
+  private applyPreview(conditions: Conditions, observerOffsetM: number) {
     const dusk = conditions.light === 'dusk', rain = Math.min(conditions.precipitationMmH / 8, 1), visibilityM = conditions.visibilityM;
     const previous = this.lastPreview;
-    if (previous && previous.dusk === dusk && previous.rain === rain && previous.visibilityM === visibilityM) return;
-    this.lastPreview = { dusk, rain, visibilityM };
+    if (previous && previous.dusk === dusk && previous.rain === rain && previous.visibilityM === visibilityM
+      && (visibilityM === null || Math.abs(previous.observerOffsetM - observerOffsetM) <= 5)) return;
+    this.lastPreview = { dusk, rain, visibilityM, observerOffsetM };
     const base = this.preview!;
     if (visibilityM !== null) {
-      this.previewFog.density = fogDensity(visibilityM);
       this.previewFog.color.copy(base.horizon);
       if (dusk) this.previewFog.color.set('#7f91aa');
       this.previewFog.color.lerp(dusk ? FOG_DUSK : FOG_DAY, 0.35);
-      this.scene.fog = this.previewFog; this.scene.background = this.previewFog.color;
+      this.scene.fog = visibilityFog(base.fog, this.previewFog, visibilityM, observerOffsetM);
+      this.scene.background = this.scene.fog === this.previewFog ? this.previewFog.color : dusk ? this.previewFog.color.set('#7f91aa') : base.background;
     } else {
       this.scene.fog = base.fog;
       this.scene.background = dusk ? this.previewFog.color.set('#7f91aa') : base.background;

@@ -3,14 +3,26 @@ import { Sky } from 'three/addons/objects/Sky.js';
 
 /** Exponential density at which contrast reaches 5 % at the authored visibility. */
 export const fogDensity = (visibilityM: number) => Math.sqrt(-Math.log(0.05)) / visibilityM;
-export interface AtmosphereState { dusk: boolean; rain: number; visibilityM: number | null }
+export interface AtmosphereState { dusk: boolean; rain: number; visibilityM: number | null; observerOffsetM?: number }
 const FOG_DAY = new T.Color('#c3c9cf'), FOG_DUSK = new T.Color('#6f6a73'), FILL_RAIN = new T.Color('#aebfd4');
+
+// Operator fog starts near the observed region; UAV captures keep the physical camera origin.
+export const observerFogOffset = (camera: T.Camera, target: T.Vector3) => Math.max(0, camera.position.distanceTo(target) - 150);
+
+/** Keep whichever fog reaches the visibility threshold sooner, including the observer offset. */
+export function visibilityFog(artFog: T.Scene['fog'], weatherFog: T.Fog, visibilityM: number | null, offset = 0): T.Scene['fog'] {
+  const artVisibility = artFog instanceof T.Fog ? artFog.near + 0.95 * (artFog.far - artFog.near)
+    : artFog instanceof T.FogExp2 ? Math.sqrt(-Math.log(0.05)) / artFog.density : Infinity;
+  if (visibilityM === null || offset + visibilityM >= artVisibility) return artFog;
+  weatherFog.near = offset; weatherFog.far = offset + visibilityM / 0.95;
+  return weatherFog;
+}
 
 /** Art direction only. Sun, haze and lighting are never measured weather. */
 export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
   const horizon = new T.Color('#72b1e8');
   scene.background = horizon;
-  const artFog = new T.Fog(horizon, 500, 2000), weatherFog = new T.FogExp2(0xffffff);
+  const artFog = new T.Fog(horizon, 500, 2000), weatherFog = new T.Fog(0xffffff);
   scene.fog = artFog;
   const sky = new Sky(); sky.scale.setScalar(10000);
   sky.material.uniforms.turbidity.value = 2.1;
@@ -60,7 +72,8 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
   let current: AtmosphereState | undefined;
   // Recompute from the exact day/dusk presets, never from previously modified lighting.
   const setAtmosphere = (state: AtmosphereState) => {
-    if (current && current.dusk === state.dusk && current.rain === state.rain && current.visibilityM === state.visibilityM) return;
+    if (current && current.dusk === state.dusk && current.rain === state.rain && current.visibilityM === state.visibilityM
+      && (state.visibilityM === null || Math.abs((current.observerOffsetM ?? 0) - (state.observerOffsetM ?? 0)) <= 5)) return;
     current = { ...state };
     const dusk = state.dusk, rain = T.MathUtils.clamp(state.rain, 0, 1);
     sunDirection.set(dusk ? -0.8 : 0.8, dusk ? 0.16 : 0.9, dusk ? -0.35 : 0.3).normalize();
@@ -78,14 +91,9 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
     groundMaterial.color.set(dusk?'#bbbcb4':'#d3c7b3');
     renderer.toneMappingExposure = (dusk ? 1 : 1.12) * (1 - 0.15 * rain);
     artFog.near = dusk ? 850 : 500; artFog.far = dusk ? 4200 : 2000; artFog.color.copy(horizon);
-    const density = state.visibilityM === null ? 0 : fogDensity(state.visibilityM);
-    const artDensity = fogDensity(artFog.near + 0.95 * (artFog.far - artFog.near));
-    if (density > artDensity) {
-      weatherFog.density = density;
-      weatherFog.color.copy(horizon).lerp(dusk ? FOG_DUSK : FOG_DAY, 0.35);
-      scene.fog = weatherFog;
-    } else scene.fog = artFog;
-    daySky.material.uniforms.horizon.value.copy(scene.fog.color);
+    weatherFog.color.copy(horizon).lerp(dusk ? FOG_DUSK : FOG_DAY, 0.35);
+    scene.fog = visibilityFog(artFog, weatherFog, state.visibilityM, state.observerOffsetM);
+    daySky.material.uniforms.horizon.value.copy(scene.fog!.color);
     scene.background = scene.fog === artFog ? horizon : weatherFog.color;
     scene.userData.weatherWet = rain;
   };

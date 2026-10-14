@@ -270,7 +270,7 @@ export class EntityLayer {
     if(changed){mesh.setMatrixAt(index,matrix);mesh.userData.viewportChanged=true;}
   }
   update(store: FeedStore, ns: string, camera: T.Camera, selected?: EntityKey, showTrails = true,
-    renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion, aimCamera?: () => void, incidents?: Conditions['incidents']) {
+    renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion, aimCamera?: () => void, incidents?: Conditions['incidents'], incidentRoofHeight?: (east: number, north: number) => number) {
     this.transformsChanged=false;this.catalogUsage.clear();
     if(this.semantic){
       const stamp=`${store.revision}/${ns}`;
@@ -285,11 +285,12 @@ export class EntityLayer {
     const width=this.overlay.clientWidth,height=this.overlay.clientHeight;
     const visibleLabels=new Set<string>();
     // Pin anchors (world space, at pin height) reserved as fixed obstacles for this frame.
-    const pinAnchors: T.Vector3[] = [];
+    const pinAnchors: Array<{ pin: T.Vector3; base: T.Vector3 }> = [];
     for (const row of incidents ?? []) {
       if (row.phase === 'pending') continue;
       const spot = this.positions.get(row.id) ?? worldPosition(row.position, 'enu', this.header.origin).sub(renderOrigin);
-      pinAnchors.push(new T.Vector3(spot.x, Math.max(spot.y, occlusion?.liftCamera(spot, 0).y ?? spot.y) + 14, spot.z));
+      const base = new T.Vector3(spot.x, Math.max(spot.y, incidentRoofHeight?.(row.position[0], row.position[1]) ?? occlusion?.liftCamera(spot, 0).y ?? spot.y), spot.z);
+      pinAnchors.push({ pin: base.clone().add(new T.Vector3(0, 14, 0)), base });
     }
     const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean; incident?: Conditions['incidents'][number] }> = [];
     for (const [id, entity] of store.entities) {
@@ -339,7 +340,7 @@ export class EntityLayer {
       const incident = incidents?.find(row => row.id === entity.key.id);
       if (incident?.phase === 'pending') continue;
       const labelPosition = incident ? position.clone() : position;
-      if (incident) labelPosition.y = Math.max(position.y, occlusion?.liftCamera(position, 0).y ?? position.y) + 14;
+      if (incident) labelPosition.y = Math.max(position.y, incidentRoofHeight?.(incident.position[0], incident.position[1]) ?? occlusion?.liftCamera(position, 0).y ?? position.y) + 14;
       candidates.push({id,key:entity.key,position:labelPosition,selected:isSelected,forced:!!incident||binding.visual.kind==='label'||this.highlighted.has(id),interest:!!incident,incident});
     }
     // Camera follow uses these exact sampled poses; labels must project through
@@ -375,14 +376,15 @@ export class EntityLayer {
     // The incident pin is a fixed high-priority obstacle: entity labels move away from it
     // (finding 6) instead of stacking on the fire pin. Reserves a rect around the pin's
     // projected anchor, sized to cover the disc and its label.
-    const pinObstacles: LabelRect[] = pinAnchors.map(pin => {
+    const pinObstacles: LabelRect[] = pinAnchors.map(({ pin, base }) => {
       const projected = this.labelProjected.copy(pin).project(camera);
       if (projected.z < -1 || projected.z > 1) return { left: -1, right: -1, top: -1, bottom: -1 };
       const px = (projected.x + 1) * width / 2, py = (1 - projected.y) * height / 2;
       const pad = 34; // covers the 26 px disc plus its label line
-      return { left: px - pad, right: px + pad, top: py - pad, bottom: py + pad * 1.5 };
+      const leader = this.labelProjected.copy(base).project(camera);
+      return { left: px - pad, right: px + pad, top: py - pad, bottom: Math.max(py + pad * 1.5, (1 - leader.y) * height / 2 + 4) };
     }).filter(rect => rect.right > rect.left);
-    candidates.sort((a,b)=>Number(b.selected)-Number(a.selected)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
+    candidates.sort((a,b)=>Number(!!b.incident)-Number(!!a.incident)||Number(b.selected)-Number(a.selected)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
     for(const item of candidates) {
       if(this.semantic&&!item.interest)continue;
       if(!item.interest&&!item.selected&&!item.forced&&(occupied.length>=12||labelAttempts>=32))continue;
@@ -415,7 +417,7 @@ export class EntityLayer {
       label.style.maxWidth = `${Math.max(0, safe.right - safe.left)}px`;
       // The incident's own label sits just above its pin by design; other labels move away.
       const avoid = item.incident ? [...obstacles, ...occupied] : [...obstacles, ...pinObstacles, ...occupied];
-      const placed = placeLabel(x, y, label.offsetWidth, label.offsetHeight, safe, avoid, item.selected);
+      const placed = placeLabel(x, y, label.offsetWidth, label.offsetHeight, safe, avoid, item.selected, item.incident ? [] : pinObstacles);
       if (!placed) continue;
       visibleLabels.add(item.id);
       const left=`${placed.x}px`,top=`${placed.y}px`;

@@ -161,7 +161,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         const animating = overlayView?.render(now);
         const drifting = hologram?.advance(now);
         const { conditions, atS } = previewCut.current;
-        atmosphere?.update(conditions, atS, camera);
+        atmosphere?.update(conditions, atS, camera, undefined, undefined, undefined, controls!.target);
         const buildings = scene.getObjectByName('layer-buildings');
         const weather = `${scene.userData.weatherWet}/${conditions.light}`;
         if (buildings && displayedWeather !== weather) { displayedWeather = weather; applyWeatherMaterials(buildings, scene.userData.weatherWet, conditions.light === 'dusk'); }
@@ -179,7 +179,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       atmosphereLabels = document.createElement('div'); atmosphereLabels.className = 'viewport-labels'; host.append(atmosphereLabels);
       atmosphere = new AtmosphereLayer(scene, renderer!, 'med', { annotations: true, preview: { overlay: atmosphereLabels, locale: () => latest.current.locale }, onReady: invalidate });
       void atmosphere.ready.then(invalidate).catch(problem => { if (!abort.signal.aborted) setError({ kind: 'runtime', detail: String(problem) }); });
-      atmosphere.update(previewConditions, previewS, camera);
+      atmosphere.update(previewConditions, previewS, camera, undefined, undefined, undefined, controls.target);
       const shownCity = cityScene(ws);
       let userMoved = false, framedCity = false;
       controls.addEventListener('start', () => { userMoved = true; overlayView?.interact(true); });

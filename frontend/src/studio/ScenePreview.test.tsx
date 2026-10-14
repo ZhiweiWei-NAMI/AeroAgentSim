@@ -52,7 +52,9 @@ describe('ScenePreview layer toggles', () => {
       tasks: { plugin: 'lowalt_tasks', config: { cooperation: { incidents: [{ ...incident, position: wet ? [20, 40, 0] : [50, 60, 0] }, { ...incident, id: 'later', at_s: 90 }] } } },
     } } });
     const view = render(<ScenePreview workspace={conditions(true)} api="/api" layers={ALL} />);
-    await vi.waitFor(() => expect(mocks.scene?.fog).toBeInstanceOf(THREE.FogExp2));
+    await vi.waitFor(() => expect(mocks.scene?.fog).toBeInstanceOf(THREE.Fog));
+    const fog = mocks.scene!.fog as THREE.Fog;
+    expect(fog.near).toBeGreaterThanOrEqual(0); expect(fog.far - fog.near).toBeCloseTo(500 / 0.95);
     expect(view.container.querySelector('.viewport-labels')?.textContent).toContain('Fire at 01:30');
     expect(mocks.scene?.getObjectByName('fx-incident-fire')?.position.toArray()).toEqual([20, 0, -40]);
     const sun = mocks.scene!.children.find(node => node instanceof THREE.DirectionalLight) as THREE.DirectionalLight;

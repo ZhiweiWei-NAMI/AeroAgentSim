@@ -13,7 +13,7 @@ import {activeZones,semanticSites} from './semantic';
 import {ProceduralDistrict} from '../scene/procedural-district';
 import { pipeline, PRESETS, type Quality } from './pipeline';
 import { QualityMaterials } from './quality-materials';
-import { applyWeatherMaterials, setupScene } from './scene';
+import { applyWeatherMaterials, observerFogOffset, setupScene } from './scene';
 import { scenePresentation, type ScenePresentation } from '../scene/presentation';
 import { loadSceneLayer } from '../scene/city-layer';
 import type { CityProgress } from '../scene/traffic-city';
@@ -227,7 +227,7 @@ export class Viewport {
   private applyLighting() {
     const dusk = this.lightingOverride === 'dusk' || (this.lightingOverride === 'scene' && this.latestConditions?.light === 'dusk');
     if (dusk !== this.dusk) this.setDusk(dusk);
-    else this.lighting.setAtmosphere({ dusk, rain: Math.min((this.latestConditions?.precipitationMmH ?? 0) / 8, 1), visibilityM: this.latestConditions?.visibilityM ?? null });
+    else this.lighting.setAtmosphere({ dusk, rain: Math.min((this.latestConditions?.precipitationMmH ?? 0) / 8, 1), visibilityM: this.latestConditions?.visibilityM ?? null, observerOffsetM: observerFogOffset(this.camera, this.controls.target) });
   }
   /** Latest frame's derived conditions, for the HUD. */
   conditions(): Conditions | undefined { return this.latestConditions; }
@@ -239,7 +239,7 @@ export class Viewport {
   }
   setDusk(dusk: boolean) {
     this.dusk=dusk;
-    this.lighting.setAtmosphere({ dusk, rain: Math.min((this.latestConditions?.precipitationMmH ?? 0) / 8, 1), visibilityM: this.latestConditions?.visibilityM ?? null });
+    this.lighting.setAtmosphere({ dusk, rain: Math.min((this.latestConditions?.precipitationMmH ?? 0) / 8, 1), visibilityM: this.latestConditions?.visibilityM ?? null, observerOffsetM: observerFogOffset(this.camera, this.controls.target) });
     this.composer.setDusk(dusk);this.applyCityDisplay(this.staticRoot);this.revision++;
     this.container.dataset.lighting=dusk?'dusk-display':'day-display';
   }
@@ -354,7 +354,7 @@ export class Viewport {
       }
     };
     const next = this.atmosphere ? conditionsAt(store.entities, ns, this.header) : undefined;
-    this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion, aimCamera, next?.incidents);
+    this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion, aimCamera, next?.incidents, this.roofHeight);
     // Conditions derive from the journaled cut only; a paused clock keeps them (and the frame) still.
     if (this.atmosphere && next) {
       const simSeconds = Number(BigInt(ns)) / 1e9;
@@ -382,7 +382,7 @@ export class Viewport {
       if(this.cameraTransition){this.cameraTransition.position.sub(shift);this.cameraTransition.target.sub(shift);}
       this.staticRoot.position.copy(this.origin).negate();
       this.staticRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.incidentSurface.setObjects(this.staticRoot);this.revision++;
-      this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion,undefined,next?.incidents);
+      this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion,undefined,next?.incidents,this.roofHeight);
     }
     this.lighting.update(this.controls.target);
     this.composer.outline.selection.set(this.layer.selection.length?this.layer.selection:this.layer.ring.visible?[this.layer.ring]:[]);
