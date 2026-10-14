@@ -165,7 +165,7 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     rig.setAtmosphere({ dusk: false, rain: 0.5, visibilityM: 500 });
     layer.update(dusk, 12.5, camera);
     const smoke = meshes(layer.root.children[0].children[0])[1];
-    expect((smoke.material.uniforms.uAmbient ?? { value: null }).value).toBeUndefined(); // uAmbient is gone
+    expect(smoke.material.uniforms).not.toHaveProperty('uAmbient');
     const dayLight = smoke.material.uniforms.uSmokeLight.value.clone() as T.Color;
     expect(dayLight.getHex()).toBe(new T.Color('#8f8a84').lerp(new T.Color('#7d8288'), 0.15).getHex());
     expect(smoke.material.uniforms.uScatter.value).toBe(0.25);
@@ -205,7 +205,7 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
   it.each(['high', 'low'] as const)('keeps a continuous %s plume across schedule wraps and late activation', async quality => {
     const layer = new IncidentFX(quality); await layer.ready;
     const fire = { ...conditions.incidents[0], startS: 90 };
-    const rate = quality === 'high' ? 2.0 : 0.8, lifeS = 24;
+    const rate = 2.0, lifeS = quality === 'high' ? 24 : 9;
     for (const age of [1, 20, 26, 39.9, 40, 53.4, 80, 120]) {
       layer.update([{ ...fire, activeS: age, sinceS: age }], 90 + age, camera, new Map());
       const smoke = meshes(layer.root.children[0])[1];
@@ -220,7 +220,7 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     layer.update([{ ...fire, phase: 'ended', activeS: 121, sinceS: 1 }], 211, camera, new Map());
     expect(meshes(layer.root.children[0])[1].count).toBeGreaterThan(0);
     layer.update([{ ...fire, phase: 'ended', activeS: 146, sinceS: 26 }], 236, camera, new Map());
-    // 26 s after ending, every puff from the 24 s lifetime has expired.
+    // 26 s after ending, every puff at either quality has expired.
     expect(meshes(layer.root.children[0])[1].count).toBe(0);
     layer.dispose();
   });

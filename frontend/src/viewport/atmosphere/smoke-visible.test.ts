@@ -108,3 +108,54 @@ it('keeps the additive core small and selects its pass independently of shared q
   }
   layer.dispose();
 });
+
+it.each([[70, 25], [220, 30], [775, 40], [420, 55]])('keeps a projected flame footprint and an attached plume root at %s m / %s°', async (distance, pitchDeg) => {
+  const layer = new IncidentFX('low'); await layer.ready;
+  const row = fire(35), view = new T.PerspectiveCamera(48, 1.6);
+  const target = new T.Vector3(row.position[0], 20, -row.position[1]);
+  const pitch = pitchDeg * Math.PI / 180;
+  view.position.copy(target).add(new T.Vector3(0, distance * Math.sin(pitch), distance * Math.cos(pitch)));
+  view.lookAt(target); view.updateMatrixWorld();
+  layer.setPinScale(900);
+  layer.update([row], 35, view, new Map());
+  layer.root.updateMatrixWorld(true);
+  const [body, smoke] = layer.root.children[0].children.filter(node => node instanceof T.InstancedMesh) as T.InstancedMesh<T.BufferGeometry, T.ShaderMaterial>[];
+  const matrix = new T.Matrix4(), position = new T.Vector3(), scale = new T.Vector3(), rotation = new T.Quaternion();
+  for (let i = 0; i < body.count; i++) {
+    body.getMatrixAt(i, matrix); matrix.decompose(position, rotation, scale);
+    const top = new T.Vector3(0, 0.5, 0).applyMatrix4(matrix).applyMatrix4(body.matrixWorld).project(view);
+    const bottom = new T.Vector3(0, -0.5, 0).applyMatrix4(matrix).applyMatrix4(body.matrixWorld).project(view);
+    expect((top.y - bottom.y) * 900 / 2).toBeGreaterThan(30);
+    if (distance === 70) expect(scale.y).toBeLessThanOrEqual(12.000001);
+  }
+  let root = Infinity;
+  for (let i = 0; i < smoke.count; i++) {
+    smoke.getMatrixAt(i, matrix); root = Math.min(root, matrix.elements[13]);
+  }
+  expect(smoke.count).toBe(18);
+  expect(root).toBeCloseTo(smoke.material.uniforms.uFlameTop.value, 5);
+  layer.dispose();
+});
+
+it('shortens low-quality smoke without accelerating its colour, growth or root fade during a gust', async () => {
+  const high = new IncidentFX('high'), low = new IncidentFX('low');
+  await Promise.all([high.ready, low.ready]);
+  for (const layer of [high, low]) {
+    layer.setWind(9 * Math.SQRT1_2, -9 * Math.SQRT1_2);
+    layer.update([fire(8)], 8, camera, new Map());
+  }
+  const a = smokeOf(high), b = smokeOf(low);
+  const highTint = a.geometry.getAttribute('puffTint'), lowTint = b.geometry.getAttribute('puffTint');
+  expect(b.count).toBe(a.count);
+  const am = new T.Matrix4(), bm = new T.Matrix4();
+  for (let i = 0; i < b.count; i++) {
+    a.getMatrixAt(i, am); b.getMatrixAt(i, bm);
+    expect(bm.elements).toEqual(am.elements);
+    expect([lowTint.getX(i), lowTint.getY(i), lowTint.getZ(i)])
+      .toEqual([highTint.getX(i), highTint.getY(i), highTint.getZ(i)]);
+  }
+  // The puff emitted at 2.5 s is 5.5 s old: still the dense, young body at both qualities.
+  expect(lowTint.getW(5)).toBeCloseTo(0.5);
+  expect(lowTint.getW(0)).toBeLessThan(highTint.getW(0)); // smooth exit before the 9 s cutoff
+  high.dispose(); low.dispose();
+});

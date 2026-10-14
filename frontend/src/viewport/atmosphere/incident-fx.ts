@@ -12,7 +12,10 @@ import type { Quality } from '../pipeline';
  */
 
 const FLAME_MIN = 5, FLAME_MAX = 7;
-// Connected plume (finding 8): 2.0 puffs/s at high quality (limit 56, life 24 s), 0.8/s at low (limit 18).
+// A soft flame mask needs this projected height to leave a glint outside the 26 px pin,
+// including the half-resolution low-quality drawing buffer. Close views keep their world size.
+const FLAME_MIN_CSS_PX = 40;
+// Connected plume: 2.0 puffs/s at high quality (limit 56, life 24 s).
 // Low quality keeps the same emission rate with a shorter life: a shorter plume, never a sparser one.
 const SMOKE_RATE = 2.0, SMOKE_LIFE_HIGH_S = 24, SMOKE_LIFE_LOW_S = 9, SMOKE_HIGH = 56, SMOKE_LOW = 18;
 const AREA = new T.Color('#ff6a3d'), ENDED = new T.Color('#8b95a1');
@@ -124,7 +127,12 @@ const smokeMaterial = () => new T.ShaderMaterial({
   // Smoke is art-directed, not shaded by the rig: the plume scatters the ambient city/sky
   // light (mix with uSmokeLight) and the fire underlights the root while the flames burn.
   fragmentShader: `uniform sampler2D uMap;uniform vec3 uSmokeLight;uniform vec3 uGlow;uniform float uGlowStrength;uniform float uScatter;uniform float uFlameTop;varying vec2 puffUv;varying vec4 puffColor;varying float puffHeight;${FOG_PARS_F}
-    void main(){vec4 puff=texture2D(uMap,puffUv);float alpha=puff.a*puffColor.a;
+    void main(){vec4 puff=texture2D(uMap,puffUv);
+    // The sparse atlas needs its softened density at small projected sizes. Keep the
+    // close-view alpha, and restore the former sqrt density below 32–8 raster pixels.
+    float footprint=max(fwidth(puffUv.x),fwidth(puffUv.y));
+    float coverage=smoothstep(0.5/32.0,0.5/8.0,footprint);
+    float alpha=mix(puff.a,sqrt(puff.a),coverage)*puffColor.a;
     if(alpha<=0.002)discard;
     vec3 base=puffColor.rgb;
     vec3 lit=mix(base,uSmokeLight,uScatter);
@@ -287,11 +295,12 @@ export class IncidentFX {
   }
   update(rows: Conditions['incidents'], simSeconds: number, camera: T.Camera, ringStart: Map<string, number>, origin?: T.Vector3, roofHeight?: (east: number, north: number) => number) {
     if (this.disposed) return;
-    if (!rows.length && !this.visuals.size) { this.flameRamp = 0; return; }
+    this.flameRamp = 0;
+    if (!rows.length && !this.visuals.size) return;
     const shown = this.shown; shown.clear();
     const reduced = (this.reducedMotion ??= matchMedia('(prefers-reduced-motion: reduce)')).matches;
     const pinScale = this.pinScale / camera.projectionMatrix.elements[5];
-    if (this.options.preview) camera.updateMatrixWorld();
+    camera.updateMatrixWorld();
     for (const row of rows) {
       // A run's pending incidents allocate nothing. Only the draft shows their grey pins.
       if (row.phase === 'pending' && !this.options.preview) continue;
@@ -307,6 +316,16 @@ export class IncidentFX {
       const roofY = Math.max(roofHeight?.(row.position[0], row.position[1]) ?? -(origin?.y ?? 0), this.position.y);
       const baseY = roofY - visual.unit.position.y;
       const baseHeight = T.MathUtils.clamp(8 * Math.sqrt(row.radiusM / 30), 5, 12);
+      // The procedural mask only fills part of its quad. At overview distances its
+      // former 2–4 raster pixels disappeared under the screen-space pin. Size the same
+      // billboards from projected depth, retaining the physical sizes when they read.
+      this.position.copy(visual.unit.position); this.position.y += baseY + baseHeight / 2;
+      const depth = -this.position.applyMatrix4(camera.matrixWorldInverse).z;
+      // Upright flame quads foreshorten as the operator pitches down; include that
+      // projection so the top view keeps the same floor as the oblique overview.
+      const verticalProjection = Math.max(0.25, Math.hypot(camera.matrixWorld.elements[8], camera.matrixWorld.elements[10]));
+      const displayScale = Math.max(1, depth * pinScale * FLAME_MIN_CSS_PX / 26 / baseHeight / verticalProjection);
+      const flameTop = baseHeight * displayScale;
       // Ring draw-in: 0.6 s wall-clock, once per activation (spec §5). Grey tint after ending.
       const start = ringStart.get(row.id), drawIn = !reduced && start !== undefined ? Math.min(1, (performance.now() - start) / 600) : 1;
       if (visual.annotation) {
@@ -364,12 +383,13 @@ export class IncidentFX {
       }
       if (burning) {
         this.flameRamp = Math.max(this.flameRamp, ramp);
-        this.setFlameTop(baseHeight);
+        this.setFlameTop(baseY + flameTop);
         for (const mesh of [visual.flames, visual.flameCore] as T.InstancedMesh<T.PlaneGeometry, T.ShaderMaterial>[]) {
           mesh.material.uniforms.uTime.value = simSeconds;
           mesh.material.uniforms.uRamp.value = ramp;
         }
-        // Height 5–12 m scaled by sqrt(radius/30); cluster radius min(0.2·R, 6 m); width 0.8 × height.
+        // Physical height 5–12 m scaled by sqrt(radius/30), with a projected-size floor;
+        // cluster radius min(0.2·R, 6 m); width 0.8 × height.
         const cluster = Math.min(0.2 * row.radiusM, 6);
         for (let i = 0; i < visual.flames.count; i++) {
           const angle = fxHash(seed, i * 4 + 2) * Math.PI * 2, radius = fxHash(seed, i * 4 + 3) * cluster;
@@ -377,7 +397,7 @@ export class IncidentFX {
           this.quaternion.copy(camera.quaternion);
           QUARTER_TURN.setFromQuaternion(this.quaternion, 'YXZ');
           this.quaternion.setFromAxisAngle(this.vertical, QUARTER_TURN.y + angle + Math.sin(simSeconds * 0.6 + i) * 0.15);
-          const height = T.MathUtils.clamp(baseHeight * (0.8 + 0.4 * fxHash(seed, i * 4 + 4)), 5, 12);
+          const height = T.MathUtils.clamp(baseHeight * (0.8 + 0.4 * fxHash(seed, i * 4 + 4)), 5, 12) * displayScale;
           this.scale.set(height * 0.8, height, 1);
           this.position.set(Math.cos(angle) * radius, roofY - visual.unit.position.y + this.scale.y / 2, Math.sin(angle) * radius);
           this.matrix.compose(this.position, this.quaternion, this.scale);
@@ -390,7 +410,8 @@ export class IncidentFX {
         visual.flames.instanceMatrix.needsUpdate = true;
         visual.flameCore.instanceMatrix.needsUpdate = true;
       }
-      if (row.kind === 'fire' && !pending) this.writeSmoke(visual, seed, simSeconds, camera, row, baseY + baseHeight);      else { visual.smoke.visible = false; visual.smoke.count = 0; }
+      if (row.kind === 'fire' && !pending) this.writeSmoke(visual, seed, simSeconds, camera, row, baseY + flameTop);
+      else { visual.smoke.visible = false; visual.smoke.count = 0; }
     }
     for (const [id, visual] of this.visuals) if (!shown.has(id)) { this.disposeVisual(visual); this.visuals.delete(id); }
     // One warm PointLight per scene for the nearest active fire.
@@ -433,7 +454,9 @@ export class IncidentFX {
     visual.smoke.visible = count > 0;
   }
   private writePuff(visual: Visual, count: number, seed: number, slot: number, age: number, lifetime: number, simSeconds: number, camera: T.Camera, windEast: number, windNorth: number, baseHeight: number) {
-    const life = age / lifetime;
+    // Low quality cuts the plume short; it must not age its colour/opacity 24/9 times
+    // faster while rise and size still use seconds on the high-quality clock.
+    const life = age / SMOKE_LIFE_HIGH_S;
     const seedA = fxHash(seed, slot * 8 + 1), seedB = fxHash(seed, slot * 8 + 2), seedC = fxHash(seed, slot * 8 + 3);
     // Rise ~2.6 m/s slowing with height: ≥ 15 m before the column bends downwind.
     // Drift (0.55 × wind) ramps in with min(1, age/6), so young puffs climb straight out of the flames
@@ -453,7 +476,9 @@ export class IncidentFX {
     visual.smoke.setMatrixAt(count, this.matrix);
     const tint = life < 0.5 ? this.color.copy(SMOKE_BASE).lerp(SMOKE_MID, life * 2) : this.color.copy(SMOKE_MID).lerp(SMOKE_HIGH_TONE, (life - 0.5) * 2);
     // Dense root (0.62 for 3 s), body held at 0.5 to 45 % of life, then a linear fade as it lightens.
-    const alpha = age < 3 ? 0.62 - 0.12 * (age / 3) : life < 0.45 ? 0.5 : 0.5 * (1 - (life - 0.45) / 0.55);
+    let alpha = age < 3 ? 0.62 - 0.12 * (age / 3) : life < 0.45 ? 0.5 : 0.5 * (1 - (life - 0.45) / 0.55);
+    // Keep the dark body until the final 3 s of the shorter low-quality lifetime.
+    if (lifetime < SMOKE_LIFE_HIGH_S) alpha *= 1 - T.MathUtils.smoothstep(age, lifetime - 3, lifetime);
     visual.tint.setXYZW(count, tint.r, tint.g, tint.b, alpha);
     visual.cells.setX(count, Math.floor(fxHash(seed, slot * 8 + 4) * 4));
   }
