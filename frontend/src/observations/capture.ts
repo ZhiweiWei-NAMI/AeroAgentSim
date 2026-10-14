@@ -201,7 +201,9 @@ export class CaptureRenderer {
     this.layer.hideIncidentMarkers = true;
     this.layer.setCatalog(parseModelCatalog(header.modelCatalog)); this.scene.add(this.layer.root);
     // Captures show the same smoke/rain/fog as the run viewport: the cut's journaled conditions.
-    this.atmosphere = new AtmosphereLayer(this.scene,this.renderer,'low',{ annotations: false });
+    // A capture is a one-shot sensor render, so the atmosphere gets the high tier
+    // (full plume) while the render pipeline itself stays 'low'.
+    this.atmosphere = new AtmosphereLayer(this.scene,this.renderer,'high',{ annotations: false });
     // The atlas must be live before the first photograph or the plume is missing from captures.
     await this.atmosphere.ready;
     this.composer = pipeline(this.renderer,this.scene,this.camera,'low');

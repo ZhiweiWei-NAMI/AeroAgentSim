@@ -378,6 +378,16 @@ it('sends one set_weather with rain, visibility and light presets, and reads cur
   await waitFor(() => expect(onProject).toHaveBeenCalled());
 });
 
+it('summarises the staged visibility preset, not the committed value', () => {
+  const foggy = { config: { profiles: { weather: { 'lowalt.wind': { mode: 'constant', value: [0, 0, 0] },
+    'lowalt.visibility': { mode: 'constant', value: null } } } } };
+  render(weather({ environment: foggy }));
+  expect(screen.getByTestId('wb-conditions-summary')).toHaveTextContent('a clear sky');
+  fireEvent.click(chip('wb-visibility-presets', 'Mist · 2 km'));
+  expect(screen.getByTestId('wb-conditions-summary')).toHaveTextContent('fog limiting view to 2 km');
+  expect(screen.getByTestId('wb-conditions-summary')).not.toHaveTextContent('0 m');
+});
+
 it('writes explicit zero and clear values and includes the scoped visual-only note', async () => {
   render(weather());
   // The note sits under the Conditions fieldset (findings/copy decisions), not under the wind card.

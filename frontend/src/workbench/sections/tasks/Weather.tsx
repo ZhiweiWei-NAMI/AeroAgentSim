@@ -105,6 +105,10 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
   const rainValueOf = (preset: string) => preset === 'none' ? 0 : preset === 'light' ? 1 : preset === 'moderate' ? 4 : preset === 'heavy' ? 10
     : parseStagedNumber(conditions.rainCustom ?? String(currentWeather.precipitationMmH)) ?? currentWeather.precipitationMmH;
   const rainValue = rainValueOf(rainPreset);
+  // The summary is a staged preview: it must read the staged preset values, never the committed ones.
+  const visibilityValueOf = (preset: string) => preset === 'clear' ? null : preset === 'haze' ? 5000 : preset === 'mist' ? 2000 : preset === 'fog' ? 500 : preset === 'dense' ? 150
+    : parseStagedNumber(conditions.visibilityCustom ?? String(currentWeather.visibilityM ?? '')) ?? currentWeather.visibilityM;
+  const stagedLight = conditions.light ?? currentWeather.light;
   const stagedWeather = weatherParams({
     rain: rainPreset,
     visibility: visibilityPreset,
@@ -136,7 +140,7 @@ export function WeatherBlock({ environmentName: _name, environment, draft, edit:
       <p className="hint" role="note">{zh ? '风与阵风是仿真输入，会影响飞行等待与能耗。' : 'Wind and gusts are simulation inputs: they affect flight holds and energy.'}</p>
     </fieldset>
     <fieldset className="wb-form-card wb-conditions"><legend className="wb-form-card-title">{L('Conditions', '天气条件')}</legend>
-      <p className="hint wb-conditions-summary" data-testid="wb-conditions-summary">{stagedSummary(rainPreset, rainValue, visibilityPreset, currentWeather.visibilityM, conditions.light ?? currentWeather.light, zh)}</p>
+      <p className="hint wb-conditions-summary" data-testid="wb-conditions-summary">{stagedSummary(rainPreset, rainValue, visibilityPreset, visibilityValueOf(visibilityPreset), stagedLight, zh)}</p>
       {/* Scoped honesty note (copy decisions): sits under the Conditions fieldset summary,
           NOT under the card title or the wind controls. */}
       <p className="hint" role="note">{zh

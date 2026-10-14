@@ -50,8 +50,8 @@ const glowMaterial = () => new T.ShaderMaterial({
     void main(){float d=length(glowUv-0.5)*2.0;
     // Sim-time flicker: two incommensurate sines on the hashed phase keep the disc alive.
     float flicker=0.75+0.25*sin(uTime*7.3+hash(vec2(3.0,7.0)))*sin(uTime*11.1+hash(vec2(5.0,1.0)));
-    float alpha=(1.0-smoothstep(0.0,1.0,d))*0.35*flicker*uRamp;
-    if(alpha<=0.004)discard;gl_FragColor=vec4(1.0,0.254,0.024,alpha);${OUTPUT_F}}`,
+    float alpha=(1.0-smoothstep(0.0,1.0,d))*0.25*flicker*uRamp;
+    if(alpha<=0.004)discard;gl_FragColor=vec4(1.0,0.541,0.169,alpha);${OUTPUT_F}}`,
 });
 
 // Chunks must start on their own lines for Three's shader preprocessor.
@@ -96,7 +96,7 @@ const flameMaterial = (additiveCore = false) => new T.ShaderMaterial({
     float n=noise(uv*3.0+vec2(t*0.9,-t*1.6))*0.6+noise(uv*7.0-vec2(t*1.4,t*2.2))*0.4;
     float teardrop=1.0-smoothstep(0.0,max(0.001,0.9*pow(max(0.0,1.0-uv.y),0.7)),abs(uv.x-0.5)*2.0);
     float mask=(1.0-smoothstep(0.25,1.0,uv.y))*teardrop*(0.55+0.45*n);
-    float core=teardrop*(1.0-smoothstep(0.0,1.0,uv.y))*(1.0-smoothstep(0.2,0.75,abs(uv.x-0.5)*2.0))*(0.5+0.5*n);
+    float core=teardrop*(1.0-smoothstep(0.0,1.0,uv.y))*(1.0-smoothstep(0.08,0.45,abs(uv.x-0.5)*2.0))*(0.5+0.5*n);
     ${FOG_VISIBILITY}
     float alpha=(uCore<0.5?min(0.85,mask*1.15):min(0.6,core*0.6))*uRamp*visibility;
     if(alpha<=0.01)discard;
@@ -225,6 +225,13 @@ export class IncidentFX {
   private position = new T.Vector3();
   private color = new T.Color();
   private vertical = new T.Vector3(0, 1, 0);
+  // Flame orientation blend: cylindrical → camera-facing as the camera pitches down.
+  private flameFace = 0;
+  private cameraYaw = 0;
+  private cameraForward = new T.Vector3();
+  private flameSpherical = new T.Quaternion();
+  private flameCylindrical = new T.Quaternion();
+  private spin = new T.Quaternion();
   private shown = new Set<string>();
   private reducedMotion?: MediaQueryList;
   private pinScale = 26 / 900;
@@ -305,6 +312,13 @@ export class IncidentFX {
     const reduced = (this.reducedMotion ??= matchMedia('(prefers-reduced-motion: reduce)')).matches;
     const pinScale = this.pinScale / camera.projectionMatrix.elements[5];
     camera.updateMatrixWorld();
+    // Cylinder → sphere blend from the camera direction: below 45° pitch the flames stay
+    // upright; from 45° to 80° below horizontal they progressively turn to face the camera.
+    this.cameraForward.set(0, 0, -1).applyQuaternion(camera.quaternion);
+    const pitchDeg = Math.asin(Math.min(1, Math.max(-1, -this.cameraForward.y))) * 180 / Math.PI;
+    this.flameFace = T.MathUtils.clamp((pitchDeg - 45) / 35, 0, 1);
+    // Azimuth that keeps an upright quad facing the camera horizontally.
+    this.cameraYaw = Math.atan2(-this.cameraForward.x, -this.cameraForward.z);
     for (const row of rows) {
       // A run's pending incidents allocate nothing. Only the draft shows their grey pins.
       if (row.phase === 'pending' && !this.options.preview) continue;
@@ -397,10 +411,16 @@ export class IncidentFX {
         const cluster = Math.min(0.2 * row.radiusM, 6);
         for (let i = 0; i < visual.flames.count; i++) {
           const angle = fxHash(seed, i * 4 + 2) * Math.PI * 2, radius = fxHash(seed, i * 4 + 3) * cluster;
-          // Camera-facing billboards, each rotated about its own vertical axis.
-          this.quaternion.copy(camera.quaternion);
-          QUARTER_TURN.setFromQuaternion(this.quaternion, 'YXZ');
-          this.quaternion.setFromAxisAngle(this.vertical, QUARTER_TURN.y + angle + Math.sin(simSeconds * 0.6 + i) * 0.15);
+          const yaw = this.cameraYaw + angle + Math.sin(simSeconds * 0.6 + i) * 0.15;
+          // Upright cylinder about the vertical, with the per-flame yaw jitter kept;
+          // as the camera pitches down the blend turns each quad toward the camera.
+          this.quaternion.setFromAxisAngle(this.vertical, yaw);
+          if (this.flameFace > 0) {
+            this.flameCylindrical.copy(this.quaternion);
+            this.spin.setFromAxisAngle(this.vertical, yaw);
+            this.flameSpherical.copy(camera.quaternion).multiply(this.spin);
+            this.quaternion.slerp(this.flameSpherical, this.flameFace);
+          }
           const height = T.MathUtils.clamp(baseHeight * (0.8 + 0.4 * fxHash(seed, i * 4 + 4)), 5, 12) * displayScale;
           this.scale.set(height * 0.8, height, 1);
           this.position.set(Math.cos(angle) * radius, roofY - visual.unit.position.y + this.scale.y / 2, Math.sin(angle) * radius);
