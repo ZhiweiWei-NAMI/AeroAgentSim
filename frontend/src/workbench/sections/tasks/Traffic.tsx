@@ -55,22 +55,12 @@ function IncidentPosition({ value, onChange, touched, L }: { value: string; onCh
   </label>;
 }
 
-/** Kind chips (wb-choice) + radius prefilled by kind; radius and end ride along on every add/update (spec §4). */
-function IncidentKindFields({ fields, touched, problems, zh, L, onKind, onField }: {
-  fields: IncidentFields; touched: Set<string>; problems: Record<string, string>; zh: boolean; L: SectionProps['L'];
-  onKind: (kind: string) => void; onField: (key: keyof IncidentFields, value: string) => void;
-}) {
-  return <>
-    <div className="wb-choice-group" role="group" aria-label={L('Incident kind', '事件类型')} data-testid="wb-incident-kind">
-      {INCIDENT_KINDS.map(kind => <button key={kind} type="button" className="wb-choice" aria-pressed={(fields.kind || 'person_fall') === kind}
-        onClick={() => onKind(kind)}>{incidentKindLabel(kind, L)}</button>)}
-    </div>
-    <StagedNumber label={`${L('Affected radius', '影响半径')} (m)`} value={fields.radius} min={1} max={500} problem={problems.radius_m}
-      showError={touched.has('radius')} onChange={value => onField('radius', value)} />
-    <StagedNumber label={`${L('Ends at', '结束时间')} (s)`} value={fields.end} min={0} max={undefined} allowEmpty problem={problems.end_s}
-      showError={touched.has('end')} onChange={value => onField('end', value)} />
-    <p className="hint" role="note">{zh ? '火情是视觉与调度标记；不模拟燃烧与烟雾扩散。' : 'The fire is a visual and scheduling marker; combustion and smoke spread are not simulated.'}</p>
-  </>;
+/** Kind chips (wb-choice) only — they lead the incident forms because the kind sets the radius default. */
+function IncidentKindChips({ fields, L, onKind }: { fields: IncidentFields; L: SectionProps['L']; onKind: (kind: string) => void }) {
+  return <div className="wb-choice-group" role="group" aria-label={L('Incident kind', '事件类型')} data-testid="wb-incident-kind">
+    {INCIDENT_KINDS.map(kind => <button key={kind} type="button" className="wb-choice" aria-pressed={(fields.kind || 'person_fall') === kind}
+      onClick={() => onKind(kind)}>{incidentKindLabel(kind, L)}</button>)}
+  </div>;
 }
 
 function incidentFields(incident: Draft): IncidentFields {
@@ -100,15 +90,21 @@ function IncidentEditForm({ incident, wiring, duration_s, L, zh, onClose }: { in
     ? [operation('set_incident', { id: incident.id, ...incidentParams(fields, incident) })] : undefined, [valid, incident.id, JSON.stringify(fields)]);
   return <div className="wb-form-card wb-form-stack wb-incident-edit" data-testid="wb-incident-edit">
     <p className="hint">{L(`Change incident "${incident.id}". Review the changes before applying.`, `修改事件“${incident.id}”，应用前请核对变更。`)}</p>
+    <IncidentKindChips fields={fields} L={L} onKind={kind => { form.setValues(previous => {
+      const radius = previous.radius === '' || previous.radius === String(incidentRadiusDefault(incident.kind ?? 'person_fall')) ? String(incidentRadiusDefault(kind)) : previous.radius;
+      return { ...previous, kind, radius };
+    }); setTouched(true); }} />
     <StagedFormNote form={form} L={L} onDiscard={() => setTouched(false)} />
+    <label className="wb-form-field"><span className="wb-label">{L('Incident ID', '事件标识')}</span>
+      <input aria-label={L('Incident ID', '事件标识')} value={fields.id} disabled />
+    </label>
     <IncidentPosition L={L} value={fields.at} touched={touched} onChange={at => { setTouched(true); form.setValues(previous => ({ ...previous, at })); }} />
     <StagedNumber label={`${L('Starts at', '开始时间')} (s)`} value={fields.time} min={0} max={duration_s} onChange={time => form.setValues(previous => ({ ...previous, time }))} />
-    <IncidentKindFields fields={fields} touched={touched ? new Set(['radius', 'end']) : new Set()} problems={problems} zh={zh} L={L}
-      onKind={kind => { form.setValues(previous => {
-        const radius = previous.radius === '' || previous.radius === String(incidentRadiusDefault(incident.kind ?? 'person_fall')) ? String(incidentRadiusDefault(kind)) : previous.radius;
-        return { ...previous, kind, radius };
-      }); setTouched(true); }}
-      onField={(key, value) => { setTouched(true); form.setValues(previous => ({ ...previous, [key]: value })); }} />
+    <StagedNumber label={`${L('Affected radius', '影响半径')} (m)`} value={fields.radius} min={1} max={500} problem={problems.radius_m}
+      showError={true} onChange={value => { setTouched(true); form.setValues(previous => ({ ...previous, radius: value })); }} />
+    <StagedNumber label={`${L('Ends at', '结束时间')} (s)`} value={fields.end} min={0} max={undefined} allowEmpty problem={problems.end_s}
+      showError={true} onChange={value => { setTouched(true); form.setValues(previous => ({ ...previous, end: value })); }} />
+    <p className="hint" role="note">{zh ? '火情是视觉与调度标记；不模拟燃烧与烟雾扩散。' : 'The fire is a visual and scheduling marker; combustion and smoke spread are not simulated.'}</p>
     <OpApply {...wiring} operations={operations} label={L('Preview', '预览')} primary small onApplied={() => { form.clear(form.values); onClose(); }} />
   </div>;
 }
@@ -159,6 +155,8 @@ export function IncidentsBlock({ config, api, project, onProject, saveDraft, dur
     })}
     {wiring && <fieldset className="wb-form-card wb-form-stack">
       <legend className="wb-form-card-title">{L('Add incident', '添加事件')}</legend>
+      <IncidentKindChips fields={fields} L={L} onKind={value => { const radius = fields.radius === '' || fields.radius === String(incidentRadiusDefault(kind)) ? String(incidentRadiusDefault(value)) : fields.radius;
+        setTouched(previous => new Set([...previous, 'radius'])); form.setValues(previous => ({ ...previous, kind: value, radius })); }} />
       <StagedFormNote form={form} L={L} onDiscard={() => setTouched(new Set())} />
       <label className="wb-form-field"><span className="wb-label">{L('Incident ID', '事件标识')}</span>
         <input aria-label={L('Incident ID', '事件标识')} placeholder={L('e.g. fall-east', '例如 fall-east')} value={fields.id} onChange={event => update('id', event.target.value)} />
@@ -166,10 +164,11 @@ export function IncidentsBlock({ config, api, project, onProject, saveDraft, dur
       </label>
       <IncidentPosition L={L} value={fields.at} touched={touched.has('at')} onChange={value => update('at', value)} />
       <StagedNumber label={`${L('Starts at', '开始时间')} (s)`} value={fields.time} min={0} max={duration_s} onChange={value => update('time', value)} />
-      <IncidentKindFields fields={fields} touched={touched.has('radius') || touched.has('end') ? new Set(['radius', 'end']) : new Set()} problems={problems} zh={zh} L={L}
-        onKind={value => { const radius = fields.radius === '' || fields.radius === String(incidentRadiusDefault(kind)) ? String(incidentRadiusDefault(value)) : fields.radius;
-          setTouched(previous => new Set([...previous, 'radius'])); form.setValues(previous => ({ ...previous, kind: value, radius })); }}
-        onField={update} />
+      <StagedNumber label={`${L('Affected radius', '影响半径')} (m)`} value={fields.radius} min={1} max={500} problem={problems.radius_m}
+        showError={touched.has('radius')} onChange={value => update('radius', value)} />
+      <StagedNumber label={`${L('Ends at', '结束时间')} (s)`} value={fields.end} min={0} max={undefined} allowEmpty problem={problems.end_s}
+        showError={touched.has('end')} onChange={value => update('end', value)} />
+      <p className="hint" role="note">{zh ? '火情是视觉与调度标记；不模拟燃烧与烟雾扩散。' : 'The fire is a visual and scheduling marker; combustion and smoke spread are not simulated.'}</p>
       <OpApply {...wiring} operations={newOperations} label={L('Preview', '预览')} primary small onApplied={() => { form.clear(form.values); setTouched(new Set()); }} />
     </fieldset>}
   </div>;
