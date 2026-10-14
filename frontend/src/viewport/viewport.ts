@@ -13,7 +13,7 @@ import {activeZones,semanticSites} from './semantic';
 import {ProceduralDistrict} from '../scene/procedural-district';
 import { pipeline, PRESETS, type Quality } from './pipeline';
 import { QualityMaterials } from './quality-materials';
-import { setupScene } from './scene';
+import { applyWeatherMaterials, setupScene } from './scene';
 import { scenePresentation, type ScenePresentation } from '../scene/presentation';
 import { loadSceneLayer } from '../scene/city-layer';
 import type { CityProgress } from '../scene/traffic-city';
@@ -22,7 +22,6 @@ import { translate } from '../i18n/translate';
 import type {DirectorTarget} from './business-director';
 import { workbenchLayoutKey } from './label-placement';
 import { AtmosphereLayer } from './atmosphere';
-import { applyWeatherMaterials } from './atmosphere/sky-weather';
 import { conditionsAt, type Conditions } from './conditions';
 export type { CameraMode } from '../scene/camera-director';
 // Look down far enough to retain city context when following an airborne unit.
@@ -132,7 +131,7 @@ export class Viewport {
     if(options.semantic){this.semanticLayer=new SemanticLayer(header,{locale:options.locale,onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
     this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.applyPreset();
     // One atmosphere module serves the run view, captures and the draft preview.
-    this.atmosphere = new AtmosphereLayer(this.scene, this.renderer, this.quality);
+    this.atmosphere = new AtmosphereLayer(this.scene, this.renderer, this.quality, { annotations: true });
     void this.atmosphere.ready.then(() => { this.revision++; }).catch(error => options.onError?.(error));
     this.observer = new ResizeObserver(this.resize); this.observer.observe(container);
     const sceneFrame = container.closest('.wb')?.querySelector('.wb-scene-frame');
@@ -225,6 +224,7 @@ export class Viewport {
   private applyLighting() {
     const dusk = this.lightingOverride === 'dusk' || (this.lightingOverride === 'scene' && this.latestConditions?.light === 'dusk');
     if (dusk !== this.dusk) this.setDusk(dusk);
+    else this.lighting.setAtmosphere({ dusk, rain: Math.min((this.latestConditions?.precipitationMmH ?? 0) / 8, 1), visibilityM: this.latestConditions?.visibilityM ?? null });
   }
   /** Latest frame's derived conditions, for the HUD. */
   conditions(): Conditions | undefined { return this.latestConditions; }
@@ -235,7 +235,9 @@ export class Viewport {
     return () => this.conditionsListeners.delete(cb);
   }
   setDusk(dusk: boolean) {
-    this.dusk=dusk;this.lighting.setDusk(dusk);this.composer.setDusk(dusk);this.applyCityDisplay(this.staticRoot);this.revision++;
+    this.dusk=dusk;
+    this.lighting.setAtmosphere({ dusk, rain: Math.min((this.latestConditions?.precipitationMmH ?? 0) / 8, 1), visibilityM: this.latestConditions?.visibilityM ?? null });
+    this.composer.setDusk(dusk);this.applyCityDisplay(this.staticRoot);this.revision++;
     this.container.dataset.lighting=dusk?'dusk-display':'day-display';
   }
   setSelection(key?: EntityKey) { this.selected = key; this.revision++; }
@@ -355,7 +357,7 @@ export class Viewport {
       const simSeconds = Number(BigInt(ns)) / 1e9;
       this.latestConditions = next;
       this.applyLighting();
-      this.atmosphere.update(next, simSeconds, this.camera, (east, north) => this.roofHeight(east, north), this.atmosphereRingStart(next), this.origin, this.dusk ? 'dusk' : 'day');
+      this.atmosphere.update(next, simSeconds, this.camera, this.roofHeight, this.atmosphereRingStart(next), this.origin);
       this.composer.excludeBloom(this.atmosphere.root);
       // The wet city look re-applies only when the rain amount changes, not every frame.
       const wetKey = String(this.scene.userData.weatherWet);
@@ -460,10 +462,11 @@ export class Viewport {
     return false;
   }
   /** Roof height under an ENU point, from the same progressive bounds the camera lift uses. */
-  private roofHeight(east: number, north: number): number {
-    const probe = new T.Vector3(east - this.origin.x, 0, -north - this.origin.z);
+  private roofProbe = new T.Vector3();
+  private roofHeight = (east: number, north: number): number => {
+    const probe = this.roofProbe.set(east - this.origin.x, 0, -north - this.origin.z);
     return Math.max(0, this.occlusion.liftCamera(probe, 0).y);
-  }
+  };
   /** Legend from actual business kinds present in the committed cut, plus active zones. */
   private emitLegend(store: FeedStore) {
     const entries = new Map<string, string>();

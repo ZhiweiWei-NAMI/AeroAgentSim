@@ -30,7 +30,9 @@ export class Rain {
     this.geometry.index = quad.index;
     this.geometry.attributes.position = quad.attributes.position;
     this.geometry.attributes.uv = quad.attributes.uv;
-    this.geometry.setAttribute('dropSeed', new T.InstancedBufferAttribute(new Float32Array(COUNT_HEAVY * 2), 2));
+    const seeds = new T.InstancedBufferAttribute(new Float32Array(COUNT_HEAVY * 2), 2);
+    for (let i = 0; i < COUNT_HEAVY; i++) seeds.setXY(i, fxHash(7919, i * 2 + 1), fxHash(7919, i * 2 + 2));
+    this.geometry.setAttribute('dropSeed', seeds);
     this.geometry.instanceCount = 0;
     this.material = new T.ShaderMaterial({
       transparent: true, depthWrite: false,
@@ -66,12 +68,6 @@ export class Rain {
     this.geometry.instanceCount = count;
     this.mesh.visible = count > 0;
     if (!count) return;
-    const seeds = this.geometry.getAttribute('dropSeed') as T.InstancedBufferAttribute;
-    for (let i = 0; i < count; i++) {
-      // Deterministic per-slot seeds: the same (t, seed) always yields the same drop.
-      seeds.setXY(i, fxHash(7919, i * 2 + 1), fxHash(7919, i * 2 + 2));
-    }
-    seeds.needsUpdate = true;
     this.material.uniforms.uTime.value = simSeconds;
     // Rain slants with the same wind vector the smoke and streaks use (scaled for a 120 m column).
     const lean = wind && speed > 0 ? Math.min(2, speed * 0.12) : 0;

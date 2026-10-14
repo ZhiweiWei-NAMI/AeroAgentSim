@@ -13,7 +13,7 @@ import { selectCatalogModel, fitModel, yawFromVelocity, type CatalogModel, type 
 import { semanticVehicle, businessStyle, semanticLabel, labelInterest, taskByVehicle, activeZones } from './semantic';
 import {PayloadLayer} from './operational-loads';
 import { RecentActivity } from './recent-activity';
-import type { Conditions } from './conditions';
+import { incidentLabel, type Conditions } from './conditions';
 
 /** A task counts as active unless its committed state says it is finished. */
 function isFinishedTask(task: { fields: Map<string, { value: unknown }> }): boolean {
@@ -372,7 +372,7 @@ export class EntityLayer {
       const world=this.labelWorld.copy(item.position);world.y+=2;
       const projected=this.labelProjected.copy(world).project(camera);
       if(projected.z<-1||projected.z>1||Math.abs(projected.x)>0.96||Math.abs(projected.y)>0.96)continue;
-      const x=(projected.x+1)*width/2,y=(1-projected.y)*height/2;
+      const x=(projected.x+1)*width/2,y=(1-projected.y)*height/2-(item.incident?14:0);
       // Selected labels remain readable; nonselected labels do not shine through buildings.
       if(!item.selected&&!item.interest&&occlusion) {
         labelAttempts++;
@@ -384,10 +384,9 @@ export class EntityLayer {
       if(!label){label=document.createElement('button');label.className='entity-label';label.dataset.entityId=item.key.id;label.onclick=()=>this.onSelect(item.key);this.overlay.append(label);this.labels.set(item.id,label);}
       let semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header,this.locale):item.key.id;
       if (item.incident) {
-        const row = item.incident, zh = this.locale.startsWith('zh'), total = Math.floor(row.sinceS);
-        const clock = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+        const row = item.incident, zh = this.locale.startsWith('zh');
         const label = zh ? store.entities.get(item.id)?.authoredLabel?.label_zh ?? row.label : row.label;
-        semanticText = row.phase === 'ended' ? `${row.kind === 'fire' ? zh ? '火情' : 'Fire' : zh ? '人员跌倒' : 'Person fell'} · ${zh ? '已结束' : 'ended'}` : `${label} · ${zh ? '已发生' : 'Active'} ${clock}`;
+        semanticText = incidentLabel(row, zh, label);
       }
       if(this.semantic){const style=businessStyle(semanticVehicle(store.entities.get(item.id)!,this.semanticTasks.get(item.id)));label.dataset.glyph=style.glyph;label.style.borderColor=style.color;}
       else {delete label.dataset.glyph;label.style.borderColor='';}

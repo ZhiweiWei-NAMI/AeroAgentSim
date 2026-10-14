@@ -8,7 +8,7 @@ afterEach(cleanup);
 const conditions = (override: Partial<Conditions> = {}): Conditions => ({
   wind: { east: -6, north: 0, speed: 6.2, fromDeg: 315, gust: false },
   precipitationMmH: 4, visibilityM: 500, light: 'day',
-  incidents: [{ id: 'fire-1', kind: 'fire', label: 'Building fire', position: [0, 0, 0], radiusM: 30, phase: 'active', sinceS: 135 }],
+  incidents: [{ id: 'fire-1', kind: 'fire', label: 'Building fire', position: [0, 0, 0], radiusM: 30, phase: 'active', sinceS: 135, activeS: 135 }],
   ...override,
 });
 

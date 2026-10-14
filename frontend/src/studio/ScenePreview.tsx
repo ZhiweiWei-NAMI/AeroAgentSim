@@ -9,7 +9,7 @@ import type { Workspace } from './api';
 import { PlanOverlayView, type PreviewOverlay } from './plan-overlay';
 import { PreviewHologram } from './hologram';
 import { AtmosphereLayer } from '../viewport/atmosphere';
-import { applyWeatherMaterials } from '../viewport/atmosphere/sky-weather';
+import { applyWeatherMaterials } from '../viewport/scene';
 import { conditionsFromDraft, previewMoment } from '../viewport/conditions';
 import { ConditionsHud } from '../viewport/ConditionsHud';
 
@@ -101,12 +101,13 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   const hintId = useId();
   const root = useRef<HTMLDivElement>(null);
   const ctx = useRef<Context>();
-  const latest = useRef({ workspace, layers, overlay }); latest.current = { workspace, layers, overlay };
+  const latest = useRef({ workspace, layers, overlay, locale }); latest.current = { workspace, layers, overlay, locale };
   const [error, setError] = useState<{ kind: 'descriptor' | 'runtime'; detail?: string }>(), [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<CityProgress>(), [rendered, setRendered] = useState(false);
   // The draft preview freezes the authored conditions at the preview moment (spec §4).
   const previewS = useMemo(() => previewMoment(workspace.scenario), [workspace.scenario]);
   const previewConditions = useMemo(() => conditionsFromDraft(workspace.scenario ?? {}, previewS), [workspace.scenario, previewS]);
+  const previewCut = useRef({ conditions: previewConditions, atS: previewS }); previewCut.current = { conditions: previewConditions, atS: previewS };
   // The shared city follows the draft's declared city (choosing none hides it).
   const cityScene = (ws: Workspace) => ws.scenario?.city === 'huangpu' ? ws.demo_console?.scene : undefined;
   const city = cityScene(workspace);
@@ -126,19 +127,18 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
     const finishLoad = () => { pendingBuildings--; if (!abort.signal.aborted) setLoading(pendingBuildings > 0); };
     let assets: Assets | undefined, renderer: THREE.WebGLRenderer | undefined, controls: OrbitControls | undefined, observer: ResizeObserver | undefined, layoutObserver: MutationObserver | undefined, frame = 0;
     let cleaned = false, overlayView: PlanOverlayView | undefined, hologram: PreviewHologram | undefined, driftTimer = 0;
-    let atmosphere: AtmosphereLayer | undefined;
+    let atmosphere: AtmosphereLayer | undefined, atmosphereLabels: HTMLDivElement | undefined;
     const visibility = () => {
       if (document.hidden) { cancelAnimationFrame(frame); frame = 0; window.clearTimeout(driftTimer); driftTimer = 0; }
       else ctx.current?.invalidate();
     };
     document.addEventListener('visibilitychange', visibility);
-    const cleanup = () => { if (cleaned) return; cleaned = true; abort.abort(); cancelAnimationFrame(frame); window.clearTimeout(driftTimer); document.removeEventListener('visibilitychange', visibility); observer?.disconnect(); layoutObserver?.disconnect(); overlayView?.dispose(); hologram?.dispose(); atmosphere?.dispose(); controls?.dispose(); disposePreview(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); ctx.current = undefined; };
+    const cleanup = () => { if (cleaned) return; cleaned = true; abort.abort(); cancelAnimationFrame(frame); window.clearTimeout(driftTimer); document.removeEventListener('visibilitychange', visibility); observer?.disconnect(); layoutObserver?.disconnect(); overlayView?.dispose(); hologram?.dispose(); atmosphere?.dispose(); atmosphereLabels?.remove(); controls?.dispose(); disposePreview(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); ctx.current = undefined; };
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.toneMappingExposure = 1;
       const fill = new THREE.HemisphereLight(0xffffff, 0x65705b, 2);
       const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(100, 200, 80); scene.add(fill, sun);
-      scene.userData.lighting = { scene, renderer, sun, fill, horizon: (scene.background as THREE.Color).clone() };
       renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.domElement.setAttribute('aria-hidden', 'true'); host.append(renderer.domElement);
       // Ground covers what is actually authored (region, entities, fleets) and later the loaded city — never a fixed square.
       const authored = authoredPositions(ws.scenario);
@@ -152,7 +152,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       const camera = new THREE.PerspectiveCamera(45, 1, 0.1, extent * 40);
       camera.position.set(center.x + extent * 0.55, extent * 0.6, center.z + extent * 0.7);
       controls = new OrbitControls(camera, renderer.domElement); controls.target.set(center.x, 0, center.z); controls.update();
-      let firstFrame = true;
+      let firstFrame = true, displayedWeather = '';
       const draw = () => {
         frame = 0; if (abort.signal.aborted || document.hidden) return;
         const now = performance.now();
@@ -160,10 +160,11 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
         controls!.update();
         const animating = overlayView?.render(now);
         const drifting = hologram?.advance(now);
-        const scenario = latest.current.workspace.scenario, atS = previewMoment(scenario), conditions = conditionsFromDraft(scenario, atS);
+        const { conditions, atS } = previewCut.current;
         atmosphere?.update(conditions, atS, camera);
         const buildings = scene.getObjectByName('layer-buildings');
-        if (buildings) applyWeatherMaterials(buildings, scene.userData.weatherWet, conditions.light === 'dusk');
+        const weather = `${scene.userData.weatherWet}/${conditions.light}`;
+        if (buildings && displayedWeather !== weather) { displayedWeather = weather; applyWeatherMaterials(buildings, scene.userData.weatherWet, conditions.light === 'dusk'); }
         renderer!.render(scene, camera);
         if (firstFrame) { setRendered(true); firstFrame = false; }
         if (animating) invalidate();
@@ -175,7 +176,8 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       };
       controls.addEventListener('change', invalidate);
       // Draft preview wears the same atmosphere: incident pins/rings/flames/smoke at the frozen moment.
-      atmosphere = new AtmosphereLayer(scene, renderer!, 'med');
+      atmosphereLabels = document.createElement('div'); atmosphereLabels.className = 'viewport-labels'; host.append(atmosphereLabels);
+      atmosphere = new AtmosphereLayer(scene, renderer!, 'med', { annotations: true, preview: { overlay: atmosphereLabels, locale: () => latest.current.locale } });
       void atmosphere.ready.then(invalidate).catch(problem => { if (!abort.signal.aborted) setError({ kind: 'runtime', detail: String(problem) }); });
       atmosphere.update(previewConditions, previewS, camera);
       const shownCity = cityScene(ws);
@@ -209,6 +211,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
       const acceptCity = (group: THREE.Group) => {
         if (abort.signal.aborted) return;
         if (group.parent !== groups.buildings) groups.buildings.add(group);
+        applyWeatherMaterials(group, scene.userData.weatherWet, previewCut.current.conditions.light === 'dusk');
         const cityBox = new THREE.Box3().setFromObject(group);
         if (!cityBox.isEmpty()) {
           bounds.union(cityBox); fitGround(bounds);
@@ -304,7 +307,7 @@ export function ScenePreview({ workspace, api, layers, bare = false, overlay }: 
   // Visibility only: no disposal, no network, camera untouched. The first time buildings are shown they load once.
   useEffect(() => {
     ctx.current?.invalidate();
-  }, [previewConditions, previewS]);
+  }, [previewConditions, previewS, locale]);
 
   useEffect(() => {
     const current = ctx.current; if (!current) return;

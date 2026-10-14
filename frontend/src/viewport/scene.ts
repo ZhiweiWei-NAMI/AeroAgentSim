@@ -1,11 +1,17 @@
 import * as T from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 
+/** Exponential density at which contrast reaches 5 % at the authored visibility. */
+export const fogDensity = (visibilityM: number) => Math.sqrt(-Math.log(0.05)) / visibilityM;
+export interface AtmosphereState { dusk: boolean; rain: number; visibilityM: number | null }
+const FOG_DAY = new T.Color('#c3c9cf'), FOG_DUSK = new T.Color('#6f6a73'), FILL_RAIN = new T.Color('#aebfd4');
+
 /** Art direction only. Sun, haze and lighting are never measured weather. */
 export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
   const horizon = new T.Color('#72b1e8');
   scene.background = horizon;
-  scene.fog = new T.Fog(horizon, 500, 2000);
+  const artFog = new T.Fog(horizon, 500, 2000), weatherFog = new T.FogExp2(0xffffff);
+  scene.fog = artFog;
   const sky = new Sky(); sky.scale.setScalar(10000);
   sky.material.uniforms.turbidity.value = 2.1;
   sky.material.uniforms.rayleigh.value = 1.1;
@@ -51,25 +57,63 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; ground.receiveShadow = true; ground.name = 'display-ground'; scene.add(ground);
   const grid = new T.GridHelper(800, 80, '#9aa9af', '#9aa9af');
   grid.material.transparent = true; grid.material.opacity = 0.09; grid.name = 'display-grid'; scene.add(grid);
-  scene.userData.lighting = { scene, renderer, sun, fill, sky, daySky, horizon };
-  scene.userData.weatherBase = { sun: sun.intensity, fill: fill.intensity, exposure: renderer.toneMappingExposure };
-  return { sun, grid, ground, sky, daySky, horizon, setDusk: (value: boolean) => {
-    sunDirection.set(value ? -0.8 : 0.8, value ? 0.16 : 0.9, value ? -0.35 : 0.3).normalize();
-    sky.visible=value; daySky.visible=!value; renderer.toneMappingExposure=value?1:1.12;
+  let current: AtmosphereState | undefined;
+  // Recompute from the exact day/dusk presets, never from previously modified lighting.
+  const setAtmosphere = (state: AtmosphereState) => {
+    if (current && current.dusk === state.dusk && current.rain === state.rain && current.visibilityM === state.visibilityM) return;
+    current = { ...state };
+    const dusk = state.dusk, rain = T.MathUtils.clamp(state.rain, 0, 1);
+    sunDirection.set(dusk ? -0.8 : 0.8, dusk ? 0.16 : 0.9, dusk ? -0.35 : 0.3).normalize();
+    sun.position.copy(sun.target.position).addScaledVector(sunDirection, 650);
+    sky.visible=dusk; daySky.visible=!dusk;
     sky.material.uniforms.sunPosition.value.copy(sunDirection);
-    sky.material.uniforms.turbidity.value = value ? 3.5 : 2.1;
-    sun.color.set(value ? '#ffba79' : '#fff1dc'); sun.intensity = value ? 1.5 : 3.1;
-    fill.color.set(value ? '#91a8d5' : '#dceeff'); fill.intensity = value ? 0.35 : 1.45;
-    scene.environmentIntensity = value ? 0.22 : 0.95;
-    horizon.set(value ? '#7f91aa' : '#72b1e8');
-    fill.groundColor.set(value?'#777c70':'#b8b4a3');
-    groundMaterial.color.set(value?'#bbbcb4':'#d3c7b3');
-    if(scene.fog instanceof T.Fog){scene.fog.near=value?850:500;scene.fog.far=value?4200:2000;scene.fog.color.copy(horizon);}
-    scene.userData.weatherBase = { sun: sun.intensity, fill: fill.intensity, exposure: renderer.toneMappingExposure };
-  }, update: (target: T.Vector3) => {
+    sky.material.uniforms.turbidity.value = (dusk ? 3.5 : 2.1) + rain * 3;
+    sky.material.uniforms.rayleigh.value = 1.1 * (1 - 0.5 * rain);
+    sun.color.set(dusk ? '#ffba79' : '#fff1dc'); sun.intensity = (dusk ? 1.5 : 3.1) * (1 - 0.45 * rain);
+    fill.color.set(dusk ? '#91a8d5' : '#dceeff').lerp(FILL_RAIN, rain * 0.35);
+    fill.intensity = dusk ? 0.35 : 1.45;
+    scene.environmentIntensity = dusk ? 0.22 : 0.95;
+    horizon.set(dusk ? '#7f91aa' : '#72b1e8');
+    fill.groundColor.set(dusk?'#777c70':'#b8b4a3');
+    groundMaterial.color.set(dusk?'#bbbcb4':'#d3c7b3');
+    renderer.toneMappingExposure = (dusk ? 1 : 1.12) * (1 - 0.15 * rain);
+    artFog.near = dusk ? 850 : 500; artFog.far = dusk ? 4200 : 2000; artFog.color.copy(horizon);
+    const density = state.visibilityM === null ? 0 : fogDensity(state.visibilityM);
+    const artDensity = fogDensity(artFog.near + 0.95 * (artFog.far - artFog.near));
+    if (density > artDensity) {
+      weatherFog.density = density;
+      weatherFog.color.copy(horizon).lerp(dusk ? FOG_DUSK : FOG_DAY, 0.35);
+      scene.fog = weatherFog;
+    } else scene.fog = artFog;
+    daySky.material.uniforms.horizon.value.copy(scene.fog.color);
+    scene.background = scene.fog === artFog ? horizon : weatherFog.color;
+    scene.userData.weatherWet = rain;
+  };
+  scene.userData.lighting = { setAtmosphere };
+  setAtmosphere({ dusk: false, rain: 0, visibilityM: null });
+  return { sun, fill, grid, ground, sky, daySky, horizon, setAtmosphere,
+    setDusk: (dusk: boolean) => setAtmosphere({ ...current!, dusk }), update: (target: T.Vector3) => {
     const texel = 500 / sun.shadow.mapSize.x;
     sun.target.position.set(Math.round(target.x / texel) * texel, target.y, Math.round(target.z / texel) * texel);
     sun.position.copy(sun.target.position).addScaledVector(sunDirection, 650);
     sky.position.copy(target); daySky.position.copy(target); ground.position.x=target.x; ground.position.z=target.z;
   }, dispose: () => environment.dispose() };
+}
+
+/** Existing city display hooks share one reversible wet-material adjustment. */
+export function applyWeatherMaterials(object: T.Object3D, wet: number, dusk: boolean) {
+  object.traverse(node => { if (node instanceof T.Mesh) for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+    const uniform = material.userData.displayDusk as { value: number } | undefined;
+    if (uniform) uniform.value = dusk ? 1 : 0;
+    const standard = material as T.MeshStandardMaterial;
+    if (!(standard.color instanceof T.Color)) continue;
+    const base = standard.userData.weatherBase as { color: T.Color; roughness?: number } | undefined;
+    if (wet <= 0) {
+      if (base) { standard.color.copy(base.color); if (base.roughness !== undefined) standard.roughness = base.roughness; delete standard.userData.weatherBase; }
+      continue;
+    }
+    const source = base ?? (standard.userData.weatherBase = { color: standard.color.clone(), roughness: standard.roughness });
+    standard.color.copy(source.color).multiplyScalar(1 - 0.08 * wet);
+    if (source.roughness !== undefined) standard.roughness = Math.max(0, source.roughness - 0.1 * wet);
+  } });
 }

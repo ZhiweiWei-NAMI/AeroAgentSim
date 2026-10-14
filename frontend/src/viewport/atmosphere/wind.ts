@@ -28,7 +28,9 @@ export class WindStreaks {
     this.geometry.index = quad.index;
     this.geometry.attributes.position = quad.attributes.position;
     this.geometry.attributes.uv = quad.attributes.uv;
-    this.geometry.setAttribute('streakSeed', new T.InstancedBufferAttribute(new Float32Array(MAX_STREAKS * 2), 2));
+    const seeds = new T.InstancedBufferAttribute(new Float32Array(MAX_STREAKS * 2), 2);
+    for (let i = 0; i < MAX_STREAKS; i++) seeds.setXY(i, fxHash(104729, i * 2 + 1), fxHash(104729, i * 2 + 2));
+    this.geometry.setAttribute('streakSeed', seeds);
     this.geometry.instanceCount = 0;
     this.material = new T.ShaderMaterial({
       transparent: true, depthWrite: false,
@@ -39,16 +41,16 @@ export class WindStreaks {
           // Advection × 1.0 along the wind; the length scales with speed; streaks wrap in the camera volume.
           vec2 direction=uSpeed>0.0?uWind/uSpeed:vec2(0.0);
           float wrap=${SPAN}.0;
-          vec2 offset=vec2(streakSeed.x*wrap,fract(streakSeed.y*3.0)*wrap)-wrap*0.5;
-          offset+=direction*uTime*uSpeed;
-          offset=mod(offset+wrap*0.5,wrap)-wrap*0.5;
+          vec2 offsetXZ=vec2(streakSeed.x*wrap,fract(streakSeed.y*3.0)*wrap)-wrap*0.5;
+          offsetXZ+=direction*uTime*uSpeed;
+          offsetXZ=mod(offsetXZ+wrap*0.5,wrap)-wrap*0.5;
           float altitude=${ALT_MIN}.0+fract(streakSeed.x*13.7)*(${ALT_MAX}.0-${ALT_MIN}.0);
           float streakLength=0.6+uSpeed*0.25;
           vec3 along=vec3(direction.x,0.0,direction.y);
-          vec4 view=modelViewMatrix*vec4(uCenter+vec3(offset.x,altitude,offset.y)+along*position.y*streakLength,1.0);
+          vec4 view=modelViewMatrix*vec4(uCenter+vec3(offsetXZ.x,altitude,offsetXZ.y)+along*position.y*streakLength,1.0);
           view.x+=position.x*0.06;
           gl_Position=projectionMatrix*view;
-          streakFade=(1.0-distance(offset,vec2(0.0))/(${SPAN}.0*0.5))*(0.4+0.6*fract(streakSeed.y*7.3));
+          streakFade=(1.0-distance(offsetXZ,vec2(0.0))/(${SPAN}.0*0.5))*(0.4+0.6*fract(streakSeed.y*7.3));
         }`,
       fragmentShader: `varying float streakFade;
         void main(){float alpha=0.16*streakFade;if(alpha<=0.004)discard;
@@ -64,9 +66,6 @@ export class WindStreaks {
     this.geometry.instanceCount = count;
     this.mesh.visible = count > 0;
     if (!count || !wind) return;
-    const seeds = this.geometry.getAttribute('streakSeed') as T.InstancedBufferAttribute;
-    for (let i = 0; i < count; i++) seeds.setXY(i, fxHash(104729, i * 2 + 1), fxHash(104729, i * 2 + 2));
-    seeds.needsUpdate = true;
     this.material.uniforms.uTime.value = simSeconds;
     this.material.uniforms.uWind.value.set(wind.east, -wind.north);
     this.material.uniforms.uSpeed.value = speed;

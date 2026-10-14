@@ -8,10 +8,9 @@ import { entityId, resolveBinding } from '../viewport/bindings';
 import { worldPosition } from '../viewport/coordinates';
 import { Assets, disposeObject } from '../viewport/assets';
 import { EntityLayer } from '../viewport/entities';
-import { setupScene } from '../viewport/scene';
+import { applyWeatherMaterials, setupScene } from '../viewport/scene';
 import { pipeline } from '../viewport/pipeline';
 import { AtmosphereLayer } from '../viewport/atmosphere';
-import { applyWeatherMaterials } from '../viewport/atmosphere/sky-weather';
 import { conditionsAt } from '../viewport/conditions';
 import { loadSceneLayer } from '../scene/city-layer';
 import { isLiteCityScene } from '../viewport/procedural-traffic';
@@ -202,7 +201,7 @@ export class CaptureRenderer {
     this.layer.hideIncidentMarkers = true;
     this.layer.setCatalog(parseModelCatalog(header.modelCatalog)); this.scene.add(this.layer.root);
     // Captures show the same smoke/rain/fog as the run viewport: the cut's journaled conditions.
-    this.atmosphere = new AtmosphereLayer(this.scene,this.renderer,'low');
+    this.atmosphere = new AtmosphereLayer(this.scene,this.renderer,'low',{ annotations: false });
     await this.atmosphere.ready;
     this.composer = pipeline(this.renderer,this.scene,this.camera,'low');
     // Shader compilation is sensor initialization, not a warm-up photograph.
@@ -319,7 +318,8 @@ export class CaptureRenderer {
       this.layer!.update(store,ns,this.camera,undefined,false,undefined,undefined,undefined,atmosphereConditions.incidents); check();
       // Conditions at the capture cut drive the same atmosphere layer as the run viewport.
       this.dusk = atmosphereConditions.light==='dusk';
-      this.lighting!.setDusk(this.dusk); this.composer!.setDusk(this.dusk);
+      this.lighting!.setAtmosphere({ dusk: this.dusk, rain: Math.min(atmosphereConditions.precipitationMmH / 8, 1), visibilityM: atmosphereConditions.visibilityM });
+      this.composer!.setDusk(this.dusk);
       this.atmosphere!.update(atmosphereConditions,Number(BigInt(ns))/1e9,this.camera);
       this.composer!.excludeBloom(this.atmosphere!.root);
       const city = this.scene!.getObjectByName('city');

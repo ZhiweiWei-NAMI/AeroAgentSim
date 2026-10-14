@@ -14,7 +14,7 @@ export interface Conditions {
   visibilityM: number | null;
   light: 'day' | 'dusk';
   incidents: Array<{ id: string; kind: 'fire' | 'person_fall'; label: string; position: [number, number, number]; radiusM: number;
-    phase: 'pending' | 'active' | 'ended'; sinceS: number; response?: string; startS?: number }>;
+    phase: 'pending' | 'active' | 'ended'; sinceS: number; activeS: number; response?: string; startS?: number }>;
 }
 
 type Cut = { entities: Map<string, { key: { id: string; generation: number | string }; typeId: string; fields: Map<string, { value: unknown }> }>; header?: RunHeader };
@@ -99,9 +99,11 @@ export function conditionsAt(entities: Cut['entities'] | Cut, ns: string, header
     const phase: Conditions['incidents'][number]['phase'] = !active && at < startNs ? 'pending' : active ? 'active' : 'ended';
     const sinceNs = active ? startNs : end ?? startNs;
     const sinceS = Math.max(0, Number(at - sinceNs) / 1e9);
+    // Activation age keeps advancing after ending; activeS - sinceS is the emission window.
+    const activeS = Math.max(0, Number(at - startNs) / 1e9);
     const label = header?.entities?.find(row => row.id === entity.key.id && row.type === entity.typeId)?.label ?? entity.key.id;
     const response = text(field(entity, 'lowalt.incident_responder')) || undefined;
-    incidents.push({ id: entity.key.id, kind, label, position: position as [number, number, number], radiusM: scalar(field(entity, 'lowalt.incident_radius_m')) ?? (kind === 'fire' ? 30 : 6), phase, sinceS: Math.max(0, sinceS), response, startS: Number(startNs) / 1e9 });
+    incidents.push({ id: entity.key.id, kind, label, position: position as [number, number, number], radiusM: scalar(field(entity, 'lowalt.incident_radius_m')) ?? (kind === 'fire' ? 30 : 6), phase, sinceS, activeS, response, startS: Number(startNs) / 1e9 });
   }
   return { wind: windAt(cut, ns), precipitationMmH, visibilityM, light, incidents };
 }
@@ -155,7 +157,7 @@ export function conditionsFromDraft(scenario: Record<string, any>, previewS: num
     const sinceS = Math.max(0, (phase === 'active' ? previewS - startS : phase === 'ended' ? previewS - endS! : startS - previewS));
     const kind = incident.kind === 'fire' ? 'fire' as const : 'person_fall' as const;
     incidents.push({ id: String(incident.id), kind, label: String(incident.label ?? incident.id), position: incident.position as [number, number, number],
-      radiusM: typeof incident.radius_m === 'number' ? incident.radius_m : kind === 'fire' ? 30 : 6, phase, sinceS, startS });
+      radiusM: typeof incident.radius_m === 'number' ? incident.radius_m : kind === 'fire' ? 30 : 6, phase, sinceS, activeS: Math.max(0, previewS - startS), startS });
   }
   const wind = windOf(vectors, gust);
   if (wind && gustEndS !== undefined) wind.gustEndS = gustEndS;
@@ -165,4 +167,13 @@ export function conditionsFromDraft(scenario: Record<string, any>, previewS: num
 /** Eight-point compass name for a meteorological from-direction. */
 export function compassPoint(fromDeg: number): string {
   return compass[Math.round((((fromDeg % 360) + 360) % 360) / 45) % 8][0];
+}
+
+/** Shared phase copy for the run's entity labels and the draft's incident pins. */
+export function incidentLabel(row: Conditions['incidents'][number], zh: boolean, label = row.label): string {
+  const clock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const kind = row.kind === 'fire' ? zh ? '火情' : 'Fire' : zh ? '人员跌倒' : 'Person fell';
+  if (row.phase === 'pending') return zh ? `${kind} ${clock(row.startS!)} 开始` : `${kind} at ${clock(row.startS!)}`;
+  if (row.phase === 'ended') return `${kind} · ${zh ? '已结束' : 'ended'}`;
+  return `${label} · ${zh ? '已持续' : 'Active'} ${clock(row.sinceS)}`;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RunHeader } from '../contracts/viewer-feed';
-import { compassPoint, conditionsAt, conditionsFromDraft, previewMoment, windFromDeg } from './conditions';
+import { compassPoint, conditionsAt, conditionsFromDraft, incidentLabel, previewMoment, windFromDeg } from './conditions';
 
 const header = (): RunHeader => ({
   contract: 'aeroagentsim.viewer-feed/v1', runId: 'r', registryDigest: 'd',
@@ -36,7 +36,7 @@ describe('conditionsAt', () => {
     expect(conditions).toMatchObject({ precipitationMmH: 4, visibilityM: 500, light: 'dusk' });
     expect(conditions.wind).toMatchObject({ speed: 6, fromDeg: 270, gust: true });
     expect(conditions.incidents).toHaveLength(1);
-    expect(conditions.incidents[0]).toMatchObject({ id: 'fire-a', kind: 'fire', label: 'Building fire', phase: 'active', radiusM: 30, sinceS: 30, response: 'uav-1' });
+    expect(conditions.incidents[0]).toMatchObject({ id: 'fire-a', kind: 'fire', label: 'Building fire', phase: 'active', radiusM: 30, sinceS: 30, activeS: 30, response: 'uav-1' });
   });
   it('treats absent fields as clear day, 50000 m visibility as clear and marks ended incidents', () => {
     const conditions = conditionsAt(cut([
@@ -45,12 +45,14 @@ describe('conditionsAt', () => {
     expect(conditions).toMatchObject({ wind: null, precipitationMmH: 0, visibilityM: null, light: 'day' });
     expect(conditions.incidents[0]).toMatchObject({ kind: 'person_fall', phase: 'ended' });
     expect(conditions.incidents[0].sinceS).toBeCloseTo(60);
+    expect(conditions.incidents[0].activeS).toBe(120);
   });
   it('marks a not-yet-started incident as pending', () => {
     const conditions = conditionsAt(cut([
       entity('fall', 'lowalt:Incident', { 'lowalt.incident_kind': 'fire', 'lowalt.incident_position': [0, 0, 0], 'lowalt.incident_time_ns': '90000000000', 'lowalt.incident_end_ns': '-1', 'lowalt.incident_active': false }),
     ]), '0');
     expect(conditions.incidents[0].phase).toBe('pending');
+    expect(conditions.incidents[0].activeS).toBe(0);
   });
   it('keeps elapsed time for a zero-start incident and reads oo wind with later engine gusts', () => {
     const feedHeader = header();
@@ -59,9 +61,19 @@ describe('conditionsAt', () => {
       entity('wind', 'oo:WindField', { 'oo:digital_twin.wind.horizontalVelocity': [[6, -6]] }),
       entity('fire', 'lowalt:Incident', { 'lowalt.incident_kind': 'fire', 'lowalt.incident_position': [0, 0, 0], 'lowalt.incident_time_ns': 0, 'lowalt.incident_end_ns': -1, 'lowalt.incident_active': true }),
     ]), '120000000000', feedHeader);
-    expect(conditions.incidents[0]).toMatchObject({ phase: 'active', sinceS: 120, startS: 0 });
+    expect(conditions.incidents[0]).toMatchObject({ phase: 'active', sinceS: 120, activeS: 120, startS: 0 });
     expect(conditions.wind).toMatchObject({ fromDeg: 315, gust: true, gustEndS: 150 });
     expect(conditionsAt(cut([entity('wind', 'oo:WindField', { 'oo:digital_twin.wind.horizontalVelocity': [[6, -6]] })]), '150000000000', feedHeader).wind?.gust).toBe(false);
+  });
+  it('keeps activation and end ages distinct for nonzero starts and lossless integer facts', () => {
+    const rows = cut([entity('fire', 'lowalt:Incident', {
+      'lowalt.incident_kind': 'fire', 'lowalt.incident_position': [0, 0, 0],
+      'lowalt.incident_time_ns': { $integer: '90000000000' }, 'lowalt.incident_end_ns': { $integer: '120000000000' }, 'lowalt.incident_active': false,
+    })]);
+    expect(conditionsAt(rows, '120000000000').incidents[0]).toMatchObject({ phase: 'ended', sinceS: 0, activeS: 30 });
+    const row = conditionsAt(rows, '125000000000').incidents[0];
+    expect(row).toMatchObject({ phase: 'ended', sinceS: 5, activeS: 35 });
+    expect(row.activeS - row.sinceS).toBe(30);
   });
 });
 
@@ -77,7 +89,7 @@ describe('conditionsFromDraft', () => {
     expect(conditionsFromDraft(scenario, 90)).toMatchObject({ precipitationMmH: 4, visibilityM: 500 });
     expect(conditionsFromDraft(scenario, 80).wind).toMatchObject({ speed: 9, gust: true, fromDeg: 270 });
     expect(conditionsFromDraft(scenario, 90).wind).toMatchObject({ speed: 6, gust: false, fromDeg: 270 });
-    expect(conditionsFromDraft(scenario, 100).incidents[0]).toMatchObject({ phase: 'active', sinceS: 10 });
+    expect(conditionsFromDraft(scenario, 100).incidents[0]).toMatchObject({ phase: 'active', sinceS: 10, activeS: 10 });
   });
   it('preview moment defaults to the first incident start + 20 s', () => {
     expect(previewMoment(scenario)).toBe(110);
@@ -90,6 +102,20 @@ describe('conditionsFromDraft', () => {
     const draft = { engines: { ...scenario.engines, tasks: { plugin: 'lowalt_tasks', config: { cooperation: scenario.cooperation } } }, scene: { lighting: 'dusk' } };
     expect(previewMoment(draft)).toBe(110);
     expect(conditionsFromDraft(draft, 110)).toMatchObject({ light: 'day', incidents: [{ id: 'fire-a', phase: 'active', sinceS: 20 }] });
+  });
+  it('retains activation age after ending and formats phase-aware incident labels', () => {
+    const draft = { cooperation: { incidents: [{ ...scenario.cooperation.incidents[0], label: 'Building fire', end_s: 120 }] } };
+    const pending = conditionsFromDraft(draft, 80).incidents[0];
+    expect(pending).toMatchObject({ phase: 'pending', activeS: 0, startS: 90 });
+    expect(incidentLabel(pending, false)).toBe('Fire at 01:30');
+    expect(incidentLabel(pending, true)).toBe('火情 01:30 开始');
+    const active = conditionsFromDraft(draft, 100).incidents[0];
+    expect(incidentLabel(active, false)).toBe('Building fire · Active 00:10');
+    expect(incidentLabel(active, true, '建筑火情')).toBe('建筑火情 · 已持续 00:10');
+    const ended = conditionsFromDraft(draft, 125).incidents[0];
+    expect(ended).toMatchObject({ phase: 'ended', activeS: 35, sinceS: 5 });
+    expect(incidentLabel(ended, false)).toBe('Fire · ended');
+    expect(incidentLabel(ended, true)).toBe('火情 · 已结束');
   });
 });
 
