@@ -180,6 +180,9 @@ def expand(document: dict[str, Any]) -> None:
     marked by their authored prefix and recreated on load, including replay of
     a pinned scenario. No hidden defaults or external geometry is consulted.
     """
+    from .rescue import materialize as materialize_rescue
+
+    materialize_rescue(document)
     # New observations belong to the energy owner, including in previously
     # saved scenes and in scenes whose component ids were remapped by Studio.
     energy_ids = {
@@ -269,6 +272,9 @@ def expand(document: dict[str, Any]) -> None:
         from .cooperation import expand as expand_cooperation
 
         expand_cooperation(document)
+        from .rescue import expand as expand_rescue
+
+        expand_rescue(document)
         return
     generators = document["generators"]
     if not isinstance(generators, dict) or set(generators) != {"fleet"}:
@@ -355,6 +361,9 @@ def expand(document: dict[str, Any]) -> None:
     from .cooperation import expand as expand_cooperation
 
     expand_cooperation(document)
+    from .rescue import expand as expand_rescue
+
+    expand_rescue(document)
 
 
 def parcel_document(

@@ -59,6 +59,7 @@ export function ViewportView(props: Props) {
   const [showAllLabels,setShowAllLabels]=useState(false);
   const [legend,setLegend]=useState<LegendEntry[]>([]);
   const [zoneCount,setZoneCount]=useState(0);
+  const floodScene=[...props.store.entities.values()].some(entity=>entity.fields.has('rescue.flood_bounds'));
   // The lite demo serves a scenario-snapshot catalog; surface the header's own
   // notice when present. No catalog inference is performed here.
   const catalogNotice=(props.store.header as typeof props.store.header & {catalogNotice?:string}).catalogNotice;
@@ -173,14 +174,15 @@ export function ViewportView(props: Props) {
       <button aria-label={t('Toggle inspector')} aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>{t('Inspector')} {collapsed?'＋':'−'}</button>
     </div>}
     {!props.simple&&!props.bare&&<div className="scene-status"><span>{t('Buildings, lighting and symbols are display effects.')}</span>{status&&<details><summary>{t('Display details')}</summary><div>{status}</div></details>}</div>}
-    {props.simple&&!props.bare&&<div className="semantic-legend" data-testid="semantic-legend" aria-label={t('Map legend')}>
-      <div className="semantic-legend-title">{t('Airspace & operations')}</div>
+    {props.simple&&(!props.bare||floodScene)&&<div className="semantic-legend" data-testid="semantic-legend" aria-label={t('Map legend')}
+      style={props.bare?{left:'calc(var(--wb-left, 0px) + 16px)',bottom:'calc(var(--wb-dock, 0px) + 16px)',maxWidth:360}:undefined}>
+      <div className="semantic-legend-title">{floodScene?(locale.startsWith('zh')?'洪涝救援':'Flood rescue'):t('Airspace & operations')}</div>
       <div className="semantic-legend-entries">
         {legend.map(entry=><span key={entry.label} className="semantic-legend-entry"><i style={{background:entry.color}}/>{entry.label}</span>)}
         {!legend.length&&<span className="semantic-legend-entry muted">{t('Legend appears with scenario data')}</span>}
       </div>
-      <label className="semantic-showall"><input type="checkbox" checked={showAllLabels} aria-label={t('Show all labels')} onChange={event=>setShowAllLabels(event.target.checked)}/>{t('Show all labels')}</label>
-      <span className="semantic-zone-count" data-testid="semantic-zone-count">{zoneCount===1?t('1 active zone'):t('{count} active zones', {count:zoneCount})}</span>
+      {!props.bare&&<><label className="semantic-showall"><input type="checkbox" checked={showAllLabels} aria-label={t('Show all labels')} onChange={event=>setShowAllLabels(event.target.checked)}/>{t('Show all labels')}</label>
+      <span className="semantic-zone-count" data-testid="semantic-zone-count">{zoneCount===1?t('1 active zone'):t('{count} active zones', {count:zoneCount})}</span></>}
     </div>}
     {!props.simple&&catalogNotice&&<div className="scene-attribution" style={{bottom:24}} data-testid="catalog-notice">{catalogNotice}</div>}
     <div className="scene-attribution">{root.current?.dataset.attribution}</div>

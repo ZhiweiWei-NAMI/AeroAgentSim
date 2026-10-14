@@ -262,6 +262,8 @@ class LangGraphDecision(ContextEngine):
             )
         else:
             raise ValueError("provider mode must be explicit stub or live")
+        if isinstance(self.provider, OpenAIProvider):
+            self.provider.bind_session(f"engine:{context.run_directory.resolve() if context.run_directory else context.manifest.run_id}:{context.manifest.epoch}:{context.id}")
         self.sequence = 0
         produces = tuple(sorted({field for _, field in self.fact_grants}))
         super().__init__(

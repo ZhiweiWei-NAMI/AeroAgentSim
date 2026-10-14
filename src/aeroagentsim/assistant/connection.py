@@ -137,12 +137,15 @@ class ConnectionStore:
             self._refresh_profile()
         return self.get()
 
-    def provider(self) -> Provider:
+    def provider(self, session_id: str | None = None) -> Provider:
         with self.lock:
             settings, key = self._refresh_profile()
             if not settings.get("base_url") or not settings.get("model"):
                 raise ValueError("Connect a model first / 请先连接模型")
-            return self.factory(settings["base_url"], settings["model"], key)
+            provider = self.factory(settings["base_url"], settings["model"], key)
+            if isinstance(provider, OpenAIProvider):
+                provider.bind_session("assistant:" + session_id if session_id else "connection-check:" + str(self.root.resolve()))
+            return provider
 
     def test(self) -> dict[str, Any]:
         with self.lock:

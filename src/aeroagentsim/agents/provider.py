@@ -10,9 +10,12 @@ import queue
 import socket
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 from urllib.parse import urlsplit
+
+from aeroagentsim import __version__
 
 from .tools import strict_json
 
@@ -65,6 +68,11 @@ class OpenAIProvider:
         self.host, self.scheme = parts.hostname, parts.scheme
         self.port = parts.port
         self.path = parts.path.rstrip("/") + "/chat/completions"
+        self.session_id = uuid.uuid4().hex
+
+    def bind_session(self, identity: str) -> None:
+        """Keep harness identity stable without sending internal paths or names."""
+        self.session_id = uuid.uuid5(uuid.NAMESPACE_URL, "aeroagentsim:" + identity).hex
 
     @classmethod
     def from_config(cls, config: dict[str, Any] | None = None) -> OpenAIProvider:
@@ -108,11 +116,11 @@ class OpenAIProvider:
                 values[1],  # type: ignore[arg-type]
                 os.environ.get(key_env) if key_env else None,
             )
-        base_url, model, key_env = cls._operator_profile(profile)
-        return cls(base_url, model, os.environ.get(key_env))
+        base_url, model, api_key = cls._operator_profile(profile)
+        return cls(base_url, model, api_key)
 
     @classmethod
-    def _operator_profile(cls, profile: str) -> tuple[str, str, str]:
+    def _operator_profile(cls, profile: str) -> tuple[str, str, str | None]:
         sources: list[str] = []
         path = os.environ.get("AEROAGENTSIM_PROVIDER_CONFIG")
         if path is not None:
@@ -142,19 +150,29 @@ class OpenAIProvider:
         entry = profiles.get(profile)
         if entry is None:
             raise ValueError(f"unknown provider profile: {profile}")
-        if set(entry) - {"base_url", "model", "api_key_env"} or not all(
+        if set(entry) - {"base_url", "model", "api_key_env", "api_key_file"} or not all(
             isinstance(value, str) and value
             for value in (entry.get("base_url"), entry.get("model"))
         ):
             raise ValueError(
                 f"operator profile {profile!r} requires base_url and model strings"
             )
+        if "api_key_file" in entry:
+            if "api_key_env" in entry or not isinstance(entry["api_key_file"], str) or not entry["api_key_file"]:
+                raise ValueError("api_key_file requires a nonempty path and cannot be combined with api_key_env")
+            try:
+                api_key = Path(entry["api_key_file"]).expanduser().read_text(encoding="utf-8").strip()
+            except (OSError, UnicodeError):
+                raise ValueError("operator API key file unreadable") from None
+            if not api_key or "\n" in api_key or "\r" in api_key:
+                raise ValueError("operator API key file must contain one nonempty line")
+            return entry["base_url"], entry["model"], api_key
         key_env = entry.get("api_key_env", "AAS_LLM_API_KEY")
         if not isinstance(key_env, str) or not key_env:
             raise ValueError(
                 f"operator profile {profile!r} api_key_env must be a nonempty string"
             )
-        return entry["base_url"], entry["model"], key_env
+        return entry["base_url"], entry["model"], os.environ.get(key_env)
 
     def complete(
         self,
@@ -199,6 +217,9 @@ class OpenAIProvider:
                 if expired.is_set():
                     return
                 headers = {"Content-Type": "application/json"}
+                if self.host == "opencode.ai":
+                    headers["User-Agent"] = f"AeroAgentSim/{__version__}"
+                    headers["x-opencode-session"] = self.session_id
                 if self.api_key is not None:
                     headers["Authorization"] = f"Bearer {self.api_key}"
                 connection.request("POST", self.path, payload, headers)

@@ -2,7 +2,7 @@ import * as T from 'three';
 import type { EntityKey, RunHeader } from '../contracts/viewer-feed';
 import type { FeedStore } from './feed-store';
 import { worldPosition } from './coordinates';
-import { activeZones, humanizeId, semanticSites, type SemanticZone, type SemanticSite } from './semantic';
+import { activeZones, humanizeId, semanticSites, semanticFlooding, rescueLabel, rescueIncidentColor, type SemanticZone, type SemanticSite } from './semantic';
 import { translate } from '../i18n/translate';
 import {chargingPadAssignments} from './operational-loads';
 
@@ -31,8 +31,11 @@ export class SemanticLayer {
   /** Entity id -> world position (render-origin-relative) for hover labels. */
   readonly markerPositions = new Map<string, T.Vector3>();
   readonly markerKeys = new Map<string, EntityKey>();
+  readonly incidentLabels = new Map<string, { key: EntityKey; position: T.Vector3; text: string; color: string }>();
   private zones = new T.Group();
   private markers = new T.Group();
+  private flood = new T.Group();
+  private floodStamp = '';
   private zoneBoxes: T.Mesh[] = [];
   private zoneLines: T.LineSegments[] = [];
   private markerGlyphs = new Map<string, T.Mesh>();
@@ -45,7 +48,7 @@ export class SemanticLayer {
   private markerStamp = '';
 
   constructor(private header: RunHeader, private options: SemanticLayerOptions = {}) {
-    this.root.add(this.zones, this.markers);
+    this.root.add(this.zones, this.markers, this.flood);
   }
 
   setLocale(locale: string) {
@@ -53,6 +56,7 @@ export class SemanticLayer {
     this.options.locale = locale;
     this.lastStamp = '';
     this.markerStamp = '';
+    this.floodStamp = '';
   }
 
   /** Rebuild zone/site visuals when the committed cut actually changed. */
@@ -77,7 +81,64 @@ export class SemanticLayer {
       this.rebuildMarkers(sites, chargingPads, renderOrigin);
       this.markerStamp = markerStamp;
     }
+    const flooding = semanticFlooding(store), floodStamp = JSON.stringify(flooding);
+    if (originChanged || floodStamp !== this.floodStamp) {
+      this.rebuildFlood(flooding, renderOrigin);
+      this.floodStamp = floodStamp;
+    }
     this.lastStamp = stamp;
+  }
+
+  private clearFlood() {
+    this.flood.traverse(object => {
+      if (object instanceof T.Mesh || object instanceof T.Line) {
+        object.geometry.dispose();
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) material.dispose();
+      }
+    });
+    this.flood.clear();
+    this.incidentLabels.clear();
+  }
+
+  private rebuildFlood(flooding: ReturnType<typeof semanticFlooding>, renderOrigin: T.Vector3) {
+    this.clearFlood();
+    const toWorld = (point: [number, number, number]) => worldPosition(point, 'enu', this.header.origin).sub(renderOrigin);
+    for (const area of flooding.areas) {
+      const lo = toWorld(area.lower), hi = toWorld(area.upper);
+      const water = new T.Mesh(new T.BoxGeometry(hi.x - lo.x, hi.y - lo.y, lo.z - hi.z),
+        new T.MeshBasicMaterial({ color: '#259fc7', transparent: true, opacity: 0.48, depthWrite: false }));
+      water.position.copy(lo).add(hi).multiplyScalar(0.5);
+      water.renderOrder = 2;
+      this.flood.add(water);
+      const corners = [[lo.x, hi.y + 0.04, lo.z], [hi.x, hi.y + 0.04, lo.z], [hi.x, hi.y + 0.04, hi.z], [lo.x, hi.y + 0.04, hi.z]].map(point => new T.Vector3(point[0], point[1], point[2]));
+      this.flood.add(new T.LineLoop(new T.BufferGeometry().setFromPoints(corners), new T.LineBasicMaterial({ color: '#70d6ec', transparent: true, opacity: 0.9 })));
+    }
+    // Highlight only the authored submerged road segments; water never becomes an airspace restriction.
+    for (const road of flooding.roads) {
+      const start = toWorld(road.start), end = toWorld(road.end), center = start.clone().add(end).multiplyScalar(0.5);
+      const area = flooding.areas.find(area => center.x + renderOrigin.x >= area.lower[0] && center.x + renderOrigin.x <= area.upper[0]
+        && -center.z - renderOrigin.z >= area.lower[1] && -center.z - renderOrigin.z <= area.upper[1]);
+      const height = area ? area.upper[2] - renderOrigin.y + 0.12 : Math.max(start.y, end.y) + 0.12;
+      const length = Math.hypot(end.x - start.x, end.z - start.z);
+      if (!length) continue;
+      const ribbon = new T.Mesh(new T.BoxGeometry(3, 0.08, length), new T.MeshBasicMaterial({ color: '#b0eeff', transparent: true, opacity: 0.85, depthWrite: false }));
+      ribbon.rotation.y = Math.atan2(end.x - start.x, end.z - start.z);
+      ribbon.position.set(center.x, height, center.z); ribbon.renderOrder = 3;
+      this.flood.add(ribbon);
+    }
+    for (const incident of flooding.incidents) {
+      const position = toWorld(incident.position), color = rescueIncidentColor(incident.state);
+      const ring = new T.Mesh(new T.RingGeometry(4.5, 6.5, 32), new T.MeshBasicMaterial({ color, side: T.DoubleSide, depthWrite: false }));
+      ring.rotation.x = -Math.PI / 2; ring.position.copy(position).add(new T.Vector3(0, 0.4, 0));
+      this.flood.add(ring);
+      const beacon = new T.Mesh(new T.ConeGeometry(3, 7, 4), new T.MeshBasicMaterial({ color }));
+      beacon.rotation.z = Math.PI; beacon.position.copy(position).add(new T.Vector3(0, 7, 0));
+      this.flood.add(beacon);
+      this.incidentLabels.set(`${incident.key.id}:${incident.key.generation}`, {
+        key: incident.key, position: position.clone().add(new T.Vector3(0, 12, 0)), color,
+        text: `${incident.key.id} · ${this.options.locale?.startsWith('zh') ? '屋顶求援' : 'Rooftop rescue'} · ${rescueLabel(incident.state, this.options.locale)}`,
+      });
+    }
   }
 
   private rebuildZones(zones: SemanticZone[], renderOrigin: T.Vector3) {
@@ -164,6 +225,7 @@ export class SemanticLayer {
 
   dispose() {
     this.disposed = true;
+    this.clearFlood();
     for (const mesh of this.zoneBoxes) { mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); }
     for (const line of this.zoneLines) { line.geometry.dispose(); (line.material as T.Material).dispose(); }
     for (const mesh of this.markerGlyphs.values()) { mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); }

@@ -47,6 +47,74 @@ export interface SemanticVehicle {
   soc?: number;
   charging?: boolean;
   weatherHeld?: boolean;
+  rescueRole?: string;
+  rescueTask?: string;
+  rescueStatus?: string;
+}
+
+export interface SemanticFlood {
+  lower: [number, number, number];
+  upper: [number, number, number];
+}
+export interface SemanticFloodedRoad {
+  start: [number, number, number];
+  end: [number, number, number];
+}
+export interface SemanticIncident {
+  key: EntityKey;
+  position: [number, number, number];
+  state: string;
+}
+
+/** Scenario-authored flood geometry and the incident's current committed state. */
+export function semanticFlooding(store: { entities: Map<string, EntityState> }) {
+  const areas: SemanticFlood[] = [], roads: SemanticFloodedRoad[] = [], incidents: SemanticIncident[] = [];
+  for (const entity of store.entities.values()) {
+    const bounds = entity.fields.get('rescue.flood_bounds')?.value;
+    if (bounds !== undefined) {
+      if (!Array.isArray(bounds) || bounds.length !== 6 || !bounds.every(value => typeof value === 'number' && Number.isFinite(value))) {
+        throw Error(`Malformed flood bounds for ${entity.key.id}`);
+      }
+      const lower = vector3(bounds.slice(0, 3), 'flood lower bounds'), upper = vector3(bounds.slice(3), 'flood upper bounds');
+      if (upper.some((value, index) => value <= lower[index])) throw Error(`Flood ${entity.key.id} has non-positive bounds extent`);
+      areas.push({ lower, upper });
+    }
+    const segments = entity.fields.get('rescue.flooded_roads')?.value;
+    if (segments !== undefined) {
+      if (!Array.isArray(segments)) throw Error(`Malformed flooded roads for ${entity.key.id}`);
+      for (const segment of segments) {
+        if (!isRecord(segment)) throw Error(`Malformed flooded road for ${entity.key.id}`);
+        roads.push({ start: vector3(segment.start, 'flooded road start'), end: vector3(segment.end, 'flooded road end') });
+      }
+    }
+    const state = entity.fields.get('rescue.incident_state')?.value;
+    if (state !== undefined) {
+      if (typeof state !== 'string') throw Error(`Malformed incident state for ${entity.key.id}`);
+      incidents.push({ key: entity.key, position: vector3(entity.fields.get('lowalt.site_position')?.value, 'rescue site position'), state });
+    }
+  }
+  return { areas, roads, incidents };
+}
+
+/** Translation only; unknown authored role/status/task strings remain intact. */
+export function rescueLabel(value: string, locale = 'en-US'): string {
+  const labels: Record<string, [string, string]> = {
+    inspect: ['Inspect', '复查'], report: ['Report', '报告'], relay: ['Relay', '中继'], deliver: ['Deliver', '投送'],
+    committed: ['Existing mission', '原任务'], pending: ['Pending', '待处理'], suspected: ['Suspected', '疑似求援'],
+    observing: ['Observing', '复查中'], confirmed: ['Confirmed', '已确认'], negative: ['Ruled out', '已排除'],
+    uncertain: ['Uncertain', '尚未确定'], delivering: ['Delivering', '投送中'], delivered: ['Delivered', '已交付'],
+    blocked: ['Blocked', '受阻'], closed: ['Closed', '已关闭'], idle: ['Idle', '待命'], waiting: ['Waiting', '等待'],
+    assigned: ['Assigned', '已指派'], enroute: ['En route', '飞行中'], completed: ['Completed', '已完成'],
+    continuing: ['Continuing', '执行中'], holding: ['Holding', '驻留'], waiting_report: ['Awaiting report', '待报告送达'],
+  };
+  return labels[value]?.[locale.startsWith('zh') ? 1 : 0] ?? value;
+}
+
+export function rescueIncidentColor(state: string): string {
+  if (state === 'delivered' || state === 'closed') return '#35d69c';
+  if (state === 'negative') return '#a8b5c5';
+  if (state === 'blocked') return '#ff645f';
+  return '#ffb74b';
 }
 
 const ZONE_KINDS: readonly ZoneKind[] = ['no_fly', 'restricted', 'altitude_band', 'corridor'];
@@ -225,6 +293,9 @@ export function semanticVehicle(entity: EntityState, task?: EntityState): Semant
     soc: typeof soc === 'number' ? soc : undefined,
     charging: scalar(entity.fields.get('lowalt.charging')?.value) === true ? true : undefined,
     weatherHeld: scalar(entity.fields.get('lowalt.weather_held')?.value) === true ? true : undefined,
+    rescueRole: typeof entity.fields.get('rescue.role')?.value === 'string' ? entity.fields.get('rescue.role')!.value as string : undefined,
+    rescueTask: typeof entity.fields.get('rescue.task')?.value === 'string' ? entity.fields.get('rescue.task')!.value as string : undefined,
+    rescueStatus: typeof entity.fields.get('rescue.status')?.value === 'string' ? entity.fields.get('rescue.status')!.value as string : undefined,
   };
 }
 
@@ -235,6 +306,12 @@ export interface BusinessStyle { glyph: 'package' | 'cross' | 'eye' | 'person' |
  * declared in the data is `unknown`, never a fabricated classification.
  */
 export function businessStyle(vehicle: SemanticVehicle, locale = 'en-US'): BusinessStyle {
+  if (vehicle.rescueRole) {
+    const role = vehicle.rescueRole;
+    return { glyph: role === 'inspect' ? 'eye' : role === 'deliver' || role === 'committed' ? 'package' : 'unknown',
+      color: role === 'inspect' ? '#56b4e9' : role === 'relay' ? '#cc79a7' : role === 'deliver' ? '#e69f00' : '#8fa3b8',
+      label: rescueLabel(role, locale) };
+  }
   const kind = vehicle.taskKind ?? vehicle.vehicleClass;
   // The parcel airframe also flies meals; without a current task its class says "delivery", not which kind.
   if (!vehicle.taskKind && kind === 'parcel') return { glyph: 'package', color: '#e69f00', label: translate(locale, 'Delivery') };
@@ -257,6 +334,11 @@ export function businessStyle(vehicle: SemanticVehicle, locale = 'en-US'): Busin
 export function semanticLabel(entity: EntityState, task?: EntityState, header?: RunHeader, locale = 'en-US'): string {
   const name = displayName(entity, header ?? { types: [], presentation: [], fields: [] } as unknown as RunHeader, locale);
   const vehicle = semanticVehicle(entity, task);
+  if (vehicle.rescueRole !== undefined) {
+    // Keep the authored identity even when roles and assignments change.
+    return [entity.key.id, rescueLabel(vehicle.rescueRole, locale), vehicle.rescueTask,
+      vehicle.rescueStatus ? rescueLabel(vehicle.rescueStatus, locale) : undefined].filter(Boolean).join(' · ');
+  }
   const parts: string[] = [name];
   const style = businessStyle(vehicle, locale);
   if (style.label) parts.push(style.label);
@@ -282,6 +364,7 @@ export function recentlyInvolved(messages: FeedCommit['messages'], lookback: num
 
 /** Who should show a label in the SIMPLE default (not show-all) mode. */
 export function labelInterest(entity: EntityState, selected?: EntityKey, involved?: Set<string>, hasActiveTask?: boolean, alerts?:Set<string>): boolean {
+  if (entity.fields.has('rescue.role')) return true;
   if (selected && selected.id === entity.key.id && String(selected.generation) === String(entity.key.generation)) return true;
   // Authored background traffic emits routine motion/occupancy updates every
   // tick and each routine actor carries a looped task that never finishes, so
