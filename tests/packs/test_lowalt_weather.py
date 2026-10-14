@@ -92,24 +92,64 @@ def test_incident_active_and_ended_are_journaled(tmp_path: Path) -> None:
     assert _fact_values(records, "incident-1", "lowalt.incident_state") == ["pending", "occurred", "noticed", "reported"]
 
 
-def test_weather_fields_journal_at_zero_and_replay_identically(tmp_path: Path) -> None:
+def test_incident_journal_replays_to_identical_boundary_snapshots(tmp_path: Path) -> None:
+    from aerokernel.journal import replay
+    from aeroagentsim.services.projector import project
+
     document = _document(tmp_path, weather=True)
-    directories = []
-    for name in ("first", "second"):
-        scenario = load_scenario(copy.deepcopy(document), base=BASE)
-        directory = tmp_path / name
-        with RunSession(scenario, directory) as session:
-            session.start()
-            session.run_until(10 * 10**9)
-        directories.append(directory)
-    records = _run(document, tmp_path, 10)
-    assert _fact_values(records, "weather", "lowalt.precipitation") == [4 / 3600]
-    assert _fact_values(records, "weather", "lowalt.visibility") == [500.0]
-    assert _fact_values(records, "weather", "lowalt.light") == ["dusk"]
-    first = (directories[0] / "journal.jsonl").read_bytes()
-    assert first == (directories[1] / "journal.jsonl").read_bytes()
-    run_header = header(directories[0])
-    assert run_header["scene"]["lighting"] == "dusk"
+    directory = tmp_path / "run"
+    with RunSession(load_scenario(document, base=BASE), directory) as session:
+        session.start()
+        session.run_until(10 * 10**9)
+    kernel = replay(directory / "journal.jsonl")
+    assert not kernel.incomplete
+    records = [project(record) for record in kernel.iter_records()]
+
+    def snapshots(at_ns: int) -> dict[str, Any]:
+        latest: dict[str, Any] = {}
+        for record in records:
+            if int(record["at"]["ns"]) > at_ns:
+                break
+            for fact in record["facts"]:
+                latest[(fact["entity"]["id"], fact["fieldId"])] = fact["value"]
+        return latest
+
+    for at_ns in (2 * 10**9, 5 * 10**9):
+        state = snapshots(at_ns)
+        assert state[("incident-1", "lowalt.incident_active")] == (at_ns == 2 * 10**9)
+        assert state[("weather", "lowalt.precipitation")] == 4 / 3600
+        assert state[("weather", "lowalt.light")] == "dusk"
+
+
+def test_incident_ending_at_run_end_and_simultaneous_incidents(tmp_path: Path) -> None:
+    document = _document(tmp_path, weather=False)
+    config = document["engines"]["tasks"]["config"]["cooperation"]
+    # incident-1 keeps its 5 s end; incident-2 ends exactly with the 8 s run window.
+    config["incidents"].append({**copy.deepcopy(config["incidents"][0]), "id": "incident-2", "position": [400.0, 0.0, 0.0], "end_s": 8.0})
+    records = _run(document, tmp_path, 8)
+    occurred = sorted(int(m["at"]["ns"]) for m in _events(records, "lowalt.incident.occurred"))
+    ended = sorted(int(m["at"]["ns"]) for m in _events(records, "lowalt.incident.ended"))
+    assert occurred == [2 * 10**9, 2 * 10**9]
+    assert ended == [5 * 10**9, 8 * 10**9]
+    assert _fact_values(records, "incident-1", "lowalt.incident_active")[-1] is False
+    assert _fact_values(records, "incident-2", "lowalt.incident_active") == [False, True, False]
+
+
+def test_photograph_after_end_records_the_observation(tmp_path: Path) -> None:
+    # A responder that arrives after the incident ended still photographs it;
+    # the end only clears the active flag, not the response workflow.
+    document = _document(tmp_path, weather=False)
+    config = document["engines"]["tasks"]["config"]["cooperation"]
+    config["incidents"][0]["end_s"] = 2.5
+    config["responder"]["order"] = ["respond_now", "report_only"]
+    config["responder"]["rules"]["require_replacement"] = False
+    records = _run(document, tmp_path, 70)
+    ended = _events(records, "lowalt.incident.ended")
+    photographed = _events(records, "lowalt.incident.photographed")
+    assert [int(m["at"]["ns"]) for m in ended] == [2500_000_000]
+    assert photographed and int(photographed[0]["at"]["ns"]) > int(ended[0]["at"]["ns"])
+    assert _fact_values(records, "incident-1", "lowalt.incident_active") == [False, True, False]
+    assert _fact_values(records, "incident-1", "lowalt.incident_state")[-1] == "photographed"
 
 
 def test_header_lists_environment_gusts(tmp_path: Path) -> None:
@@ -140,6 +180,16 @@ def test_overlay_declares_weather_and_incident_fields() -> None:
     assert fields["lowalt.precipitation"]["metadata"]["aerograph"] == "oo:digital_twin.precipitation.waterMassFlux"
     assert fields["lowalt.visibility"]["metadata"]["aerograph"] == "he.weather.visibility_m"
     assert fields["lowalt.light"]["metadata"]["role"] == "presentation"
+    assert fields["lowalt.light"]["schema"] == {"type": "string", "enum": ["day", "dusk"]}
+
+
+def test_header_carries_aerograph_kinds_for_incident_kind(tmp_path: Path) -> None:
+    directory = tmp_path / "run"
+    with RunSession(load_scenario(_document(tmp_path, weather=False), base=BASE), directory) as session:
+        session.start()
+        session.run_until(6 * 10**9)
+    kind = next(field for field in header(directory)["fields"] if field["fieldId"] == "lowalt.incident_kind")
+    assert kind["metadata"]["aerograph_kinds"] == {"fire": "oo:FireIncident", "person_fall": "oo:Incident"}
 
 
 def test_capture_snapshot_retains_journaled_nonspatial_weather(tmp_path: Path) -> None:

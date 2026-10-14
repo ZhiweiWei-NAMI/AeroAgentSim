@@ -297,6 +297,17 @@ def _cooperation(document: dict) -> dict:
     return tasks["cooperation"]
 
 
+def _check_incident_time(incident: dict, document: dict, field_name: str) -> None:
+    """Validate every final merged incident against rounded integer nanoseconds."""
+    end_ns = round(incident["end_s"] * SECOND) if "end_s" in incident else None
+    start_ns = round(incident.get("at_s", 0) * SECOND)
+    until_ns = document["run"]["until_ns"]
+    if end_ns is not None and end_ns <= start_ns:
+        _fail(field_name, "Incident end must follow its start", "事件结束必须晚于开始")
+    if end_ns is not None and end_ns > until_ns:
+        _fail(field_name, f"Incident end is beyond the {until_ns / SECOND:g} s run", f"事件结束超出 {until_ns / SECOND:g} 秒运行")
+
+
 def _drop_generated(document: dict, coop: dict) -> None:
     ids = {("lowalt:HandoffPoint", point["id"]) for point in coop.get("handoff_points", [])}
     for incident in coop.get("incidents", []):
@@ -533,6 +544,9 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
         for stream in document.get("ingress_streams", []):
             if stream["initial_watermark_ns"] != 0:
                 stream["initial_watermark_ns"] = document["run"]["until_ns"]
+        for tasks in [e["config"] for e in document["engines"].values() if e["plugin"] == "lowalt_tasks"]:
+            for incident in tasks.get("cooperation", {}).get("incidents", []):
+                _check_incident_time(incident, document, "seconds", end_only=True)
         return
     if name == "set_run_mode":
         streams = document.get("ingress_streams", [])
@@ -929,6 +943,7 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             _fail("id", "Incident does not exist", "事件不存在")
         if name == "remove_incident":
             coop["incidents"].remove(incident)
+            _drop_generated(document, {**coop, "incidents": [incident], "handoff_points": []})
             return
         if "at" in p:
             incident["position"] = _position(document, p["at"], "at")
@@ -938,12 +953,20 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
             if key in p:
                 incident[key] = p[key]
         if "end_s" in p:
-            end = float(p["end_s"])
-            if end <= incident.get("at_s", 0):
-                _fail("end_s", "Incident end must follow its start", "事件结束必须晚于开始")
-            if round(end * SECOND) > document["run"]["until_ns"]:
-                _fail("end_s", f"Incident end is beyond the {document['run']['until_ns'] / SECOND:g} s run", f"事件结束超出 {document['run']['until_ns'] / SECOND:g} 秒运行")
-            incident["end_s"] = end
+            if p["end_s"] is None:
+                # An explicit null removes the end; the incident becomes open-ended.
+                incident.pop("end_s", None)
+            else:
+                end = float(p["end_s"])
+                if end <= incident.get("at_s", 0):
+                    _fail("end_s", "Incident end must follow its start", "事件结束必须晚于开始")
+                if round(end * SECOND) > document["run"]["until_ns"]:
+                    _fail("end_s", f"Incident end is beyond the {document['run']['until_ns'] / SECOND:g} s run", f"事件结束超出 {document['run']['until_ns'] / SECOND:g} 秒运行")
+                incident["end_s"] = end
+        _check_incident_time(incident, document, "end_s" if "end_s" in p else "at_s")
+        # Generated incident and handoff rows follow the configuration: drop the owned
+        # ones so expansion rebuilds them with the edited values.
+        _drop_generated(document, coop)
         return
     if name == "set_cooperation":
         coop = _cooperation(document)
@@ -1176,9 +1199,20 @@ def _time_bounds(document: dict, operations: list[dict], errors: list[dict], war
             for key in ("start_s", "end_s"):
                 check(params[key], "params." + key, op_id)
         if name in {"add_incident", "set_incident"} and incidents.get(params["id"]) and incident_owners.get(params["id"]) is operation:
-            check(incidents[params["id"]]["at_s"], "params.time_s", op_id)
-            if "end_s" in incidents[params["id"]]:
-                check(incidents[params["id"]]["end_s"], "params.end_s", op_id)
+            incident = incidents[params["id"]]
+            check(incident["at_s"], "params.time_s", op_id)
+            if "end_s" in incident:
+                check(incident["end_s"], "params.end_s", op_id)
+        # An end removed by a later set_incident end_s:null keeps every earlier end edit reachable.
+        if name == "set_incident" and params.get("end_s") is None:
+            for other in operations:
+                if other["op"] in {"add_incident", "set_incident"} and other["params"].get("id") == params["id"] and "end_s" in other["params"] and other["params"]["end_s"] is not None:
+                    check(other["params"]["end_s"], "params.end_s", other.get("id"))
+        if name == "set_duration":
+            for identity, incident in incidents.items():
+                owner_id = next((o.get("id") for o in operations if o["op"] in {"add_incident", "set_incident"} and o["params"].get("id") == identity), None)
+                if "end_s" in incident:
+                    check(incident["end_s"], f"incidents.{identity}.end_s", owner_id)
         if name == "set_task" and task_owners.get(params["task"]) is operation and params["task"] in task_times:
             ns = task_times[params["task"]]
             check(ns / SECOND, "params.release_s", op_id, ns=ns)

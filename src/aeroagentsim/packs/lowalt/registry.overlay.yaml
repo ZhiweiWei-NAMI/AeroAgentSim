@@ -330,7 +330,11 @@ fields:
     aerograph: he.weather.visibility_m
 - id: lowalt.light
   type: lowalt:Environment
-  schema: *id003
+  schema:
+    type: string
+    enum:
+    - day
+    - dusk
   metadata:
     role: presentation
     unit: '1'

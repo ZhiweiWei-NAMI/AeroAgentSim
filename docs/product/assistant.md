@@ -192,7 +192,7 @@ others.
 |---|---|
 | `set_control {control, value}` | Any declared template control (fleet size, order rate, allocator, wind, reserve…) |
 | `set_duration {seconds}`; `set_run_mode {mode}` | How long; scheduled vs interactive |
-| `set_wind {speed_mps, from_deg?}`; `add_gust {start_s, end_s, speed_mps}`; `set_weather {precipitation_mm_h?, visibility_m?, light?}` | Weather; `from_deg` is the direction the wind comes FROM (clockwise from north); `set_weather` is visual only (3D view and UAV captures; flight, sensing and task outcomes don't use it) |
+| `set_wind {speed_mps, from_deg?}`; `add_gust {start_s, end_s, speed_mps}`; `set_weather {precipitation_mm_h?, visibility_m?, light?}` | Weather; `from_deg` is the direction the wind comes FROM (clockwise from north); wind and gusts are simulated inputs that drive flight holds and energy; in `set_weather`, rain, visibility and light are visual only (3D view and UAV captures; flight, sensing and task outcomes don't use them) |
 | `set_rule {rule, value}` | battery_reserve_pct, safety_distance_m, wind_limit_mps, medical_preemption |
 | `set_algorithm {slot, value}` | From the installed algorithm catalogue |
 | `add_place {id, role, at, label?, …}` | kitchen, customer, vertiport, charging_pad, handoff_point, incident_site…; `at` is a place-catalogue key |
@@ -201,7 +201,7 @@ others.
 | `set_fleet {fleet, count?, battery_pct?, start?}`; `set_vehicle {vehicle, battery_pct?, start?}` | Resize or adjust; one vehicle with low battery |
 | `add_orders {id, kind, count, from[], to[], release, priority?, payload_kg?, delivery_window_s?}` | Parcels, meals, medical, inspections, … with scheduled times or a rate |
 | `set_orders` / `set_task {task, destination?, release_s?, priority?}` / `remove_orders` | Revise workload; change one delivery |
-| `add_incident {id, kind, at, time_s, label?, radius_m?, end_s?}`; `set_incident`; `remove_incident` | Point incident: person_fall, or fire ("Building fire"; a visual and scheduling marker — combustion and smoke spread are not simulated) |
+| `add_incident {id, kind, at, time_s, label?, radius_m?, end_s?}`; `set_incident`; `remove_incident` | Point incident: person_fall, or fire ("Building fire"; fire smoke and flames are visual and scheduling markers — combustion and smoke spread are not simulated) |
 | `schedule_event {event, at_s, params}` | Existing operator events at a time: close_vertiport, add_urgent_order, restaurant_delay, change_dropoff, prioritize_medical, investigate |
 | `set_cooperation {watchers?, responder?, helpers?, handoff_points?, photograph?}` (merge) / `remove_cooperation` | Who notices, who decides how, constraints, who may help |
 

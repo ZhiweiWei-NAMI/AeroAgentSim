@@ -881,6 +881,10 @@ class LowaltTasks(ContextEngine):
                     })
             if "lowalt_cooperation_end" in payload:
                 incident = self.incidents[payload["lowalt_cooperation_end"]]
+                # An end wake racing the activation timer (or a pending dwell)
+                # must never leave the incident active afterwards.
+                if incident.phase == "pending":
+                    incident.dwell_until_ns = None
                 if read(ctx, incident.ref, "lowalt.incident_active"):
                     ctx.set(incident.ref, "lowalt.incident_active", False)
                     self._business_event(ctx, "lowalt.incident.ended", {

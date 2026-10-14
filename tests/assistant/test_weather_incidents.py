@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,10 @@ def context(tmp_path: Path) -> CompileContext:
 
 def op(name: str, **params) -> dict:
     return {"id": f"op-{name}-{params.get('id', 'weather')}", "op": name, "params": params}
+
+
+def compile_ops(context: CompileContext, tmp_path: Path, operations: list[dict], template="food-delivery"):
+    return compile_plan(context, {"template": template}, [{"id": f"op-{i + 1}", **operation} for i, operation in enumerate(operations)], tmp_path / "plan")
 
 
 def test_incident_op_schemas_accept_fire_radius_and_end() -> None:
@@ -145,3 +150,111 @@ def test_set_weather_without_weather_entity_fails(context: CompileContext, tmp_p
         op("set_weather", light="day")], tmp_path / "plan")
     assert not result.ok
     assert "Starting scene has no lowalt weather entity" in result.errors[0]["message"]
+
+
+COOP_INSTALLED = importlib.util.find_spec("aeroagentsim.packs.lowalt.cooperation") is not None
+
+
+def _cooperation_ops(**extra) -> list[dict]:
+    return [
+        op("add_fleet", id="couriers", role="meal_courier", count=1, start="plaza"),
+        op("add_fleet", id="logistics", role="parcel_drone", count=1, start="plaza"),
+        op("add_incident", id="fall", kind="person_fall", at="street-east", time_s=60, **extra),
+        op("set_cooperation", watchers={"vehicles": ["logistics"], "notice_radius_m": 150},
+           responder={"mode": "prescribed", "order": ["respond_now", "report_only"]},
+           helpers={"vehicles": ["couriers"], "mode": "prescribed", "rules": {"accept_when": "idle", "min_battery_pct": 25}}),
+    ]
+
+
+@pytest.mark.skipif(not COOP_INSTALLED, reason="Cooperation module is built in the parallel area")
+def test_set_incident_radius_and_end_regenerate_generated_rows(context: CompileContext, tmp_path: Path) -> None:
+    from aeroagentsim.assistant.scene import diff
+
+    before = compile_ops(context, tmp_path, _cooperation_ops(radius_m=30, end_s=120))
+    assert before.ok, before.errors
+    after = compile_plan(context, {"template": "food-delivery"}, [
+        {"id": f"op-{i + 1}", **operation} for i, operation in enumerate([
+            *_cooperation_ops(radius_m=30, end_s=120),
+            op("set_incident", id="fall", radius_m=80, end_s=150),
+        ])], tmp_path / "plan2")
+    assert after.ok, after.errors
+    incident = next(e for e in after.document["entities"] if e["id"] == "fall")
+    facts = incident["facts"]
+    assert facts["lowalt.incident_radius_m"] == 80.0
+    assert facts["lowalt.incident_end_ns"] == 150 * 10**9
+    assert facts["lowalt.incident_active"] is False
+    assert validate_compiled(context, tmp_path / "plan2")["valid"]
+    events = {e["id"]: e for e in after.summary["events"]}
+    assert events["fall"]["radius_m"] == 80 and events["fall"]["end_s"] == 150
+    changed = next(row for row in diff(before.summary, after.summary)["changed"] if row["id"] == "fall")
+    fields = {f["name"]: f for f in changed["fields"]}
+    assert fields["radius_m"]["label"] == "Affected radius (m)"
+    assert fields["radius_m"]["label_zh"] == "影响半径（米）"
+    assert fields["radius_m"]["before"] == 30 and fields["radius_m"]["after"] == 80
+    assert fields["end_s"]["label"] == "Ends at (s)"
+    assert fields["end_s"]["label_zh"] == "结束时间（秒）"
+    assert fields["end_s"]["after"] == 150
+
+
+@pytest.mark.skipif(not COOP_INSTALLED, reason="Cooperation module is built in the parallel area")
+def test_incident_kind_change_renders_kind_labels(context: CompileContext, tmp_path: Path) -> None:
+    from aeroagentsim.assistant.scene import diff
+
+    before = compile_ops(context, tmp_path, _cooperation_ops())
+    assert before.ok, before.errors
+    after = compile_plan(context, {"template": "food-delivery"}, [
+        {"id": f"op-{i + 1}", **operation} for i, operation in enumerate([
+            *_cooperation_ops(),
+            op("set_incident", id="fall", kind="fire"),
+        ])], tmp_path / "plan2")
+    assert after.ok, after.errors
+    changed = next(row for row in diff(before.summary, after.summary)["changed"] if row["id"] == "fall")
+    field = next(f for f in changed["fields"] if f["name"] == "kind")
+    assert field["label"] == "Kind" and field["label_zh"] == "事件类型"
+    assert field["before_text"] == "Person fell" and field["before_text_zh"] == "行人跌倒"
+    assert field["after_text"] == "Fire" and field["after_text_zh"] == "火情"
+
+
+@pytest.mark.skipif(not COOP_INSTALLED, reason="Cooperation module is built in the parallel area")
+def test_set_incident_null_end_clears_end_and_moving_start_past_end_fails(context: CompileContext, tmp_path: Path) -> None:
+    result = compile_ops(context, tmp_path, [*_cooperation_ops(end_s=120), op("set_incident", id="fall", end_s=None)])
+    assert result.ok, result.errors
+    coop = next(e["config"]["cooperation"] for e in result.document["engines"].values() if e["plugin"] == "lowalt_tasks")
+    assert "end_s" not in coop["incidents"][0]
+    assert next(e for e in result.document["entities"] if e["id"] == "fall")["facts"]["lowalt.incident_end_ns"] == -1
+    moved = compile_ops(context, tmp_path, [*_cooperation_ops(end_s=120), op("set_incident", id="fall", time_s=200)])
+    assert not moved.ok and moved.errors[0]["field"] == "at_s"
+
+
+@pytest.mark.skipif(not COOP_INSTALLED, reason="Cooperation module is built in the parallel area")
+def test_incident_end_checks_cover_add_edit_and_duration(context: CompileContext, tmp_path: Path) -> None:
+    partial = compile_ops(context, tmp_path, [*_cooperation_ops(end_s=120), op("set_incident", id="fall", end_s=400)])
+    assert not partial.ok and partial.errors[0]["field"] == "end_s"
+    boundary = compile_ops(context, tmp_path, [*_cooperation_ops(), op("set_incident", id="fall", end_s=360)])
+    assert boundary.ok, boundary.errors
+    beyond = compile_ops(context, tmp_path, [*_cooperation_ops(), op("set_incident", id="fall", end_s=360.000000001)])
+    assert not beyond.ok and beyond.errors[0]["field"] == "end_s"
+    # set_duration is ordered first, so shortening below an incident end fails
+    # at that incident's operation with the run-horizon message.
+    shortened = compile_ops(context, tmp_path, [*_cooperation_ops(end_s=120), op("set_duration", seconds=100)])
+    assert not shortened.ok
+    assert any(e["field"] == "end_s" and "run" in e["message"] and "运行" in e["message"] for e in shortened.errors)
+
+
+def test_light_schema_is_enum_and_authored_night_fails(context: CompileContext, tmp_path: Path) -> None:
+    from aeroagentsim.packs.lowalt.overlay import overlay
+
+    fields = {row["id"]: row for row in overlay()["fields"]}
+    assert fields["lowalt.light"]["schema"] == {"type": "string", "enum": ["day", "dusk"]}
+    with pytest.raises(Exception):
+        validate_operation(op("set_weather", light="night"))
+    from aeroagentsim.authoring.templates import TemplateRegistry
+    from aeroagentsim.scenario import load_scenario
+
+    prepared = TemplateRegistry().apply("food-delivery")
+    environment = next(e for e in prepared.document["entities"] if e["type"] == "lowalt:Environment")
+    environment["facts"]["lowalt.light"] = "night"
+    from aeroagentsim.scenario import load_scenario
+
+    with pytest.raises(Exception):
+        load_scenario(prepared.document, base=prepared.base)

@@ -89,7 +89,11 @@ def validate_vehicle_task_kinds(config: dict, *, vehicles: set[str]) -> None:
             raise ValueError(f"{path}: unique supported task kinds required / 必须为不重复的受支持任务类别")
 
 
-def validate_config(config: dict, *, vehicles: set[str]) -> None:
+# Facts newer saved scenes may carry; legacy generated rows are upgraded in place.
+UPGRADED_FACTS = ("lowalt.incident_radius_m", "lowalt.incident_end_ns", "lowalt.incident_active")
+
+
+def validate_config(config: dict, *, vehicles: set[str], until_ns: int | None = None) -> None:
     """Validate the cooperation object, without resolving operator credentials."""
     cfg = _object(config, "cooperation", {"handoff_points", "incidents", "watchers", "responder", "helpers", "photograph"}, {"provider"})
     ids: set[str] = set()
@@ -115,6 +119,15 @@ def validate_config(config: dict, *, vehicles: set[str]) -> None:
                         _number(row[optional_number], path + "." + optional_number, maximum)
                 if "radius_m" in row and row["radius_m"] < 1:
                     raise ValueError(f"{path}.radius_m: at least 1 m required / 半径至少为 1 米")
+                if "end_s" in row:
+                    start_ns = round(row["at_s"] * 1e9)
+                    end_ns = round(row["end_s"] * 1e9)
+                    if end_ns <= start_ns:
+                        raise ValueError(f"{path}.end_s: incident end must follow its start / 事件结束必须晚于开始")
+                    if until_ns is not None and end_ns > until_ns:
+                        raise ValueError(
+                            f"{path}.end_s: incident end is beyond the {until_ns / 1e9:g} s run / 事件结束超出 {until_ns / 1e9:g} 秒运行"
+                        )
     watchers = _object(cfg["watchers"], "cooperation.watchers", {"vehicles", "notice_radius_m"})
     responder = _object(cfg["responder"], "cooperation.responder", {"mode", "order", "rules"}, {"goal"})
     helpers = _object(cfg["helpers"], "cooperation.helpers", {"vehicles", "ask_radius_m", "mode", "rules", "selection"}, {"goal"})
@@ -270,7 +283,17 @@ def expand(document: dict) -> None:
             generated.append({"id": "handoff-" + incident["id"], "type": "lowalt:Handoff", **labels, "business": "emergency", "facts": {field: "idle" if field.endswith("_state") else "" for field in HANDOFF_FIELDS}})
         for row in generated:
             if row["id"] in entities:
-                if entities[row["id"]] != row:
+                # Legacy saved scenes carry generated rows without the newest
+                # incident facts; upgrade them in place instead of colliding.
+                existing = entities[row["id"]]
+                if row["type"] in {"lowalt:Incident", "lowalt:Handoff"}:
+                    facts = {k: v for k, v in existing.get("facts", {}).items() if k not in UPGRADED_FACTS}
+                    if row["type"] == "lowalt:Incident":
+                        facts.update({k: v for k, v in row["facts"].items() if k in UPGRADED_FACTS})
+                    if {**existing, "facts": {**existing.get("facts", {}), **facts}} == row:
+                        existing["facts"].update(facts)
+                        continue
+                if existing != row:
                     raise ValueError(f"cooperation: entity id collision {row['id']} / 实体标识冲突")
             else:
                 document["entities"].append(copy.deepcopy(row))

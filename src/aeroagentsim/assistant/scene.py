@@ -341,6 +341,8 @@ def summarize(document: dict, *, directory: Path | None = None, catalog=None, co
     for incident in (cooperation or {}).get("incidents", []):
         events.append({"id": incident["id"], "kind": incident["kind"], "label": incident.get("label", EVENT_LABELS[incident["kind"]][0]),
                        "label_zh": incident.get("label_zh", EVENT_LABELS[incident["kind"]][1]), "at_s": incident["at_s"],
+                       **({"end_s": incident["end_s"]} if "end_s" in incident else {}),
+                       "radius_m": incident.get("radius_m"),
                        "place": incident["id"], "position": incident["position"], "layer": "setup"})
     for i, command in enumerate(document.get("bindings", {}).get("commands", [])):
         if command["schema"] != "aas.runtime.inject_event":

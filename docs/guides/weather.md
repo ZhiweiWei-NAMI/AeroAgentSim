@@ -30,9 +30,13 @@ profiles on the same `lowalt:Environment` entity that carries
   `lowalt.visibility` (metres; 50000 = clear), `lowalt.light`
   ("day" | "dusk"). They are declared in the lowalt overlay with
   `aerograph:` metadata pointing at the matching AeroGraph fields.
-- These are **visual only** — shown in the 3D view and UAV captures; flight,
-  sensing and task outcomes don't use them (仅为视觉呈现——显示在三维视图和
-  无人机拍摄中；飞行、感知和任务结果不使用它们).
+- Rain, visibility and light are **visual only** — shown in the 3D view and UAV
+  captures; flight, sensing and task outcomes don't use them（降雨、能见度与光照
+  仅为视觉呈现——显示在三维视图和无人机拍摄中；飞行、感知和任务结果不使用它们）.
+  Wind and gusts are different: they are simulated inputs that drive flight
+  holds and energy use (风与阵风是驱动飞行暂停和能耗的仿真输入).
+  For fire incidents, smoke and flames are likewise visual only
+  （火情的烟雾与火焰同样仅为视觉呈现）.
 - `lowalt.light` is a journaled presentation field. The viewer follows its value
   at the viewed cut; the run header's `scene.lighting` echoes its initial value.
 - `set_wind.from_deg` states the meteorological direction the wind comes FROM

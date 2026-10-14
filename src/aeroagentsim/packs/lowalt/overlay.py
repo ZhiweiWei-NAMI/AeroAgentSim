@@ -61,7 +61,9 @@ COOP_OPTIONS = ("respond_now", "request_handoff", "finish_then_respond", "report
 # AeroGraph kind mapping for lowalt:Incident. The scenario loader's
 # registry.types[] contract carries only id/parents/abstract, so type metadata
 # cannot ride the registry route; oo:Incident is declared as the parent type and
-# the per-kind AeroGraph identity is recorded here (spec §0.2/§6).
+# the per-kind AeroGraph identity is carried in the lowalt.incident_kind field
+# metadata, which the projector header exposes (spec §0.2/§6). oo:FireIncident
+# stays out of the registry snapshots.
 AEROGRAPH_KINDS = {"fire": "oo:FireIncident", "person_fall": "oo:Incident"}
 
 
@@ -91,6 +93,8 @@ def cooperation_overlay() -> dict[str, Any]:
             metadata = {"role": "observation", "unit": unit, "time_semantics": "canonical computation; half-open validity"}
             if schema is VECTOR:
                 metadata.update(frame="enu", transform_revision="lowalt.district/v1")
+            if name == "kind":
+                metadata["aerograph_kinds"] = dict(AEROGRAPH_KINDS)
             fields.append({"id": f"lowalt.{owner.lower()}_{name}", "type": "lowalt:" + owner, "schema": schema, "metadata": metadata})
     blocked = record({name: STRING for name in COOP_OPTIONS}, COOP_OPTIONS)
     base = {"incident": STRING, "handoff": STRING, "task": STRING, "requester": STRING}
@@ -476,7 +480,7 @@ def overlay() -> dict[str, Any]:
     fields[-1]["metadata"].update(aerograph="oo:digital_twin.precipitation.waterMassFlux", display_unit="mm/h (×3600)")
     add("visibility", "Environment", NUMBER, "m")
     fields[-1]["metadata"].update(aerograph="he.weather.visibility_m")
-    add("light", "Environment", STRING)
+    add("light", "Environment", {"type": "string", "enum": ["day", "dusk"]})
     fields[-1]["metadata"].update(role="presentation")
     add("zone_id", "AirspaceZone", STRING)
     add(

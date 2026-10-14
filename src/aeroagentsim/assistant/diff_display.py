@@ -24,7 +24,7 @@ FIELD_LABELS = {
     "precipitation_mm_h": ("Rain", "降雨"),
     "visibility_m": ("Visibility", "能见度"),
     "light": ("Light", "光照"),
-    "radius_m": ("Affected radius", "受影响半径"),
+    "radius_m": ("Affected radius", "影响半径"),
     "end_s": ("Ends at", "结束时间"),
     "east_mps": ("Eastward wind velocity", "向东风速分量"),
     "north_mps": ("Northward wind velocity", "向北风速分量"),
@@ -55,7 +55,7 @@ FIELD_LABELS = {
     "task_kinds": ("Eligible task types", "可执行任务类型"),
     "label": ("Name", "名称"), "label_zh": ("Chinese name", "中文名称"),
     "id": ("Identifier", "标识"), "type": ("Object type", "对象类型"),
-    "kind": ("Type", "类型"), "contract": ("Object contract", "对象契约"),
+    "kind": ("Type", "类型"), "incident_kind": ("Kind", "事件类型"), "contract": ("Object contract", "对象契约"),
     "fire": ("Fire", "火情"), "person_fall": ("Person fell", "行人跌倒"),
     "day": ("Day", "白天"), "dusk": ("Dusk", "黄昏"),
     "details": ("Initial properties", "初始属性"), "facts": ("Initial properties", "初始属性"),
@@ -64,7 +64,7 @@ FIELD_LABELS = {
     "destination": ("Destination", "目的地"), "release": ("Release schedule", "发布时间安排"),
     "mode": ("Mode", "模式"), "times_s": ("Release times", "发布时间"),
     "at_s": ("Event time", "事件时间"), "start_s": ("Start time", "开始时间"),
-    "end_s": ("End time", "结束时间"), "release_s": ("Release time", "发布时间"),
+    "release_s": ("Release time", "发布时间"),
     "rate_per_s": ("Arrival rate", "到达速率"), "expected_released": ("Expected releases", "预计发布数量"),
     "burst_size": ("Burst size", "批次大小"), "priority": ("Priority", "优先级"),
     "payload_kg": ("Payload", "载荷"), "payload_capacity_kg": ("Payload capacity", "载荷容量"),
@@ -116,6 +116,9 @@ def _metadata(name: str, kind: str, identity: str) -> tuple[str, str, str | None
         key = identity
     if identity == "algorithms" and key == "plugin":
         key = name.split(".", 1)[0]
+    if kind == "event" and key == "kind":
+        # Incident rows label their kind explicitly; enum values carry Fire/Person fell copy.
+        name = key = "incident_kind"
     en, zh = FIELD_LABELS.get(name, FIELD_LABELS.get(key, (_humanize(name), _humanize(name))))
     unit = {"lat": "°", "lon": "°", "bounds": "°", "direction_deg": "°", "from_deg": "°", "alt": "m", "wind_speed": "m/s", "wind_limit": "m/s", "order_rate": "/s", "rate_per_s": "/s", "precipitation_mm_h": "mm/h"}.get(key)
     if key in POSITION_FIELDS:
