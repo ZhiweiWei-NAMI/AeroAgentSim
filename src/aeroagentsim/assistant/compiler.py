@@ -546,7 +546,7 @@ def _apply_operation(ctx: CompileContext, scene: BaseScene, document: dict, name
                 stream["initial_watermark_ns"] = document["run"]["until_ns"]
         for tasks in [e["config"] for e in document["engines"].values() if e["plugin"] == "lowalt_tasks"]:
             for incident in tasks.get("cooperation", {}).get("incidents", []):
-                _check_incident_time(incident, document, "seconds", end_only=True)
+                _check_incident_time(incident, document, "seconds")
         return
     if name == "set_run_mode":
         streams = document.get("ingress_streams", [])
@@ -1379,7 +1379,7 @@ def compile_plan(ctx: CompileContext, base: dict, operations: list[dict], out_di
             module = _cooperation_module()
             ensure_contracts(document)
             vehicles = {e["id"] for e in document["entities"] if e["type"] == "lowalt:UAV"}
-            module.validate_config(coop, vehicles=vehicles)
+            module.validate_config(coop, vehicles=vehicles, until_ns=document["run"]["until_ns"])
             snapshot = document["registry"]["snapshot"]
             document["registry"]["snapshot"] = str(files / snapshot) if not Path(snapshot).is_absolute() else snapshot
             try:

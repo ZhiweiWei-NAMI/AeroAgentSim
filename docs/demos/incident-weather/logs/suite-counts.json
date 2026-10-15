@@ -1,0 +1,139 @@
+{
+  "python": [
+    {
+      "suite": "adapters",
+      "passed": 136,
+      "skipped": 3,
+      "deselected": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "agents",
+      "passed": 44,
+      "skipped": 0,
+      "deselected": 2,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "assistant",
+      "passed": 286,
+      "skipped": 0,
+      "deselected": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "authoring",
+      "passed": 245,
+      "skipped": 0,
+      "deselected": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "behaviours",
+      "passed": 57,
+      "skipped": 0,
+      "deselected": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "demos",
+      "passed": 35,
+      "skipped": 0,
+      "deselected": 1,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "integrations",
+      "passed": 75,
+      "skipped": 0,
+      "deselected": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "kernel",
+      "passed": 565,
+      "skipped": 2,
+      "deselected": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "observations",
+      "passed": 38,
+      "skipped": 2,
+      "deselected": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "packs",
+      "passed": 196,
+      "skipped": 1,
+      "deselected": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "platform",
+      "passed": 417,
+      "skipped": 0,
+      "deselected": 0,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "services",
+      "passed": 48,
+      "skipped": 0,
+      "deselected": 0,
+      "failures": 0,
+      "errors": 0
+    }
+  ],
+  "totals": {
+    "passed": 2142,
+    "skipped": 8,
+    "deselected": 3,
+    "failures": 0,
+    "errors": 0
+  },
+  "frontend": {
+    "files": 152,
+    "passed": 1127,
+    "typecheck": "passed",
+    "build": "/tmp/aas-fx/dist-int"
+  },
+  "e2e": {
+    "passed": 1,
+    "root": "/tmp/aas-fx/e2e-final",
+    "port": 4191,
+    "initial_attempt": "live run exceeded its 90 s completion deadline",
+    "rerun": "passed with unchanged assertions and deadlines"
+  },
+  "visuals": {
+    "screenshots": 7,
+    "browser_errors": 0,
+    "shader_errors": 0,
+    "webgl_errors": 0
+  },
+  "demo": {
+    "path": "/tmp/aas-fx/final/aas-incident-weather-demo.webm",
+    "key_frames": 9,
+    "duration_s": 87.72,
+    "size": [
+      1280,
+      800
+    ],
+    "fps": 25,
+    "browser_errors": 0,
+    "server_18980": "stopped",
+    "photograph": "/tmp/aas-fx/final/incident-photograph.png"
+  }
+}

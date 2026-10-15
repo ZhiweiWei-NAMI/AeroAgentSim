@@ -43,6 +43,8 @@ function matrices(mesh: T.InstancedMesh): number[] {
 }
 const meshes = (unit: T.Object3D) => unit.children.filter(node => node instanceof T.InstancedMesh) as T.InstancedMesh<T.BufferGeometry, T.ShaderMaterial>[];
 const renderer = () => ({ toneMappingExposure: 1.12, domElement: { height: 1800 }, getPixelRatio: () => 2 }) as T.WebGLRenderer;
+const drawSmoke = (mesh: T.InstancedMesh<T.BufferGeometry, T.ShaderMaterial>) =>
+  mesh.onBeforeRender(renderer(), new T.Scene(), camera, mesh.geometry, mesh.material, new T.Group());
 
 describe('atmosphere determinism: same (conditions, t) → same instance matrices', () => {
   it('smoke puffs repeat exactly at the same simulation time', async () => {
@@ -186,20 +188,48 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     const layer = new IncidentFX('med'); await layer.ready;
     const fire = { ...conditions.incidents[0], startS: 0 };
     layer.update([{ ...fire, activeS: 3, sinceS: 3 }], 3, camera, new Map()); // ramp 1
-    const smoke = meshes(layer.root.children[0])[1].material as T.ShaderMaterial;
+    const plume = meshes(layer.root.children[0])[1], smoke = plume.material;
     layer.setSmokeLight(false, 0); // day, after update so this frame's ramp applies
+    drawSmoke(plume);
     const burning = smoke.uniforms.uGlowStrength.value as number;
     expect(burning).toBeCloseTo(0.25);
     expect((smoke.uniforms.uGlow.value as T.Color).getHex()).toBe(new T.Color('#ff8a2b').getHex());
     const flameTop = smoke.uniforms.uFlameTop.value as number;
     expect(flameTop).toBeGreaterThan(0);
     layer.setSmokeLight(true, 0);
+    drawSmoke(plume);
     expect(smoke.uniforms.uGlowStrength.value).toBeCloseTo(0.55);
     // Fire ended 4 s ago → ramp 0, no underlight.
     layer.update([{ ...fire, phase: 'ended', activeS: 12, sinceS: 4 }], 12, camera, new Map());
     layer.setSmokeLight(false, 0);
+    drawSmoke(plume);
     expect(smoke.uniforms.uGlowStrength.value).toBe(0);
     expect(smoke.uniforms.uFlameTop.value).toBe(flameTop); // stays at the last flame height
+    layer.dispose();
+  });
+  it('keeps each fire plume underlight tied to its own phase and flame height', async () => {
+    const layer = new IncidentFX('high'); await layer.ready;
+    const fire = { ...conditions.incidents[0], startS: 0, activeS: 20, sinceS: 20 };
+    layer.update([fire, { ...fire, id: 'fire-b', position: [80, 0, 25], radiusM: 80 }], 20, camera, new Map());
+    layer.setSmokeLight(true, 0);
+    const first = meshes(layer.root.children[0])[1], second = meshes(layer.root.children[1])[1];
+    expect(first.material).toBe(second.material);
+    drawSmoke(first); const firstTop = first.material.uniforms.uFlameTop.value;
+    drawSmoke(second); const secondTop = second.material.uniforms.uFlameTop.value;
+    expect(firstTop).not.toBe(secondTop);
+    layer.update([{ ...fire, phase: 'ended', activeS: 25, sinceS: 5 },
+      { ...fire, id: 'fire-b', position: [80, 0, 25], radiusM: 80, activeS: 25, sinceS: 25 }], 25, camera, new Map());
+    expect(first.count).toBeGreaterThan(0); // Older puffs survive after the flame fades.
+    drawSmoke(second);
+    expect(second.material.uniforms.uGlowStrength.value).toBeCloseTo(0.55);
+    expect(second.material.uniforms.uFlameTop.value).toBe(secondTop);
+    first.material.uniformsNeedUpdate = false; // Three resets this after each upload.
+    drawSmoke(first);
+    expect(first.material.uniforms.uGlowStrength.value).toBe(0);
+    expect(first.material.uniforms.uFlameTop.value).toBe(firstTop);
+    expect(first.material.uniformsNeedUpdate).toBe(true);
+    drawSmoke(second);
+    expect(second.material.uniforms.uGlowStrength.value).toBeCloseTo(0.55);
     layer.dispose();
   });
   it.each(['high', 'low'] as const)('keeps a continuous %s plume across schedule wraps and late activation', async quality => {

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from aeroagentsim.assistant.compiler import CompileContext, compile_plan, validate_compiled
+from aeroagentsim.assistant.compiler import CompileContext, apply_plan, compile_plan, validate_compiled
 from aeroagentsim.authoring.templates import TemplateRegistry
 from aeroagentsim.authoring.workspace import WorkspaceStore
 from aeroagentsim.assistant.operations import validate_operation
@@ -239,6 +239,27 @@ def test_incident_end_checks_cover_add_edit_and_duration(context: CompileContext
     shortened = compile_ops(context, tmp_path, [*_cooperation_ops(end_s=120), op("set_duration", seconds=100)])
     assert not shortened.ok
     assert any(e["field"] == "end_s" and "run" in e["message"] and "运行" in e["message"] for e in shortened.errors)
+
+
+@pytest.mark.parametrize("seconds,valid", [(120, True), (100, False)])
+def test_duration_edit_checks_an_incident_already_saved_in_the_workspace(
+    context: CompileContext, tmp_path: Path, seconds: int, valid: bool,
+) -> None:
+    operations = [op("add_incident", id="fire", kind="fire", at="east", time_s=20, end_s=120)]
+    initial = compile_plan(context, {"template": "food-delivery"}, operations, tmp_path / "initial")
+    assert initial.ok, initial.errors
+    saved = apply_plan(context, tmp_path / "initial", base={"template": "food-delivery"},
+                       workspace_id=None, name="Timed fire", note="Confirmed incident")
+    draft = context.store.get(saved["workspace_id"])
+    base = {"workspace": draft["id"], "revision": draft["revision"]}
+    result = compile_plan(context, base, [op("set_duration", seconds=seconds)], tmp_path / "edited")
+    assert result.ok is valid, result.errors
+    if valid:
+        assert validate_compiled(context, tmp_path / "edited")["valid"]
+    else:
+        assert result.errors[0]["field"] == "seconds"
+        assert "Incident end is beyond" in result.errors[0]["message"]
+    assert context.store.get(draft["id"])["revision"] == draft["revision"]
 
 
 def test_light_schema_is_enum_and_authored_night_fails(context: CompileContext, tmp_path: Path) -> None:

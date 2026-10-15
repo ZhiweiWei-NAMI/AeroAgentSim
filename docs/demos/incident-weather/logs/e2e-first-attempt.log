@@ -1,0 +1,46 @@
+[WebServer] INFO:     Started server process [3985385]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:4191 (Press CTRL+C to quit)
+
+Running 1 test using 1 worker
+
+(node:3985434) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 e2e/conditions.spec.ts:56:1 › real fire, weather, replay and incident photograph through the workbench (6.0m)
+
+
+  1) e2e/conditions.spec.ts:56:1 › real fire, weather, replay and incident photograph through the workbench › save a version, initialize and watch the active fire
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  getByTestId('workbench')
+    Expected: "completed"
+    Received: "running"
+    Timeout:  90000ms
+
+    Call log:
+      - Expect "toHaveAttribute" getByTestId('workbench') with timeout 90000ms
+      - waiting for getByTestId('workbench')
+        5 × locator resolved to <div class="wb" data-cut="" data-mode="live" data-status="paused" data-testid="workbench" data-run="run-4c1bdefcbab542c0bf5161c6bdf70993">…</div>
+          - unexpected value "paused"
+        126 × locator resolved to <div class="wb" data-cut="" data-mode="live" data-status="running" data-testid="workbench" data-run="run-4c1bdefcbab542c0bf5161c6bdf70993">…</div>
+            - unexpected value "running"
+
+
+      182 |       await page.getByTestId('wb-speed').selectOption('max');
+      183 |       await page.getByTestId('wb-resume').click();
+    > 184 |       await expect(page.getByTestId('workbench')).toHaveAttribute('data-status', 'completed', { timeout: 90_000 });
+          |                                                   ^
+      185 |       completed = true;
+      186 |       expect(Date.now() - started, 'watching the real run takes under 90 s').toBeLessThan(90_000);
+      187 |       await expect(page.getByTestId('wb-catching-up')).toHaveCount(0, { timeout: 60_000 });
+        at /tmp/aas-fx/wt/int/frontend/e2e/conditions.spec.ts:184:51
+        at /tmp/aas-fx/wt/int/frontend/e2e/conditions.spec.ts:154:5
+
+    Error Context: ../../../e2e-final/artifacts/conditions-real-fire-weath-e3c94-graph-through-the-workbench/error-context.md
+
+  Slow test file: e2e/conditions.spec.ts (6.0m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  1 failed
+    e2e/conditions.spec.ts:56:1 › real fire, weather, replay and incident photograph through the workbench

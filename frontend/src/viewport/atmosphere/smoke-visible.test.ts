@@ -138,6 +138,7 @@ it.each([[70, 25], [220, 30], [775, 40], [420, 55]])('keeps a projected flame fo
     smoke.getMatrixAt(i, matrix); root = Math.min(root, matrix.elements[13]);
   }
   expect(smoke.count).toBe(18);
+  smoke.onBeforeRender({} as T.WebGLRenderer, new T.Scene(), view, smoke.geometry, smoke.material, new T.Group());
   expect(root).toBeCloseTo(smoke.material.uniforms.uFlameTop.value, 5);
   layer.dispose();
 });

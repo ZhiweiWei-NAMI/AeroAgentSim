@@ -255,7 +255,7 @@ def expand(document: dict) -> None:
         if "cooperation" not in cfg:
             continue
         coop = cfg["cooperation"]
-        validate_config(coop, vehicles=vehicles)
+        validate_config(coop, vehicles=vehicles, until_ns=document["run"]["until_ns"])
         if not {"oo:Incident", "oo:CargoTransferReport"} <= set(types):
             raise ValueError(CONTRACT_ERROR)
         descriptors = cooperation_overlay()

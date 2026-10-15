@@ -1,0 +1,16 @@
+{
+  "ffmpeg_version": "7.0.2-static https://johnvansickle.com/ffmpeg/ built with gcc 8 (Debian 8.3.0-6)",
+  "codec": "h264",
+  "pix_fmt": "yuv420p(progressive)",
+  "fps": 25.0,
+  "source_size": [
+    1280,
+    800
+  ],
+  "size": [
+    1280,
+    800
+  ],
+  "rotate": 0,
+  "duration": 87.76
+}

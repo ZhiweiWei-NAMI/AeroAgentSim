@@ -54,6 +54,25 @@ describe('conditionsAt', () => {
     expect(conditions.incidents[0].phase).toBe('pending');
     expect(conditions.incidents[0].activeS).toBe(0);
   });
+  it.each([0, 90_000_000_000])('keeps the bootstrap cut pending at the occurrence timestamp %s', start => {
+    const fire = entity('fire', 'lowalt:Incident', {
+      'lowalt.incident_kind': 'fire', 'lowalt.incident_position': [0, 0, 0],
+      'lowalt.incident_time_ns': String(start), 'lowalt.incident_end_ns': String(start + 60_000_000_000),
+      'lowalt.incident_active': false, 'lowalt.incident_state': 'pending',
+    });
+    const rows = cut([fire]);
+    for (const legacy of [false, true]) {
+      if (legacy) fire.fields.delete('lowalt.incident_active');
+      expect(conditionsAt(rows, String(start)).incidents[0].phase).toBe('pending');
+      fire.fields.set('lowalt.incident_state', { value: 'occurred' });
+      if (!legacy) fire.fields.set('lowalt.incident_active', { value: true });
+      expect(conditionsAt(rows, String(start)).incidents[0]).toMatchObject({ phase: 'active', sinceS: 0 });
+      fire.fields.set('lowalt.incident_state', { value: 'pending' });
+      fire.fields.set('lowalt.incident_active', { value: false });
+    }
+    fire.fields.set('lowalt.incident_state', { value: 'reported' });
+    expect(conditionsAt(rows, String(start + 60_000_000_000)).incidents[0].phase).toBe('ended');
+  });
   it('derives legacy incidents (no incident_active field) from the committed response state', () => {
     const legacy = (state: string) => cut([
       entity('fire', 'lowalt:Incident', {

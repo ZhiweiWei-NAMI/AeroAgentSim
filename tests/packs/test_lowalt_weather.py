@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from aeroagentsim.packs.lowalt.overlay import overlay
 from aeroagentsim.platform import RunSession
 from aeroagentsim.scenario import load_scenario
@@ -77,6 +79,20 @@ def _events(records: list[dict[str, Any]], schema: str) -> list[dict[str, Any]]:
 
 def _fact_values(records: list[dict[str, Any]], entity: str, field: str) -> list[Any]:
     return [fact["value"] for record in records for fact in record["facts"] if fact["entity"]["id"] == entity and fact["fieldId"] == field]
+
+
+@pytest.mark.parametrize("end_s,valid", [(8.0, True), (8.000000001, False)])
+def test_authored_incident_end_is_validated_against_the_run_horizon(
+    tmp_path: Path, end_s: float, valid: bool,
+) -> None:
+    document = _document(tmp_path, weather=False)
+    document["run"]["until_ns"] = 8 * 10**9
+    document["engines"]["tasks"]["config"]["cooperation"]["incidents"][0]["end_s"] = end_s
+    if valid:
+        load_scenario(document, base=BASE)
+    else:
+        with pytest.raises(ValueError, match="incident end is beyond the 8 s run"):
+            load_scenario(document, base=BASE)
 
 
 def test_incident_active_and_ended_are_journaled(tmp_path: Path) -> None:

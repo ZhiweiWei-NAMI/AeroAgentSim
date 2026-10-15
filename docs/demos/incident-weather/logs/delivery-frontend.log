@@ -1,0 +1,18 @@
+
+ RUN  v1.6.1 /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend
+
+ ✓ src/viewport/conditions.test.ts  (17 tests) 20ms
+ ✓ src/viewport/atmosphere/atmosphere.test.ts  (22 tests) 115ms
+ ✓ src/workbench/sections/tasks/Traffic.test.tsx  (8 tests) 559ms
+ ✓ src/viewport/atmosphere/smoke-visible.test.ts  (10 tests) 43ms
+ ✓ src/viewport/atmosphere/performance.test.ts  (3 tests) 211ms
+ ✓ src/viewport/conditions-index.test.ts  (2 tests) 7ms
+ ✓ src/viewport/ConditionsHud.test.tsx  (4 tests) 145ms
+ ✓ src/viewport/atmosphere/surface-height.test.ts  (2 tests) 13ms
+ ✓ src/workbench/sections/tasks/structured-editors.test.tsx  (32 tests) 1685ms
+ ✓ src/viewport/atmosphere/scene-depth.test.ts  (2 tests) 7ms
+
+ Test Files  10 passed (10)
+      Tests  102 passed (102)
+   Start at  17:21:35
+   Duration  7.37s (transform 1.54s, setup 1.92s, collect 5.66s, tests 2.81s, environment 4.65s, prepare 839ms)

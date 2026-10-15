@@ -147,8 +147,9 @@ function deriveConditions(entities: Cut['entities'], ns: string, header: RunHead
     const legacy = typeof activeField !== 'boolean';
     const active = legacy ? state !== 'pending' : activeField === true;
     const end = legacy || endNs === undefined || endNs < 0n ? undefined : endNs;
-    // Pending stays at the initial cut, before the occurrence wake commits (at < start time).
-    const phase: Conditions['incidents'][number]['phase'] = at < startNs ? 'pending' : active ? 'active' : 'ended';
+    // The bootstrap cut can share the start timestamp with the occurrence wake.
+    // The committed pending state remains authoritative until activation commits.
+    const phase: Conditions['incidents'][number]['phase'] = at < startNs || (!active && state === 'pending') ? 'pending' : active ? 'active' : 'ended';
     const sinceNs = active ? startNs : end ?? startNs;
     const sinceS = Math.max(0, (typeof at === 'number' && typeof sinceNs === 'number' ? at - sinceNs : Number(BigInt(at) - BigInt(sinceNs))) / 1e9);
     // Activation age keeps advancing after ending; activeS - sinceS is the emission window.

@@ -36,7 +36,7 @@ interface Visual {
   id: string; unit: T.Group; flames: T.InstancedMesh<T.PlaneGeometry, T.ShaderMaterial>;
   smoke: T.InstancedMesh<T.InstancedBufferGeometry, T.Material>; decal: T.Mesh<T.BufferGeometry, T.ShaderMaterial>; flameCount: number; puffSeeds: Float64Array; flameSeeds: Float64Array;
   seen: number; time: number; roof: number; surfaceY: number; smokeBase: number; surface: number; roofHeight?: (east: number, north: number) => number; radius: number; since: number; age: number; kind: string; phase: string;
-  tint: T.InstancedBufferAttribute; cells: T.InstancedBufferAttribute; light?: T.PointLight; active: boolean;
+  tint: T.InstancedBufferAttribute; cells: T.InstancedBufferAttribute; light?: T.PointLight; active: boolean; glowRamp: number; flameTop: number;
   annotation?: { ring: T.Mesh<T.BufferGeometry, T.ShaderMaterial>; pin: T.Sprite; leader: T.Line<T.BufferGeometry, T.LineBasicMaterial>; label?: HTMLElement };
 }
 
@@ -326,7 +326,15 @@ export class IncidentFX {
       decal.material.depthTest = true; decal.material.polygonOffset = true; decal.material.polygonOffsetFactor = -4;
     }
     unit.add(flames, smoke, decal);
-    const visual: Visual = { id: row.id, unit, flames, flameCount, smoke, decal, tint, cells, puffSeeds, flameSeeds, active: false, seen: 0, time: NaN, roof: NaN, surfaceY: NaN, smokeBase: NaN, surface: -1, radius: NaN, since: NaN, age: NaN, kind: row.kind, phase: row.phase };
+    const visual: Visual = { id: row.id, unit, flames, flameCount, smoke, decal, tint, cells, puffSeeds, flameSeeds, active: false, glowRamp: 0, flameTop: 10, seen: 0, time: NaN, roof: NaN, surfaceY: NaN, smokeBase: NaN, surface: -1, radius: NaN, since: NaN, age: NaN, kind: row.kind, phase: row.phase };
+    // The material/program is shared, but underlight belongs to this incident.
+    // Upload these uniforms for every draw, including consecutive smoke meshes.
+    smoke.onBeforeRender = () => {
+      if (!this.smoke) return;
+      this.smoke.uniforms.uGlowStrength.value = this.smokeGlow * visual.glowRamp;
+      this.smoke.uniforms.uFlameTop.value = visual.flameTop;
+      this.smoke.uniformsNeedUpdate = true;
+    };
     if (this.options.annotations) {
       pinTextures ??= { fire: pinTexture('fire'), person_fall: pinTexture('person_fall'), 'fire-ended': pinTexture('fire', true), 'person_fall-ended': pinTexture('person_fall', true) };
       const ring = decal;
@@ -349,7 +357,6 @@ export class IncidentFX {
   update(rows: Conditions['incidents'], simTime: number | ScalarUniform, camera: T.Camera, ringStart: Map<string, number>, origin?: T.Vector3, roofHeight?: (east: number, north: number) => number) {
     if (this.disposed) return;
     const simSeconds = typeof simTime === 'number' ? simTime : simTime.value;
-    this.flameRamp = 0;
     if (!rows.length && !this.visuals.size) return;
     const frame = ++this.frame;
     const viewChanged = !this.lastCameraPosition.equals(camera.position) || !this.lastCameraRotation.equals(camera.quaternion)
@@ -436,6 +443,8 @@ export class IncidentFX {
       // Flames: ramp 3 s in sim time after activation, fade 4 s after ending.
       const ramp = pending ? 0 : ended ? Math.max(0, 1 - row.sinceS / 4) : Math.min(1, row.sinceS / 3);
       const burning = row.kind === 'fire' && ramp > 0;
+      visual.glowRamp = burning ? ramp : 0;
+      visual.flameTop = baseY + flameTop;
       visual.active = row.kind === 'fire' && row.phase === 'active';
       visual.flames.visible = burning;
       const decal = visual.decal.material.uniforms;
@@ -446,8 +455,6 @@ export class IncidentFX {
       decal.uGlowRadius.value = Math.max(row.radiusM * 0.35, 3);
       decal.uRoof.value = baseY + 0.1;
       if (burning) {
-        this.flameRamp = Math.max(this.flameRamp, ramp);
-        if (this.smoke) this.smoke.uniforms.uFlameTop.value = baseY + flameTop;
         if (typeof simTime === 'number') visual.flames.material.uniforms.uTime.value = simTime;
         else visual.flames.material.uniforms.uTime = simTime;
         visual.flames.material.uniforms.uRamp.value = ramp;
@@ -569,12 +576,9 @@ export class IncidentFX {
     const u = this.smoke.uniforms;
     u.uSmokeLight.value.copy(this.smokeLightScratch.copy(dusk ? SMOKE_LIGHT_DUSK : SMOKE_LIGHT_DAY).lerp(SMOKE_LIGHT_RAIN, 0.3 * Math.min(1, Math.max(0, rain))));
     u.uScatter.value = dusk ? 0.25 : 0.15;
-    // The underlight fades with the flames: the ramp comes from this frame's fires.
-    u.uGlowStrength.value = (dusk ? 0.55 : 0.25) * this.flameRamp;
+    this.smokeGlow = dusk ? 0.55 : 0.25;
   }
-  setFlameTop(heightM: number) { if (this.smoke) this.smoke.uniforms.uFlameTop.value = heightM; }
-  /** Max flame ramp across this frame's burning fires (0 once the last fire ends). */
-  private flameRamp = 0;
+  private smokeGlow = 0.25;
   private wind = new T.Vector2();
   private disposeVisual(visual: Visual) {
     this.structureRevision++; visual.unit.removeFromParent(); visual.flames.material.dispose();

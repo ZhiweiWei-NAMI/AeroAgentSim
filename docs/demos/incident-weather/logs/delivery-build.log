@@ -1,0 +1,110 @@
+
+> aeroagentsim-frontend@2.1.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 3311 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                         0.84 kB │ gzip:   0.46 kB
+dist/assets/operator-source.worker-C8Erh6Mj.js        126.18 kB
+dist/assets/ConfigPanel-Do57qqz9.css                    0.41 kB │ gzip:   0.24 kB
+dist/assets/TasksSection-DRrxKRTv.css                   0.69 kB │ gzip:   0.35 kB
+dist/assets/AgentConsole-DukSZpMF.css                   0.92 kB │ gzip:   0.42 kB
+dist/assets/Details-B4MDC9aF.css                        1.16 kB │ gzip:   0.52 kB
+dist/assets/ConsoleGuide-HlHjEOu9.css                   1.16 kB │ gzip:   0.36 kB
+dist/assets/CompareRuns-eZB0OZih.css                    1.66 kB │ gzip:   0.59 kB
+dist/assets/NonspatialViews-CrVKGYIH.css                1.76 kB │ gzip:   0.69 kB
+dist/assets/ScenePreview-C0aafM8d.css                   1.85 kB │ gzip:   0.76 kB
+dist/assets/ArtifactsPanel-D1BoZq93.css                 1.87 kB │ gzip:   0.67 kB
+dist/assets/SpaceSection-DGhowT_X.css                   1.90 kB │ gzip:   0.73 kB
+dist/assets/PlanBoard-CDHCC5kT.css                      2.42 kB │ gzip:   0.79 kB
+dist/assets/ObjectsSection-eAv1OUi_.css                 2.54 kB │ gzip:   0.94 kB
+dist/assets/op-ui-sfZmsFOD.css                          2.88 kB │ gzip:   1.04 kB
+dist/assets/AeroGraphPage-B7dKnGOU.css                  5.86 kB │ gzip:   1.42 kB
+dist/assets/BehaviourRunGraph-DtPNF4ke.css              8.91 kB │ gzip:   2.40 kB
+dist/assets/index-CgAnSFQf.css                         17.03 kB │ gzip:   4.06 kB
+dist/assets/RegionMap-CbwRZdGU.css                     19.30 kB │ gzip:   7.40 kB
+dist/assets/Workbench-DitPrtAc.css                    132.97 kB │ gzip:  25.75 kB
+dist/assets/KeyTrees-Cw38KryR.js                        0.53 kB │ gzip:   0.37 kB
+dist/assets/ActionButton-BvTypxtV.js                    0.97 kB │ gzip:   0.58 kB
+dist/assets/useClosable-LxUoHTvU.js                     1.21 kB │ gzip:   0.63 kB
+dist/assets/parcel-city-placement-11-FIzi2.js           1.47 kB │ gzip:   0.83 kB
+dist/assets/AlgorithmsSection-PHZbYHYX.js               1.80 kB │ gzip:   1.18 kB
+dist/assets/README-DDhTUOtw.js                          1.83 kB │ gzip:   1.29 kB
+dist/assets/first-scenario-D5jOOCTT.js                  2.56 kB │ gzip:   1.15 kB
+dist/assets/aerograph-DznA74BX.js                       2.95 kB │ gzip:   1.36 kB
+dist/assets/predicates-C8HpCzFa.js                      3.13 kB │ gzip:   1.49 kB
+dist/assets/model-BGYFy8za.js                           3.49 kB │ gzip:   1.43 kB
+dist/assets/model-Zv5LMUQM.js                           3.55 kB │ gzip:   1.64 kB
+dist/assets/containers-DQL1pyN4.js                      3.66 kB │ gzip:   1.64 kB
+dist/assets/runs-rWxUsBUB.js                            4.12 kB │ gzip:   1.92 kB
+dist/assets/views-CGk4pUi6.js                           4.26 kB │ gzip:   2.12 kB
+dist/assets/install-BxKhLJzT.js                         4.45 kB │ gzip:   2.12 kB
+dist/assets/RecordsPanel-BcHiZfZL.js                    4.61 kB │ gzip:   2.37 kB
+dist/assets/predicates-D7GJXMed.js                      4.72 kB │ gzip:   2.22 kB
+dist/assets/plugins-BYf-4U7o.js                         4.79 kB │ gzip:   2.28 kB
+dist/assets/lowalt-rules-FC7LKMIe.js                    5.00 kB │ gzip:   2.35 kB
+dist/assets/experiments-DFoVBCg3.js                     5.09 kB │ gzip:   2.46 kB
+dist/assets/quickstart-B3gr1OTO.js                      5.24 kB │ gzip:   2.47 kB
+dist/assets/RunSection-D4U2Vkh7.js                      5.26 kB │ gzip:   2.51 kB
+dist/assets/guides-DPo3ra6T.js                          5.45 kB │ gzip:   1.51 kB
+dist/assets/behaviours-kw0aQN6Q.js                      5.57 kB │ gzip:   2.56 kB
+dist/assets/index-CSPFNd3-.js                           5.58 kB │ gzip:   2.21 kB
+dist/assets/agents-CNGRh2CP.js                          5.66 kB │ gzip:   2.93 kB
+dist/assets/weather-CPtkbz5S.js                         5.69 kB │ gzip:   2.56 kB
+dist/assets/architecture-Dum1XnSj.js                    5.77 kB │ gzip:   2.72 kB
+dist/assets/behaviours-DDrCeioP.js                      5.81 kB │ gzip:   2.56 kB
+dist/assets/sumo-O_OBxTdh.js                            6.10 kB │ gzip:   2.65 kB
+dist/assets/ModeSwitch-m5bHZTUL.js                      6.37 kB │ gzip:   2.24 kB
+dist/assets/px4-gazebo-BuVr0lvu.js                      6.50 kB │ gzip:   2.90 kB
+dist/assets/assistant-D2seGL6s.js                       6.54 kB │ gzip:   2.98 kB
+dist/assets/external-events-VOK2byIp.js                 6.55 kB │ gzip:   2.80 kB
+dist/assets/plugins-BGUCD_8J.js                         6.72 kB │ gzip:   2.84 kB
+dist/assets/predicate-dialect-CNwcOquG.js               6.77 kB │ gzip:   2.89 kB
+dist/assets/cli-unLv2qQY.js                             6.87 kB │ gzip:   2.94 kB
+dist/assets/traffic-accident-CWjr3xLf.js                7.23 kB │ gzip:   3.13 kB
+dist/assets/blank-project-tutorial.zh-CN-S-8TJ60A.js    7.41 kB │ gzip:   7.96 kB
+dist/assets/geo-DsOwJrav.js                             7.60 kB │ gzip:   3.33 kB
+dist/assets/behaviour-package-50PTGPlv.js               7.64 kB │ gzip:   3.16 kB
+dist/assets/templates-DpQ_84Fb.js                       7.70 kB │ gzip:   3.78 kB
+dist/assets/viewer-feed-BItbDLLq.js                     7.89 kB │ gzip:   3.45 kB
+dist/assets/visualization-vXp05FKf.js                   8.48 kB │ gzip:   4.81 kB
+dist/assets/agents-CNM73O6V.js                          9.56 kB │ gzip:   4.56 kB
+dist/assets/city-day-fxkR-3i1.js                        9.63 kB │ gzip:   4.30 kB
+dist/assets/ConsoleGuide-WWTuuZIo.js                    9.65 kB │ gzip:   3.51 kB
+dist/assets/AgentConsole-AmPP_58_.js                   10.02 kB │ gzip:   3.55 kB
+dist/assets/scenario-BOczwfPx.js                       10.25 kB │ gzip:   4.21 kB
+dist/assets/op-ui-DzJSfy2v.js                          11.02 kB │ gzip:   5.14 kB
+dist/assets/RelationsSection-BB6QnLWX.js               12.18 kB │ gzip:   4.94 kB
+dist/assets/algorithms-hUxVJYNm.js                     12.36 kB │ gzip:   5.51 kB
+dist/assets/Traffic-C3ynKOUA.js                        12.52 kB │ gzip:   5.01 kB
+dist/assets/http-api-BiQaxdEP.js                       12.69 kB │ gzip:   5.27 kB
+dist/assets/Details-F2cxuWHV.js                        12.93 kB │ gzip:   5.57 kB
+dist/assets/NonspatialViews-CyNSFtHV.js                13.29 kB │ gzip:   5.03 kB
+dist/assets/ComponentsSection-BP-z9wsc.js              13.76 kB │ gzip:   5.63 kB
+dist/assets/CompareRuns-CtqrACEW.js                    15.94 kB │ gzip:   6.09 kB
+dist/assets/blank-project-tutorial-CoKPs30t.js         17.03 kB │ gzip:   7.19 kB
+dist/assets/SpaceSection-Dez-nM8w.js                   18.37 kB │ gzip:   7.65 kB
+dist/assets/CaptureConsole-C9fO5Nfh.js                 18.57 kB │ gzip:   6.88 kB
+dist/assets/inspection-format-BQYEa_ld.js              19.88 kB │ gzip:   6.72 kB
+dist/assets/ConditionsHud-BEwP2e8P.js                  21.97 kB │ gzip:   6.05 kB
+dist/assets/BehaviourRunGraph-CyN9NCE-.js              22.10 kB │ gzip:   8.14 kB
+dist/assets/api-n8ahT_jI.js                            22.53 kB │ gzip:   5.68 kB
+dist/assets/AssistantPanel-CznC_2ny.js                 25.17 kB │ gzip:  11.58 kB
+dist/assets/temporal-store-DqyZrYw6.js                 28.21 kB │ gzip:   9.78 kB
+dist/assets/ArtifactsPanel-CT2-9RDT.js                 46.65 kB │ gzip:  15.04 kB
+dist/assets/ScenePreview-kP5JV6Ol.js                   57.92 kB │ gzip:  19.76 kB
+dist/assets/ViewportView-QE_8ZJVE.js                   58.04 kB │ gzip:  18.48 kB
+dist/assets/ObjectsSection-BoM1waml.js                 58.74 kB │ gzip:  20.22 kB
+dist/assets/PlanBoard-Dnre-5bO.js                      60.13 kB │ gzip:  21.31 kB
+dist/assets/TasksSection-Jx99d00A.js                   73.04 kB │ gzip:  23.02 kB
+dist/assets/ConfigPanel-lykOG-LZ.js                    98.88 kB │ gzip:  34.22 kB
+dist/assets/RegionMap-DMrheMxo.js                     161.80 kB │ gzip:  47.72 kB
+dist/assets/Workbench-CbMVzdZI.js                     228.45 kB │ gzip:  79.91 kB
+dist/assets/AeroGraphPage-CCARDwZ5.js                 250.99 kB │ gzip:  79.29 kB
+dist/assets/city-layer-BJDa1HLb.js                    368.90 kB │ gzip: 172.27 kB
+dist/assets/index-CvvXU4s9.js                         694.54 kB │ gzip: 246.54 kB
+dist/assets/source-geometry-DBUA9182.js               798.10 kB │ gzip: 224.71 kB
+✓ built in 22.75s

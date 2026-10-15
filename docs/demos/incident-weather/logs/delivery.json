@@ -1,0 +1,43 @@
+{
+  "source_session": {
+    "client": "claude-b",
+    "id": "4ad2c01f-683f-4ce0-b590-d32844aa6051",
+    "main_revision_at_interruption": "344514f6f3af4fa1478b8027190f7579ad6fb64a",
+    "completed_integration_revision": "9fa2ff9333d1585094439bba582b74b5b99628d2"
+  },
+  "scope": "Finish the existing incident and weather workbench implementation, review its visuals, preserve evidence, integrate, publish, and reload the existing service.",
+  "constraints": [
+    "Reuse scene, configuration, AeroGraph declarations, journal replay and browser capture.",
+    "Wind and gusts are simulated inputs; other atmosphere effects are presentation only.",
+    "Keep one AeroAgentSim checkout on dev/lowalt and fast-forward main after validation.",
+    "Preserve existing English and Chinese product interfaces; author delivery records in English.",
+    "Do not change sibling projects or their servers."
+  ],
+  "delivery_fixes": [
+    "Remove unsupported keyword from duration validation for saved incidents.",
+    "Pass the actual run horizon into scenario expansion and final compiler validation.",
+    "Respect committed pending state at the same timestamp as incident activation.",
+    "Upload incident-specific flame height and underlight uniforms for every shared-material plume draw.",
+    "Wrap condition groups within the visible scene width while retaining the existing HUD style."
+  ],
+  "supplemental_validation": {
+    "backend_tests_passed": 65,
+    "frontend_tests_passed": 102,
+    "typecheck": "passed",
+    "production_build": "passed",
+    "review": "All four findings resolved; no material issues remain.",
+    "conditions_e2e": "passed on the configured rerun, with unchanged assertions and deadlines",
+    "conditions_e2e_initial_failure": "Chromium executable path was not supplied to the test server; camera validation rejected it.",
+    "hud_layout": "Actual replay at 1440 by 900 pixels with both side panels open: no overlapping condition segments; no browser errors."
+  },
+  "cleanup": {
+    "remaining_checkouts": 1,
+    "temporary_integration_branch": "removed",
+    "review_servers_18960_18961": "stopped"
+  },
+  "remaining_limitations": [
+    "Private camera-console temporary directories are not cleaned up by committed.py.",
+    "Atmosphere performance measurements used SwiftShader; residual JavaScript allocations remain.",
+    "Medium-quality capture latency increased in the recorded five-sample performance comparison."
+  ]
+}
