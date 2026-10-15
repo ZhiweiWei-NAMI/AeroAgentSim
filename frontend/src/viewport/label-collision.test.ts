@@ -104,3 +104,31 @@ it('refreshes panel obstacles only when the viewport layout changes', () => {
     expect(measure).toHaveBeenCalledTimes(2);
   } finally { layer.dispose(); }
 });
+
+it('keeps label collision dimensions while the camera moves and refreshes text and viewport changes', () => {
+  const key = { id: 'drone', generation: 0 }, at = { ns: '0', microstep: 0 };
+  const header: RunHeader = { contract: 'aeroagentsim.viewer-feed/v1', runId: 'metrics', registryDigest: 'd', start: at, fields: [],
+    types: [{ typeId: 'lowalt:UAV', displayName: 'UAV', ancestors: [] }],
+    entities: [{ id: 'drone', type: 'lowalt:UAV', label: 'Parcel drone', label_zh: '包裹无人机' }],
+    presentation: [{ typeId: 'lowalt:UAV', positionField: 'pos', frame: 'enu', visual: { kind: 'marker' } }] };
+  const store = new FeedStore(header);
+  store.ingest({ commitIndex: 1, at, created: [{ ...key, typeId: 'lowalt:UAV' }], removed: [], retracted: [], edges: [], receipts: [],
+    facts: [{ entity: key, fieldId: 'pos', value: [0, 0, 10], producer: 'engine', validFrom: at }], messages: [] }); store.seek('0');
+  const overlay = document.createElement('div'); let viewportWidth = 800;
+  Object.defineProperties(overlay, { clientWidth: { get: () => viewportWidth }, clientHeight: { value: 600 } });
+  const width = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(160);
+  const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(28);
+  const layer = new EntityLayer(header, {} as Assets, overlay, () => {}, () => {}); layer.semantic = true;
+  const camera = new T.PerspectiveCamera(48, 4 / 3); camera.position.set(22, 30, 24); camera.lookAt(0, 10, 0);
+  try {
+    layer.update(store, '0', camera, key); layer.update(store, '0', camera, key);
+    width.mockClear(); height.mockClear();
+    for (let i = 0; i < 20; i++) { camera.position.x += 0.01; layer.update(store, '0', camera, key); }
+    expect(width).not.toHaveBeenCalled(); expect(height).not.toHaveBeenCalled();
+    layer.locale = 'zh-CN'; layer.update(store, '0', camera, key);
+    expect(width).toHaveBeenCalledTimes(1); expect(height).toHaveBeenCalledTimes(1);
+    expect(overlay.querySelector('.entity-label')).toHaveTextContent('包裹无人机');
+    viewportWidth = 850; layer.update(store, '0', camera, key);
+    expect(width).toHaveBeenCalledTimes(2); expect(height).toHaveBeenCalledTimes(2);
+  } finally { layer.dispose(); width.mockRestore(); height.mockRestore(); }
+});

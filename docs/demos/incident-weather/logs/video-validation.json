@@ -5,12 +5,58 @@
   "fps": 25.0,
   "source_size": [
     1280,
-    800
+    848
   ],
   "size": [
     1280,
-    800
+    848
   ],
   "rotate": 0,
-  "duration": 87.76
+  "duration": 43.92,
+  "playback_speed": 2,
+  "speed_label": "2x speed",
+  "caption_language": "English",
+  "caption_layout": "48-pixel footer preserves the whole recorded interface",
+  "captions": [
+    {
+      "start_s": 0,
+      "end_s": 7,
+      "text": "Configure wind, rain, visibility and dusk"
+    },
+    {
+      "start_s": 7,
+      "end_s": 11,
+      "text": "Set the fire start, end and affected radius"
+    },
+    {
+      "start_s": 11,
+      "end_s": 16.584,
+      "text": "Preview, validate and initialize the authored scene"
+    },
+    {
+      "start_s": 16.584,
+      "end_s": 25.496,
+      "text": "Start the run - the incident follows simulation time"
+    },
+    {
+      "start_s": 25.496,
+      "end_s": 33,
+      "text": "Inspect the fire and smoke - visual effects, not combustion"
+    },
+    {
+      "start_s": 33,
+      "end_s": 38.708,
+      "text": "Replay the recorded end of the incident"
+    },
+    {
+      "start_s": 38.708,
+      "end_s": 42.152,
+      "text": "Open the responding UAV's recorded photograph"
+    },
+    {
+      "start_s": 42.152,
+      "end_s": 45,
+      "text": "Switch language - the same scene and conditions"
+    }
+  ]
 }

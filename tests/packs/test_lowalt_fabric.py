@@ -82,7 +82,7 @@ def test_city_day_shared_fabric_and_replay(tmp_path: Path) -> None:
             "lowalt.spraying.applied",
             "lowalt.site.closed",
         ):
-            assert by_schema.get(schema), schema
+            assert by_schema.get(schema), {"missing_event": schema, "capture_failures": by_schema.get("traffic.capture.failed", [])}
         assert any(
             e["payload"].get("zone") == "incident-no-fly"
             for e in by_schema["lowalt.task.replanned"]

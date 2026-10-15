@@ -671,5 +671,78 @@
       "after_profile": "after-low-warm-default",
       "capture_after_profile": "after-low-warm-default"
     }
-  ]
+  ],
+  "viewport_followup": {
+    "baseline_revision": "48e05e5e7c6346af5f1ed5430a6edd231f68ee66",
+    "method": "Real recorded run run-931ef59bcae64182b987ae1647c71641 at 55 s, fixed orbit camera, 1280 by 800 viewport, five warmup frames and 30 measured frames per quality. Every frame invalidates the camera revision. WebGL finish includes GPU completion. The same scene, source cut, renderer and quality presets are used before and after.",
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "before": [
+      {
+        "quality": "low",
+        "frames": 30,
+        "frameMs": 9.910000165303549,
+        "updateMs": 6.26000010172526,
+        "labelsMs": 2.436666488647461,
+        "submitMs": 3.553333346048991,
+        "draws": 139,
+        "triangles": 615086
+      },
+      {
+        "quality": "med",
+        "frames": 30,
+        "frameMs": 15.896666717529296,
+        "updateMs": 7.256666564941407,
+        "labelsMs": 2.2,
+        "submitMs": 8.546666781107584,
+        "draws": 281,
+        "triangles": 1161584
+      }
+    ],
+    "after": [
+      {
+        "quality": "low",
+        "frames": 30,
+        "frameMs": 8.136666870117187,
+        "updateMs": 4.100000190734863,
+        "labelsMs": 0.37333348592122395,
+        "submitMs": 3.916666603088379,
+        "draws": 138.8,
+        "triangles": 613239.5666666667
+      },
+      {
+        "quality": "med",
+        "frames": 30,
+        "frameMs": 12.756666564941407,
+        "updateMs": 4.516666475931803,
+        "labelsMs": 0.42333335876464845,
+        "submitMs": 8.153333473205567,
+        "draws": 179,
+        "triangles": 641052
+      }
+    ],
+    "changes": [
+      "Measure label dimensions only when their text, glyph, class, font or available viewport space changes.",
+      "Refresh shadows for changed casters, lights, loaded geometry and quality presets, while reusing them during camera-only gestures.",
+      "Keep at most one postprocessing pipeline per quality and dispose every cached pipeline when the viewport closes."
+    ],
+    "browser_errors": [],
+    "visual_comparison": {
+      "resolution": [
+        1280,
+        800
+      ],
+      "different_pixels": 55,
+      "total_pixels": 1024000,
+      "mean_absolute_channel_difference": [
+        3.7109375e-05,
+        3.41796875e-05,
+        7.421875e-05
+      ]
+    },
+    "limits": [
+      "Shared-host SwiftShader measurements are not hardware GPU throughput estimates.",
+      "The cached quality pipelines retain bounded GPU resources until the viewport closes.",
+      "A real moving simulation still refreshes shadows when casters or the light move."
+    ]
+  }
 }

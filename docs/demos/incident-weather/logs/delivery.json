@@ -39,5 +39,44 @@
     "Private camera-console temporary directories are not cleaned up by committed.py.",
     "Atmosphere performance measurements used SwiftShader; residual JavaScript allocations remain.",
     "Medium-quality capture latency increased in the recorded five-sample performance comparison."
-  ]
+  ],
+  "followup_scope": "Embed the incident/weather demo in the main README, deliver the footage at 2x speed with English explanations, fix the Tests workflow failures, and optimize viewport internals without changing file layout, interaction logic or call interfaces.",
+  "video_followup": {
+    "duration_seconds": 43.92,
+    "speed": 2,
+    "persistent_label": "2x speed",
+    "english_explanations": 8,
+    "inline_url": "https://github.com/user-attachments/assets/cb424ef3-2b5e-4509-8483-3bcf266d09e0",
+    "source_footage": "Original integration recording; the new encoding changes presentation pace only."
+  },
+  "followup_validation": {
+    "frontend_tests_passed": 1133,
+    "targeted_frontend_tests_passed": 72,
+    "ci_configuration_tests_passed": 6,
+    "real_browser_capture_tests_passed": 7,
+    "typecheck": "passed",
+    "production_build": "passed",
+    "performance_measurements": "performance.json viewport_followup",
+    "ci_status": "Awaiting the final published revision; original reports remain unchanged.",
+    "python_311_regressions_passed": 73,
+    "python_310_graph_regressions_passed": 18
+  },
+  "ci_fixes": {
+    "reported_run": 38547515046,
+    "reported_branch": "feat/flood-rescue-prototype",
+    "reported_failure": "The idle-render fixture did not initialize the new incidentLabels map; four strict frontend tests failed.",
+    "reported_fixture_fix": "18d094034296a7110aa4c55eade1cc0457b34afc",
+    "prototype_ci_followup": "f77e87ab651bb187efdbc08e145777a55f568bd8",
+    "runtime_fixes": [
+      "Read and hash actual region source bytes with streaming SHA-256 on both supported Python versions.",
+      "Bind real LangGraph node configuration on Python 3.10 so model call identities and replay retain the correct node/superstep without changing factory or client call signatures.",
+      "Recognize asyncio.TimeoutError on Python 3.10; failures remain failures."
+    ],
+    "workflow_fixes": [
+      "Run the AeroGraph-backed blank-project case in the source-dependent job, using its existing real checkout requirement.",
+      "Select the Chromium executable actually installed by Playwright and explicitly choose SwiftShader ANGLE for software captures."
+    ],
+    "source_job": "AeroGraph is private and the repository currently has no AEROGRAPH_REPOSITORY/AEROGRAPH_REF variables; that optional source job remains conditional. No source or success result is synthesized.",
+    "capture_assertion": "Still requires traffic.capture.accepted; diagnostics now retain traffic.capture.failed events."
+  }
 }

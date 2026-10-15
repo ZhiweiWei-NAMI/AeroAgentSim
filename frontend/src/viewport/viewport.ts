@@ -60,6 +60,7 @@ export class Viewport {
   private layer: EntityLayer;
   private lighting: ReturnType<typeof setupScene>;
   private composer: ReturnType<typeof pipeline>;
+  private composers = new Map<Quality, ReturnType<typeof pipeline>>();
   private overlay = document.createElement('div');
   private observer: ResizeObserver;
   private abort = new AbortController();
@@ -87,7 +88,6 @@ export class Viewport {
   private cameraSettled = false;
   private renderedFrames = 0;
   private shadowKey = '';
-  private shadowRevision = -1;
   private semanticLayer?: SemanticLayer;
   private district?:ProceduralDistrict;
   private assetIssues = new Set<string>();
@@ -131,7 +131,7 @@ export class Viewport {
     if(options.showAllLabels!==undefined)this.layer.showAllLabels=options.showAllLabels;
     this.scene.add(this.layer.root, this.staticRoot);
     if(options.semantic){this.semanticLayer=new SemanticLayer(header,{locale:options.locale,onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
-    this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.applyPreset();
+    this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.composers.set(this.quality, this.composer); this.applyPreset();
     // One atmosphere module serves the run view, captures and the draft preview.
     // The atlas load lands after the first frames; revision++ invalidates the idle renderer.
     this.atmosphere = new AtmosphereLayer(this.scene, this.renderer, this.quality, { annotations: true, onReady: () => { this.revision++; } });
@@ -152,7 +152,7 @@ export class Viewport {
       if(presentation.city)this.options.onCityProgress?.({phase:'roads',loaded:0,total:0});
       if(presentation.attribution)this.setAttribution(presentation.attribution);
       if(presentation.city?.kind==='osm2world')this.setAttribution('© OpenStreetMap contributors · ODbL · Procedural display materials');
-      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;if(object.parent!==this.staticRoot)this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);if(object.name==='city'&&object.userData.geometryRevision!==undefined&&object.userData.geometryRevision!==this.cityGeometryRevision){this.cityGeometryRevision=object.userData.geometryRevision;this.occlusion.setObjects(this.staticRoot.children);}else this.occlusion.addObjects([object]);this.incidentSurface.setObjects(this.staticRoot);this.atmosphere?.invalidateSurface();this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city=object.userData.loading?'loading':'loaded';container.dataset.cityProgress=JSON.stringify(object.userData.progress??{});this.options.onCityProgress?.(object.userData.loading?object.userData.progress:undefined);container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});this.options.onCityIssue?.(undefined);}},this.status)
+      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;this.renderer.shadowMap.needsUpdate=true;if(object.parent!==this.staticRoot)this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);if(object.name==='city'&&object.userData.geometryRevision!==undefined&&object.userData.geometryRevision!==this.cityGeometryRevision){this.cityGeometryRevision=object.userData.geometryRevision;this.occlusion.setObjects(this.staticRoot.children);}else this.occlusion.addObjects([object]);this.incidentSurface.setObjects(this.staticRoot);this.atmosphere?.invalidateSurface();this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city=object.userData.loading?'loading':'loaded';container.dataset.cityProgress=JSON.stringify(object.userData.progress??{});this.options.onCityProgress?.(object.userData.loading?object.userData.progress:undefined);container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});this.options.onCityIssue?.(undefined);}},this.status)
         .catch(error=>{if(!this.disposed){this.options.onCityProgress?.(undefined);this.status(String(error));if(presentation?.city)this.options.onCityIssue?.(String(error));options.onError?.(error);}});
       if(presentation.hdri)void this.assets.hdri(presentation.hdri,this.renderer).then(environment=>{
         if(this.disposed){environment.dispose();return;}this.environment=environment;this.scene.environment=environment.texture;this.revision++;container.dataset.ibl='hdri';
@@ -308,14 +308,16 @@ export class Viewport {
   setQuality(quality: Quality, manual = false) {
     if(manual)this.manualQuality=true;
     if (quality === this.quality) return;
-    this.revision++; this.quality = quality; this.composer.dispose(); this.composer = pipeline(this.renderer, this.scene, this.camera, quality);
+    this.revision++; this.quality = quality;
+    this.composer = this.composers.get(quality) ?? pipeline(this.renderer, this.scene, this.camera, quality);
+    this.composers.set(quality, this.composer);
     this.composer.setDusk(this.dusk);this.applyPreset(); this.atmosphere?.setQuality(quality); this.resize(); this.qualityTime = this.qualityFrames = 0; this.options.onQuality?.(quality);
   }
   private applyPreset() {
     const preset = PRESETS[this.quality]; this.renderer.setPixelRatio(Math.min(devicePixelRatio, preset.ratio));
     this.applyCityDisplay(this.staticRoot);
     this.qualityMaterials.apply(this.lighting.ground, this.quality === 'low');
-    this.renderer.shadowMap.enabled = this.quality !== 'low'; this.lighting.sun.shadow.mapSize.set(preset.shadow, preset.shadow);
+    this.renderer.shadowMap.enabled = this.quality !== 'low'; this.renderer.shadowMap.needsUpdate = true; this.lighting.sun.shadow.mapSize.set(preset.shadow, preset.shadow);
     this.lighting.sun.shadow.map?.dispose(); this.lighting.sun.shadow.map = null; this.container.dataset.quality = this.quality;
   }
   render(store: FeedStore, ns: string, deltaSeconds: number, trails = true) {
@@ -393,8 +395,10 @@ export class Viewport {
     this.composer.outline.selection.set(this.layer.selection.length?this.layer.selection:this.layer.ring.visible?[this.layer.ring]:[]);
     const updateFinished = performance.now();
     const shadowKey = this.lighting.sun.position.toArray().join(',');
-    if(this.layer.transformsChanged||shadowKey!==this.shadowKey||this.shadowRevision!==this.revision){
-      this.renderer.shadowMap.needsUpdate=true;this.shadowKey=shadowKey;this.shadowRevision=this.revision;
+    // Camera gestures and selection changes do not alter world-space shadows.
+    // Geometry loads and quality changes mark them dirty at their actual source.
+    if(this.layer.transformsChanged||shadowKey!==this.shadowKey){
+      this.renderer.shadowMap.needsUpdate=true;this.shadowKey=shadowKey;
     }
     this.gpuTimer?.begin();
     this.renderer.info.reset(); this.composer.render(deltaSeconds);
@@ -551,6 +555,6 @@ export class Viewport {
     this.atmosphere?.dispose();
     this.district?.dispose();
     if(this.semanticLayer){this.semanticLayer.dispose();}
-    this.gpuTimer?.dispose();this.composer.dispose();this.renderer.dispose();this.renderer.domElement.remove();this.overlay.remove();
+    this.gpuTimer?.dispose();for(const composer of this.composers.values())composer.dispose();this.composers.clear();this.renderer.dispose();this.renderer.domElement.remove();this.overlay.remove();
   }
 }

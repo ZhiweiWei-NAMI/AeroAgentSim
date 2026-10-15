@@ -1,6 +1,6 @@
 # Incident and weather workbench demo
 
-[Play the 88 s MP4](demo.mp4)
+[Play the 44 s MP4](demo.mp4) · **2x speed with English explanations**
 
 ![Active fire in the existing city workbench](screenshots/fire-close.png)
 
@@ -9,7 +9,11 @@ browser-rendered UAV photographs. It shows weather authoring, incident
 authoring, draft preview, a live run, a slow orbit and close-up, the ended fire
 in replay, the incident photograph, and the Chinese interface. Long loading
 waits were removed; the retained footage and camera motion run at their
-recorded pace. The cuts are listed in [recording metadata](logs/demo-metadata.json).
+recorded pace in the source recording. The delivered MP4 plays that footage at
+2x speed and adds an English explanation footer, leaving the entire original
+interface visible. Its eight caption intervals and speed label are listed in
+[movie validation](logs/video-validation.json). The original cuts are listed in
+[recording metadata](logs/demo-metadata.json).
 
 ## Try it
 
@@ -86,6 +90,20 @@ quality SwiftShader samples, conditions derivation fell from **0.126 to
 rendering measurements, not hardware GPU throughput estimates. JavaScript
 allocations remain above zero, and medium-quality captures were slower in
 the five-sample measurements. [Measurement details](logs/performance.json).
+
+The viewport follow-up preserves the quality presets, label placement rules,
+interaction logic and call interfaces. Label dimensions are cached until text,
+styling or viewport space changes; camera-only gestures reuse world-space
+shadows; returning to a quality reuses its postprocessing pipeline. Pipelines
+are disposed when the viewport closes. In the same recorded scene at 55 s,
+30 medium-quality SwiftShader frames averaged **15.90 → 12.76 ms**; label
+processing averaged **2.20 → 0.42 ms**, and draws fell **281 → 179**. These
+measurements isolate redundant camera redraw work; moving casters still refresh
+shadows. The before/after 1280 × 800 views differed in 55 pixels, with a mean
+absolute RGB difference below 0.0001 on the 0–255 scale. The full frontend
+suite passed **1,133 tests**, alongside typecheck, build and seven real-browser
+capture regressions. The existing performance record includes these samples
+under `viewport_followup`.
 
 The pre-existing private-camera-console temporary-directory leak remains in
 [`committed.py`](../../../src/aeroagentsim/observations/committed.py).

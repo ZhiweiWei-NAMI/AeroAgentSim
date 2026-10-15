@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import sys
 from collections.abc import Callable
 from importlib import import_module
 from importlib.metadata import version
@@ -95,6 +96,23 @@ async def invoke_graph(
         graph = factory(client, json_copy(options))
         if not isinstance(graph, StateGraph):
             raise TypeError("factory must return an uncompiled StateGraph")
+        if sys.version_info < (3, 11):
+            from langchain_core.runnables import RunnableBinding, RunnableConfig
+            from langchain_core.runnables.config import var_child_runnable_config
+
+            class ConfiguredNode(RunnableBinding):
+                async def ainvoke(self, input: Any, config: RunnableConfig | None = None, **kwargs: Any) -> Any:
+                    # LangGraph does not install async node context on Python 3.10.
+                    # Bind the actual node config so journal identities retain the
+                    # node and superstep without changing factory/client calls.
+                    token = var_child_runnable_config.set(config)
+                    try:
+                        return await self.bound.ainvoke(input, config, **kwargs)
+                    finally:
+                        var_child_runnable_config.reset(token)
+
+            for node in graph.nodes.values():
+                node.runnable = ConfiguredNode(bound=node.runnable)
         return graph.compile()
 
     # Construction/compilation belongs to the same wall deadline as node I/O.
@@ -432,7 +450,7 @@ class LangGraphDecision(ContextEngine):
                         )
             except (ValueError, KeyError, TypeError, KernelError) as exc:
                 failure = {"code": "TOOL_REJECTED", "message": str(exc)}
-            except TimeoutError as exc:
+            except (TimeoutError, asyncio.TimeoutError) as exc:
                 failure = {"code": "WALL_TIMEOUT", "message": str(exc)}
             except ProviderError as exc:
                 failure = {"code": exc.code, "message": str(exc)}

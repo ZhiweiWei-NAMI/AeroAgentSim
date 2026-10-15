@@ -67,6 +67,8 @@ export class EntityLayer {
   private semanticBindings=new Map<PresentationBinding,Map<string,PresentationBinding>>();
   private glyphs=new WeakMap<PresentationBinding,string>();
   private labels = new Map<string, HTMLButtonElement>();
+  private labelMetrics = new WeakMap<HTMLButtonElement, { key: string; width: number; height: number }>();
+  private labelStyles = new WeakMap<HTMLButtonElement, string>();
   private trail: T.Line;
   private dummy = new T.Object3D();
   private disposed = false;
@@ -425,15 +427,29 @@ export class EntityLayer {
         // locale picks label vs label_zh; incidentLabel fills the kind's default otherwise.
         semanticText = incidentLabel(row, zh, zh ? authored?.label_zh ?? authored?.label : authored?.label);
       }
-      if(this.semantic){const style=businessStyle(semanticVehicle(store.entities.get(item.id)!,this.semanticTasks.get(item.id)));label.dataset.glyph=style.glyph;label.style.borderColor=style.color;}
-      else {delete label.dataset.glyph;label.style.borderColor='';}
+      const style = this.semantic ? businessStyle(semanticVehicle(store.entities.get(item.id)!,this.semanticTasks.get(item.id))) : undefined;
+      const styleKey = style ? `${style.glyph}/${style.color}` : '';
+      if (this.labelStyles.get(label) !== styleKey) {
+        if (style) { label.dataset.glyph = style.glyph; label.style.borderColor = style.color; }
+        else { delete label.dataset.glyph; label.style.borderColor = ''; }
+        this.labelStyles.set(label, styleKey);
+      }
       if(label.textContent!==semanticText)label.textContent=semanticText;
       if(label.hidden)label.hidden=false;
       // Business-interest labels used to bypass collision avoidance entirely;
       // colocated task-active UAVs obscured each other. Measure the actual label.
-      label.style.maxWidth = `${Math.max(0, safe.right - safe.left)}px`;
+      const maxWidth = `${Math.max(0, safe.right - safe.left)}px`;
+      if (label.style.maxWidth !== maxWidth) label.style.maxWidth = maxWidth;
+      // Moving a label does not change its dimensions. Measure only when text,
+      // glyph, font, selection styling or available viewport space changes.
+      const metricKey = `${semanticText}/${label.dataset.glyph}/${label.className}/${maxWidth}/${label.style.font}/${label.style.fontSize}/${width}/${height}/${document.fonts?.status}`;
+      let metrics = this.labelMetrics.get(label);
+      if (!metrics || metrics.key !== metricKey) {
+        metrics = { key: metricKey, width: label.offsetWidth, height: label.offsetHeight };
+        this.labelMetrics.set(label, metrics);
+      }
       // The incident's own label sits just above its pin by design; other labels move away.
-      const placed = placer.place(x, y, label.offsetWidth, label.offsetHeight, item.selected, !item.incident);
+      const placed = placer.place(x, y, metrics.width, metrics.height, item.selected, !item.incident);
       if (!placed) continue;
       visibleLabels.add(item.id);
       const left=`${placed.x}px`,top=`${placed.y}px`;
