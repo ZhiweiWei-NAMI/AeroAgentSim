@@ -62,6 +62,33 @@ def test_forked_worker_does_not_keep_closed_http_connections_alive() -> None:
             process.join(5)
 
 
+def test_in_process_worker_preserves_host_network_connections(tmp_path: Path, document: dict[str, Any]) -> None:
+    import socket
+    import threading
+
+    from aeroagentsim.scenario import load_scenario
+    from aeroagentsim.services.storage import RunStorage
+    from aeroagentsim.services.worker import execute
+
+    document["run"]["until_ns"] = 0
+    scenario = load_scenario(document)
+    directory = tmp_path / "in-process"
+    RunStorage(directory).prepare(scenario)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0)); listener.listen(1); listener.settimeout(2)
+        with socket.create_connection(listener.getsockname(), timeout=2) as client:
+            accepted, _ = listener.accept()
+            with accepted:
+                execute(scenario, directory, threading.Event(), threading.Event())
+                assert listener.fileno() >= 0 and accepted.fileno() >= 0 and client.fileno() >= 0
+                accepted.sendall(b"host connection remains live")
+                assert client.recv(128) == b"host connection remains live"
+        with socket.create_connection(listener.getsockname(), timeout=2):
+            accepted, _ = listener.accept()
+            accepted.close()
+    assert RunStorage(directory).metadata()["status"] == "completed"
+
+
 def wait_status(client: TestClient, run_id: str, wanted: set[str], timeout: float = 120) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:

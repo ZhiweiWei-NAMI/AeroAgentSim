@@ -51,13 +51,22 @@ def forbid_replay_clock() -> Iterator[None]:
     """Reject clocks in the replay caller without interrupting live services."""
     replay_thread = get_ident()
     monotonic = time.monotonic
+    perf_counter = time.perf_counter
 
     def guarded_clock() -> float:
         if get_ident() == replay_thread:
             raise AssertionError("live clock called")
         return monotonic()
 
-    with patch("time.monotonic", side_effect=guarded_clock):
+    def guarded_counter() -> float:
+        if get_ident() == replay_thread:
+            raise AssertionError("live clock called")
+        return perf_counter()
+
+    with (
+        patch("time.monotonic", side_effect=guarded_clock),
+        patch("time.perf_counter", side_effect=guarded_counter),
+    ):
         yield
 
 
@@ -67,8 +76,11 @@ def test_replay_clock_guard_preserves_background_service_clocks() -> None:
         assert service.submit(get_ident).result(timeout=2) != get_ident()
         with forbid_replay_clock():
             assert service.submit(time.monotonic).result(timeout=2) >= before
+            assert service.submit(time.perf_counter).result(timeout=2) > 0
             with pytest.raises(AssertionError, match="live clock called"):
                 time.monotonic()
+            with pytest.raises(AssertionError, match="live clock called"):
+                time.perf_counter()
 
 
 def assert_replay(session: RunSession, directory: Path) -> None:
