@@ -263,29 +263,30 @@ def test_two_source_http_partial_service_lateness_and_replay(
             time.sleep(0.005)
         records, incomplete = read_records((directory / "journal.jsonl").read_bytes())
         assert not incomplete
-        with (
-            patch(
-                "aeroagentsim.platform.plugins.EngineCatalog.build",
-                side_effect=AssertionError("factory called"),
-            ),
-            patch(
-                "aeroagentsim.engines.ingress_consumer.IngressConsumer.on_inputs",
-                side_effect=AssertionError("engine called"),
-            ),
-            patch("time.monotonic", side_effect=AssertionError("clock called")),
-            patch("time.perf_counter", side_effect=AssertionError("clock called")),
-        ):
-            restored = replay(directory / "journal.jsonl")
-        assert [restored.header, *restored.records] == [
-            expand_record(record) for record in records
-        ]
-        assert not restored.incomplete and restored.view().instant.ns == 300_000_000
-        assert (
-            restored.ingress_receipt(fast_receipt["command_id"]).journal_index
-            == fast_receipt["journal_index"]
-        )
-        assert restored.action(slow_receipt["command_id"]).status == "succeeded"
-        assert restored.action(tail.json()["command_id"]).status == "succeeded"
+    # Offline clock guards must run after the live HTTP event loop closes.
+    with (
+        patch(
+            "aeroagentsim.platform.plugins.EngineCatalog.build",
+            side_effect=AssertionError("factory called"),
+        ),
+        patch(
+            "aeroagentsim.engines.ingress_consumer.IngressConsumer.on_inputs",
+            side_effect=AssertionError("engine called"),
+        ),
+        patch("time.monotonic", side_effect=AssertionError("clock called")),
+        patch("time.perf_counter", side_effect=AssertionError("clock called")),
+    ):
+        restored = replay(directory / "journal.jsonl")
+    assert [restored.header, *restored.records] == [
+        expand_record(record) for record in records
+    ]
+    assert not restored.incomplete and restored.view().instant.ns == 300_000_000
+    assert (
+        restored.ingress_receipt(fast_receipt["command_id"]).journal_index
+        == fast_receipt["journal_index"]
+    )
+    assert restored.action(slow_receipt["command_id"]).status == "succeeded"
+    assert restored.action(tail.json()["command_id"]).status == "succeeded"
 
 
 @pytest.mark.parametrize(
