@@ -143,8 +143,7 @@ def execute(
         # A run must not repeatedly collect the HTTP host's retained graphs or
         # execute its abandoned finalizers. Keep new run objects collectable.
         gc.disable()
-    close_inherited_network_sockets()
-    if forked:
+        close_inherited_network_sockets()
         gc.freeze()
         gc.enable()
     session: RunSession | None = None

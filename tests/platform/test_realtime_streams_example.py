@@ -14,6 +14,7 @@ from aerokernel.compact import expand_record
 from aerokernel.errors import KernelError
 from aerokernel.journal import iter_records, read_records, replay
 from fastapi.testclient import TestClient
+from tests.platform.test_realtime import forbid_replay_clock
 
 from aeroagentsim.platform import RunSession
 from aeroagentsim.scenario import ScenarioError, load_scenario
@@ -96,8 +97,7 @@ def test_two_source_cli_and_offline_replay(
             "aeroagentsim.engines.ingress_consumer.IngressConsumer.on_inputs",
             side_effect=AssertionError("engine called"),
         ),
-        patch("time.monotonic", side_effect=AssertionError("clock called")),
-        patch("time.perf_counter", side_effect=AssertionError("clock called")),
+        forbid_replay_clock(),
     ):
         main()
     result = json.loads(capsys.readouterr().out)
@@ -263,7 +263,7 @@ def test_two_source_http_partial_service_lateness_and_replay(
             time.sleep(0.005)
         records, incomplete = read_records((directory / "journal.jsonl").read_bytes())
         assert not incomplete
-    # Offline clock guards must run after the live HTTP event loop closes.
+    # Reject replay's own clock calls without interrupting other live services.
     with (
         patch(
             "aeroagentsim.platform.plugins.EngineCatalog.build",
@@ -273,8 +273,7 @@ def test_two_source_http_partial_service_lateness_and_replay(
             "aeroagentsim.engines.ingress_consumer.IngressConsumer.on_inputs",
             side_effect=AssertionError("engine called"),
         ),
-        patch("time.monotonic", side_effect=AssertionError("clock called")),
-        patch("time.perf_counter", side_effect=AssertionError("clock called")),
+        forbid_replay_clock(),
     ):
         restored = replay(directory / "journal.jsonl")
     assert [restored.header, *restored.records] == [
