@@ -28,8 +28,11 @@ def _source(extract: str) -> Path:
 
 
 def _digest(source: Path) -> str:
+    digest = hashlib.sha256()
     with source.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def preview(ctx, document: dict, params: dict, files: Path) -> dict:

@@ -213,12 +213,12 @@ class JournalClient:
                     "message": "graph invocation canceled",
                 }
                 raise
-            except (TimeoutError, ProviderError, KeyError, TypeError) as exc:
+            except (TimeoutError, asyncio.TimeoutError, ProviderError, KeyError, TypeError) as exc:
                 code = (
                     exc.code
                     if isinstance(exc, ProviderError)
                     else "WALL_TIMEOUT"
-                    if isinstance(exc, TimeoutError)
+                    if isinstance(exc, (TimeoutError, asyncio.TimeoutError))
                     else "PROTOCOL"
                 )
                 row["error"] = {"code": code, "message": str(exc)}

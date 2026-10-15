@@ -130,9 +130,8 @@ def test_live_history_stream_and_disconnect_do_not_change_simulation_input_state
 
     async def inspect() -> None:
         response = await route.endpoint("run", Request(), from_index=1)
-        async with asyncio.timeout(2):
-            assert "event: status" in await anext(response.body_iterator)
-            await response.body_iterator.aclose()
+        assert "event: status" in await asyncio.wait_for(anext(response.body_iterator), 2)
+        await asyncio.wait_for(response.body_iterator.aclose(), 2)
 
     asyncio.run(inspect())
     assert {name: (path / name).read_bytes() for name in before} == before

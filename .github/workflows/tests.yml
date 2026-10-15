@@ -37,6 +37,7 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
+          node -e "console.log('AEROAGENTSIM_CHROMIUM=' + require('playwright').chromium.executablePath())" >> "$GITHUB_ENV"
           npm run build
       - name: Current frontend tests
         working-directory: platform/frontend
@@ -59,6 +60,7 @@ jobs:
             tests/demos/traffic_accident/test_public_demo.py \
             tests/demos/traffic_accident/test_packaging.py \
             --deselect=tests/observations/test_artifact_service.py::test_service_output_scope_without_mutating_input \
+            --deselect=tests/assistant/test_blank_projects.py::test_blank_centre_charging_station_compiles_validates_and_applies[aerograph] \
             -m 'not docker and not llm' -p no:cacheprovider \
             --basetemp=${{ runner.temp }}/platform/tests
       - name: Kernel test suite
@@ -105,6 +107,7 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
+          node -e "console.log('AEROAGENTSIM_CHROMIUM=' + require('playwright').chromium.executablePath())" >> "$GITHUB_ENV"
           npm run build
       - name: Full platform and decision tests without Docker or model calls
         working-directory: platform
@@ -112,6 +115,7 @@ jobs:
           HYPOTHESIS_STORAGE_DIRECTORY: ${{ runner.temp }}/platform-graph/hypothesis
         run: |
           python -m pytest tests/platform tests/agents tests/integrations/aerograph \
+            tests/assistant/test_blank_projects.py \
             tests/behaviours tests/observations \
             -m 'not docker and not llm' -p no:cacheprovider \
             --basetemp=${{ runner.temp }}/platform-graph/tests

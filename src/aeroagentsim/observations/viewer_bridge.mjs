@@ -12,7 +12,7 @@ const startup = reply => {
   writeSync(readyFd, JSON.stringify(reply) + '\n'); closeSync(readyFd); readyFd = undefined;
 };
 try {
-  browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}), args: ['--no-proxy-server', ...(gl === 'software' ? ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] : [])] });
+  browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}), args: ['--no-proxy-server', ...(gl === 'software' ? ['--use-gl=swiftshader', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [])] });
   page = await browser.newPage();
   await page.goto(viewerURL, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.aeroCapture?.render === 'function', undefined, { timeout: 30_000 });

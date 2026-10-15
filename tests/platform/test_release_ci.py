@@ -28,6 +28,10 @@ def test_public_release_gates_are_unconditional_and_publish_waits() -> None:
     assert "python -m pytest" in kernel["run"]
     assert "./aerokernel[test]" in commands
     assert "/mnt/" not in commands
+    source_case = "tests/assistant/test_blank_projects.py::test_blank_centre_charging_station_compiles_validates_and_applies[aerograph]"
+    assert f"--deselect={source_case}" in commands
+    source_commands = "\n".join(step.get("run", "") for step in workflow["jobs"]["aerograph"]["steps"])
+    assert "tests/assistant/test_blank_projects.py" in source_commands
     publish = yaml.safe_load((ROOT / ".github/workflows/publish.yml").read_text())[
         "jobs"
     ]
