@@ -59,7 +59,13 @@
     "performance_measurements": "performance.json viewport_followup",
     "ci_status": "Awaiting the final published revision; original reports remain unchanged.",
     "python_311_regressions_passed": 73,
-    "python_310_graph_regressions_passed": 18
+    "python_310_graph_regressions_passed": 18,
+    "python_310_other_compatibility_cases_passed": 97,
+    "real_aerograph_source_case": "passed with the actual configured source checkout",
+    "realtime_streams_clock_regressions": {
+      "python_310": 15,
+      "python_311": 15
+    }
   },
   "ci_fixes": {
     "reported_run": 38547515046,
@@ -77,6 +83,8 @@
       "Select the Chromium executable actually installed by Playwright and explicitly choose SwiftShader ANGLE for software captures."
     ],
     "source_job": "AeroGraph is private and the repository currently has no AEROGRAPH_REPOSITORY/AEROGRAPH_REF variables; that optional source job remains conditional. No source or success result is synthesized.",
-    "capture_assertion": "Still requires traffic.capture.accepted; diagnostics now retain traffic.capture.failed events."
+    "capture_assertion": "Still requires traffic.capture.accepted; diagnostics now retain traffic.capture.failed events.",
+    "offline_replay_clock_guard": "Move the unchanged no-clock/no-engine replay checks after TestClient shutdown; globally mocked clocks must not run while the live service event loop is active.",
+    "prototype_clock_fix": "6994836b5c4217301d916a196b14cd24c37b0abb"
   }
 }
