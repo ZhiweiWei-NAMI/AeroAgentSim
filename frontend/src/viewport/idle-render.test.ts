@@ -27,7 +27,7 @@ function display(mode: 'follow' | 'chase' | 'cinematic', semantic = true) {
   const viewport = Object.assign(Object.create(Viewport.prototype), {
     container, camera, controls, layer, mode, selected: vehicle, options: { semantic },
     staticRoot: new T.Group(), origin: new T.Vector3(), occlusion: new StaticOcclusion(),
-    framed: true, cameraSettled: false,
+    framed: true, cameraSettled: false, incidentLabels: new Map(),
     revision: 0, lastFrame: '', renderedFrames: 0, shadowKey: '', shadowRevision: -1,
     quality: 'low', qualityTime: 0, qualityFrames: 0,
     lighting: { update: vi.fn(), sun: { position: new T.Vector3() } },
