@@ -40,11 +40,13 @@ class HostPacer:
         self.publish = publish
         self.wait = threading.Event()
         self.current_factor = factor()
+        self.target_ns: int | None = None
         self.reset()
 
     def reset(self) -> None:
         self.anchor_wall = time.perf_counter()
         self.anchor_ns = float(self.committed_ns())
+        self.reserved_factor: float | None = None
 
     def active(self) -> bool:
         if self.paused.is_set() and not self.stopped.is_set():
@@ -58,7 +60,18 @@ class HostPacer:
                 self.status("running")
         return not self.stopped.is_set()
 
+    def poll(self) -> bool:
+        if not self.active():
+            return False
+        # A pause or speed change can arrive after the boundary gate but
+        # before the wave's invocation. Recheck its old reservation before
+        # letting that wave spend a budget which controls have replaced.
+        if self.target_ns is not None and self.factor() != self.reserved_factor:
+            return self.before_boundary(self.target_ns)
+        return True
+
     def before_boundary(self, target_ns: int) -> bool:
+        self.target_ns = target_ns
         while self.active():
             self.publish()
             now = time.perf_counter()
@@ -70,12 +83,14 @@ class HostPacer:
                 self.anchor_ns = float(self.committed_ns())
                 self.anchor_wall, self.current_factor = now, factor
             if factor == 0:
+                self.reserved_factor = factor
                 return True
             remaining = (
                 (target_ns - self.anchor_ns) / 1e9 / factor
                 - (now - self.anchor_wall)
             )
             if remaining <= 0:
+                self.reserved_factor = factor
                 return True
             self.wait.wait(min(0.01, remaining))
         return False
@@ -217,7 +232,7 @@ def execute(
         # Every available acknowledged cut is a control opportunity. A time
         # throttle can skip the last one before a costly atomic invocation.
         assert pacer is not None
-        return pacer.active()
+        return pacer.poll()
 
     def on_commit() -> None:
         publish_committed()
