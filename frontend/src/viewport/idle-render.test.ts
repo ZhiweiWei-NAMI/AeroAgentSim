@@ -5,6 +5,7 @@ import { StaticOcclusion } from './occlusion';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { at, emptyCommit, fixtureCommits, fixtureHeader, vehicle } from '../behaviours/extension-fixture';
 import { CameraDirector } from '../scene/camera-director';
+import { WorkbenchLayout } from './label-placement';
 
 // Exercise the real camera/cache logic; replace only GPU submission and glyphs.
 function display(mode: 'follow' | 'chase' | 'cinematic', semantic = true) {
@@ -16,7 +17,7 @@ function display(mode: 'follow' | 'chase' | 'cinematic', semantic = true) {
   const positions = new Map<string, T.Vector3>();
   const layer = {
     positions, orientations: new Map(), selection: [], ring: { visible: false }, transformsChanged: false,
-    labelsMs: 0, payloadCount: 0, highlightedShown: 0,
+    labelsMs: 0, payloadCount: 0, highlightedShown: 0, advanceLabelFades: vi.fn(),
     update: (_store: unknown, ns: string, _camera: unknown, _chosen: unknown, _trails: unknown, _origin: unknown, _occlusion: unknown, aim?: () => void) => {
       const position = store.sample(vehicle, 'position', ns) as number[];
       positions.set('vehicle-1:2', new T.Vector3(position[0], position[2], -position[1]));
@@ -25,10 +26,12 @@ function display(mode: 'follow' | 'chase' | 'cinematic', semantic = true) {
   };
   const submit = vi.fn();
   const viewport = Object.assign(Object.create(Viewport.prototype), {
-    container, camera, controls, layer, mode, selected: vehicle, options: { semantic },
+    container, layout: new WorkbenchLayout(container), camera, controls, layer, mode, selected: vehicle, options: { semantic },
     staticRoot: new T.Group(), origin: new T.Vector3(), occlusion: new StaticOcclusion(),
     framed: true, cameraSettled: false, incidentLabels: new Map(),
     revision: 0, lastFrame: '', renderedFrames: 0, shadowKey: '', shadowRevision: -1,
+    framePosition: new T.Vector3(Infinity, Infinity, Infinity), frameRotation: new T.Quaternion(),
+    frameTarget: new T.Vector3(Infinity, Infinity, Infinity), cameraRevision: 0,
     quality: 'low', qualityTime: 0, qualityFrames: 0,
     lighting: { update: vi.fn(), sun: { position: new T.Vector3() } },
     renderer: { shadowMap: {}, info: { reset: vi.fn(), render: { calls: 0, triangles: 0 }, memory: { geometries: 0, textures: 0 } } },

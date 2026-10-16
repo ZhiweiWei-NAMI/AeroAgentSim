@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeZones, semanticVehicle, businessStyle, displayName, humanizeId, labelInterest, recentlyInvolved } from './semantic';
+import { activeZones, semanticVehicle, businessStyle, displayName, humanizeId, labelInterest, recentlyInvolved, areaOfInterest } from './semantic';
 import type { RunHeader, EntityKey } from '../contracts/viewer-feed';
 import type { EntityState } from './feed-store';
 
@@ -122,5 +122,32 @@ describe('simple-mode label interest', () => {
     expect(involved.has('uav-4:0')).toBe(false);
     expect(involved.has('uav-5:0')).toBe(false);
     expect(involved.has('uav-6:0')).toBe(false);
+  });
+});
+
+describe('areaOfInterest (S7 default framing)', () => {
+  const framingHeader: RunHeader = {
+    ...header,
+    presentation: [{ typeId: 'lowalt:UAV', positionField: 'lowalt.position', frame: 'enu', visual: { kind: 'marker' } }, { typeId: 'lowalt:Site', positionField: 'lowalt.site_position', frame: 'enu', visual: { kind: 'marker' } }],
+  };
+  it('unions site positions, vehicle starts and flood bounds; returns undefined without spatial facts', () => {
+    const empty = areaOfInterest(framingHeader, store([entity('t', 0, 'lowalt:Task', { 'lowalt.task_state': 'running' })]).entities.values());
+    expect(empty).toBeUndefined();
+    const interest = areaOfInterest(framingHeader, store([
+      entity('site', 0, 'lowalt:Vertiport', { 'lowalt.site_position': [0, 0, 0] }),
+      entity('drone', 0, 'lowalt:UAV', { 'lowalt.position': [100, 0, 0] }),
+      entity('flood', 0, 'rescue:Flood', { 'rescue.flood_bounds': [-50, -50, 0, 50, 50, 1] }),
+    ]).entities.values())!;
+    expect(interest).toBeDefined();
+    // Union spans [-50, 100] on east, [-50, 50] on north → centre (25, 0).
+    expect(interest.center[0]).toBe(25);
+    expect(interest.center[1]).toBe(0);
+    // Bounding-box corner radius includes the half-metre vertical extent, padded 15%.
+    expect(interest.radius).toBeCloseTo(Math.hypot(75, 50, 0.5) * 1.15, 6);
+  });
+  it('converts declared non-ENU coordinate frames before unioning and keeps a minimum radius', () => {
+    const nedHeader: RunHeader = { ...framingHeader, presentation: [{ typeId: 'lowalt:UAV', positionField: 'lowalt.position', frame: 'ned', visual: { kind: 'marker' } }] };
+    const tiny = areaOfInterest(nedHeader, store([entity('drone', 0, 'lowalt:UAV', { 'lowalt.position': [1, 2, 3] })]).entities.values())!;
+    expect(tiny.radius).toBe(40);
   });
 });

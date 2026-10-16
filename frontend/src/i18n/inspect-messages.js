@@ -656,6 +656,7 @@ export default {
   'Buildings, lighting and symbols are display effects.': '建筑、光照与符号均为显示效果。',
   'Display details': '显示详情',
   'Map legend': '地图图例',
+  'Legend': '图例',
   'Show legend': '显示图例',
   'Hide legend': '隐藏图例',
   'Authored flood extent — not a water simulation': '场景设定的淹没范围，非水动力模拟',

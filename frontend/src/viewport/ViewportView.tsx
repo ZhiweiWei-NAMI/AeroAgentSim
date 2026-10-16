@@ -10,6 +10,7 @@ import type { Quality } from './pipeline';
 import type { CityProgress } from '../scene/traffic-city';
 import { MissionTimeline } from './MissionTimeline';
 import { initialActionFraming } from './action-framing';
+import { areaOfInterest } from './semantic';
 import { entityId } from './bindings';
 import { useI18n } from '../i18n/I18nProvider';
 import '../scene/presentation';
@@ -53,7 +54,7 @@ export function ViewportView(props: Props) {
   // own `data-asset-status`, so mirror them into React state for an alert.
   const [cityIssue,setCityIssue]=useState<string>();
   const [hintDismissed,setHintDismissed]=useState(false);
-  // Below 900 px the CSS keeps only the legend title and this toggle; wide screens always show everything.
+  // The legend starts collapsed at every viewport size.
   const [legendOpen,setLegendOpen]=useState(false);
   // 'scene' follows the journaled lowalt.light; day/dusk force the display look (URL ?lighting= still wins).
   const urlLighting=new URLSearchParams(location.search).get('lighting');
@@ -111,7 +112,8 @@ export function ViewportView(props: Props) {
             const framing=initialActionFraming(p.store.header,p.store.entities.values());
             if(framing){
               const view=viewport.current!;
-              view.focusPosition(framing.center,framing.radius,true);
+              const interest=areaOfInterest(p.store.header,p.store.entities.values());
+              view.focusPosition(interest?.center??framing.center,interest?.radius??framing.radius,true,interest?50:undefined);
               actionFramed=true;if(root.current)root.current.dataset.framing='main-actors';
             }
           }
@@ -156,16 +158,14 @@ export function ViewportView(props: Props) {
   useEffect(()=>{if(props.focus){setMode('orbit');activeMode.current='orbit';viewport.current?.focusPosition(props.focus.position);}},[props.focus]);
   const events=useMemo(()=>props.store.commits.flatMap(commit=>commit.messages.filter(message=>message.kind==='event'&&(!props.selected||message.subjects?.some(key=>entityId(key)===entityId(props.selected!)))).map(message=>({...message,commitIndex:commit.commitIndex}))),[props.store,props.store.commits.length,props.selected]);
   const duration=BigInt(props.clock.end)-BigInt(props.store.header.start.ns);
-  // One bottom-left column keeps the legend above the HUD (never overlapping, finding f30).
+  // S4: one bottom-left card holds the conditions row and (in simple mode) the legend.
   const showLegend=props.simple===true&&(!props.bare||floodScene);
   const showOverlayColumn=!!conditions||showLegend;
   return <>
     <div className="viewport-canvas" data-testid="viewport" ref={root} aria-label={t('Simulation viewport')} />
-    {cityProgress&&<div className="viewport-city-progress" role="status" aria-live="polite">
-      <span>{locale.startsWith('zh')?'黄浦实景资源':'Huangpu city assets'}</span>
+    {cityProgress&&<div className="viewport-city-progress" role="status" aria-live="polite" data-testid="city-progress">
       <strong>{cityProgress.phase==='roads'?(locale.startsWith('zh')?'正在构建道路':'Preparing roads'):`${cityProgress.loaded} / ${cityProgress.total} ${locale.startsWith('zh')?'栋建筑':'buildings'}`}</strong>
       <progress aria-label={locale.startsWith('zh')?'城市资源加载进度':'City asset loading progress'} max={cityProgress.total||1} value={cityProgress.total?cityProgress.loaded:undefined}/>
-      <small>{locale.startsWith('zh')?'场景逐步加载，运行控制可用':'Scene loads progressively; run controls are available'}</small>
     </div>}
     {cityIssue&&<div className="viewport-city-alert" role="alert" data-testid="city-load-alert">
       <strong>{locale.startsWith('zh')?'城市加载失败':'City failed to load'}</strong>
@@ -190,21 +190,26 @@ export function ViewportView(props: Props) {
         <option value="scene">{t('Scene')}</option><option value="day">{t('Day')}</option><option value="dusk">{t('Dusk')}</option></select>
       <button aria-label={t('Toggle inspector')} aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>{t('Inspector')} {collapsed?'＋':'−'}</button>
     </div>}
+    {/* S4: one bottom-left glass card merges the conditions row (top) with the legend,
+        collapsed by default to "Legend" + up to six colour dots + a chevron. */}
     {showOverlayColumn&&<div className="viewport-overlays">
-      {showLegend&&<div className="semantic-legend" data-testid="semantic-legend" data-open={legendOpen} aria-label={t('Map legend')}>
-        <div className="semantic-legend-head">
-          <span className="semantic-legend-title">{floodScene?(locale.startsWith('zh')?'洪涝救援':'Flood rescue'):t('Airspace & operations')}</span>
-          <button type="button" className="semantic-legend-toggle" aria-expanded={legendOpen} onClick={()=>setLegendOpen(open=>!open)}>{legendOpen?t('Hide legend'):t('Show legend')}</button>
-        </div>
-        <div className="semantic-legend-entries">
-          {legend.map(entry=><span key={entry.label} className="semantic-legend-entry"><i style={{background:entry.color}}/>{entry.label}</span>)}
-          {!legend.length&&<span className="semantic-legend-entry muted">{t('Legend appears with scenario data')}</span>}
-        </div>
-        {floodScene&&<p className="semantic-legend-footnote">{t('Authored flood extent — not a water simulation')}</p>}
-        {!props.bare&&<><label className="semantic-showall"><input type="checkbox" checked={showAllLabels} aria-label={t('Show all labels')} onChange={event=>setShowAllLabels(event.target.checked)}/>{t('Show all labels')}</label>
-        <span className="semantic-zone-count" data-testid="semantic-zone-count">{zoneCount===1?t('1 active zone'):t('{count} active zones', {count:zoneCount})}</span></>}
-      </div>}
-      {conditions&&<div className="viewport-conditions"><ConditionsHud conditions={conditions} zh={locale.startsWith('zh')} mode="run" /></div>}
+      <div className="viewport-card" data-testid="viewport-overlay-card">
+        {conditions&&<ConditionsHud conditions={conditions} zh={locale.startsWith('zh')} mode="run" />}
+        {showLegend&&<div className="semantic-legend" data-testid="semantic-legend" data-open={legendOpen} aria-label={t('Map legend')}>
+          <button type="button" className="semantic-legend-head semantic-legend-toggle" aria-expanded={legendOpen} aria-label={legendOpen?t('Hide legend'):t('Show legend')} onClick={()=>setLegendOpen(open=>!open)} onKeyDown={event=>{if(event.key==='Escape'&&legendOpen){event.stopPropagation();setLegendOpen(false);}}}>
+            <span className="semantic-legend-title">{t('Legend')}</span>
+            <span className="semantic-legend-dots" aria-hidden="true">{legend.slice(0,6).map(entry=><i key={entry.label} style={{background:entry.color}}/>)}</span>
+            <span className="semantic-legend-chevron" aria-hidden="true">{legendOpen?'▴':'▾'}</span>
+          </button>
+          <div className="semantic-legend-entries">
+            {legend.map(entry=><span key={entry.label} className="semantic-legend-entry"><i style={{background:entry.color}}/>{entry.label}</span>)}
+            {!legend.length&&<span className="semantic-legend-entry muted">{t('Legend appears with scenario data')}</span>}
+          </div>
+          {floodScene&&<p className="semantic-legend-footnote">{t('Authored flood extent — not a water simulation')}</p>}
+          {!props.bare&&<><label className="semantic-showall"><input type="checkbox" checked={showAllLabels} aria-label={t('Show all labels')} onChange={event=>setShowAllLabels(event.target.checked)}/>{t('Show all labels')}</label>
+          <span className="semantic-zone-count" data-testid="semantic-zone-count">{zoneCount===1?t('1 active zone'):t('{count} active zones', {count:zoneCount})}</span></>}
+        </div>}
+      </div>
     </div>}
     {!props.simple&&!props.bare&&<div className="scene-status"><span>{t('Buildings, lighting and symbols are display effects.')}</span>{status&&<details><summary>{t('Display details')}</summary><div>{status}</div></details>}</div>}
     {!props.simple&&catalogNotice&&<div className="scene-attribution" style={{bottom:24}} data-testid="catalog-notice">{catalogNotice}</div>}

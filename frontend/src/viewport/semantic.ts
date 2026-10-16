@@ -1,5 +1,7 @@
 import type { FeedCommit, EntityKey, RunHeader } from '../contracts/viewer-feed';
 import type { EntityState } from './feed-store';
+import { resolveBinding } from './bindings';
+import { worldPosition } from './coordinates';
 import { localized, translate } from '../i18n/translate';
 import { displayLabel, localizedLabel } from '../pages/inspection-format';
 
@@ -531,4 +533,48 @@ export function labelInterest(entity: EntityState, selected?: EntityKey, involve
   if(hasActiveTask)return true;
   if (involved?.has(`${entity.key.id}:${entity.key.generation}`)) return true;
   return !!hasActiveTask;
+}
+
+/**
+ * S7 default framing: the scenario's area of interest — every committed site
+ * position, the authored flood bounds (`rescue.flood_bounds`) and the vehicles'
+ * committed start positions. ENU metres. Returns the padded centre and radius,
+ * or `undefined` when nothing spatial is committed yet.
+ */
+export function areaOfInterest(header: RunHeader, entities: Iterable<EntityState>): { center: [number, number, number]; radius: number } | undefined {
+  const lower = [Infinity, Infinity, Infinity], upper = [-Infinity, -Infinity, -Infinity];
+  let count = 0;
+  const push = (position: [number, number, number]) => {
+    if (!position.every(Number.isFinite)) return false;
+    for (let axis = 0; axis < 3; axis++) {
+      lower[axis] = Math.min(lower[axis], position[axis]);
+      upper[axis] = Math.max(upper[axis], position[axis]);
+    }
+    count++;
+    return true;
+  };
+  for (const entity of entities) {
+    // Routine city traffic must not expand the scenario overview to the whole city.
+    if (entity.fields.get('traffic.actor.role')?.value === 'background') continue;
+    const binding = resolveBinding(header, entity.typeId);
+    const raw = binding && entity.fields.get(binding.positionField)?.value;
+    if (binding && Array.isArray(raw) && raw.length === 3 && raw.every(value => typeof value === 'number' && Number.isFinite(value))) {
+      let world;
+      try { world = worldPosition(raw, binding.frame, header.origin); }
+      catch { return undefined; } // Invalid display framing retains the existing camera.
+      if (!push([world.x, -world.z, world.y])) return undefined;
+    }
+    const bounds = entity.fields.get('rescue.flood_bounds')?.value;
+    if (Array.isArray(bounds) && bounds.length === 6 && bounds.every(value => typeof value === 'number' && Number.isFinite(value))) {
+      if (bounds.slice(0, 3).some((value, axis) => value > bounds[axis + 3])) return undefined;
+      push(bounds.slice(0, 3) as [number, number, number]);
+      push(bounds.slice(3) as [number, number, number]);
+    }
+  }
+  if (!count) return undefined;
+  // Halve before adding/subtracting to avoid overflow with finite coordinates.
+  const center = lower.map((value, axis) => value / 2 + upper[axis] / 2) as [number, number, number];
+  const radius = Math.max(40, Math.hypot(...lower.map((value, axis) => upper[axis] / 2 - value / 2)) * 1.15);
+  if (!center.every(Number.isFinite) || !Number.isFinite(radius)) return undefined;
+  return { center, radius };
 }

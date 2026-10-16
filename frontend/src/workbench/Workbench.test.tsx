@@ -20,7 +20,8 @@ import { Details } from '../console/Details';
 const stylesDirectory=dirname(fileURLToPath(import.meta.url));
 const workbenchStyles=readFileSync(resolve(stylesDirectory,'workbench.css'),'utf8');
 const detailsStyles=readFileSync(resolve(stylesDirectory,'../console/details.css'),'utf8');
-const runStatusStyles=readFileSync(resolve(stylesDirectory,'run-status.css'),'utf8');
+const runStatusStyles=readFileSync(resolve(stylesDirectory,'run-status.css'),'utf8'); // notices stack (S1)
+void runStatusStyles;
 
 const mocks = vi.hoisted(() => ({ panelRender: vi.fn(), apply: vi.fn(), readSession: vi.fn(), session: undefined as Session | undefined, runSession: undefined as RunSession | undefined }));
 vi.mock('../assistant/AssistantPanel', () => ({ AssistantPanel: () => { mocks.panelRender(); return <input aria-label="Search objects" />; } }));
@@ -289,18 +290,25 @@ it('T4-R6-003: Modify & retry persists the Chinese default name through the deri
   expect(await screen.findByTestId('current-url')).toHaveTextContent('/w/variant');
 });
 
-it.each(['en-US','zh-CN'])('T4-R6-004: historical and finalizing notices occupy separate flow rows in %s',async locale=>{
+it.each(['en-US','zh-CN'])('T4-R6-004 (S1): the earlier-moment notice is a top-bar pill, and finalizing is only the status tooltip in %s',async locale=>{
   localStorage.setItem('aeroagentsim.locale',locale);
   const session=recorded();session.seekOffset(1);
   vi.mocked(WorkbenchApi.prototype.runs).mockResolvedValue([{...run,status:'completed',results_final:false}]);
   setup(`/w/project?run=${run.id}&mode=replay&cut=2&panel=assistant`);
-  const finalizing=await screen.findByTestId('wb-finalizing');
-  const history=screen.getByTestId('wb-history');
-  expect(history).toBeVisible();expect(finalizing).toBeVisible();
-  expect(history.parentElement).toBe(screen.getByTestId('wb-notices'));
-  expect(finalizing.parentElement).toBe(history.parentElement);
-  expect(runStatusStyles).toMatch(/\.wb-notices\s*\{[^}]*flex-direction:\s*column/s);
-  expect(runStatusStyles).toMatch(/\.wb-notices\s*>\s*\.wb-history\s*\{[^}]*position:\s*static/s);
+  const history=await screen.findByTestId('wb-history');
+  const finalizingStatus=screen.getByTestId('wb-status');
+  expect(history).toBeVisible();expect(finalizingStatus).toBeVisible();
+  // S1: the notice lives in the top bar's second row as a pill, not as a banner row.
+  expect(history.className).toContain('wb-notice-pill');
+  expect(workbenchStyles).toMatch(/\.wb-notice-pill\s*\{[^}]*height:\s*24px/s);
+  expect(workbenchStyles).toMatch(/\.wb-notice-pill\s*\{[^}]*border-radius:\s*999px/s);
+  // The second blue banner is gone; the explanation travels with the status.
+  expect(screen.queryByTestId('wb-finalizing')).toBeNull();
+  expect(finalizingStatus).toHaveAttribute('title', locale==='en-US'
+    ? 'Finalizing results… KPIs and story are still being aggregated from the final journal.'
+    : '结果汇总中…指标与经历仍在从最终日志聚合。');
+  expect(finalizingStatus).toHaveAttribute('aria-describedby','wb-status-help');
+  expect(finalizingStatus).toHaveTextContent(locale==='en-US'?'Finalizing results…':'结果汇总中…');
 });
 
 it('T4-R4-003: a local defaultPrevented event stays local, while Space on the observation surface controls playback', async () => {
@@ -346,6 +354,7 @@ it.each(['en-US', 'zh-CN'])('T2-R3-007: history explains that the simulation kee
   const english = 'Viewing history — the simulation keeps running.';
   const chinese = '正在查看历史——仿真仍在运行。';
   expect(notice).toHaveTextContent(locale === 'en-US' ? `${english} Back to live (L)` : `${chinese} 返回实时 (L)`);
+  expect(notice.className).toContain('wb-notice-pill');
   expect(notice).not.toHaveTextContent(locale === 'en-US' ? chinese : english);
   expect(await screen.findByTestId('wb-pause')).toBeEnabled();
   fireEvent.click(screen.getByTestId('wb-playback')); fireEvent.click(screen.getByTestId('wb-playback'));

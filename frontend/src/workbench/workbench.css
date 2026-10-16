@@ -144,18 +144,28 @@
 .wb-empty { color: var(--wb-muted); padding: 18px 4px; text-align: center; }
 .wb-empty strong { display: block; color: var(--wb-ink); margin-bottom: 4px; }
 
-/* KPI cards */
-.wb-kpis { position: absolute; z-index: 15; top: calc(var(--wb-top) + var(--wb-gap) * 2); left: calc(var(--wb-left-space, var(--wb-left)) + var(--wb-gap) * 2); right: calc(var(--wb-right-space, var(--wb-right)) + var(--wb-gap) * 2 + 54px);
-  display: flex; gap: 10px; pointer-events: none; flex-wrap: nowrap; overflow: hidden; }
-.wb-kpi { pointer-events: auto; flex: 0 1 180px; min-width: 104px; padding: 9px 13px; }
-.wb-kpi small { display: block; color: var(--wb-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wb-kpi strong { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
-.wb-kpi em { font-style: normal; color: var(--wb-muted); font-size: 12px; margin-left: 3px; }
-
-/* History banner */
-.wb-history { position: absolute; z-index: 25; left: 50%; transform: translateX(-50%); top: calc(var(--wb-top) + var(--wb-gap) * 2 + 64px);
-  display: flex; align-items: center; gap: 12px; padding: 7px 8px 7px 14px; border-radius: 999px; background: rgba(110, 50, 190, .92); color: #fff; box-shadow: var(--wb-shadow); font-weight: 600; }
-.wb-history .wb-btn { height: 28px; background: #fff; color: #5d22a8; border: none; border-radius: 999px; }
+/* S2: KPI strip — one glass strip centred over the free scene area. */
+.wb-kpis { position: absolute; z-index: 15; top: calc(var(--wb-gap) + var(--wb-top) + 10px); left: calc(var(--wb-left-space, var(--wb-left)) + var(--wb-gap) * 2);
+  right: calc(var(--wb-right-space, var(--wb-right)) + var(--wb-gap) * 2);
+  display: flex; justify-content: center; align-items: stretch; height: 52px; width: max-content; max-width: calc(100% - var(--wb-left-space, var(--wb-left)) - var(--wb-right-space, var(--wb-right)) - var(--wb-gap) * 4);
+  margin-inline: auto; padding: 0 8px; pointer-events: none;
+  background: var(--wb-glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  border: 1px solid var(--wb-line); border-radius: var(--wb-radius); box-shadow: var(--wb-shadow); }
+.wb-kpi { pointer-events: auto; display: flex; flex: 1 1 156px; flex-direction: column; justify-content: center; width: 156px; min-width: 96px; padding: 0 16px; }
+.wb-kpi + .wb-kpi, .wb-kpi + .wb-kpi-more, .wb-kpi-more + .wb-kpi { border-left: 1px solid var(--wb-line); }
+.wb-kpi small { display: block; flex: none; line-height: 15px; color: var(--wb-muted); font-size: 11px; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-kpi-value { display: flex; flex: none; align-items: baseline; height: 23px; line-height: 23px; white-space: nowrap; }
+.wb-kpi strong { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.wb-kpi em { font-style: normal; color: var(--wb-muted); font-size: 12px; line-height: 1; margin-left: 3px; }
+/* Narrow scenes: the first three metrics plus a "+2" chip with the rest in a popover. */
+.wb-kpi-more { pointer-events: auto; position: relative; display: flex; align-items: center; padding: 0 14px; border-left: 1px solid var(--wb-line); }
+.wb-kpi-more summary { all: unset; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--wb-muted); padding: 2px 6px; border-radius: 999px; }
+.wb-kpi-more summary:hover { color: var(--wb-ink); background: rgba(20,32,46,.06); }
+.wb-kpi-more summary:focus-visible { outline: 2px solid var(--wb-accent); outline-offset: 2px; }
+.wb-kpi-more[open] summary { color: var(--wb-accent); }
+.wb-kpi-popover { position: absolute; top: calc(100% + 8px); right: 0; z-index: 5; display: grid; gap: 2px; min-width: 200px; padding: 8px 16px;
+  background: var(--wb-glass-strong); border: 1px solid var(--wb-line); border-radius: 12px; box-shadow: var(--wb-shadow); }
+.wb-kpi-popover .wb-kpi { padding: 6px 0; border-left: 0; }
 
 /* Camera pad */
 .wb-camera { position: absolute; z-index: 18; right: calc(var(--wb-overlay-right-space, var(--wb-right)) + var(--wb-gap) * 2); bottom: calc(var(--wb-dock) + var(--wb-gap) * 2);
@@ -264,7 +274,7 @@
 .wb-panel .kpi-panel, .wb-dock .kpi-panel { background: transparent; }
 .wb .director-toolbar, .wb .scene-status, .wb .mission-overlay { display: none; }
 
-@media (max-width: 1280px) { .wb { --wb-left: 260px; --wb-right: 330px; } .wb-kpi { min-width: 110px; } }
+@media (max-width: 1280px) { .wb { --wb-left: 260px; --wb-right: 330px; } }
 @media (max-width: 1024px) { .wb { --wb-left: 230px; --wb-right: 300px; } .wb-clock time { font-size: 17px; } .wb-project { max-width: 180px; } }
 
 .wb-night select.wb-btn { appearance: auto; padding: 0 8px; }
@@ -287,18 +297,7 @@
   left: calc(var(--wb-left-space, var(--wb-left)) + 24px);
   right: calc(var(--wb-right-space, var(--wb-right)) + 76px);
   top: calc(var(--wb-top) + var(--wb-kpi-height) + 36px); bottom: calc(var(--wb-dock) + 24px); }
-.wb-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; overflow: visible; }
-.wb-kpi { min-width: 0; padding: 8px 10px; }
-.wb-kpi small { white-space: normal; overflow: visible; line-height: 1.3; min-height: 29px; }
-/* T4-09: at 1366×768 with the configuration open five fixed columns cram the
-   cards; narrower scenes wrap to two rows and slightly smaller values instead. */
-@media (max-width: 1600px) and (min-width: 1025px) {
-  .wb-kpis { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
-  .wb-kpi strong { font-size: 17px; }
-  .wb-kpi small { min-height: 0; }
-}
 .wb-entity-head h2, .wb-entity-head p { overflow-wrap: anywhere; }
-.wb-history { top: calc(var(--wb-top) + var(--wb-kpi-height) + 36px); max-width: calc(100vw - 40px); font-size: 12px; flex-wrap: wrap; justify-content: center; border-radius: 12px; }
 .wb-stage .viewport-city-progress { top: calc(var(--wb-top) + var(--wb-kpi-height) + 36px); left: calc(var(--wb-left-space, var(--wb-left)) + 24px); z-index: 19; }
 .wb-graph-handle { cursor: grab; touch-action: none; user-select: none; padding: 8px 12px; }
 .wb-graph-handle:active { cursor: grabbing; }
@@ -323,7 +322,7 @@
   .wb-identity { grid-column: 1; grid-row: 1; }
   .wb-tools { grid-column: 2; grid-row: 1; }
   .wb-simulation { grid-column: 1 / -1; grid-row: 2; }
-  .wb-simulation .wb-status { margin-right: auto; }
+.wb-simulation .wb-controls { margin-left: auto; }
   .wb-clock { flex-direction: row; align-items: center; gap: 10px; }
   .wb-clock time { font-size: 19px; }
   .wb-project { max-width: none; }
@@ -374,8 +373,16 @@
 .wb-rule-editor .behaviour-editor nav button[aria-pressed='true'] { color: var(--wb-accent); background: rgba(31,122,224,.12); border-color: rgba(31,122,224,.3); }
 .wb-json-focus { outline: 2px solid rgba(224,69,58,.35); border-radius: 6px; }
 
-/* Reserve a visible strip for history and connection notices above floating tools. */
-.wb-history { z-index: 31; left: calc(var(--wb-left-space, var(--wb-left)) + 24px); right: 24px; transform: none; width: fit-content; max-width: calc(100vw - var(--wb-left-space, var(--wb-left)) - 48px); gap: 8px; }
+/* S1: notices in the top bar render as calm pills; .wb-notices keeps a stack of pills. */
+.wb-notice-pill { display: inline-flex; align-items: center; gap: 8px; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; white-space: nowrap;
+  background: rgba(178, 107, 255, .16); border: 1px solid rgba(178, 107, 255, .45); color: #e6d4ff; }
+.wb-notice-link { all: unset; cursor: pointer; font: inherit; font-weight: 600; color: inherit; }
+.wb-notice-link:hover { text-decoration: underline; }
+.wb-notice-link:focus-visible { outline: 2px solid var(--wb-accent); outline-offset: 2px; border-radius: 3px; }
+.wb-notice-link .wb-kbd { opacity: .55; }
+.wb .wb-history { padding: 3px 10px; min-height: 24px; border-radius: 999px; font-size: 12px; overflow-wrap: anywhere;
+  background: var(--wb-glass-strong); border: 1px solid var(--wb-line); color: var(--wb-ink); box-shadow: var(--wb-shadow); font-weight: 500; }
+.wb .wb-history[role='alert'] { border-color: var(--wb-bad); }
 .wb-graph, .wb-stage .viewport-city-progress { top: calc(var(--wb-top) + var(--wb-kpi-height) + var(--wb-notice-height) + 36px); }
 .wb-graph { height: min(560px, calc(100vh - var(--wb-top) - var(--wb-dock) - var(--wb-kpi-height) - var(--wb-notice-height) - 62px)); }
 .wb-graph.is-expanded { top: calc(var(--wb-top) + var(--wb-kpi-height) + var(--wb-notice-height) + 36px); }

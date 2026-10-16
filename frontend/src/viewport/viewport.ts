@@ -19,7 +19,8 @@ import type { CityProgress } from '../scene/traffic-city';
 import { CameraDirector, type CameraMode } from '../scene/camera-director';
 import { translate } from '../i18n/translate';
 import type {DirectorTarget} from './business-director';
-import { placeLabel, workbenchLayoutKey } from './label-placement';
+import { LabelPlacer, pooledRect, WorkbenchLayout } from './label-placement';
+import { areaOfInterest } from './semantic';
 import { AtmosphereLayer } from './atmosphere';
 import { IncidentSurface } from './atmosphere/surface-height';
 import { ConditionsCache, type Conditions } from './conditions';
@@ -63,6 +64,7 @@ export class Viewport {
   private composers = new Map<Quality, ReturnType<typeof pipeline>>();
   private overlay = document.createElement('div');
   private observer: ResizeObserver;
+  private layout: WorkbenchLayout;
   private abort = new AbortController();
   private mode: CameraMode = 'orbit';
   private selected?: EntityKey;
@@ -79,17 +81,28 @@ export class Viewport {
   private director = new CameraDirector();
   private businessShot?: DirectorTarget;
   private authoredCamera = false;
+  /** S7: the user grabbed the camera — keep their view, skip interest framing. */
+  private userFramed = false;
   private manualQuality = false;
   private dusk = false;
   private profile = new URLSearchParams(location.search).has('perf');
   private gpuTimer?: GpuTimer;
   private revision = 0;
   private lastFrame = '';
+  private framePosition = new T.Vector3(Infinity, Infinity, Infinity);
+  private frameRotation = new T.Quaternion();
+  private frameTarget = new T.Vector3(Infinity, Infinity, Infinity);
+  private cameraRevision = 0;
   private cameraSettled = false;
   private renderedFrames = 0;
   private shadowKey = '';
   private semanticLayer?: SemanticLayer;
+  private width = 1;
+  private height = 1;
+  private incidentPlacer = new LabelPlacer();
+  private incidentPoint = new T.Vector3();
   private incidentLabels = new Map<string, HTMLButtonElement>();
+  private incidentLabelMetrics = new WeakMap<HTMLButtonElement, { key: string; width: number; height: number }>();
   private district?:ProceduralDistrict;
   private assetIssues = new Set<string>();
   private lastStatus = '';
@@ -123,6 +136,7 @@ export class Viewport {
     const info = context.getExtension('WEBGL_debug_renderer_info');
     this.container.dataset.gpu = info ? context.getParameter(info.UNMASKED_RENDERER_WEBGL) : context.getParameter(context.RENDERER);
     this.overlay.className = 'viewport-labels'; this.container.append(this.overlay);
+    this.layout = new WorkbenchLayout(container);
     this.camera.position.set(140, 95, 170);
 
     this.controls = new OrbitControls(this.camera, canvas);
@@ -150,7 +164,7 @@ export class Viewport {
     canvas.addEventListener('pointerdown', this.cameraInteraction, true);
     canvas.addEventListener('wheel', this.cameraInteraction, {capture:true,passive:true});
     canvas.addEventListener('pointerdown', this.pointerDown); canvas.addEventListener('pointerup', this.pointerUp);
-    canvas.addEventListener('pointermove', this.pointerMove); this.resize();
+    canvas.addEventListener('pointermove', this.pointerMove); container.addEventListener('pointerleave', this.pointerLeave); this.resize();
     const presentation: ScenePresentation | undefined = options.city || options.hdri ? { city: options.city, hdri: options.hdri } : scenePresentation(header);
     if(options.semantic&&!presentation?.city){this.district=new ProceduralDistrict();this.scene.add(this.district.root);this.container.dataset.context='illustrative';this.setAttribution('Illustrative city · recorded actors and airspace');}
     if(presentation?.camera){this.camera.position.fromArray(presentation.camera.position);this.controls.target.fromArray(presentation.camera.target);this.authoredCamera=true;}
@@ -269,34 +283,48 @@ export class Viewport {
     this.container.dataset.directorEvent=target?.eventKey??'';
   }
   private cameraInteraction=()=>{
+    this.userFramed=true;
     this.cameraTransition=undefined;
     this.setDirectorTarget(undefined);this.setCameraMode('orbit');
     this.options.onCameraInteraction?.();
   };
-  /** Event coordinates are ENU; camera positions are local east/up/south. */
-  focusPosition(position: [number,number,number], radius?: number, immediate = false) {
+  /** Event coordinates are ENU; camera positions are local east/up/south.
+   * `pitch` overrides the default oblique camera elevation (degrees). */
+  focusPosition(position: [number,number,number], radius?: number, immediate = false, pitch?: number) {
+    if (!position.every(Number.isFinite) || radius !== undefined && (!Number.isFinite(radius) || radius <= 0)
+      || pitch !== undefined && !Number.isFinite(pitch)) return false;
     const target=new T.Vector3(position[0],position[2],-position[1]).sub(this.origin);
     const offset=new T.Vector3(...GROUND_CAMERA_OFFSET);
+    if(pitch!==undefined){const flat=Math.hypot(offset.x,offset.z);offset.y=flat*Math.tan(Math.min(89,Math.max(1,pitch))*Math.PI/180);}
     if(radius!==undefined){const vertical=this.camera.fov*Math.PI/360,horizontal=Math.atan(Math.tan(vertical)*this.camera.aspect),distance=radius/Math.sin(Math.min(vertical,horizontal))*1.12;if(distance>offset.length())offset.setLength(distance);}
     const destination=this.occlusion.liftCamera(target.clone().add(offset));
+    if (![...target.toArray(), ...destination.toArray(), offset.length()].every(Number.isFinite) || destination.distanceToSquared(target) === 0) return false;
+    const far = Math.max(this.camera.far, offset.length() + (radius ?? 0) * 2);
+    if (!Number.isFinite(far)) return false;
+    this.camera.far = far;
+    this.camera.updateProjectionMatrix();
     this.setCameraMode('orbit');
     if(immediate){this.controls.target.copy(target);this.camera.position.copy(destination);this.camera.lookAt(target);this.cameraTransition=undefined;}
     else this.cameraTransition={position:destination,target};
     this.authoredCamera=true;this.revision++;
+    return true;
   }
   /** Display-only camera pad: these never change simulation state. */
   zoom(factor: number) {
     const target=(this.cameraTransition?.target??this.controls.target).clone(),from=this.cameraTransition?.position??this.camera.position;
     const offset=from.clone().sub(target),length=Math.min(6000,Math.max(6,offset.length()*factor));
+    this.userFramed=true;this.options.onCameraInteraction?.();
     this.setCameraMode('orbit');this.cameraTransition={position:target.clone().add(offset.setLength(length)),target};this.authoredCamera=true;this.revision++;
   }
   orbitBy(radians: number) {
     const target=(this.cameraTransition?.target??this.controls.target).clone(),from=this.cameraTransition?.position??this.camera.position;
     const offset=from.clone().sub(target).applyAxisAngle(new T.Vector3(0,1,0),radians);
+    this.userFramed=true;this.options.onCameraInteraction?.();
     this.setCameraMode('orbit');this.cameraTransition={position:target.clone().add(offset),target};this.authoredCamera=true;this.revision++;
   }
   resetView() {
     if(!this.home)return;
+    this.userFramed=true;this.options.onCameraInteraction?.();
     this.setCameraMode('orbit');this.cameraTransition={position:this.home.position.clone().sub(this.origin),target:this.home.target.clone().sub(this.origin)};this.revision++;
   }
   /** Frame the city geometry and all live entities together — not only the objects. */
@@ -307,6 +335,7 @@ export class Viewport {
     if(this.layer.positions.size)for(const position of this.layer.positions.values())bounds.expandByPoint(position.clone().add(this.origin));
     if(bounds.isEmpty())return;
     const center=bounds.getCenter(new T.Vector3()),span=Math.max(120,bounds.getSize(new T.Vector3()).length());
+    this.userFramed=true;this.options.onCameraInteraction?.();
     this.setCameraMode('orbit');
     this.cameraTransition={position:center.clone().add(new T.Vector3(0.7,0.55,0.9).multiplyScalar(span*1.15)),target:center.clone().sub(this.origin)};
     this.authoredCamera=true;this.revision++;
@@ -328,6 +357,7 @@ export class Viewport {
   }
   render(store: FeedStore, ns: string, deltaSeconds: number, trails = true) {
     if (this.disposed) return;
+    this.layer.advanceLabelFades(deltaSeconds);
     const frameStarted = performance.now();
     if(this.cameraTransition){
       const {position,target}=this.cameraTransition,amount=1-Math.exp(-7*Math.min(0.1,Math.max(0,deltaSeconds)));
@@ -335,8 +365,17 @@ export class Viewport {
       if(this.camera.position.distanceToSquared(position)<0.0025&&this.controls.target.distanceToSquared(target)<0.0025){this.camera.position.copy(position);this.controls.target.copy(target);this.cameraTransition=undefined;}
     }
     if(this.mode==='orbit')this.controls.update();
-    const layoutKey = workbenchLayoutKey(this.container);
-    const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.camera.position.toArray()}/${this.camera.quaternion.toArray()}/${this.controls.target.toArray()}/${layoutKey}`;
+    const layoutKey = this.layout.key;
+    // OrbitControls can alternate the last floating-point bit of a stationary
+    // target. Compare reusable poses at micrometre tolerance instead of making
+    // three arrays/stringifying that noise into a new frame on every RAF.
+    if(this.framePosition.distanceToSquared(this.camera.position)>1e-12
+      ||1-Math.abs(this.frameRotation.dot(this.camera.quaternion))>1e-12
+      ||this.frameTarget.distanceToSquared(this.controls.target)>1e-12){
+      this.framePosition.copy(this.camera.position);this.frameRotation.copy(this.camera.quaternion);
+      this.frameTarget.copy(this.controls.target);this.cameraRevision++;
+    }
+    const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.cameraRevision}/${layoutKey}`;
     const continuousShot=this.mode==='cinematic'&&!this.options.semantic;
     if(!continuousShot&&!this.cameraTransition&&(this.mode==='orbit'||this.cameraSettled)&&frameKey===this.lastFrame
       &&(!this.atmosphere||!this.ringAnimationActive())&&!this.rescueAnimationActive()){this.container.dataset.idle='true';return;}
@@ -347,7 +386,16 @@ export class Viewport {
     const aimCamera=()=>{
       if(!this.framed && this.layer.positions.size){
         const bounds=this.district?.bounds?.clone().translate(this.origin.clone().negate())??new T.Box3().setFromPoints([...this.layer.positions.values()]),center=bounds.getCenter(new T.Vector3());
-        if(!this.authoredCamera){const span=Math.max(100,bounds.getSize(new T.Vector3()).length());this.controls.target.copy(center);this.camera.position.copy(center).add(new T.Vector3(0.7,0.55,0.9).multiplyScalar(span));}
+        if(!this.authoredCamera&&!this.userFramed){
+          // S7: frame the scenario's area of interest (sites, incident, flood
+          // bounds, vehicle starts) instead of the whole city — only when the
+          // user has not moved the camera. Falls back to the old entity fit.
+          const interest=!this.userFramed?areaOfInterest(this.header,store.entities.values()):undefined;
+          if(!interest || !this.focusPosition(interest.center,interest.radius,true,50)){
+            const span=Math.max(100,bounds.getSize(new T.Vector3()).length());
+            if ([...center.toArray(), span].every(Number.isFinite)) { this.controls.target.copy(center);this.camera.position.copy(center).add(new T.Vector3(0.7,0.55,0.9).multiplyScalar(span)); }
+          }
+        }
         this.framed=true;this.home={position:this.camera.position.clone().add(this.origin),target:this.controls.target.clone().add(this.origin)};
       }
       const eventPosition=this.businessShot?.position;
@@ -383,8 +431,8 @@ export class Viewport {
       this.emitConditions();
     }
     if(this.semanticLayer&&this.layer.semantic){
-      this.semanticLayer.setSize(this.container.clientWidth,this.container.clientHeight,this.renderer.getPixelRatio());
-      this.semanticLayer.setPinScale(this.container.clientHeight,this.camera.projectionMatrix.elements[5]);
+      this.semanticLayer.setSize(this.width,this.height,this.renderer.getPixelRatio());
+      this.semanticLayer.setPinScale(this.height,this.camera.projectionMatrix.elements[5]);
       this.semanticLayer.update(store,ns,this.origin,this.layer.positions);
       this.semanticLayer.setSimTime(Number(BigInt(ns))/1e9,this.playing);
       this.semanticLayer.root.visible=true;
@@ -401,7 +449,7 @@ export class Viewport {
       if(this.cameraTransition){this.cameraTransition.position.sub(shift);this.cameraTransition.target.sub(shift);}
       this.staticRoot.position.copy(this.origin).negate();
       this.staticRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.incidentSurface.setObjects(this.staticRoot);this.atmosphere?.invalidateSurface();this.revision++;
-      this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion,undefined,next?.incidents,this.roofHeight);
+      this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion,undefined,next?.incidents,this.roofHeight,layoutKey);
     }
     this.lighting.update(this.controls.target);
     this.composer.outline.selection.set(this.layer.selection.length?this.layer.selection:this.layer.ring.visible?[this.layer.ring]:[]);
@@ -556,31 +604,34 @@ export class Viewport {
   private updateIncidentLabels() {
     const incidents=this.layer.semantic?this.semanticLayer?.incidentLabels:undefined;
     if(!incidents?.size&&!this.incidentLabels.size)return;
-    const bounds=this.overlay.getBoundingClientRect(),width=bounds.width,height=bounds.height;
-    const wb=this.overlay.closest('.wb');
-    const relative=(rect:DOMRect)=>({left:rect.left-bounds.left,right:rect.right-bounds.left,top:rect.top-bounds.top,bottom:rect.bottom-bounds.top});
-    const frame=wb?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
-    const safe=frame?relative(frame):{left:8,right:width-8,top:8,bottom:height-8};
-    const obstacles=[...this.overlay.querySelectorAll('.entity-label:not([data-incident]):not([hidden])'),
-      ...(wb?.querySelectorAll('.wb-panel, .wb-camera, .wb-graph, .wb-history, .wb-waiting')??[])].map(node=>relative(node.getBoundingClientRect()));
-    const glyphs=[];
+    const width=this.width,height=this.height;
+    const { safe, panels, panelCount, occupied, occupiedCount } = this.layer.labelPlacer;
+    const placer=this.incidentPlacer;
+    Object.assign(placer.safe,safe);placer.panelCount=panelCount+occupiedCount;placer.occupiedCount=0;placer.pinCount=0;
+    for(let i=0;i<panelCount;i++)Object.assign(pooledRect(placer.panels,i),panels[i]);
+    for(let i=0;i<occupiedCount;i++)Object.assign(pooledRect(placer.panels,panelCount+i),occupied[i]);
     for(const sprite of this.semanticLayer?.glyphSprites.values()??[]){
-      const point=sprite.position.clone().project(this.camera);
+      const point=this.incidentPoint.copy(sprite.position).project(this.camera);
       if(point.z < -1 || point.z > 1)continue;
       const x=(point.x+1)*width/2,y=(1-point.y)*height/2;
-      glyphs.push({left:x-14,right:x+14,top:y-14,bottom:y+14});
+      const rect=pooledRect(placer.pins,placer.pinCount++);rect.left=x-14;rect.right=x+14;rect.top=y-14;rect.bottom=y+14;
     }
     for(const [id,label] of this.incidentLabels)if(!incidents?.has(id)){label.remove();this.incidentLabels.delete(id);}
     for(const [id,incident] of incidents??[]){
       let label=this.incidentLabels.get(id);
       if(!label){label=document.createElement('button');label.className='entity-label';label.dataset.incident=incident.key.id;label.onclick=()=>this.options.onSelect?.(incident.key);this.overlay.append(label);this.incidentLabels.set(id,label);}
-      label.textContent=incident.text;label.style.borderColor=incident.color;label.style.fontWeight='650';label.style.maxWidth='240px';
-      const point=incident.position.clone().project(this.camera);
+      if(label.textContent!==incident.text)label.textContent=incident.text;
+      if(label.style.borderColor!==incident.color)label.style.borderColor=incident.color;
+      label.style.fontWeight='650';label.style.maxWidth='240px';
+      const point=this.incidentPoint.copy(incident.position).project(this.camera);
       label.hidden=point.z<-1||point.z>1||Math.abs(point.x)>1||Math.abs(point.y)>1;
       if(label.hidden)continue;
-      const placed=placeLabel((point.x+1)*width/2,(1-point.y)*height/2-14,label.offsetWidth,label.offsetHeight,safe,obstacles,true,glyphs);
+      const metricKey=`${incident.text}/${width}/${height}/${document.fonts?.status}`;
+      let metrics=this.incidentLabelMetrics.get(label);
+      if(!metrics||metrics.key!==metricKey){metrics={key:metricKey,width:label.offsetWidth,height:label.offsetHeight};this.incidentLabelMetrics.set(label,metrics);}
+      const placed=placer.place((point.x+1)*width/2,(1-point.y)*height/2-14,metrics.width,metrics.height,true);
       if(!placed){label.hidden=true;continue;}
-      label.style.left=`${placed.x}px`;label.style.top=`${placed.y}px`;obstacles.push(placed.box);
+      label.style.left=`${placed.x}px`;label.style.top=`${placed.y}px`;Object.assign(pooledRect(placer.panels,placer.panelCount++),placed.box);
     }
   }
   setSemantic(next: { semantic?: boolean; showAllLabels?: boolean }) {
@@ -595,6 +646,8 @@ export class Viewport {
   private resize = () => {
     this.revision++;
     const width=Math.max(1,this.container.clientWidth),height=Math.max(1,this.container.clientHeight);
+    this.width=width;this.height=height;
+    this.atmosphere?.setPinHeightCss(height);
     const rect=this.container.getBoundingClientRect(),frame=this.container.closest('.wb')?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
     if(frame&&frame.width>0&&frame.height>0)this.camera.setViewOffset(frame.width,frame.height,rect.left-frame.left,rect.top-frame.top,width,height);
     else {this.camera.clearViewOffset();this.camera.aspect=width/height;}
@@ -613,13 +666,15 @@ export class Viewport {
     return this.pickRaycaster;
   };
   private pointerMove=(event:PointerEvent)=>{
-    if(!this.semanticLayer||!this.layer.semantic)return;
     const raycaster=this.pickRay(event);
-    const marker=this.semanticLayer.pick(raycaster);
+    const marker=this.layer.semantic?this.semanticLayer?.pick(raycaster):undefined;
     const id=marker?`${marker.key.id}:${marker.key.generation}`:undefined;this.hoverMarkerId=id;
     const entityKey=this.layer.pick(raycaster);
     this.layer.setHover(entityKey?`${entityKey.id}:${entityKey.generation}`:id);this.revision++;
     this.container.dataset.semanticHover=marker?.label??'';
+  };
+  private pointerLeave=()=>{
+    this.hoverMarkerId=undefined;this.layer.setHover();delete this.container.dataset.semanticHover;this.revision++;
   };
   private pointerDown=(event:PointerEvent)=>{this.press={x:event.clientX,y:event.clientY};};
   private pointerUp=(event:PointerEvent)=>{
@@ -629,10 +684,11 @@ export class Viewport {
     if(key)this.options.onSelect?.(key);
   };
   dispose(){
-    this.disposed=true;this.abort.abort();this.observer.disconnect();
+    this.disposed=true;this.abort.abort();this.observer.disconnect();this.layout.dispose();
     this.renderer.domElement.removeEventListener('pointerdown',this.cameraInteraction,true);this.renderer.domElement.removeEventListener('wheel',this.cameraInteraction,true);
     this.renderer.domElement.removeEventListener('pointerdown',this.pointerDown);this.renderer.domElement.removeEventListener('pointerup',this.pointerUp);
     this.renderer.domElement.removeEventListener('pointermove',this.pointerMove);
+    this.container.removeEventListener('pointerleave',this.pointerLeave);
     this.controls.dispose();this.occlusion.dispose();this.layer.dispose();this.qualityMaterials.dispose();this.assets.dispose();disposeObject(this.scene);this.lighting.dispose();this.environment?.dispose();
     this.atmosphere?.dispose();
     this.district?.dispose();

@@ -55,7 +55,8 @@
 .viewport-scene-hint button:hover { color: var(--wb-ink, #17222e); }
 
 /* Aggregation in progress after a terminal status (INT-06 / AST-022). */
-.wb-finalizing { font-weight: 600; }
+/* S1: the finalizing banner is gone; the status text in the top bar carries the
+   explanation as its title tooltip plus an aria-describedby description. */
 
 /* Each run notice occupies its own row; measured height reserves scene space. */
 .wb-notices {

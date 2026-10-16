@@ -1,0 +1,9 @@
+/* S8 Home gallery. Only the gallery rule changed in this pass lives here; the shared
+   shell/gallery card styles (16:9 `object-fit: cover` thumbnails) stay in workbench.css. */
+
+/* While the gallery overlay is open, hide the ghosted page header behind it outright
+   instead of leaving it dimmed under the overlay. `:has()` keys off the overlay itself,
+   so the header reappears the moment the gallery closes. */
+.wb:has(.wb-gallery-overlay) > .wb-top {
+  visibility: hidden;
+}

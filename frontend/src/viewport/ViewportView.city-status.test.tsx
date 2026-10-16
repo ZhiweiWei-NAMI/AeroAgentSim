@@ -1,5 +1,8 @@
-import { act, cleanup, fireEvent, render as renderComponent, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render as renderComponent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { RunHeader } from '../contracts/viewer-feed';
 import { TemporalFeedStore } from '../feeds/temporal-store';
@@ -82,5 +85,29 @@ describe('persistent city status and scene hint', () => {
     renderComponent(<View props={props} />);
     const instance = renderer.instances[0];
     expect(typeof instance.fitRegion).toBe('function');
+  });
+
+  it('UX2-E: renders the city-progress card as a light glass pill with an inline accent bar', () => {
+    const props = { ...baseProps() };
+    renderComponent(<View props={props} />);
+    const instance = renderer.instances[0];
+    act(() => { instance.options.onCityProgress?.({ phase: 'buildings', loaded: 200, total: 414 }); });
+    const pill = screen.getByTestId('city-progress');
+    expect(pill).toHaveTextContent('200 / 414 buildings');
+    expect(screen.queryByText('Huangpu city assets')).toBeNull();
+    expect(screen.queryByText('Scene loads progressively; run controls are available')).toBeNull();
+    const bar = within(pill).getByRole('progressbar');
+    expect(bar).toHaveAttribute('value', '200');
+    expect(bar).toHaveAttribute('max', '414');
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), 'viewer.css'), 'utf8');
+    // Glass pill: glass background, hairline border, fully rounded, 12px text, 4px/12px padding.
+    expect(css).toMatch(/\.viewport-city-progress\s*\{[^}]*background:\s*var\(--wb-glass/s);
+    expect(css).toMatch(/\.viewport-city-progress\s*\{[^}]*border:\s*1px solid var\(--wb-line/s);
+    expect(css).toMatch(/\.viewport-city-progress\s*\{[^}]*border-radius:\s*999px/s);
+    expect(css).toMatch(/\.viewport-city-progress\s*\{[^}]*font:\s*12px system-ui/s);
+    expect(css).toMatch(/\.viewport-city-progress\s*\{[^}]*padding:\s*4px 12px/s);
+    // A 2px accent progress bar inside the bottom edge.
+    expect(css).toMatch(/\.viewport-city-progress progress\s*\{[^}]*height:\s*2px/s);
+    expect(css).toMatch(/\.viewport-city-progress progress[^{]*\{[^}]*var\(--wb-accent/s);
   });
 });

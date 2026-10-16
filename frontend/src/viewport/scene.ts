@@ -5,6 +5,10 @@ import { Sky } from 'three/addons/objects/Sky.js';
 export const fogDensity = (visibilityM: number) => Math.sqrt(-Math.log(0.05)) / visibilityM;
 export interface AtmosphereState { dusk: boolean; rain: number; visibilityM: number | null; observerOffsetM?: number }
 const FOG_DAY = new T.Color('#c3c9cf'), FOG_DUSK = new T.Color('#6f6a73'), FILL_RAIN = new T.Color('#aebfd4');
+// The analytic Sky PMREM carries HDR radiance, not a unit-strength ambient colour.
+// Keep it as a small reflection/fill contribution alongside the sun and hemisphere;
+// otherwise PBR concrete saturates while the low-tier Lambert finish stays beige.
+const DAY = { exposure: 0.9, sun: 2.5, fill: 1.05, environment: 0.025, ground: '#aea99f' };
 
 // Operator fog starts near the observed region; UAV captures keep the physical camera origin.
 export const observerFogOffset = (camera: T.Camera, target: T.Vector3) => Math.max(0, camera.position.distanceTo(target) - 150);
@@ -22,7 +26,7 @@ export function visibilityFog(artFog: T.Scene['fog'], weatherFog: T.Fog, visibil
 export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
   const horizon = new T.Color('#72b1e8');
   scene.background = horizon;
-  const artFog = new T.Fog(horizon, 500, 2000), weatherFog = new T.Fog(0xffffff);
+  const artFog = new T.Fog(horizon, 1400, 4000), weatherFog = new T.Fog(0xffffff), neutralHaze = new T.Color();
   scene.fog = artFog;
   const sky = new Sky(); sky.scale.setScalar(10000);
   sky.material.uniforms.turbidity.value = 2.1;
@@ -33,9 +37,9 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
   sky.material.uniforms.sunPosition.value.copy(sunDirection);
   const generator = new T.PMREMGenerator(renderer), skyScene = new T.Scene(); skyScene.add(sky);
   const environment = generator.fromScene(skyScene, 0.04); generator.dispose();
-  scene.environment = environment.texture; scene.environmentIntensity = 0.95; scene.add(sky);
-  const fill = new T.HemisphereLight('#dceeff', '#b8b4a3', 1.45); scene.add(fill);
-  const sun = new T.DirectionalLight('#fff1dc', 3.1); sun.castShadow = true;
+  scene.environment = environment.texture; scene.environmentIntensity = DAY.environment; scene.add(sky);
+  const fill = new T.HemisphereLight('#dceeff', '#b8b4a3', DAY.fill); scene.add(fill);
+  const sun = new T.DirectionalLight('#fff1dc', DAY.sun); sun.castShadow = true;
   sun.position.copy(sunDirection).multiplyScalar(650); scene.add(sun, sun.target);
   Object.assign(sun.shadow.camera, { left: -250, right: 250, top: 250, bottom: -250, near: 1, far: 1600 });
   sun.shadow.bias = -0.0001; sun.shadow.normalBias = 0.1;
@@ -51,8 +55,8 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
       gl_FragColor=vec4(color+vec3(1.0,0.86,0.64)*sun*2.0,1.0);}`,
   }));
   daySky.name = 'display-day-sky'; scene.add(daySky); sky.visible = false;
-  renderer.toneMappingExposure = 1.12;
-  const groundMaterial = new T.MeshStandardMaterial({ color: '#d3c7b3', roughness: 0.96 });
+  renderer.toneMappingExposure = DAY.exposure;
+  const groundMaterial = new T.MeshStandardMaterial({ color: DAY.ground, roughness: 0.96 });
   groundMaterial.userData.lambertCompatible = true;
   groundMaterial.onBeforeCompile = shader => {
     shader.vertexShader = 'varying vec2 displayGroundXZ;\n' + shader.vertexShader;
@@ -82,19 +86,25 @@ export function setupScene(renderer: T.WebGLRenderer, scene: T.Scene) {
     sky.material.uniforms.sunPosition.value.copy(sunDirection);
     sky.material.uniforms.turbidity.value = (dusk ? 3.5 : 2.1) + rain * 3;
     sky.material.uniforms.rayleigh.value = 1.1 * (1 - 0.5 * rain);
-    sun.color.set(dusk ? '#ffba79' : '#fff1dc'); sun.intensity = (dusk ? 1.5 : 3.1) * (1 - 0.45 * rain);
+    sun.color.set(dusk ? '#ffba79' : '#fff1dc'); sun.intensity = (dusk ? 1.5 : DAY.sun) * (1 - 0.45 * rain);
     fill.color.set(dusk ? '#91a8d5' : '#dceeff').lerp(FILL_RAIN, rain * 0.35);
-    fill.intensity = dusk ? 0.35 : 1.45;
-    scene.environmentIntensity = dusk ? 0.22 : 0.95;
+    fill.intensity = dusk ? 0.35 : DAY.fill;
+    scene.environmentIntensity = dusk ? 0.22 : DAY.environment;
     horizon.set(dusk ? '#7f91aa' : '#72b1e8');
     fill.groundColor.set(dusk?'#777c70':'#b8b4a3');
-    groundMaterial.color.set(dusk?'#bbbcb4':'#d3c7b3');
-    renderer.toneMappingExposure = (dusk ? 1 : 1.12) * (1 - 0.15 * rain);
-    artFog.near = dusk ? 850 : 500; artFog.far = dusk ? 4200 : 2000; artFog.color.copy(horizon);
-    weatherFog.color.copy(horizon).lerp(dusk ? FOG_DUSK : FOG_DAY, 0.35);
+    groundMaterial.color.set(dusk ? '#bbbcb4' : DAY.ground);
+    renderer.toneMappingExposure = (dusk ? 1 : DAY.exposure) * (1 - 0.15 * rain);
+    // Preserve local contrast at the operator's overview distance. Recorded
+    // visibility still takes precedence through visibilityFog below.
+    artFog.near = dusk ? 850 : 1400; artFog.far = dusk ? 4200 : 4000; artFog.color.copy(horizon);
+    if (!dusk) {
+      const luminance = 0.2126 * horizon.r + 0.7152 * horizon.g + 0.0722 * horizon.b;
+      artFog.color.lerp(neutralHaze.setRGB(luminance, luminance, luminance), 0.12);
+    }
+    weatherFog.color.copy(artFog.color).lerp(dusk ? FOG_DUSK : FOG_DAY, 0.35);
     scene.fog = visibilityFog(artFog, weatherFog, state.visibilityM, state.observerOffsetM);
     daySky.material.uniforms.horizon.value.copy(scene.fog!.color);
-    scene.background = scene.fog === artFog ? horizon : weatherFog.color;
+    scene.background = scene.fog!.color;
     scene.userData.weatherWet = rain;
     scene.userData.dusk = dusk;
   };

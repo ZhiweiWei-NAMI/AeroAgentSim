@@ -5,7 +5,7 @@ import { resolveBinding, entityId } from './bindings';
 import { modelGlyph } from './model-glyph';
 import { proceduralModel } from './procedural-traffic';
 import { Assets } from './assets';
-import { LabelPlacer, pooledRect } from './label-placement';
+import { LabelPlacer, labelTier, pooledRect, visibleOccluders, type LabelTier, type LabelTierInfo } from './label-placement';
 import type { StaticOcclusion } from './occlusion';
 import { worldOrientation, worldPosition } from './coordinates';
 import type { EntityState } from './feed-store';
@@ -21,6 +21,7 @@ function isFinishedTask(task: { fields: Map<string, { value: unknown }> }): bool
   return state === 'completed' || state === 'failed' || state === 'canceled' || state === 'unreleased';
 }
 
+interface LabelCandidate { id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean; tier?: LabelTier; incident?: Conditions['incidents'][number] }
 interface Batch { meshes: T.InstancedMesh[]; transforms: T.Matrix4[]; keys: EntityKey[]; capacity: number; loaded: boolean; far?: { mesh: T.InstancedMesh; keys: EntityKey[] }; outline?: T.Mesh[]; assetBasis?: T.Quaternion; farDistance?: number }
 /** One catalogued display model, optionally the LOD1 mesh and/or a business tint. */
 interface CatalogSpec { id: string; model: CatalogModel; lod: boolean; tint?: string }
@@ -77,10 +78,14 @@ export class EntityLayer {
   private labelProjected = new T.Vector3();
   private labelEndpoint = new T.Vector3();
   private labelDirection = new T.Vector3();
-  private labelPlacer = new LabelPlacer();
+  readonly labelPlacer = new LabelPlacer();
   private labelLayout?: string;
   private labelWidth = -1;
   private labelHeight = -1;
+  private labelVisibleAt = new WeakMap<HTMLButtonElement, number>();
+  private labelFrame = 0;
+  private candidates: LabelCandidate[] = [];
+  private candidatePool: LabelCandidate[] = [];
   private pinAnchors: Array<{ pin: T.Vector3; base: T.Vector3 }> = [];
   private lastTrail = '';
   /** Display-model catalog of the installed pack; empty keeps the procedural/single-asset display. */
@@ -92,9 +97,26 @@ export class EntityLayer {
   private tinted = new Map<string, T.Material>();
   private headings = new Map<string, number>();
   private entityMeta?: Map<string, { vehicle_class?: string }>;
+  /** null records a distance-hidden label; absence means its first decision. */
+  private labelTiers = new Map<string, LabelTier | null>();
+  private missionSites = new Set<string>();
+  private typeFlags = new Map<string, { uav: boolean; site: boolean; background: boolean; incident: boolean }>();
+  private labelInfo: LabelTierInfo = {};
+  /** Fade state is allocated only when a label enters the reusable DOM pool. */
+  private labelFade = new Map<HTMLButtonElement, { opacity: number; target: number }>();
+  private labelsFading = false;
+  private fadeStep = 0;
   constructor(private header: RunHeader, private assets: Assets, private overlay: HTMLElement,
     private onSelect: (key: EntityKey) => void, private onError: (error: unknown) => void,
     private status: (message: string) => void = () => {}) {
+    for (const type of header.types) {
+      const is = (id: string) => type.typeId === id || type.ancestors.includes(id);
+      this.typeFlags.set(type.typeId, {
+        uav: is('oo:UAV') || is('lowalt:UAV') || is('aas:TrafficUAV'), site: is('lowalt:Site'),
+        background: is('aas:TrafficRoadVehicle') || is('aas:BehaviourInstance'),
+        incident: is('oo:Incident') || is('lowalt:Incident') || is('aas:TrafficIncident'),
+      });
+    }
     this.ring = new T.Mesh(new T.TorusGeometry(0.8, 0.025, 8, 48), new T.MeshBasicMaterial({ color: '#9ce9ff', depthTest: false, transparent: true, opacity: 0.9 }));
     this.ring.rotation.x = -Math.PI / 2; this.ring.visible = false; this.ring.renderOrder=5; this.root.add(this.ring);
     this.trail = new T.Line(new T.BufferGeometry(), new T.LineBasicMaterial({ color: '#30bdf0', transparent: true, opacity: 0.85 }));
@@ -174,6 +196,48 @@ export class EntityLayer {
     if (!this.entityMeta) this.entityMeta = new Map((this.header.entities ?? []).map(row => [row.id, { vehicle_class: row.vehicle_class }]));
     const text = (id: string) => { const value = entity.fields.get(id)?.value; return typeof value === 'string' && value ? value : undefined; };
     return { id: entity.key.id, vehicleClass: text('lowalt.vehicle_class') ?? this.entityMeta.get(entity.key.id)?.vehicle_class, role: text('traffic.actor.role') };
+  }
+  /**
+   * Label tier classification (UX2-E): type/role facts only, no ids. Tier 1 is
+   * always shown; tier 2 within 260 m; tier 3 on hover/selection or within 90 m.
+   * The pure rules live in label-placement.labelTier — this only gathers facts.
+   */
+  private tierInfo(entity: EntityState, id: string, selected: boolean, forced: boolean): LabelTierInfo {
+    const flags = this.typeFlags.get(entity.typeId);
+    const task = this.semanticTasks.get(id);
+    const role = entity.fields.get('traffic.actor.role')?.value;
+    const rescueRole = entity.fields.get('rescue.role')?.value;
+    const rescueStatus = entity.fields.get('rescue.status')?.value;
+    const info = this.labelInfo;
+    info.selected = selected; info.hovered = this.hoverId === id;
+    info.incident = flags?.incident === true || entity.fields.has('rescue.incident_state');
+    info.background = flags?.background === true;
+    info.secondary = flags?.uav === true || flags?.site === true;
+    info.activeVehicle = flags?.uav === true && (
+      !!task && !isFinishedTask(task)
+      || typeof role === 'string' && role !== '' && role !== 'background' && role !== 'idle'
+      || typeof rescueRole === 'string' && rescueRole !== '' && rescueRole !== 'idle'
+        && rescueStatus !== 'completed' && rescueStatus !== 'failed' && rescueStatus !== 'canceled');
+    info.missionSite = flags?.site === true && this.missionSites.has(entity.key.id);
+    // Keep authored generic labels and semantic event labels, without promoting
+    // road vehicles/behaviours or every nearby site to an always-on label.
+    info.always = !info.background && (forced || !info.secondary && this.semantic
+      && labelInterest(entity, undefined, this.semanticInvolved, false, this.semanticAlerts));
+    return info;
+  }
+  /** Called by the existing RAF even when WebGL is idle. No layout reads, timers
+   * or scene invalidation: a 150 ms fade never submits an extra city draw. */
+  advanceLabelFades(deltaSeconds: number) {
+    if (!this.labelsFading || !(deltaSeconds > 0)) return;
+    this.fadeStep = deltaSeconds / 0.15; this.labelsFading = false;
+    this.labelFade.forEach(this.advanceLabelFade, this);
+  }
+  private advanceLabelFade(fade: { opacity: number; target: number }, label: HTMLButtonElement) {
+    if (fade.opacity === fade.target) return;
+    fade.opacity = fade.target === 1 ? Math.min(1, fade.opacity + this.fadeStep) : Math.max(0, fade.opacity - this.fadeStep);
+    label.style.opacity = String(fade.opacity);
+    if (fade.opacity === 0) label.hidden = true;
+    if (fade.opacity !== fade.target) this.labelsFading = true;
   }
   /** Shared-material copy with a business accent; textures stay shared with the source material. */
   private tintMaterial(material: T.Material, color: string): T.Material {
@@ -279,9 +343,20 @@ export class EntityLayer {
   update(store: FeedStore, ns: string, camera: T.Camera, selected?: EntityKey, showTrails = true,
     renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion, aimCamera?: () => void, incidents?: Conditions['incidents'], incidentRoofHeight?: (east: number, north: number) => number, layoutKey?: string) {
     this.transformsChanged=false;this.catalogUsage.clear();
-    if(this.semantic){
-      const stamp=`${store.revision}/${ns}`;
-      if(stamp!==this.semanticStamp){this.semanticStamp=stamp;this.semanticTasks=taskByVehicle(store);
+    // Task→vehicle links feed tier 1 (active UAVs / mission sites) in every mode.
+    const semanticStamp=`${store.revision}/${ns}/${this.semantic}`;
+    if(semanticStamp!==this.semanticStamp){this.semanticStamp=semanticStamp;this.semanticTasks=taskByVehicle(store);
+      this.missionSites.clear();
+      for (const task of this.semanticTasks.values()) {
+        const state = task.fields.get('lowalt.task_state')?.value;
+        // Match the task engine's current leg: origin before pickup, destination
+        // afterwards. Paused tasks and already-visited endpoints are not active sites.
+        const field = state === 'assigned' || state === 'started' || state === 'awaiting_transfer' ? 'lowalt.task_origin'
+          : state === 'picked_up' ? 'lowalt.task_destination' : undefined;
+        const site = field && task.fields.get(field)?.value;
+        if (typeof site === 'string' && site) this.missionSites.add(site);
+      }
+      if(this.semantic){
         const known=(store as FeedStore & {viewCursor?:{knownAt:number}}).viewCursor?.knownAt;
         const activity=this.recentActivity.collect(store,ns,10_000_000_000n,known);
         this.semanticInvolved=activity.involved;this.semanticAlerts=activity.alerts;}
@@ -289,8 +364,9 @@ export class EntityLayer {
     for(const batch of this.batches.values())for(const mesh of [...batch.meshes,...(batch.far?[batch.far.mesh]:[])]){mesh.userData.viewportCount=mesh.count;mesh.userData.viewportChanged=false;}
     this.positions.clear(); this.orientations.clear();this.selection.length=0;for(const batch of this.batches.values())for(const mesh of batch.outline ?? [])mesh.visible=false;
     for (const batch of this.batches.values()) { batch.keys = []; for(const mesh of batch.meshes)mesh.count=0; if(batch.far){batch.far.keys=[];batch.far.mesh.count=0;} }
-    const width=this.overlay.clientWidth,height=this.overlay.clientHeight;
-    const visibleLabels=new Set<string>();
+    const layoutChanged = layoutKey === undefined || layoutKey !== this.labelLayout;
+    const width=layoutChanged?this.overlay.clientWidth:this.labelWidth,height=layoutChanged?this.overlay.clientHeight:this.labelHeight;
+    const labelFrame=++this.labelFrame;
     // Pin anchors (world space, at pin height) reserved as fixed obstacles for this frame.
     const pinAnchors = this.pinAnchors; let pinCount = 0;
     for (const row of incidents ?? []) {
@@ -313,7 +389,7 @@ export class EntityLayer {
       anchor.base.y = -renderOrigin.y;
       worldPosition(marker.position, 'enu', this.header.origin, anchor.pin).sub(renderOrigin); anchor.pin.y += 10;
     }
-    const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean; incident?: Conditions['incidents'][number] }> = [];
+    const candidates=this.candidates;let candidateCount=0;
     for (const [id, entity] of store.entities) {
       let binding = resolveBinding(this.header, entity.typeId); if (!binding) continue;
       if(this.semantic&&entity.typeId==='lowalt:UAV'&&binding.visual.kind==='marker'){
@@ -360,27 +436,27 @@ export class EntityLayer {
       const isSelected=!!selected && entityId(selected)===id;
       const incident = incidents?.find(row => row.id === entity.key.id);
       if (incident?.phase === 'pending') continue;
-      const labelPosition = incident ? position.clone() : position;
-      if (incident) labelPosition.y = Math.max(position.y, incidentRoofHeight?.(incident.position[0], incident.position[1]) ?? occlusion?.liftCamera(position, 0).y ?? position.y) + 14;
-      candidates.push({id,key:entity.key,position:labelPosition,selected:isSelected,forced:!!incident||binding.visual.kind==='label'||this.highlighted.has(id),interest:!!incident,incident});
+      // The semantic rescue pin already supplies this incident's label.
+      if (this.semantic && entity.fields.has('rescue.incident_state')) continue;
+      const index=candidateCount++;
+      const item=this.candidatePool[index] ?? (this.candidatePool[index]={id,key:entity.key,position:new T.Vector3(),selected:false,forced:false});
+      item.id=id;item.key=entity.key;item.position.copy(position);item.selected=isSelected;
+      item.forced=!!incident||binding.visual.kind==='label'||this.highlighted.has(id);item.interest=!!incident;item.incident=incident;item.tier=undefined;
+      if (incident) item.position.y = Math.max(position.y, incidentRoofHeight?.(incident.position[0], incident.position[1]) ?? occlusion?.liftCamera(position, 0).y ?? position.y) + 14;
+      candidates[index]=item;
     }
+    candidates.length=candidateCount;
     // Camera follow uses these exact sampled poses; labels must project through
     // that same final camera transform, rather than the previous frame's view.
     aimCamera?.();
     this.loads.root.visible=this.semantic;if(this.semantic)this.loads.update(store,this.positions);
-    // Semantic label policy (newcomer mode): selected / task-active /
-    // recently event-involved entities always label; others only on real
-    // raycast hover or when show-all is on. Expert mode keeps forced labels.
-    const entityHover=this.hoverId!==undefined&&this.positions.has(this.hoverId)?this.hoverId:undefined;
+    // Tier gating (UX2-E): a tier decision per candidate from type/role facts and
+    // the camera distance, with hysteresis against the previous shown tier.
     for(const item of candidates){
-      if (item.incident) continue;
-      if(this.semantic&&!item.selected){
-        const entity=store.entities.get(item.id)!;
-        const task=this.semanticTasks.get(item.id);
-        const interested=labelInterest(entity,selected,this.semanticInvolved,!!task&&!isFinishedTask(task),this.semanticAlerts);
-        if(!interested&&item.id!==entityHover&&!this.showAllLabels)continue;
-      }
-      if(this.semantic)item.interest=true;
+      if(item.incident){item.tier=1;continue;}
+      const entity=store.entities.get(item.id)!;
+      item.tier=labelTier(this.tierInfo(entity,item.id,item.selected,item.forced),item.position.distanceTo(camera.position),this.labelTiers.get(item.id),this.showAllLabels);
+      this.labelTiers.set(item.id,item.tier??null);item.interest=item.tier===1;
     }
     for(const batch of this.batches.values())for(const mesh of [...batch.meshes,...(batch.far?[batch.far.mesh]:[])]){
       if(mesh.userData.viewportChanged)mesh.instanceMatrix.needsUpdate=true;
@@ -393,15 +469,15 @@ export class EntityLayer {
     if (layoutKey === undefined || layoutKey !== this.labelLayout || width !== this.labelWidth || height !== this.labelHeight) {
       this.labelLayout = layoutKey; this.labelWidth = width; this.labelHeight = height;
       const wb = this.overlay.closest('.wb'), overlayRect = this.overlay.getBoundingClientRect();
+      const occluders = visibleOccluders(wb ?? this.overlay);
       const frame = wb?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
       if (frame && frame.width > 0) {
         safe.left = frame.left - overlayRect.left; safe.right = frame.right - overlayRect.left;
         safe.top = frame.top - overlayRect.top; safe.bottom = frame.bottom - overlayRect.top;
       } else { safe.left = 8; safe.right = width - 8; safe.top = 8; safe.bottom = height - 8; }
-      const panels = wb?.querySelectorAll('.wb-panel, .wb-camera, .wb-graph, .wb-history, .wb-waiting');
-      placer.panelCount = panels?.length ?? 0;
+      placer.panelCount = occluders.length;
       for (let i = 0; i < placer.panelCount; i++) {
-        const dom = panels![i].getBoundingClientRect(), rect = pooledRect(placer.panels, i);
+        const dom = occluders[i].getBoundingClientRect(), rect = pooledRect(placer.panels, i);
         rect.left = dom.left - overlayRect.left; rect.right = dom.right - overlayRect.left;
         rect.top = dom.top - overlayRect.top; rect.bottom = dom.bottom - overlayRect.top;
       }
@@ -416,9 +492,12 @@ export class EntityLayer {
       rect.left = px - pad; rect.right = px + pad; rect.top = py - pad;
       rect.bottom = Math.max(py + pad * 1.5, (1 - leader.y) * height / 2 + 4);
     }
-    candidates.sort((a,b)=>Number(!!b.incident)-Number(!!a.incident)||Number(b.selected)-Number(a.selected)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
+    candidates.sort((a,b)=>Number(b.selected)-Number(a.selected)||Number(b.id===this.hoverId)-Number(a.id===this.hoverId)||Number(!!b.incident)-Number(!!a.incident)||(a.tier??4)-(b.tier??4)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
     for(const item of candidates) {
-      if(this.semantic&&!item.interest)continue;
+      if(item.tier===undefined){
+        const label=this.labels.get(item.id),fade=label&&this.labelFade.get(label);
+        if(!fade||fade.opacity===0)continue;
+      }
       if(!item.interest&&!item.selected&&!item.forced&&(placer.occupiedCount>=12||labelAttempts>=32))continue;
       const world=this.labelWorld.copy(item.position);world.y+=2;
       const projected=this.labelProjected.copy(world).project(camera);
@@ -432,7 +511,7 @@ export class EntityLayer {
         if(world.distanceToSquared(camera.position)>0.04&&occlusion.blocked(camera.position,endpoint))continue;
       }
       let label=this.labels.get(item.id);
-      if(!label){label=document.createElement('button');label.className='entity-label';label.dataset.entityId=item.key.id;label.onclick=()=>this.onSelect(item.key);this.overlay.append(label);this.labels.set(item.id,label);}
+      if(!label){label=document.createElement('button');label.className='entity-label';label.dataset.entityId=item.key.id;const key=item.key;label.onclick=()=>this.onSelect(key);this.overlay.append(label);this.labels.set(item.id,label);}
       let semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header,this.locale):item.key.id;
       if (item.incident) {
         const row = item.incident, zh = this.locale.startsWith('zh');
@@ -448,7 +527,10 @@ export class EntityLayer {
         this.labelStyles.set(label, styleKey);
       }
       if(label.textContent!==semanticText)label.textContent=semanticText;
+      let fade=this.labelFade.get(label);
+      if(!fade){fade={opacity:0,target:0};this.labelFade.set(label,fade);label.style.opacity='0';}
       if(label.hidden)label.hidden=false;
+      label.classList.toggle('selected',item.selected);
       // Business-interest labels used to bypass collision avoidance entirely;
       // colocated task-active UAVs obscured each other. Measure the actual label.
       const maxWidth = `${Math.max(0, safe.right - safe.left)}px`;
@@ -462,16 +544,25 @@ export class EntityLayer {
         this.labelMetrics.set(label, metrics);
       }
       // The incident's own label sits just above its pin by design; other labels move away.
-      const placed = placer.place(x, y, metrics.width, metrics.height, item.selected, !item.incident);
+      const placed = placer.place(x, y, metrics.width, metrics.height, item.selected||item.id===this.hoverId, !item.incident);
       if (!placed) continue;
-      visibleLabels.add(item.id);
+      const target=item.tier===undefined?0:1;
+      if(fade.target!==target){
+        fade.target=target;this.labelsFading=true;
+        // Fading-out buttons immediately leave pointer/keyboard interaction.
+        label.disabled=target===0;label.tabIndex=target===0?-1:0;
+      }
+      this.labelVisibleAt.set(label,labelFrame);
       const left=`${placed.x}px`,top=`${placed.y}px`;
       if(label.style.left!==left)label.style.left=left;if(label.style.top!==top)label.style.top=top;
-      label.classList.toggle('selected',item.selected);Object.assign(pooledRect(placer.occupied, placer.occupiedCount++), placed.box);
+      Object.assign(pooledRect(placer.occupied, placer.occupiedCount++), placed.box);
     }
-    for(const [id,label] of this.labels)if(!visibleLabels.has(id)&&!label.hidden)label.hidden=true;
+    for(const [id,label] of this.labels)if(this.labelVisibleAt.get(label)!==labelFrame){
+      label.hidden=true;const fade=this.labelFade.get(label);if(fade){fade.opacity=0;fade.target=0;label.style.opacity='0';}
+    }
+    for(const id of this.labelTiers.keys())if(!this.positions.has(id))this.labelTiers.delete(id);
     // Keep a small reusable label pool; retired generations cannot accumulate DOM.
-    for(const [id,label] of this.labels)if(!this.positions.has(id)||(this.labels.size>64&&label.hidden)){label.remove();this.labels.delete(id);}
+    for(const [id,label] of this.labels)if(!this.positions.has(id)||(this.labels.size>64&&label.hidden)){label.remove();this.labels.delete(id);this.labelFade.delete(label);}
     this.labelsMs = performance.now() - labelsStarted;
     let ringed = 0;
     for (const id of this.highlighted) {
@@ -517,5 +608,5 @@ export class EntityLayer {
     for(const hit of raycaster.intersectObject(this.root,true))for(const batch of this.batches.values()){if(batch.meshes.includes(hit.object as T.InstancedMesh)&&hit.instanceId!==undefined)return batch.keys[hit.instanceId];if(hit.object===batch.far?.mesh&&hit.instanceId!==undefined)return batch.far.keys[hit.instanceId];}
     return undefined;
   }
-  dispose(){this.disposed=true;this.loads.dispose();for(const label of this.labels.values())label.remove();for(const material of this.tinted.values())material.dispose();this.tinted.clear();}
+  dispose(){this.disposed=true;this.loads.dispose();for(const label of this.labels.values())label.remove();for(const material of this.tinted.values())material.dispose();this.tinted.clear();this.labelTiers.clear();this.labelFade.clear();}
 }

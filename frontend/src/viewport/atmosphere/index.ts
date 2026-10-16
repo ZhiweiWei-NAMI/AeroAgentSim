@@ -28,6 +28,7 @@ export class AtmosphereLayer {
   private wind?: WindStreaks;
   private time = new ScalarUniform();
   private pinHeight = 0;
+  private viewportHeight?: number;
   private windEast = NaN;
   private windNorth = NaN;
   private emptyRing = new Map<string, number>();
@@ -59,7 +60,7 @@ export class AtmosphereLayer {
     this.wind?.setQuality(quality);
   }
   invalidateSurface() { this.incidents.invalidateSurface(); }
-  setPinHeightCss(heightCssPx: number) { this.incidents.setPinScale(heightCssPx); }
+  setPinHeightCss(heightCssPx: number) { this.viewportHeight = heightCssPx; this.incidents.setPinScale(heightCssPx); }
   update(conditions: Conditions, simSeconds: number, camera: T.Camera,
     roofHeight?: (east: number, north: number) => number, ringStart?: Map<string, number>, origin?: T.Vector3, orbitTarget?: T.Vector3) {
     if (this.preview) this.applyPreview(conditions, orbitTarget ? observerFogOffset(camera, orbitTarget) : 0);
@@ -68,10 +69,10 @@ export class AtmosphereLayer {
     if (east !== this.windEast || north !== this.windNorth) {
       this.incidents.setWind(east, north); this.windEast = east; this.windNorth = north;
     }
-    // The pin is screen-space: size it from the container's CSS height (the drawing buffer
-    // would double-count devicePixelRatio).
+    // The run viewport supplies CSS height from its resize observer. Preview
+    // and offscreen capture owners may still derive it from their own canvas.
     const dom = this.renderer.domElement;
-    const height = dom.clientHeight || Math.round(dom.height / this.renderer.getPixelRatio());
+    const height = this.viewportHeight ?? (dom.clientHeight || Math.round(dom.height / this.renderer.getPixelRatio()));
     if (height !== this.pinHeight) { this.pinHeight = height; this.incidents.setPinScale(height); }
     const ring = ringStart ?? this.emptyRing;
     this.incidents.update(conditions.incidents, this.time, camera, ring, origin, roofHeight);

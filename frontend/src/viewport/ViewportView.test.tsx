@@ -1,4 +1,7 @@
 import { act, cleanup, fireEvent, render as renderComponent, screen, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import { I18nProvider, useI18n } from '../i18n/I18nProvider';
@@ -145,7 +148,7 @@ describe('viewport bilingual controls', () => {
     window.localStorage.setItem('aeroagentsim.locale', 'zh-CN');
     const props = { ...session(), ...handlers(), simple: true, mode: 'orbit' as const, quality: 'med' as const, trails: true };
     renderComponent(<View props={props} />);
-    expect(screen.getByLabelText('地图图例')).toHaveTextContent('空域与运行');
+    expect(screen.getByLabelText('地图图例')).toHaveTextContent('图例');
     expect(screen.getByText('加载场景数据后显示图例')).toBeInTheDocument();
     expect(screen.getByTestId('semantic-zone-count')).toHaveTextContent('0 个有效空域');
     fireEvent.click(screen.getByLabelText('显示所有标签'));
@@ -155,7 +158,7 @@ describe('viewport bilingual controls', () => {
     expect(screen.getByTestId('semantic-zone-count')).toHaveTextContent('1 个有效空域');
   });
 
-  it('stacks the legend above the conditions HUD in one bottom-left column with a flood footnote', () => {
+  it('merges the legend into one bottom-left card above the conditions row with a collapsed legend', () => {
     const { store, clock } = session();
     const floodKey = { id: 'flood-1', generation: 0 };
     store.ingest({ commitIndex: 4, at: at('1500000000'), created: [{ ...floodKey, typeId: 'Unit' }],
@@ -165,23 +168,41 @@ describe('viewport bilingual controls', () => {
     const props = { store, clock, ...handlers(), simple: true, bare: true, mode: 'orbit' as const, quality: 'med' as const, trails: true };
     renderComponent(<View props={props} />);
     const instance = renderer.instances[0];
-    act(() => { instance.options.onLegend([{ label: 'Flood extent', color: '#259fc7' }], 0); });
+    act(() => { instance.options.onLegend([{ label: 'Flood extent', color: '#259fc7' }, { label: 'Rooftop rescuer', color: '#e69f00' }], 0); });
     // Feed the HUD through the same subscriber the viewport wires to its conditions callback.
     act(() => { instance.onConditions.mock.calls[0][0]({ wind: null, precipitationMmH: 0, visibilityM: null, light: 'day', incidents: [] }); });
     const legend = screen.getByTestId('semantic-legend');
     const hud = screen.getByTestId('wb-conditions-hud');
-    // Legend and HUD share one bottom-left column; the legend comes first, so CSS cannot stack them over each other.
-    const column = legend.parentElement!;
-    expect(column.className).toBe('viewport-overlays');
-    expect(column).toContainElement(hud);
-    expect([...column.children].indexOf(legend)).toBeLessThan([...column.children].indexOf(hud.parentElement!));
-    // The footnote states the authored semantics instead of implying a water simulation.
-    expect(screen.getByText('Authored flood extent — not a water simulation')).toBeInTheDocument();
-    // The toggle drives data-open, which the <900 px media query keys the collapsed legend on.
-    const toggle = screen.getByRole('button', { name: 'Show legend' });
+    // Conditions and legend share one card: the conditions row is on top.
+    const card = screen.getByTestId('viewport-overlay-card');
+    expect(card).toContainElement(hud);
+    expect(card).toContainElement(legend);
+    expect([...card.children].indexOf(hud)).toBeLessThan([...card.children].indexOf(legend));
+    // The legend is collapsed by default: the title, its dots and a chevron are the only visible chrome.
     expect(legend).toHaveAttribute('data-open', 'false');
+    expect(within(legend).getByText('Legend')).toBeInTheDocument();
+    expect(legend.querySelectorAll('.semantic-legend-dots i')).toHaveLength(2);
+    const toggle = within(legend).getByRole('button', { name: 'Show legend' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(toggle);
-    expect(screen.getByRole('button', { name: 'Hide legend' })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByTestId('semantic-legend')).toHaveAttribute('data-open', 'true');
+    expect(legend).toHaveAttribute('data-open', 'true');
+    expect(within(legend).getByRole('button', { name: 'Hide legend' })).toHaveAttribute('aria-expanded', 'true');
+    // The footnote is part of the expanded card only.
+    expect(screen.getByText('Authored flood extent — not a water simulation')).toBeInTheDocument();
+  });
+
+  it('ships the S5 label and S6 camera-rail styling', () => {
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), 'viewer.css'), 'utf8');
+    // S5: smaller, calmer labels on a dark translucent chip.
+    expect(css).toMatch(/\.entity-label\s*\{[^}]*font:\s*12px system-ui/s);
+    expect(css).toMatch(/\.entity-label\s*\{[^}]*background:\s*rgba\(11,\s*19,\s*31,\s*\.72\)/s);
+    expect(css).toMatch(/\.entity-label\s*\{[^}]*border-radius:\s*6px/s);
+    expect(css).toMatch(/\.entity-label\.selected\s*\{[^}]*border-color:\s*#a4edff/s);
+    // S6: neutral glass rail; the active state is a 2px accent ring, never a cyan fill.
+    expect(css).toMatch(/\.wb \.wb-camera\s*\{[^}]*background:\s*var\(--wb-glass/s);
+    expect(css).toMatch(/\.wb \.wb-camera \.wb-btn\[aria-pressed='true'\]\s*\{[^}]*0 0 0 2px var\(--wb-accent/s);
+    // UX2-E: the conditions card caps at 440px and chips wrap whole, never mid-word.
+    expect(css).toMatch(/\.viewport-card\s*\{[^}]*max-width:\s*440px/s);
+    expect(css).toMatch(/\.wb-cond-chip\s*\{[^}]*white-space:\s*nowrap/s);
   });
 });

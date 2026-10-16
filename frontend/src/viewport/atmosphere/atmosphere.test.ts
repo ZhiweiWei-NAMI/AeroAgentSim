@@ -124,10 +124,10 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     rig.setAtmosphere({ ...clear, visibilityM: 5000 });
     expect(scene.fog).toBe(art);
     rig.setAtmosphere(clear);
-    expect(scene.fog).toBe(art); expect(art!.color.equals(rig.horizon)).toBe(true);
-    expect(scene.fog).toMatchObject({ near: 500, far: 2000 });
-    expect(rig.sun.intensity).toBe(3.1); expect(rig.fill.intensity).toBe(1.45); expect(render.toneMappingExposure).toBe(1.12);
-    expect(rig.daySky.material.uniforms.horizon.value.equals(rig.horizon)).toBe(true);
+    expect(scene.fog).toBe(art); expect(art!.color.equals(scene.background as T.Color)).toBe(true);
+    expect(scene.fog).toMatchObject({ near: 1400, far: 4000 });
+    expect(rig.sun.intensity).toBe(2.5); expect(rig.fill.intensity).toBe(1.05); expect(render.toneMappingExposure).toBe(0.9);
+    expect(rig.daySky.material.uniforms.horizon.value.equals(art!.color)).toBe(true);
     rig.dispose();
   });
   it('restores exact dry materials at high and low quality', () => {

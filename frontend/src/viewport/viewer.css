@@ -1,9 +1,24 @@
 .viewer-main { display: flex; flex: 1; min-height: 0; }
 .viewport-canvas { position: absolute; inset: 0; }
+/* S6: the camera rail is neutral glass, never the night pad. Its base rules live in
+   workbench.css (`wb-camera wb-night`); these higher-specificity overrides keep the rail in
+   the one calm glass language. The active state is a 2px --wb-accent ring with an accent icon,
+   never a teal/cyan fill. */
+.wb .wb-camera { background: var(--wb-glass, rgba(250, 252, 255, .84)); border: 1px solid rgba(255, 255, 255, .6);
+  color: var(--wb-ink, #14202e); box-shadow: var(--wb-shadow, 0 10px 30px rgba(9, 20, 36, .22));
+  backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); }
+.wb .wb-camera .wb-btn { background: rgba(255, 255, 255, .72); color: var(--wb-ink, #14202e); border: 1px solid var(--wb-line, rgba(20, 32, 46, .12)); }
+.wb .wb-camera .wb-btn:hover:not(:disabled) { background: #fff; border-color: var(--wb-accent, #1f7ae0); }
+.wb .wb-camera .wb-btn[aria-pressed='true'] { background: #fff; border-color: var(--wb-accent, #1f7ae0); color: var(--wb-accent, #1f7ae0);
+  box-shadow: 0 0 0 2px var(--wb-accent, #1f7ae0); }
+.wb .wb-camera .wb-btn[aria-pressed='true']:focus-visible { outline: 2px solid var(--wb-accent, #1f7ae0); outline-offset: 2px; }
+.wb .wb-camera hr { background: var(--wb-line, rgba(20, 32, 46, .12)); }
 .viewport-canvas canvas { width: 100%; height: 100%; display: block; touch-action: none; }
 .viewport-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.entity-label { position: absolute; transform: translate(-50%, -100%); border: 1px solid #ffffffb0; background: #f8fcfddd; color: #45616e; padding: 3px 7px; border-radius: 5px; font: 10px monospace; pointer-events: auto; cursor: pointer; }
-.entity-label.selected { background: #244956; color: white; border-color: #244956; }
+.entity-label { position: absolute; transform: translate(-50%, -100%); pointer-events: auto; cursor: pointer;
+  padding: 3px 7px; border-radius: 6px; font: 12px system-ui;
+  background: rgba(11, 19, 31, .72); color: #eef3f9; border: 1px solid rgba(255, 255, 255, .12); }
+.entity-label.selected { background: #075b7e; border-color: #a4edff; box-shadow: 0 0 0 2px #18b8de33; }
 .viewer-sidebar { width: 310px; overflow: auto; border-left: 1px solid #e0e7ea; background: #fff; padding: 20px; }
 @media (max-width: 850px) { .viewer-sidebar { width: 250px; padding: 14px; } }
 /* P7a: compact strategy-view controls, quiet chrome, source-aware status. */
@@ -17,8 +32,6 @@
 .scene-status details[open] > div { max-height: 120px; overflow: auto; margin-top: 4px; }
 .director-toolbar :focus-visible, .event-strip button:focus-visible { outline: 2px solid #a4edff; outline-offset: 2px; }
 .scene-attribution { position: absolute; bottom: 6px; right: 10px; padding: 2px 4px; background: #ffffffa8; color: #344b5a; font: 9px system-ui; pointer-events: none; }
-.entity-label { background: #10283ddd; color: #e4f4fd; border-color: #7799aa; border-radius: 4px; padding: 4px 8px; font: 11px system-ui; box-shadow: 0 2px 5px #14263533; }
-.entity-label.selected { background: #075b7e; border-color: #a4edff; box-shadow: 0 0 0 2px #18b8de33; }
 .mission-overlay { position: absolute; bottom: 20px; left: 20px; width: min(520px, 65%); color: #dcebf4; }
 .mission-timeline { background: #132a3ded; border: 1px solid #456277; border-radius: 7px; font: 11px system-ui; box-shadow: 0 8px 25px #142b3630; }
 .mission-timeline summary { padding: 10px 12px; cursor: pointer; }
@@ -34,38 +47,59 @@
 .event-strip { height: 7px; position: relative; margin: 4px 5px 0; background: #223c4d88; border-radius: 2px; }
 .event-strip button { position: absolute; top: -5px; transform: translateX(-50%); width: 14px; height: 18px; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .event-strip button::before { content: ''; position: absolute; left: 5px; top: 5px; width: 4px; height: 7px; background: #67d9ea; }
-/* Newcomer semantic overlay (simple mode only). The legend sits in the shared
-   bottom-left column above the conditions HUD and wears the same glass style. */
-.semantic-legend { position: static; z-index: 6; pointer-events: auto; background: var(--wb-glass, rgba(250, 252, 255, .84)); color: var(--wb-ink, #14202e); border: 1px solid rgba(255, 255, 255, .6); border-radius: var(--wb-radius, 14px); padding: 8px 10px; font: 11px system-ui; display: flex; flex-direction: column; gap: 4px; max-width: 280px; box-shadow: var(--wb-shadow, 0 10px 30px rgba(9, 20, 36, .22)); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); }
-.semantic-legend-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.semantic-legend-title { font-weight: 600; letter-spacing: .02em; }
-.semantic-legend-toggle { all: unset; cursor: pointer; display: none; padding: 0 4px; color: var(--wb-muted, #5b6b7d); font: 11px system-ui; }
-.semantic-legend-entries { display: flex; flex-wrap: wrap; gap: 4px 10px; }
-.semantic-legend-entry { display: inline-flex; align-items: center; gap: 4px; }
-.semantic-legend-entry.muted { color: var(--wb-muted, #5b6b7d); }
-.semantic-legend-entry i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
-.semantic-legend-footnote { margin: 0; color: var(--wb-muted, #5b6b7d); font-size: 10px; }
-.semantic-showall { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
-.semantic-zone-count { color: var(--wb-ok, #1fae6b); }
-/* Below 900 px the legend keeps only its title and the toggle; expanding restores the rest. */
-@media (max-width: 900px) {
-  .semantic-legend-toggle { display: inline-block; }
-  .semantic-legend-entries, .semantic-legend-footnote, .semantic-showall, .semantic-zone-count { display: none; }
-  .semantic-legend[data-open="true"] .semantic-legend-entries, .semantic-legend[data-open="true"] .semantic-showall { display: flex; }
-  .semantic-legend[data-open="true"] .semantic-legend-footnote { display: block; }
-  .semantic-legend[data-open="true"] .semantic-zone-count { display: inline; }
-}
+/* S4: one bottom-left card holds the conditions row on top and the legend below.
+   The card is the single glass surface; the conditions row inside it is plain. */
+.viewport-card { pointer-events: auto; display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: 440px;
+  box-sizing: border-box; min-width: 0; max-inline-size: min(440px, 100%);
+  padding: 7px 10px; background: var(--wb-glass, rgba(250, 252, 255, .84)); color: var(--wb-ink, #14202e);
+  border: 1px solid rgba(255, 255, 255, .6); border-radius: var(--wb-radius, 14px); box-shadow: var(--wb-shadow, 0 10px 30px rgba(9, 20, 36, .22));
+  backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); }
+.viewport-card .wb-cond-hud { position: static; left: auto; bottom: auto; max-width: 100%; padding: 0; background: none;
+  border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* Newcomer semantic legend. Collapsed to one row: "Legend" + up to six colour dots + a chevron.
+   Expanding reveals two-column entries, then the footnote; it grows upward from the card's
+   bottom anchor because the card is anchored to the bottom-left corner. */
+.semantic-legend { pointer-events: auto; display: flex; flex-direction: column; gap: 4px; font: 11px system-ui; max-width: 360px;
+  padding-top: 6px; border-top: 1px solid var(--wb-line, rgba(20, 32, 46, .12)); }
+/* No conditions row above the legend: drop the divider so the card has one clean surface. */
+.semantic-legend:first-child { padding-top: 0; border-top: 0; }
+.semantic-legend-head { display: flex; align-items: center; gap: 8px; width: 100%; }
+.semantic-legend-title { font-weight: 600; letter-spacing: .02em; color: var(--wb-muted, #5b6b7d); }
+.semantic-legend-dots { display: inline-flex; align-items: center; gap: 3px; }
+.semantic-legend-dots i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.semantic-legend-toggle { cursor: pointer; min-height: 24px; padding: 0; border: 0; background: none; text-align: left;
+  border-radius: 5px; color: var(--wb-muted, #5b6b7d); font: 11px system-ui; }
+.semantic-legend-chevron { margin-left: auto; }
+.semantic-legend-toggle:hover { background: rgba(20, 32, 46, .07); color: var(--wb-ink, #14202e); }
+.semantic-legend-toggle:focus-visible { outline: 2px solid rgba(31, 122, 224, .35); outline-offset: 1px; }
+.semantic-legend-entries { display: none; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 12px; }
+.semantic-legend-entry { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.semantic-legend-entry.muted { color: var(--wb-muted, #5b6b7d); grid-column: 1 / -1; }
+.semantic-legend-entry i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; flex: none; }
+.semantic-legend-footnote { display: none; margin: 0; color: var(--wb-muted, #5b6b7d); font-size: 10px; }
+.semantic-showall { display: none; align-items: center; gap: 5px; cursor: pointer; }
+.semantic-zone-count { display: none; color: var(--wb-ok, #1fae6b); }
+.semantic-legend[data-open="true"] .semantic-legend-entries { display: grid; }
+.semantic-legend[data-open="true"] .semantic-legend-footnote { display: block; }
+.semantic-legend[data-open="true"] .semantic-showall { display: inline-flex; }
+.semantic-legend[data-open="true"] .semantic-zone-count { display: inline; }
 
 .entity-label[data-glyph]:before{display:inline-block;margin-right:5px;font-size:13px;}
 .entity-label[data-glyph="package"]:before{content:"▣";color:#e69f00}.entity-label[data-glyph="cross"]:before{content:"✚";color:#cc79a7}.entity-label[data-glyph="eye"]:before{content:"◉";color:#56b4e9}.entity-label[data-glyph="person"]:before{content:"●";color:#009e73}.entity-label[data-glyph="road"]:before{content:"▰";color:#e69f00}
 .viewport-canvas[data-semantic-hover]:not([data-semantic-hover=""]):after{content:attr(data-semantic-hover);position:absolute;top:12px;left:12px;padding:7px 10px;background:#17354e;color:white;border-radius:6px;pointer-events:none;}
 
 .entity-label[data-glyph="shield"]:before{content:"⬟";color:#0072b2}.entity-label[data-glyph="spray"]:before{content:"✿";color:#009e73}
-.viewport-city-progress{position:absolute;top:68px;left:18px;z-index:8;display:grid;gap:5px;min-width:224px;padding:12px 14px;border:1px solid rgba(143,172,196,.35);border-radius:8px;background:rgba(15,28,42,.92);color:#edf5fb;box-shadow:0 4px 18px #0002;pointer-events:none;font-size:12px}
-.viewport-city-progress>span{font-size:10px;color:#aebfce;letter-spacing:.07em}
-.viewport-city-progress strong{font-weight:500}
-.viewport-city-progress progress{width:100%;height:4px;accent-color:#5bb9df}
-.viewport-city-progress small{font-size:10px;color:#aebfce}
+/* UX2-E: the "Huangpu city assets / N buildings" card is a light glass pill in the
+   overlay language: --wb-glass background, --wb-line border, fully rounded, 12px text,
+   tight 4px/12px padding, with a 2px accent progress bar along the bottom edge. It sits
+   top-left under the Objects tab at the shared overlay inset. */
+.viewport-city-progress{position:absolute;top:68px;left:18px;z-index:8;display:flex;align-items:center;gap:6px;width:max-content;max-width:min(320px,60%);padding:4px 12px;border:1px solid var(--wb-line,rgba(20,32,46,.12));border-radius:999px;background:var(--wb-glass,rgba(250,252,255,.84));color:var(--wb-ink,#14202e);box-shadow:var(--wb-shadow,0 10px 30px rgba(9,20,36,.22));backdrop-filter:blur(16px) saturate(1.25);-webkit-backdrop-filter:blur(16px) saturate(1.25);pointer-events:none;font:12px system-ui;overflow:hidden}
+.viewport-city-progress strong{font-weight:500;white-space:nowrap}
+.viewport-city-progress progress{position:absolute;left:0;right:0;bottom:0;width:100%;height:2px;-webkit-appearance:none;appearance:none;border:0;background:transparent;padding:0;margin:0}
+.viewport-city-progress progress::-webkit-progress-bar{background:transparent}
+.viewport-city-progress progress::-webkit-progress-value{background:var(--wb-accent,#1f7ae0)}
+.viewport-city-progress progress::-moz-progress-bar{background:var(--wb-accent,#1f7ae0)}
 
 /* Conditions HUD (run viewport bottom-left of the visible scene frame, above the playback bar;
    ScenePreview positions its own copy). One compact row, width: max-content, capped to the
@@ -77,11 +111,9 @@
   font: 12px system-ui; box-sizing: border-box; pointer-events: auto; }
 /* Anchored to the visible scene frame (right of the Objects panel) like the KPI cards, with
    --wb-left-space / --wb-dock; without a workbench frame it stays at the plain viewport edge.
-   One bottom-left flex column: the semantic legend above the conditions HUD, 8 px apart, so the
-   two can never overlap (finding f30). */
+   The single S4 card (conditions + legend) is the only child, so nothing can overlap. */
 .viewport-overlays { position: absolute; z-index: 6; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
   left: 12px; right: 12px; bottom: 12px; pointer-events: none; }
-.viewport-overlays .viewport-conditions { position: static; }
 .viewport-overlays .wb-cond-hud { position: static; left: auto; bottom: auto; max-width: 100%; }
 .wb .viewport-overlays { left: calc(var(--wb-left-space, var(--wb-left)) + var(--wb-gap) * 2);
   right: calc(var(--wb-right-space, var(--wb-right)) + var(--wb-gap) * 2);
@@ -106,12 +138,16 @@
 .wb-cond-bar { display: inline-flex; gap: 2px; }
 .wb-cond-bar i { width: 10px; height: 4px; border-radius: 1px; background: #385164; }
 .wb-cond-bar i.on { background: #67d9ea; }
-/* Plain text segments split by thin 1 px dividers; only the Fire chip keeps a warm outline. */
-.wb-cond-chips { display: inline-flex; flex-shrink: 0; flex-wrap: wrap; max-width: 100%; gap: 6px 0; align-items: center; white-space: nowrap; }
+/* Plain text segments split by thin 1 px dividers; only the Fire chip keeps a warm outline.
+   UX2-E: the row wraps between chips only — every chip keeps its words on one line. */
+.wb-cond-chips { display: inline-flex; flex: 0 1 auto; flex-wrap: wrap; min-width: 0; max-width: 100%; gap: 6px 0; align-items: center; white-space: nowrap; }
 .wb-cond-chip { padding: 0 8px; border-right: 1px solid #7799aa33; white-space: nowrap; }
 .wb-cond-chip:first-child { padding-left: 0; }
 .wb-cond-chip.warn { border: 1px solid var(--wb-warn, #e8a317); color: var(--wb-warn, #e8a317); border-radius: 999px; padding: 0 7px; margin: 0 4px; }
 .wb-cond-chip.warn + .wb-cond-chip { border-left: none; }
+/* The HUD itself: chips wrap at the 440px card limit but never inside a word like "Dusk". */
+.viewport-card .wb-cond-hud { max-width: 100%; min-width: 0; }
 .wb-cond-info { all: unset; cursor: pointer; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #7799aa88; text-align: center; line-height: 12px; font-size: 9px; font-style: italic; font-family: serif; pointer-events: auto; }
+.wb-cond-info:focus-visible { outline: 2px solid var(--wb-accent, #1f7ae0); outline-offset: 2px; }
 .wb-cond-note { margin: 0; color: var(--wb-muted, #5b6b7d); font-size: 10px; }
 @media (prefers-reduced-motion: reduce) { .wb-cond-dial-needle { transition: none; } }

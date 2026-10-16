@@ -22,6 +22,7 @@ import type { Viewport } from '../viewport/viewport';
 import { ApiError, sameRunRecords, TERMINAL, WorkbenchApi, type Project, type RunRecord } from './api';
 import { sameDraftValue } from './merge-draft';
 import { Dock, type DockTab } from './Dock';
+import { createPlaybackUpdates, PlaybackRegion } from './playback-updates';
 import { Gallery } from './Gallery';
 import { InspectorPanel } from './InspectorPanel';
 import { ObjectsPanel } from './ObjectsPanel';
@@ -55,6 +56,24 @@ const ArtifactsPanel = lazyWithRetry(() => import('../observations/ArtifactsPane
 type Toast = { id: number; kind: 'info' | 'success' | 'error'; text: string };
 type Camera = 'orbit' | 'follow' | 'chase';
 
+const OBJECTS_OPEN_KEY = 'aeroagentsim.objectsOpen';
+/** S3: the remembered objects-panel choice; private mode just falls back to collapsed. */
+const storedOpen = (key: string) => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
+const rememberOpen = (key: string, value: boolean) => { try { localStorage.setItem(key, value ? '1' : '0'); } catch { /* storage unavailable */ } };
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => typeof window.matchMedia === 'function' && window.matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const list = window.matchMedia(query);
+    const update = () => setMatches(list.matches);
+    update();
+    list.addEventListener('change', update);
+    return () => list.removeEventListener('change', update);
+  }, [query]);
+  return matches;
+}
+
 /**
  * The one scene. A fixed 3D world fills the screen; every tool hovers over it.
  * URL query carries context: run, mode, t (nanoseconds), cut, sel, panel, records, compare, graph, gallery, contract.
@@ -87,7 +106,11 @@ export default function Workbench() {
   const assistantOpen = panel === 'assistant';
   const graph = query.get('graph');
   const navigation = useRef({ pathname: location.pathname, search: location.search });
-  navigation.current = { pathname: location.pathname, search: location.search };
+  const routedLocation = useRef(location);
+  if (routedLocation.current !== location) {
+    routedLocation.current = location;
+    navigation.current = { pathname: location.pathname, search: location.search };
+  }
   const update = useCallback((patch: Record<string, string | undefined>, push = false, path?: string) => {
     const current = navigation.current, next = new URLSearchParams(current.search);
     for (const [key, value] of Object.entries(patch)) { if (value === undefined) next.delete(key); else next.set(key, value); }
@@ -187,13 +210,21 @@ export default function Workbench() {
     const clock = recordedSession?.clock;
     if (!clock?.playing) return;
     const remember = () => {
-      if (clock.playing && new URLSearchParams(navigation.current.search).get('t') !== clock.ns) update({ t: clock.ns, cut: undefined });
+      if (!clock.playing) return;
+      const current = navigation.current, next = new URLSearchParams(current.search);
+      if (next.get('t') === clock.ns) return;
+      next.set('t', clock.ns); next.delete('cut');
+      current.search = `?${next}`;
+      // The clock is already owned by the session. Persist its URL without
+      // notifying the router and rendering every workbench tool twice a second.
+      window.history.replaceState(window.history.state, '', `${current.pathname}${current.search}`);
     };
     // Keep playback links useful without navigating on every animation frame;
     // refresh records the exact clock position synchronously before unloading.
     const timer = setInterval(remember, 500);
-    addEventListener('beforeunload', remember);
-    return () => { clearInterval(timer); removeEventListener('beforeunload', remember); };
+    const unload = () => { if (clock.playing) update({ t: clock.ns, cut: undefined }); };
+    addEventListener('beforeunload', unload);
+    return () => { clearInterval(timer); removeEventListener('beforeunload', unload); };
   }, [recordedSession?.clock, recordedSession?.clock.playing, update]);
   // Runtime metadata drives simulation controls; the journal can arrive later.
   const status = runStatus(!recordsError ? record?.status : undefined, session?.status);
@@ -234,8 +265,8 @@ export default function Workbench() {
     setSpeedPending(true);
     try { const result = await api.setSpeed(runId, factor); setSpeedState(result.factor); } catch (problem) { toast('error', problemText(problem)); } finally { setSpeedPending(false); }
   };
-  const [, setFrame] = useState(0);
-  const tick = useCallback(() => setFrame(value => value + 1), []);
+  const playback = useMemo(createPlaybackUpdates, []);
+  const tick = playback.notify;
 
   // Selection, camera and display-only state
   const [selected, setSelected] = useState<EntityKey>();
@@ -246,7 +277,24 @@ export default function Workbench() {
   const setDirectorPaused = (value: boolean) => { directorPause.current = value; updateDirectorPaused(value); };
   const [focus, setFocus] = useState<{ position: [number, number, number]; revision: number }>();
   const viewport = useRef<Viewport>();
-  const [leftOpen, setLeftOpen] = useState(true), [rightOpen, setRightOpen] = useState(true);
+  // S3: without a run keep today's both-open default; a run (replay or live)
+  // defaults to a collapsed objects tab, unless the user remembered otherwise.
+  const hasRun = !!runId && !!mode;
+  const [leftOpen, setLeftOpen] = useState(() => hasRun ? storedOpen(OBJECTS_OPEN_KEY) : true);
+  const [rightOpen, setRightOpen] = useState(!hasRun);
+  useEffect(() => { setLeftOpen(hasRun ? storedOpen(OBJECTS_OPEN_KEY) : true); }, [hasRun]);
+  // S3: the inspector collapses to its tab while nothing is selected, reopens on
+  // selection, and respects an explicit close until the next selection.
+  const inspectorOverride = useRef<boolean>();
+  const inspectorRun = useRef(runId);
+  useEffect(() => {
+    if (inspectorRun.current !== runId) { inspectorOverride.current = undefined; inspectorRun.current = runId; }
+    if (!hasRun) { inspectorOverride.current = undefined; setRightOpen(true); return; }
+    if (selected) { inspectorOverride.current = undefined; setRightOpen(true); }
+    else if (inspectorOverride.current === undefined) setRightOpen(false);
+  }, [hasRun, runId, selected]);
+  const openInspector = () => { inspectorOverride.current = true; setRightOpen(true); };
+  const closeInspector = () => { inspectorOverride.current = false; setRightOpen(false); };
   const [dockOpen, setDockOpen] = useState(false), [dockTab, setDockTab] = useState<DockTab>('events');
   const [palette, setPalette] = useState(false), [initializing, setInitializing] = useState(false), [pending, setPending] = useState<string>();
   const paletteInvoker = useRef<HTMLElement | null>(null);
@@ -332,8 +380,6 @@ export default function Workbench() {
 
   // Business projection: events and KPIs at the viewed moment.
   const store = session?.store, clock = session?.clock;
-  const knownAt = store?.viewCursor?.knownAt ?? -1;
-  const projected = useMemo(() => store && clock ? businessProjection(store.commits, knownAt, clock.ns) : undefined, [store, store?.commits.length, knownAt, clock?.ns]);
   const [template, setTemplate] = useState<ScenarioTemplate>();
   const templateId = project?.template?.id ?? record?.template_id;
   useEffect(() => { if (!templateId) { setTemplate(undefined); return; } const abort = new AbortController(); void templateApi.template(templateId, abort.signal).then(setTemplate).catch(() => setTemplate(undefined)); return () => abort.abort(); }, [templateApi, templateId]);
@@ -358,12 +404,35 @@ export default function Workbench() {
     load(); const timer = setInterval(() => { if (!TERMINAL.has(status ?? '')) load(); }, 3000);
     return () => { abort.abort(); clearInterval(timer); };
   }, [templateApi, runId, hasKpiFeed]);
-  const atEnd = !!store && !!clock && knownAt === store.commits.at(-1)?.commitIndex && BigInt(clock.ns) >= BigInt(clock.end) && TERMINAL.has(status ?? '') && !finalizing;
-  const fromApi = useMemo(() => clock ? resultsAt(apiKpis, clock.ns, atEnd, knownAt) : { values: {}, series: [] }, [apiKpis, clock?.ns, atEnd, knownAt]);
-  const kpis = hasKpiFeed && projected ? projected.values : fromApi.values;
-  const series = hasKpiFeed && projected ? projected.series : fromApi.series;
-  const kpiIds = template?.kpis ?? Object.keys(kpis);
-  const kpiPanel = useRef<HTMLDivElement>(null), [kpiHeight, setKpiHeight] = useState(0);
+  // All tick subscribers share one projection of the exact viewed journal cut.
+  const playbackData = useMemo(() => {
+    let key: string, cached: { projected: ReturnType<typeof businessProjection> | undefined; kpis: RunKpis['final']; series: RunKpis['series']; kpiIds: string[] };
+    return () => {
+      const knownAt = store?.viewCursor?.knownAt ?? -1;
+      const next = `${clock?.ns}/${knownAt}/${store?.revision}/${store?.commits.length}`;
+      if (next !== key) {
+        const projected = store && clock ? businessProjection(store.commits, knownAt, clock.ns) : undefined;
+        const atEnd = !!store && !!clock && knownAt === store.commits.at(-1)?.commitIndex && BigInt(clock.ns) >= BigInt(clock.end) && TERMINAL.has(status ?? '') && !finalizing;
+        const fromApi = clock ? resultsAt(apiKpis, clock.ns, atEnd, knownAt) : { values: {}, series: [] };
+        const kpis = hasKpiFeed && projected ? projected.values : fromApi.values;
+        const series = hasKpiFeed && projected ? projected.series : fromApi.series;
+        cached = { projected, kpis, series, kpiIds: template?.kpis ?? Object.keys(kpis) }; key = next;
+      }
+      return cached;
+    };
+  }, [store, clock, apiKpis, hasKpiFeed, template, status, finalizing]);
+  const compactKpis = useMediaQuery('(max-width: 1100px)');
+  const [kpiHeight, setKpiHeight] = useState(0);
+  const kpiResize = useRef<ResizeObserver>();
+  // A run without declared KPIs can gain its first metric during playback.
+  // Observe the actual strip mount, independently of shell renders.
+  const kpiPanel = useCallback((node: HTMLDivElement | null) => {
+    kpiResize.current?.disconnect(); kpiResize.current = undefined;
+    if (!node) { setKpiHeight(0); return; }
+    const measure = () => setKpiHeight(node.getBoundingClientRect().height);
+    measure(); const observer = new ResizeObserver(measure); observer.observe(node);
+    kpiResize.current = observer;
+  }, []);
   const noticePanel = useRef<HTMLDivElement>(null), [noticeHeight, setNoticeHeight] = useState(0);
   useLayoutEffect(() => {
     const node = noticePanel.current;
@@ -372,13 +441,6 @@ export default function Workbench() {
     measure(); const observer = new ResizeObserver(measure); observer.observe(node);
     return () => observer.disconnect();
   }, [!!session]);
-  useLayoutEffect(() => {
-    const node = kpiPanel.current;
-    if (!node) { setKpiHeight(0); return; }
-    const measure = () => setKpiHeight(node.getBoundingClientRect().height);
-    measure(); const observer = new ResizeObserver(measure); observer.observe(node);
-    return () => observer.disconnect();
-  }, [!!session, kpiIds.length]);
   useLayoutEffect(() => {
     if (!graph || !dockOpen) return;
     const frame = document.querySelector<HTMLElement>('[data-testid=wb-scene-frame]');
@@ -502,13 +564,13 @@ export default function Workbench() {
         if (!button || event.key === ' ' || event.key === 'Enter' || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
       }
       if (event.key === ' ' && session) { event.preventDefault(); event.stopPropagation(); session.togglePlayback(); }
-      else if (event.key === 'i' && session?.followingLive && mode === 'live' && ['running', 'paused', 'waiting_for_input'].includes(status ?? '')) { update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }
+      else if (event.key === 'i' && session?.followingLive && mode === 'live' && ['running', 'paused', 'waiting_for_input'].includes(status ?? '')) { update({ panel: undefined }); openInspector(); setOperateRequest(value => value + 1); }
       else if (event.key === 'g' && session) update({ graph: query.get('graph') ? undefined : '1' });
       else if (event.key === 'c' && project) openForm();
       else if (event.key === 'a') toggleAssistant();
       else if (event.key === 'r') update({ records: query.get('records') ? undefined : '1' });
       else if (event.key === 'f' && selected && store && resolveBinding(store.header, store.entities.get(entityId(selected))?.typeId ?? '')) { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }
-      else if (event.key === 'l' && session) session.backToLive();
+      else if (event.key.toLowerCase() === 'l' && session) session.backToLive();
       else if (event.key === 'Escape') { if (palette) closePalette(); else if (query.get('compare')) update({ compare: undefined }); else if (query.get('contract')) update({ contract: undefined, type: undefined }); else if (query.get('graph')) update({ graph: undefined }); else if (query.get('records')) update({ records: undefined }); else if (query.get('panel')) update({ panel: undefined }); else if (selected) select(undefined); }
     };
     // Local controls may consume an event before the observation shortcuts.
@@ -529,8 +591,8 @@ export default function Workbench() {
   const showGallery = (!projectId && !runId && !query.has('contract') && !query.has('records') && !assistantOpen) || query.get('gallery') === '1';
   const title = (project ? project.name === template?.title ? localized(template, 'title', locale) : project.name : undefined) ?? (record ? localized(record, 'template_title', locale) ?? record.workspace_name ?? record.scenario : undefined);
   const contractType = query.has('contract') ? query.get('type') ?? '' : undefined;
-  const selectedSpatial = !!selected && !!store && !!resolveBinding(store.header, store.entities.get(entityId(selected))?.typeId ?? '');
-  const following = camera === 'follow' && selectedSpatial;
+  const selectedSpatial = () => !!selected && !!store && !!resolveBinding(store.header, store.entities.get(entityId(selected))?.typeId ?? '');
+  const following = () => camera === 'follow' && selectedSpatial();
   // Keep the usable scene and panel bounds tied to the panels actually on screen.
   const boardOpen = assistantOpen && assistant.board && !query.get('records');
   const layout = { '--wb-left-space': query.get('records') ? 'calc(var(--wb-left) + 60px)' : boardOpen ? 'var(--as-board-width)' : leftOpen ? 'var(--wb-left)' : '0px',
@@ -543,14 +605,14 @@ export default function Workbench() {
     <div className="wb-stage" data-testid="wb-stage">
       <div className="wb-scene-frame" data-testid="wb-scene-frame" aria-hidden="true" />
       <Suspense fallback={<div className="wb-stage-empty"><div>{L('Preparing the 3D scene…', '正在准备三维场景…')}</div></div>}>
-        {session && store && clock && spatial && <ViewportView key={runId} store={store} clock={clock} selected={selected} mode={camera} quality="med" trails commitCut={session.cut} highlights={traceModel?.involved}
+        {session && store && clock && spatial && <PlaybackRegion updates={playback}>{() => <ViewportView key={runId} store={store} clock={clock} selected={selected} mode={camera} quality="med" trails commitCut={session.cut} highlights={traceModel?.involved}
           simple bare focus={focus} onViewport={handle => { viewport.current = handle; }}
-          director={{ enabled: director, active: (live && session.followingLive) || clock.playing, paused: directorPaused, events: projected?.events ?? [] }}
+          director={{ enabled: director, active: (live && session.followingLive) || clock.playing, paused: directorPaused, events: playbackData().projected?.events ?? [] }}
           onDirectorPause={() => setDirectorPaused(true)} onDirectorSubject={key => { if (!directorPause.current) { setSelectionOrigin('director'); setSelected(key); store.select(key); } }}
           onCameraMode={value => { if (value !== 'cinematic') setCamera(value); }}
           onSelect={key => select(key)} onTick={tick} onError={problem => toast('error', String(problem))} onQuality={() => undefined}
-          onChangeSource={() => { setRightOpen(false); update({ panel: 'space' }); }}
-          onSeekCommit={(_, index) => session.seekCut(index)} />}
+          onChangeSource={() => { closeInspector(); update({ panel: 'space' }); }}
+          onSeekCommit={(_, index) => session.seekCut(index)} />}</PlaybackRegion>}
         {session && store && !spatial && <div className="wb-glass" style={{ position: 'absolute', inset: 'calc(var(--wb-top) + 36px) calc(var(--wb-right) + 36px) calc(var(--wb-dock) + 36px) calc(var(--wb-left) + 36px)', overflow: 'auto', padding: 12 }}>
           <p className="hint">{L('This world has no spatial objects; it is shown as relations and state.', '这个世界没有空间对象，以关系和状态的形式展示。')}</p>
           <NonspatialViews store={store} selected={selected} onSelect={key => select(key)} view="graph" /></div>}
@@ -580,11 +642,15 @@ export default function Workbench() {
         <span className="wb-chip" title={record.workspace_digest}>{L('run of', '运行版本')} v{record.workspace_version}</span>}
       </div>
       <div className="wb-simulation">
-      <span className={`wb-status s-${status ?? 'none'}`} data-testid="wb-status"><i />{status ? finalizing ? L('Finalizing results…', '结果汇总中…') : status === 'initialized' ? L('Initialized · t = 0', '已初始化 · t = 0') : runStatusLabel(status, locale) : L('No run', '无运行')}{mode === 'replay' && !finalizing && <span className="wb-tag" style={{ marginLeft: 6 }}>{L('replay', '回放')}</span>}</span>
+      {/* S1: history/finalizing become pill-shaped notices inside the top bar's second row. */}
+      <span className={`wb-status s-${status ?? 'none'}`} data-testid="wb-status" title={finalizing ? L('Finalizing results… KPIs and story are still being aggregated from the final journal.', '结果汇总中…指标与经历仍在从最终日志聚合。') : undefined} aria-describedby={finalizing ? 'wb-status-help' : undefined}><i />{status ? finalizing ? L('Finalizing results…', '结果汇总中…') : status === 'initialized' ? L('Initialized · t = 0', '已初始化 · t = 0') : runStatusLabel(status, locale) : L('No run', '无运行')}{mode === 'replay' && !finalizing && <span className="wb-tag" style={{ marginLeft: 6 }}>{L('replay', '回放')}</span>}</span>
+      {finalizing && <span id="wb-status-help" hidden>{L('Finalizing results… KPIs and story are still being aggregated from the final journal.', '结果汇总中…指标与经历仍在从最终日志聚合。')}</span>}
+      {earlier && <span className="wb-notice-pill" role="status" data-testid="wb-history">◷ {L('Viewing an earlier moment', '正在查看较早时刻')} · <span className="wb-mono"><PlaybackRegion updates={playback}>{() => store && clock ? displayTime(clock.ns, store.header.start.ns) : ''}</PlaybackRegion></span><button className="wb-notice-link" onClick={session.backToLive} data-testid="wb-back-live">{L('Jump to the end', '跳到结束时刻')} <span className="wb-kbd">L</span></button></span>}
+      {history && <span className="wb-notice-pill" role="status" data-testid="wb-history">◷ {L('Viewing history — the simulation keeps running.', '正在查看历史——仿真仍在运行。')} <button className="wb-notice-link" onClick={session.backToLive} data-testid="wb-back-live">{L('Back to live', '返回实时')} <span className="wb-kbd">(L)</span></button></span>}
       {session && !session.error && (mode === 'live' && status !== session.status || !session.journalComplete && (mode === 'replay' || TERMINAL.has(status ?? ''))) && <span className="wb-tag" role="status" data-testid="wb-catching-up">{L('Scene updating…', '场景更新中…')}</span>}
       {session?.pendingCut !== undefined && <span className="wb-tag" role="status" data-testid="wb-seeking">{L(`Loading moment #${session.pendingCut}…`, `正在加载时刻 #${session.pendingCut}…`)}</span>}
       {session?.pendingTimeNs !== undefined && session.pendingCut === undefined && <span className="wb-tag" role="status">{L('Loading the selected recorded moment…', '正在加载选定的记录时刻…')}</span>}
-      <div className="wb-clock"><small>{mode === 'replay' ? L('Replay time', '回放时间') : L('Simulation time', '仿真时间')}</small><time className="wb-mono">{session ? displayTime(runClockTime(mode ?? 'replay', { ...session, waiting, reportedBoundaryNs: metadataBoundary && metadataBoundary.runId === runId && (!session.reportedBoundaryNs || BigInt(metadataBoundary.ns) > BigInt(session.reportedBoundaryNs)) ? metadataBoundary.ns : session.reportedBoundaryNs }), session.store.header.start.ns) : '--:--.-'}</time></div>
+      <PlaybackRegion updates={playback}>{() => <div className="wb-clock"><small>{mode === 'replay' ? L('Replay time', '回放时间') : L('Simulation time', '仿真时间')}</small><time className="wb-mono">{session ? displayTime(runClockTime(mode ?? 'replay', { ...session, waiting, reportedBoundaryNs: metadataBoundary && metadataBoundary.runId === runId && (!session.reportedBoundaryNs || BigInt(metadataBoundary.ns) > BigInt(session.reportedBoundaryNs)) ? metadataBoundary.ns : session.reportedBoundaryNs }), session.store.header.start.ns) : '--:--.-'}</time></div>}</PlaybackRegion>
       <div className="wb-controls" aria-label={L('Simulation control', '仿真控制')}>
         {(!runId || TERMINAL.has(status ?? '') || mode === 'replay') && project && <button className="wb-btn primary" data-testid="wb-init" disabled={!project.latest_version || initializing} title={project.latest_version ? L('Create a run of the latest saved version, held at t = 0', '以最新保存的版本创建运行，停在 t = 0') : L('Validate and save a version first', '请先校验并保存版本')} onClick={() => { if (project.latest_version) void initialize(project.latest_version.version); }}>{initializing ? L('Initializing…', '初始化中…') : project.latest_version ? L(`Initialize v${project.latest_version.version}`, `初始化 v${project.latest_version.version}`) : L('Initialize', '初始化')}</button>}
         {mode === 'live' && status === 'initialized' && <button className="wb-btn go" data-testid="wb-start" disabled={!!pending} onClick={() => void control('start')}>▶ {pending === 'start' ? L('Starting…', '启动中…') : L('Start', '启动')}</button>}
@@ -608,31 +674,45 @@ export default function Workbench() {
       </div>
     </header>
 
-    {/* KPI cards */}
-    {session && kpiIds.length > 0 && <div ref={kpiPanel} className="wb-kpis" data-testid="wb-kpis">
-      {kpiIds.slice(0, 5).map(id => {
+    {/* S2: one calm KPI strip centred over the free scene area. */}
+    {session && <PlaybackRegion updates={playback}>{() => {
+      const { kpis, kpiIds } = playbackData(), stripKpiIds = kpiIds.slice(0, 5);
+      return stripKpiIds.length > 0 && <div ref={kpiPanel} className="wb-kpis" data-testid="wb-kpis">
+      {(compactKpis ? stripKpiIds.slice(0, 3) : stripKpiIds.slice(0, 5)).map(id => {
         const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh), unit = kpi?.unit || metricUnit(id) || '';
         // rescue_success is 0/1 on the wire; people read Yes/No (W3 C2 labels).
         const value = id === 'rescue_success' && kpi?.value != null
           ? metricValueText(id, kpi.value, unit, locale)
           : kpi?.value == null ? '—' : unit === 'ratio' ? Math.round(kpi.value * 100) : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1);
         const suffix = id === 'rescue_success' || unit === 'count' ? '' : unit === 'ratio' ? '%' : unit;
-        return <div key={id} className="wb-kpi wb-glass" data-final={finalizing ? 'aggregating' : 'yes'} title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, finalizing ? L('Results are still being aggregated; this value is not final yet.', '结果仍在汇总中，此数值尚非最终值。') : undefined, id].filter(Boolean).join(' · ')}><small>{label}</small><strong className="wb-mono">{value}</strong><em>{suffix}</em></div>;
+        return <div key={id} className="wb-kpi" data-final={finalizing ? 'aggregating' : 'yes'} title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, finalizing ? L('Results are still being aggregated; this value is not final yet.', '结果仍在汇总中，此数值尚非最终值。') : undefined, id].filter(Boolean).join(' · ')}><small title={label}>{label}</small><span className="wb-kpi-value"><strong className="wb-mono">{value}</strong><em>{suffix}</em></span></div>;
       })}
-    </div>}
+      {compactKpis && stripKpiIds.length > 3 && <details className="wb-kpi-more" data-testid="wb-kpi-more" onKeyDown={event => {
+        if (event.key === 'Escape') { event.stopPropagation(); event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); }
+      }}>
+        <summary aria-label={L(`Show ${stripKpiIds.length - 3} more metrics`, `查看其余 ${stripKpiIds.length - 3} 个指标`)}>+{stripKpiIds.length - 3}</summary>
+        <div className="wb-kpi-popover">
+          {stripKpiIds.slice(3, 5).map(id => {
+            const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh), unit = kpi?.unit || metricUnit(id) || '';
+            const value = id === 'rescue_success' && kpi?.value != null
+              ? metricValueText(id, kpi.value, unit, locale)
+              : kpi?.value == null ? '—' : unit === 'ratio' ? Math.round(kpi.value * 100) : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1);
+            const suffix = id === 'rescue_success' || unit === 'count' ? '' : unit === 'ratio' ? '%' : unit;
+            return <div key={id} className="wb-kpi" data-final={finalizing ? 'aggregating' : 'yes'} title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, finalizing ? L('Results are still being aggregated; this value is not final yet.', '结果仍在汇总中，此数值尚非最终值。') : undefined, id].filter(Boolean).join(' · ')}><small title={label}>{label}</small><span className="wb-kpi-value"><strong className="wb-mono">{value}</strong><em>{suffix}</em></span></div>;
+          })}
+        </div>
+      </details>}
+    </div>;
+    }}</PlaybackRegion>}
 
+    {/* S1: other notices stay in .wb-notices but render as a stack of pills. */}
     <div ref={noticePanel} className="wb-notices" data-testid="wb-notices">
-    {earlier && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing an earlier moment', '正在查看较早时刻')} · <span className="wb-mono">{store && clock ? displayTime(clock.ns, store.header.start.ns) : ''}</span><button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Jump to the end', '跳到结束时刻')} <span className="wb-kbd">L</span></button></div>}
-    {history && <div className="wb-history" role="status" data-testid="wb-history">◷ {L('Viewing history — the simulation keeps running.', '正在查看历史——仿真仍在运行。')} <button className="wb-btn" onClick={session.backToLive} data-testid="wb-back-live">{L('Back to live', '返回实时')} <span className="wb-kbd">(L)</span></button></div>}
-    {finalizing && <div className="wb-history wb-finalizing" role="status" data-testid="wb-finalizing" style={{ background: 'rgba(31,122,224,.92)' }}>
-      <span aria-hidden>◌</span> {L('Finalizing results… KPIs and story are still being aggregated from the final journal.', '结果汇总中…指标与经历仍在从最终日志聚合。')}
-    </div>}
-    {session?.error && <div className="wb-history" role="alert" style={{ background: 'rgba(190,40,30,.92)' }}>{session.error}</div>}
-    {session?.transportError && !session.error && <div className="wb-history" role="status" style={{ background: 'rgba(160,110,0,.92)' }}>{L('Reconnecting to the journal stream…', '正在重新连接日志流…')} {session.transportError}</div>}
+    {session?.error && <div className="wb-history" role="alert">{session.error}</div>}
+    {session?.transportError && !session.error && <div className="wb-history" role="status">{L('Reconnecting to the journal stream…', '正在重新连接日志流…')} {session.transportError}</div>}
 
     {session?.inputSource.error && <div className="wb-history" role="alert" data-testid="wb-input-error">{L('Operator input source unavailable', '操作员输入源暂不可用')} · {session.inputSource.error}</div>}
     </div>
-    {session && (status === 'input_timeout' || canOperate && status === 'waiting_for_input') && <div className="wb-waiting wb-glass" data-testid="wb-waiting"><WaitingBanner waiting={waiting} terminal={status === 'input_timeout'} onInject={() => { session.backToLive(); update({ panel: undefined }); setRightOpen(true); setOperateRequest(value => value + 1); }} /></div>}
+    {session && (status === 'input_timeout' || canOperate && status === 'waiting_for_input') && <div className="wb-waiting wb-glass" data-testid="wb-waiting"><WaitingBanner waiting={waiting} terminal={status === 'input_timeout'} onInject={() => { session.backToLive(); update({ panel: undefined }); openInspector(); setOperateRequest(value => value + 1); }} /></div>}
 
     {/* Left: objects or records */}
     <Suspense fallback={null}>{query.get('records') ? <RecordsPanel api={api} projectId={project?.id} current={runId} refreshKey={recordsKey}
@@ -642,8 +722,8 @@ export default function Workbench() {
           startNs={store?.header.start.ns} terminal={TERMINAL.has(status ?? '')} initializing={initializing} canInitialize={!!project?.latest_version} latestVersion={project?.latest_version?.version} onInitialize={version => void initialize(version)}
           onApplied={record => void applied(record)} onHover={assistant.setFocus} onStep={assistant.setFocus} onContract={type => update({ contract: 'assistant', type, workspace: project?.id })}
           onSeek={cut => session?.seekCut(cut)} viewing={assistant.viewing} onViewVersion={assistant.setViewing} onClose={assistant.closeBoard} /></Contained>
-      : session && store && (leftOpen ? <ObjectsPanel store={store} revision={session.revision} selected={selected} selectionOrigin={selectionOrigin} onSelect={(key, fly) => select(key, fly)} onClose={() => setLeftOpen(false)} />
-        : <button className="wb-collapsed-tab left wb-glass" onClick={() => setLeftOpen(true)}>☰ {L('Objects', '对象')}</button>)}</Suspense>
+      : session && store && (leftOpen ? <PlaybackRegion updates={playback}>{() => <ObjectsPanel store={store} revision={session.revision} selected={selected} selectionOrigin={selectionOrigin} onSelect={(key, fly) => select(key, fly)} onClose={() => { rememberOpen(OBJECTS_OPEN_KEY, false); setLeftOpen(false); }} />}</PlaybackRegion>
+        : <PlaybackRegion updates={playback}>{() => <button className="wb-collapsed-tab left wb-glass" onClick={() => { rememberOpen(OBJECTS_OPEN_KEY, true); setLeftOpen(true); }}>☰ {L('Objects', '对象')} {store.entities.size}</button>}</PlaybackRegion>)}</Suspense>
     {assistantOpen && !boardOpen && assistant.assistant.plan && !query.get('records') && !(session && store && leftOpen) && <button className="wb-collapsed-tab left wb-glass as-board-tab" onClick={assistant.openBoard} data-testid="as-board-reopen">◇ {L(`Plan v${assistant.assistant.plan.version}`, `方案 v${assistant.assistant.plan.version}`)}</button>}
 
     {/* Right: configuration or inspector */}
@@ -657,11 +737,11 @@ export default function Workbench() {
         onInspectContract={type => update({ contract: panel, type, workspace: project.id })}
         activeRunVersion={record?.studio_workspace === project.id ? record.workspace_version : undefined}
         onSwitch={(mode, origin) => assistant.switchMode(mode, origin)} switching={!!assistant.morph} morph={morphOf('form')} />
-      : !assistantOpen && session && store && runId && (rightOpen ? <InspectorPanel api={runsApi} runId={runId} store={store} revision={session.revision} selected={selected} cut={session.cut} mode={mode ?? 'replay'} canOperate={canOperate} viewingHistory={history} operateRequest={operateRequest} inputSource={session.inputSource} onCompactChange={setInspectorCompact}
-          onSelect={key => select(key)} onSeekCut={session.seekCut} onTrace={ref => openTrace(ref)} following={following}
+      : !assistantOpen && session && store && runId && (rightOpen ? <PlaybackRegion updates={playback}>{() => <InspectorPanel api={runsApi} runId={runId} store={store} revision={session.revision} selected={selected} cut={session.cut} mode={mode ?? 'replay'} canOperate={canOperate} viewingHistory={history} operateRequest={operateRequest} inputSource={session.inputSource} onCompactChange={setInspectorCompact}
+          onSelect={key => select(key)} onSeekCut={session.seekCut} onTrace={ref => openTrace(ref)} following={following()}
           onFocus={focusSelection} onFollow={() => { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }}
-          onShowGraph={() => update({ graph: '1' })} onClose={() => setRightOpen(false)} />
-        : <button className="wb-collapsed-tab right wb-glass" onClick={() => setRightOpen(true)}>{L('Inspector', '检查器')} ☰</button>)}</Suspense>
+          onShowGraph={() => update({ graph: '1' })} onClose={closeInspector} />}</PlaybackRegion>
+        : <button className="wb-collapsed-tab right wb-glass" onClick={openInspector}>{L('Inspector', '检查器')} ☰</button>)}</Suspense>
 
     {/* Camera pad: display only */}
     {session && spatial && <div className="wb-camera wb-night" aria-label={L('Camera', '相机')} data-testid="wb-camera">
@@ -671,7 +751,7 @@ export default function Workbench() {
       <button className="wb-btn" title={L('Reset view', '重置视角')} onClick={() => { setDirectorPaused(true); setCamera('orbit'); viewport.current?.resetView(); }}>⌂</button>
       <button className="wb-btn" title={L('Frame the whole region: city and objects together', '框选整个区域：城市与对象一起')} onClick={() => { setDirectorPaused(true); setCamera('orbit'); viewport.current?.fitRegion(); }}>⤢</button>
       <hr />
-      <button className="wb-btn" aria-pressed={following} disabled={!selectedSpatial} title={L('Follow selection (F)', '跟随所选对象（F）')} onClick={() => { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }}>◎</button>
+      <PlaybackRegion updates={playback}>{() => <button className="wb-btn" aria-pressed={following()} disabled={!selectedSpatial()} title={L('Follow selection (F)', '跟随所选对象（F）')} onClick={() => { setDirectorPaused(true); setCamera(value => value === 'follow' ? 'orbit' : 'follow'); }}>◎</button>}</PlaybackRegion>
       <button className="wb-btn" aria-pressed={director && !directorPaused} title={L('Event director: the camera visits what is happening', '事件导播：镜头自动跟随正在发生的事件')} onClick={() => { if (director && !directorPaused) setDirector(false); else { setDirector(true); setDirectorPaused(false); } }}>🎬</button>
     </div>}
 
@@ -686,14 +766,17 @@ export default function Workbench() {
         onPointerUp={() => { graphDrag.current = undefined; }} onPointerCancel={() => { graphDrag.current = undefined; }}><h3>{L('Relation graph', '运行关系图')}</h3>
         <button className="wb-x" title={graph === '2' ? L('Shrink', '缩小') : L('Expand', '展开')} onClick={() => update({ graph: graph === '2' ? '1' : '2' })}>{graph === '2' ? '⤡' : '⤢'}</button>
         <button className="wb-x" aria-label={L('Close graph', '关闭关系图')} onClick={() => update({ graph: undefined })}>✕</button></div>
-      <div className="wb-graph-body"><Suspense fallback={<div className="wb-loading" role="status" data-testid="wb-graph-loading">{L('Loading relation graph…', '正在加载关系图…')}</div>}><BehaviourRunGraph store={store} selected={selected} onSelect={key => select(key, true)} onSeek={session.seekCut} highlights={traceModel?.involved} /></Suspense></div>
+      <div className="wb-graph-body"><Suspense fallback={<div className="wb-loading" role="status" data-testid="wb-graph-loading">{L('Loading relation graph…', '正在加载关系图…')}</div>}><PlaybackRegion updates={playback}>{() => <BehaviourRunGraph store={store} selected={selected} onSelect={key => select(key, true)} onSeek={session.seekCut} highlights={traceModel?.involved} />}</PlaybackRegion></Suspense></div>
     </section>}
 
     {/* Bottom dock */}
-    {session && <Dock session={session} events={projected?.events ?? []} kpiIds={kpiIds} kpis={kpis} series={series} entityNames={entityNames} selected={selected}
+    {session && <PlaybackRegion updates={playback}>{() => {
+      const { projected, kpis, series, kpiIds } = playbackData();
+      return <Dock session={session} events={projected?.events ?? []} kpiIds={kpiIds} kpis={kpis} series={series} entityNames={entityNames} selected={selected}
       tab={dockTab} onTab={setDockTab} open={dockOpen} onToggle={() => setDockOpen(value => !value)} onEvent={selectEvent} untilNs={record?.until_ns} finished={TERMINAL.has(status ?? '')}
       photos={runId && store ? <Suspense fallback={null}><ArtifactsPanel api={runsApi} runId={runId} store={store} commitCut={session.cut} live={mode === 'live' && !TERMINAL.has(status ?? '')} onSeek={session.seekCut} onInspect={() => setDirectorPaused(true)} /></Suspense> : undefined}
-      why={traceRef && store ? <CauseTracePanel store={store} model={traceModel} canGoBack={traceStack.length > 1} onOpen={ref => openTrace(ref, false)} onBack={() => setTraceStack(stack => stack.slice(0, -1))} onClose={() => { setTraceStack([]); setDockTab('events'); }} onSelectEntity={key => select(key, true)} onSeek={session.seekCut} /> : undefined} />}
+      why={traceRef && store ? <CauseTracePanel store={store} model={traceModel} canGoBack={traceStack.length > 1} onOpen={ref => openTrace(ref, false)} onBack={() => setTraceStack(stack => stack.slice(0, -1))} onClose={() => { setTraceStack([]); setDockTab('events'); }} onSelectEntity={key => select(key, true)} onSeek={session.seekCut} /> : undefined} />;
+    }}</PlaybackRegion>}
     {!session && project && !panel && <div className="wb-dock wb-glass" style={{ height: 'auto' }}><div className="wb-dock-bar">
       <span className="wb-label">{L('Next step', '下一步')}</span>
       <span className="wb-ticker">{!project.latest_version ? L('Open Configure, change what you need, validate and save a version.', '打开“配置”，修改需要的内容，校验并保存版本。') : project.dirty ? L(`The draft has edits beyond version ${project.latest_version.version}. Save a new version to run them, or initialize v${project.latest_version.version} as it is.`, `草稿在版本 ${project.latest_version.version} 之后还有修改。保存新版本才能运行这些修改，或直接初始化 v${project.latest_version.version}。`) : L(`Version ${project.latest_version.version} is ready. Initialize it to see the world at t = 0, then press Start.`, `版本 ${project.latest_version.version} 已就绪。初始化后查看 t = 0 时的世界，再按“启动”。`)}</span>
@@ -747,4 +830,5 @@ function Palette({ items, onClose, placeholder }: { items: Array<{ id: string; l
   </div>;
 }
 
+/** S3: persist the objects panel choice without coupling ObjectsPanel to storage. */
 export { sameEntity };

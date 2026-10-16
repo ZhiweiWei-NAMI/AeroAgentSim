@@ -1,5 +1,5 @@
 import { metricLabel } from '../newcomers/metric-help';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ScenarioTemplate } from '../newcomers/api';
 import { categoryMetadata } from '../newcomers/categories';
 import { difficultyLabel, durationLabel } from '../newcomers/presentation';
@@ -9,6 +9,7 @@ import { ApiError, type Project, type WorkbenchApi } from './api';
 import { Markdown } from './Markdown';
 import { linkedGuide, loadGuideSource } from '../console/guides';
 import { DescribeCard } from '../assistant/motion/DescribeCard';
+import './gallery.css';
 
 const relative = (iso: string, zh: boolean) => {
   const minutes = Math.round((Date.now() - Date.parse(iso)) / 60000);
@@ -19,6 +20,17 @@ const relative = (iso: string, zh: boolean) => {
   if (hours < 48) return zh ? `${hours} 小时前` : `${hours} h ago`;
   return new Date(iso).toLocaleDateString(zh ? 'zh-CN' : 'en-US');
 };
+
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+
+/** S8: the heading count is derived from the template list. English spells the number as a
+ *  word up to twelve, otherwise numerals; Chinese always uses numerals. Sentence case keeps
+ *  the heading's leading capital ("Nine ready-made worlds"). */
+export function readyWorldsHeading(count: number): { en: string; zh: string } {
+  const word = count <= 12 ? NUMBER_WORDS[count] ?? String(count) : String(count);
+  const en = `${word} ready-made worlds`;
+  return { en: en.charAt(0).toUpperCase() + en.slice(1), zh: `${count} 个现成的低空世界` };
+}
 
 /** Both translations live in the template's one guide; ordinary Markdown stays intact. */
 export function localizedGuide(source: string, locale: string): string {
@@ -35,7 +47,7 @@ function GalleryLanguage() {
   return <button className="wb-btn" aria-label={zh ? '切换到英文' : 'Switch to Chinese'} onClick={() => setLocale(zh ? 'en-US' : 'zh-CN')}>{zh ? 'EN' : '中文'}</button>;
 }
 
-/** The scenario library (nine ready-made worlds) and the user's projects. */
+/** The scenario library and the user's projects. */
 export function Gallery({ api, current, onOpenProject, onCreate, onCreateBlank, onClose, initialGuide, onDescribe }: {
   api: WorkbenchApi; current?: string; initialGuide?: string;
   onOpenProject: (id: string) => void; onCreate: (template: ScenarioTemplate) => Promise<void>; onCreateBlank: () => Promise<void>; onClose?: () => void; onDescribe?: () => void;
@@ -45,6 +57,12 @@ export function Gallery({ api, current, onOpenProject, onCreate, onCreateBlank, 
   const [templates, setTemplates] = useState<ScenarioTemplate[]>(), [projects, setProjects] = useState<Project[]>();
   const [error, setError] = useState<string>(), [guide, setGuide] = useState<ScenarioTemplate>();
   const [creating, setCreating] = useState(false);
+  const dialog = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+    return () => { if (previous?.isConnected) previous.focus(); };
+  }, []);
+  useEffect(() => { dialog.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus(); }, [guide]);
   const createBlank = async () => {
     setCreating(true); setError(undefined);
     try { await onCreateBlank(); }
@@ -57,14 +75,23 @@ export function Gallery({ api, current, onOpenProject, onCreate, onCreateBlank, 
     void api.projects(abort.signal).then(setProjects).catch(problem => { if (!abort.signal.aborted) setError(String(problem)); });
     return () => abort.abort();
   }, [api]);
-  useEffect(() => { const key = (event: KeyboardEvent) => { if (event.key === 'Escape') { if (guide) setGuide(undefined); else onClose?.(); } }; addEventListener('keydown', key); return () => removeEventListener('keydown', key); }, [guide, onClose]);
   const titleOf = (template: ScenarioTemplate) => localized(template, 'title', locale) ?? template.title;
-  return <div className="wb-overlay" role="dialog" aria-label={L('Scenarios and projects', '场景与项目')} onClick={event => { if (event.target === event.currentTarget) onClose?.(); }}>
+  // Only derived once the list has loaded; before that the count would read "Zero worlds".
+  const heading = templates ? readyWorldsHeading(templates.length) : undefined;
+  return <div ref={dialog} className="wb-overlay wb-gallery-overlay" role="dialog" aria-modal="true" aria-label={L('Scenarios and projects', '场景与项目')}
+    onKeyDown={event => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (guide) setGuide(undefined); else onClose?.(); }
+      if (event.key !== 'Tab') return;
+      const controls = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')];
+      const first = controls[0], last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }} onClick={event => { if (event.target === event.currentTarget) onClose?.(); }}>
     <div className="wb-overlay-card wb-glass" data-testid="wb-gallery">
       {guide ? <ScenarioGuide api={api} template={guide} onBack={() => setGuide(undefined)} onCreate={onCreate} /> : <>
         <div className="wb-hero">
           <div style={{ flex: 1 }}>
-            <h1>{L('Nine ready-made worlds', '九个现成的低空世界')}</h1>
+            <h1>{heading ? L(heading.en, heading.zh) : L('Ready-made worlds', '现成的低空世界')}</h1>
             <p>{L('Start with a ready-made scenario, or skip this step and configure a blank project yourself. Manual setup does not require a model.', '可以从现成场景开始，也可以跳过这一步，从空白项目手动配置。手动操作无需连接模型。')}</p>
           </div>
           <button className="wb-btn primary" disabled={creating} onClick={() => void createBlank()} data-testid="wb-create-blank">{creating ? L('Creating…', '正在创建…') : L('Skip, create manually', '跳过，手动创建')}</button>

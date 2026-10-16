@@ -9,6 +9,7 @@ category: emergency
 difficulty: intermediate
 duration_s: 241
 scenario: scenario.yaml
+thumbnail: thumbnail.png
 observe:
   - Follow fresh bids at notice and after the report reaches command.
   - Inspect relay hops, deadline resolution and measured rescue KPIs.
