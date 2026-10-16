@@ -747,6 +747,7 @@ def create_app(
     def run_header(run_id: str, request: Request) -> dict[str, Any]:
         path = directory(run_id)
         result = header(path)
+        light = result.get("scene", {}).get("lighting")
         if not os.environ.get("AEROAGENTSIM_AEROGRAPH_ROOT"):
             result["catalogNotice"] = "Type catalog limited to this scenario's snapshot"
         if hasattr(app.state, "studio"):
@@ -767,6 +768,8 @@ def create_app(
                 for key in ("url", "lodUrl"):
                     if key in model:
                         model[key] = str(request.base_url).rstrip("/") + model[key]
+        if light in {"day", "dusk"}:
+            result.setdefault("scene", {})["lighting"] = light
         return result
 
     @app.get("/v1/runs/{run_id}/commits")

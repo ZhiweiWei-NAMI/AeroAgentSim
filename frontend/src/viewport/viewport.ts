@@ -13,7 +13,7 @@ import {activeZones,semanticSites,semanticFlooding} from './semantic';
 import {ProceduralDistrict} from '../scene/procedural-district';
 import { pipeline, PRESETS, type Quality } from './pipeline';
 import { QualityMaterials } from './quality-materials';
-import { setupScene } from './scene';
+import { applyWeatherMaterials, observerFogOffset, setupScene } from './scene';
 import { scenePresentation, type ScenePresentation } from '../scene/presentation';
 import { loadSceneLayer } from '../scene/city-layer';
 import type { CityProgress } from '../scene/traffic-city';
@@ -21,6 +21,9 @@ import { CameraDirector, type CameraMode } from '../scene/camera-director';
 import { translate } from '../i18n/translate';
 import type {DirectorTarget} from './business-director';
 import { placeLabel, workbenchLayoutKey } from './label-placement';
+import { AtmosphereLayer } from './atmosphere';
+import { IncidentSurface } from './atmosphere/surface-height';
+import { ConditionsCache, type Conditions } from './conditions';
 export type { CameraMode } from '../scene/camera-director';
 // Look down far enough to retain city context when following an airborne unit.
 export const FOLLOW_CAMERA_OFFSET = [22, 48, 24] as const;
@@ -57,6 +60,7 @@ export class Viewport {
   private layer: EntityLayer;
   private lighting: ReturnType<typeof setupScene>;
   private composer: ReturnType<typeof pipeline>;
+  private composers = new Map<Quality, ReturnType<typeof pipeline>>();
   private overlay = document.createElement('div');
   private observer: ResizeObserver;
   private abort = new AbortController();
@@ -69,6 +73,7 @@ export class Viewport {
   private environment?: T.WebGLRenderTarget;
   private staticRoot = new T.Group();
   private occlusion = new StaticOcclusion();
+  private incidentSurface = new IncidentSurface();
   private origin = new T.Vector3();
   private framed = false;
   private director = new CameraDirector();
@@ -83,7 +88,6 @@ export class Viewport {
   private cameraSettled = false;
   private renderedFrames = 0;
   private shadowKey = '';
-  private shadowRevision = -1;
   private semanticLayer?: SemanticLayer;
   private incidentLabels = new Map<string, HTMLButtonElement>();
   private district?:ProceduralDistrict;
@@ -96,6 +100,11 @@ export class Viewport {
   private lastLegend = '';
   private cityGeometryRevision = 0;
   private qualityMaterials = new QualityMaterials();
+  private atmosphere?: AtmosphereLayer;
+  private conditionsCache = new ConditionsCache();
+  private latestConditions?: Conditions;
+  private conditionsListeners = new Set<(c: Conditions) => void>();
+  private lightingOverride: 'scene' | 'day' | 'dusk' = 'scene';
   constructor(private container: HTMLElement, private header: RunHeader, private options: ViewportOptions = {}) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'high-performance' });
@@ -117,12 +126,17 @@ export class Viewport {
     this.lighting = setupScene(this.renderer, this.scene); this.assets = new Assets(this.renderer, options);
     this.layer = new EntityLayer(header, this.assets, this.overlay, key => options.onSelect?.(key), error => options.onError?.(error), this.status);
     this.layer.locale = options.locale ?? 'en-US';
+    this.layer.hideIncidentMarkers = true; // the atmosphere pin replaces the plain incident marker
     try{this.layer.setCatalog(parseModelCatalog(header.modelCatalog));}catch(error){this.status(`Model catalog unavailable: ${String(error)} · stand-ins active`);}
     if(options.semantic!==undefined)this.layer.semantic=options.semantic;
     if(options.showAllLabels!==undefined)this.layer.showAllLabels=options.showAllLabels;
     this.scene.add(this.layer.root, this.staticRoot);
     if(options.semantic){this.semanticLayer=new SemanticLayer(header,{locale:options.locale,onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
-    this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.applyPreset();
+    this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.composers.set(this.quality, this.composer); this.applyPreset();
+    // One atmosphere module serves the run view, captures and the draft preview.
+    // The atlas load lands after the first frames; revision++ invalidates the idle renderer.
+    this.atmosphere = new AtmosphereLayer(this.scene, this.renderer, this.quality, { annotations: true, onReady: () => { this.revision++; } });
+    void this.atmosphere.ready.catch(error => options.onError?.(error));
     this.observer = new ResizeObserver(this.resize); this.observer.observe(container);
     const sceneFrame = container.closest('.wb')?.querySelector('.wb-scene-frame');
     if (sceneFrame) this.observer.observe(sceneFrame);
@@ -139,7 +153,7 @@ export class Viewport {
       if(presentation.city)this.options.onCityProgress?.({phase:'roads',loaded:0,total:0});
       if(presentation.attribution)this.setAttribution(presentation.attribution);
       if(presentation.city?.kind==='osm2world')this.setAttribution('© OpenStreetMap contributors · ODbL · Procedural display materials');
-      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;if(object.parent!==this.staticRoot)this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);if(object.name==='city'&&object.userData.geometryRevision!==undefined&&object.userData.geometryRevision!==this.cityGeometryRevision){this.cityGeometryRevision=object.userData.geometryRevision;this.occlusion.setObjects(this.staticRoot.children);}else this.occlusion.addObjects([object]);this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city=object.userData.loading?'loading':'loaded';container.dataset.cityProgress=JSON.stringify(object.userData.progress??{});this.options.onCityProgress?.(object.userData.loading?object.userData.progress:undefined);container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});this.options.onCityIssue?.(undefined);}},this.status)
+      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;this.renderer.shadowMap.needsUpdate=true;if(object.parent!==this.staticRoot)this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);if(object.name==='city'&&object.userData.geometryRevision!==undefined&&object.userData.geometryRevision!==this.cityGeometryRevision){this.cityGeometryRevision=object.userData.geometryRevision;this.occlusion.setObjects(this.staticRoot.children);}else this.occlusion.addObjects([object]);this.incidentSurface.setObjects(this.staticRoot);this.atmosphere?.invalidateSurface();this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city=object.userData.loading?'loading':'loaded';container.dataset.cityProgress=JSON.stringify(object.userData.progress??{});this.options.onCityProgress?.(object.userData.loading?object.userData.progress:undefined);container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});this.options.onCityIssue?.(undefined);}},this.status)
         .catch(error=>{if(!this.disposed){this.options.onCityProgress?.(undefined);this.status(String(error));if(presentation?.city)this.options.onCityIssue?.(String(error));options.onError?.(error);}});
       if(presentation.hdri)void this.assets.hdri(presentation.hdri,this.renderer).then(environment=>{
         if(this.disposed){environment.dispose();return;}this.environment=environment;this.scene.environment=environment.texture;this.revision++;container.dataset.ibl='hdri';
@@ -203,13 +217,39 @@ export class Viewport {
   }
   private applyCityDisplay(object: T.Object3D) {
     this.qualityMaterials.apply(object, this.quality === 'low');
-    object.traverse(node=>{if(node instanceof T.Mesh)for(const material of Array.isArray(node.material)?node.material:[node.material]){
-      const uniform=material.userData.displayDusk as {value:number}|undefined;if(uniform)uniform.value=this.dusk?1:0;
-    }});
+    const wet = this.scene.userData.weatherWet as number | undefined ?? 0;
+    applyWeatherMaterials(object, wet, this.dusk);
+  }
+  /** Scene/Dusk/Day display lighting: 'scene' follows journaled Conditions.light; URL param still overrides. */
+  setLightingOverride(mode: 'scene' | 'day' | 'dusk') {
+    if (this.lightingOverride === mode) return;
+    this.lightingOverride = mode; this.applyLighting(); this.revision++;
+  }
+  private lightingState = { dusk: false, rain: NaN, visibilityM: null as number | null, observerOffsetM: NaN };
+  private applyLighting() {
+    this.setDusk(this.lightingOverride === 'dusk' || (this.lightingOverride === 'scene' && this.latestConditions?.light === 'dusk'));
+  }
+  /** Latest frame's derived conditions, for the HUD. */
+  conditions(): Conditions | undefined { return this.latestConditions; }
+  /** Fires only when the derived conditions change (shallow compare of rounded values). */
+  onConditions(cb: (c: Conditions) => void): () => void {
+    this.conditionsListeners.add(cb);
+    if (this.emittedConditions) cb(this.emittedConditions);
+    return () => this.conditionsListeners.delete(cb);
   }
   setDusk(dusk: boolean) {
-    this.dusk=dusk;this.lighting.setDusk(dusk);this.composer.setDusk(dusk);this.applyCityDisplay(this.staticRoot);this.revision++;
-    this.container.dataset.lighting=dusk?'dusk-display':'day-display';
+    const state = this.lightingState, rain = Math.min((this.latestConditions?.precipitationMmH ?? 0) / 8, 1);
+    const visibilityM = this.latestConditions?.visibilityM ?? null, observerOffsetM = observerFogOffset(this.camera, this.controls.target);
+    if (state.dusk === dusk && state.rain === rain && state.visibilityM === visibilityM
+      && (visibilityM === null || Math.abs(state.observerOffsetM - observerOffsetM) <= 5)) return;
+    const cityChanged = state.dusk !== dusk || state.rain !== rain;
+    const duskChanged = this.dusk !== dusk;
+    state.dusk = dusk; state.rain = rain; state.visibilityM = visibilityM; state.observerOffsetM = observerOffsetM;
+    this.dusk = dusk; this.lighting.setAtmosphere(state);
+    this.composer.setDusk(dusk);
+    if (cityChanged) this.applyCityDisplay(this.staticRoot);
+    if (duskChanged) this.revision++;
+    this.container.dataset.lighting = dusk ? 'dusk-display' : 'day-display';
   }
   setSelection(key?: EntityKey) { this.selected = key; this.revision++; }
   setHighlights(keys: EntityKey[]) { this.layer.setHighlights(new Set(keys.map(entityId))); this.revision++; }
@@ -269,14 +309,16 @@ export class Viewport {
   setQuality(quality: Quality, manual = false) {
     if(manual)this.manualQuality=true;
     if (quality === this.quality) return;
-    this.revision++; this.quality = quality; this.composer.dispose(); this.composer = pipeline(this.renderer, this.scene, this.camera, quality);
-    this.composer.setDusk(this.dusk);this.applyPreset(); this.resize(); this.qualityTime = this.qualityFrames = 0; this.options.onQuality?.(quality);
+    this.revision++; this.quality = quality;
+    this.composer = this.composers.get(quality) ?? pipeline(this.renderer, this.scene, this.camera, quality);
+    this.composers.set(quality, this.composer);
+    this.composer.setDusk(this.dusk);this.applyPreset(); this.atmosphere?.setQuality(quality); this.resize(); this.qualityTime = this.qualityFrames = 0; this.options.onQuality?.(quality);
   }
   private applyPreset() {
     const preset = PRESETS[this.quality]; this.renderer.setPixelRatio(Math.min(devicePixelRatio, preset.ratio));
-    this.qualityMaterials.apply(this.staticRoot, this.quality === 'low');
+    this.applyCityDisplay(this.staticRoot);
     this.qualityMaterials.apply(this.lighting.ground, this.quality === 'low');
-    this.renderer.shadowMap.enabled = this.quality !== 'low'; this.lighting.sun.shadow.mapSize.set(preset.shadow, preset.shadow);
+    this.renderer.shadowMap.enabled = this.quality !== 'low'; this.renderer.shadowMap.needsUpdate = true; this.lighting.sun.shadow.mapSize.set(preset.shadow, preset.shadow);
     this.lighting.sun.shadow.map?.dispose(); this.lighting.sun.shadow.map = null; this.container.dataset.quality = this.quality;
   }
   render(store: FeedStore, ns: string, deltaSeconds: number, trails = true) {
@@ -288,9 +330,10 @@ export class Viewport {
       if(this.camera.position.distanceToSquared(position)<0.0025&&this.controls.target.distanceToSquared(target)<0.0025){this.camera.position.copy(position);this.controls.target.copy(target);this.cameraTransition=undefined;}
     }
     if(this.mode==='orbit')this.controls.update();
-    const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.camera.position.toArray()}/${this.camera.quaternion.toArray()}/${this.controls.target.toArray()}/${workbenchLayoutKey(this.container)}`;
+    const layoutKey = workbenchLayoutKey(this.container);
+    const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.camera.position.toArray()}/${this.camera.quaternion.toArray()}/${this.controls.target.toArray()}/${layoutKey}`;
     const continuousShot=this.mode==='cinematic'&&!this.options.semantic;
-    if(!continuousShot&&!this.cameraTransition&&(this.mode==='orbit'||this.cameraSettled)&&frameKey===this.lastFrame){this.container.dataset.idle='true';return;}
+    if(!continuousShot&&!this.cameraTransition&&(this.mode==='orbit'||this.cameraSettled)&&frameKey===this.lastFrame&&(!this.atmosphere||!this.ringAnimationActive())){this.container.dataset.idle='true';return;}
     this.lastFrame=frameKey;this.container.dataset.idle='false';
     this.district?.update(store,this.origin);
     const chosen = this.mode === 'cinematic' ? (this.businessShot ? this.businessShot.entity : (this.options.semantic ? this.selected : this.director.choose(store,ns,deltaSeconds,this.selected))) : this.selected;
@@ -321,7 +364,17 @@ export class Viewport {
         this.camera.lookAt(this.controls.target);
       }
     };
-    this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion, aimCamera);
+    const next = this.atmosphere ? this.conditionsCache.at(store.conditionEntities, ns, store.revision, this.header) : undefined;
+    this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion, aimCamera, next?.incidents, this.roofHeight, layoutKey);
+    // Conditions derive from the journaled cut only; a paused clock keeps them (and the frame) still.
+    if (this.atmosphere && next) {
+      const simSeconds = Number(BigInt(ns)) / 1e9;
+      this.latestConditions = next;
+      this.applyLighting();
+      this.atmosphere.update(next, simSeconds, this.camera, this.roofHeight, this.atmosphereRingStart(next), this.origin);
+      this.composer.excludeBloom(this.atmosphere.root);
+      this.emitConditions();
+    }
     if(this.semanticLayer&&this.layer.semantic){
       this.semanticLayer.update(store,ns,this.origin);
       this.semanticLayer.root.visible=true;
@@ -337,15 +390,17 @@ export class Viewport {
       const shift=this.controls.target.clone();shift.y=0;this.origin.add(shift);this.camera.position.sub(shift);this.controls.target.sub(shift);
       if(this.cameraTransition){this.cameraTransition.position.sub(shift);this.cameraTransition.target.sub(shift);}
       this.staticRoot.position.copy(this.origin).negate();
-      this.staticRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.revision++;
-      this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion);
+      this.staticRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.incidentSurface.setObjects(this.staticRoot);this.atmosphere?.invalidateSurface();this.revision++;
+      this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion,undefined,next?.incidents,this.roofHeight);
     }
     this.lighting.update(this.controls.target);
     this.composer.outline.selection.set(this.layer.selection.length?this.layer.selection:this.layer.ring.visible?[this.layer.ring]:[]);
     const updateFinished = performance.now();
     const shadowKey = this.lighting.sun.position.toArray().join(',');
-    if(this.layer.transformsChanged||shadowKey!==this.shadowKey||this.shadowRevision!==this.revision){
-      this.renderer.shadowMap.needsUpdate=true;this.shadowKey=shadowKey;this.shadowRevision=this.revision;
+    // Camera gestures and selection changes do not alter world-space shadows.
+    // Geometry loads and quality changes mark them dirty at their actual source.
+    if(this.layer.transformsChanged||shadowKey!==this.shadowKey){
+      this.renderer.shadowMap.needsUpdate=true;this.shadowKey=shadowKey;
     }
     this.gpuTimer?.begin();
     this.renderer.info.reset(); this.composer.render(deltaSeconds);
@@ -388,6 +443,56 @@ export class Viewport {
       }
     }
   }
+  /** Snapshot only at HUD cadence; the frame's cached Conditions remain mutable. */
+  private emittedConditions?: Conditions;
+  private emitConditions() {
+    const next = this.latestConditions, last = this.emittedConditions;
+    if (!next) return;
+    let changed = !last || last.precipitationMmH !== next.precipitationMmH || last.visibilityM !== next.visibilityM || last.light !== next.light
+      || !!last.wind !== !!next.wind || last.incidents.length !== next.incidents.length;
+    if (!changed && last && next.wind && last.wind) {
+      const a = next.wind, b = last.wind;
+      changed = Math.round(a.east * 10) !== Math.round(b.east * 10) || Math.round(a.north * 10) !== Math.round(b.north * 10)
+        || Math.round(a.fromDeg) !== Math.round(b.fromDeg) || a.gust !== b.gust || a.gustEndS !== b.gustEndS;
+    }
+    if (!changed && last) for (let i = 0; i < next.incidents.length; i++) {
+      const a = next.incidents[i], b = last.incidents[i];
+      if (a.id !== b.id || a.kind !== b.kind || a.label !== b.label || a.labelZh !== b.labelZh || a.phase !== b.phase
+        || a.radiusM !== b.radiusM || a.response !== b.response || Math.round(a.sinceS) !== Math.round(b.sinceS)
+        || a.position[0] !== b.position[0] || a.position[1] !== b.position[1] || a.position[2] !== b.position[2]) { changed = true; break; }
+    }
+    if (!changed) return;
+    this.emittedConditions = { ...next, wind: next.wind && { ...next.wind }, incidents: next.incidents.map(row => ({ ...row, position: [...row.position] })) };
+    for (const listener of this.conditionsListeners) listener(this.emittedConditions);
+  }
+  /** One-shot ring draw-in timestamps, in wall-clock, per activation. */
+  private atmosphereRingStart(conditions: Conditions): Map<string, number> {
+    for (const incident of conditions.incidents) {
+      if (incident.phase === 'active' && this.ringPhases.get(incident.id) !== 'active') this.ringStarts.set(incident.id, performance.now());
+      const start = this.ringStarts.get(incident.id);
+      if (incident.phase !== 'active' || start !== undefined && performance.now() - start >= 600) this.ringStarts.delete(incident.id);
+      this.ringPhases.set(incident.id, incident.phase);
+    }
+    for (const id of this.ringPhases.keys()) {
+      let found = false;
+      for (let i = 0; i < conditions.incidents.length; i++) if (conditions.incidents[i].id === id) { found = true; break; }
+      if (!found) { this.ringStarts.delete(id); this.ringPhases.delete(id); }
+    }
+    return this.ringStarts;
+  }
+  private ringStarts = new Map<string, number>();
+  private ringPhases = new Map<string, Conditions['incidents'][number]['phase']>();
+  private reducedMotion?: MediaQueryList;
+  private ringAnimationActive(): boolean {
+    if (!this.ringStarts.size || (this.reducedMotion ??= matchMedia('(prefers-reduced-motion: reduce)')).matches) return false;
+    const now = performance.now();
+    for (const start of this.ringStarts.values()) if (now - start < 600) return true;
+    return false;
+  }
+  /** Sample actual city triangles, cached between progressive geometry updates. */
+  private roofHeight = (east: number, north: number): number => {
+    return this.incidentSurface.heightAt(east - this.origin.x, -north - this.origin.z, this.lighting.ground.position.y);
+  };
   /** Legend from actual business kinds present in the committed cut, plus active zones. */
   private emitLegend(store: FeedStore) {
     const entries = new Map<string, string>();
@@ -476,8 +581,9 @@ export class Viewport {
     this.renderer.domElement.removeEventListener('pointerdown',this.pointerDown);this.renderer.domElement.removeEventListener('pointerup',this.pointerUp);
     this.renderer.domElement.removeEventListener('pointermove',this.pointerMove);
     this.controls.dispose();this.occlusion.dispose();this.layer.dispose();this.qualityMaterials.dispose();this.assets.dispose();disposeObject(this.scene);this.lighting.dispose();this.environment?.dispose();
+    this.atmosphere?.dispose();
     this.district?.dispose();
     if(this.semanticLayer){this.semanticLayer.dispose();}
-    this.gpuTimer?.dispose();this.composer.dispose();this.renderer.dispose();this.renderer.domElement.remove();this.overlay.remove();
+    this.gpuTimer?.dispose();for(const composer of this.composers.values())composer.dispose();this.composers.clear();this.renderer.dispose();this.renderer.domElement.remove();this.overlay.remove();
   }
 }

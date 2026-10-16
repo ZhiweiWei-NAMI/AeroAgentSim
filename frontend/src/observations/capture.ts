@@ -8,8 +8,10 @@ import { entityId, resolveBinding } from '../viewport/bindings';
 import { worldPosition } from '../viewport/coordinates';
 import { Assets, disposeObject } from '../viewport/assets';
 import { EntityLayer } from '../viewport/entities';
-import { setupScene } from '../viewport/scene';
+import { applyWeatherMaterials, setupScene } from '../viewport/scene';
 import { pipeline } from '../viewport/pipeline';
+import { AtmosphereLayer } from '../viewport/atmosphere';
+import { conditionsAt } from '../viewport/conditions';
 import { loadSceneLayer } from '../scene/city-layer';
 import { isLiteCityScene } from '../viewport/procedural-traffic';
 import { parseModelCatalog } from '../viewport/model-catalog';
@@ -68,7 +70,7 @@ export function obliqueCamera(manifest: ObjectData, key: EntityKey, positionFiel
   return {eye,target,subject};
 }
 
-/** Bilingual sensor annotation remains attached to downloaded artifact bytes. */
+/** Bilingual caption derived from the capture request's measured pose and cut. */
 export function obliqueCaption(request: ObjectData): [string,string] {
   const camera=object(request.camera), subject=recordedCameraPose(camera.subject), actor=object(request.actor), source=object(request.source_cut);
   const point=(value:unknown)=>vector(value).map(v=>v.toFixed(1)).join(', ');
@@ -159,6 +161,7 @@ export class CaptureRenderer {
   private scene?: T.Scene;
   private assets?: Assets;
   private layer?: EntityLayer;
+  private atmosphere?: AtmosphereLayer;
   private lighting?: ReturnType<typeof setupScene>;
   private composer?: ReturnType<typeof pipeline>;
   private hdr?: T.WebGLRenderTarget;
@@ -195,7 +198,14 @@ export class CaptureRenderer {
     if (oblique) orderCaptureCity(this.scene);
     if (header.scene?.hdri) {this.hdr = await this.assets.hdri(header.scene.hdri,this.renderer);this.scene.environment = this.hdr.texture;}
     this.layer = new EntityLayer(header,this.assets,document.createElement('div'),() => {},error => this.failures.push(String(error)),status);
+    this.layer.hideIncidentMarkers = true;
     this.layer.setCatalog(parseModelCatalog(header.modelCatalog)); this.scene.add(this.layer.root);
+    // Captures show the same smoke/rain/fog as the run viewport: the cut's journaled conditions.
+    // A capture is a one-shot sensor render, so the atmosphere gets the high tier
+    // (full plume) while the render pipeline itself stays 'low'.
+    this.atmosphere = new AtmosphereLayer(this.scene,this.renderer,'high',{ annotations: false });
+    // The atlas must be live before the first photograph or the plume is missing from captures.
+    await this.atmosphere.ready;
     this.composer = pipeline(this.renderer,this.scene,this.camera,'low');
     // Shader compilation is sensor initialization, not a warm-up photograph.
     await this.renderer.compileAsync(this.scene,this.camera);
@@ -207,6 +217,17 @@ export class CaptureRenderer {
     else delete this.mount.dataset.buildings;
   }
 
+  private lastCity?: T.Object3D;
+  private lastWet = NaN;
+  private lastDusk?: boolean;
+  private applyCityDisplay(object: T.Object3D) {
+    const wet = this.scene?.userData.weatherWet as number | undefined ?? 0;
+    if (this.lastCity === object && this.lastWet === wet && this.lastDusk === this.dusk) return;
+    this.lastCity = object; this.lastWet = wet; this.lastDusk = this.dusk;
+    applyWeatherMaterials(object, wet, this.dusk);
+  }
+  private dusk = false;
+  private atmosphereState = { dusk: false, rain: NaN, visibilityM: null as number | null };
   async render(api: RunsApi, assetManifestUrl: string, input: CaptureInput): Promise<CaptureResult> {
     const request = object(input.request);
     if (typeof request.asset_digest !== 'string' || !request.asset_digest) throw Error('Capture request asset set ID is missing');
@@ -258,7 +279,7 @@ export class CaptureRenderer {
       // snapshot actor pose. Interpret it exactly; do not rewrite the request.
       const oblique = manifest.revision === 'uav-gimbal-oblique/v1';
       const nadir = manifest.preset === 'actor-nadir' || manifest.revision === 'traffic-nadir/v1' || manifest.revision === 'traffic-city-nadir/v1';
-      let eye: [number,number,number], target: [number,number,number], resolvedSubject: ReturnType<typeof obliqueCamera>['subject'] | undefined;
+      let eye: [number,number,number], target: [number,number,number];
       if (nadir || oblique) {
         if (nadir && manifest.revision !== 'traffic-nadir/v1' && (manifest.revision !== 'traffic-city-nadir/v1' || manifest.frame !== 'enu')) throw Error('Unsupported actor-nadir camera revision/frame');
         const snapshot = object(manifest.snapshot), cut = object(snapshot.cut);
@@ -268,7 +289,7 @@ export class CaptureRenderer {
         if (!binding) throw Error('Actor-nadir needs a spatial actor');
         if (oblique) {
           const resolved=obliqueCamera(manifest,key,binding.positionField,(key,field)=>store.sample(key,field));
-          ({eye,target}=resolved);resolvedSubject=resolved.subject;
+          ({eye,target}=resolved);
         }
         else {
           eye = vector(store.sample(key, binding.positionField)); target = [eye[0],eye[1],0];
@@ -302,33 +323,27 @@ export class CaptureRenderer {
         await new Promise(resolve => setTimeout(resolve,0));
       } while (true);
       // Catalog selection can change after its needed tier becomes available.
-      this.layer!.update(store,ns,this.camera,undefined,false); check();
+      const atmosphereConditions = conditionsAt(store.entities,ns,header);
+      this.layer!.update(store,ns,this.camera,undefined,false,undefined,undefined,undefined,atmosphereConditions.incidents); check();
+      // Conditions at the capture cut drive the same atmosphere layer as the run viewport.
+      this.dusk = atmosphereConditions.light==='dusk';
+      const state = this.atmosphereState, rain = Math.min(atmosphereConditions.precipitationMmH / 8, 1);
+      if (state.dusk !== this.dusk || state.rain !== rain || state.visibilityM !== atmosphereConditions.visibilityM) {
+        state.dusk = this.dusk; state.rain = rain; state.visibilityM = atmosphereConditions.visibilityM;
+        this.lighting!.setAtmosphere(state);
+      }
+      this.composer!.setDusk(this.dusk);
+      this.atmosphere!.update(atmosphereConditions,Number(BigInt(ns))/1e9,this.camera);
+      this.composer!.excludeBloom(this.atmosphere!.root);
+      const city = this.scene!.getObjectByName('city');
+      if (city) this.applyCityDisplay(city);
       this.composer!.render(0); this.renderer!.getContext().finish(); check();
       let canvas = this.renderer!.domElement;
-      if (oblique || input.label) {
+      // Sensor pixels contain weather and fire, while identity and cut stay in request metadata.
+      if (input.label) {
         const labeled = document.createElement('canvas');labeled.width=width;labeled.height=height;
         const context=labeled.getContext('2d');if(!context)throw Error('PNG readback canvas unavailable');
         context.drawImage(canvas,0,0);
-        if (oblique) {
-          const subject=resolvedSubject!;
-          const captions=obliqueCaption({...request,camera:{...manifest,eye,target,subject:{id:subject.key.id,generation:subject.key.generation,field:subject.field,position:subject.position}}});
-          context.fillStyle='rgba(5,18,29,0.86)';context.fillRect(0,0,width,48);
-          context.fillStyle='#fff';context.font='13px sans-serif';captions.forEach((line,i)=>context.fillText(line,10,18+i*20,width-20));
-          const project=(point:[number,number,number])=>{const p=worldPosition(point,'enu').project(this.camera);return {x:(p.x+1)*width/2,y:(1-p.y)*height/2,visible:p.z>=-1&&p.z<=1&&Math.abs(p.x)<1&&Math.abs(p.y)<1};};
-          const center=project(subject.position);
-          // An identity marker denotes a committed incident coordinate. It does
-          // not invent crash damage or a physical effect absent from the journal.
-          if(center.visible){context.strokeStyle='#ffd56a';context.lineWidth=2;context.beginPath();context.arc(center.x,center.y,10,0,Math.PI*2);context.stroke();}
-          let label=0;
-          for(const item of store.entities.values()){
-            if(item.fields.get('traffic.actor.role')?.value!=='incident')continue;
-            const binding=resolveBinding(header,item.typeId);if(!binding)continue;
-            const point=project(vector(store.sample(item.key,binding.positionField)));if(!point.visible)continue;
-            const text=item.key.id, x=Math.max(8,Math.min(width-190,point.x+30)), y=Math.max(68,Math.min(height-10,point.y-40-label*30));label++;
-            context.strokeStyle='#ffd56a';context.lineWidth=1.5;context.beginPath();context.arc(point.x,point.y,6,0,Math.PI*2);context.moveTo(point.x+6,point.y);context.lineTo(x,y-5);context.stroke();
-            context.fillStyle='rgba(5,18,29,0.9)';context.fillRect(x-4,y-19,184,24);context.fillStyle='#ffd56a';context.font='13px monospace';context.fillText(text,x,y-3);
-          }
-        }
         if(input.label){context.fillStyle='#fff';context.font='12px monospace';context.fillText(input.label,4,height-6);}
         canvas=labeled;
       }
@@ -339,8 +354,10 @@ export class CaptureRenderer {
     finally {clearTimeout(timer);abort.abort();}
   }
   dispose() {
+    this.atmosphereState.rain = NaN; this.lastCity = undefined;
     this.layer?.dispose();if(this.scene)disposeObject(this.scene);this.lighting?.dispose();this.hdr?.dispose();this.assets?.dispose();this.composer?.dispose();this.renderer?.dispose();
-    this.layer=undefined;this.scene=undefined;this.lighting=undefined;this.hdr=undefined;this.assets=undefined;this.composer=undefined;this.renderer=undefined;this.signature=undefined;this.failures=[];
+    this.atmosphere?.dispose();
+    this.layer=undefined;this.scene=undefined;this.lighting=undefined;this.hdr=undefined;this.assets=undefined;this.composer=undefined;this.renderer=undefined;this.atmosphere=undefined;this.signature=undefined;this.failures=[];
     for(const key of ['rendered','city','buildings','sourceCut','camera']) delete this.mount.dataset[key];
     this.mount.replaceChildren();
   }

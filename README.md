@@ -19,6 +19,10 @@ https://github.com/user-attachments/assets/31cc139f-df4a-4ad1-9811-1c7c3758fd31
 - **Nine ready-made worlds.** Parcel, medical and meal delivery, power-line inspection, crop spraying, air taxis, security patrol, a traffic accident and a shared city day.
 - **See why things happen.** Change rules and algorithms, run again, and trace every result to recorded events in a 3D city with replay.
 
+https://github.com/user-attachments/assets/cb424ef3-2b5e-4509-8483-3bcf266d09e0
+
+<p align="center"><i>Configure weather and a timed fire → preview → run → replay → open the UAV photograph. English explanations · 2x speed.</i><br><a href="docs/demos/incident-weather/demo.mp4">Play the 44 s demo (MP4)</a> · <a href="docs/demos/incident-weather/README.md">Screenshots, validation and limits</a></p>
+
 ## Start
 
 Python 3.10+ and Node.js 22 with npm. No GPU, Docker or account needed.

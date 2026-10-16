@@ -1,0 +1,1621 @@
+{
+  "byte_count": 828238,
+  "camera_digest": "cooperation/conditions-fire/drone-3/[\"aerokernel.message/v1\",\"city-day\",\"0\",\"partition\",\"tasks\",79]/camera",
+  "contract": "aeroagentsim.capture-artifact/v1",
+  "digest": "Y29vcGVyYXRpb24vY29uZGl0aW9ucy1maXJlL2Ryb25lLTMvWyJhZXJva2VybmVsLm1lc3NhZ2UvdjEiLCJjaXR5LWRheSIsIjAiLCJwYXJ0aXRpb24iLCJ0YXNrcyIsNzld",
+  "media_type": "image/png",
+  "renderer_mode": "browser",
+  "request": {
+    "acquired": {
+      "clock_id": "canonical",
+      "denominator": 1,
+      "mapping_id": "canonical",
+      "numerator": 45000000000
+    },
+    "actor": {
+      "epoch": "0",
+      "generation": 0,
+      "id": "drone-3",
+      "run_id": "city-day",
+      "type_id": "lowalt:UAV"
+    },
+    "asset_digest": "traffic-camera-assets/v1",
+    "camera": {
+      "coincident_azimuth_deg": -90,
+      "fov": 96,
+      "frame": "enu",
+      "pitch_deg": 50,
+      "provenance": "UAV gimbal at committed actor pose; incident bearing; shared city assets",
+      "revision": "uav-gimbal-oblique/v1",
+      "snapshot": {
+        "cut": {
+          "index": 2077,
+          "instant": [
+            45000000000,
+            2
+          ]
+        },
+        "entities": [
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 0
+            },
+            "field": "lowalt.incident_position",
+            "generation": 0,
+            "id": "conditions-fire",
+            "position": [
+              -13.05,
+              -100.037,
+              0
+            ],
+            "version": {
+              "item_index": 5043,
+              "record_index": 2
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "lowalt.position",
+            "generation": 0,
+            "id": "drone-1",
+            "position": [
+              181.19704969799056,
+              -133.73602025930697,
+              125
+            ],
+            "version": {
+              "item_index": 184,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "lowalt.position",
+            "generation": 0,
+            "id": "drone-2",
+            "position": [
+              -5.691610127942894,
+              -70.03291579869797,
+              125
+            ],
+            "version": {
+              "item_index": 194,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "lowalt.position",
+            "generation": 0,
+            "id": "drone-3",
+            "position": [
+              -13.05,
+              -100.037,
+              35
+            ],
+            "version": {
+              "item_index": 204,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "lowalt.position",
+            "generation": 0,
+            "id": "field-vehicle",
+            "position": [
+              -13.05,
+              -95.037,
+              5
+            ],
+            "version": {
+              "item_index": 174,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "lowalt.position",
+            "generation": 0,
+            "id": "line-vehicle",
+            "position": [
+              20.481339052330014,
+              20.379050391469775,
+              125
+            ],
+            "version": {
+              "item_index": 164,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "lowalt.position",
+            "generation": 0,
+            "id": "taxi-vehicle",
+            "position": [
+              -69.805,
+              -106.482,
+              112
+            ],
+            "version": {
+              "item_index": 154,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "he.aircraft.position_enu_m",
+            "generation": 0,
+            "id": "uav.alpha",
+            "position": [
+              -142.58925058168148,
+              -292.1890046596539,
+              145
+            ],
+            "version": {
+              "item_index": 0,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "he.aircraft.position_enu_m",
+            "generation": 0,
+            "id": "uav.bg.01",
+            "position": [
+              168.07717059353686,
+              -185.79869553814842,
+              145
+            ],
+            "version": {
+              "item_index": 36,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "he.aircraft.position_enu_m",
+            "generation": 0,
+            "id": "uav.bg.02",
+            "position": [
+              36.29446892234454,
+              -240.91057756227747,
+              150
+            ],
+            "version": {
+              "item_index": 54,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "he.aircraft.position_enu_m",
+            "generation": 0,
+            "id": "uav.bg.03",
+            "position": [
+              -93.93480931130884,
+              -154.4619491054704,
+              155
+            ],
+            "version": {
+              "item_index": 72,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "he.aircraft.position_enu_m",
+            "generation": 0,
+            "id": "uav.bg.04",
+            "position": [
+              -83.56199795420493,
+              61.33819636251269,
+              160
+            ],
+            "version": {
+              "item_index": 90,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "he.aircraft.position_enu_m",
+            "generation": 0,
+            "id": "uav.bg.05",
+            "position": [
+              117.68720987665368,
+              177.46589026654541,
+              165
+            ],
+            "version": {
+              "item_index": 108,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "he.aircraft.position_enu_m",
+            "generation": 0,
+            "id": "uav.bg.06",
+            "position": [
+              373.16251416524887,
+              36.73209686169053,
+              170
+            ],
+            "version": {
+              "item_index": 126,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "he.aircraft.position_enu_m",
+            "generation": 0,
+            "id": "uav.bravo",
+            "position": [
+              93.22634736907585,
+              -91.16669475285002,
+              70.62071589431717
+            ],
+            "version": {
+              "item_index": 18,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.001",
+            "position": [
+              -461.5545348973782,
+              -207.7560581767567,
+              0
+            ],
+            "version": {
+              "item_index": 217,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.002",
+            "position": [
+              -458.26472770831947,
+              -249.11349733140477,
+              0
+            ],
+            "version": {
+              "item_index": 224,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.003",
+            "position": [
+              -197.79787997604384,
+              -42.236252550552216,
+              0
+            ],
+            "version": {
+              "item_index": 229,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.004",
+            "position": [
+              -199.96738532104095,
+              89.43645073852542,
+              0
+            ],
+            "version": {
+              "item_index": 236,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.005",
+            "position": [
+              -196.5411269924412,
+              -47.024060854049246,
+              0
+            ],
+            "version": {
+              "item_index": 241,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.006",
+            "position": [
+              -248.45364938061203,
+              -149.666621333153,
+              0
+            ],
+            "version": {
+              "item_index": 248,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.007",
+            "position": [
+              45.43616086246785,
+              166.78196198770297,
+              0
+            ],
+            "version": {
+              "item_index": 253,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.008",
+            "position": [
+              11.172805356349036,
+              152.0037774178321,
+              0
+            ],
+            "version": {
+              "item_index": 260,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.009",
+            "position": [
+              3.6771812791863194,
+              -216.98770333445967,
+              0
+            ],
+            "version": {
+              "item_index": 265,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.010",
+            "position": [
+              272.2284409725117,
+              -271.41083755293084,
+              0
+            ],
+            "version": {
+              "item_index": 270,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 34000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.011",
+            "position": [
+              86.45021981961972,
+              -68.84974707645935,
+              0
+            ],
+            "version": {
+              "item_index": 271,
+              "record_index": 1539
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.012",
+            "position": [
+              60.23285632642182,
+              200.81790108790503,
+              0
+            ],
+            "version": {
+              "item_index": 275,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.013",
+            "position": [
+              -208.12766746052205,
+              176.86702097947722,
+              0
+            ],
+            "version": {
+              "item_index": 280,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.014",
+            "position": [
+              171.39642033251033,
+              -139.8051060828998,
+              0
+            ],
+            "version": {
+              "item_index": 285,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.015",
+            "position": [
+              82.04268310956282,
+              -407.80174564382696,
+              0
+            ],
+            "version": {
+              "item_index": 292,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.016",
+            "position": [
+              80.52026943811398,
+              -159.07117369534797,
+              0
+            ],
+            "version": {
+              "item_index": 297,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.017",
+            "position": [
+              -51.665720708072215,
+              275.31296778868773,
+              0
+            ],
+            "version": {
+              "item_index": 302,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.018",
+            "position": [
+              -82.03046843089483,
+              372.6797837398856,
+              0
+            ],
+            "version": {
+              "item_index": 307,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 36000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.019",
+            "position": [
+              311.6987366605152,
+              -289.6116513907745,
+              0
+            ],
+            "version": {
+              "item_index": 311,
+              "record_index": 1629
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 21000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.020",
+            "position": [
+              301.555365685343,
+              -271.4586907622667,
+              0
+            ],
+            "version": {
+              "item_index": 327,
+              "record_index": 870
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.021",
+            "position": [
+              -480.83646823431553,
+              -156.78099518719384,
+              0
+            ],
+            "version": {
+              "item_index": 314,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.022",
+            "position": [
+              -438.80994901156356,
+              -300.6596861459811,
+              0
+            ],
+            "version": {
+              "item_index": 319,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.023",
+            "position": [
+              -225.71832874747344,
+              -90.41593624635583,
+              0
+            ],
+            "version": {
+              "item_index": 326,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.024",
+            "position": [
+              -172.77490283033308,
+              40.14427652404249,
+              0
+            ],
+            "version": {
+              "item_index": 331,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.025",
+            "position": [
+              -216.3044705964601,
+              -80.75880208905099,
+              0
+            ],
+            "version": {
+              "item_index": 336,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.026",
+            "position": [
+              -183.81186070680147,
+              -20.38855653852815,
+              0
+            ],
+            "version": {
+              "item_index": 343,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.027",
+            "position": [
+              -27.523354140301194,
+              134.27594922541383,
+              0
+            ],
+            "version": {
+              "item_index": 348,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.028",
+            "position": [
+              -59.33841854437646,
+              116.00461463145055,
+              0
+            ],
+            "version": {
+              "item_index": 353,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.029",
+            "position": [
+              -2.6800022150783436,
+              -192.20404323561178,
+              0
+            ],
+            "version": {
+              "item_index": 358,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 44000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.030",
+            "position": [
+              291.2683272095679,
+              -275.9281337419928,
+              0
+            ],
+            "version": {
+              "item_index": 358,
+              "record_index": 2035
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 22000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.031",
+            "position": [
+              90.5656984992559,
+              -85.65169500920658,
+              0
+            ],
+            "version": {
+              "item_index": 384,
+              "record_index": 928
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.032",
+            "position": [
+              38.92651624967449,
+              191.64995509477737,
+              0
+            ],
+            "version": {
+              "item_index": 372,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.033",
+            "position": [
+              -186.79292925339337,
+              189.89886450345017,
+              0
+            ],
+            "version": {
+              "item_index": 377,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.034",
+            "position": [
+              127.10252108437824,
+              -178.11751749396146,
+              0
+            ],
+            "version": {
+              "item_index": 382,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 20000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.035",
+            "position": [
+              283.23281268142557,
+              -267.76443855750114,
+              0
+            ],
+            "version": {
+              "item_index": 414,
+              "record_index": 810
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.036",
+            "position": [
+              87.98069743384777,
+              -156.794769926138,
+              0
+            ],
+            "version": {
+              "item_index": 387,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.037",
+            "position": [
+              -71.70649756602808,
+              263.62538796250226,
+              0
+            ],
+            "version": {
+              "item_index": 392,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.038",
+            "position": [
+              -61.59135846371542,
+              385.67381462645176,
+              0
+            ],
+            "version": {
+              "item_index": 399,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 35000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.039",
+            "position": [
+              305.419229791153,
+              -275.9893276304293,
+              0
+            ],
+            "version": {
+              "item_index": 408,
+              "record_index": 1578
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 19000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.040",
+            "position": [
+              285.9841928479021,
+              -272.303881543527,
+              0
+            ],
+            "version": {
+              "item_index": 443,
+              "record_index": 780
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.041",
+            "position": [
+              -466.33079361386723,
+              -195.12920771145215,
+              0
+            ],
+            "version": {
+              "item_index": 404,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.042",
+            "position": [
+              -453.5021487838121,
+              -262.3848138443902,
+              0
+            ],
+            "version": {
+              "item_index": 409,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.043",
+            "position": [
+              -204.87933666120873,
+              -55.1067826061985,
+              0
+            ],
+            "version": {
+              "item_index": 414,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.044",
+            "position": [
+              -192.3769932103959,
+              76.15480349508046,
+              0
+            ],
+            "version": {
+              "item_index": 421,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.045",
+            "position": [
+              -189.68620742498712,
+              -32.677670644341674,
+              0
+            ],
+            "version": {
+              "item_index": 428,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.046",
+            "position": [
+              -244.5431682926839,
+              -136.87057065020977,
+              0
+            ],
+            "version": {
+              "item_index": 433,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.047",
+            "position": [
+              58.36226288565604,
+              172.41453568772073,
+              0
+            ],
+            "version": {
+              "item_index": 440,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.048",
+            "position": [
+              24.670889784423515,
+              157.82543669784593,
+              0
+            ],
+            "version": {
+              "item_index": 445,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.049",
+            "position": [
+              -0.25557649730970944,
+              -202.2017838070373,
+              0
+            ],
+            "version": {
+              "item_index": 450,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 44000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.050",
+            "position": [
+              278.9112457808311,
+              -273.49389586587944,
+              0
+            ],
+            "version": {
+              "item_index": 452,
+              "record_index": 2035
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 33000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.051",
+            "position": [
+              88.13515717774249,
+              -75.64393474675535,
+              0
+            ],
+            "version": {
+              "item_index": 478,
+              "record_index": 1494
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.052",
+            "position": [
+              47.32385896867373,
+              195.1563257625288,
+              0
+            ],
+            "version": {
+              "item_index": 462,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.053",
+            "position": [
+              -195.5828413947307,
+              184.5297449715731,
+              0
+            ],
+            "version": {
+              "item_index": 467,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.054",
+            "position": [
+              186.46435395555153,
+              -137.15041658474294,
+              0
+            ],
+            "version": {
+              "item_index": 472,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.055",
+            "position": [
+              83.10819668303586,
+              -410.8198252241808,
+              0
+            ],
+            "version": {
+              "item_index": 477,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.056",
+            "position": [
+              67.61005174440223,
+              -163.01785223774104,
+              0
+            ],
+            "version": {
+              "item_index": 484,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.057",
+            "position": [
+              -63.854201201547376,
+              268.22417781717803,
+              0
+            ],
+            "version": {
+              "item_index": 489,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.058",
+            "position": [
+              -69.98248253880519,
+              380.8077035758839,
+              0
+            ],
+            "version": {
+              "item_index": 494,
+              "record_index": 2072
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 35000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.059",
+            "position": [
+              308.766068380591,
+              -283.25559469185134,
+              0
+            ],
+            "version": {
+              "item_index": 516,
+              "record_index": 1578
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 20000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.060",
+            "position": [
+              294.6282884646672,
+              -272.43609321456216,
+              0
+            ],
+            "version": {
+              "item_index": 555,
+              "record_index": 810
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 8000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.incident.a",
+            "position": [
+              91.52627531529414,
+              -90.77680465096134,
+              0
+            ],
+            "version": {
+              "item_index": 556,
+              "record_index": 296
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 7000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.incident.b",
+            "position": [
+              93.16332742305232,
+              -101.246449382886,
+              0
+            ],
+            "version": {
+              "item_index": 576,
+              "record_index": 258
+            }
+          },
+          {
+            "acquired": {
+              "clock_id": "canonical",
+              "denominator": 1,
+              "mapping_id": "canonical",
+              "numerator": 45000000000
+            },
+            "field": "traffic.road.position_enu_m",
+            "generation": 0,
+            "id": "vehicle.reporter",
+            "position": [
+              13.02929814249621,
+              -179.71249284383995,
+              0
+            ],
+            "version": {
+              "item_index": 499,
+              "record_index": 2072
+            }
+          }
+        ]
+      },
+      "subject": {
+        "field": "lowalt.incident_position",
+        "generation": 0,
+        "id": "conditions-fire"
+      },
+      "target_field": "lowalt.incident_position"
+    },
+    "height": 540,
+    "request_id": "cooperation/conditions-fire/drone-3/[\"aerokernel.message/v1\",\"city-day\",\"0\",\"partition\",\"tasks\",79]",
+    "run_id": "city-day",
+    "source_cut": {
+      "index": 2077,
+      "instant": [
+        45000000000,
+        2
+      ]
+    },
+    "timeout_s": 20,
+    "width": 960
+  }
+}

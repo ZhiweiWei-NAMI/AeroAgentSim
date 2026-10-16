@@ -13,7 +13,8 @@ vi.mock('./viewport', async () => {
   const { vi: mock } = await import('vitest');
   return { Viewport: class {
     camera = { fov: 48, aspect: 1, position: { x: 0, y: 0, z: 0 } };
-    setCameraMode = mock.fn(); setDusk = mock.fn(); setSelection = mock.fn(); setHighlights = mock.fn();
+    setCameraMode = mock.fn(); setDusk = mock.fn(); setLightingOverride = mock.fn(); setSelection = mock.fn(); setHighlights = mock.fn();
+    onConditions = mock.fn(() => () => {});
     setSemantic = mock.fn(); setLocale = mock.fn(); setQuality = mock.fn(); focusPosition = mock.fn();
     render = mock.fn(); dispose = mock.fn(); setDirectorTarget = mock.fn();
     constructor(public container: HTMLElement, _header: unknown, public options: any) {
@@ -90,15 +91,17 @@ describe('viewport bilingual controls', () => {
     fireEvent.change(screen.getByLabelText('View quality'), { target: { value: 'high' } });
     expect(instance.setQuality).toHaveBeenLastCalledWith('high', true);
     fireEvent.change(screen.getByLabelText('Display lighting'), { target: { value: 'dusk' } });
-    expect(instance.setDusk).toHaveBeenLastCalledWith(true);
+    expect(instance.setLightingOverride).toHaveBeenLastCalledWith('dusk');
     fireEvent.click(screen.getByRole('button', { name: 'locale' }));
+    expect(within(screen.getByLabelText('显示光照')).getByRole('option', { name: '场景' })).toHaveValue('scene');
     expect(renderer.instances).toHaveLength(1);
     expect(instance.setLocale).toHaveBeenLastCalledWith('zh-CN');
     const camera = screen.getByLabelText('视图镜头');
     expect(camera).toHaveValue('chase');
     expect(within(camera).getByRole('option', { name: '事件导播' })).toHaveValue('cinematic');
     expect(within(screen.getByLabelText('视图画质')).getByRole('option', { name: '均衡' })).toHaveValue('med');
-    expect(within(screen.getByLabelText('显示光照')).getByRole('option', { name: '黄昏 · 仅显示' })).toHaveValue('dusk');
+    expect(within(screen.getByLabelText('显示光照')).getByRole('option', { name: '黄昏' })).toHaveValue('dusk');
+    expect(instance.onConditions).toHaveBeenCalled();
     const toggle = screen.getByLabelText('展开或收起检查器');
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');

@@ -118,7 +118,9 @@ def test_t3_r4_003_compile_review_reports_every_changed_wind_component_and_direc
                         for entity in resolved.document["entities"]:
                             if entity["id"] == identity and field in entity["facts"]:
                                 entity["facts"][field] = copy.deepcopy(vector)
-    result = compile_plan(ctx, {"template": template}, [op("set_wind", "wind", speed_mps=3)], tmp_path / "plan", resolved=resolved)
+    # Spec §6 preserves direction for speed-only edits; explicitly request the
+    # west wind to keep exercising the component and direction-change review.
+    result = compile_plan(ctx, {"template": template}, [op("set_wind", "wind", speed_mps=3, from_deg=270)], tmp_path / "plan", resolved=resolved)
     assert result.ok, result.errors
     row = next(row for row in result.diff_base["changed"] if row["id"] == "environment")
     fields = {field["name"].rsplit(".", 1)[-1]: field for field in row["fields"]}

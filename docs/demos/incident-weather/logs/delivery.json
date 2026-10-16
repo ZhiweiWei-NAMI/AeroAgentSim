@@ -1,0 +1,108 @@
+{
+  "source_session": {
+    "client": "claude-b",
+    "id": "4ad2c01f-683f-4ce0-b590-d32844aa6051",
+    "main_revision_at_interruption": "344514f6f3af4fa1478b8027190f7579ad6fb64a",
+    "completed_integration_revision": "9fa2ff9333d1585094439bba582b74b5b99628d2"
+  },
+  "scope": "Finish the existing incident and weather workbench implementation, review its visuals, preserve evidence, integrate, publish, and reload the existing service.",
+  "constraints": [
+    "Reuse scene, configuration, AeroGraph declarations, journal replay and browser capture.",
+    "Wind and gusts are simulated inputs; other atmosphere effects are presentation only.",
+    "Keep one AeroAgentSim checkout on dev/lowalt and fast-forward main after validation.",
+    "Preserve existing English and Chinese product interfaces; author delivery records in English.",
+    "Do not change sibling projects or their servers."
+  ],
+  "delivery_fixes": [
+    "Remove unsupported keyword from duration validation for saved incidents.",
+    "Pass the actual run horizon into scenario expansion and final compiler validation.",
+    "Respect committed pending state at the same timestamp as incident activation.",
+    "Upload incident-specific flame height and underlight uniforms for every shared-material plume draw.",
+    "Wrap condition groups within the visible scene width while retaining the existing HUD style."
+  ],
+  "supplemental_validation": {
+    "backend_tests_passed": 65,
+    "frontend_tests_passed": 102,
+    "typecheck": "passed",
+    "production_build": "passed",
+    "review": "All four findings resolved; no material issues remain.",
+    "conditions_e2e": "passed on the configured rerun, with unchanged assertions and deadlines",
+    "conditions_e2e_initial_failure": "Chromium executable path was not supplied to the test server; camera validation rejected it.",
+    "hud_layout": "Actual replay at 1440 by 900 pixels with both side panels open: no overlapping condition segments; no browser errors."
+  },
+  "cleanup": {
+    "remaining_checkouts": 1,
+    "temporary_integration_branch": "removed",
+    "review_servers_18960_18961": "stopped"
+  },
+  "remaining_limitations": [
+    "Private camera-console temporary directories are not cleaned up by committed.py.",
+    "Atmosphere performance measurements used SwiftShader; residual JavaScript allocations remain.",
+    "Medium-quality capture latency increased in the recorded five-sample performance comparison."
+  ],
+  "followup_scope": "Embed the incident/weather demo in the main README, deliver the footage at 2x speed with English explanations, fix the Tests workflow failures, and optimize viewport internals without changing file layout, interaction logic or call interfaces.",
+  "video_followup": {
+    "duration_seconds": 43.92,
+    "speed": 2,
+    "persistent_label": "2x speed",
+    "english_explanations": 8,
+    "inline_url": "https://github.com/user-attachments/assets/cb424ef3-2b5e-4509-8483-3bcf266d09e0",
+    "source_footage": "Original integration recording; the new encoding changes presentation pace only."
+  },
+  "followup_validation": {
+    "frontend_tests_passed": 1133,
+    "targeted_frontend_tests_passed": 72,
+    "ci_configuration_tests_passed": 6,
+    "real_browser_capture_tests_passed": 7,
+    "typecheck": "passed",
+    "production_build": "passed",
+    "performance_measurements": "performance.json viewport_followup",
+    "ci_status": "Awaiting the final published revision; original reports remain unchanged.",
+    "python_311_regressions_passed": 73,
+    "python_310_graph_regressions_passed": 18,
+    "python_310_other_compatibility_cases_passed": 97,
+    "real_aerograph_source_case": "passed with the actual configured source checkout",
+    "realtime_streams_clock_regressions": {
+      "python_310": 15,
+      "python_311": 15
+    },
+    "worker_network_and_replay_regressions": {
+      "python_310": 54,
+      "python_311": 54
+    }
+  },
+  "ci_fixes": {
+    "reported_run": 38547515046,
+    "reported_branch": "feat/flood-rescue-prototype",
+    "reported_failure": "The idle-render fixture did not initialize the new incidentLabels map; four strict frontend tests failed.",
+    "reported_fixture_fix": "18d094034296a7110aa4c55eade1cc0457b34afc",
+    "prototype_ci_followup": "f77e87ab651bb187efdbc08e145777a55f568bd8",
+    "runtime_fixes": [
+      "Read and hash actual region source bytes with streaming SHA-256 on both supported Python versions.",
+      "Bind real LangGraph node configuration on Python 3.10 so model call identities and replay retain the correct node/superstep without changing factory or client call signatures.",
+      "Recognize asyncio.TimeoutError on Python 3.10; failures remain failures."
+    ],
+    "workflow_fixes": [
+      "Run the AeroGraph-backed blank-project case in the source-dependent job, using its existing real checkout requirement.",
+      "Select the Chromium executable actually installed by Playwright and explicitly choose SwiftShader ANGLE for software captures."
+    ],
+    "source_job": "AeroGraph is private and the repository currently has no AEROGRAPH_REPOSITORY/AEROGRAPH_REF variables; that optional source job remains conditional. No source or success result is synthesized.",
+    "capture_assertion": "Still requires traffic.capture.accepted; diagnostics now retain traffic.capture.failed events.",
+    "offline_replay_clock_guard": "Move the unchanged no-clock/no-engine replay checks after TestClient shutdown; globally mocked clocks must not run while the live service event loop is active.",
+    "prototype_clock_fix": "6994836b5c4217301d916a196b14cd24c37b0abb",
+    "host_socket_ownership": "Only forked worker processes close inherited host network sockets. Direct in-process execution preserves the existing host listener and accepted connections.",
+    "replay_clock_isolation": "The no-clock guard rejects actual calls in the replay thread while allowing unrelated background services to use their own clocks.",
+    "prototype_network_fix": "e1f5e039fafebfc41f33dfb16dead87ef57340c1",
+    "full_ci_d62da56": {
+      "main_run": 38667612290,
+      "dev_lowalt_run": 38667612566,
+      "public_suite": {
+        "passed": 1203,
+        "failed": 1,
+        "skipped": 9,
+        "deselected": 6
+      },
+      "remaining_failure": "traffic.capture.accepted was absent because in-process worker execution closed the cached private camera console socket. The captured failure recorded ERR_CONNECTION_REFUSED at its actual loopback port."
+    }
+  }
+}

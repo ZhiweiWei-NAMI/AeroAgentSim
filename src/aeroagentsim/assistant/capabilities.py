@@ -32,7 +32,8 @@ BRIEF = {
     "add_lowalt_components": ("Install lowalt components", "安装低空组件"),
     "set_control": ("Set template control", "设置模板控件"), "set_duration": ("Set duration", "设置时长"),
     "set_run_mode": ("Set input mode", "设置输入模式"), "set_wind": ("Set wind", "设置风速"),
-    "add_gust": ("Add gust", "添加阵风"), "remove_gust": ("Remove gust", "移除阵风"), "set_rule": ("Set operating rule", "设置运行规则"),
+    "add_gust": ("Add gust", "添加阵风"), "remove_gust": ("Remove gust", "移除阵风"),
+    "set_weather": ("Set visual weather", "设置视觉天气"), "set_rule": ("Set operating rule", "设置运行规则"),
     "set_algorithm": ("Select installed algorithm", "选择已安装算法"), "add_place": ("Add facility", "添加设施"),
     "update_place": ("Edit facility", "修改设施"), "remove_place": ("Remove unused facility", "删除未用设施"),
     "add_fleet": ("Add UAV group", "添加无人机群"), "set_fleet": ("Adjust UAV group", "调整无人机群"),
@@ -77,7 +78,7 @@ def capabilities(topic: str | None, *, templates, algorithms) -> dict:
     operation_topic = {"environment": "events", "workload": "tasks"}.get(topic, topic)
     selected = operation_catalogue(operation_topic)
     if topic == "environment":
-        selected = [row for row in selected if row["name"] in {"set_wind", "add_gust", "remove_gust"}]
+        selected = [row for row in selected if row["name"] in {"set_wind", "add_gust", "remove_gust", "set_weather"}]
     result: dict[str, Any] = {"topic": topic, "label": TOPICS[topic][0], "label_zh": TOPICS[topic][1],
                               "operations": selected, "limits": copy.deepcopy(LIMITS)}
     if topic == "algorithms":

@@ -1,0 +1,646 @@
+
+ RUN  v1.6.1 /tmp/aas-fx/wt/int/frontend
+
+stderr | src/workbench/sections/space/RegionBlock.test.tsx > RegionBlock preview and apply > shows the city conflict and clears the city on request
+Warning: An update to RegionBlock inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RegionBlock (/tmp/aas-fx/wt/int/frontend/src/workbench/sections/space/RegionBlock.tsx:50:33)
+
+stderr | src/workbench/sections/space/RegionBlock.test.tsx > RegionBlock preview and apply > reports validation issues for /city
+Warning: An update to RegionBlock inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RegionBlock (/tmp/aas-fx/wt/int/frontend/src/workbench/sections/space/RegionBlock.tsx:50:33)
+
+stderr | src/workbench/sections/space/RegionBlock.test.tsx > RegionBlock preview and apply > shows the persistent server-side region summary with height accounting
+Warning: An update to RegionBlock inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RegionBlock (/tmp/aas-fx/wt/int/frontend/src/workbench/sections/space/RegionBlock.tsx:50:33)
+
+stderr | src/workbench/sections/space/RegionBlock.test.tsx > RegionBlock preview and apply > shows the server network state: not generated / stale before a region / stale after a region change
+Warning: An update to RegionBlock inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RegionBlock (/tmp/aas-fx/wt/int/frontend/src/workbench/sections/space/RegionBlock.tsx:50:33)
+
+stderr | src/workbench/sections/space/RegionBlock.test.tsx > RegionBlock preview and apply > prefers the server field network_state over the capability inference for the road-network step
+Warning: An update to RegionBlock inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RegionBlock (/tmp/aas-fx/wt/int/frontend/src/workbench/sections/space/RegionBlock.tsx:50:33)
+
+stderr | src/workbench/sections/space/RegionBlock.test.tsx > RegionBlock preview and apply > falls back to the capability inference when network_state is absent
+Warning: An update to RegionBlock inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RegionBlock (/tmp/aas-fx/wt/int/frontend/src/workbench/sections/space/RegionBlock.tsx:50:33)
+
+stderr | src/workbench/sections/space/RegionBlock.test.tsx > RegionBlock preview and apply > honours network_state "none" from the server even with leftover network data
+Warning: An update to RegionBlock inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RegionBlock (/tmp/aas-fx/wt/int/frontend/src/workbench/sections/space/RegionBlock.tsx:50:33)
+
+stderr | src/workbench/sections/space/RegionBlock.test.tsx > round 2 Region form and review regressions > hydrates applied extract/bounds/25 m altitude/6 m level immediately and survives reopen and same-extract selection (T1-004 / T1-R2-008)
+Warning: An update to RegionBlock inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RegionBlock (/tmp/aas-fx/wt/int/frontend/src/workbench/sections/space/RegionBlock.tsx:50:33)
+
+stderr | src/workbench/sections/space/RegionBlock.test.tsx > round 2 Region form and review regressions > preserves pending research inputs even when the applied region changes, and discards back to the current server region
+Warning: An update to RegionBlock inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RegionBlock (/tmp/aas-fx/wt/int/frontend/src/workbench/sections/space/RegionBlock.tsx:50:33)
+
+ ✓ src/assistant/PlanBoard.test.tsx  (34 tests) 1267ms
+ ✓ src/workbench/sections/space/RegionBlock.test.tsx  (24 tests) 1615ms
+ ✓ src/viewport/atmosphere/atmosphere.test.ts  (21 tests) 104ms
+stderr | src/workbench/ConfigPanel.test.tsx > recovers an unapplied duration on refresh, reports unconfirmed input, and leaves the server draft unchanged (T3-R3-003 / T4-R2-009)
+Warning: An update to ConfigPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ConfigPanel (/tmp/aas-fx/wt/int/frontend/src/workbench/ConfigPanel.tsx:141:24)
+    at Harness (/tmp/aas-fx/wt/int/frontend/src/workbench/ConfigPanel.test.tsx:49:47)
+    at I18nProvider (/tmp/aas-fx/wt/int/frontend/src/i18n/I18nProvider.js:26:25)
+
+ ✓ src/workbench/sections/tasks/structured-editors.test.tsx  (32 tests) 1788ms
+ ✓ src/workbench/sections/objects/AddObjects.test.tsx  (17 tests) 1284ms
+stderr | src/workbench/ConfigPanel.test.tsx > T4-R2-009: keeps the real Run duration form and unconfirmed JSON mounted across section switches
+Warning: An update to ConfigPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ConfigPanel (/tmp/aas-fx/wt/int/frontend/src/workbench/ConfigPanel.tsx:141:24)
+    at Harness (/tmp/aas-fx/wt/int/frontend/src/workbench/ConfigPanel.test.tsx:49:47)
+    at I18nProvider (/tmp/aas-fx/wt/int/frontend/src/i18n/I18nProvider.js:26:25)
+
+ ✓ src/workbench/ConfigPanel.test.tsx  (28 tests) 3241ms
+stderr | src/workbench/Workbench.test.tsx > T2-R2-004: the assistant button names and initializes the latest server v2 after a Form save
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+stderr | src/studio/ScenePreview.test.tsx > ScenePreview layer toggles > updates frozen incident/weather conditions without recreating the renderer or retaining dusk/fog
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+
+stderr | src/studio/ScenePreview.test.tsx > ScenePreview layer toggles > keeps renderer, canvas and loaded city across layer toggles and follows the checkboxes
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+
+stderr | src/studio/ScenePreview.test.tsx > ScenePreview layer toggles > does not load buildings while hidden, and loads them once when first shown
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+
+stderr | src/studio/ScenePreview.test.tsx > ScenePreview layer toggles > drops the shared city when the draft no longer declares it
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+
+stderr | src/studio/ScenePreview.test.tsx > ScenePreview layer toggles > rebuilds only for a genuinely different scene
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+
+stderr | src/studio/ScenePreview.test.tsx > ScenePreview layer toggles > reframes automatically when the configuration panel mounts after the city
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+    at div
+    at Shell (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.test.tsx:311:24)
+
+ ✓ src/viewport/occlusion.test.ts  (18 tests) 55ms
+stderr | src/studio/ScenePreview.test.tsx > ScenePreview layer toggles > refits the ground when saved entity positions change, without reloading the city
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+
+stderr | src/studio/ScenePreview.test.tsx > ScenePreview layer toggles > redraws changes while leaving a static preview idle
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+
+ ✓ src/studio/ScenePreview.test.tsx  (17 tests) 631ms
+ ✓ src/workbench/Workbench.test.tsx  (34 tests) 1853ms
+ ✓ src/workbench/useOperatorInput.test.tsx  (24 tests) 156ms
+ ✓ src/workbench/sections/objects/Operations.test.tsx  (12 tests) 374ms
+ ✓ src/behaviours/RunOperations.admissions.test.tsx  (15 tests) 486ms
+ ✓ src/studio/plan-overlay.test.ts  (20 tests) 18ms
+stderr | src/pages/AeroGraphPage.test.tsx > renders the tree, ancestry breadcrumb and inherited fields without raw ids as headings
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/behaviours/RunOperations.i18n.test.tsx  (7 tests) 1284ms
+ ✓ src/viewport/conditions.test.ts  (15 tests) 21ms
+ ✓ src/workbench/sections/ObjectsSection.test.tsx  (15 tests) 560ms
+ ✓ src/newcomers/results.test.tsx  (11 tests) 390ms
+ ✓ src/viewport/city-surfaces.test.ts  (5 tests) 33ms
+ ✓ src/workbench/sections/RelationsSection.test.tsx  (12 tests) 508ms
+ ✓ src/workbench/useRunSession.seek.test.tsx  (20 tests) 1871ms
+ ✓ src/workbench/sections/space/RegionMap.test.tsx  (11 tests) 432ms
+ ✓ src/viewport/nonspatial.test.tsx  (15 tests) 540ms
+ ✓ src/viewport/ViewportView.test.tsx  (6 tests) 345ms
+ ✓ src/pages/AeroGraphPage.test.tsx  (16 tests) 7137ms
+ ✓ src/viewport/city-materials.test.ts  (5 tests) 15ms
+ ✓ src/workbench/sections/objects/AddPlace.test.tsx  (10 tests) 715ms
+ ✓ src/trace/cause-trace.test.ts  (13 tests) 30ms
+ ✓ src/workbench/sections/RunSection.test.tsx  (13 tests) 801ms
+ ✓ src/workbench/sections/operations.test.ts  (11 tests) 179ms
+ ✓ src/behaviours/RunOperations.watermark.test.tsx  (4 tests) 1496ms
+ ✓ src/workbench/ConfigPanel.lifecycle.test.tsx  (7 tests) 734ms
+ ✓ src/workbench/sections/tasks/op-ui.test.tsx  (17 tests) 455ms
+ ✓ src/observations/capture.test.ts  (11 tests) 29ms
+ ✓ src/behaviours/TypedPayloadForm.test.tsx  (9 tests) 311ms
+ ✓ src/workbench/sections/tasks/Traffic.test.tsx  (8 tests) 654ms
+ ✓ src/viewport/atmosphere/smoke-visible.test.ts  (10 tests) 45ms
+ ✓ src/workbench/sections/objects/RemoveEntity.test.tsx  (8 tests) 374ms
+ ✓ src/workbench/sections/objects/Fleets.test.tsx  (8 tests) 496ms
+ ✓ src/newcomers/CompareRuns.test.tsx  (10 tests) 466ms
+stderr | src/console/ConsoleGuide.test.tsx > renders the original English guide with a beginner summary and an explicit source-language explanation
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/viewport/label-collision.test.ts  (4 tests) 80ms
+ ✓ src/console/ConsoleGuide.test.tsx  (29 tests) 645ms
+ ✓ src/workbench/sections/tasks/model.test.ts  (20 tests) 13ms
+ ✓ src/viewport/semantic.test.ts  (8 tests) 9ms
+ ✓ src/behaviours/BehaviourEditor.test.tsx  (9 tests) 1129ms
+stderr | src/newcomers/i18n.test.tsx > localizes metric labels and explanations without changing metric ids, measurements or units
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/newcomers/i18n.test.tsx  (3 tests) 347ms
+ ✓ src/viewport/model-catalog.test.ts  (22 tests) 15ms
+stderr | src/observations/ArtifactsPanel.test.tsx > opens the same verified bytes full size with their recorded caption in en-US
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at window.getComputedStyle (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/jsdom/lib/jsdom/browser/Window.js:897:7)
+    at measureScrollbarSize (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/getScrollBarSize.js:83:10)
+    at /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/@rc-component/portal/lib/useScrollLocker.js:27:72
+    at /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/hooks/useLayoutEffect.js:18:12
+    at commitHookEffectListMount (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24917:7) undefined
+
+stderr | src/observations/ArtifactsPanel.test.tsx > opens the same verified bytes full size with their recorded caption in en-US
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at window.getComputedStyle (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/jsdom/lib/jsdom/browser/Window.js:897:7)
+    at measureScrollbarSize (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/getScrollBarSize.js:83:10)
+    at /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/@rc-component/portal/lib/useScrollLocker.js:27:72
+    at /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/hooks/useLayoutEffect.js:18:12
+    at commitHookEffectListMount (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24917:7) undefined
+
+stderr | src/workbench/sections/space/PlacePickerMap.test.tsx > shared PlacePickerMap (T2-R2-009 / T4-R2-008 / D8) > uses the server/applied origin and reports picks outside the applied bounds
+Warning: An update to PlacePickerMap inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PlacePickerMap (/tmp/aas-fx/wt/int/frontend/src/workbench/sections/space/PlacePickerMap.tsx:20:27)
+
+stderr | src/observations/ArtifactsPanel.test.tsx > opens the same verified bytes full size with their recorded caption in zh-CN
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at window.getComputedStyle (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/jsdom/lib/jsdom/browser/Window.js:897:7)
+    at measureScrollbarSize (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/getScrollBarSize.js:83:10)
+    at /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/@rc-component/portal/lib/useScrollLocker.js:27:72
+    at /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/hooks/useLayoutEffect.js:18:12
+    at commitHookEffectListMount (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24917:7) undefined
+
+ ✓ src/workbench/sections/space/PlacePickerMap.test.tsx  (6 tests) 342ms
+stderr | src/observations/ArtifactsPanel.test.tsx > opens the same verified bytes full size with their recorded caption in zh-CN
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at window.getComputedStyle (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/jsdom/lib/jsdom/browser/Window.js:897:7)
+    at measureScrollbarSize (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/getScrollBarSize.js:83:10)
+    at /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/@rc-component/portal/lib/useScrollLocker.js:27:72
+    at /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/rc-util/lib/hooks/useLayoutEffect.js:18:12
+    at commitHookEffectListMount (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/node_modules/react-dom/cjs/react-dom.development.js:24917:7) undefined
+
+ ✓ src/observations/ArtifactsPanel.test.tsx  (7 tests) 900ms
+ ✓ src/feeds/temporal-store.test.ts  (7 tests) 40ms
+ ✓ src/assistant/useAssistantMode.test.tsx  (8 tests) 468ms
+ ✓ src/viewport/procedural-traffic.test.ts  (7 tests) 46ms
+ ✓ src/behaviours/RunGraphs.i18n.test.tsx  (3 tests) 607ms
+ ✓ src/pages/inspection-format.test.ts  (6 tests) 33ms
+ ✓ src/viewport/entity-catalog.test.ts  (5 tests) 81ms
+ ✓ src/workbench/operator-source.test.ts  (10 tests) 22ms
+ ✓ src/workbench/sections/useStagedForm.test.tsx  (9 tests) 58ms
+ ✓ src/viewport/data.test.ts  (14 tests) 21ms
+ ✓ src/feeds/http.test.ts  (8 tests) 290ms
+ ✓ src/assistant/AssistantPanel.test.tsx  (7 tests) 264ms
+ ✓ src/workbench/ObjectsPanel.test.tsx  (6 tests) 757ms
+ ✓ src/workbench/form.test.tsx  (10 tests) 193ms
+ ✓ src/workbench/InspectorPanel.test.tsx  (8 tests) 809ms
+ ✓ src/workbench/InspectorPanel.operating.test.tsx  (6 tests) 171ms
+ ✓ src/viewport/semantic-i18n.test.ts  (5 tests) 52ms
+ ✓ src/workbench/merge-draft.test.ts  (16 tests) 13ms
+stderr | src/studio/ScenePreview.geo.test.tsx > ScenePreview geography empty states > keeps city and region geometry visible with zero objects and reports No places yet
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+
+stderr | src/studio/ScenePreview.geo.test.tsx > ScenePreview geography empty states > loads proposal buildings from its own compiled GeoJSON and reloads changed proposal geometry
+Warning: An update to ScenePreview inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ScenePreview (/tmp/aas-fx/wt/int/frontend/src/studio/ScenePreview.tsx:101:25)
+
+ ✓ src/studio/ScenePreview.geo.test.tsx  (6 tests) 160ms
+ ✓ src/workbench/useRunSession.history.test.tsx  (2 tests) 50ms
+ ✓ src/workbench/sections/objects/AddFleet.test.tsx  (3 tests) 445ms
+ ✓ src/behaviours/ExpressionControl.test.tsx  (7 tests) 322ms
+ ✓ src/assistant/RunStory.test.tsx  (8 tests) 185ms
+ ✓ src/assistant/draftChanges.test.ts  (6 tests) 12ms
+ ✓ src/lazyRetry.test.tsx  (6 tests) 221ms
+ ✓ src/workbench/sections/space/model.test.ts  (8 tests) 13ms
+ ✓ src/behaviours/TriggerForm.test.tsx  (5 tests) 241ms
+ ✓ src/assistant/motion/rewire.test.ts  (14 tests) 23ms
+ ✓ src/i18n/catalog-completeness.test.ts  (5 tests) 794ms
+ ✓ src/viewport/feed-boundaries.test.ts  (6 tests) 7ms
+ ✓ src/viewport/ViewportView.city-status.test.tsx  (4 tests) 175ms
+ ✓ src/viewport/operational-loads.test.ts  (4 tests) 27ms
+ ✓ src/viewport/atmosphere/performance.test.ts  (3 tests) 183ms
+ ✓ src/behaviours/injection-defaults.test.ts  (4 tests) 9ms
+ ✓ src/trace/CauseTracePanel.test.tsx  (4 tests) 396ms
+ ✓ src/assistant/alternatives/AlternativesCompare.test.tsx  (3 tests) 126ms
+ ✓ src/assistant/PlanChanges.test.tsx  (5 tests) 115ms
+ ✓ src/viewport/idle-render.test.ts  (4 tests) 81ms
+ ✓ src/viewport/assets.test.ts  (3 tests) 15ms
+ ✓ src/newcomers/api-decode.test.ts  (4 tests) 7ms
+ ✓ src/workbench/RecordsPanel.test.tsx  (6 tests) 274ms
+ ✓ src/assistant/RegionProposal.test.tsx  (5 tests) 137ms
+ ✓ src/behaviours/EntityGraph.groups.test.tsx  (3 tests) 233ms
+ ✓ src/observations/CaptureConsole.test.tsx  (3 tests) 107ms
+ ✓ src/workbench/api.test.ts  (9 tests) 331ms
+ ✓ src/workbench/sections/tasks/OrderStreams.removal.test.tsx  (2 tests) 450ms
+ ✓ src/viewport/business-director.test.ts  (5 tests) 9ms
+ ✓ src/viewport/ConditionsHud.test.tsx  (4 tests) 185ms
+ ✓ src/workbench/Gallery.test.tsx  (3 tests) 301ms
+ ✓ src/scene/source-geometry.test.ts  (5 tests) 34ms
+ ✓ src/i18n/I18nProvider.test.js  (4 tests) 77ms
+ ✓ src/workbench/sections/objects/AddObjects.map.test.tsx  (3 tests) 340ms
+stderr | src/console/primitives.test.tsx > preserves API and selected run when navigating to Inspect, hiding its technical id
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/console/primitives.test.tsx  (4 tests) 448ms
+ ✓ src/pages/inspect-i18n.test.tsx  (2 tests) 388ms
+ ✓ src/studio/api.test.ts  (4 tests) 8ms
+ ✓ src/studio/hologram.test.ts  (4 tests) 6ms
+ ✓ src/behaviours/RunOperations.test.tsx  (4 tests) 10ms
+ ✓ src/viewport/action-framing.test.ts  (3 tests) 5ms
+ ✓ src/viewport/camera-context.test.ts  (3 tests) 7ms
+ ✓ src/workbench/geo.test.ts  (5 tests) 7ms
+ ✓ src/workbench/useOperatorInput.independence.test.tsx  (4 tests) 56ms
+ ✓ src/viewport/quality-materials.test.ts  (3 tests) 10ms
+ ✓ src/assistant/SceneCards.test.tsx  (5 tests) 148ms
+ ✓ src/feeds/review.test.ts  (4 tests) 539ms
+ ✓ src/viewport/label-placement.test.ts  (5 tests) 51ms
+ ✓ src/behaviours/EntityGraph.test.tsx  (1 test) 174ms
+ ✓ src/studio/BehavioursPanel.test.tsx  (3 tests) 291ms
+ ✓ src/feeds/behaviour-extension.test.ts  (3 tests) 9ms
+ ✓ src/behaviours/BehaviourEditor.rules.test.tsx  (3 tests) 221ms
+stderr | src/pages/AgentConsole.i18n.test.tsx > offers a Chinese empty state when no run is selected
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/pages/AgentConsole.i18n.test.tsx  (2 tests) 246ms
+ ✓ src/trace/EntityStory.test.tsx  (3 tests) 83ms
+ ✓ src/workbench/sections/objects/model.test.ts  (8 tests) 8ms
+ ✓ src/feeds/lossless-json.test.ts  (11 tests) 9ms
+ ✓ src/viewport/recent-activity.test.ts  (1 test) 11ms
+ ✓ src/viewport/conditions-index.test.ts  (2 tests) 8ms
+ ✓ src/viewport/live-interpolation.test.ts  (1 test) 5ms
+ ✓ src/workbench/Markdown.test.tsx  (3 tests) 157ms
+ ✓ src/workbench/sections/space/SpaceSection.test.tsx  (2 tests) 211ms
+ ✓ src/feeds/http.admissions.test.ts  (4 tests) 10ms
+ ✓ src/pages/InspectionPanel.test.tsx  (2 tests) 261ms
+ ✓ src/behaviours/BehaviourRunGraph.test.tsx  (2 tests) 269ms
+ ✓ src/viewport/message-subjects.test.tsx  (1 test) 5ms
+ ✓ src/assistant/api.test.ts  (4 tests) 8ms
+ ✓ src/workbench/useRunSession.test.ts  (3 tests) 5ms
+ ✓ src/workbench/sections/objects/PositionField.test.tsx  (1 test) 153ms
+ ✓ src/viewport/gpu-timer.test.ts  (3 tests) 7ms
+ ✓ src/viewport/camera-clearance.test.ts  (3 tests) 9ms
+ ✓ src/viewport/coordinates.test.ts  (5 tests) 7ms
+ ✓ src/assistant/useAssistant.test.tsx  (1 test) 51ms
+ ✓ src/viewport/display-name.test.ts  (2 tests) 7ms
+ ✓ src/viewport/occlusion-rebase.test.ts  (1 test) 13ms
+ ✓ src/viewport/atmosphere/surface-height.test.ts  (2 tests) 11ms
+ ✓ src/newcomers/projection.test.ts  (1 test) 5ms
+ ✓ src/viewport/atmosphere/scene-depth.test.ts  (2 tests) 5ms
+ ✓ src/observations/capture-city-order.test.ts  (2 tests) 7ms
+ ✓ src/viewport/model-glyph.test.ts  (2 tests) 9ms
+ ✓ src/pages/WaitingBanner.test.tsx  (2 tests) 429ms
+ ✓ src/newcomers/metric-help.test.tsx  (2 tests) 4ms
+ ✓ src/pages/AgentConsole.records.test.ts  (1 test) 6ms
+ ✓ src/feeds/configuration.test.ts  (1 test) 7ms
+ ✓ src/behaviours/BehaviourRunGraph.test.ts  (1 test) 3ms
+ ✓ src/console/guides.test.ts  (1 test) 5ms
+ ✓ src/scene/presentation.test.ts  (1 test) 3ms
+ ✓ src/workbench/Workbench.finality.test.ts  (1 test) 3ms
+ ✓ src/workbench/Workbench.status.test.ts  (1 test) 3ms
+
+ Test Files  152 passed (152)
+      Tests  1127 passed (1127)
+   Start at  09:21:01
+   Duration  80.41s (transform 10.96s, setup 34.43s, collect 92.10s, tests 50.70s, environment 73.39s, prepare 13.92s)
+
+vite v5.4.21 building for production...
+transforming...
+✓ 3311 modules transformed.
+rendering chunks...
+computing gzip size...
+../../../dist-int/index.html                                         0.84 kB │ gzip:   0.46 kB
+../../../dist-int/assets/operator-source.worker-C8Erh6Mj.js        126.18 kB
+../../../dist-int/assets/ConfigPanel-Do57qqz9.css                    0.41 kB │ gzip:   0.24 kB
+../../../dist-int/assets/TasksSection-DRrxKRTv.css                   0.69 kB │ gzip:   0.35 kB
+../../../dist-int/assets/AgentConsole-DukSZpMF.css                   0.92 kB │ gzip:   0.42 kB
+../../../dist-int/assets/Details-B4MDC9aF.css                        1.16 kB │ gzip:   0.52 kB
+../../../dist-int/assets/ConsoleGuide-HlHjEOu9.css                   1.16 kB │ gzip:   0.36 kB
+../../../dist-int/assets/CompareRuns-eZB0OZih.css                    1.66 kB │ gzip:   0.59 kB
+../../../dist-int/assets/NonspatialViews-CrVKGYIH.css                1.76 kB │ gzip:   0.69 kB
+../../../dist-int/assets/ScenePreview-C0aafM8d.css                   1.85 kB │ gzip:   0.76 kB
+../../../dist-int/assets/ArtifactsPanel-D1BoZq93.css                 1.87 kB │ gzip:   0.67 kB
+../../../dist-int/assets/SpaceSection-DGhowT_X.css                   1.90 kB │ gzip:   0.73 kB
+../../../dist-int/assets/PlanBoard-CDHCC5kT.css                      2.42 kB │ gzip:   0.79 kB
+../../../dist-int/assets/ObjectsSection-eAv1OUi_.css                 2.54 kB │ gzip:   0.94 kB
+../../../dist-int/assets/op-ui-sfZmsFOD.css                          2.88 kB │ gzip:   1.04 kB
+../../../dist-int/assets/AeroGraphPage-B7dKnGOU.css                  5.86 kB │ gzip:   1.42 kB
+../../../dist-int/assets/BehaviourRunGraph-DtPNF4ke.css              8.91 kB │ gzip:   2.40 kB
+../../../dist-int/assets/index-CgAnSFQf.css                         17.03 kB │ gzip:   4.06 kB
+../../../dist-int/assets/RegionMap-CbwRZdGU.css                     19.30 kB │ gzip:   7.40 kB
+../../../dist-int/assets/Workbench-CdScu7PX.css                    132.93 kB │ gzip:  25.75 kB
+../../../dist-int/assets/KeyTrees-0eea64Rr.js                        0.53 kB │ gzip:   0.37 kB
+../../../dist-int/assets/ActionButton-AOllIPeH.js                    0.97 kB │ gzip:   0.58 kB
+../../../dist-int/assets/useClosable-CAUG266g.js                     1.21 kB │ gzip:   0.63 kB
+../../../dist-int/assets/parcel-city-placement-11-FIzi2.js           1.47 kB │ gzip:   0.83 kB
+../../../dist-int/assets/AlgorithmsSection-B8iiHDu3.js               1.80 kB │ gzip:   1.17 kB
+../../../dist-int/assets/README-DDhTUOtw.js                          1.83 kB │ gzip:   1.29 kB
+../../../dist-int/assets/first-scenario-D5jOOCTT.js                  2.56 kB │ gzip:   1.15 kB
+../../../dist-int/assets/aerograph-DznA74BX.js                       2.95 kB │ gzip:   1.36 kB
+../../../dist-int/assets/predicates-C8HpCzFa.js                      3.13 kB │ gzip:   1.49 kB
+../../../dist-int/assets/model-BopDI9mF.js                           3.49 kB │ gzip:   1.43 kB
+../../../dist-int/assets/model-eOSNDoRx.js                           3.55 kB │ gzip:   1.64 kB
+../../../dist-int/assets/containers-DQL1pyN4.js                      3.66 kB │ gzip:   1.64 kB
+../../../dist-int/assets/runs-rWxUsBUB.js                            4.12 kB │ gzip:   1.92 kB
+../../../dist-int/assets/views-CGk4pUi6.js                           4.26 kB │ gzip:   2.12 kB
+../../../dist-int/assets/install-BxKhLJzT.js                         4.45 kB │ gzip:   2.12 kB
+../../../dist-int/assets/RecordsPanel-C5u8p33P.js                    4.61 kB │ gzip:   2.37 kB
+../../../dist-int/assets/predicates-D7GJXMed.js                      4.72 kB │ gzip:   2.22 kB
+../../../dist-int/assets/plugins-BYf-4U7o.js                         4.79 kB │ gzip:   2.28 kB
+../../../dist-int/assets/lowalt-rules-FC7LKMIe.js                    5.00 kB │ gzip:   2.35 kB
+../../../dist-int/assets/experiments-DFoVBCg3.js                     5.09 kB │ gzip:   2.46 kB
+../../../dist-int/assets/quickstart-B3gr1OTO.js                      5.24 kB │ gzip:   2.47 kB
+../../../dist-int/assets/RunSection-cJK6wmt_.js                      5.26 kB │ gzip:   2.51 kB
+../../../dist-int/assets/guides-BFEgvu5v.js                          5.45 kB │ gzip:   1.51 kB
+../../../dist-int/assets/behaviours-kw0aQN6Q.js                      5.57 kB │ gzip:   2.56 kB
+../../../dist-int/assets/index-Dy2Vsohh.js                           5.58 kB │ gzip:   2.21 kB
+../../../dist-int/assets/agents-CNGRh2CP.js                          5.66 kB │ gzip:   2.93 kB
+../../../dist-int/assets/architecture-Dum1XnSj.js                    5.77 kB │ gzip:   2.72 kB
+../../../dist-int/assets/weather-Dd8zRVk5.js                         5.79 kB │ gzip:   2.89 kB
+../../../dist-int/assets/behaviours-DDrCeioP.js                      5.81 kB │ gzip:   2.56 kB
+../../../dist-int/assets/sumo-O_OBxTdh.js                            6.10 kB │ gzip:   2.65 kB
+../../../dist-int/assets/ModeSwitch-CspqwgC5.js                      6.37 kB │ gzip:   2.24 kB
+../../../dist-int/assets/px4-gazebo-BuVr0lvu.js                      6.50 kB │ gzip:   2.90 kB
+../../../dist-int/assets/assistant-D2seGL6s.js                       6.54 kB │ gzip:   2.98 kB
+../../../dist-int/assets/external-events-VOK2byIp.js                 6.55 kB │ gzip:   2.80 kB
+../../../dist-int/assets/plugins-BGUCD_8J.js                         6.72 kB │ gzip:   2.84 kB
+../../../dist-int/assets/predicate-dialect-CNwcOquG.js               6.77 kB │ gzip:   2.89 kB
+../../../dist-int/assets/cli-unLv2qQY.js                             6.87 kB │ gzip:   2.94 kB
+../../../dist-int/assets/traffic-accident-CWjr3xLf.js                7.23 kB │ gzip:   3.13 kB
+../../../dist-int/assets/blank-project-tutorial.zh-CN-S-8TJ60A.js    7.41 kB │ gzip:   7.96 kB
+../../../dist-int/assets/geo-DV7hxZbB.js                             7.60 kB │ gzip:   3.33 kB
+../../../dist-int/assets/behaviour-package-50PTGPlv.js               7.64 kB │ gzip:   3.16 kB
+../../../dist-int/assets/templates-DpQ_84Fb.js                       7.70 kB │ gzip:   3.78 kB
+../../../dist-int/assets/viewer-feed-BItbDLLq.js                     7.89 kB │ gzip:   3.45 kB
+../../../dist-int/assets/visualization-vXp05FKf.js                   8.48 kB │ gzip:   4.81 kB
+../../../dist-int/assets/agents-CNM73O6V.js                          9.56 kB │ gzip:   4.56 kB
+../../../dist-int/assets/city-day-fxkR-3i1.js                        9.63 kB │ gzip:   4.30 kB
+../../../dist-int/assets/ConsoleGuide-Drpc4O2r.js                    9.65 kB │ gzip:   3.51 kB
+../../../dist-int/assets/AgentConsole-DAVCyhKz.js                   10.02 kB │ gzip:   3.55 kB
+../../../dist-int/assets/scenario-BOczwfPx.js                       10.25 kB │ gzip:   4.21 kB
+../../../dist-int/assets/op-ui-B7RbBiZ8.js                          11.02 kB │ gzip:   5.14 kB
+../../../dist-int/assets/RelationsSection-B5tZBVOj.js               12.18 kB │ gzip:   4.94 kB
+../../../dist-int/assets/algorithms-hUxVJYNm.js                     12.36 kB │ gzip:   5.51 kB
+../../../dist-int/assets/Traffic-BhsbbirI.js                        12.52 kB │ gzip:   5.01 kB
+../../../dist-int/assets/http-api-BiQaxdEP.js                       12.69 kB │ gzip:   5.27 kB
+../../../dist-int/assets/Details-tTakxorX.js                        12.93 kB │ gzip:   5.58 kB
+../../../dist-int/assets/NonspatialViews-J6YCF7CD.js                13.29 kB │ gzip:   5.03 kB
+../../../dist-int/assets/ComponentsSection-DCL_YC5_.js              13.76 kB │ gzip:   5.63 kB
+../../../dist-int/assets/CompareRuns-DGHyZ3gu.js                    15.94 kB │ gzip:   6.08 kB
+../../../dist-int/assets/blank-project-tutorial-CoKPs30t.js         17.03 kB │ gzip:   7.19 kB
+../../../dist-int/assets/SpaceSection-DqkQCwO2.js                   18.37 kB │ gzip:   7.65 kB
+../../../dist-int/assets/CaptureConsole-CJpKCzFo.js                 18.57 kB │ gzip:   6.87 kB
+../../../dist-int/assets/inspection-format-DdS_VMX3.js              19.88 kB │ gzip:   6.72 kB
+../../../dist-int/assets/ConditionsHud-B8ObaC7l.js                  21.97 kB │ gzip:   6.05 kB
+../../../dist-int/assets/BehaviourRunGraph-BQ4TYuKC.js              22.10 kB │ gzip:   8.14 kB
+../../../dist-int/assets/api-B-SKlzkA.js                            22.53 kB │ gzip:   5.68 kB
+../../../dist-int/assets/AssistantPanel-D_FGjzCP.js                 25.17 kB │ gzip:  11.58 kB
+../../../dist-int/assets/temporal-store-CumKhG9S.js                 28.19 kB │ gzip:   9.77 kB
+../../../dist-int/assets/ArtifactsPanel-DpSzNGWg.js                 46.65 kB │ gzip:  15.05 kB
+../../../dist-int/assets/ScenePreview-jeK0q4Wl.js                   57.92 kB │ gzip:  19.76 kB
+../../../dist-int/assets/ViewportView-D75vdYEB.js                   58.04 kB │ gzip:  18.48 kB
+../../../dist-int/assets/ObjectsSection-DPtBNFwY.js                 58.74 kB │ gzip:  20.22 kB
+../../../dist-int/assets/PlanBoard-Cim3aJe4.js                      60.13 kB │ gzip:  21.31 kB
+../../../dist-int/assets/TasksSection-BlhhkivK.js                   73.04 kB │ gzip:  23.02 kB
+../../../dist-int/assets/ConfigPanel-C-GC2jEs.js                    98.88 kB │ gzip:  34.22 kB
+../../../dist-int/assets/RegionMap-BXInmAMB.js                     161.80 kB │ gzip:  47.72 kB
+../../../dist-int/assets/Workbench-B-2pGrzJ.js                     228.45 kB │ gzip:  79.91 kB
+../../../dist-int/assets/AeroGraphPage-B_Kb7v6J.js                 250.99 kB │ gzip:  79.29 kB
+../../../dist-int/assets/city-layer-Craleq5C.js                    368.90 kB │ gzip: 172.27 kB
+../../../dist-int/assets/index-w9_2eOHl.js                         694.54 kB │ gzip: 246.54 kB
+../../../dist-int/assets/source-geometry-B26R2cNJ.js               798.07 kB │ gzip: 224.69 kB
+✓ built in 23.90s

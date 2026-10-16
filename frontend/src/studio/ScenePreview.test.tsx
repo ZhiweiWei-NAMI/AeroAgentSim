@@ -7,8 +7,11 @@ vi.mock('three', async importOriginal => {
   const actual = await importOriginal<typeof import('three')>();
   class FakeRenderer {
     domElement = document.createElement('canvas');
+    private ratio = 1;
     constructor() { mocks.renderers++; }
-    setPixelRatio() {} setSize() {} render(scene: THREE.Scene, camera: THREE.PerspectiveCamera) { mocks.draws++; mocks.scene = scene; mocks.camera = camera; } dispose() {}
+    setPixelRatio(value: number) { this.ratio = value; } getPixelRatio() { return this.ratio; }
+    setSize(w: number, h: number) { this.domElement.width = w * this.ratio; this.domElement.height = h * this.ratio; }
+    render(scene: THREE.Scene, camera: THREE.PerspectiveCamera) { mocks.draws++; mocks.scene = scene; mocks.camera = camera; } dispose() {}
   }
   return { ...actual, WebGLRenderer: FakeRenderer };
 });
@@ -16,6 +19,7 @@ vi.mock('three/addons/controls/OrbitControls.js', () => ({ OrbitControls: class 
 vi.mock('../viewport/assets', async importOriginal => ({ ...await importOriginal<object>(), Assets: class { dispose() {} } }));
 vi.mock('../scene/traffic-city', () => ({ loadTrafficCity: mocks.city }));
 vi.mock('../scene/source-geometry', () => ({ loadOsmBuildings: mocks.osm }));
+vi.mock('../viewport/atmosphere/fx-shared', async importOriginal => ({ ...await importOriginal<object>(), smokeAtlas: async () => new THREE.Texture() }));
 import { authoredPositions, draftBinding, framePreview, ScenePreview } from './ScenePreview';
 
 const workspace: any = {
@@ -31,10 +35,36 @@ beforeEach(() => {
   mocks.city.mockReset().mockImplementation(async () => new THREE.Group());
   mocks.osm.mockReset().mockImplementation(async () => new THREE.Group());
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+  vi.stubGlobal('matchMedia', () => ({ matches: false }));
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    beginPath() {}, arc() {}, fill() {}, stroke() {}, moveTo() {}, bezierCurveTo() {}, fillRect() {},
+  } as unknown as ReturnType<HTMLCanvasElement['getContext']>);
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('ScenePreview layer toggles', () => {
+  it('updates frozen incident/weather conditions without recreating the renderer or retaining dusk/fog', async () => {
+    const incident = { id: 'fire', kind: 'fire', label: 'Building fire', position: [20, 40, 0], at_s: 20 };
+    const conditions = (wet: boolean) => ({ ...workspace, scenario: { ...workspace.scenario, engines: {
+      weather: { plugin: 'environment', config: { profiles: { weather: {
+        'lowalt.precipitation': { value: wet ? 4 / 3600 : 0 }, 'lowalt.visibility': { value: wet ? 500 : 50000 }, 'lowalt.light': { value: wet ? 'dusk' : 'day' },
+      } } } },
+      tasks: { plugin: 'lowalt_tasks', config: { cooperation: { incidents: [{ ...incident, position: wet ? [20, 40, 0] : [50, 60, 0] }, { ...incident, id: 'later', at_s: 90 }] } } },
+    } } });
+    const view = render(<ScenePreview workspace={conditions(true)} api="/api" layers={ALL} />);
+    await vi.waitFor(() => expect(mocks.scene?.fog).toBeInstanceOf(THREE.Fog));
+    const fog = mocks.scene!.fog as THREE.Fog;
+    expect(fog.near).toBeGreaterThanOrEqual(0); expect(fog.far - fog.near).toBeCloseTo(500 / 0.95);
+    expect(view.container.querySelector('.viewport-labels')?.textContent).toContain('Fire at 01:30');
+    expect(mocks.scene?.getObjectByName('fx-incident-fire')?.position.toArray()).toEqual([20, 0, -40]);
+    const sun = mocks.scene!.children.find(node => node instanceof THREE.DirectionalLight) as THREE.DirectionalLight;
+    expect(sun.intensity).toBeCloseTo(2.5 * 0.5 * (1 - 0.45 * 0.5));
+    view.rerender(<ScenePreview workspace={conditions(false)} api="/api" layers={ALL} />);
+    await vi.waitFor(() => expect(mocks.scene?.fog).toBeNull());
+    expect(mocks.scene?.getObjectByName('fx-incident-fire')?.position.toArray()).toEqual([50, 0, -60]);
+    expect(sun.intensity).toBe(2.5); expect(sun.color.getHexString()).toBe('ffffff');
+    expect(mocks.renderers).toBe(1);
+  });
   it('keeps renderer, canvas and loaded city across layer toggles and follows the checkboxes', async () => {
     const view = render(<ScenePreview workspace={workspace} api="/api" layers={ALL} />);
     await vi.waitFor(() => expect(mocks.city).toHaveBeenCalledTimes(1));

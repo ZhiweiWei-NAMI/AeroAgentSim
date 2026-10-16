@@ -5,7 +5,7 @@ import { resolveBinding, entityId } from './bindings';
 import { modelGlyph } from './model-glyph';
 import { proceduralModel } from './procedural-traffic';
 import { Assets } from './assets';
-import { placeLabel, type LabelRect } from './label-placement';
+import { LabelPlacer, pooledRect } from './label-placement';
 import type { StaticOcclusion } from './occlusion';
 import { worldOrientation, worldPosition } from './coordinates';
 import type { EntityState } from './feed-store';
@@ -13,6 +13,7 @@ import { selectCatalogModel, fitModel, yawFromVelocity, type CatalogModel, type 
 import { semanticVehicle, businessStyle, semanticLabel, labelInterest, taskByVehicle, activeZones } from './semantic';
 import {PayloadLayer} from './operational-loads';
 import { RecentActivity } from './recent-activity';
+import { incidentLabel, type Conditions } from './conditions';
 
 /** A task counts as active unless its committed state says it is finished. */
 function isFinishedTask(task: { fields: Map<string, { value: unknown }> }): boolean {
@@ -53,6 +54,8 @@ export class EntityLayer {
   /** Semantic overlay policy (newcomer mode); inert defaults keep Expert behavior. */
   semantic = false;
   showAllLabels = false;
+  /** Incidents get the atmosphere pin/ring instead of the plain marker; labels stay readable. */
+  hideIncidentMarkers = false;
   locale = 'en-US';
   private hoverId?: string;
   private semanticTasks = new Map<string, EntityState>();
@@ -64,6 +67,8 @@ export class EntityLayer {
   private semanticBindings=new Map<PresentationBinding,Map<string,PresentationBinding>>();
   private glyphs=new WeakMap<PresentationBinding,string>();
   private labels = new Map<string, HTMLButtonElement>();
+  private labelMetrics = new WeakMap<HTMLButtonElement, { key: string; width: number; height: number }>();
+  private labelStyles = new WeakMap<HTMLButtonElement, string>();
   private trail: T.Line;
   private dummy = new T.Object3D();
   private disposed = false;
@@ -72,6 +77,11 @@ export class EntityLayer {
   private labelProjected = new T.Vector3();
   private labelEndpoint = new T.Vector3();
   private labelDirection = new T.Vector3();
+  private labelPlacer = new LabelPlacer();
+  private labelLayout?: string;
+  private labelWidth = -1;
+  private labelHeight = -1;
+  private pinAnchors: Array<{ pin: T.Vector3; base: T.Vector3 }> = [];
   private lastTrail = '';
   /** Display-model catalog of the installed pack; empty keeps the procedural/single-asset display. */
   private catalog: ModelCatalog = {};
@@ -267,7 +277,7 @@ export class EntityLayer {
     if(changed){mesh.setMatrixAt(index,matrix);mesh.userData.viewportChanged=true;}
   }
   update(store: FeedStore, ns: string, camera: T.Camera, selected?: EntityKey, showTrails = true,
-    renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion, aimCamera?: () => void) {
+    renderOrigin = new T.Vector3(), occlusion?: StaticOcclusion, aimCamera?: () => void, incidents?: Conditions['incidents'], incidentRoofHeight?: (east: number, north: number) => number, layoutKey?: string) {
     this.transformsChanged=false;this.catalogUsage.clear();
     if(this.semantic){
       const stamp=`${store.revision}/${ns}`;
@@ -281,7 +291,16 @@ export class EntityLayer {
     for (const batch of this.batches.values()) { batch.keys = []; for(const mesh of batch.meshes)mesh.count=0; if(batch.far){batch.far.keys=[];batch.far.mesh.count=0;} }
     const width=this.overlay.clientWidth,height=this.overlay.clientHeight;
     const visibleLabels=new Set<string>();
-    const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean }> = [];
+    // Pin anchors (world space, at pin height) reserved as fixed obstacles for this frame.
+    const pinAnchors = this.pinAnchors; let pinCount = 0;
+    for (const row of incidents ?? []) {
+      if (row.phase === 'pending') continue;
+      const anchor = pinAnchors[pinCount] ?? (pinAnchors[pinCount] = { pin: new T.Vector3(), base: new T.Vector3() }); pinCount++;
+      const spot = worldPosition(row.position, 'enu', this.header.origin, anchor.base).sub(renderOrigin);
+      spot.y = Math.max(spot.y, incidentRoofHeight?.(row.position[0], row.position[1]) ?? occlusion?.liftCamera(spot, 0).y ?? spot.y);
+      anchor.pin.copy(spot); anchor.pin.y += 14;
+    }
+    const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean; incident?: Conditions['incidents'][number] }> = [];
     for (const [id, entity] of store.entities) {
       let binding = resolveBinding(this.header, entity.typeId); if (!binding) continue;
       if(this.semantic&&entity.typeId==='lowalt:UAV'&&binding.visual.kind==='marker'){
@@ -299,7 +318,7 @@ export class EntityLayer {
       if(orientation)this.dummy.quaternion.copy(worldOrientation(orientation,binding.frame));else this.dummy.quaternion.identity();
       if (orientation) this.orientations.set(id, this.dummy.quaternion.clone());
       this.dummy.scale.setScalar(binding.visual.scale ?? 1);
-      if (binding.visual.kind !== 'label') {
+      if (binding.visual.kind !== 'label' && !(this.hideIncidentMarkers && entity.typeId === 'lowalt:Incident')) {
         const batch = this.batches.get(binding) ?? this.createBatch(binding, Math.max(64, store.entities.size));
         const isSelected=!!selected&&entityId(selected)===id||this.highlighted.has(id);
         const far=batch.far&&!isSelected&&(position.distanceTo(camera.position)>(batch.farDistance??100)||batch.keys.length>=(batch.farDistance?80:48))?batch.far:undefined;
@@ -326,7 +345,11 @@ export class EntityLayer {
         }
       }
       const isSelected=!!selected && entityId(selected)===id;
-      candidates.push({id,key:entity.key,position,selected:isSelected,forced:binding.visual.kind==='label'||this.highlighted.has(id)});
+      const incident = incidents?.find(row => row.id === entity.key.id);
+      if (incident?.phase === 'pending') continue;
+      const labelPosition = incident ? position.clone() : position;
+      if (incident) labelPosition.y = Math.max(position.y, incidentRoofHeight?.(incident.position[0], incident.position[1]) ?? occlusion?.liftCamera(position, 0).y ?? position.y) + 14;
+      candidates.push({id,key:entity.key,position:labelPosition,selected:isSelected,forced:!!incident||binding.visual.kind==='label'||this.highlighted.has(id),interest:!!incident,incident});
     }
     // Camera follow uses these exact sampled poses; labels must project through
     // that same final camera transform, rather than the previous frame's view.
@@ -337,6 +360,7 @@ export class EntityLayer {
     // raycast hover or when show-all is on. Expert mode keeps forced labels.
     const entityHover=this.hoverId!==undefined&&this.positions.has(this.hoverId)?this.hoverId:undefined;
     for(const item of candidates){
+      if (item.incident) continue;
       if(this.semantic&&!item.selected){
         const entity=store.entities.get(item.id)!;
         const task=this.semanticTasks.get(item.id);
@@ -351,20 +375,42 @@ export class EntityLayer {
     }
     const labelsStarted = performance.now();
     camera.updateMatrixWorld();
-    const occupied: Array<{ left: number; right: number; top: number; bottom: number }>=[];let labelAttempts=0;
-    const wb = this.overlay.closest('.wb'), overlayRect = this.overlay.getBoundingClientRect();
-    const relative = (rect: DOMRect): LabelRect => ({ left: rect.left - overlayRect.left, right: rect.right - overlayRect.left, top: rect.top - overlayRect.top, bottom: rect.bottom - overlayRect.top });
-    const frame = wb?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
-    const safe = frame && frame.width > 0 ? relative(frame) : { left: 8, right: width - 8, top: 8, bottom: height - 8 };
-    const obstacles = wb ? [...wb.querySelectorAll('.wb-panel, .wb-camera, .wb-graph, .wb-history, .wb-waiting')].map(node => relative(node.getBoundingClientRect())) : [];
-    candidates.sort((a,b)=>Number(b.selected)-Number(a.selected)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
+    const placer = this.labelPlacer; placer.occupiedCount = 0; let labelAttempts = 0;
+    const safe = placer.safe;
+    if (layoutKey === undefined || layoutKey !== this.labelLayout || width !== this.labelWidth || height !== this.labelHeight) {
+      this.labelLayout = layoutKey; this.labelWidth = width; this.labelHeight = height;
+      const wb = this.overlay.closest('.wb'), overlayRect = this.overlay.getBoundingClientRect();
+      const frame = wb?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
+      if (frame && frame.width > 0) {
+        safe.left = frame.left - overlayRect.left; safe.right = frame.right - overlayRect.left;
+        safe.top = frame.top - overlayRect.top; safe.bottom = frame.bottom - overlayRect.top;
+      } else { safe.left = 8; safe.right = width - 8; safe.top = 8; safe.bottom = height - 8; }
+      const panels = wb?.querySelectorAll('.wb-panel, .wb-camera, .wb-graph, .wb-history, .wb-waiting');
+      placer.panelCount = panels?.length ?? 0;
+      for (let i = 0; i < placer.panelCount; i++) {
+        const dom = panels![i].getBoundingClientRect(), rect = pooledRect(placer.panels, i);
+        rect.left = dom.left - overlayRect.left; rect.right = dom.right - overlayRect.left;
+        rect.top = dom.top - overlayRect.top; rect.bottom = dom.bottom - overlayRect.top;
+      }
+    }
+    // Fixed pin/leader obstacles reuse vectors and rectangles across frames.
+    placer.pinCount = 0;
+    for (let i = 0; i < pinCount; i++) {
+      const { pin, base } = pinAnchors[i], projected = this.labelProjected.copy(pin).project(camera);
+      if (projected.z < -1 || projected.z > 1) continue;
+      const px = (projected.x + 1) * width / 2, py = (1 - projected.y) * height / 2, pad = 34;
+      const leader = this.labelProjected.copy(base).project(camera), rect = pooledRect(placer.pins, placer.pinCount++);
+      rect.left = px - pad; rect.right = px + pad; rect.top = py - pad;
+      rect.bottom = Math.max(py + pad * 1.5, (1 - leader.y) * height / 2 + 4);
+    }
+    candidates.sort((a,b)=>Number(!!b.incident)-Number(!!a.incident)||Number(b.selected)-Number(a.selected)||a.position.distanceToSquared(camera.position)-b.position.distanceToSquared(camera.position));
     for(const item of candidates) {
       if(this.semantic&&!item.interest)continue;
-      if(!item.interest&&!item.selected&&!item.forced&&(occupied.length>=12||labelAttempts>=32))continue;
+      if(!item.interest&&!item.selected&&!item.forced&&(placer.occupiedCount>=12||labelAttempts>=32))continue;
       const world=this.labelWorld.copy(item.position);world.y+=2;
       const projected=this.labelProjected.copy(world).project(camera);
       if(projected.z<-1||projected.z>1||Math.abs(projected.x)>0.96||Math.abs(projected.y)>0.96)continue;
-      const x=(projected.x+1)*width/2,y=(1-projected.y)*height/2;
+      const x=(projected.x+1)*width/2,y=(1-projected.y)*height/2-(item.incident?14:0);
       // Selected labels remain readable; nonselected labels do not shine through buildings.
       if(!item.selected&&!item.interest&&occlusion) {
         labelAttempts++;
@@ -374,20 +420,41 @@ export class EntityLayer {
       }
       let label=this.labels.get(item.id);
       if(!label){label=document.createElement('button');label.className='entity-label';label.dataset.entityId=item.key.id;label.onclick=()=>this.onSelect(item.key);this.overlay.append(label);this.labels.set(item.id,label);}
-      const semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header,this.locale):item.key.id;
-      if(this.semantic){const style=businessStyle(semanticVehicle(store.entities.get(item.id)!,this.semanticTasks.get(item.id)));label.dataset.glyph=style.glyph;label.style.borderColor=style.color;}
-      else {delete label.dataset.glyph;label.style.borderColor='';}
+      let semanticText=this.semantic?semanticLabel(store.entities.get(item.id)!,this.semanticTasks.get(item.id),this.header,this.locale):item.key.id;
+      if (item.incident) {
+        const row = item.incident, zh = this.locale.startsWith('zh');
+        const authored = store.entities.get(item.id)?.authoredLabel;
+        // locale picks label vs label_zh; incidentLabel fills the kind's default otherwise.
+        semanticText = incidentLabel(row, zh, zh ? authored?.label_zh ?? authored?.label : authored?.label);
+      }
+      const style = this.semantic ? businessStyle(semanticVehicle(store.entities.get(item.id)!,this.semanticTasks.get(item.id))) : undefined;
+      const styleKey = style ? `${style.glyph}/${style.color}` : '';
+      if (this.labelStyles.get(label) !== styleKey) {
+        if (style) { label.dataset.glyph = style.glyph; label.style.borderColor = style.color; }
+        else { delete label.dataset.glyph; label.style.borderColor = ''; }
+        this.labelStyles.set(label, styleKey);
+      }
       if(label.textContent!==semanticText)label.textContent=semanticText;
       if(label.hidden)label.hidden=false;
       // Business-interest labels used to bypass collision avoidance entirely;
       // colocated task-active UAVs obscured each other. Measure the actual label.
-      label.style.maxWidth = `${Math.max(0, safe.right - safe.left)}px`;
-      const placed = placeLabel(x, y, label.offsetWidth, label.offsetHeight, safe, [...obstacles, ...occupied], item.selected);
+      const maxWidth = `${Math.max(0, safe.right - safe.left)}px`;
+      if (label.style.maxWidth !== maxWidth) label.style.maxWidth = maxWidth;
+      // Moving a label does not change its dimensions. Measure only when text,
+      // glyph, font, selection styling or available viewport space changes.
+      const metricKey = `${semanticText}/${label.dataset.glyph}/${label.className}/${maxWidth}/${label.style.font}/${label.style.fontSize}/${width}/${height}/${document.fonts?.status}`;
+      let metrics = this.labelMetrics.get(label);
+      if (!metrics || metrics.key !== metricKey) {
+        metrics = { key: metricKey, width: label.offsetWidth, height: label.offsetHeight };
+        this.labelMetrics.set(label, metrics);
+      }
+      // The incident's own label sits just above its pin by design; other labels move away.
+      const placed = placer.place(x, y, metrics.width, metrics.height, item.selected, !item.incident);
       if (!placed) continue;
       visibleLabels.add(item.id);
       const left=`${placed.x}px`,top=`${placed.y}px`;
       if(label.style.left!==left)label.style.left=left;if(label.style.top!==top)label.style.top=top;
-      label.classList.toggle('selected',item.selected);occupied.push(placed.box);
+      label.classList.toggle('selected',item.selected);Object.assign(pooledRect(placer.occupied, placer.occupiedCount++), placed.box);
     }
     for(const [id,label] of this.labels)if(!visibleLabels.has(id)&&!label.hidden)label.hidden=true;
     // Keep a small reusable label pool; retired generations cannot accumulate DOM.

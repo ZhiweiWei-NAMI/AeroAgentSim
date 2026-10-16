@@ -1,0 +1,748 @@
+{
+  "measured_at_utc": "2026-10-14T16:07:14.603135+00:00",
+  "baseline_revision": "b56fba69ec749c735aff62270ec32169476cd271",
+  "recording": {
+    "project_id": "studio-7037228153864b4883c338a1e5942636",
+    "run_id": "run-c1369fff553d4f1fa922ad3dcd6c1fbd",
+    "fire_at": [
+      -13.05,
+      -100.037,
+      0
+    ]
+  },
+  "method": {
+    "viewport": [
+      960,
+      600
+    ],
+    "framesPerSpeed": 300,
+    "speeds": [
+      1,
+      4
+    ],
+    "nominalReplayHz": 60,
+    "warmupUpdates": {
+      "before_low_from_preceding_qualities": 1200,
+      "after_low_explicit_cpu_updates": 1200,
+      "high_med_extra_cpu_updates": 0
+    },
+    "heapFrames": 600,
+    "samplingInterval": 1024,
+    "captureSamples": 5,
+    "off": "Hide fire/rain/wind/pins and the fire point light; preserve the same journaled fog, sky, weather material treatment and camera.",
+    "clock": "Replay ticks advance at a controlled 60 Hz; this does not claim realtime GPU throughput.",
+    "capture": "Real CaptureRenderer.render, warmed, including PNG readback; its production low composer is retained while FX quality varies.",
+    "allocations": "CDP samples include collected allocations. Atmosphere attribution includes the timing wrapper; this is not a retained-heap or resource-constructor count.",
+    "idle_sample_frames": 60,
+    "baseline_order": [
+      "high",
+      "med",
+      "low"
+    ],
+    "after_order": "High and medium from the full sweep; low and captures rerun after removing the extra low-quality compositing pass.",
+    "warmup": "Ten rendered warm-up frames per quality. The separate final low run adds 1,200 CPU-only viewport updates to match the number of preceding high/medium updates in the baseline. All 600 measured frames render normally.",
+    "controlled_stop": "The default-flags full sweep was explicitly stopped after its complete high/medium samples; its browser-closed exception is a controlled stop, not a successful low/capture result. Those results come from the separate completed final run.",
+    "timing_limit": "Single shared-host trials; capture means contain five samples. Timings are indicative, not a throughput or statistical-significance claim.",
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "hardware_gpu_tested": false,
+    "raw_artifacts_directory": "/tmp/aas-fx/perf"
+  },
+  "budget": {
+    "active_fire_effect_draws": {
+      "before": 6,
+      "after": 3,
+      "excludes": [
+        "pin",
+        "leader",
+        "DOM labels"
+      ]
+    },
+    "rain_draws_after": 1,
+    "wind_draws_after": 1,
+    "added_draws_including_pin_and_leader": {
+      "before_high_med": 30,
+      "before_low": 10,
+      "after_all_qualities": 7
+    },
+    "paused_draws_after": 0,
+    "steady_state_guard": "No new tracked Three.js geometry/material/math/instance objects, no buffer replacement; no instance-matrix writes when time/camera/state are unchanged.",
+    "literal_zero_js_allocation": false,
+    "allocation_limit": "CDP still samples JavaScript allocations. Resource/math constructor and storage-reuse guards are narrower than a zero-byte heap guarantee; the literal zero-JS-allocation target is not met."
+  },
+  "limitations": [
+    "The literal zero-JS-allocation target is not met; sampled bytes remain above zero despite stable application resource storage.",
+    "Medium-quality capture is slower in both final launch-mode samples; capture timings contain only five repetitions.",
+    "Chromium default flags also select SwiftShader; no hardware backend was measured."
+  ],
+  "changes": [
+    "Merge flame bodies and additive cores into one ordered instanced draw using premultiplied RGB and zero core alpha.",
+    "Merge visible/occluded ring, fill and glow into one decal draw, sharing a depth blit across fires. Sensor glows retain hardware depth and need no snapshot.",
+    "Exclude FX from AO/bloom/outline rerenders. High/medium composite FX once before final tone/SMAA; low draws them in the original base pass.",
+    "Index real weather/incident records at ingestion and cache mutable derivation by entity index, exact cut ns, store revision and header.",
+    "Reuse label obstacle/candidate rectangles and pin vectors; measure panels only when the existing layout key changes.",
+    "Reuse particle seeds and numeric time/uniform storage, inline puff arithmetic, and cache transforms and surface height until their inputs change.",
+    "Gate sky/fog/city material applications and HUD snapshots on changed inputs; expire completed ring animation timestamps."
+  ],
+  "visual_comparison": {
+    "cut_ns": "40000000000",
+    "views": "Fixed overview, identical camera; pre/post merge renderer canvas comparison.",
+    "mean_absolute_rgb_delta_0_to_255": {
+      "high": 0.011252314814814814,
+      "med": 0.01108275462962963,
+      "low": 5.555555555555556e-05
+    },
+    "fraction_pixels_any_channel_delta_over_8": {
+      "high": 4.1666666666666665e-05,
+      "med": 3.125e-05,
+      "low": 0
+    },
+    "low_identity_cues": "Existing pin, ring, plume, reduced rain and wind retained."
+  },
+  "validation": {
+    "typecheck": "npx tsc --noEmit -p . passed",
+    "vitest_command": "npx vitest run",
+    "test_files_passed": 152,
+    "tests_passed": 1125,
+    "browser_errors_final_low_and_capture": {
+      "swiftshader": [],
+      "default": []
+    },
+    "guards": [
+      "draw budget at all qualities with two fires",
+      "shared geometry and shader sources",
+      "stable resource buffers and matrix writes",
+      "exact cut/revision invalidation and large-ns precision",
+      "indexed sources through corrections/removal/backward seeks",
+      "pooled label placement and panel-layout invalidation",
+      "matching depth formats and one copy per render"
+    ],
+    "baseline_test_repairs": "The unmodified atmosphere tests had three stale art expectations (smoke palette/scatter, 34 m versus current 44 m puff size, 0.5 versus current 0.6 alpha). Assertions now describe the existing look; representation tests were adjusted for merged passes."
+  },
+  "results": [
+    {
+      "launch": "swiftshader",
+      "quality": "high",
+      "before": {
+        "quality": "high",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.3126667404174805,
+            "conditionsMs": 0.12000005086263021
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.28966667811075847,
+            "conditionsMs": 0.1320000203450521
+          }
+        ],
+        "heapDelta": 2057405,
+        "allocationBytesPerFrame": {
+          "page": 562809.36,
+          "atmosphere": 4592.52,
+          "conditions": 7946.033333333334
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 159,
+            "triangles": 371741
+          },
+          "off": {
+            "calls": 129,
+            "triangles": 346919
+          },
+          "programs": 64
+        }
+      },
+      "after": {
+        "quality": "high",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.2706665865580241,
+            "conditionsMs": 0.03166667938232422
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.2369998550415039,
+            "conditionsMs": 0.030333328247070312
+          }
+        ],
+        "heapDelta": 1567685,
+        "allocationBytesPerFrame": {
+          "page": 508203.72,
+          "atmosphere": 2666.766666666667,
+          "conditions": 519.88
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 136,
+            "triangles": 355191
+          },
+          "off": {
+            "calls": 129,
+            "triangles": 346919
+          },
+          "programs": 61
+        }
+      },
+      "capture_before": {
+        "quality": "high",
+        "onMs": 330.06000022888185,
+        "offMs": 253.55999984741212
+      },
+      "capture_after": {
+        "quality": "high",
+        "onMs": 313.1799999237061,
+        "offMs": 256.97999992370603
+      },
+      "after_profile": "after-swiftshader",
+      "capture_after_profile": "after-low-warm-swiftshader"
+    },
+    {
+      "launch": "swiftshader",
+      "quality": "med",
+      "before": {
+        "quality": "med",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.24999993006388346,
+            "conditionsMs": 0.11900000890096028
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.26433324813842773,
+            "conditionsMs": 0.21399998982747395
+          }
+        ],
+        "heapDelta": 611540,
+        "allocationBytesPerFrame": {
+          "page": 494235.30666666664,
+          "atmosphere": 2255.76,
+          "conditions": 7708.8533333333335
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 167,
+            "triangles": 575799
+          },
+          "off": {
+            "calls": 137,
+            "triangles": 550977
+          },
+          "programs": 64
+        }
+      },
+      "after": {
+        "quality": "med",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.2113333257039388,
+            "conditionsMs": 0.033333295186360676
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.22266666412353517,
+            "conditionsMs": 0.02733329137166341
+          }
+        ],
+        "heapDelta": 1203571,
+        "allocationBytesPerFrame": {
+          "page": 443983.9866666667,
+          "atmosphere": 280.0933333333333,
+          "conditions": 485.5
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 144,
+            "triangles": 559249
+          },
+          "off": {
+            "calls": 137,
+            "triangles": 550977
+          },
+          "programs": 61
+        }
+      },
+      "capture_before": {
+        "quality": "med",
+        "onMs": 307.12000007629393,
+        "offMs": 255.95999984741212
+      },
+      "capture_after": {
+        "quality": "med",
+        "onMs": 342.8,
+        "offMs": 254.44000015258788
+      },
+      "after_profile": "after-swiftshader",
+      "capture_after_profile": "after-low-warm-swiftshader"
+    },
+    {
+      "launch": "swiftshader",
+      "quality": "low",
+      "before": {
+        "quality": "low",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.24000008265177408,
+            "conditionsMs": 0.12333324432373047
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.23599999745686848,
+            "conditionsMs": 0.10600001653035482
+          }
+        ],
+        "heapDelta": 3553433,
+        "allocationBytesPerFrame": {
+          "page": 206755.59333333332,
+          "atmosphere": 1597.8933333333334,
+          "conditions": 7866.606666666667
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 71,
+            "triangles": 297998
+          },
+          "off": {
+            "calls": 61,
+            "triangles": 295184
+          },
+          "programs": 55
+        }
+      },
+      "after": {
+        "quality": "low",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.21233332951863607,
+            "conditionsMs": 0.02966668446858724
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.21066663106282552,
+            "conditionsMs": 0.028666642506917316
+          }
+        ],
+        "heapDelta": 4299967,
+        "allocationBytesPerFrame": {
+          "page": 183654.99333333335,
+          "atmosphere": 295.56666666666666,
+          "conditions": 483.62666666666667
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 68,
+            "triangles": 297996
+          },
+          "off": {
+            "calls": 61,
+            "triangles": 295184
+          },
+          "programs": 35
+        }
+      },
+      "capture_before": {
+        "quality": "low",
+        "onMs": 279.1799999237061,
+        "offMs": 255.7
+      },
+      "capture_after": {
+        "quality": "low",
+        "onMs": 260.5,
+        "offMs": 239.57999992370605
+      },
+      "after_profile": "after-low-warm-swiftshader",
+      "capture_after_profile": "after-low-warm-swiftshader"
+    },
+    {
+      "launch": "default",
+      "quality": "high",
+      "before": {
+        "quality": "high",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.2906666374206543,
+            "conditionsMs": 0.1029999860127767
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.26133339564005537,
+            "conditionsMs": 0.09666667302449544
+          }
+        ],
+        "heapDelta": 1127792,
+        "allocationBytesPerFrame": {
+          "page": 560375.0733333334,
+          "atmosphere": 4563.32,
+          "conditions": 7661.733333333334
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 159,
+            "triangles": 371741
+          },
+          "off": {
+            "calls": 129,
+            "triangles": 346919
+          },
+          "programs": 64
+        }
+      },
+      "after": {
+        "quality": "high",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.2816666603088379,
+            "conditionsMs": 0.03333332061767578
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.243333314259847,
+            "conditionsMs": 0.028666617075602214
+          }
+        ],
+        "heapDelta": 3713016,
+        "allocationBytesPerFrame": {
+          "page": 509829.49333333335,
+          "atmosphere": 2782.6066666666666,
+          "conditions": 506.05333333333334
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 136,
+            "triangles": 355191
+          },
+          "off": {
+            "calls": 129,
+            "triangles": 346919
+          },
+          "programs": 61
+        }
+      },
+      "capture_before": {
+        "quality": "high",
+        "onMs": 321.87999992370607,
+        "offMs": 257.7
+      },
+      "capture_after": {
+        "quality": "high",
+        "onMs": 320.5199996948242,
+        "offMs": 257.07999992370605
+      },
+      "after_profile": "after-default",
+      "capture_after_profile": "after-low-warm-default"
+    },
+    {
+      "launch": "default",
+      "quality": "med",
+      "before": {
+        "quality": "med",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.23699999491373697,
+            "conditionsMs": 0.10366663614908854
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.24399995803833008,
+            "conditionsMs": 0.11266666412353515
+          }
+        ],
+        "heapDelta": 1241626,
+        "allocationBytesPerFrame": {
+          "page": 493441.72,
+          "atmosphere": 2153.74,
+          "conditions": 7644.7
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 167,
+            "triangles": 575799
+          },
+          "off": {
+            "calls": 137,
+            "triangles": 550977
+          },
+          "programs": 64
+        }
+      },
+      "after": {
+        "quality": "med",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.2119999885559082,
+            "conditionsMs": 0.0230000368754069
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.22033337275187173,
+            "conditionsMs": 0.025999997456868488
+          }
+        ],
+        "heapDelta": 4368690,
+        "allocationBytesPerFrame": {
+          "page": 442709.16,
+          "atmosphere": 341.99333333333334,
+          "conditions": 521.62
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 144,
+            "triangles": 559249
+          },
+          "off": {
+            "calls": 137,
+            "triangles": 550977
+          },
+          "programs": 61
+        }
+      },
+      "capture_before": {
+        "quality": "med",
+        "onMs": 306.43999977111815,
+        "offMs": 258.1600002288818
+      },
+      "capture_after": {
+        "quality": "med",
+        "onMs": 318.72000007629396,
+        "offMs": 248.4
+      },
+      "after_profile": "after-default",
+      "capture_after_profile": "after-low-warm-default"
+    },
+    {
+      "launch": "default",
+      "quality": "low",
+      "before": {
+        "quality": "low",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.23033323923746746,
+            "conditionsMs": 0.10966667175292968
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.23266663869222004,
+            "conditionsMs": 0.13833332697550454
+          }
+        ],
+        "heapDelta": 2431179,
+        "allocationBytesPerFrame": {
+          "page": 206785.24666666667,
+          "atmosphere": 1738.58,
+          "conditions": 7799.513333333333
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 71,
+            "triangles": 297998
+          },
+          "off": {
+            "calls": 61,
+            "triangles": 295184
+          },
+          "programs": 55
+        }
+      },
+      "after": {
+        "quality": "low",
+        "samples": [
+          {
+            "speed": 1,
+            "frames": 300,
+            "updateMs": 0.2210000228881836,
+            "conditionsMs": 0.031666622161865235
+          },
+          {
+            "speed": 4,
+            "frames": 300,
+            "updateMs": 0.2103333600362142,
+            "conditionsMs": 0.0273333740234375
+          }
+        ],
+        "heapDelta": 5177528,
+        "allocationBytesPerFrame": {
+          "page": 182124.00666666665,
+          "atmosphere": 326.50666666666666,
+          "conditions": 462.9866666666667
+        },
+        "idle": {
+          "draws": 0,
+          "idle": "true"
+        },
+        "render": {
+          "on": {
+            "calls": 68,
+            "triangles": 297996
+          },
+          "off": {
+            "calls": 61,
+            "triangles": 295184
+          },
+          "programs": 35
+        }
+      },
+      "capture_before": {
+        "quality": "low",
+        "onMs": 277.92000007629395,
+        "offMs": 252.32000007629395
+      },
+      "capture_after": {
+        "quality": "low",
+        "onMs": 256.92000007629395,
+        "offMs": 256.12000007629393
+      },
+      "after_profile": "after-low-warm-default",
+      "capture_after_profile": "after-low-warm-default"
+    }
+  ],
+  "viewport_followup": {
+    "baseline_revision": "48e05e5e7c6346af5f1ed5430a6edd231f68ee66",
+    "method": "Real recorded run run-931ef59bcae64182b987ae1647c71641 at 55 s, fixed orbit camera, 1280 by 800 viewport, five warmup frames and 30 measured frames per quality. Every frame invalidates the camera revision. WebGL finish includes GPU completion. The same scene, source cut, renderer and quality presets are used before and after.",
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "before": [
+      {
+        "quality": "low",
+        "frames": 30,
+        "frameMs": 9.910000165303549,
+        "updateMs": 6.26000010172526,
+        "labelsMs": 2.436666488647461,
+        "submitMs": 3.553333346048991,
+        "draws": 139,
+        "triangles": 615086
+      },
+      {
+        "quality": "med",
+        "frames": 30,
+        "frameMs": 15.896666717529296,
+        "updateMs": 7.256666564941407,
+        "labelsMs": 2.2,
+        "submitMs": 8.546666781107584,
+        "draws": 281,
+        "triangles": 1161584
+      }
+    ],
+    "after": [
+      {
+        "quality": "low",
+        "frames": 30,
+        "frameMs": 8.136666870117187,
+        "updateMs": 4.100000190734863,
+        "labelsMs": 0.37333348592122395,
+        "submitMs": 3.916666603088379,
+        "draws": 138.8,
+        "triangles": 613239.5666666667
+      },
+      {
+        "quality": "med",
+        "frames": 30,
+        "frameMs": 12.756666564941407,
+        "updateMs": 4.516666475931803,
+        "labelsMs": 0.42333335876464845,
+        "submitMs": 8.153333473205567,
+        "draws": 179,
+        "triangles": 641052
+      }
+    ],
+    "changes": [
+      "Measure label dimensions only when their text, glyph, class, font or available viewport space changes.",
+      "Refresh shadows for changed casters, lights, loaded geometry and quality presets, while reusing them during camera-only gestures.",
+      "Keep at most one postprocessing pipeline per quality and dispose every cached pipeline when the viewport closes."
+    ],
+    "browser_errors": [],
+    "visual_comparison": {
+      "resolution": [
+        1280,
+        800
+      ],
+      "different_pixels": 55,
+      "total_pixels": 1024000,
+      "mean_absolute_channel_difference": [
+        3.7109375e-05,
+        3.41796875e-05,
+        7.421875e-05
+      ]
+    },
+    "limits": [
+      "Shared-host SwiftShader measurements are not hardware GPU throughput estimates.",
+      "The cached quality pipelines retain bounded GPU resources until the viewport closes.",
+      "A real moving simulation still refreshes shadows when casters or the light move."
+    ]
+  }
+}

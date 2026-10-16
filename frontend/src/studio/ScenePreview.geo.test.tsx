@@ -7,8 +7,11 @@ vi.mock('three', async importOriginal => {
   const actual = await importOriginal<typeof import('three')>();
   class FakeRenderer {
     domElement = document.createElement('canvas');
+    private ratio = 1;
     constructor() { mocks.renderers++; }
-    setPixelRatio() {} setSize() {} render() { mocks.draws++; } dispose() {}
+    setPixelRatio(value: number) { this.ratio = value; } getPixelRatio() { return this.ratio; }
+    setSize(w: number, h: number) { this.domElement.width = w * this.ratio; this.domElement.height = h * this.ratio; }
+    render() { mocks.draws++; } dispose() {}
   }
   return { ...actual, WebGLRenderer: FakeRenderer };
 });

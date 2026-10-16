@@ -3,9 +3,13 @@ import { enuPosition } from './position';
 import type { PresentationBinding, RunHeader } from '../contracts/viewer-feed';
 
 /** Renderer axes: east, up, south (metres). */
-export function worldPosition(value: number[], frame: PresentationBinding['frame'], origin?: RunHeader['origin']): Vector3 {
+export function worldPosition(value: number[], frame: PresentationBinding['frame'], origin?: RunHeader['origin'], target = new Vector3()): Vector3 {
+  if (frame === 'enu') {
+    if (value.length !== 3 || !value.every(Number.isFinite)) throw Error('Position must be a finite 3-vector');
+    return target.set(value[0], value[2], -value[1]);
+  }
   const [east, north, up] = enuPosition(value, frame, origin);
-  return new Vector3(east, up, -north);
+  return target.set(east, up, -north);
 }
 
 export function worldOrientation(value: number[], frame: PresentationBinding['frame']): Quaternion {

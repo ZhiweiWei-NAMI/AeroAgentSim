@@ -20,6 +20,27 @@ and commits nothing between them. Unit, frame and schema authority stays in
 the registry — every authored value is validated against the field descriptor
 during engine construction, before advancement.
 
+## Visual weather conditions (lowalt scenes)
+
+Lowalt scenes may journal rain, visibility and time-of-day light as constant
+profiles on the same `lowalt:Environment` entity that carries
+`lowalt.wind`, via the assistant's `set_weather` operation:
+
+- `lowalt.precipitation` (kg m⁻² s⁻¹; mm/h ÷ 3600),
+  `lowalt.visibility` (metres; 50000 = clear), `lowalt.light`
+  ("day" | "dusk"). They are declared in the lowalt overlay with
+  `aerograph:` metadata pointing at the matching AeroGraph fields.
+- Rain, visibility and light are **visual only** — shown in the 3D view and UAV
+  captures; flight, sensing and task outcomes don't use them.
+  Wind and gusts are different: they are simulated inputs that drive flight
+  holds and energy use.
+  For fire incidents, smoke and flames are likewise visual only.
+- `lowalt.light` is a journaled presentation field. The viewer follows its value
+  at the viewed cut; the run header's `scene.lighting` echoes its initial value.
+- `set_wind.from_deg` states the meteorological direction the wind comes FROM
+  (clockwise from north); the compiler converts it to the ENU vector. Gusts
+  keep the background direction.
+
 ## Authoring an environment engine
 
 Configuration fragment (the wind region from the traffic-accident demo):

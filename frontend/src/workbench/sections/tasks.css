@@ -12,6 +12,9 @@
 .wb-coop details, .wb-weather details, .wb-traffic details { margin: 4px 0; }
 .wb-coop summary, .wb-weather summary, .wb-traffic summary, .wb-order-row summary { cursor: pointer; }
 .wb-wind-row { display: grid; gap: 4px; }
+/* Weather "From" compass and the Conditions presets reuse the shared wb-choice pills; keep them compact in-card. */
+.wb-conditions .wb-choice, .wb-weather .wb-choice { padding: 2px 8px; font-size: 11px; }
+.wb-conditions .wb-choice-group, .wb-weather .wb-choice-group { flex-direction: column; }
 .wb-form-section { min-width: 0; padding-block-end: 1.5rem; }
 .wb-form-stack { display: grid; gap: .5rem; min-width: 0; }
 .wb-form-field select[multiple] { height: auto; }
@@ -25,3 +28,21 @@
 .wb-field-error { color: var(--wb-bad); }
 @keyframes wb-tasks-in { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .wb-row-toggle[aria-expanded='true'] + .wb-order-body { animation: none; } }
+
+/* Weather card: 3×3 compass rose, valued preset chips, card-bottom Preview. */
+.wb-compass-rose { display: grid; grid-template-columns: repeat(3, 28px); grid-auto-rows: 28px; gap: 3px; }
+.wb-compass-point { all: unset; cursor: pointer; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--wb-line);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 9px; color: var(--wb-ink); background: rgba(255, 255, 255, .8);
+  box-sizing: border-box; text-align: center; }
+.wb-compass-point[aria-pressed='true'] { background: var(--wb-accent); border-color: var(--wb-accent); color: #fff; }
+.wb-compass-centre { display: inline-flex; align-items: center; justify-content: center; }
+.wb-compass-arrow { fill: var(--wb-ink, #14202e); }
+.wb-conditions-summary { margin: 0; color: var(--wb-muted); }
+/* Conditions fieldset: three equal columns (Rain | Visibility | Light), each a vertical chip
+   group; the Custom input appears inline under its column only when Custom is selected.
+   Preview sits at the bottom-left of the fieldset on its own row, like the Background wind card. */
+.wb-conditions-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.wb-conditions-col { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.wb-choice-col { flex-direction: column; align-items: stretch; }
+.wb-choice-col .wb-choice { width: max-content; }
+.wb-card-preview { justify-content: flex-start; margin-block: 0; }

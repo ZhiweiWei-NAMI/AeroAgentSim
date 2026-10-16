@@ -2,6 +2,7 @@ import type { EntityKey, FeedCommit, RunHeader } from '../contracts/viewer-feed'
 import { entityId } from './bindings';
 import { SampleBuffer } from './samples';
 import { compareInstant, nanos } from './time';
+import { isConditionField } from './conditions';
 
 type Fact = FeedCommit['facts'][number];
 export interface EntityState { key: EntityKey; typeId: string; fields: Map<string, Fact>; authoredLabel?: { label?: string; label_zh?: string } }
@@ -12,6 +13,9 @@ export class FeedStore {
   revision = 0;
   readonly commits: FeedCommit[] = [];
   readonly entities = new Map<string, EntityState>();
+  /** References to the authoritative entity records; no copied/demo weather state. */
+  readonly conditionEntities = new Map<string, EntityState>();
+  private conditionIds = new Set<string>();
   readonly edges = new Map<string, FeedCommit['edges'][number]>();
   readonly messages: FeedCommit['messages'] = [];
   readonly receipts: FeedCommit['receipts'] = [];
@@ -49,6 +53,18 @@ export class FeedStore {
     // Retraction followed by a fact in one transaction denotes a discontinuity.
     for (const item of commit.retracted) this.buffer(item.entity, item.fieldId).retract(commit.at.ns, commit.commitIndex);
     for (const fact of commit.facts) {
+      if (isConditionField(fact.fieldId)) {
+        const id = entityId(fact.entity);
+        if (!this.conditionIds.has(id)) {
+          this.conditionIds.add(id);
+          // A live fact can make an existing entity a weather source. Reindex
+          // once at that transition, preserving the authoritative map order.
+          if (this.entities.has(id)) {
+            this.conditionEntities.clear();
+            for (const [key, entity] of this.entities) if (this.conditionIds.has(key) || entity.typeId === 'lowalt:Incident') this.conditionEntities.set(key, entity);
+          }
+        }
+      }
       const buffer = this.buffer(fact.entity, fact.fieldId);
       if (fact.discontinuity) buffer.retract(commit.at.ns, commit.commitIndex);
       buffer.push(commit.at.ns, commit.commitIndex, fact.value);
@@ -74,13 +90,17 @@ export class FeedStore {
     const target = low - 1;
     if (target !== this.cursor || this.cutNs !== at || this.cutIndex !== commitIndex) this.revision++;
     if (target < this.cursor) {
-      this.entities.clear(); this.edges.clear(); this.messages.length = this.receipts.length = 0; this.cursor = -1;
+      this.entities.clear(); this.conditionEntities.clear(); this.edges.clear(); this.messages.length = this.receipts.length = 0; this.cursor = -1;
     }
     for (let i = this.cursor + 1; i <= target; i++) this.apply(this.commits[i]);
     this.cursor = target; this.cutNs = at; this.cutIndex = commitIndex;
   }
   private apply(commit: FeedCommit) {
-    for (const key of commit.created) this.entities.set(entityId(key), { key: { id: key.id, generation: key.generation }, typeId: key.typeId, fields: new Map(), ...(this.authoredNames.has(key.id) ? { authoredLabel: this.authoredNames.get(key.id) } : {}) });
+    for (const key of commit.created) {
+      const id = entityId(key), entity = { key: { id: key.id, generation: key.generation }, typeId: key.typeId, fields: new Map(), ...(this.authoredNames.has(key.id) ? { authoredLabel: this.authoredNames.get(key.id) } : {}) };
+      this.entities.set(id, entity);
+      if (this.conditionIds.has(id) || key.typeId === 'lowalt:Incident') this.conditionEntities.set(id, entity);
+    }
     if (!this.temporalState) {
       for (const fact of commit.retracted) this.entities.get(entityId(fact.entity))!.fields.delete(fact.fieldId);
       for (const fact of commit.facts) this.entities.get(entityId(fact.entity))!.fields.set(fact.fieldId, fact);
@@ -89,7 +109,7 @@ export class FeedStore {
       }
     }
     for (const key of commit.removed) {
-      const id = entityId(key); this.entities.delete(id);
+      const id = entityId(key); this.entities.delete(id); this.conditionEntities.delete(id);
       if (!this.temporalState) for (const [edgeId, edge] of this.edges) if (entityId(edge.source) === id || entityId(edge.target) === id) this.edges.delete(edgeId);
     }
     this.messages.push(...commit.messages); this.receipts.push(...commit.receipts);

@@ -354,3 +354,62 @@ it('shows task choices in the active locale (T4-R2-014)', () => {
   expect(screen.getByRole('option', { name: '事件响应' })).toHaveValue('incident_response');
   expect(screen.queryByRole('option', { name: 'food' })).toBeNull();
 });
+
+const conditionsForm = () => screen.getByTestId('wb-rain-presets').closest('fieldset') as HTMLElement;
+const chip = (group: string, name: string) => within(screen.getByTestId(group)).getByRole('button', { name });
+
+it('sends one set_weather with rain, visibility and light presets, and reads current values from the draft (P0)', async () => {
+  const view = render(weather({ environment: { config: { profiles: { weather: {
+    'lowalt.wind': { mode: 'constant', value: [0, 0, 0] },
+    'lowalt.precipitation': { mode: 'constant', value: 4 / 3600 },
+    'lowalt.visibility': { mode: 'constant', value: 500 },
+  } } } } }));
+  expect(chip('wb-rain-presets', 'Moderate rain · 4 mm/h')).toHaveAttribute('aria-pressed', 'true');
+  expect(chip('wb-visibility-presets', 'Fog · 500 m')).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(chip('wb-rain-presets', 'Heavy rain · 10 mm/h'));
+  fireEvent.click(chip('wb-visibility-presets', 'Mist · 2 km'));
+  fireEvent.click(chip('wb-light-presets', 'Dusk'));
+  fireEvent.click(within(conditionsForm()).getByRole('button', { name: 'Preview' }));
+  await within(conditionsForm()).findByRole('button', { name: 'Confirm' });
+  expect(previewOperations.mock.calls[0][2][0]).toMatchObject({ op: 'set_weather', params: { precipitation_mm_h: 10, visibility_m: 2000, light: 'dusk' } });
+  view.rerender(weather());
+  expect(within(conditionsForm()).getByRole('button', { name: 'Confirm' })).toBeEnabled();
+  fireEvent.click(within(conditionsForm()).getByRole('button', { name: 'Confirm' }));
+  await waitFor(() => expect(onProject).toHaveBeenCalled());
+});
+
+it('summarises the staged visibility preset, not the committed value', () => {
+  const foggy = { config: { profiles: { weather: { 'lowalt.wind': { mode: 'constant', value: [0, 0, 0] },
+    'lowalt.visibility': { mode: 'constant', value: null } } } } };
+  render(weather({ environment: foggy }));
+  expect(screen.getByTestId('wb-conditions-summary')).toHaveTextContent('a clear sky');
+  fireEvent.click(chip('wb-visibility-presets', 'Mist · 2 km'));
+  expect(screen.getByTestId('wb-conditions-summary')).toHaveTextContent('fog limiting view to 2 km');
+  expect(screen.getByTestId('wb-conditions-summary')).not.toHaveTextContent('0 m');
+});
+
+it('writes explicit zero and clear values and includes the scoped visual-only note', async () => {
+  render(weather());
+  // The note sits under the Conditions fieldset (findings/copy decisions), not under the wind card.
+  expect(within(conditionsForm()).getByText(/Rain, visibility and light: visual only/)).toBeTruthy();
+  expect(within(screen.getByTestId('wb-weather')).getByText(/Wind and gusts are simulation inputs/)).toBeTruthy();
+  expect(chip('wb-rain-presets', 'None')).toHaveAttribute('aria-pressed', 'true');
+  expect(chip('wb-visibility-presets', 'Clear')).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(within(conditionsForm()).getByRole('button', { name: 'Preview' }));
+  await within(conditionsForm()).findByRole('button', { name: 'Confirm' });
+  expect(previewOperations.mock.calls[0][2][0]).toMatchObject({ op: 'set_weather', params: { precipitation_mm_h: 0, visibility_m: null, light: 'day' } });
+});
+
+it('sends from_deg only when the user changed the wind direction', async () => {
+  render(weather({ environment: { config: { profiles: { weather: { 'lowalt.wind': { mode: 'constant', value: [6 / Math.SQRT2, -6 / Math.SQRT2, 0] } } } } } }));
+  expect(screen.getByLabelText('From (°)')).toHaveValue('315');
+  expect(screen.getByRole('button', { name: 'From north-west' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(within(windForm()).getByRole('button', { name: 'Preview' }));
+  await within(windForm()).findByRole('button', { name: 'Confirm' });
+  expect(previewOperations.mock.calls[0][2][0].params).toEqual({ speed_mps: 6 });
+  fireEvent.click(screen.getByRole('button', { name: 'From south-west' }));
+  expect(screen.getByLabelText('From (°)')).toHaveValue('225');
+  fireEvent.click(within(windForm()).getByRole('button', { name: 'Preview again' }));
+  await within(windForm()).findByRole('button', { name: 'Confirm' });
+  expect(previewOperations.mock.calls[1][2][0].params).toEqual({ speed_mps: 6, from_deg: 225 });
+});

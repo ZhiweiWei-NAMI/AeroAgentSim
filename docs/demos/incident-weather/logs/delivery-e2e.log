@@ -1,0 +1,12 @@
+[WebServer] INFO:     Started server process [327951]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:4192 (Press CTRL+C to quit)
+
+Running 1 test using 1 worker
+
+(node:327976) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 e2e/conditions.spec.ts:56:1 › real fire, weather, replay and incident photograph through the workbench (4.9m)
+
+  1 passed (4.9m)

@@ -109,8 +109,9 @@ engines:
                   type: function
                   function:
                     name: propose_plan
-                    arguments: '{"actions": [{"id": "a3", "role": "deliver", "after":
-                      []}], "reason": "stub phase2"}'
+                    arguments: '{"actions": [{"id": "a3", "role": "relay", "after":
+                      []}, {"id": "a4", "role": "deliver", "after": ["a3"]}], "reason":
+                      "stub phase2"}'
               usage:
                 prompt_tokens: 0
                 completion_tokens: 0
@@ -123,8 +124,9 @@ engines:
                   type: function
                   function:
                     name: propose_plan
-                    arguments: '{"actions": [{"id": "a3", "role": "deliver", "after":
-                      []}], "reason": "stub phase2"}'
+                    arguments: '{"actions": [{"id": "a3", "role": "relay", "after":
+                      []}, {"id": "a4", "role": "deliver", "after": ["a3"]}], "reason":
+                      "stub phase2"}'
               usage:
                 prompt_tokens: 0
                 completion_tokens: 0
@@ -137,8 +139,9 @@ engines:
                   type: function
                   function:
                     name: propose_plan
-                    arguments: '{"actions": [{"id": "a3", "role": "deliver", "after":
-                      []}], "reason": "stub phase2"}'
+                    arguments: '{"actions": [{"id": "a3", "role": "relay", "after":
+                      []}, {"id": "a4", "role": "deliver", "after": ["a3"]}], "reason":
+                      "stub phase2"}'
               usage:
                 prompt_tokens: 0
                 completion_tokens: 0
@@ -151,8 +154,9 @@ engines:
                   type: function
                   function:
                     name: propose_plan
-                    arguments: '{"actions": [{"id": "a3", "role": "deliver", "after":
-                      []}], "reason": "stub phase2"}'
+                    arguments: '{"actions": [{"id": "a3", "role": "relay", "after":
+                      []}, {"id": "a4", "role": "deliver", "after": ["a3"]}], "reason":
+                      "stub phase2"}'
               usage:
                 prompt_tokens: 0
                 completion_tokens: 0

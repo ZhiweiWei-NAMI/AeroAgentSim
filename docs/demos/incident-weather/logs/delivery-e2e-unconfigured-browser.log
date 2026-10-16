@@ -1,0 +1,45 @@
+[WebServer] (node:325109) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:325138) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] INFO:     Started server process [325784]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:4192 (Press CTRL+C to quit)
+
+Running 1 test using 1 worker
+
+(node:325820) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 e2e/conditions.spec.ts:56:1 › real fire, weather, replay and incident photograph through the workbench (1.1m)
+
+
+  1) e2e/conditions.spec.ts:56:1 › real fire, weather, replay and incident photograph through the workbench › gallery project and a responder using the installed city camera
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('group', { name: 'Cooperation', exact: true }).getByRole('group', { name: 'Preview of the change', exact: true })
+    Expected: visible
+    Timeout: 60000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('group', { name: 'Cooperation', exact: true }).getByRole('group', { name: 'Preview of the change', exact: true }) with timeout 60000ms
+      - waiting for getByRole('group', { name: 'Cooperation', exact: true }).getByRole('group', { name: 'Preview of the change', exact: true })
+
+
+      11 |   await form.getByRole('button', { name: 'Preview', exact: true }).click();
+      12 |   const review = form.getByRole('group', { name: 'Preview of the change', exact: true });
+    > 13 |   await expect(review).toBeVisible({ timeout: 60_000 });
+         |                        ^
+      14 |   await reviewed?.(review);
+      15 |   // The review closes when the request starts, before the real draft is saved.
+      16 |   const applied = page.waitForResponse(response => response.request().method() === 'POST'
+        at confirm (/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/e2e/conditions.spec.ts:13:24)
+        at /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/e2e/conditions.spec.ts:76:7
+        at /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/frontend/e2e/conditions.spec.ts:65:5
+
+    Error Context: ../../../../../../tmp/aas-weather-delivery-e2e/artifacts/conditions-real-fire-weath-e3c94-graph-through-the-workbench/error-context.md
+
+  1 failed
+    e2e/conditions.spec.ts:56:1 › real fire, weather, replay and incident photograph through the workbench

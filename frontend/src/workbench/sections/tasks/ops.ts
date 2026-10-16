@@ -1,4 +1,4 @@
-import { parseStagedNumber } from './op-ui';
+import { parseStagedNumber, stagedNumberProblem } from './op-ui';
 
 /** Params for the C11 operations the Tasks / Components / Run forms stage (schemas on GET /v1/studio/operations). */
 
@@ -72,6 +72,39 @@ export function cooperationParams(part: {
   }
   if (part.handoff_points) out.handoff_points = part.handoff_points;
   return out;
+}
+
+/** Incident kinds and the affected-radius defaults the backend applies (spec §1.1). */
+export const INCIDENT_KINDS = ['person_fall', 'fire'] as const;
+export const incidentRadiusDefault = (kind: string): number => kind === 'fire' ? 30 : 6;
+
+/** add_incident / set_incident: radius required (1..500); end optional but numeric, > start and within the run horizon. */
+export function incidentProblem(incident: { time_s: string; end_s?: string; radius_m?: string; duration_s?: number }, zh: boolean): Record<string, string> {
+  const L = (en: string, cn: string) => (zh ? cn : en);
+  const errors: Record<string, string> = {};
+  const time = parseStagedNumber(incident.time_s), end = incident.end_s === undefined ? undefined : parseStagedNumber(incident.end_s);
+  const radius = stagedNumberProblem(incident.radius_m ?? '', { min: 1, max: 500, zh });
+  if (radius !== undefined) errors.radius_m = radius;
+  if (incident.end_s !== undefined && incident.end_s.trim() !== '' && end === undefined)
+    errors.end_s = L('Must be a finite number.', '必须是有限数字。');
+  if (end !== undefined && time !== undefined && end <= time) errors.end_s = L('End must be after start.', '结束必须晚于开始。');
+  if (end !== undefined && incident.duration_s !== undefined && end > incident.duration_s)
+    errors.end_s = L(`Must stay within the run duration (${incident.duration_s} s).`, `必须处于运行时长（${incident.duration_s} 秒）之内。`);
+  return errors;
+}
+
+/** Preset ids matching the current draft values; authored values that are not presets fall back to custom. */
+export const rainPresetOf = (mmH: number): string => mmH <= 0 ? 'none' : mmH === 1 ? 'light' : mmH === 4 ? 'moderate' : mmH === 10 ? 'heavy' : 'custom';
+export const visibilityPresetOf = (m: number | null): string => m === null || m >= 50000 ? 'clear'
+  : m === 5000 ? 'haze' : m === 2000 ? 'mist' : m === 500 ? 'fog' : m === 150 ? 'dense' : 'custom';
+
+/** One set_weather op from the staged Conditions fields; 0 and null are written explicitly so the state is known (spec §1.2). */
+export function weatherParams(input: { rain: string; visibility: string; light: string; rainCustom: string; visibilityCustom: string }): Record<string, unknown> | undefined {
+  const presetRain: Record<string, number | undefined> = { none: 0, light: 1, moderate: 4, heavy: 10, custom: parseStagedNumber(input.rainCustom) };
+  const presetVisibility: Record<string, number | null | undefined> = { clear: null, haze: 5000, mist: 2000, fog: 500, dense: 150, custom: parseStagedNumber(input.visibilityCustom) };
+  const rain = presetRain[input.rain], visibility = presetVisibility[input.visibility];
+  if (rain === undefined || visibility === undefined || !['day', 'dusk'].includes(input.light)) return undefined;
+  return { precipitation_mm_h: rain, visibility_m: visibility, light: input.light };
 }
 
 /** add_gust: end must be after start and within the run horizon; speed ≥ 0. Returns the params or a field error. */

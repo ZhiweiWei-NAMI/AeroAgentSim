@@ -444,6 +444,16 @@ class LowaltTasks(ContextEngine):
                 ))
             else:
                 ctx.wake_at(at, {"lowalt_cooperation": incident.ref.id})
+            if "end_s" in incident.config:
+                end = round(incident.config["end_s"] * 1e9)
+                if end == ctx.now.ns:
+                    ctx.ops.append(ScheduleTimer(
+                        "lowalt/cooperation/" + incident.ref.id + "/end",
+                        Instant(end, ctx.now.microstep + 1),
+                        {"lowalt_cooperation_end": incident.ref.id}, tuple(ctx.inputs),
+                    ))
+                else:
+                    ctx.wake_at(end, {"lowalt_cooperation_end": incident.ref.id})
 
     def _event(self, ctx: EngineContext, phase: str, **payload: Any) -> None:
         self._business_event(ctx, "lowalt.task." + phase, payload)
@@ -880,7 +890,20 @@ class LowaltTasks(ContextEngine):
                 incident = self.incidents[payload["lowalt_cooperation"]]
                 if incident.phase == "pending":
                     self._coop_state(ctx, incident, "occurred")
+                    ctx.set(incident.ref, "lowalt.incident_active", True)
                     self._business_event(ctx, "lowalt.incident.occurred", {
+                        "incident": incident.ref.id, "kind": incident.config["kind"],
+                        "position": incident.config["position"],
+                    })
+            if "lowalt_cooperation_end" in payload:
+                incident = self.incidents[payload["lowalt_cooperation_end"]]
+                # An end wake racing the activation timer (or a pending dwell)
+                # must never leave the incident active afterwards.
+                if incident.phase == "pending":
+                    incident.dwell_until_ns = None
+                if read(ctx, incident.ref, "lowalt.incident_active"):
+                    ctx.set(incident.ref, "lowalt.incident_active", False)
+                    self._business_event(ctx, "lowalt.incident.ended", {
                         "incident": incident.ref.id, "kind": incident.config["kind"],
                         "position": incident.config["position"],
                     })

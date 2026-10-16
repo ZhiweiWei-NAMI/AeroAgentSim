@@ -1,9 +1,19 @@
-"""Wind wording uses vector travel (toward), never meteorological origin (from)."""
+"""Wind wording uses vector travel (toward), never meteorological origin (from).
+
+set_wind.from_deg is the one authored exception: it states the origin the wind
+comes FROM (clockwise from north) and the compiler converts it to the vector.
+"""
 
 from __future__ import annotations
 
 import math
 import re
+
+
+def from_deg(east: float, north: float) -> float | None:
+    """Meteorological origin direction (clockwise from north) of a travel vector; None when calm."""
+    speed2 = east * east + north * north
+    return None if speed2 == 0 else math.degrees(math.atan2(-east, -north)) % 360
 
 
 def vector_text(vector: dict, *, zh: bool = False) -> str:

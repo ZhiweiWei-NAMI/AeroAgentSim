@@ -40,6 +40,7 @@ for _name, _en, _zh, _entities, _position, _severity in (
     ("handoff.failed", "{handoff} for {task} failed: {reason}", "{task}的{handoff}失败：{reason}", ["incident", "handoff", "task", "requester"], "requester", "warning"),
     ("handoff.dropped", "{requester} dropped {task} at {point} for {helper}", "{requester}将{task}放在{point}等待{helper}接取", ["incident", "handoff", "task", "requester", "helper", "point"], "point", "info"),
     ("handoff.transferred", "{helper} took over {task} from {requester} at {point}", "{helper}在{point}从{requester}接管{task}", ["incident", "handoff", "task", "requester", "helper", "point"], "helper", "info"),
+    ("incident.ended", "Incident {incident} ended", "事件{incident}结束", ["incident"], "position", "info"),
 ):
     EVENTS["lowalt." + _name] = {
         "template": _en, "template_zh": _zh, "entities": _entities,
@@ -88,14 +89,21 @@ def validate_vehicle_task_kinds(config: dict, *, vehicles: set[str]) -> None:
             raise ValueError(f"{path}: unique supported task kinds required / 必须为不重复的受支持任务类别")
 
 
-def validate_config(config: dict, *, vehicles: set[str]) -> None:
+# Facts newer saved scenes may carry; legacy generated rows are upgraded in place.
+UPGRADED_FACTS = ("lowalt.incident_radius_m", "lowalt.incident_end_ns", "lowalt.incident_active")
+
+
+def validate_config(config: dict, *, vehicles: set[str], until_ns: int | None = None) -> None:
     """Validate the cooperation object, without resolving operator credentials."""
     cfg = _object(config, "cooperation", {"handoff_points", "incidents", "watchers", "responder", "helpers", "photograph"}, {"provider"})
     ids: set[str] = set()
-    for group, required in (("handoff_points", {"id", "position", "label", "label_zh"}), ("incidents", {"id", "position", "kind", "at_s", "label", "label_zh"})):
+    for group, required, optional in (
+        ("handoff_points", {"id", "position", "label", "label_zh"}, frozenset()),
+        ("incidents", {"id", "position", "kind", "at_s", "label", "label_zh"}, frozenset({"radius_m", "end_s"})),
+    ):
         for index, value in enumerate(_list(cfg[group], "cooperation." + group)):
             path = f"cooperation.{group}[{index}]"
-            row = _object(value, path, required)
+            row = _object(value, path, required, optional)
             for name in required - {"position", "at_s"}:
                 _text(row[name], path + "." + name)
             if row["id"] in ids or row["id"] in vehicles:
@@ -106,6 +114,20 @@ def validate_config(config: dict, *, vehicles: set[str]) -> None:
                 raise ValueError(f"{path}.position: finite ENU 3-vector required / 必须为有限的 ENU 三维坐标")
             if group == "incidents":
                 _number(row["at_s"], path + ".at_s")
+                for optional_number, maximum in (("radius_m", 500), ("end_s", None)):
+                    if optional_number in row:
+                        _number(row[optional_number], path + "." + optional_number, maximum)
+                if "radius_m" in row and row["radius_m"] < 1:
+                    raise ValueError(f"{path}.radius_m: at least 1 m required / 半径至少为 1 米")
+                if "end_s" in row:
+                    start_ns = round(row["at_s"] * 1e9)
+                    end_ns = round(row["end_s"] * 1e9)
+                    if end_ns <= start_ns:
+                        raise ValueError(f"{path}.end_s: incident end must follow its start / 事件结束必须晚于开始")
+                    if until_ns is not None and end_ns > until_ns:
+                        raise ValueError(
+                            f"{path}.end_s: incident end is beyond the {until_ns / 1e9:g} s run / 事件结束超出 {until_ns / 1e9:g} 秒运行"
+                        )
     watchers = _object(cfg["watchers"], "cooperation.watchers", {"vehicles", "notice_radius_m"})
     responder = _object(cfg["responder"], "cooperation.responder", {"mode", "order", "rules"}, {"goal"})
     helpers = _object(cfg["helpers"], "cooperation.helpers", {"vehicles", "ask_radius_m", "mode", "rules", "selection"}, {"goal"})
@@ -233,7 +255,7 @@ def expand(document: dict) -> None:
         if "cooperation" not in cfg:
             continue
         coop = cfg["cooperation"]
-        validate_config(coop, vehicles=vehicles)
+        validate_config(coop, vehicles=vehicles, until_ns=document["run"]["until_ns"])
         if not {"oo:Incident", "oo:CargoTransferReport"} <= set(types):
             raise ValueError(CONTRACT_ERROR)
         descriptors = cooperation_overlay()
@@ -251,11 +273,27 @@ def expand(document: dict) -> None:
             generated.append({"id": point["id"], "type": "lowalt:HandoffPoint", "label": point["label"], "label_zh": point["label_zh"], "facts": {"lowalt.site_position": [float(v) for v in point["position"]], "lowalt.site_open": True, "lowalt.site_capacity": 1}})
         for incident in coop["incidents"]:
             labels = {key: incident[key] for key in ("label", "label_zh")}
-            generated.append({"id": incident["id"], "type": "lowalt:Incident", **labels, "business": "emergency", "facts": {"lowalt.incident_kind": incident["kind"], "lowalt.incident_position": [float(v) for v in incident["position"]], "lowalt.incident_state": "pending", "lowalt.incident_time_ns": round(incident["at_s"] * 1e9), "lowalt.incident_noticed_by": "", "lowalt.incident_responder": ""}})
+            generated.append({"id": incident["id"], "type": "lowalt:Incident", **labels, "business": "emergency", "facts": {
+                "lowalt.incident_kind": incident["kind"], "lowalt.incident_position": [float(v) for v in incident["position"]],
+                "lowalt.incident_state": "pending", "lowalt.incident_time_ns": round(incident["at_s"] * 1e9),
+                "lowalt.incident_noticed_by": "", "lowalt.incident_responder": "",
+                "lowalt.incident_radius_m": float(incident.get("radius_m", 30 if incident["kind"] == "fire" else 6)),
+                "lowalt.incident_end_ns": round(incident["end_s"] * 1e9) if "end_s" in incident else -1,
+                "lowalt.incident_active": False}})
             generated.append({"id": "handoff-" + incident["id"], "type": "lowalt:Handoff", **labels, "business": "emergency", "facts": {field: "idle" if field.endswith("_state") else "" for field in HANDOFF_FIELDS}})
         for row in generated:
             if row["id"] in entities:
-                if entities[row["id"]] != row:
+                # Legacy saved scenes carry generated rows without the newest
+                # incident facts; upgrade them in place instead of colliding.
+                existing = entities[row["id"]]
+                if row["type"] in {"lowalt:Incident", "lowalt:Handoff"}:
+                    facts = {k: v for k, v in existing.get("facts", {}).items() if k not in UPGRADED_FACTS}
+                    if row["type"] == "lowalt:Incident":
+                        facts.update({k: v for k, v in row["facts"].items() if k in UPGRADED_FACTS})
+                    if {**existing, "facts": {**existing.get("facts", {}), **facts}} == row:
+                        existing["facts"].update(facts)
+                        continue
+                if existing != row:
                     raise ValueError(f"cooperation: entity id collision {row['id']} / 实体标识冲突")
             else:
                 document["entities"].append(copy.deepcopy(row))

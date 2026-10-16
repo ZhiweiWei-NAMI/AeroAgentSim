@@ -236,6 +236,36 @@ def test_respond_now_suspends_and_resumes_original_parcel(tmp_path: Path) -> Non
     assert not _events(records, "lowalt.handoff.requested")
 
 
+def test_legacy_generated_incident_loads_and_upgrades_in_place(tmp_path: Path) -> None:
+    # A saved scene keeps its expanded generated rows; strip the facts a
+    # pre-radius/end version would lack, then reopen it through the real loader.
+    expanded = load_scenario(_document(tmp_path), base=BASE).document
+    identity = None
+    for entity in expanded["entities"]:
+        if entity["type"] == "lowalt:Incident":
+            identity = entity["id"]
+            for fact in ("lowalt.incident_radius_m", "lowalt.incident_end_ns", "lowalt.incident_active"):
+                entity["facts"].pop(fact, None)
+    assert identity is not None
+    records = _run(expanded, 30)
+    assert _fact_values(records, identity, "lowalt.incident_active") == [False, True]
+    assert _fact_values(records, identity, "lowalt.incident_radius_m") == [6.0]
+    assert _events(records, "lowalt.incident.occurred")
+
+
+def test_real_collision_with_authored_entity_still_raises(tmp_path: Path) -> None:
+    # An authored entity (not a stale generated row) that collides with a
+    # generated id is still a hard error.
+    document = _document(tmp_path)
+    document["entities"].append({
+        "id": document["engines"]["tasks"]["config"]["cooperation"]["incidents"][0]["id"],
+        "type": "lowalt:Incident", "label": "Authored over the generator", "label_zh": "作者覆盖",
+        "business": "emergency", "facts": {"lowalt.incident_kind": "person_fall"},
+    })
+    with pytest.raises(ValueError, match="entity id collision"):
+        _run(document, 1)
+
+
 def test_zero_dwell_commits_responding_before_photographed(tmp_path: Path) -> None:
     document = _document(tmp_path)
     coop = document["engines"]["tasks"]["config"]["cooperation"]

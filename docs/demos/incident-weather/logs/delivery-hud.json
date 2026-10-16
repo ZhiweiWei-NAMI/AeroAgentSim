@@ -1,0 +1,55 @@
+{
+  "viewport": [
+    1440,
+    900
+  ],
+  "viewed_ns": "55000000000",
+  "cut_index": 2572,
+  "city_loaded": true,
+  "no_overlapping_segments": true,
+  "browser_errors": [],
+  "segments": [
+    {
+      "text": "Wind 6.0 m/s · from NW",
+      "x": 335,
+      "y": 693,
+      "w": 248.890625,
+      "h": 36
+    },
+    {
+      "text": "Fire active",
+      "x": 595.890625,
+      "y": 703,
+      "w": 77.71875,
+      "h": 16
+    },
+    {
+      "text": "Moderate rain · 4 mm/h",
+      "x": 677.609375,
+      "y": 704,
+      "w": 159.03125,
+      "h": 14
+    },
+    {
+      "text": "Mist · 2 km",
+      "x": 836.640625,
+      "y": 704,
+      "w": 83.1875,
+      "h": 14
+    },
+    {
+      "text": "Dusk",
+      "x": 919.828125,
+      "y": 704,
+      "w": 47.046875,
+      "h": 14
+    },
+    {
+      "text": "i",
+      "x": 966.875,
+      "y": 704,
+      "w": 14,
+      "h": 14
+    }
+  ]
+}

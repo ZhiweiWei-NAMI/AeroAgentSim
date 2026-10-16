@@ -20,6 +20,12 @@ KIND_LABELS = {
 }
 FIELD_LABELS = {
     "wind.speed_mps": ("Wind speed", "风速"), "speed_mps": ("Wind speed", "风速"),
+    "from_deg": ("Wind from direction (clockwise from north)", "风的来向（自北顺时针）"),
+    "precipitation_mm_h": ("Rain", "降雨"),
+    "visibility_m": ("Visibility", "能见度"),
+    "light": ("Light", "光照"),
+    "radius_m": ("Affected radius", "影响半径"),
+    "end_s": ("Ends at", "结束时间"),
     "east_mps": ("Eastward wind velocity", "向东风速分量"),
     "north_mps": ("Northward wind velocity", "向北风速分量"),
     "up_mps": ("Upward wind velocity", "向上风速分量"),
@@ -49,14 +55,16 @@ FIELD_LABELS = {
     "task_kinds": ("Eligible task types", "可执行任务类型"),
     "label": ("Name", "名称"), "label_zh": ("Chinese name", "中文名称"),
     "id": ("Identifier", "标识"), "type": ("Object type", "对象类型"),
-    "kind": ("Type", "类型"), "contract": ("Object contract", "对象契约"),
+    "kind": ("Type", "类型"), "incident_kind": ("Kind", "事件类型"), "contract": ("Object contract", "对象契约"),
+    "fire": ("Fire", "火情"), "person_fall": ("Person fell", "行人跌倒"),
+    "day": ("Day", "白天"), "dusk": ("Dusk", "黄昏"),
     "details": ("Initial properties", "初始属性"), "facts": ("Initial properties", "初始属性"),
     "tasks": ("Tasks", "任务"), "task_states": ("Task initial states", "任务初始状态"),
     "from": ("Origins", "出发点"), "to": ("Destinations", "目的地"),
     "destination": ("Destination", "目的地"), "release": ("Release schedule", "发布时间安排"),
     "mode": ("Mode", "模式"), "times_s": ("Release times", "发布时间"),
     "at_s": ("Event time", "事件时间"), "start_s": ("Start time", "开始时间"),
-    "end_s": ("End time", "结束时间"), "release_s": ("Release time", "发布时间"),
+    "release_s": ("Release time", "发布时间"),
     "rate_per_s": ("Arrival rate", "到达速率"), "expected_released": ("Expected releases", "预计发布数量"),
     "burst_size": ("Burst size", "批次大小"), "priority": ("Priority", "优先级"),
     "payload_kg": ("Payload", "载荷"), "payload_capacity_kg": ("Payload capacity", "载荷容量"),
@@ -82,7 +90,7 @@ FIELD_LABELS = {
     "wind_speed": ("Wind speed", "风速"), "wind_limit": ("Wind limit", "风速上限"),
     "order_rate": ("Order rate", "订单速率"), "fleet_size": ("Fleet size", "机群规模"),
 }
-UNITS_ZH = {"m/s": "米/秒", "m": "米", "s": "秒", "ns": "纳秒", "kg": "千克", "W": "瓦", "J": "焦耳", "%": "%", "°": "度", "/s": "每秒"}
+UNITS_ZH = {"m/s": "米/秒", "mm/h": "毫米/小时", "m": "米", "s": "秒", "ns": "纳秒", "kg": "千克", "W": "瓦", "J": "焦耳", "%": "%", "°": "度", "/s": "每秒"}
 ENUM_LABELS = {
     "scheduled": ("Scheduled", "预设"), "interactive": ("Interactive", "交互"),
     "poisson": ("Random arrivals (Poisson)", "随机到达（泊松）"),
@@ -91,6 +99,7 @@ ENUM_LABELS = {
     "finish_then_respond": ("Finish task, then respond", "完成任务后响应"), "report_only": ("Report only", "仅报告"),
     "idle": ("When idle", "空闲时"), "always": ("Always", "始终"),
     "nearest": ("Nearest helper", "最近的协助者"), "first": ("First available helper", "首位可用协助者"),
+    "fire": ("Fire", "火情"), "person_fall": ("Person fell", "行人跌倒"), "day": ("Day", "白天"), "dusk": ("Dusk", "黄昏"),
     **{name: labels[2:] for name, labels in ROLES.items()},
 }
 POSITION_FIELDS = {"position", "start_position", "site_position", "incident_position", "points_enu_m", "position_enu_m"}
@@ -107,8 +116,11 @@ def _metadata(name: str, kind: str, identity: str) -> tuple[str, str, str | None
         key = identity
     if identity == "algorithms" and key == "plugin":
         key = name.split(".", 1)[0]
+    if kind == "event" and key == "kind":
+        # Incident rows label their kind explicitly; enum values carry Fire/Person fell copy.
+        name = key = "incident_kind"
     en, zh = FIELD_LABELS.get(name, FIELD_LABELS.get(key, (_humanize(name), _humanize(name))))
-    unit = {"lat": "°", "lon": "°", "bounds": "°", "direction_deg": "°", "alt": "m", "wind_speed": "m/s", "wind_limit": "m/s", "order_rate": "/s", "rate_per_s": "/s"}.get(key)
+    unit = {"lat": "°", "lon": "°", "bounds": "°", "direction_deg": "°", "from_deg": "°", "alt": "m", "wind_speed": "m/s", "wind_limit": "m/s", "order_rate": "/s", "rate_per_s": "/s", "precipitation_mm_h": "mm/h"}.get(key)
     if key in POSITION_FIELDS:
         unit = "m"
     if unit is None:
@@ -138,7 +150,7 @@ def _text(value: Any, name: str, kind: str, identity: str, algorithms: dict, *, 
             row = next((r for r in algorithms[slot] if r["id"] == value), None)
             if row is not None:
                 return row.get("label_zh", row["label"]) if zh else row["label"]
-        if key in {"mode", "run_mode", "role", "order", "selection", "accept_when"} and value in ENUM_LABELS:
+        if key in {"mode", "run_mode", "role", "order", "selection", "accept_when", "kind", "light"} and value in ENUM_LABELS:
             return ENUM_LABELS[value][int(zh)]
         return value
     if isinstance(value, list):

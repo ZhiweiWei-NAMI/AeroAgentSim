@@ -67,4 +67,33 @@ describe('unchanged tracked views', () => {
     view.viewport.render(view.store, '0', 0.1);
     expect(view.submit).toHaveBeenCalledTimes(count + 1); expect(view.container.dataset.idle).toBe('false');
   });
+
+  it('reuses world-space shadows for camera gestures and refreshes changed casters and light', () => {
+    const view = display('follow'); view.settle();
+    view.viewport.renderer.shadowMap.needsUpdate = false;
+    view.viewport.zoom(1.1); view.viewport.render(view.store, '0', 0.1);
+    expect(view.viewport.renderer.shadowMap.needsUpdate).toBe(false);
+    const layer = (view.viewport as unknown as { layer: { transformsChanged: boolean } }).layer;
+    layer.transformsChanged = true;
+    view.viewport.zoom(1.1); view.viewport.render(view.store, '0', 0.1);
+    expect(view.viewport.renderer.shadowMap.needsUpdate).toBe(true);
+    layer.transformsChanged = false; view.viewport.renderer.shadowMap.needsUpdate = false;
+    const lighting = (view.viewport as unknown as { lighting: { sun: T.Light } }).lighting;
+    lighting.sun.position.x += 1;
+    view.viewport.zoom(1.1); view.viewport.render(view.store, '0', 0.1);
+    expect(view.viewport.renderer.shadowMap.needsUpdate).toBe(true);
+  });
+
+  it('reuses an existing quality pipeline when returning to that quality', () => {
+    const view = display('follow');
+    const low = { dispose: vi.fn(), setDusk: vi.fn() }, med = { dispose: vi.fn(), setDusk: vi.fn() };
+    const applyPreset = vi.fn(), resize = vi.fn(), onQuality = vi.fn();
+    Object.assign(view.viewport, { composers: new Map([['low', low], ['med', med]]), composer: low,
+      applyPreset, resize, options: { onQuality } });
+    view.viewport.setQuality('med'); view.viewport.setQuality('low'); view.viewport.setQuality('med');
+    expect((view.viewport as unknown as { composer: unknown }).composer).toBe(med);
+    expect(low.dispose).not.toHaveBeenCalled(); expect(med.dispose).not.toHaveBeenCalled();
+    expect(applyPreset).toHaveBeenCalledTimes(3); expect(resize).toHaveBeenCalledTimes(3);
+    expect(onQuality.mock.calls).toEqual([['med'], ['low'], ['med']]);
+  });
 });

@@ -3,6 +3,8 @@ import type { EntityKey } from '../contracts/viewer-feed';
 import type { FeedStore } from './feed-store';
 import type { PlaybackClock } from './clock';
 import { Viewport, type CameraMode } from './viewport';
+import type { Conditions } from './conditions';
+import { ConditionsHud } from './ConditionsHud';
 import { LiveFollowClock } from './live-interpolation';
 import type { Quality } from './pipeline';
 import type { CityProgress } from '../scene/traffic-city';
@@ -12,6 +14,7 @@ import { entityId } from './bindings';
 import { useI18n } from '../i18n/I18nProvider';
 import '../scene/presentation';
 import '../workbench/run-status.css';
+import './viewer.css';
 import {BusinessDirector,directorTarget,type DirectorTarget} from './business-director';
 import type {RecordedBusinessEvent} from '../newcomers/projection';
 interface Props {
@@ -50,8 +53,10 @@ export function ViewportView(props: Props) {
   // own `data-asset-status`, so mirror them into React state for an alert.
   const [cityIssue,setCityIssue]=useState<string>();
   const [hintDismissed,setHintDismissed]=useState(false);
+  // 'scene' follows the journaled lowalt.light; day/dusk force the display look (URL ?lighting= still wins).
+  const urlLighting=new URLSearchParams(location.search).get('lighting');
+  const [lighting,setLighting]=useState<'scene'|'day'|'dusk'>(urlLighting==='day'||urlLighting==='dusk'?urlLighting:'scene');
   const sceneHint=(props.store.header.scene as {hint?:string}|undefined)?.hint;
-  const [dusk,setDusk]=useState(new URLSearchParams(location.search).get('lighting')==='dusk');
   const activeMode=useRef(mode ?? props.mode);activeMode.current=mode ?? props.mode;
   const previousMode=useRef(props.mode);
   const eventCut=useRef<{ns:string;index:number;parentCut?:number}>();
@@ -63,7 +68,11 @@ export function ViewportView(props: Props) {
   // The lite demo serves a scenario-snapshot catalog; surface the header's own
   // notice when present. No catalog inference is performed here.
   const catalogNotice=(props.store.header as typeof props.store.header & {catalogNotice?:string}).catalogNotice;
+  // Latest derived conditions from the FX layer; only fired when the rounded values change.
+  const [conditions,setConditions]=useState<Conditions>();
   useEffect(()=>{
+    let unsubscribeConditions: (() => void) | undefined;
+    setConditions(undefined);
     let frame=0,last=performance.now(),notify=last,lastSeek='',lastNotified='';
     let actionFramed=false,interacted=false;
     const director=new BusinessDirector();let shot:DirectorTarget|undefined,autoActive=false,wasPaused=false;
@@ -84,8 +93,9 @@ export function ViewportView(props: Props) {
         semantic:props.simple===true,showAllLabels:showAllLabels,
         onLegend:(entries,zones)=>{setLegend(entries);setZoneCount(zones);},
       });
+      unsubscribeConditions=viewport.current.onConditions(setConditions);
       props.onViewport?.(viewport.current);
-      viewport.current.setDusk(dusk);viewport.current.setCameraMode(mode ?? props.mode);viewport.current.setSelection(props.selected);viewport.current.setHighlights(props.highlights??[]);
+      viewport.current.setLightingOverride(lighting);viewport.current.setCameraMode(mode ?? props.mode);viewport.current.setSelection(props.selected);viewport.current.setHighlights(props.highlights??[]);
       const animate=(now:number)=>{
         try{
           const p=current.current,delta=(now-last)/1000;last=now;
@@ -127,7 +137,7 @@ export function ViewportView(props: Props) {
         }catch(error){current.current.onError(error);}
       };frame=requestAnimationFrame(animate);
     }catch(error){props.onError(error);}
-    return()=>{container?.removeEventListener('pointerdown',preserveCamera);cancelAnimationFrame(frame);current.current.onViewport?.(undefined);viewport.current?.dispose();viewport.current=undefined;eventCut.current=undefined;container?.closest('.viewer-main')?.removeAttribute('data-inspector-collapsed');};
+    return()=>{unsubscribeConditions?.();container?.removeEventListener('pointerdown',preserveCamera);cancelAnimationFrame(frame);current.current.onViewport?.(undefined);viewport.current?.dispose();viewport.current=undefined;eventCut.current=undefined;container?.closest('.viewer-main')?.removeAttribute('data-inspector-collapsed');};
   },[props.store,props.clock]);
   useEffect(()=>{viewport.current?.setSelection(props.selected);},[props.selected]);
   const highlightKey=(props.highlights??[]).map(key=>`${key.id}:${key.generation}`).join('|');
@@ -170,9 +180,11 @@ export function ViewportView(props: Props) {
       <select aria-label={t('View quality')} value={quality} onChange={event=>{const q=event.target.value as Quality;setQuality(q);viewport.current?.setQuality(q,true);}}>
         <option value="low">{t('Low')}</option><option value="med">{t('Balanced')}</option><option value="high">{t('High')}</option>
       </select>{fps!==undefined&&<span>{t('{fps} FPS', {fps:fps.toFixed(0)})}</span>}
-      <select aria-label={t('Display lighting')} value={dusk?'dusk':'day'} onChange={event=>{const value=event.target.value==='dusk';setDusk(value);viewport.current?.setDusk(value);}}><option value="day">{t('Day · display')}</option><option value="dusk">{t('Dusk · display')}</option></select>
+      <select aria-label={t('Display lighting')} value={urlLighting==='day'||urlLighting==='dusk'?urlLighting:lighting} onChange={event=>{const value=urlLighting==='day'||urlLighting==='dusk'?urlLighting:event.target.value as 'scene'|'day'|'dusk';setLighting(value);viewport.current?.setLightingOverride(value);}}>
+        <option value="scene">{t('Scene')}</option><option value="day">{t('Day')}</option><option value="dusk">{t('Dusk')}</option></select>
       <button aria-label={t('Toggle inspector')} aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>{t('Inspector')} {collapsed?'＋':'−'}</button>
     </div>}
+    {conditions&&<div className="viewport-conditions"><ConditionsHud conditions={conditions} zh={locale.startsWith('zh')} mode="run" /></div>}
     {!props.simple&&!props.bare&&<div className="scene-status"><span>{t('Buildings, lighting and symbols are display effects.')}</span>{status&&<details><summary>{t('Display details')}</summary><div>{status}</div></details>}</div>}
     {props.simple&&(!props.bare||floodScene)&&<div className="semantic-legend" data-testid="semantic-legend" aria-label={t('Map legend')}
       style={props.bare?{left:'calc(var(--wb-left, 0px) + 16px)',bottom:'calc(var(--wb-dock, 0px) + 16px)',maxWidth:360}:undefined}>

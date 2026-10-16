@@ -71,19 +71,20 @@ def committed_scene(source: Store, request: CaptureRequest, header: dict[str, An
 
     This is a state snapshot, never synthesized journal events. Later versions,
     including versions already committed when the render command dispatches,
-    cannot enter the photograph. Only spatial objects need GPU resources.
+    cannot enter the photograph. Journaled weather accompanies the spatial
+    objects so the shared atmosphere sees the same conditions as the viewport.
     """
     from aeroagentsim.services.projector import instant, lossless, stamp
 
     source.check_cut(request.source_cut)
     types = {row['typeId']: row for row in header['types']}
-    spatial = {row['typeId'] for row in header['presentation']}
+    scene_types = {row['typeId'] for row in header['presentation']} | {'lowalt:Environment', 'oo:WindField'}
     subject = request.camera.get('subject') if request.camera.get('revision') == 'uav-gimbal-oblique/v1' else None
     refs = {
         ref for ref, life in source.lives.items()
         if life.created.index <= request.source_cut.index
         and source.alive(ref, request.source_cut, request.source_cut.instant)
-        and (ref.type_id in spatial or spatial.intersection(types[ref.type_id]['ancestors'])
+        and (ref.type_id in scene_types or scene_types.intersection(types[ref.type_id]['ancestors'])
              or (subject is not None and ref.id == subject['id'] and ref.generation == subject['generation']))
     }
     fields: dict[Any, list[dict[str, Any]]] = {ref: [] for ref in refs}
