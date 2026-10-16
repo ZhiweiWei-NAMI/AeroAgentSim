@@ -48,3 +48,10 @@ def vary_fleet(cfg: dict, seed: int) -> None:
             profile["capabilities"].sort()
         if role == "deliver":
             profile["payload_kg"] = round(rng.uniform(cfg.get("payload_kg", 1.0), 3.0), 3)
+    # Onboard cargo is only meaningful to a vehicle that can deliver it, so a
+    # relay- or inspect-only drone carries nothing after the coverage pass. A
+    # protected vehicle keeps its seeded cargo for its existing mission.
+    for identity in sorted(fleet):
+        profile = fleet[identity]
+        if "deliver" not in profile["capabilities"] and not profile.get("protected_task"):
+            profile["payload_kg"] = 0.0

@@ -287,6 +287,39 @@ def test_seeded_template_varies_after_experiment_seed_is_applied() -> None:
     assert next(e for e in scene["entities"] if e["id"] == "U2")["facts"]["lowalt.position"] == [-100.0, -260.0, 70.0]
 
 
+def test_seeded_payload_is_absent_without_a_deliver_role() -> None:
+    registry = TemplateRegistry(ROOT / "scenarios/templates")
+
+    def fleet(seed):
+        prepared = registry.apply("flood-rescue", {"participation": "all"})
+        doc = copy.deepcopy(prepared.document)
+        doc["run"]["seed"] = seed
+        scene = load_scenario(doc, base=prepared.base).document
+        return {e["id"]: e["facts"] for e in scene["entities"] if e["type"] == "lowalt:UAV"}, \
+            scene["engines"]["tasks"]["config"]["rescue"]
+
+    for seed in range(10):
+        profiles, cfg = fleet(seed)
+        for identity, profile in cfg["vehicles"].items():
+            if "deliver" not in profile["capabilities"] and not profile.get("protected_task"):
+                assert profile["payload_kg"] == 0.0
+                assert profiles[identity]["lowalt.payload_kg"] == 0.0
+
+    # Captured from the pre-fix code: the coverage pass still decides the role
+    # holder, so positions, capabilities and SOC stay identical for a seed.
+    _profiles, cfg = fleet(1)
+    assert {identity: {"position": profile["position"], "capabilities": profile["capabilities"],
+                       "soc": profile["soc"]} for identity, profile in cfg["vehicles"].items()} == {
+        "U1": {"position": [-134.691, -55.77, 168.189], "capabilities": ["inspect", "relay", "deliver"], "soc": 0.7561},
+        "U2": {"position": [-221.842, -401.496, 171.788], "capabilities": ["inspect", "deliver"], "soc": 0.6118},
+        "U3": {"position": [-21.371, 33.581, 175.071], "capabilities": ["inspect", "relay"], "soc": 0.9574},
+        "U4": {"position": [34.98, -273.365, 131.452], "capabilities": ["inspect", "relay", "deliver"], "soc": 0.4632},
+    }
+    assert cfg["vehicles"]["U3"]["payload_kg"] == 0.0
+    # A protected vehicle keeps the seeded cargo for its existing mission.
+    assert cfg["vehicles"]["U1"]["protected_task"] == "R3" and cfg["vehicles"]["U1"]["payload_kg"] > 0
+
+
 @pytest.mark.parametrize("mode,obstruction", [("all", None), ("distance", None), ("filter", None),
                                              ("all", "no_route"), ("all", "rejected")])
 def test_seed_zero_rescue_execution(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,

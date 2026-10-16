@@ -41,7 +41,7 @@ export function ConnectModel({ connection, error, saving, onSave, onTest, onDone
         <small>{L('Kept on this server and never shown again.', '仅保存在本服务器上，不会再次显示。')}</small></label>
       <div className="as-connect-actions">
         {connection?.configured && <button type="button" className="wb-btn ghost" onClick={() => setEditing(false)}>{L('Cancel', '取消')}</button>}
-        <button type="submit" className="wb-btn primary" disabled={saving || !baseUrl.trim() || !model.trim()} data-testid="as-connect-save">{saving ? L('Connecting…', '正在连接…') : L('Connect and test', '连接并测试')}</button>
+        <button type="submit" className="wb-btn primary" disabled={saving || !baseUrl.trim() || !model.trim()} data-testid="as-connect-save">{saving ? L('Connecting…', '正在连接…') : error ? L('Retry', '重试') : L('Connect and test', '连接并测试')}</button>
       </div>
     </form>}
     {(error || (editing && failed)) && <p className="as-bad" role="alert" data-testid="as-connect-error">{error ?? failed}</p>}

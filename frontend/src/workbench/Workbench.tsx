@@ -728,7 +728,7 @@ export default function Workbench() {
 
     {/* Right: configuration or inspector */}
     <Suspense fallback={null}>{(assistantOpen || assistant.morph?.from === 'chat') && <AssistantPanel assistant={assistant.assistant} connection={assistant.connection.connection} connectionError={assistant.connection.error ?? assistant.error} connectionSaving={assistant.connection.saving}
-        onConnect={assistant.connection.save} onTest={assistant.connection.test} project={project ? { id: project.id, name: title ?? project.name } : undefined}
+        onConnect={assistant.connection.save} onTest={assistant.connection.test} onRetry={assistant.retrySession} project={project ? { id: project.id, name: title ?? project.name } : undefined}
         selected={selected ? { id: selected.id, label: entityNames.get(selected.id) ?? selected.id } : undefined} runId={runId} onClearSelected={() => select(undefined)}
         onClose={() => update({ panel: undefined })} onSwitch={project ? (mode, origin) => assistant.switchMode(mode, origin) : undefined} switching={!!assistant.morph} morph={morphOf('chat')}
         onShowPlan={version => { assistant.openBoard(); assistant.setViewing(version === assistant.assistant.plan?.version ? undefined : version); }} onShowChanges={() => { assistant.openBoard(); assistant.setViewing(undefined); }} />}</Suspense>

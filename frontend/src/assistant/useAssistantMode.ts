@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Project } from '../workbench/api';
-import { ApiError } from '../workbench/api';
 import { AssistantApi, type ApplyRecord, type PlanPreview, type PlanVersion, type Story } from './api';
 import type { EditMode, Origin } from './ModeSwitch';
 import { rewire } from './motion/rewire';
+import { assistantErrorText } from './errors';
 import { planOverlay, revealOrder, type PreviewOverlay } from './overlay';
 import type { Stage } from './PlanBoard';
 import { useAssistantSession, useConnection, type AssistantSession } from './useAssistant';
 import { draftChanges, proposalWorkspace } from './draftChanges';
 
-const problemText = (problem: unknown) => problem instanceof ApiError ? problem.detail : String(problem);
 const PALETTE = { form: '#38c6f4', chat: '#8a7dff' };
 
 /**
@@ -22,7 +21,10 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
   update: (patch: Record<string, string | undefined>, push?: boolean, path?: string) => void;
 }) {
   const api = useMemo(() => new AssistantApi(apiBase), [apiBase]);
+  const problemText = useCallback((problem: unknown) => assistantErrorText(problem, locale === 'zh-CN'), [locale]);
   const [morph, setMorph] = useState<{ from: EditMode; to: EditMode; origin: Origin }>();
+  // Retry bumps this to re-run the conversation resolution from scratch.
+  const [sessionEpoch, setSessionEpoch] = useState(0);
   // The conversation stays live while its panel rewires away.
   const live = open || morph?.from === 'chat';
   const connection = useConnection(api);
@@ -34,6 +36,7 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
   useEffect(() => {
     if (!open || sessionId || resolving.current || (projectId && !project)) return;
     resolving.current = true;
+    setError(undefined);
     const abort = new AbortController();
     void (async () => {
       const rows = project ? await api.sessions(project.id, abort.signal) : [];
@@ -42,7 +45,7 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
       if (!abort.signal.aborted) update({ assistant: id });
     })().catch(problem => { if (!abort.signal.aborted) setError(problemText(problem)); }).finally(() => { resolving.current = false; });
     return () => { abort.abort(); resolving.current = false; };
-  }, [api, open, sessionId, projectId, project?.id]);
+  }, [api, open, sessionId, projectId, project?.id, sessionEpoch, problemText]);
   // A conversation about another project is not this project's conversation.
   useEffect(() => {
     const bound = assistant.session?.workspace_id;
@@ -73,7 +76,7 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
       .then(([value, version]) => { if(!abort.signal.aborted) {setPreview({ ...value, version: viewedVersion }); setPreviewPlan(version);} })
       .catch(problem => { if (!abort.signal.aborted) setPreviewError(problemText(problem)); });
     return () => abort.abort();
-  }, [api, live, sessionId, viewedVersion, plan?.version, plan?.compile.ok, stage]);
+  }, [api, live, sessionId, viewedVersion, plan?.version, plan?.compile.ok, stage, problemText]);
 
   // Hover, sequence playback and reveal drive the 3D layer.
   const [focus, setFocus] = useState<string[]>([]);
@@ -120,7 +123,7 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
     };
     void load();
     return () => { abort.abort(); clearTimeout(timer); };
-  }, [api, live, sessionId, runId, stage, terminal, locale]);
+  }, [api, live, sessionId, runId, stage, terminal, locale, problemText]);
 
   // Form ↔ Conversation: both panels stay mounted while the rewire plays.
   const lastSection = useRef('controls');
@@ -144,6 +147,8 @@ export function useAssistantMode({ apiBase, open, sessionId, projectId, project,
   return {
     api, connection, assistant:boardAssistant, error:error ?? previewError, stage, board, closeBoard: () => setBoardClosed(plan?.version), openBoard: () => setBoardClosed(undefined),
     live, viewing, setViewing, overlay, previewWorkspace, focus, setFocus, story, storyError, applyDone, morph, switchMode, lastSection,
+    // A blocked session request never resolves into a conversation; offer the identical request again.
+    retrySession: () => { setSessionEpoch(value => value + 1); },
   };
 }
 export type AssistantMode = ReturnType<typeof useAssistantMode>;

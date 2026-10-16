@@ -3,6 +3,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { Markdown } from '../workbench/Markdown';
 import { issueOf, type AssistantEvent, type Connection, type MessageContext, type PlanIssue } from './api';
 import { ConnectModel } from './ConnectModel';
+import { nonLocalHost } from './errors';
 import { Icon } from './icons';
 import { bi } from './present';
 import { ModeSwitch, type EditMode, type Origin } from './ModeSwitch';
@@ -68,10 +69,9 @@ const STARTERS = {
   ],
 };
 
-export function AssistantPanel({ assistant, connection, connectionError, connectionSaving, onConnect, onTest, project, selected, runId, onClearSelected, onClose, onSwitch, switching, morph, onShowPlan, onShowChanges, suggestionsExtra }: {
+export function AssistantPanel({ assistant, connection, connectionError, connectionSaving, onConnect, onTest, onRetry, project, selected, runId, onClearSelected, onClose, onSwitch, switching, morph, onShowPlan, onShowChanges, suggestionsExtra }: {
   assistant: AssistantSession; connection?: Connection; connectionError?: string; connectionSaving: boolean;
-  onConnect: (body: { base_url: string; model: string; api_key?: string; clear_key?: boolean }) => Promise<unknown>; onTest: () => Promise<void>;
-  project?: { id: string; name: string }; selected?: { id: string; label: string }; runId?: string; onClearSelected?: () => void;
+  onConnect: (body: { base_url: string; model: string; api_key?: string; clear_key?: boolean }) => Promise<unknown>; onTest: () => Promise<void>; onRetry?: () => void; project?: { id: string; name: string }; selected?: { id: string; label: string }; runId?: string; onClearSelected?: () => void;
   onClose: () => void; onSwitch?: (mode: EditMode, origin: Origin) => void; switching?: boolean; morph?: 'in' | 'out';
   onShowPlan: (version: number) => void; onShowChanges: () => void; suggestionsExtra?: string[];
 }) {
@@ -93,6 +93,8 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
   useEffect(() => { const handler = (event: Event) => { const detail = (event as CustomEvent<string>).detail; if (typeof detail === 'string') { setText(detail); requestAnimationFrame(() => { input.current?.focus(); input.current?.setSelectionRange(detail.length, detail.length); }); } }; addEventListener('aas-assistant-draft', handler); return () => removeEventListener('aas-assistant-draft', handler); }, []);
   const needsConnection = !connection || !connection.configured || connection.status === 'error';
   const connecting = !assistant.session;
+  // A failed session setup leaves "Connecting…" and shows what went wrong instead.
+  const setupFailed = connecting && !needsConnection && !!connectionError;
   const [submitting, setSubmitting] = useState(false);
   const context: MessageContext = { locale, ...(selected ? { selected_entity: selected.id } : {}), ...(runId ? { run_id: runId } : {}) };
   const submit = (value = text) => {
@@ -138,7 +140,7 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
     }
   };
 
-  const glyph = needsConnection ? 'off' : error ? 'error' : busy ? 'thinking' : 'idle';
+  const glyph = needsConnection ? 'off' : error || setupFailed ? 'error' : busy ? 'thinking' : 'idle';
   return <aside className="wb-panel wb-right as-panel wb-glass" data-testid="wb-assistant" data-morph={morph} aria-label={L('Assistant', '助手')}>
     <header className="as-head as-rise">
       <span className="as-head-mark"><NeuralGlyph state={glyph} pulseKey={lastTool?.seq} size={24} title={L('Assistant', '助手')} /></span>
@@ -147,6 +149,7 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
       {onSwitch && <ModeSwitch mode="chat" onChange={onSwitch} switching={switching} />}
       <button className="wb-x" onClick={onClose} aria-label={L('Close assistant', '关闭助手')}>✕</button>
     </header>
+    {nonLocalHost() && <p className="as-note" data-testid="as-host-note">{L('Changes may be blocked when this page isn’t opened from localhost.', '若页面并非通过 localhost 打开，修改可能会被拒绝。')}</p>}
     {(showConnect || needsConnection && !events.length) ? <div className="as-body as-body-center as-rise"><ConnectModel connection={connection} error={connectionError} saving={connectionSaving} onSave={onConnect} onTest={onTest} onDone={() => setShowConnect(false)} compact={showConnect && !needsConnection} /></div> : <>
       <div className="as-body as-rise" ref={scroller} onScroll={event => { const node = event.currentTarget; pinned.current = node.scrollHeight - node.scrollTop - node.clientHeight < 40; }} data-testid="as-transcript" aria-live="polite">
         {!items.length && <div className="as-empty">
@@ -166,9 +169,10 @@ export function AssistantPanel({ assistant, connection, connectionError, connect
           <textarea ref={input} rows={1} value={text} disabled={needsConnection} onChange={event => setText(event.target.value)} data-testid="as-input"
             placeholder={plan ? L('Ask, or describe a change…', '提问，或描述要做的修改…') : L('Describe what you want to study…', '描述你想研究的内容…')}
             onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} />
-          <button type="submit" className="as-send" disabled={connecting || submitting || busy || !text.trim() || needsConnection} aria-label={connecting ? L('Connecting…', '正在连接…') : L('Send', '发送')} data-testid="as-send"><Icon name="send" size={15} /></button>
+          <button type="submit" className="as-send" disabled={connecting || submitting || busy || !text.trim() || needsConnection} aria-label={connecting && !setupFailed && !error ? L('Connecting…', '正在连接…') : L('Send', '发送')} data-testid="as-send"><Icon name="send" size={15} /></button>
         </form>
-        {connecting && !needsConnection && !error && <small className="hint" role="status">{L('Connecting… Your message will stay here until the conversation is ready.', '正在连接… 对话就绪前，你的消息会保留在这里。')}</small>}
+        {connecting && !needsConnection && !error && !setupFailed && <small className="hint" role="status">{L('Connecting… Your message will stay here until the conversation is ready.', '正在连接… 对话就绪前，你的消息会保留在这里。')}</small>}
+        {setupFailed && !error && <div className="as-note bad" role="alert" data-testid="as-connect-failure"><Icon name="cross" size={13} /><span>{connectionError}</span>{onRetry && <button className="wb-btn small" onClick={onRetry} data-testid="as-connect-retry">{L('Retry', '重试')}</button>}</div>}
         <small className="as-fine">{L('Plans are proposals. Your scene changes only when you press Confirm.', '方案只是提议。只有按下“确认”后，场景才会改变。')}</small>
       </footer>
     </>}

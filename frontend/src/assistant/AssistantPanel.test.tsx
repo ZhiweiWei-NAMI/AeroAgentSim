@@ -1,11 +1,12 @@
 import { act,cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react';
 import { afterEach,expect,it,vi } from 'vitest';
 import { AssistantPanel } from './AssistantPanel';
+import { useAssistantMode } from './useAssistantMode';
 import type { Connection,PlanVersion,Session } from './api';
 import type { AssistantSession } from './useAssistant';
 import { I18nProvider } from '../i18n/I18nProvider';
 
-afterEach(()=>{cleanup();localStorage.clear();sessionStorage.clear();});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();localStorage.clear();sessionStorage.clear();});
 it.each(['en-US','zh-CN'])('T3-R2-006/T4-R2-014: structured failed-plan transcript messages stay readable in %s',locale=>{
   localStorage.setItem('aeroagentsim.locale',locale);
   const events=[{seq:1,at:'',kind:'plan_validated' as const,version:1,valid:false,errors:[{op_id:'op-4',field:'mode',message:'Starting scene has no interactive ingress stream / 起点场景没有交互输入流'}]}];
@@ -87,4 +88,48 @@ it.each(['en-US','zh-CN'])('T4-R3-002: the plan chip discloses compiled prerequi
   expect(chip).toHaveTextContent(locale==='en-US'?'Includes the required drone scene components':'包含必需的无人机场景组件');
   expect(chip).not.toHaveTextContent('No simulation components beyond that');
   expect(chip).not.toHaveTextContent(locale==='en-US'?'包含必需的无人机场景组件':'Includes the required drone scene components');
+});
+
+const okConnection: Connection = { configured: true, source: 'operator', base_url: 'http://api', model: 'test', has_key: true, status: 'ok', detail: null, tested_at: null };
+
+function guardedPanel(locale: string, onRetry: () => void) {
+  function Harness() {
+    const mode = useAssistantMode({ apiBase: '', open: true, projectId: undefined, project: undefined, locale, terminal: false, update: vi.fn() });
+    return <I18nProvider><AssistantPanel assistant={mode.assistant} connection={okConnection} connectionError={mode.error} connectionSaving={false}
+      onConnect={async () => undefined} onTest={async () => undefined} onRetry={() => { onRetry(); mode.retrySession(); }}
+      project={{ id: 'guard', name: 'Scene' }} onClose={vi.fn()} onShowPlan={vi.fn()} onShowChanges={vi.fn()} /></I18nProvider>;
+  }
+  return <Harness />;
+}
+
+function mockFetch(status: number, body: unknown) {
+  return vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
+}
+
+it.each([
+  ['en-US', 403, { detail: 'Untrusted request Host or Origin' }, 'This server only accepts changes from its own machine', 'Connecting…'],
+  ['zh-CN', 403, { detail: 'Untrusted request Host or Origin' }, '此服务器只接受本机发起的修改', '正在连接'],
+  ['en-US', 401, { detail: 'Bearer token required' }, 'This server requires an API token.', 'Connecting…'],
+  ['zh-CN', 401, { detail: 'Bearer token required' }, '此服务器需要 API 令牌。', '正在连接'],
+  ['en-US', 500, { detail: 'Backend exploded' }, 'Backend exploded', 'Connecting…'],
+  ['zh-CN', 500, {}, '请求失败（HTTP 500）。', '正在连接'],
+])('guard rejection leaves Connecting…, shows the mapped copy, keeps the draft and Retry re-sends (%s, HTTP %i)', async (locale, status, body, expected, connectingText) => {
+  localStorage.setItem('aeroagentsim.locale', locale as string);
+  const fetchMock = mockFetch(status as number, body);
+  vi.stubGlobal('fetch', fetchMock);
+  const onRetry = vi.fn();
+  render(guardedPanel(locale as string, onRetry));
+  // The composer still holds the draft while connecting.
+  const input = screen.getByTestId('as-input');
+  fireEvent.change(input, { target: { value: 'Add a charging pad' } });
+  expect(input).toHaveValue('Add a charging pad');
+  await waitFor(() => expect(screen.getByTestId('as-connect-failure')).toHaveTextContent(expected as string));
+  // "Connecting…" is gone and the draft survives.
+  expect(screen.queryByRole('status')).toBeNull();
+  expect(screen.getByTestId('as-send')).not.toHaveAccessibleName(connectingText as string);
+  expect(input).toHaveValue('Add a charging pad');
+  // Retry re-sends the same failed request.
+  fireEvent.click(screen.getByTestId('as-connect-retry'));
+  await waitFor(() => expect(onRetry).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(2));
 });
