@@ -9,7 +9,7 @@ import { GpuTimer } from './gpu-timer';
 import { EntityLayer } from './entities';
 import { parseModelCatalog } from './model-catalog';
 import { SemanticLayer } from './semantic-layer';
-import {activeZones,semanticSites} from './semantic';
+import {activeZones,semanticSites,semanticFlooding} from './semantic';
 import {ProceduralDistrict} from '../scene/procedural-district';
 import { pipeline, PRESETS, type Quality } from './pipeline';
 import { QualityMaterials } from './quality-materials';
@@ -20,7 +20,7 @@ import type { CityProgress } from '../scene/traffic-city';
 import { CameraDirector, type CameraMode } from '../scene/camera-director';
 import { translate } from '../i18n/translate';
 import type {DirectorTarget} from './business-director';
-import { workbenchLayoutKey } from './label-placement';
+import { placeLabel, workbenchLayoutKey } from './label-placement';
 import { AtmosphereLayer } from './atmosphere';
 import { IncidentSurface } from './atmosphere/surface-height';
 import { ConditionsCache, type Conditions } from './conditions';
@@ -89,6 +89,7 @@ export class Viewport {
   private renderedFrames = 0;
   private shadowKey = '';
   private semanticLayer?: SemanticLayer;
+  private incidentLabels = new Map<string, HTMLButtonElement>();
   private district?:ProceduralDistrict;
   private assetIssues = new Set<string>();
   private lastStatus = '';
@@ -380,6 +381,7 @@ export class Viewport {
       if(this.hoverMarkerId)this.container.dataset.semanticHover=this.semanticLayer.labelFor(this.hoverMarkerId)??'';
       if(this.options.onLegend)this.emitLegend(store);
     }else if(this.semanticLayer)this.semanticLayer.root.visible=false;
+    this.updateIncidentLabels();
     this.container.dataset.payloadCount=String(this.layer.payloadCount);
     this.container.dataset.chargingPadCount=String(this.semanticLayer?.chargingPadCount??0);
     const entitiesFinished = performance.now();
@@ -500,8 +502,35 @@ export class Viewport {
     const labels={no_fly:translate(locale, 'No-fly zone'),restricted:translate(locale, 'Restricted zone'),altitude_band:translate(locale, 'Altitude band'),corridor:translate(locale, 'Corridor')};
     for (const [label,color] of SemanticLayer.zoneLegend(locale)) if([...activeKinds].some(kind=>labels[kind]===label))entries.set(label,color);
     const sites=semanticSites(store.header,store);if(sites.some(site=>site.isVertiport))entries.set(translate(locale, 'Vertiport'),'#009e73');if(sites.some(site=>site.isPad))entries.set(translate(locale, 'Charging pad'),'#e69f00');
+    const flooding=semanticFlooding(store),zh=locale.startsWith('zh');
+    if(flooding.areas.length)entries.set(zh?'积水范围':'Flood extent','#259fc7');
+    if(flooding.roads.length)entries.set(zh?'被淹道路':'Submerged roads','#b0eeff');
+    if(flooding.incidents.length)entries.set(zh?'屋顶求援点':'Rooftop rescue','#ffb74b');
     const legend=[...entries].map(([label,color])=>({label,color})),zones=this.layer.activeZoneCount(store),key=JSON.stringify([legend,zones]);
     if(key!==this.lastLegend){this.lastLegend=key;this.options.onLegend?.(legend,zones);}
+  }
+  private updateIncidentLabels() {
+    const incidents=this.layer.semantic?this.semanticLayer?.incidentLabels:undefined;
+    if(!incidents?.size&&!this.incidentLabels.size)return;
+    const bounds=this.overlay.getBoundingClientRect(),width=bounds.width,height=bounds.height;
+    const wb=this.overlay.closest('.wb');
+    const relative=(rect:DOMRect)=>({left:rect.left-bounds.left,right:rect.right-bounds.left,top:rect.top-bounds.top,bottom:rect.bottom-bounds.top});
+    const frame=wb?.querySelector('.wb-scene-frame')?.getBoundingClientRect();
+    const safe=frame?relative(frame):{left:8,right:width-8,top:8,bottom:height-8};
+    const obstacles=[...this.overlay.querySelectorAll('.entity-label:not([data-incident]):not([hidden])'),
+      ...(wb?.querySelectorAll('.wb-panel, .wb-camera, .wb-graph, .wb-history, .wb-waiting')??[])].map(node=>relative(node.getBoundingClientRect()));
+    for(const [id,label] of this.incidentLabels)if(!incidents?.has(id)){label.remove();this.incidentLabels.delete(id);}
+    for(const [id,incident] of incidents??[]){
+      let label=this.incidentLabels.get(id);
+      if(!label){label=document.createElement('button');label.className='entity-label';label.dataset.incident=incident.key.id;label.onclick=()=>this.options.onSelect?.(incident.key);this.overlay.append(label);this.incidentLabels.set(id,label);}
+      label.textContent=incident.text;label.style.borderColor=incident.color;label.style.fontWeight='650';label.style.maxWidth='240px';
+      const point=incident.position.clone().project(this.camera);
+      label.hidden=point.z<-1||point.z>1||Math.abs(point.x)>1||Math.abs(point.y)>1;
+      if(label.hidden)continue;
+      const placed=placeLabel((point.x+1)*width/2,(1-point.y)*height/2,label.offsetWidth,label.offsetHeight,safe,obstacles,true);
+      if(!placed){label.hidden=true;continue;}
+      label.style.left=`${placed.x}px`;label.style.top=`${placed.y}px`;obstacles.push(placed.box);
+    }
   }
   setSemantic(next: { semantic?: boolean; showAllLabels?: boolean }) {
     if (next.semantic !== undefined) {

@@ -416,7 +416,7 @@ class Harness:
             scene = self.tools.get_current_scene(identifier)
             evidence = run_evidence(self.tools, identifier, context)
             messages = [{"role": "system", "content": SYSTEM_PROMPT}, state_message(session, scene, context, evidence)] + recent_history(session["transcript"])
-            provider = self.connection.provider()
+            provider = self.connection.provider(identifier)
             schemas = tool_schemas()
             for step in range(self.max_calls + 1):
                 if self._cancelled(identifier, turn):

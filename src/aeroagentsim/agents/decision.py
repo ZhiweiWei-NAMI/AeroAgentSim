@@ -123,6 +123,8 @@ class Decision(ContextEngine):
             if provider is not None
             else OpenAIProvider.from_config(cfg.get("provider", {}))
         )
+        if isinstance(self.provider, OpenAIProvider):
+            self.provider.bind_session(f"engine:{build.run_directory.resolve() if build.run_directory else build.manifest.run_id}:{build.manifest.epoch}:{build.id}")
         self.sequence = 0
         self.pending: deque[tuple[str, str]] = deque()
         self.commands_by_id: dict[str, tuple[str, str]] = {}

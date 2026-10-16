@@ -42,10 +42,34 @@ The environment mapping overrides file entries of the same name. Populate
 `MY_KEY_VAR` on the server, then select `provider: {profile: research}` in the
 scenario. Unknown profiles and scenario-supplied URLs or credential selectors
 are rejected. The console's live-provider form also accepts a profile name.
+
+A named operator profile can instead read the key from a local UTF-8 file:
+
+```json
+{"research": {"base_url": "https://your-endpoint.example/v1", "model": "your-model", "api_key_file": "/absolute/path/outside/repository/model-key.txt"}}
+```
+
+Use this entry in the same operator mapping, not in the scenario. The file must
+contain one nonempty key line; surrounding whitespace is stripped. `~` expands
+to the service user's home; relative paths use the service working directory.
+`api_key_file` and explicit `api_key_env` are mutually exclusive. The provider
+reads the file when constructed, without copying its content into configuration
+or journals. Keep the file outside Git and readable only by the service user.
+This does not change the console's saved connection or configure a running service.
+
 Provider failures record a short safe message and HTTP status where available;
 upstream error bodies and request headers are discarded. There is no
 automatic retry: transport failures and `WALL_TIMEOUT` are recorded typed
 failures, and a late reply cannot mutate simulation state.
+
+For `opencode.ai`, requests identify this client as `AeroAgentSim/<version>` and
+send `x-opencode-session`, following the [OpenCode client guidance](https://opencode.ai/v2/docs/console/go/#where-can-i-use-it).
+Assistant conversations retain their existing session identity across turns;
+simulation agents use the run namespace and engine ID, keeping UAVs separate.
+The header contains a stable UUID derived from that identity, not an internal path.
+Direct provider callers can use `bind_session(identity)`; otherwise the ID stays
+fixed for the provider instance. These headers do not establish service eligibility
+or diagnose a particular HTTP 400 response.
 
 ## Grant-based scoping
 

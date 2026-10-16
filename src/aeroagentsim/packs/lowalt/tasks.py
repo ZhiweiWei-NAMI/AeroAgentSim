@@ -239,6 +239,18 @@ class LowaltTasks(ContextEngine):
         self.snapshot_ctx: EngineContext | None = None
         self.snapshot_state: Snapshot | None = None
         produced = TASK_FIELDS + CONSTANT_FIELDS + ("lowalt.payload_kg",)
+        self.rescue = None
+        rescue_fields: tuple[str, ...] = ()
+        rescue_events: tuple[str, ...] = ()
+        rescue_topics: tuple[str, ...] = ()
+        if "rescue" in self.cfg:
+            from .rescue import EVENTS as rescue_events, FIELDS as rescue_fields, Rescue
+
+            self.rescue = Rescue(self)
+            rescue_topics = ("rescue.results", "rescue.center", "rescue.transport") + tuple(
+                "rescue.local." + identity for identity in self.cfg["rescue"]["vehicles"]
+            )
+            produced += rescue_fields
         if self.cooperation is not None:
             produced += INCIDENT_FIELDS + HANDOFF_FIELDS
         if self.food_enabled:
@@ -263,9 +275,10 @@ class LowaltTasks(ContextEngine):
                         )
                         + (FOOD_FIELDS if self.food_enabled else ())
                         + (INCIDENT_FIELDS + HANDOFF_FIELDS if self.cooperation is not None else ())
+                        + rescue_fields
                     )
                 ),
-                emits=tuple(
+                emits=rescue_events + tuple(
                     "lowalt.task." + s
                     for s in (
                         "created",
@@ -315,14 +328,15 @@ class LowaltTasks(ContextEngine):
                 subscribes=("lowalt.events", "lowalt.allocations")
                 + (
                     ("langgraph-records",)
-                    if self.algorithms["allocation"] == "llm" or (self.cooperation is not None and "provider" in self.cooperation)
+                    if self.rescue is not None or self.algorithms["allocation"] == "llm" or (self.cooperation is not None and "provider" in self.cooperation)
                     else ()
-                ) + (("lowalt.cooperation",) if self.cooperation is not None else ()),
+                ) + (("lowalt.cooperation",) if self.cooperation is not None else ())
+                + (("rescue.results",) if self.rescue is not None else ()),
                 message_targets=(
                     "lowalt.events",
                     "lowalt.allocations",
                     self.motion["target"],
-                ) + (("lowalt.cooperation",) if self.cooperation is not None else ()),
+                ) + (("lowalt.cooperation",) if self.cooperation is not None else ()) + rescue_topics,
                 lifecycle=True,
                 rng_streams=("arrivals", "sites"),
             ),
@@ -683,7 +697,7 @@ class LowaltTasks(ContextEngine):
                 # the aircraft idle and leave the reserve recall open forever.
                 flight.avoidance_resume_purpose = "charge"
                 flight.avoidance_resume_goal = flight.goal
-            if flight.purpose in {"task", "incident_response", "handoff_drop", "handoff_pickup"}:
+            if flight.purpose in {"task", "incident_response", "handoff_drop", "handoff_pickup", "rescue"}:
                 flight.control_resume_purpose = flight.purpose
                 if flight.work_active:
                     flight.saved_route = (
@@ -791,7 +805,7 @@ class LowaltTasks(ContextEngine):
                         flight.waypoint = None
                         flight.command_id = None
                         if status != "succeeded" and not flight.replan:
-                            if flight.purpose in {"incident_response", "handoff_drop", "handoff_pickup"}:
+                            if flight.purpose in {"incident_response", "handoff_drop", "handoff_pickup", "rescue"}:
                                 flight.replan = True
                                 flight.route = ()
                             elif flight.job is not None:
@@ -816,6 +830,8 @@ class LowaltTasks(ContextEngine):
                 self._submit(ctx, flight, None)
         for delivery in ctx.inbox:
             payload = cast(dict[str, Any], thaw(delivery.message.payload))
+            if self.rescue is not None and self.rescue.on_message(ctx, delivery.message.schema_id, payload):
+                continue
             if self.cooperation is not None:
                 if delivery.message.source == self.build.id and payload.get("incident") in self.incidents:
                     incident = self.incidents[payload["incident"]]
@@ -1821,6 +1837,8 @@ class LowaltTasks(ContextEngine):
                 )
         if self.food_enabled:
             self._prepare_food(ctx)
+        if self.rescue is not None:
+            self.rescue.tick(ctx)
         if self.cooperation is not None:
             self._coop_tick(ctx)
         self._preempt(ctx)
@@ -1853,6 +1871,8 @@ class LowaltTasks(ContextEngine):
                 continue
             if self.cooperation is not None and self._coop_flight(ctx, flight):
                 continue
+            if self.rescue is not None and self.rescue.flight(ctx, flight):
+                continue
             if flight.purpose in {"charge", "avoidance"}:
                 if flight.goal is None:
                     raise ValueError("control route lacks a target")
@@ -1880,6 +1900,8 @@ class LowaltTasks(ContextEngine):
                     else:
                         self._restore_control(flight)
             if self.cooperation is not None and self._coop_flight(ctx, flight):
+                continue
+            if self.rescue is not None and self.rescue.flight(ctx, flight):
                 continue
             if flight.job is None and flight.purpose == "task":
                 continue

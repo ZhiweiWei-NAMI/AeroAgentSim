@@ -380,7 +380,10 @@ def test_duplicate_key_revision_args_recover_without_losing_the_retained_plan(pr
         return {"message": next(replies), "usage": {"total_tokens": 1}}
     agent = Harness.__new__(Harness)
     agent.sessions, agent.tools, agent.max_calls = tools.sessions, tools, 3
-    agent.connection = SimpleNamespace(provider=lambda: SimpleNamespace(complete=complete))
+    def provider(session_id):
+        assert session_id == session
+        return SimpleNamespace(complete=complete)
+    agent.connection = SimpleNamespace(provider=provider)
     turn = tools.sessions.begin_turn(session, "Change pad capacity to three")
     agent.run_turn(session, turn["turn"])
     rejected = json.loads(requests[1][-1]["content"])

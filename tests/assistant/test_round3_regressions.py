@@ -68,7 +68,10 @@ def applied_revision(project):
 def agent_for(tools, identifier, complete=None):
     agent = Harness.__new__(Harness)
     agent.sessions, agent.tools, agent.max_calls = tools.sessions, tools, 1
-    agent.connection = SimpleNamespace(provider=lambda: SimpleNamespace(complete=complete))
+    def provider(session_id):
+        assert session_id == identifier
+        return SimpleNamespace(complete=complete)
+    agent.connection = SimpleNamespace(provider=provider)
     return agent
 
 
