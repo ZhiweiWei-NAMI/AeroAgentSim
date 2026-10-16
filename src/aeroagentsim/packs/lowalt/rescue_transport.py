@@ -30,7 +30,7 @@ def engine_config(provider: dict, radio: dict) -> dict:
                triggers=[{"schema": "rescue.transport.send", "topic": "rescue.transport"},
                          *[{"schema": "adapters.ns3." + name, "topic": radio["event_topic"]} for name in ("delivery", "drop")]])
     cfg["grants"]["commands"] = [{"schema": "adapters.ns3.send", "target": radio["target"]}]
-    cfg["grants"]["events"] = [{"schema": "rescue.transport." + name, "topic": "rescue.results"} for name in ("delivered", "failed")]
+    cfg["grants"]["events"] = [{"schema": "rescue.transport." + name, "topic": "rescue.results"} for name in ("delivered", "failed", "hop")]
     return cfg
 
 
@@ -53,16 +53,20 @@ def relay_graph(client: Any, options: dict) -> Any:
                 return {"outputs": []}
             envelope = json.loads(payload["payload_ref"][7:])
             hop = envelope.pop("hop") + 1
-            if hop == (1 if envelope["source"] == envelope["relay"] else 2):
+            if hop == len(route_for(envelope)) - 1:
                 return event_output("delivered", {**envelope, "received_ns": payload["received_ns"], "available_ns": payload["available_ns"]})
-        route = [envelope["source"], envelope["relay"], envelope["destination"]]
-        if route[0] == route[1]:
-            route.pop(0)
+        route = route_for(envelope)
         encoded = json.dumps(envelope, ensure_ascii=False, separators=(",", ":"))
-        return {"outputs": [{"kind": "command", "schema": "adapters.ns3.send", "target": options["target"], "payload": {
+        progress = event_output("hop", {"event": envelope["event"], "kind": envelope["kind"],
+            "message_id": envelope["message_id"], "hop": hop, "source": route[hop], "destination": route[hop + 1]})["outputs"]
+        return {"outputs": [*progress, {"kind": "command", "schema": "adapters.ns3.send", "target": options["target"], "payload": {
             "packet_id": f"{envelope['event']}/rescue/{envelope['kind']}/{hop}", "src": route[hop], "dst": route[hop + 1],
             "size": len(encoded.encode("utf-8")), "payload_ref": "rescue:" + json.dumps({**envelope, "hop": hop}),
             "lifetime_ns": options.get("lifetime_ns", 3_000_000_000)}}]}
+
+    def route_for(envelope: dict) -> list[str]:
+        relay = envelope.get("relay")
+        return [envelope["source"], *([relay] if relay and relay != envelope["source"] else []), envelope["destination"]]
 
     def event_output(kind: str, envelope: dict) -> dict:
         return {"outputs": [{"kind": "event", "schema": "rescue.transport." + kind, "topic": "rescue.results", "payload": {"data_json": json.dumps(envelope)}}]}

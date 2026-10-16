@@ -99,10 +99,10 @@ def wait_status(client: TestClient, run_id: str, wanted: set[str], timeout: floa
     raise AssertionError(f"{run_id} did not reach {wanted}; last {row['status']}")
 
 
-def test_nine_shipped_templates() -> None:
-    assert len(SHIPPED) == 9
+def test_ten_shipped_templates() -> None:
+    assert len(SHIPPED) == 10
     assert {"parcel-delivery", "medical-delivery", "powerline-inspection", "crop-spraying", "air-taxi",
-            "security-patrol", "traffic-accident", "city-day", "food-delivery"} == set(SHIPPED)
+            "security-patrol", "traffic-accident", "city-day", "food-delivery", "flood-rescue"} == set(SHIPPED)
 
 
 @pytest.mark.parametrize("template_id", SHIPPED)

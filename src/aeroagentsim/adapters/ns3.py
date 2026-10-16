@@ -66,6 +66,13 @@ class NS3Engine(LockstepEngine):
         )
         self.packet_commands: dict[str, str] = {}
 
+    def reset_payload(self) -> dict[str, Any]:
+        payload = super().reset_payload()
+        # Platform seeds include zero and unbounded integers; ns-3 accepts only
+        # uint32 seeds 1..2**32-1. This fixed mapping keeps matched seeds paired.
+        payload["seed"] = 1 + payload["seed"] % (2**32 - 1)
+        return payload
+
     def check_reset(self, result: dict[str, Any]) -> None:
         configured = {n["id"] for n in records(obj(result["configuration"])["nodes"])}
         if any(item["node"] not in configured for item in self.mobility):

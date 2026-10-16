@@ -66,8 +66,159 @@ export interface SemanticIncident {
   state: string;
 }
 
+export interface SemanticMarker {
+  id: string;
+  kind: 'inspect' | 'relay' | 'command';
+  position: [number, number, number];
+}
+
+export type RescueLinkKind = 'report' | 'delivery_ack' | 'relay_coverage';
+export type RescueLinkState = 'sending' | 'delivered' | 'failed' | 'holding';
+
+export interface SemanticLink {
+  id: string;
+  from: string;
+  to: string;
+  kind: RescueLinkKind;
+  state: RescueLinkState;
+}
+
+const MARKER_KINDS: readonly SemanticMarker['kind'][] = ['inspect', 'relay', 'command'];
+const LINK_KINDS: readonly RescueLinkKind[] = ['report', 'delivery_ack', 'relay_coverage'];
+const LINK_STATES: readonly RescueLinkState[] = ['sending', 'delivered', 'failed', 'holding'];
+
+/** Committed values are immutable. Keep derived overlays until their inputs change,
+ * including removals/backward seeks; display clock revisions alone do not matter. */
+class SemanticProjection<Result> {
+  private inputs: unknown[] = [];
+  private result?: Result;
+  private header?: RunHeader;
+  constructor(private fields: readonly string[], private derive: (store: SemanticStore, header?: RunHeader) => Result, private includeType?: string) {}
+  private inputIndex = 0;
+  private inputsChanged = false;
+  get(store: SemanticStore, header?: RunHeader): Result {
+    this.inputIndex = 0;
+    this.inputsChanged = this.header !== header;
+    store.entities.forEach(this.collect, this);
+    this.inputsChanged = this.inputs.length !== this.inputIndex || this.inputsChanged;
+    this.inputs.length = this.inputIndex;
+    this.header = header;
+    if (this.inputsChanged || this.result === undefined) {
+      this.result = undefined; // A malformed new cut must continue to fail.
+      this.result = this.derive(store, header);
+    }
+    return this.result;
+  }
+  private collect(entity: EntityState) {
+    let relevant = entity.typeId === this.includeType;
+    for (let field = 0; !relevant && field < this.fields.length; field++) relevant = entity.fields.get(this.fields[field])?.value !== undefined;
+    if (!relevant) return;
+    this.inputsChanged = this.remember(this.inputIndex++, entity.key.id) || this.inputsChanged;
+    this.inputsChanged = this.remember(this.inputIndex++, entity.key.generation) || this.inputsChanged;
+    this.inputsChanged = this.remember(this.inputIndex++, entity.typeId) || this.inputsChanged;
+    for (let field = 0; field < this.fields.length; field++) {
+      this.inputsChanged = this.remember(this.inputIndex++, entity.fields.get(this.fields[field])?.value) || this.inputsChanged;
+    }
+  }
+  private remember(index: number, value: unknown): boolean {
+    const changed = !sameCommittedValue(this.inputs[index], value);
+    this.inputs[index] = value;
+    return changed;
+  }
+}
+
+/** A new fact version can carry the same JSON value. Compare only that case;
+ * unchanged references and primitives take the allocation-free fast path. */
+function sameCommittedValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!sameCommittedValue(a[i], b[i])) return false;
+    return true;
+  }
+  if (!isRecord(a) || !isRecord(b)) return false;
+  let sizeA = 0, sizeB = 0;
+  for (const key in a) { sizeA++; if (!Object.prototype.hasOwnProperty.call(b, key) || !sameCommittedValue(a[key], b[key])) return false; }
+  for (const _key in b) sizeB++;
+  return sizeA === sizeB;
+}
+
+type SemanticStore = { entities: Map<string, EntityState> };
+function projection<Result>(fields: readonly string[], derive: (store: SemanticStore, header?: RunHeader) => Result, includeType?: string) {
+  const stores = new WeakMap<SemanticStore, SemanticProjection<Result>>();
+  return (store: SemanticStore, header?: RunHeader): Result => {
+    let cache = stores.get(store);
+    if (!cache) { cache = new SemanticProjection(fields, derive, includeType); stores.set(store, cache); }
+    return cache.get(store, header);
+  };
+}
+
+/** `rescue.markers` records from C1, validated, never repaired. */
+export const semanticMarkers = projection(['rescue.markers'], deriveSemanticMarkers);
+
+function deriveSemanticMarkers(store: { entities: Map<string, EntityState> }): SemanticMarker[] {
+  const markers: SemanticMarker[] = [];
+  for (const entity of store.entities.values()) {
+    const raw = entity.fields.get('rescue.markers')?.value;
+    if (raw === undefined) continue;
+    if (!Array.isArray(raw)) throw Error(`Malformed rescue.markers for ${entity.key.id}`);
+    for (const item of raw) {
+      if (!isRecord(item) || typeof item.id !== 'string' || !item.id) throw Error(`Malformed rescue marker for ${entity.key.id}`);
+      if (!MARKER_KINDS.includes(item.kind as SemanticMarker['kind'])) throw Error(`Unknown rescue marker kind on ${item.id}: ${String(item.kind)}`);
+      markers.push({ id: item.id, kind: item.kind as SemanticMarker['kind'], position: vector3(item.position, `rescue marker ${item.id} position`) });
+    }
+  }
+  return markers;
+}
+
+/** `rescue.links` records from C1, validated, never repaired. */
+export const semanticLinks = projection(['rescue.links'], deriveSemanticLinks);
+
+function deriveSemanticLinks(store: { entities: Map<string, EntityState> }): SemanticLink[] {
+  const links: SemanticLink[] = [];
+  for (const entity of store.entities.values()) {
+    const raw = entity.fields.get('rescue.links')?.value;
+    if (raw === undefined) continue;
+    if (!Array.isArray(raw)) throw Error(`Malformed rescue.links for ${entity.key.id}`);
+    for (const item of raw) {
+      if (!isRecord(item) || typeof item.id !== 'string' || !item.id) throw Error(`Malformed rescue link for ${entity.key.id}`);
+      if (typeof item.from !== 'string' || !item.from || typeof item.to !== 'string' || !item.to) throw Error(`Malformed rescue link endpoints on ${item.id}`);
+      if (!LINK_KINDS.includes(item.kind as RescueLinkKind)) throw Error(`Unknown rescue link kind on ${item.id}: ${String(item.kind)}`);
+      if (!LINK_STATES.includes(item.state as RescueLinkState)) throw Error(`Unknown rescue link state on ${item.id}: ${String(item.state)}`);
+      links.push({ id: item.id, from: item.from, to: item.to, kind: item.kind as RescueLinkKind, state: item.state as RescueLinkState });
+    }
+  }
+  return links;
+}
+
+/** Legend colour per link kind/state; relay coverage uses the relay role colour. */
+export function rescueLinkColor(link: Pick<SemanticLink, 'kind' | 'state'>): string {
+  if (link.state === 'failed') return '#e5484d';
+  if (link.kind === 'delivery_ack') return '#3fb67a';
+  if (link.kind === 'relay_coverage') return '#cc79a7';
+  return '#f0a020';
+}
+
+/**
+ * Person-facing UAV rescue label: entity id, role and status words only —
+ * never action ids such as `R7/a4`. `rescue.task` is committed data and stays
+ * out of the label. Equal role/status words collapse to one word.
+ */
+export function rescueUavLabel(vehicle: SemanticVehicle, locale = 'en-US'): string {
+  const zh = locale.startsWith('zh');
+  const role = vehicle.rescueRole ? rescueLabel(vehicle.rescueRole, locale) : undefined;
+  const status = vehicle.rescueStatus ? rescueLabel(vehicle.rescueStatus, locale) : undefined;
+  const parts: string[] = [vehicle.id];
+  if (role && role !== status) parts.push(role);
+  if (status) parts.push(status);
+  if (vehicle.rescueRole === 'committed' && !role) parts.push(rescueLabel('committed', locale));
+  return parts.filter(Boolean).join(' · ');
+}
+
 /** Scenario-authored flood geometry and the incident's current committed state. */
-export function semanticFlooding(store: { entities: Map<string, EntityState> }) {
+export const semanticFlooding = projection(['rescue.flood_bounds', 'rescue.flooded_roads', 'rescue.incident_state', 'lowalt.site_position'], deriveSemanticFlooding);
+
+function deriveSemanticFlooding(store: { entities: Map<string, EntityState> }) {
   const areas: SemanticFlood[] = [], roads: SemanticFloodedRoad[] = [], incidents: SemanticIncident[] = [];
   for (const entity of store.entities.values()) {
     const bounds = entity.fields.get('rescue.flood_bounds')?.value;
@@ -100,7 +251,7 @@ export function semanticFlooding(store: { entities: Map<string, EntityState> }) 
 export function rescueLabel(value: string, locale = 'en-US'): string {
   const labels: Record<string, [string, string]> = {
     inspect: ['Inspect', '复查'], report: ['Report', '报告'], relay: ['Relay', '中继'], deliver: ['Deliver', '投送'],
-    committed: ['Existing mission', '原任务'], pending: ['Pending', '待处理'], suspected: ['Suspected', '疑似求援'],
+    command: ['Command', '指挥'], committed: ['On existing mission', '执行原任务'], pending: ['Pending', '待处理'], suspected: ['Suspected', '疑似求援'],
     observing: ['Observing', '复查中'], confirmed: ['Confirmed', '已确认'], negative: ['Ruled out', '已排除'],
     uncertain: ['Uncertain', '尚未确定'], delivering: ['Delivering', '投送中'], delivered: ['Delivered', '已交付'],
     blocked: ['Blocked', '受阻'], closed: ['Closed', '已关闭'], idle: ['Idle', '待命'], waiting: ['Waiting', '等待'],
@@ -157,7 +308,10 @@ function declaredZoneKinds(header: RunHeader): readonly string[] {
  * that violate the registered schema (missing kind/bounds or unknown kind):
  * a broken feed is surfaced, not hidden behind a default.
  */
-export function activeZones(header: RunHeader, store: { entities: Map<string, EntityState> }): SemanticZone[] {
+const cachedActiveZones = projection(['lowalt.zone_kind', 'lowalt.zone_lower', 'lowalt.zone_upper', 'lowalt.zone_active', 'lowalt.zone_dynamic', 'lowalt.zone_start_ns', 'lowalt.zone_end_ns'], (store, header) => deriveActiveZones(header!, store), 'lowalt:AirspaceZone');
+export function activeZones(header: RunHeader, store: SemanticStore) { return cachedActiveZones(store, header); }
+
+function deriveActiveZones(header: RunHeader, store: { entities: Map<string, EntityState> }): SemanticZone[] {
   const allowed = declaredZoneKinds(header);
   const zones: SemanticZone[] = [];
   for (const entity of store.entities.values()) {
@@ -187,7 +341,10 @@ export function activeZones(header: RunHeader, store: { entities: Map<string, En
 }
 
 /** Pads and vertiports/customers from committed `lowalt.site_position` facts. */
-export function semanticSites(header: RunHeader, store: { entities: Map<string, EntityState> }): SemanticSite[] {
+const cachedSemanticSites = projection(['lowalt.site_position'], (store, header) => deriveSemanticSites(header!, store));
+export function semanticSites(header: RunHeader, store: SemanticStore) { return cachedSemanticSites(store, header); }
+
+function deriveSemanticSites(header: RunHeader, store: { entities: Map<string, EntityState> }): SemanticSite[] {
   const sites: SemanticSite[] = [];
   const siteTypes = new Set(['lowalt:Site', ...header.types.filter(type => type.ancestors.includes('lowalt:Site') || type.ancestors.some(a => header.types.some(parent => parent.typeId === a && parent.ancestors.includes('lowalt:Site')))).map(type => type.typeId)]);
   for (const entity of store.entities.values()) {
@@ -336,8 +493,7 @@ export function semanticLabel(entity: EntityState, task?: EntityState, header?: 
   const vehicle = semanticVehicle(entity, task);
   if (vehicle.rescueRole !== undefined) {
     // Keep the authored identity even when roles and assignments change.
-    return [entity.key.id, rescueLabel(vehicle.rescueRole, locale), vehicle.rescueTask,
-      vehicle.rescueStatus ? rescueLabel(vehicle.rescueStatus, locale) : undefined].filter(Boolean).join(' · ');
+    return rescueUavLabel(vehicle, locale);
   }
   const parts: string[] = [name];
   const style = businessStyle(vehicle, locale);

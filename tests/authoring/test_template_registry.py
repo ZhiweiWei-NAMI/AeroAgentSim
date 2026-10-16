@@ -167,7 +167,7 @@ def test_all_shipped_template_metadata_is_bilingual_and_copied() -> None:
     templates = registry.list()
     assert {item["id"] for item in templates} == {
         "traffic-accident", "parcel-delivery", "medical-delivery", "food-delivery",
-        "powerline-inspection", "crop-spraying", "air-taxi", "security-patrol", "city-day",
+        "powerline-inspection", "crop-spraying", "air-taxi", "security-patrol", "city-day", "flood-rescue",
     }
     translated_bullets = translated_labels = 0
     for item in templates:
@@ -186,7 +186,7 @@ def test_all_shipped_template_metadata_is_bilingual_and_copied() -> None:
             assert knob["label_zh"] != knob["label"]
             translated_labels += 1
     # Operator stories add six guide bullets/eight controls; traffic adds two wind controls.
-    assert (translated_bullets, translated_labels) == (52, 65)
+    assert (translated_bullets, translated_labels) == (57, 71)
     scheduled = registry.apply("food-delivery")
     interactive = registry.apply("food-delivery", {"run_mode": "interactive"})
     assert scheduled.knobs["run_mode"] == "scheduled"

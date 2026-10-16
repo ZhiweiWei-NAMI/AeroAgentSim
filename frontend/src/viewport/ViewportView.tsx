@@ -53,6 +53,8 @@ export function ViewportView(props: Props) {
   // own `data-asset-status`, so mirror them into React state for an alert.
   const [cityIssue,setCityIssue]=useState<string>();
   const [hintDismissed,setHintDismissed]=useState(false);
+  // Below 900 px the CSS keeps only the legend title and this toggle; wide screens always show everything.
+  const [legendOpen,setLegendOpen]=useState(false);
   // 'scene' follows the journaled lowalt.light; day/dusk force the display look (URL ?lighting= still wins).
   const urlLighting=new URLSearchParams(location.search).get('lighting');
   const [lighting,setLighting]=useState<'scene'|'day'|'dusk'>(urlLighting==='day'||urlLighting==='dusk'?urlLighting:'scene');
@@ -132,6 +134,7 @@ export function ViewportView(props: Props) {
             viewport.current!.setDirectorTarget(enabled?shot:undefined);
             if(enabled!==autoActive){viewport.current!.setCameraMode(enabled?'cinematic':activeMode.current);autoActive=enabled;}
           }
+          viewport.current!.setPlaying(p.clock.playing);
           viewport.current!.render(p.store,liveNs??p.clock.ns,delta,p.trails);
           if(now-notify>100&&seekKey!==lastNotified){p.onTick();notify=now;lastNotified=seekKey;}frame=requestAnimationFrame(animate);
         }catch(error){current.current.onError(error);}
@@ -153,6 +156,9 @@ export function ViewportView(props: Props) {
   useEffect(()=>{if(props.focus){setMode('orbit');activeMode.current='orbit';viewport.current?.focusPosition(props.focus.position);}},[props.focus]);
   const events=useMemo(()=>props.store.commits.flatMap(commit=>commit.messages.filter(message=>message.kind==='event'&&(!props.selected||message.subjects?.some(key=>entityId(key)===entityId(props.selected!)))).map(message=>({...message,commitIndex:commit.commitIndex}))),[props.store,props.store.commits.length,props.selected]);
   const duration=BigInt(props.clock.end)-BigInt(props.store.header.start.ns);
+  // One bottom-left column keeps the legend above the HUD (never overlapping, finding f30).
+  const showLegend=props.simple===true&&(!props.bare||floodScene);
+  const showOverlayColumn=!!conditions||showLegend;
   return <>
     <div className="viewport-canvas" data-testid="viewport" ref={root} aria-label={t('Simulation viewport')} />
     {cityProgress&&<div className="viewport-city-progress" role="status" aria-live="polite">
@@ -184,18 +190,23 @@ export function ViewportView(props: Props) {
         <option value="scene">{t('Scene')}</option><option value="day">{t('Day')}</option><option value="dusk">{t('Dusk')}</option></select>
       <button aria-label={t('Toggle inspector')} aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>{t('Inspector')} {collapsed?'＋':'−'}</button>
     </div>}
-    {conditions&&<div className="viewport-conditions"><ConditionsHud conditions={conditions} zh={locale.startsWith('zh')} mode="run" /></div>}
-    {!props.simple&&!props.bare&&<div className="scene-status"><span>{t('Buildings, lighting and symbols are display effects.')}</span>{status&&<details><summary>{t('Display details')}</summary><div>{status}</div></details>}</div>}
-    {props.simple&&(!props.bare||floodScene)&&<div className="semantic-legend" data-testid="semantic-legend" aria-label={t('Map legend')}
-      style={props.bare?{left:'calc(var(--wb-left, 0px) + 16px)',bottom:'calc(var(--wb-dock, 0px) + 16px)',maxWidth:360}:undefined}>
-      <div className="semantic-legend-title">{floodScene?(locale.startsWith('zh')?'洪涝救援':'Flood rescue'):t('Airspace & operations')}</div>
-      <div className="semantic-legend-entries">
-        {legend.map(entry=><span key={entry.label} className="semantic-legend-entry"><i style={{background:entry.color}}/>{entry.label}</span>)}
-        {!legend.length&&<span className="semantic-legend-entry muted">{t('Legend appears with scenario data')}</span>}
-      </div>
-      {!props.bare&&<><label className="semantic-showall"><input type="checkbox" checked={showAllLabels} aria-label={t('Show all labels')} onChange={event=>setShowAllLabels(event.target.checked)}/>{t('Show all labels')}</label>
-      <span className="semantic-zone-count" data-testid="semantic-zone-count">{zoneCount===1?t('1 active zone'):t('{count} active zones', {count:zoneCount})}</span></>}
+    {showOverlayColumn&&<div className="viewport-overlays">
+      {showLegend&&<div className="semantic-legend" data-testid="semantic-legend" data-open={legendOpen} aria-label={t('Map legend')}>
+        <div className="semantic-legend-head">
+          <span className="semantic-legend-title">{floodScene?(locale.startsWith('zh')?'洪涝救援':'Flood rescue'):t('Airspace & operations')}</span>
+          <button type="button" className="semantic-legend-toggle" aria-expanded={legendOpen} onClick={()=>setLegendOpen(open=>!open)}>{legendOpen?t('Hide legend'):t('Show legend')}</button>
+        </div>
+        <div className="semantic-legend-entries">
+          {legend.map(entry=><span key={entry.label} className="semantic-legend-entry"><i style={{background:entry.color}}/>{entry.label}</span>)}
+          {!legend.length&&<span className="semantic-legend-entry muted">{t('Legend appears with scenario data')}</span>}
+        </div>
+        {floodScene&&<p className="semantic-legend-footnote">{t('Authored flood extent — not a water simulation')}</p>}
+        {!props.bare&&<><label className="semantic-showall"><input type="checkbox" checked={showAllLabels} aria-label={t('Show all labels')} onChange={event=>setShowAllLabels(event.target.checked)}/>{t('Show all labels')}</label>
+        <span className="semantic-zone-count" data-testid="semantic-zone-count">{zoneCount===1?t('1 active zone'):t('{count} active zones', {count:zoneCount})}</span></>}
+      </div>}
+      {conditions&&<div className="viewport-conditions"><ConditionsHud conditions={conditions} zh={locale.startsWith('zh')} mode="run" /></div>}
     </div>}
+    {!props.simple&&!props.bare&&<div className="scene-status"><span>{t('Buildings, lighting and symbols are display effects.')}</span>{status&&<details><summary>{t('Display details')}</summary><div>{status}</div></details>}</div>}
     {!props.simple&&catalogNotice&&<div className="scene-attribution" style={{bottom:24}} data-testid="catalog-notice">{catalogNotice}</div>}
     <div className="scene-attribution">{root.current?.dataset.attribution}</div>
     {!props.simple&&!props.bare&&<div className="mission-overlay"><MissionTimeline store={props.store} selected={props.selected} />

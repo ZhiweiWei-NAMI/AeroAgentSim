@@ -576,6 +576,9 @@ class ExperimentManager:
                     }:
                         storage.status("faulted", error=error)
                         metadata = storage.metadata()
+                    # A native exception may not survive multiprocessing pickle.
+                    # The run already persisted the original fault, so report it.
+                    error = metadata.get("error") or error
                 result = {
                     "run": str(path) if metadata is not None else None,
                     "run_id": metadata["id"] if metadata is not None else None,

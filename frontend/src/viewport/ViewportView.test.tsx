@@ -16,7 +16,7 @@ vi.mock('./viewport', async () => {
     setCameraMode = mock.fn(); setDusk = mock.fn(); setLightingOverride = mock.fn(); setSelection = mock.fn(); setHighlights = mock.fn();
     onConditions = mock.fn(() => () => {});
     setSemantic = mock.fn(); setLocale = mock.fn(); setQuality = mock.fn(); focusPosition = mock.fn();
-    render = mock.fn(); dispose = mock.fn(); setDirectorTarget = mock.fn();
+    setPlaying = mock.fn(); render = mock.fn(); dispose = mock.fn(); setDirectorTarget = mock.fn();
     constructor(public container: HTMLElement, _header: unknown, public options: any) {
       renderer.instances.push(this);
       options.onStatus('Models loaded · x500');
@@ -153,5 +153,35 @@ describe('viewport bilingual controls', () => {
     act(() => { renderer.instances[0].options.onLegend([{ label: '禁飞区', color: '#e4572e' }], 1); });
     expect(screen.getByText('禁飞区')).toBeInTheDocument();
     expect(screen.getByTestId('semantic-zone-count')).toHaveTextContent('1 个有效空域');
+  });
+
+  it('stacks the legend above the conditions HUD in one bottom-left column with a flood footnote', () => {
+    const { store, clock } = session();
+    const floodKey = { id: 'flood-1', generation: 0 };
+    store.ingest({ commitIndex: 4, at: at('1500000000'), created: [{ ...floodKey, typeId: 'Unit' }],
+      facts: [{ entity: floodKey, fieldId: 'rescue.flood_bounds', value: [0, 0, 0, 1, 1, 1], producer: 'engine', validFrom: at('1500000000') }],
+      removed: [], retracted: [], edges: [], messages: [], receipts: [] });
+    store.seek('1500000000', 4);
+    const props = { store, clock, ...handlers(), simple: true, bare: true, mode: 'orbit' as const, quality: 'med' as const, trails: true };
+    renderComponent(<View props={props} />);
+    const instance = renderer.instances[0];
+    act(() => { instance.options.onLegend([{ label: 'Flood extent', color: '#259fc7' }], 0); });
+    // Feed the HUD through the same subscriber the viewport wires to its conditions callback.
+    act(() => { instance.onConditions.mock.calls[0][0]({ wind: null, precipitationMmH: 0, visibilityM: null, light: 'day', incidents: [] }); });
+    const legend = screen.getByTestId('semantic-legend');
+    const hud = screen.getByTestId('wb-conditions-hud');
+    // Legend and HUD share one bottom-left column; the legend comes first, so CSS cannot stack them over each other.
+    const column = legend.parentElement!;
+    expect(column.className).toBe('viewport-overlays');
+    expect(column).toContainElement(hud);
+    expect([...column.children].indexOf(legend)).toBeLessThan([...column.children].indexOf(hud.parentElement!));
+    // The footnote states the authored semantics instead of implying a water simulation.
+    expect(screen.getByText('Authored flood extent — not a water simulation')).toBeInTheDocument();
+    // The toggle drives data-open, which the <900 px media query keys the collapsed legend on.
+    const toggle = screen.getByRole('button', { name: 'Show legend' });
+    expect(legend).toHaveAttribute('data-open', 'false');
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Hide legend' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('semantic-legend')).toHaveAttribute('data-open', 'true');
   });
 });

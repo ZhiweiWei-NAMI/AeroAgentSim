@@ -11,12 +11,20 @@ const INTENSITY = [0, 2, 5, 8, 12] as const;
 const NOTE_EN = 'Wind is simulated. Smoke, flames, rain, fog and light are visual only — shown in the 3D view and UAV captures; flight, sensing and task outcomes don\'t use them.';
 const NOTE_ZH = '风为仿真输入。烟雾、火焰、降雨、雾与光照仅为视觉呈现——显示在三维视图和无人机拍摄中；飞行、感知和任务结果不使用它们。';
 
-/** Wind compass dial (36 px, needle points downwind) with a 180 ms ease-out, disabled under prefers-reduced-motion (spec §5). */
-function WindDial({ fromDeg }: { fromDeg: number }) {
-  return <svg className="wb-cond-dial" width={28} height={28} viewBox="0 0 36 36" aria-hidden="true">
+/** Below this speed the wind has no readable direction and reads as calm (spec §3.3). */
+export const CALM_WIND_MPS = 0.3;
+
+/** Wind compass dial (36 px, needle points downwind) with a 180 ms ease-out, disabled under prefers-reduced-motion (spec §5).
+ *  Calm keeps the dial but draws a neutral dot: no direction, no needle. */
+function WindDial({ fromDeg, calm = false }: { fromDeg: number; calm?: boolean }) {
+  return <svg className={`wb-cond-dial${calm ? ' calm' : ''}`} width={28} height={28} viewBox="0 0 36 36" aria-hidden="true">
     <circle cx={18} cy={18} r={16} className="wb-cond-dial-face" />
-    <line x1={18} y1={18} x2={18} y2={7} className="wb-cond-dial-tick" transform={`rotate(${fromDeg} 18 18)`} />
-    <line x1={18} y1={24} x2={18} y2={12} className="wb-cond-dial-needle" style={{ transform: `rotate(${(fromDeg + 180) % 360}deg)` }} />
+    {calm
+      ? <circle cx={18} cy={18} r={3} className="wb-cond-dial-dot" />
+      : <>
+        <line x1={18} y1={18} x2={18} y2={7} className="wb-cond-dial-tick" transform={`rotate(${fromDeg} 18 18)`} />
+        <line x1={18} y1={24} x2={18} y2={12} className="wb-cond-dial-needle" style={{ transform: `rotate(${(fromDeg + 180) % 360}deg)` }} />
+      </>}
   </svg>;
 }
 
@@ -30,6 +38,8 @@ export function visibilityChip(visibilityM: number, zh: boolean): string {
 export function ConditionsHud({ conditions, zh, mode, atS }: { conditions: Conditions; zh: boolean; mode: 'run' | 'preview'; atS?: number }) {
   const [note, setNote] = useState(false);
   const wind = conditions.wind;
+  // Calm wind has no readable direction: the line reads Calm/静风, no "from", no gust.
+  const calm = wind !== null && wind.speed < CALM_WIND_MPS;
   const chips: Array<{ key: string; text: string; warn?: boolean }> = [];
   if (mode === 'preview') chips.push({ key: 'preview', text: `${zh ? '预览时刻' : 'Preview at'} ${clockS(atS ?? 0)}` });
   const fires = conditions.incidents.filter(row => row.kind === 'fire' && row.phase === 'active');
@@ -46,15 +56,17 @@ export function ConditionsHud({ conditions, zh, mode, atS }: { conditions: Condi
   if (conditions.light === 'dusk') chips.push({ key: 'dusk', text: zh ? '黄昏' : 'Dusk' });
   return <div className={`wb-cond-hud${mode === 'preview' ? ' preview' : ''}`} data-testid="wb-conditions-hud">
     {wind && <span className="wb-cond-wind" data-testid="wb-conditions-wind">
-      <WindDial fromDeg={wind.fromDeg} />
+      <WindDial fromDeg={wind.fromDeg} calm={calm} />
       <span className="wb-cond-wind-text">
         <span className="wb-cond-wind-line">
-          {zh ? `${compassPointZh(wind.fromDeg)}风 ${wind.speed.toFixed(1)} m/s` : `Wind ${wind.speed.toFixed(1)} m/s · from ${compassPoint(wind.fromDeg)}`}
-          <span className="wb-cond-bar" role="img" aria-label={zh ? '风速强度' : 'Wind intensity'}>
+          {calm
+            ? zh ? '静风' : 'Calm'
+            : zh ? `${compassPointZh(wind.fromDeg)}风 ${wind.speed.toFixed(1)} m/s` : `Wind ${wind.speed.toFixed(1)} m/s · from ${compassPoint(wind.fromDeg)}`}
+          {!calm && <span className="wb-cond-bar" role="img" aria-label={zh ? '风速强度' : 'Wind intensity'}>
             {[0, 1, 2, 3, 4].map(index => <i key={index} className={wind.speed >= INTENSITY[index] ? 'on' : ''} />)}
-          </span>
+          </span>}
         </span>
-        {wind.gust && <span className="wb-cond-gust">{zh ? `阵风至 ${wind.gustEndS !== undefined ? clockS(wind.gustEndS) : ''}` : `Gust until ${wind.gustEndS !== undefined ? clockS(wind.gustEndS) : ''}`}</span>}
+        {!calm && wind.gust && <span className="wb-cond-gust">{zh ? `阵风至 ${wind.gustEndS !== undefined ? clockS(wind.gustEndS) : ''}` : `Gust until ${wind.gustEndS !== undefined ? clockS(wind.gustEndS) : ''}`}</span>}
       </span>
     </span>}
     {(chips.length > 0 || wind) && <span className="wb-cond-chips">

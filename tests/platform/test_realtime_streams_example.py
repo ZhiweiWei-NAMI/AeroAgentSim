@@ -259,7 +259,8 @@ def test_two_source_http_partial_service_lateness_and_replay(
             )["status"]
             if status == "completed":
                 break
-            assert status != "faulted" and time.monotonic() < deadline
+            assert status != "faulted", (directory / "manifest.json").read_text()
+            assert time.monotonic() < deadline
             time.sleep(0.005)
         records, incomplete = read_records((directory / "journal.jsonl").read_bytes())
         assert not incomplete

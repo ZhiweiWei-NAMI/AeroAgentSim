@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageState } from '../console/PageState';
 import { TemplateApi, type AlgorithmDescriptor, type AlgorithmSlot, type ComparisonRun, type KnobValue, type ScenarioTemplate, type TemplateKnob } from './api';
-import { metricHelp, metricLabel } from './metric-help';
+import { metricHelp, metricLabel, metricUnit, metricValueText } from './metric-help';
 import { useI18n } from '../i18n/I18nProvider';
 import { localized, translate } from '../i18n/translate';
 import { knobOptionLabel, runStatusLabel } from './presentation';
@@ -97,6 +97,7 @@ const DIRECTIONS: Record<string, 'min' | 'max' | 'neutral'> = {
   mean_task_latency_s: 'min', p95_task_latency_s: 'min',
   energy_used_kj: 'min', distance_flown_km: 'neutral',
   separation_conflicts: 'min', geofence_violations: 'min', weather_holds: 'min',
+  rescue_success: 'max', rescue_time_to_confirmation_s: 'min', rescue_time_to_delivery_s: 'min',
 };
 
 /** Machine ids read badly for newcomers — split them into words. */
@@ -130,11 +131,7 @@ function bulkSummary(value: Array<unknown> | Record<string, unknown>, locale: st
 }
 
 function formatKpi(value: number | null, unit: string): string {
-  if (value === null || !Number.isFinite(value)) return '—';
-  if (unit === 'count') unit = '';
-  const abs = Math.abs(value);
-  const digits = Number.isInteger(value) ? 0 : abs >= 1000 ? 0 : abs >= 10 ? 1 : 2;
-  return `${value.toFixed(digits)}${unit ? ` ${unit}` : ''}`;
+  return metricValueText('', value, unit);
 }
 
 interface KpiRow {
@@ -172,7 +169,7 @@ function kpiRows(runs: ComparisonRun[], order: string[] = []): KpiRow[] {
       : undefined;
     return { id, label: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.label ?? humanize(id),
       label_zh: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.label_zh,
-      unit: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.unit ?? '', direction, values, best };
+      unit: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.unit || metricUnit(id) || '', direction, values, best };
   });
   const rank = (id: string) => {
     const index = order.indexOf(id);
@@ -253,7 +250,7 @@ function Column({ run, rows, index, more, template }: { run: ComparisonRun; rows
                   )}
                 </th>
                 <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>
-                  {formatKpi(value, row.unit)}
+                  {metricValueText(row.id, value, row.unit, locale)}
                   {change && <span className={`newc-kpi-delta${change.className}`} title={locale === 'zh-CN' ? '相对左列的变化' : 'Change from the previous column'}>{change.text}</span>}
                   <Bar value={value} row={row} />
                 </td>
@@ -273,7 +270,7 @@ function Column({ run, rows, index, more, template }: { run: ComparisonRun; rows
                 return (
                   <tr key={row.id} className={isBest ? 'is-best' : undefined}>
                     <th scope="row">{label(row)}{metricHelp(row.id, locale)&&<span className="newc-compare-help" title={metricHelp(row.id, locale)} aria-label={t('About {label}', { label: label(row) })} tabIndex={0}>?</span>}</th>
-                    <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>{formatKpi(value, row.unit)}</td>
+                    <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>{metricValueText(row.id, value, row.unit, locale)}</td>
                   </tr>
                 );
               })}

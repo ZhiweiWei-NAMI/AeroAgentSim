@@ -79,6 +79,30 @@ describe('KpiPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'About Mean task latency' }));
     expect(screen.getByText(/Average time between a task appearing and being completed/)).toBeInTheDocument();
   });
+
+  it('shows rescue KPIs with their friendly label, unit and Yes/No success', () => {
+    const values: KpiValues = {
+      rescue_success: { value: 1, unit: 'count', label: 'rescue_success' },
+      rescue_time_to_confirmation_s: { value: 12.345, unit: 's', label: 'rescue_time_to_confirmation_s' },
+      rescue_radio_bytes: { value: 900, unit: 'B', label: 'rescue_radio_bytes' },
+    };
+    render(<KpiPanel values={values} series={[]} ids={['rescue_success', 'rescue_time_to_confirmation_s', 'rescue_radio_bytes']} />);
+    expect(screen.getByText('Rescue success')).toBeInTheDocument();
+    expect(screen.getByText('Yes')).toBeInTheDocument();
+    expect(screen.getByText('12.3 s')).toBeInTheDocument();
+    expect(screen.getByText('900 B')).toBeInTheDocument();
+    // Every known rescue metric gets a help affordance.
+    expect(screen.getByRole('button', { name: 'About Rescue success' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'About Rescue success' }));
+    expect(screen.getByText(/delivery acknowledgement before the deadline/)).toBeInTheDocument();
+  });
+
+  it('keeps a declared unit for a rescue KPI that has no value yet and never fakes success', () => {
+    render(<KpiPanel values={{ rescue_success: { value: null, unit: 'count', label: 'rescue_success' } }} series={[]} />);
+    expect(screen.getByText('Rescue success')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.queryByText('No')).toBeNull();
+  });
 });
 
 describe('CompareRuns', () => {

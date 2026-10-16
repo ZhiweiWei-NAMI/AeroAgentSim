@@ -1,0 +1,79 @@
+format: aeroagentsim.template/v1
+id: flood-rescue
+city: huangpu
+title: Rooftop flood rescue
+title_zh: 屋顶洪涝救援
+summary: Compare rescue participation policies over seeded authored episodes, with optional native radio.
+summary_zh: 在种子化的作者设定场景中对比救援参与策略，可选原生无线通信。
+category: emergency
+difficulty: intermediate
+duration_s: 241
+scenario: scenario.yaml
+observe:
+  - Follow fresh bids at notice and after the report reaches command.
+  - Inspect relay hops, deadline resolution and measured rescue KPIs.
+observe_zh:
+  - 观察发现事件和报告送达后分别收集的新提议。
+  - 查看中继各跳、截止结果及救援指标。
+try:
+  - Compare all and distance participation using matched seeds.
+  - Enable radio when a native ns-3 RPC provider is available.
+  - Compare positive, negative and uncertain authored observations.
+try_zh:
+  - 使用相同种子对比全部参与和距离参与策略。
+  - 有原生 ns-3 RPC 服务时开启无线通信。
+  - 对比阳性、阴性及不确定的作者设定观测。
+knobs:
+  - id: participation
+    label: Participation policy
+    label_zh: 参与策略
+    type: choice
+    default: model
+    options: [model, filter, all, distance]
+    options_zh: [模型（预设应答）, 已训练过滤器, 全部符合条件, 每角色最近机]
+    description: Model uses explicit stub responses; filter requires an exported participation-filter.json beside scenario.yaml.
+    description_zh: 模型使用明确的预设应答；过滤器需要在 scenario.yaml 旁放置真实导出的 participation-filter.json。
+    apply: rescue.participation
+  - id: observation
+    label: Authored observation
+    label_zh: 作者设定观测
+    type: choice
+    default: positive
+    options: [positive, negative, uncertain]
+    options_zh: [阳性, 阴性, 不确定]
+    apply: rescue.observation
+  - id: radio_port
+    label: Radio RPC port
+    label_zh: 无线 RPC 端口
+    type: integer
+    default: 19004
+    min: 1
+    max: 65535
+    apply: rescue.radio_port
+  - id: radio
+    label: Native radio
+    label_zh: 原生无线通信
+    type: choice
+    default: "off"
+    options: ["on", "off"]
+    options_zh: [开启, 关闭]
+    description: Off records a communication failure and eventual expiry; it does not simulate successful delivery.
+    description_zh: 关闭时记录通信失败并最终过期，不模拟成功送达。
+    apply: rescue.radio
+  - id: deadline_s
+    label: Absolute mission deadline (s)
+    label_zh: 任务绝对截止时间（秒）
+    type: number
+    default: 240
+    min: 6
+    max: 3600
+    apply: rescue.deadline_s
+  - id: fleet_variation
+    label: Fleet variation
+    label_zh: 机队变化
+    type: choice
+    default: seeded
+    options: [authored, seeded]
+    options_zh: [原始设定, 按运行种子变化]
+    apply: rescue.fleet_variation
+kpis: [rescue_success, rescue_time_to_confirmation_s, rescue_time_to_delivery_s, rescue_plans, rescue_bids, rescue_candidates, rescue_radio_packets, rescue_radio_delivered, rescue_radio_bytes, rescue_bus_messages, rescue_bus_bytes, rescue_model_calls]

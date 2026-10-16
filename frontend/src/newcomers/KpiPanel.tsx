@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {Details} from '../console/Details';
 import { PageState } from '../console/PageState';
 import type { KpiSample, KpiValues } from './api';
-import { metricHelp, metricLabel } from './metric-help';
+import { metricHelp, metricLabel, metricUnit, metricValueText } from './metric-help';
 import { useI18n } from '../i18n/I18nProvider';
 import './results.css';
 
@@ -13,15 +13,6 @@ export interface KpiPanelProps {
   loading?: boolean;
   error?: string;
   onRetry?: () => void;
-}
-
-/** Reads a KPI value in a friendly fixed precision, unit included, never faking null as 0. The meaningless "count" unit is dropped. */
-function formatKpi(value: number | null, unit: string): string {
-  if (value === null || !Number.isFinite(value)) return '—';
-  if (unit === 'count') unit = '';
-  const abs = Math.abs(value);
-  const digits = Number.isInteger(value) ? 0 : abs >= 1000 ? 0 : abs >= 10 ? 1 : 2;
-  return `${value.toFixed(digits)}${unit ? ` ${unit}` : ''}`;
 }
 
 /** Small inline SVG sparkline (no chart dependency). Null samples become gaps. */
@@ -58,6 +49,8 @@ function KpiCard({ id, kpi, series }: { id: string; kpi: KpiValues[string]; seri
   const [showHelp, setShowHelp] = useState(false);
   const help = metricHelp(id, locale);
   const label = metricLabel(id, kpi.label, locale, kpi.label_zh);
+  // A known id keeps its declared unit even before the service publishes a value.
+  const unit = kpi.unit || metricUnit(id) || '';
   return (
     <div className="newc-kpi-card">
       <span className="newc-kpi-label">
@@ -75,7 +68,7 @@ function KpiCard({ id, kpi, series }: { id: string; kpi: KpiValues[string]; seri
       </span>
       {showHelp && help !== undefined && <p className="newc-kpi-help-text">{help}</p>}
       <span className={`newc-kpi-value${kpi.value === null ? ' is-null' : ''}`} title={kpi.value === null ? t('Not measured') : undefined}>
-        {formatKpi(kpi.value, kpi.unit)}
+        {metricValueText(id, kpi.value, unit, locale)}
       </span>
       <Sparkline series={series} kpiId={id} />
     </div>

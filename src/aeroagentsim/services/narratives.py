@@ -132,6 +132,12 @@ _ENUMS_ZH = {
         "wind subsided": "风速减弱", "zone closed": "空域关闭",
         "separation conflict": "间隔冲突", "charging finished": "充电完成",
         "charging algorithm": "充电策略", "traffic incident": "交通事故影响",
+        "motion failed": "飞行指令失败", "motion rejected": "飞行指令被拒绝",
+        "motion canceled": "飞行指令被取消",
+        "control diversion made no progress": "控制绕行未取得进展",
+        "no route to assigned target": "没有通往指定目标的航线",
+        "no progress toward assigned target": "未向指定目标取得进展",
+        "route planner returned no route": "航线规划器未返回可用航线",
     },
 }
 
@@ -699,6 +705,8 @@ class NarrativeProjector:
     # -- rendering ---------------------------------------------------------
 
     def _narrate(self, message: Message) -> dict[str, Any] | None:
+        if message.schema_id == "rescue.event":
+            return self._rescue_line(message)
         declaration = self._declarations.get(message.schema_id)
         if declaration is None:
             return None  # Undeclared kernel events are ignored intentionally.
@@ -787,6 +795,70 @@ class NarrativeProjector:
         if position is not None:
             event["position"] = list(position)
         return event
+
+    def _rescue_line(self, message: Message) -> dict[str, Any]:
+        data = json.loads(thaw(message.payload)["data_json"])
+        kind = data["kind"]
+        vehicle = data.get("vehicle")
+        actor = self.label(vehicle) if vehicle else ""
+        actor_zh = self.label(vehicle, "zh") if vehicle else ""
+        role = data.get("role")
+        role_en = {"inspect": "inspection point", "relay": "relay point", "deliver": "delivery point"}
+        role_zh = {"inspect": "复查点", "relay": "中继点", "deliver": "投送点"}
+        lines = {
+            "noticed": ("Possible rooftop rescue noticed", "发现屋顶疑似求援"),
+            "arrived": (f"{actor} reached the {role_en.get(role, 'rescue point')}", f"{actor_zh} 到达{role_zh.get(role, '救援点')}"),
+            "relay_ready": (f"{actor} is holding the relay", f"{actor_zh} 已就位并保持中继"),
+            "relay_interrupted": (f"{actor} relay was interrupted", f"{actor_zh} 中继被中断"),
+            "delivery_completed": (f"{actor} completed delivery", f"{actor_zh} 完成物资投送"),
+            "roles_released": ("Rescue roles released", "救援角色已释放"),
+            "deadline_missed": ("Rescue deadline missed", "救援已超过截止时间"),
+            "model_failed": ("Rescue decision failed", "救援决策失败"),
+            "communication_failed": ("Rescue communication failed", "救援通信失败"),
+            "communication_unavailable": ("Rescue radio is unavailable", "救援无线通信不可用"),
+            "plan_rejected": ("Rescue plan rejected", "救援方案被拒绝"),
+        }
+        entities = [data["event"]]
+        if vehicle:
+            entities.append(vehicle)
+        if kind == "plan_computed":
+            plan = data["plan"]
+            names_en = {"inspect": "inspect", "relay": "relay", "deliver": "deliver"}
+            names_zh = {"inspect": "复查", "relay": "中继", "deliver": "投送"}
+            assignments = plan["assignments"]
+            entities.extend(row["vehicle"] for row in assignments)
+            en = ", ".join(self.label(row["vehicle"]) + " " + names_en[row["role"]] for row in assignments)
+            zh = "，".join(self.label(row["vehicle"], "zh") + " " + names_zh[row["role"]] for row in assignments)
+            text, text_zh = (("Plan: " + en, "方案：" + zh) if assignments else
+                             (("Plan: no further action", "方案：无需后续行动") if plan["status"] == "feasible" else
+                              ("No feasible rescue plan", "无可行救援方案")))
+        elif kind == "observation":
+            evidence = data["evidence"]
+            meaning = {"positive": "person confirmed", "negative": "no person", "uncertain": "uncertain"}[evidence]
+            meaning_zh = {"positive": "确认有人", "negative": "无人", "uncertain": "不确定"}[evidence]
+            text, text_zh = f"{actor} observation: {meaning} (authored truth)", f"{actor_zh} 观测：{meaning_zh}（作者设定真值）"
+        elif kind == "message_delivered":
+            text, text_zh = {"report": ("Report received by command centre", "指挥中心收到复查报告"),
+                             "delivery_ack": ("Delivery acknowledgement received by command centre", "指挥中心收到投送回执")}[data["message_kind"]]
+        elif kind == "outcome":
+            text, text_zh = ("Rescue resolved successfully", "救援成功解决") if data["success"] else ("Rescue ended without success", "救援未成功")
+        elif kind == "relay_handover":
+            entities.append(data["relay"])
+            text = f"{actor} is handing over the relay to {self.label(data['relay'])}"
+            text_zh = f"{actor_zh} 正在向 {self.label(data['relay'], 'zh')} 交接中继"
+        elif kind == "execution_blocked":
+            text = f"{actor} rescue execution blocked: {data['reason']}"
+            reason_zh = _ENUMS_ZH["reason"].get(data["reason"], data["reason"])
+            text_zh = f"{actor_zh} 救援执行受阻：{reason_zh}"
+        else:
+            text, text_zh = lines[kind]
+        result = {"message_id": message.id, "schema": message.schema_id, "at_ns": str(message.at.ns),
+                  "category": "emergency", "severity": "warning" if kind in {"model_failed", "communication_failed", "deadline_missed", "plan_rejected", "relay_interrupted", "communication_unavailable", "execution_blocked"} else "info",
+                  "text": text, "text_zh": text_zh, "entities": list(dict.fromkeys(entities))}
+        position = self._position(data, {"entities": ["vehicle", "event"]}, result["entities"])
+        if position is not None:
+            result["position"] = list(position)
+        return result
 
     def label(self, identity: str, language: str = "en") -> str:
         """Authored zh label, finite shipped translation, English label, then id."""

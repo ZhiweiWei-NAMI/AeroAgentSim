@@ -210,3 +210,50 @@ See also: [external events](external-events.md) for triggering agents from
 live inputs, [behaviours](behaviours.md) for consuming proposals, and
 [HTTP API security](../reference/http-api.md#request-boundary) for local hosting
 and bearer authentication on non-local deployments.
+
+## Flood rescue participation / 洪涝救援参与
+
+`engines.tasks.config.rescue.participation` selects local role proposals. The
+centre still uses the existing `propose_plan` harness and bounded scheduler.
+
+```yaml
+participation:
+  mode: distance  # model | filter | all | distance
+  per_role: 1
+  # filter: /absolute/path/to/participation-filter.json
+```
+
+`model` uses the configured provider. `filter` loads the real exported
+`aerorescue.adapter.ParticipationFilter`; `participation_filter: path` remains
+an alias. `all` proposes every physically eligible capability; `distance`
+keeps the nearest `per_role` eligible aircraft per role (ENU distance to that
+role's target; id breaks ties). Eligibility checks capability, SOC ≥ 0.2,
+positive speed, delivery cargo/capacity and estimated readiness by the absolute
+mission deadline, matching AeroRescue’s `adapter.eligible`. Travel time and
+action durations are checked by the bounded scheduler. Busy time is estimated from the live remaining route and
+dwell; unknown estimates use a finite infinity sentinel and remain ineligible.
+Existing jobs retain their owner until genuinely finished.
+
+`filter/all/distance` create no local model harness or model client. Filter
+inference latency goes only to `rescue-filter-timing.jsonl` in the run directory,
+never into deterministic journal payloads. At notice and report reception,
+each aircraft receives a fresh request with a `phase`, matching `now_s` and
+current evidence. Bids and plans are isolated by that phase. The standalone
+`rescue_planner.py` keeps its file-path import and `solve_plan` contract.
+
+本地参与支持模型、真实训练过滤器、全部符合条件及每角色最近机四种策略；
+中心仍使用现有模型规划流程。既有任务保留责任，忙碌机按实时剩余路线及停留
+估算可用时间。每个规划阶段重新收集提议，旧阶段提议不会混入。
+过滤器耗时仅写运行目录中的独立文件，不影响确定性日志。
+
+`rescue.markers` exposes inspection, relay and command locations;
+`rescue.links` exposes sending/delivered/failed hops and holding relay coverage.
+A held relay retained by the next plan stays in position. The mission emits
+one outcome, releases its roles on resolution or expiry, and counts success
+only after the centre receives the acknowledgement before the deadline (or
+resolves a negative/uncertain report without delivery). Rescue C2 metrics use
+the committed journal; unavailable confirmation/delivery times stay null.
+
+场景中的洪水是作者设定的场景语义，不是水动力模拟；观测是到达复查点后揭示的
+作者设定真值，不是感知识别。关闭无线会记录通信失败并最终过期，不伪造送达。
+批量入口与无线依赖见 [救援场景说明](../../scenarios/rescue/README.md)。

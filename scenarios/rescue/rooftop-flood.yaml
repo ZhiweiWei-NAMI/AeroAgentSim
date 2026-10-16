@@ -32,10 +32,10 @@ engines:
           - {start: [96.399, -120.624, 0.0], end: [100.106, -135.062, 0.0]}
           - {start: [100.106, -135.062, 0.0], end: [103.312, -146.423, 0.0]}
         sites:
-          - {id: R7, label: R7·屋顶疑似受困点, position: [-24.81, -204.65, 15.0]}
-          - {id: R3-origin, label: R3·应急物资出发点, position: [-25.0, -160.0, 50.0]}
-          - {id: R3-destination, label: R3·既有救援点, position: [-200.0, 250.0, 70.0]}
-          - {id: command-center, label: 指挥与补能点, kind: ChargingPad, position: [100.0, 20.0, 2.0]}
+          - {id: R7, label: R7 rooftop rescue site, label_zh: R7·屋顶疑似受困点, position: [-24.81, -204.65, 15.0]}
+          - {id: R3-origin, label: R3 supply departure, label_zh: R3·应急物资出发点, position: [-25.0, -160.0, 50.0]}
+          - {id: R3-destination, label: R3 existing rescue site, label_zh: R3·既有救援点, position: [-200.0, 250.0, 70.0]}
+          - {id: command-center, label: Command and charging centre, label_zh: 指挥与补能点, kind: ChargingPad, position: [100.0, 20.0, 2.0]}
         existing_task: {id: R3, origin: R3-origin, destination: R3-destination}
         vehicles:
           U1:

@@ -10,7 +10,7 @@ import type { StaticOcclusion } from './occlusion';
 import { worldOrientation, worldPosition } from './coordinates';
 import type { EntityState } from './feed-store';
 import { selectCatalogModel, fitModel, yawFromVelocity, type CatalogModel, type EntityClassInfo, type ModelCatalog } from './model-catalog';
-import { semanticVehicle, businessStyle, semanticLabel, labelInterest, taskByVehicle, activeZones } from './semantic';
+import { semanticVehicle, businessStyle, semanticLabel, labelInterest, taskByVehicle, activeZones, semanticFlooding, semanticMarkers } from './semantic';
 import {PayloadLayer} from './operational-loads';
 import { RecentActivity } from './recent-activity';
 import { incidentLabel, type Conditions } from './conditions';
@@ -299,6 +299,19 @@ export class EntityLayer {
       const spot = worldPosition(row.position, 'enu', this.header.origin, anchor.base).sub(renderOrigin);
       spot.y = Math.max(spot.y, incidentRoofHeight?.(row.position[0], row.position[1]) ?? occlusion?.liftCamera(spot, 0).y ?? spot.y);
       anchor.pin.copy(spot); anchor.pin.y += 14;
+    }
+    // Rooftop survivor pins reserve the same screen/leader space as fire pins.
+    if (this.semantic) for (const incident of semanticFlooding(store).incidents) {
+      const anchor = pinAnchors[pinCount] ?? (pinAnchors[pinCount] = { pin: new T.Vector3(), base: new T.Vector3() }); pinCount++;
+      worldPosition(incident.position, 'enu', this.header.origin, anchor.base).sub(renderOrigin);
+      anchor.pin.copy(anchor.base); anchor.pin.y += 14;
+    }
+    if (this.semantic) for (const marker of semanticMarkers(store)) {
+      if (marker.kind === 'command') continue;
+      const anchor = pinAnchors[pinCount] ?? (pinAnchors[pinCount] = { pin: new T.Vector3(), base: new T.Vector3() }); pinCount++;
+      worldPosition(marker.position, 'enu', this.header.origin, anchor.base).sub(renderOrigin);
+      anchor.base.y = -renderOrigin.y;
+      worldPosition(marker.position, 'enu', this.header.origin, anchor.pin).sub(renderOrigin); anchor.pin.y += 10;
     }
     const candidates: Array<{ id: string; key: EntityKey; position: T.Vector3; selected: boolean; forced: boolean; interest?: boolean; incident?: Conditions['incidents'][number] }> = [];
     for (const [id, entity] of store.entities) {

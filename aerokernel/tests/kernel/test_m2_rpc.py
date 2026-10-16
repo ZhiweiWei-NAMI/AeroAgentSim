@@ -321,6 +321,7 @@ def test_wire_fault_after_real_native_work_keeps_all_facts_unpublished(fault):
     )
 
     ref = EntityRef("r", "e", "entity", 0, "T")
+    native_completed = threading.Event()
 
     class Native(SimpleEngine):
         def __init__(self):
@@ -342,7 +343,9 @@ def test_wire_fault_after_real_native_work_keeps_all_facts_unpublished(fault):
         def integrate(self, view):
             self.actual.append(view.instant.ns)
             self.wakeup_ns = None
-            return (self.write(view, 9),)
+            operations = (self.write(view, 9),)
+            native_completed.set()
+            return operations
 
     client, server = socket.socketpair()
 
@@ -407,6 +410,9 @@ def test_wire_fault_after_real_native_work_keeps_all_facts_unpublished(fault):
     k.start()
     with pytest.raises(KernelError):
         k.run_until(20)
+    # A deadline can return before the foreign callback finishes on a loaded
+    # host. Observe its real completion before checking uncertain side effects.
+    assert native_completed.wait(5)
     assert native.actual == [20]
     assert k.view().field((ref, "x"), k.view().cut.instant).value == 0
     assert k._store.frontiers["p"][1] == 0

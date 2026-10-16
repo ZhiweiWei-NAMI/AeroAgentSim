@@ -169,14 +169,16 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
     const smoke = meshes(layer.root.children[0].children[0])[1];
     expect(smoke.material.uniforms).not.toHaveProperty('uAmbient');
     const dayLight = smoke.material.uniforms.uSmokeLight.value.clone() as T.Color;
-    expect(dayLight.getHex()).toBe(new T.Color('#3a3733').lerp(new T.Color('#34373b'), 0.15).getHex());
+    // The low-quality pipeline is darker, so its smoke light is lifted 15 %.
+    expect(dayLight.getHex()).toBe(new T.Color('#3a3733').lerp(new T.Color('#34373b'), 0.15).multiplyScalar(1.15).getHex());
     expect(smoke.material.uniforms.uScatter.value).toBe(0.15);
     expect(smoke.material.uniforms.uGlowStrength.value).toBeGreaterThan(0); // flames are burning
     rig.setAtmosphere({ dusk: true, rain: 0.5, visibilityM: 500 });
     layer.update(dusk, 12.5, camera);
     const light = smoke.material.uniforms.uSmokeLight.value as T.Color;
-    expect(light.getHex()).toBe(new T.Color('#2a2830').lerp(new T.Color('#34373b'), 0.15).getHex());
-    expect(smoke.material.uniforms.uScatter.value).toBe(0.25);
+    // Art lead's dusk values: a warm grey lit by the city glow, lifted for the low tier.
+    expect(light.getHex()).toBe(new T.Color('#6a625c').lerp(new T.Color('#34373b'), 0.15).multiplyScalar(1.15).getHex());
+    expect(smoke.material.uniforms.uScatter.value).toBe(0.42);
     // The display override, rather than the unchanged journaled Conditions.light, drives shading.
     rig.setAtmosphere({ dusk: false, rain: 0.5, visibilityM: 500 });
     layer.update(dusk, 12.5, camera);
@@ -235,7 +237,7 @@ describe('atmosphere determinism: same (conditions, t) → same instance matrice
   it.each(['high', 'low'] as const)('keeps a continuous %s plume across schedule wraps and late activation', async quality => {
     const layer = new IncidentFX(quality); await layer.ready;
     const fire = { ...conditions.incidents[0], startS: 90 };
-    const rate = 2.0, lifeS = quality === 'high' ? 24 : 9;
+    const rate = quality === 'high' ? 2.0 : 1.5, lifeS = quality === 'high' ? 24 : 12;
     for (const age of [1, 20, 26, 39.9, 40, 53.4, 80, 120]) {
       layer.update([{ ...fire, activeS: age, sinceS: age }], 90 + age, camera, new Map());
       const smoke = meshes(layer.root.children[0])[1];

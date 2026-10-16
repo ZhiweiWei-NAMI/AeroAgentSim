@@ -25,8 +25,11 @@ def solve_plan(vehicles: list[dict], bids: list[dict], graph: dict, now_s: float
 
     actions = graph["actions"]
     ids = [action["id"] for action in actions]
-    if not actions or len(set(ids)) != len(ids):
-        return infeasible("Actions must have unique IDs and cannot be empty.")
+    if not actions:
+        return {"status": "feasible", "assignments": [], "objective_s": 0.0,
+                "evaluated": 0, "reason": "No actions required by the resolved evidence."}
+    if len(set(ids)) != len(ids):
+        return infeasible("Actions must have unique IDs.")
     for action in actions:
         if action["role"] not in {"inspect", "relay", "deliver"}:
             return infeasible("Unsupported rescue action role.")
@@ -54,43 +57,52 @@ def solve_plan(vehicles: list[dict], bids: list[dict], graph: dict, now_s: float
             return infeasible(f"No eligible bid for action {action['id']} ({role}).")
         choices.append(sorted(candidates))
 
-    orders = [order for order in permutations(range(len(actions)))
-              if all(order.index(ids.index(parent)) < order.index(index)
-                     for index, action in enumerate(actions) for parent in action["after"])]
+    indices = {identity: index for index, identity in enumerate(ids)}
+    parents = [tuple(indices[parent] for parent in action["after"]) for action in actions]
+    orders = []
+    for order in permutations(range(len(actions))):
+        rank = [0] * len(actions)
+        for offset, index in enumerate(order):
+            rank[index] = offset
+        if all(rank[parent] < rank[index] for index, dependencies in enumerate(parents) for parent in dependencies):
+            orders.append(order)
     if not orders:
         return infeasible("The rescue action graph contains a dependency cycle.")
+    # Reuse immutable initial state; candidates only replace the selected rows.
+    # Keep enumeration, arithmetic and tie order unchanged for research labels.
+    initial = {identity: (max(now_s, busy[identity]), vehicle["position"], vehicle["payload_kg"])
+               for identity, vehicle in fleet.items()}
     best = None
     best_end = inf
     for selected in product(*choices):
         for order in orders:
             evaluated += 1
-            state = {identity: [max(now_s, busy[identity]), vehicle["position"], vehicle["payload_kg"]]
-                     for identity, vehicle in fleet.items()}
-            ready, held, schedule = {}, set(), []
+            state = initial.copy()
+            ready, held, schedule = [now_s] * len(actions), set(), []
             for index in order:
                 action, identity = actions[index], selected[index]
                 role, vehicle = action["role"], fleet[identity]
                 if identity in held or role == "deliver" and state[identity][2] < payload:
                     break
                 free_at, position, remaining = state[identity]
-                departure = max(free_at, availability[(identity, role)],
-                                max((ready[parent] for parent in action["after"]), default=now_s))
+                dependency = max(ready[parent] for parent in parents[index]) if parents[index] else now_s
+                departure = max(free_at, availability[(identity, role)], dependency)
                 start = departure + dist(position, action["target"]) / vehicle["speed_m_s"]
                 end = start + action["duration_s"]
-                ready[action["id"]] = end
-                state[identity] = [end, action["target"], remaining - (payload if role == "deliver" else 0)]
-                schedule.append({"action": action["id"], "vehicle": identity, "role": role,
-                                 "departure_s": departure, "start_s": start, "end_s": end,
-                                 "target": list(action["target"])})
+                ready[index] = end
+                state[identity] = (end, action["target"], remaining - (payload if role == "deliver" else 0))
+                schedule.append((index, identity, departure, start, end))
                 if role == "relay":
                     held.add(identity)
             else:
-                finish = max(row["end_s"] for row in schedule)
+                finish = max(ready)
                 if finish <= deadline and finish < best_end:
-                    for row in schedule:
-                        if row["role"] == "relay":
-                            row["end_s"] = finish
-                    best, best_end = schedule, finish
+                    best = [{"action": actions[index]["id"], "vehicle": identity, "role": actions[index]["role"],
+                             "departure_s": departure, "start_s": start,
+                             "end_s": finish if actions[index]["role"] == "relay" else end,
+                             "target": list(actions[index]["target"])}
+                            for index, identity, departure, start, end in schedule]
+                    best_end = finish
     if best is None:
         return infeasible("No schedule satisfies dependencies, UAV occupancy and deadline.")
     return {"status": "feasible", "assignments": best, "objective_s": best_end - now_s,

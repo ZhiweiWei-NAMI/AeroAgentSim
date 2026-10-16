@@ -54,6 +54,31 @@ METRICS = {
 }
 
 
+RESCUE_METRICS = {
+    "rescue_success": ("ratio", "Rescue success / 救援成功"),
+    "rescue_time_to_confirmation_s": ("s", "Time to report received / 报告送达耗时"),
+    "rescue_time_to_delivery_s": ("s", "Time to delivery completed / 投送完成耗时"),
+    "rescue_plans": ("count", "Rescue plans / 救援规划次数"),
+    "rescue_bids": ("count", "Rescue bids / 救援提议次数"),
+    "rescue_candidates": ("count", "Proposed role candidates / 提议角色候选总数"),
+    "rescue_radio_packets": ("count", "Radio packets sent / 无线发包数"),
+    "rescue_radio_delivered": ("count", "Radio packets delivered / 无线送达包数"),
+    "rescue_radio_bytes": ("B", "Radio bytes sent / 无线发送字节"),
+    "rescue_bus_messages": ("count", "Rescue bus messages / 救援总线消息数"),
+    "rescue_bus_bytes": ("B", "Rescue bus UTF-8 bytes / 救援总线 UTF-8 字节"),
+    "rescue_model_calls": ("count", "Rescue model calls / 救援模型调用数"),
+}
+METRICS.update(RESCUE_METRICS)
+
+
+def rescue_kpis(messages: list[dict[str, Any]]) -> dict[str, Any]:
+    """CLI projection of the same accumulator used by the live KPI index."""
+    projector = KPIProjector(MemoryRegistry((), ()))
+    for message in messages:
+        projector._rescue_event(message["schemaId"], message["payload"], int(message["at"]["ns"]))
+    return projector.rescue_values
+
+
 def identity(value: Any) -> str:
     if isinstance(value, str) and value:
         return value
@@ -85,8 +110,15 @@ class KPIProjector:
             item["typeId"]: item["positionField"] for item in presentation or []
         }
         self.counts = {
-            name: 0 for name, (unit, _) in METRICS.items() if unit == "count"
+            name: 0 for name, (unit, _) in METRICS.items() if unit == "count" and name not in RESCUE_METRICS
         }
+        self.rescue_notices: dict[str, int] = {}
+        self.rescue_seen = False
+        self.rescue_values = {name: (0 if unit in {"count", "B"} else None)
+                              for name, (unit, _) in RESCUE_METRICS.items()}
+        self.rescue_packets: set[str] = set()
+        self.rescue_delivered_packets: set[str] = set()
+        self.rescue_outcomes: set[str] = set()
         self.created: dict[str, int] = {}
         self.assigned: set[str] = set()
         self.completed: set[str] = set()
@@ -133,6 +165,12 @@ class KPIProjector:
         """Plain-JSON checkpoint of every counter, baseline and dedup state."""
         return {
             "version": 1,
+            "rescue_seen": self.rescue_seen,
+            "rescue_notices": dict(self.rescue_notices),
+            "rescue_values": dict(self.rescue_values),
+            "rescue_packets": sorted(self.rescue_packets),
+            "rescue_delivered_packets": sorted(self.rescue_delivered_packets),
+            "rescue_outcomes": sorted(self.rescue_outcomes),
             "counts": dict(self.counts),
             "created": dict(self.created),
             "assigned": sorted(self.assigned),
@@ -175,6 +213,13 @@ class KPIProjector:
         """Restore state produced by :meth:`cursor`; unknown versions raise."""
         if not isinstance(cursor, dict) or cursor.get("version") != 1:
             raise ValueError("KPI cursor: unsupported checkpoint version")
+        if "rescue_values" in cursor:
+            self.rescue_seen = cursor["rescue_seen"]
+            self.rescue_notices = dict(cursor["rescue_notices"])
+            self.rescue_values = dict(cursor["rescue_values"])
+            self.rescue_packets = set(cursor["rescue_packets"])
+            self.rescue_delivered_packets = set(cursor["rescue_delivered_packets"])
+            self.rescue_outcomes = set(cursor["rescue_outcomes"])
         # The feed signature rebuilds older cursors from the committed journal.
         cooperation_counts = {"incidents_occurred", "incidents_noticed", "incidents_photographed", "handoffs_completed"}
         self.counts = {name: int(cursor["counts"][name]) for name in self.counts if name not in cooperation_counts}
@@ -340,6 +385,50 @@ class KPIProjector:
             "KPI traffic event cannot be attributed to a reported incident"
         )
 
+    def _rescue_event(self, schema: str, payload: dict[str, Any], at_ns: int) -> None:
+        values = self.rescue_values
+        if schema.startswith("rescue."):
+            self.rescue_seen = True
+            encoded = payload["data_json"]
+            data = json.loads(encoded)
+            values["rescue_bus_messages"] += 1
+            values["rescue_bus_bytes"] += len(encoded.encode("utf-8"))
+            if schema == "rescue.bid":
+                values["rescue_bids"] += 1
+                values["rescue_candidates"] += len(data["roles"])
+            elif schema == "rescue.event":
+                if data["kind"] == "noticed":
+                    self.rescue_notices[data["event"]] = at_ns
+                elif data["kind"] in {"message_delivered", "delivery_completed"}:
+                    metric = ("rescue_time_to_delivery_s" if data["kind"] == "delivery_completed" else
+                              "rescue_time_to_confirmation_s" if data["message_kind"] == "report" else None)
+                    if metric is not None:
+                        values[metric] = (at_ns - self.rescue_notices[data["event"]]) / 1e9
+                elif data["kind"] == "plan_computed":
+                    values["rescue_plans"] += 1
+                elif data["kind"] == "outcome" and data["event"] not in self.rescue_outcomes:
+                    self.rescue_outcomes.add(data["event"])
+                    if type(data["success"]) is not bool:
+                        raise ValueError("rescue outcome success must be boolean")
+                    values["rescue_success"] = int(data["success"])
+                    for field in ("time_to_confirmation_s", "time_to_delivery_s"):
+                        value = data[field]
+                        values["rescue_" + field] = None if value is None else number(value, "rescue_" + field)
+        elif schema == "adapters.ns3.send" and "/rescue/" in payload["packet_id"]:
+            self.rescue_seen = True
+            if payload["packet_id"] not in self.rescue_packets:
+                self.rescue_packets.add(payload["packet_id"])
+                values["rescue_radio_packets"] += 1
+                values["rescue_radio_bytes"] += payload["size"]
+        elif schema == "adapters.ns3.delivery" and "/rescue/" in payload["packet_id"]:
+            self.rescue_seen = True
+            if payload["packet_id"] not in self.rescue_delivered_packets:
+                self.rescue_delivered_packets.add(payload["packet_id"])
+                values["rescue_radio_delivered"] += 1
+        elif schema == "aas.langgraph.record" and payload["decision_id"].startswith("rescue_") and payload["phase"] == "model_call":
+            self.rescue_seen = True
+            values["rescue_model_calls"] += 1
+
     def _event(self, schema: str, payload: dict[str, Any], at_ns: int) -> None:
         if schema == "lowalt.incident.occurred":
             incident = identity(payload["incident"])
@@ -500,7 +589,7 @@ class KPIProjector:
                     self.capture_incidents[
                         f"{edge.source.id}@{edge.source.generation}"
                     ] = f"{edge.target.id}@{edge.target.generation}"
-            elif isinstance(op, Emit) and op.kind == "event" and "message" in item:
+            elif isinstance(op, Emit) and "message" in item:
                 message = decode_record(item["message"])
                 if message.id in self.messages:
                     continue
@@ -508,11 +597,14 @@ class KPIProjector:
                 payload = thaw(message.payload)
                 if not isinstance(payload, dict):
                     raise ValueError("KPI event payload must be a mapping")
-                self._event(message.schema_id, payload, message.at.ns)
+                self._rescue_event(message.schema_id, payload, message.at.ns)
+                if op.kind == "event":
+                    self._event(message.schema_id, payload, message.at.ns)
         return self.snapshot()
 
     def snapshot(self) -> dict[str, Any]:
         values: dict[str, Any] = dict(self.counts)
+        values.update({name: value if self.rescue_seen else None for name, value in self.rescue_values.items()})
         for name in ("battery_swaps", "inspection_observations", "patrol_visits"):
             if name not in self.observed_counts:
                 values[name] = None

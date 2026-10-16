@@ -9,7 +9,7 @@ import { localized } from '../i18n/translate';
 import { TemplateApi, type RunKpis, type ScenarioTemplate } from '../newcomers/api';
 import { businessProjection, resultsAt, type RecordedBusinessEvent } from '../newcomers/projection';
 import { runStatusLabel } from '../newcomers/presentation';
-import { metricHelp, metricLabel } from '../newcomers/metric-help';
+import { metricHelp, metricLabel, metricUnit, metricValueText } from '../newcomers/metric-help';
 import { readableLabel } from '../pages/inspection-format';
 import { displayTime } from '../pages/display-time';
 import { CauseTracePanel } from '../trace/CauseTracePanel';
@@ -610,7 +610,15 @@ export default function Workbench() {
 
     {/* KPI cards */}
     {session && kpiIds.length > 0 && <div ref={kpiPanel} className="wb-kpis" data-testid="wb-kpis">
-      {kpiIds.slice(0, 5).map(id => { const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh); return <div key={id} className="wb-kpi wb-glass" data-final={finalizing ? 'aggregating' : 'yes'} title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, finalizing ? L('Results are still being aggregated; this value is not final yet.', '结果仍在汇总中，此数值尚非最终值。') : undefined, id].filter(Boolean).join(' · ')}><small>{label}</small><strong className="wb-mono">{kpi?.value == null ? '—' : kpi.unit === 'ratio' ? Math.round(kpi.value * 100) : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1)}</strong><em>{kpi?.unit === 'count' ? '' : kpi?.unit === 'ratio' ? '%' : kpi?.unit}</em></div>; })}
+      {kpiIds.slice(0, 5).map(id => {
+        const kpi = kpis[id], label = metricLabel(id, id, locale, kpi?.label_zh), unit = kpi?.unit || metricUnit(id) || '';
+        // rescue_success is 0/1 on the wire; people read Yes/No (W3 C2 labels).
+        const value = id === 'rescue_success' && kpi?.value != null
+          ? metricValueText(id, kpi.value, unit, locale)
+          : kpi?.value == null ? '—' : unit === 'ratio' ? Math.round(kpi.value * 100) : Number.isInteger(kpi.value) ? kpi.value : kpi.value.toFixed(kpi.value < 10 ? 2 : 1);
+        const suffix = id === 'rescue_success' || unit === 'count' ? '' : unit === 'ratio' ? '%' : unit;
+        return <div key={id} className="wb-kpi wb-glass" data-final={finalizing ? 'aggregating' : 'yes'} title={[label, metricHelp(id, locale), kpi?.value == null ? L('Not recorded at this moment', '此时刻尚无记录') : undefined, finalizing ? L('Results are still being aggregated; this value is not final yet.', '结果仍在汇总中，此数值尚非最终值。') : undefined, id].filter(Boolean).join(' · ')}><small>{label}</small><strong className="wb-mono">{value}</strong><em>{suffix}</em></div>;
+      })}
     </div>}
 
     <div ref={noticePanel} className="wb-notices" data-testid="wb-notices">

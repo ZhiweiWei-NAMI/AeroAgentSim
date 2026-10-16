@@ -42,6 +42,24 @@ it.each(['high', 'low'] as const)('keeps a live plume after 30 s of fire at %s q
   layer.dispose();
 });
 
+it('covers at least 25 m of height from the low-tier plume after 30 s of fire in a 6 m/s wind', async () => {
+  const layer = new IncidentFX('low');
+  await layer.ready;
+  layer.setWind(6, 0);
+  layer.update([fire(30)], 30, camera, new Map());
+  const smoke = smokeOf(layer);
+  expect(smoke.count).toBe(18); // 18 puffs, 1.5/s over a 12 s life: the plume never gaps
+  const matrix = new T.Matrix4(), position = new T.Vector3(), quaternion = new T.Quaternion(), scale = new T.Vector3();
+  let top = -Infinity, bottom = Infinity;
+  for (let i = 0; i < smoke.count; i++) {
+    smoke.getMatrixAt(i, matrix); matrix.decompose(position, quaternion, scale);
+    top = Math.max(top, position.y + scale.y / 2);
+    bottom = Math.min(bottom, position.y - scale.y / 2);
+  }
+  expect(top - bottom).toBeGreaterThanOrEqual(25);
+  layer.dispose();
+});
+
 it('the plume leans with the authored wind: from NW means it drifts to the SE (+east, −north)', async () => {
   const layer = new IncidentFX('high');
   await layer.ready;
@@ -116,13 +134,14 @@ it('keeps the additive core small and ordered after the bodies in one draw', asy
 
 it.each([[70, 25], [220, 30], [775, 40], [420, 55]])('keeps a projected flame footprint and an attached plume root at %s m / %s°', async (distance, pitchDeg) => {
   const layer = new IncidentFX('low'); await layer.ready;
-  const row = fire(35), view = new T.PerspectiveCamera(48, 1.6);
+  // 34 s keeps the newest low-tier puff exactly at birth (34 = 51 / 1.5), so the root sits on the flames.
+  const row = fire(34), view = new T.PerspectiveCamera(48, 1.6);
   const target = new T.Vector3(row.position[0], 20, -row.position[1]);
   const pitch = pitchDeg * Math.PI / 180;
   view.position.copy(target).add(new T.Vector3(0, distance * Math.sin(pitch), distance * Math.cos(pitch)));
   view.lookAt(target); view.updateMatrixWorld();
   layer.setPinScale(900);
-  layer.update([row], 35, view, new Map());
+  layer.update([row], 34, view, new Map());
   layer.root.updateMatrixWorld(true);
   const [body, smoke] = layer.root.children[0].children.filter(node => node instanceof T.InstancedMesh) as T.InstancedMesh<T.BufferGeometry, T.ShaderMaterial>[];
   const matrix = new T.Matrix4(), position = new T.Vector3(), scale = new T.Vector3(), rotation = new T.Quaternion();
@@ -143,25 +162,26 @@ it.each([[70, 25], [220, 30], [775, 40], [420, 55]])('keeps a projected flame fo
   layer.dispose();
 });
 
-it('shortens low-quality smoke without accelerating its colour, growth or root fade during a gust', async () => {
+it('drives the low tier from its own art values while the high tier keeps its curve', async () => {
   const high = new IncidentFX('high'), low = new IncidentFX('low');
   await Promise.all([high.ready, low.ready]);
   for (const layer of [high, low]) {
     layer.setWind(9 * Math.SQRT1_2, -9 * Math.SQRT1_2);
-    layer.update([fire(8)], 8, camera, new Map());
+    layer.update([fire(9)], 9, camera, new Map());
   }
   const a = smokeOf(high), b = smokeOf(low);
   const highTint = a.geometry.getAttribute('puffTint'), lowTint = b.geometry.getAttribute('puffTint');
-  expect(b.count).toBe(a.count);
-  const am = new T.Matrix4(), bm = new T.Matrix4();
-  for (let i = 0; i < b.count; i++) {
-    a.getMatrixAt(i, am); b.getMatrixAt(i, bm);
-    expect(bm.elements).toEqual(am.elements);
-    expect([lowTint.getX(i), lowTint.getY(i), lowTint.getZ(i)])
-      .toEqual([highTint.getX(i), highTint.getY(i), highTint.getZ(i)]);
-  }
-  // The puff emitted at 2.5 s is 5.5 s old: still the dense, young body at both qualities.
-  expect(lowTint.getW(5)).toBeCloseTo(0.6);
-  expect(lowTint.getW(0)).toBeLessThan(highTint.getW(0)); // smooth exit before the 9 s cutoff
+  const widthOf = (mesh: T.InstancedMesh, slot: number) => {
+    const matrix = new T.Matrix4(), position = new T.Vector3(), quaternion = new T.Quaternion(), scale = new T.Vector3();
+    mesh.getMatrixAt(slot, matrix); matrix.decompose(position, quaternion, scale); return scale.x;
+  };
+  // The low tier is slower and sparser: 1.5 puffs/s over a 12 s life keeps all 18 puffs alive.
+  expect(a.count).toBe(19); expect(b.count).toBe(14);
+  // At age 3 s the low puff has reached its 16 m mark; the high puff is still at 14 m.
+  expect(widthOf(b, 9)).toBeCloseTo(16); expect(widthOf(a, 12)).toBeCloseTo(14);
+  // Low holds a brighter 0.82 peak to 60 % of its 12 s life; the high body sits at 0.6.
+  expect(lowTint.getW(9)).toBeCloseTo(0.82);
+  expect(lowTint.getW(0)).toBeCloseTo(0.82 * (1 - (9 / 12 - 0.6) / (1 - 0.6)));
+  expect(highTint.getW(0)).toBeCloseTo(0.6);
   high.dispose(); low.dispose();
 });

@@ -34,15 +34,27 @@
 .event-strip { height: 7px; position: relative; margin: 4px 5px 0; background: #223c4d88; border-radius: 2px; }
 .event-strip button { position: absolute; top: -5px; transform: translateX(-50%); width: 14px; height: 18px; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .event-strip button::before { content: ''; position: absolute; left: 5px; top: 5px; width: 4px; height: 7px; background: #67d9ea; }
-/* Newcomer semantic overlay (simple mode only) */
-.semantic-legend { position: absolute; left: 10px; bottom: 10px; z-index: 6; background: #10283dd9; color: #e4f4fd; border: 1px solid #7799aa88; border-radius: 8px; padding: 8px 10px; font: 11px system-ui; display: flex; flex-direction: column; gap: 4px; max-width: 240px; }
+/* Newcomer semantic overlay (simple mode only). The legend sits in the shared
+   bottom-left column above the conditions HUD and wears the same glass style. */
+.semantic-legend { position: static; z-index: 6; pointer-events: auto; background: var(--wb-glass, rgba(250, 252, 255, .84)); color: var(--wb-ink, #14202e); border: 1px solid rgba(255, 255, 255, .6); border-radius: var(--wb-radius, 14px); padding: 8px 10px; font: 11px system-ui; display: flex; flex-direction: column; gap: 4px; max-width: 280px; box-shadow: var(--wb-shadow, 0 10px 30px rgba(9, 20, 36, .22)); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); }
+.semantic-legend-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .semantic-legend-title { font-weight: 600; letter-spacing: .02em; }
+.semantic-legend-toggle { all: unset; cursor: pointer; display: none; padding: 0 4px; color: var(--wb-muted, #5b6b7d); font: 11px system-ui; }
 .semantic-legend-entries { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .semantic-legend-entry { display: inline-flex; align-items: center; gap: 4px; }
-.semantic-legend-entry.muted { color: #9db9ca; }
+.semantic-legend-entry.muted { color: var(--wb-muted, #5b6b7d); }
 .semantic-legend-entry i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.semantic-legend-footnote { margin: 0; color: var(--wb-muted, #5b6b7d); font-size: 10px; }
 .semantic-showall { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
-.semantic-zone-count { color: #9fdac4; }
+.semantic-zone-count { color: var(--wb-ok, #1fae6b); }
+/* Below 900 px the legend keeps only its title and the toggle; expanding restores the rest. */
+@media (max-width: 900px) {
+  .semantic-legend-toggle { display: inline-block; }
+  .semantic-legend-entries, .semantic-legend-footnote, .semantic-showall, .semantic-zone-count { display: none; }
+  .semantic-legend[data-open="true"] .semantic-legend-entries, .semantic-legend[data-open="true"] .semantic-showall { display: flex; }
+  .semantic-legend[data-open="true"] .semantic-legend-footnote { display: block; }
+  .semantic-legend[data-open="true"] .semantic-zone-count { display: inline; }
+}
 
 .entity-label[data-glyph]:before{display:inline-block;margin-right:5px;font-size:13px;}
 .entity-label[data-glyph="package"]:before{content:"▣";color:#e69f00}.entity-label[data-glyph="cross"]:before{content:"✚";color:#cc79a7}.entity-label[data-glyph="eye"]:before{content:"◉";color:#56b4e9}.entity-label[data-glyph="person"]:before{content:"●";color:#009e73}.entity-label[data-glyph="road"]:before{content:"▰";color:#e69f00}
@@ -64,12 +76,16 @@
   border-radius: var(--wb-radius, 14px); box-shadow: var(--wb-shadow, 0 10px 30px rgba(9, 20, 36, .22)); backdrop-filter: blur(16px) saturate(1.25);
   font: 12px system-ui; box-sizing: border-box; pointer-events: auto; }
 /* Anchored to the visible scene frame (right of the Objects panel) like the KPI cards, with
-   --wb-left-space / --wb-dock; without a workbench frame it stays at the plain viewport edge. */
-.wb .viewport-conditions { position: absolute; z-index: 6; pointer-events: none;
-  left: calc(var(--wb-left-space, var(--wb-left)) + var(--wb-gap) * 2);
+   --wb-left-space / --wb-dock; without a workbench frame it stays at the plain viewport edge.
+   One bottom-left flex column: the semantic legend above the conditions HUD, 8 px apart, so the
+   two can never overlap (finding f30). */
+.viewport-overlays { position: absolute; z-index: 6; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  left: 12px; right: 12px; bottom: 12px; pointer-events: none; }
+.viewport-overlays .viewport-conditions { position: static; }
+.viewport-overlays .wb-cond-hud { position: static; left: auto; bottom: auto; max-width: 100%; }
+.wb .viewport-overlays { left: calc(var(--wb-left-space, var(--wb-left)) + var(--wb-gap) * 2);
   right: calc(var(--wb-right-space, var(--wb-right)) + var(--wb-gap) * 2);
   bottom: calc(var(--wb-dock) + var(--wb-gap) * 2 + 48px); }
-.viewport-conditions .wb-cond-hud { position: static; left: auto; bottom: auto; max-width: 100%; }
 .scene-preview-conditions .wb-cond-hud.preview { position: static; left: auto; bottom: auto; max-width: 100%; }
 /* Left-aligned, never stretched: width:max-content must not expand to the frame width. Narrow
    visible areas (Configure open) wrap the segment row; the wind dial stays on the first line. */
@@ -85,6 +101,8 @@
 .wb-cond-dial-face { fill: #0b1e2e; stroke: #7799aa88; }
 .wb-cond-dial-tick { stroke: #9db9ca; stroke-width: 1; }
 .wb-cond-dial-needle { stroke: #a4edff; stroke-width: 2; stroke-linecap: round; transform-origin: 18px 18px; transition: transform 180ms ease-out; }
+/* Calm: no readable direction, so the dial keeps its face and shows a neutral dot. */
+.wb-cond-dial-dot { fill: #9db9ca; }
 .wb-cond-bar { display: inline-flex; gap: 2px; }
 .wb-cond-bar i { width: 10px; height: 4px; border-radius: 1px; background: #385164; }
 .wb-cond-bar i.on { background: #67d9ea; }

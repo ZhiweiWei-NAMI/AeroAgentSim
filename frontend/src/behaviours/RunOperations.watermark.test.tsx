@@ -86,8 +86,13 @@ it('requires a complete authored payload and blocks historical commands without 
   });
   try {
     const props={api,runId:'food',store,onSelect:()=>{},onSeek:()=>{},mode:'live' as const};
-    const view=render(<ConsoleNotifications><RunOperations {...props}/></ConsoleNotifications>);
-    await screen.findByTestId('inject-restaurant_delay');
+    // A point renders before its payload-default effect has settled. Flush
+    // configuration/initialization before editing, then await source readiness.
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+      view=render(<ConsoleNotifications><RunOperations {...props}/></ConsoleNotifications>);
+    });
+    await screen.findByRole('button',{name:'Source timing'});
     expect(screen.getByTestId('inject-restaurant_delay')).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Payload.restaurant'),{target:{value:'restaurant-east'}});
     fireEvent.change(screen.getByLabelText('Payload.delay_s'),{target:{value:'0'}});

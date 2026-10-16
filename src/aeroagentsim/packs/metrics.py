@@ -139,6 +139,11 @@ def compute(kernel: Kernel) -> dict[str, Any]:
                 / len(target_metrics),
                 "targets": target_metrics,
             }
+    if any(engine["plugin"] == "lowalt_tasks" and "rescue" in engine["config"] for engine in engines.values()):
+        from aeroagentsim.services.kpis import rescue_kpis
+
+        messages = {m["id"]: m for commit in commits for m in commit["messages"]}
+        result.update(rescue_kpis(list(messages.values())))
     return result
 
 

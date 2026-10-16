@@ -581,12 +581,19 @@ class Kernel:
         instant: Instant,
         phase: str,
         horizons: dict[str, Any] | None = None,
-    ) -> None:
+    ) -> bool:
+        """Invoke a selected wave, or ask its caller to replan after host input."""
         selected = tuple(
             sorted(selected, key=lambda p: (self._store.partitions[p].engine_id, p))
         )
         if self._host_poll is not None:
+            selected_cut = self._store.cut
             self._notify_host(self._host_poll)
+            # Host controls release the ingress lock. A source can close more
+            # partitions or admit earlier work while this wave is selected;
+            # recompute its boundary, horizons and recipients from that cut.
+            if self._store.cut != selected_cut:
+                return False
         state, intent_record, views = wave_intents(
             self._store, selected, instant, phase
         )
@@ -657,6 +664,7 @@ class Kernel:
         except Exception as exc:
             self._fault(exc, tuple(returned))
             raise
+        return True
 
     def _input_coverage(self, partition: str, view: StateView) -> None:
         from fnmatch import fnmatchcase
@@ -1339,7 +1347,8 @@ class Kernel:
                             if self._store.cut.instant.ns < to
                             else self._store.cut.instant.microstep + 1,
                         )
-                        self._wave(selected, at, "advance", horizons)
+                        if not self._wave(selected, at, "advance", horizons):
+                            continue
                         candidate = self._candidate(at)
                         record = boundary_control(candidate)
                         self._publish(candidate.state, record)
@@ -1364,7 +1373,8 @@ class Kernel:
                         if self._store.cut.instant.ns < to
                         else self._store.cut.instant.microstep + 1,
                     )
-                    self._wave(selected, at, "advance", horizons)
+                    if not self._wave(selected, at, "advance", horizons):
+                        continue
                 if any(
                     d["boundary"] <= to for d in self._store.pending_ingress.values()
                 ) or (timer_due is not None and timer_due <= Instant(to)):

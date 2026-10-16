@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
-import { ConditionsHud } from './ConditionsHud';
+import { CALM_WIND_MPS, ConditionsHud } from './ConditionsHud';
 import type { Conditions } from './conditions';
 
 afterEach(cleanup);
@@ -55,4 +55,34 @@ it('localises the Chinese copy and hides the wind card without a wind entity', (
   expect(screen.getByTestId('wb-conditions-hud').querySelector('.wb-cond-chips')).toBeNull();
   render(<ConditionsHud conditions={conditions({ wind: null, light: 'dusk', incidents: [], precipitationMmH: 0 })} zh mode="run" />);
   expect(screen.getByText('黄昏')).toBeTruthy();
+});
+
+it('reads calm below the threshold: Calm/静风, no from-direction, no gust and a neutral dial dot', () => {
+  const calm = { east: 0.1, north: 0.1, speed: CALM_WIND_MPS - 0.1, fromDeg: 315, gust: true, gustEndS: 90 };
+  const { unmount } = render(<ConditionsHud conditions={conditions({ wind: calm })} zh={false} mode="run" />);
+  const wind = screen.getByTestId('wb-conditions-wind');
+  expect(wind).toHaveTextContent('Calm');
+  expect(wind).not.toHaveTextContent('from');
+  expect(wind.querySelector('.wb-cond-gust')).toBeNull();
+  expect(wind.querySelector('.wb-cond-bar')).toBeNull();
+  // The dial stays, but as a neutral dot instead of a needle.
+  expect(wind.querySelector('.wb-cond-dial')).toBeTruthy();
+  expect(wind.querySelector('.wb-cond-dial-dot')).toBeTruthy();
+  expect(wind.querySelector('.wb-cond-dial-needle')).toBeNull();
+  unmount();
+  render(<ConditionsHud conditions={conditions({ wind: calm })} zh mode="run" />);
+  const zhWind = screen.getByTestId('wb-conditions-wind');
+  expect(zhWind).toHaveTextContent('静风');
+  // No compass name and no speed: the Chinese line would otherwise read “西北风 0.2 m/s”.
+  expect(zhWind).not.toHaveTextContent('西北风');
+  expect(zhWind).not.toHaveTextContent('m/s');
+  expect(zhWind.querySelector('.wb-cond-dial-needle')).toBeNull();
+});
+
+it('keeps the directional wind line and gust at or above the calm threshold', () => {
+  render(<ConditionsHud conditions={conditions({ wind: { east: -0.2, north: 0.2, speed: CALM_WIND_MPS, fromDeg: 315, gust: false } })} zh={false} mode="run" />);
+  const wind = screen.getByTestId('wb-conditions-wind');
+  expect(wind).toHaveTextContent('Wind 0.3 m/s · from NW');
+  expect(wind.querySelector('.wb-cond-dial-needle')).toBeTruthy();
+  expect(wind.querySelector('.wb-cond-dial-dot')).toBeNull();
 });

@@ -16,8 +16,13 @@ const FLAME_MIN = 5, FLAME_MAX = 7;
 // including the half-resolution low-quality drawing buffer. Close views keep their world size.
 const FLAME_MIN_CSS_PX = 40;
 // Connected plume: 2.0 puffs/s at high quality (limit 56, life 24 s).
-// Low quality keeps the same emission rate with a shorter life: a shorter plume, never a sparser one.
-const SMOKE_RATE = 2.0, SMOKE_LIFE_HIGH_S = 24, SMOKE_LIFE_LOW_S = 9, SMOKE_HIGH = 56, SMOKE_LOW = 18;
+// Low quality is art-directed for the weak GPUs and darker pipeline it selects: 1.5 puffs/s
+// over a 12 s life, so its 18 puffs all stay alive and the plume never gaps.
+const SMOKE_RATE = 2.0, SMOKE_RATE_LOW = 1.5, SMOKE_LIFE_HIGH_S = 24, SMOKE_LIFE_LOW_S = 12, SMOKE_HIGH = 56, SMOKE_LOW = 18;
+// Low-tier growth: 6 m at the root, 16 m at 3 s, 40 m at the end of its 12 s life.
+const SMOKE_SIZE_LOW = 6, SMOKE_SIZE_LOW_3S = 16, SMOKE_SIZE_LOW_END = 40, SMOKE_GROW_ROOT_S = 3;
+// Low-tier opacity: a 0.82 peak held to 60 % of life, then a linear fade to the cutoff.
+const SMOKE_ALPHA_LOW = 0.82, SMOKE_ALPHA_LOW_HOLD = 0.6;
 const AREA = new T.Color('#ff6a3d'), ENDED = new T.Color('#8b95a1');
 // Smoke absorbs: a charcoal body stays clearly below the luminance of a hazy, fog-lit city.
 const SMOKE_BASE = new T.Color('#1c1a19'), SMOKE_MID = new T.Color('#2f2c2a'), SMOKE_HIGH_TONE = new T.Color('#4a4643');
@@ -98,7 +103,9 @@ const flameMaterial = () => scalarUniforms(new T.ShaderMaterial({
 
 // Scattered ambient/sky light: smoke reads LIGHTER than the dark dusk ground and darker than
 // the light day ground. Rain greys both toward the same wet tone (0.3·r).
-const SMOKE_LIGHT_DAY = new T.Color('#3a3733'), SMOKE_LIGHT_DUSK = new T.Color('#2a2830'), SMOKE_LIGHT_RAIN = new T.Color('#34373b');
+const SMOKE_LIGHT_DAY = new T.Color('#3a3733'), SMOKE_LIGHT_DUSK = new T.Color('#6a625c'), SMOKE_LIGHT_RAIN = new T.Color('#34373b');
+// The low-quality pipeline renders a darker scene, so its smoke light is lifted 15 % to separate.
+const SMOKE_LIGHT_LOW_GAIN = 1.15;
 const GLOW_ORANGE = new T.Color('#ff8a2b');
 
 const smokeMaterial = () => scalarUniforms(new T.ShaderMaterial({
@@ -510,7 +517,7 @@ export class IncidentFX {
     const capacity = visual.smoke.instanceMatrix.count;
     const windEast = this.wind.x, windNorth = this.wind.y;
     const high = this.quality !== 'low';
-    const rate = SMOKE_RATE, lifetime = high ? SMOKE_LIFE_HIGH_S : SMOKE_LIFE_LOW_S;
+    const rate = high ? SMOKE_RATE : SMOKE_RATE_LOW, lifetime = high ? SMOKE_LIFE_HIGH_S : SMOKE_LIFE_LOW_S;
     const limit = high ? SMOKE_HIGH : SMOKE_LOW;
     const ended = row.phase === 'ended';
     const elapsed = row.activeS, window = ended ? row.activeS - row.sinceS : row.activeS;
@@ -527,9 +534,9 @@ export class IncidentFX {
         if (age < 0 || age >= lifetime) continue;
         // Keep puff arithmetic in this loop: passing its floating values through
         // a separate JS call boxes several Numbers per puff on Chromium.
-        // Low quality cuts the plume short; it must not age its colour/opacity 24/9 times
-        // faster while rise and size still use seconds on the high-quality clock.
-        const life = age / SMOKE_LIFE_HIGH_S;
+        // Normalise by this tier's own lifetime, so the low plume's colour and opacity
+        // follow its 12 s clock instead of ageing at the high tier's 24 s rate.
+        const life = age / lifetime;
         const seedA = visual.puffSeeds[slot * 4], seedB = visual.puffSeeds[slot * 4 + 1], seedC = visual.puffSeeds[slot * 4 + 2];
         // Rise ~2.6 m/s slowing with height: ≥ 15 m before the column bends downwind.
         // Drift (0.55 × wind) ramps in with min(1, age/6), so young puffs climb straight out of the flames
@@ -537,8 +544,13 @@ export class IncidentFX {
         const risen = 2.6 * age * (1 - 0.2 * age / SMOKE_LIFE_HIGH_S), drift = 0.55 * Math.min(1, age / 6) * age;
         const jitterX = (seedA - 0.5) * 6 + Math.sin(simSeconds * 0.2 + seedB * 6) * 1.5;
         const jitterZ = (seedB - 0.5) * 6 + Math.cos(simSeconds * 0.17 + seedC * 6) * 1.5;
-        // Dense dark root: in the first 3 s the puff grows 6 → 14 m just above the flames, then billows to 44 m.
-        const size = age < 3 ? 6 + (14 - 6) * (age / 3) : 14 + (44 - 14) * ((age - 3) / (SMOKE_LIFE_HIGH_S - 3));
+        // Dense dark root: high grows 6 → 14 m at 3 s then billows to 44 m; the low tier is
+        // art-directed across its 12 s life as 6 → 16 m at 3 s then a 40 m billow.
+        let size: number;
+        if (high) size = age < SMOKE_GROW_ROOT_S ? 6 + (14 - 6) * (age / SMOKE_GROW_ROOT_S)
+          : 14 + (44 - 14) * ((age - SMOKE_GROW_ROOT_S) / (SMOKE_LIFE_HIGH_S - SMOKE_GROW_ROOT_S));
+        else size = age < SMOKE_GROW_ROOT_S ? SMOKE_SIZE_LOW + (SMOKE_SIZE_LOW_3S - SMOKE_SIZE_LOW) * (age / SMOKE_GROW_ROOT_S)
+          : SMOKE_SIZE_LOW_3S + (SMOKE_SIZE_LOW_END - SMOKE_SIZE_LOW_3S) * ((age - SMOKE_GROW_ROOT_S) / (SMOKE_LIFE_LOW_S - SMOKE_GROW_ROOT_S));
         this.quaternion.copy(camera.quaternion);
         QUARTER_TURN.setFromQuaternion(this.quaternion, 'YXZ');
         QUARTER_TURN.z = simSeconds * (0.1 + seedC * 0.2) + seedA * Math.PI * 2;
@@ -548,10 +560,14 @@ export class IncidentFX {
         this.matrix.compose(this.position, this.quaternion, this.scale);
         visual.smoke.setMatrixAt(count, this.matrix);
         const tint = life < 0.5 ? this.color.copy(SMOKE_BASE).lerp(SMOKE_MID, life * 2) : this.color.copy(SMOKE_MID).lerp(SMOKE_HIGH_TONE, (life - 0.5) * 2);
-        // Dense root (0.72 for 3 s), body held at 0.6 to 45 % of life, then a linear fade as it lightens.
-        let alpha = age < 3 ? 0.72 - 0.12 * (age / 3) : life < 0.45 ? 0.6 : 0.6 * (1 - (life - 0.45) / 0.55);
-        // Keep the dark body until the final 3 s of the shorter low-quality lifetime.
-        if (lifetime < SMOKE_LIFE_HIGH_S) alpha *= 1 - T.MathUtils.smoothstep(age, lifetime - 3, lifetime);
+        // High: dense root (0.72 for 3 s), body held at 0.6 to 45 % of life, then a fade.
+        // Low: a brighter 0.82 peak held to 60 % of life, then a linear fade to the cutoff,
+        // so the plume separates from the darker low-quality scene for its whole life.
+        let alpha: number;
+        if (high) alpha = age < SMOKE_GROW_ROOT_S ? 0.72 - 0.12 * (age / SMOKE_GROW_ROOT_S)
+          : life < 0.45 ? 0.6 : 0.6 * (1 - (life - 0.45) / 0.55);
+        else alpha = life <= SMOKE_ALPHA_LOW_HOLD ? SMOKE_ALPHA_LOW
+          : SMOKE_ALPHA_LOW * (1 - (life - SMOKE_ALPHA_LOW_HOLD) / (1 - SMOKE_ALPHA_LOW_HOLD));
         visual.tint.setXYZW(count, tint.r, tint.g, tint.b, alpha);
         visual.cells.setX(count, Math.floor(visual.puffSeeds[slot * 4 + 3] * 4));
         count++;
@@ -575,7 +591,9 @@ export class IncidentFX {
     const rain = typeof conditions === 'number' ? conditions : (scene as T.Scene).userData.weatherWet as number | undefined ?? Math.min(conditions.precipitationMmH / 8, 1);
     const u = this.smoke.uniforms;
     u.uSmokeLight.value.copy(this.smokeLightScratch.copy(dusk ? SMOKE_LIGHT_DUSK : SMOKE_LIGHT_DAY).lerp(SMOKE_LIGHT_RAIN, 0.3 * Math.min(1, Math.max(0, rain))));
-    u.uScatter.value = dusk ? 0.25 : 0.15;
+    // Only the dark low-quality pipeline lifts the smoke light; the other tiers stay untouched.
+    if (this.quality === 'low') u.uSmokeLight.value.multiplyScalar(SMOKE_LIGHT_LOW_GAIN);
+    u.uScatter.value = dusk ? 0.42 : 0.15;
     this.smokeGlow = dusk ? 0.55 : 0.25;
   }
   private smokeGlow = 0.25;

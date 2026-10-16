@@ -9,7 +9,6 @@ import { GpuTimer } from './gpu-timer';
 import { EntityLayer } from './entities';
 import { parseModelCatalog } from './model-catalog';
 import { SemanticLayer } from './semantic-layer';
-import {activeZones,semanticSites,semanticFlooding} from './semantic';
 import {ProceduralDistrict} from '../scene/procedural-district';
 import { pipeline, PRESETS, type Quality } from './pipeline';
 import { QualityMaterials } from './quality-materials';
@@ -32,6 +31,7 @@ export const GROUND_CAMERA_OFFSET = [65, 100, 80] as const;
 export function followCameraOffset(altitude: number): T.Vector3 {
   return new T.Vector3(...GROUND_CAMERA_OFFSET).lerp(new T.Vector3(...FOLLOW_CAMERA_OFFSET), Math.min(1, Math.max(0, altitude / 100)));
 }
+const LEGEND_FIELDS = ['lowalt.vehicle_class', 'rescue.role', 'lowalt.task_kind', 'lowalt.task_vehicle', 'lowalt.task_state'];
 export interface ViewportOptions extends AssetOptions {
   quality?: Quality;
   locale?: string;
@@ -98,6 +98,11 @@ export class Viewport {
   private cameraTransition?: { position: T.Vector3; target: T.Vector3 };
   private home?: { position: T.Vector3; target: T.Vector3 };
   private lastLegend = '';
+  private legendInputs: unknown[] = [];
+  /** Simulation clock playback state; paused water/links/dashes must stay still. */
+  private playing = false;
+  /** Told by the owner whenever the playback state changes. */
+  setPlaying(playing: boolean) { if (this.playing === playing) return; this.playing = playing; this.revision++; }
   private cityGeometryRevision = 0;
   private qualityMaterials = new QualityMaterials();
   private atmosphere?: AtmosphereLayer;
@@ -333,7 +338,8 @@ export class Viewport {
     const layoutKey = workbenchLayoutKey(this.container);
     const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.camera.position.toArray()}/${this.camera.quaternion.toArray()}/${this.controls.target.toArray()}/${layoutKey}`;
     const continuousShot=this.mode==='cinematic'&&!this.options.semantic;
-    if(!continuousShot&&!this.cameraTransition&&(this.mode==='orbit'||this.cameraSettled)&&frameKey===this.lastFrame&&(!this.atmosphere||!this.ringAnimationActive())){this.container.dataset.idle='true';return;}
+    if(!continuousShot&&!this.cameraTransition&&(this.mode==='orbit'||this.cameraSettled)&&frameKey===this.lastFrame
+      &&(!this.atmosphere||!this.ringAnimationActive())&&!this.rescueAnimationActive()){this.container.dataset.idle='true';return;}
     this.lastFrame=frameKey;this.container.dataset.idle='false';
     this.district?.update(store,this.origin);
     const chosen = this.mode === 'cinematic' ? (this.businessShot ? this.businessShot.entity : (this.options.semantic ? this.selected : this.director.choose(store,ns,deltaSeconds,this.selected))) : this.selected;
@@ -373,10 +379,14 @@ export class Viewport {
       this.applyLighting();
       this.atmosphere.update(next, simSeconds, this.camera, this.roofHeight, this.atmosphereRingStart(next), this.origin);
       this.composer.excludeBloom(this.atmosphere.root);
+      this.semanticLayer?.setSky(this.scene.fog?.color ?? (this.scene.background instanceof T.Color ? this.scene.background : undefined));
       this.emitConditions();
     }
     if(this.semanticLayer&&this.layer.semantic){
-      this.semanticLayer.update(store,ns,this.origin);
+      this.semanticLayer.setSize(this.container.clientWidth,this.container.clientHeight,this.renderer.getPixelRatio());
+      this.semanticLayer.setPinScale(this.container.clientHeight,this.camera.projectionMatrix.elements[5]);
+      this.semanticLayer.update(store,ns,this.origin,this.layer.positions);
+      this.semanticLayer.setSimTime(Number(BigInt(ns))/1e9,this.playing);
       this.semanticLayer.root.visible=true;
       if(this.hoverMarkerId)this.container.dataset.semanticHover=this.semanticLayer.labelFor(this.hoverMarkerId)??'';
       if(this.options.onLegend)this.emitLegend(store);
@@ -489,25 +499,59 @@ export class Viewport {
     for (const start of this.ringStarts.values()) if (now - start < 600) return true;
     return false;
   }
+  /**
+   * Water ripples, the roof pulse and flowing link dashes animate only while
+   * the replay is running; a paused clock keeps 0 idle draws.
+   */
+  private rescueAnimationActive(): boolean {
+    if (!this.playing || !this.semanticLayer) return false;
+    return this.semanticLayer.animates();
+  }
   /** Sample actual city triangles, cached between progressive geometry updates. */
   private roofHeight = (east: number, north: number): number => {
     return this.incidentSurface.heightAt(east - this.origin.x, -north - this.origin.z, this.lighting.ground.position.y);
   };
   /** Legend from actual business kinds present in the committed cut, plus active zones. */
   private emitLegend(store: FeedStore) {
+    const semantic = this.semanticLayer!;
+    let index = 0, changed = false;
+    changed = this.legendInput(index++, this.options.locale) || changed;
+    changed = this.legendInput(index++, semantic.activeZones) || changed;
+    changed = this.legendInput(index++, semantic.sites) || changed;
+    changed = this.legendInput(index++, semantic.flooding) || changed;
+    changed = this.legendInput(index++, semantic.rescueMarkers) || changed;
+    changed = this.legendInput(index++, semantic.currentLinks) || changed;
+    for (const entity of store.entities.values()) {
+      changed = this.legendInput(index++, entity.key) || changed;
+      for (const field of LEGEND_FIELDS) changed = this.legendInput(index++, entity.fields.get(field)?.value) || changed;
+    }
+    for (const edge of store.edges.values()) changed = this.legendInput(index++, edge) || changed;
+    changed = this.legendInputs.length !== index || changed;
+    this.legendInputs.length = index;
+    if (!changed) return;
     const entries = new Map<string, string>();
     for (const [label, color] of this.layer.businessLegend(store)) entries.set(label, color);
-    const activeKinds=new Set(activeZones(store.header,store).map(zone=>zone.kind));
+    const activeKinds=new Set(semantic.activeZones.map(zone=>zone.kind));
     const locale=this.options.locale??'en-US';
     const labels={no_fly:translate(locale, 'No-fly zone'),restricted:translate(locale, 'Restricted zone'),altitude_band:translate(locale, 'Altitude band'),corridor:translate(locale, 'Corridor')};
     for (const [label,color] of SemanticLayer.zoneLegend(locale)) if([...activeKinds].some(kind=>labels[kind]===label))entries.set(label,color);
-    const sites=semanticSites(store.header,store);if(sites.some(site=>site.isVertiport))entries.set(translate(locale, 'Vertiport'),'#009e73');if(sites.some(site=>site.isPad))entries.set(translate(locale, 'Charging pad'),'#e69f00');
-    const flooding=semanticFlooding(store),zh=locale.startsWith('zh');
-    if(flooding.areas.length)entries.set(zh?'积水范围':'Flood extent','#259fc7');
-    if(flooding.roads.length)entries.set(zh?'被淹道路':'Submerged roads','#b0eeff');
-    if(flooding.incidents.length)entries.set(zh?'屋顶求援点':'Rooftop rescue','#ffb74b');
-    const legend=[...entries].map(([label,color])=>({label,color})),zones=this.layer.activeZoneCount(store),key=JSON.stringify([legend,zones]);
+    const sites=semantic.sites;if(sites.some(site=>site.isVertiport))entries.set(translate(locale, 'Vertiport'),'#009e73');if(sites.some(site=>site.isPad))entries.set(translate(locale, 'Charging pad'),'#e69f00');
+    const flooding=semantic.flooding!;
+    // Flood-rescue legend entries come from the semantic layer, so colours and
+    // presence match what the layer actually draws.
+    if(flooding.areas.length||flooding.roads.length||flooding.incidents.length
+      ||semantic.rescueMarkers.length||semantic.currentLinks.length){
+      const locale=this.options.locale??'en-US';
+      const flood=SemanticLayer.floodLegend({areas:flooding.areas.length,roads:flooding.roads.length,incidents:flooding.incidents.length,markers:semantic.rescueMarkers,links:semantic.currentLinks},locale);
+      for(const [label,color] of flood)entries.set(label,color);
+    }
+    const legend=[...entries].map(([label,color])=>({label,color})),zones=semantic.activeZones.length,key=JSON.stringify([legend,zones]);
     if(key!==this.lastLegend){this.lastLegend=key;this.options.onLegend?.(legend,zones);}
+  }
+  private legendInput(index: number, value: unknown): boolean {
+    const changed = this.legendInputs[index] !== value;
+    this.legendInputs[index] = value;
+    return changed;
   }
   private updateIncidentLabels() {
     const incidents=this.layer.semantic?this.semanticLayer?.incidentLabels:undefined;
@@ -519,6 +563,13 @@ export class Viewport {
     const safe=frame?relative(frame):{left:8,right:width-8,top:8,bottom:height-8};
     const obstacles=[...this.overlay.querySelectorAll('.entity-label:not([data-incident]):not([hidden])'),
       ...(wb?.querySelectorAll('.wb-panel, .wb-camera, .wb-graph, .wb-history, .wb-waiting')??[])].map(node=>relative(node.getBoundingClientRect()));
+    const glyphs=[];
+    for(const sprite of this.semanticLayer?.glyphSprites.values()??[]){
+      const point=sprite.position.clone().project(this.camera);
+      if(point.z < -1 || point.z > 1)continue;
+      const x=(point.x+1)*width/2,y=(1-point.y)*height/2;
+      glyphs.push({left:x-14,right:x+14,top:y-14,bottom:y+14});
+    }
     for(const [id,label] of this.incidentLabels)if(!incidents?.has(id)){label.remove();this.incidentLabels.delete(id);}
     for(const [id,incident] of incidents??[]){
       let label=this.incidentLabels.get(id);
@@ -527,7 +578,7 @@ export class Viewport {
       const point=incident.position.clone().project(this.camera);
       label.hidden=point.z<-1||point.z>1||Math.abs(point.x)>1||Math.abs(point.y)>1;
       if(label.hidden)continue;
-      const placed=placeLabel((point.x+1)*width/2,(1-point.y)*height/2,label.offsetWidth,label.offsetHeight,safe,obstacles,true);
+      const placed=placeLabel((point.x+1)*width/2,(1-point.y)*height/2-14,label.offsetWidth,label.offsetHeight,safe,obstacles,true,glyphs);
       if(!placed){label.hidden=true;continue;}
       label.style.left=`${placed.x}px`;label.style.top=`${placed.y}px`;obstacles.push(placed.box);
     }
@@ -548,6 +599,8 @@ export class Viewport {
     if(frame&&frame.width>0&&frame.height>0)this.camera.setViewOffset(frame.width,frame.height,rect.left-frame.left,rect.top-frame.top,width,height);
     else {this.camera.clearViewOffset();this.camera.aspect=width/height;}
     this.camera.updateProjectionMatrix();this.renderer.setSize(width,height);this.composer.setSize(width,height);
+    // Screen-space rescue pins follow the container height, like the incident pin.
+    this.semanticLayer?.setSize(width,height,this.renderer.getPixelRatio());
   };
   private press?: {x:number;y:number};
   // T4-06: reused pick objects — a mouse-move storm must not allocate per event.

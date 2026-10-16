@@ -251,25 +251,29 @@ engines:
           - 0.0
         sites:
         - id: R7
-          label: R7·屋顶疑似受困点
+          label: R7 rooftop rescue site
+          label_zh: R7·屋顶疑似受困点
           position:
           - -24.81
           - -204.65
           - 15.0
         - id: R3-origin
-          label: R3·应急物资出发点
+          label: R3 supply departure
+          label_zh: R3·应急物资出发点
           position:
           - -25.0
           - -160.0
           - 50.0
         - id: R3-destination
-          label: R3·既有救援点
+          label: R3 existing rescue site
+          label_zh: R3·既有救援点
           position:
           - -200.0
           - 250.0
           - 70.0
         - id: command-center
-          label: 指挥与补能点
+          label: Command and charging centre
+          label_zh: 指挥与补能点
           kind: ChargingPad
           position:
           - 100.0
@@ -312,6 +316,6 @@ engines:
             payload_kg: 1.0
 run:
   seed: 42
-  until_ns: 120000000000
+  until_ns: 241000000000
   advance_ns: 1000000000
   pacing: fast

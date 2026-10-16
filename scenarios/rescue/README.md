@@ -97,3 +97,60 @@ export AEROAGENTSIM_PROVIDER_CONFIG=/absolute/path/to/provider-profiles.json
 2026-10-14：最终观察位 `[-24.81,-204.65,28]`、中继 `[30,-130,70]`、中心 `[100,20,2]` 的原生无线操作已实际运行。seed 42 下直传在 1 s 超时；第一跳 0.682017 ms 送达，收到后才提交第二跳，第二跳 5.437808 ms 送达。配置使用明确声明的合成 AABB 衰减盒，不是黄浦真实建筑校准，也不是可靠性统计。
 
 同日 **live5**（`rooftop-flood-jev`：边缘 `trained_filter` + 中心 OpenCode `propose_plan`）本地已跑通闭环：ns-3 送达 report 与 delivery_ack，出现 `delivery_completed` / `roles_released`，无 `model_failed`。指挥通道仍是可靠业务事件，现场报告/回执才走 ns-3；洪水是场景语义可视化，不模拟水动力学。模型调用会暂停仿真，决策 wall time 不能用仿真时间代替。未新增或执行完整回归测试套件。
+
+## Research episodes / 研究批量场景
+
+The `flood-rescue` template uses explicit stub model responses, so model mode
+needs no API key. Its knobs are `participation=model|filter|all|distance`,
+`observation=positive|negative|uncertain`, `radio=on|off`, absolute `deadline_s`
+and `fleet_variation=authored|seeded`. `radio_port` selects the native RPC port
+(default 19004; host 127.0.0.1). Platform seeds include zero; the ns-3
+adapter uses `1 + seed % (2**32 - 1)` to map them deterministically into its
+positive uint32 range. Matched policy seeds keep identical native radio seeds.
+
+```sh
+aeroagentsim experiment flood-rescue --seeds 5 --vary participation=all
+aeroagentsim run-template flood-rescue --set participation=distance --set radio=on --headless
+aeroagentsim metrics runs/rescue-stub
+```
+
+`seeded` (default) materializes after the experiment runner sets each run seed.
+It deterministically jitters each horizontal position by at most ±150 m inside
+the shipped city's ±540 m bounds, keeps starts in the authored safe flight
+layer (130–180 m), and varies capabilities, payload and SOC. Each vehicle keeps
+at least one capability and the uncommitted fleet covers all roles. This is
+variation of authored episodes, not a distribution fitted to flood measurements.
+`authored` preserves the YAML fleet.
+
+模板使用明确的 stub 应答，无需模型密钥。默认 `seeded` 在运行种子确定后才生成
+机队变化；同一种子得到同一场景，不同种子改变位置、能力、载荷和 SOC。
+默认 `radio=off` 无需 ns-3，但会如实记录通信失败并在截止时过期，成功率为 0。
+`radio=on` 需要上文所述真实 native RPC 服务；并发无线实验需要彼此隔离的服务。
+无线服务端口由 `radio_port` 显式指定。平台种子允许 0，ns-3 种子范围为
+1 到 2³²−1；原生 ns-3 适配器固定使用 `1 + seed % (2**32 - 1)`，
+各策略的同种子仍使用同一无线随机种子。
+`filter` 需要安装 AeroRescue，并在模板 `scenario.yaml` 旁放置真实导出的
+`participation-filter.json`；不提供演示权重或成功替代路径。
+
+每个阶段（notice、report_received）都有新的局部请求和 bids，`plan_computed`
+中的 `now_s` 与该阶段请求一致。`commitment.busy_until_s` 从实时剩余航段和停留
+估算，`busy_estimate=route`；无法估算时标记 `unknown` 并使用 JSON 安全的有限
+无穷哨兵值，保持不可提前参与。filter/all/distance 不创建本地模型客户端；
+过滤器推理耗时写入运行目录 `rescue-filter-timing.jsonl`，不进入确定性日志。
+
+C1 committed fields are `rescue.markers` (inspect/relay/command) and
+`rescue.links` (per-hop sending/delivered/failed plus relay holding coverage).
+Delivered links remain visible after release. Story/Events lines are bilingual.
+One `outcome` records success and elapsed confirmation/delivery times; missing
+measurements stay null. Positive success requires a received delivery ack before
+the deadline; negative/uncertain success requires the centre to resolve the
+received report without delivery. Deadline expiry releases rescue roles.
+
+C2 指标为 `rescue_success`、`rescue_time_to_confirmation_s`、
+`rescue_time_to_delivery_s`、`rescue_plans`、`rescue_bids`、`rescue_candidates`、
+`rescue_radio_packets`、`rescue_radio_delivered`、`rescue_radio_bytes`、
+`rescue_bus_messages`、`rescue_bus_bytes`、`rescue_model_calls`。
+候选数统计所有 bid 提议的角色数；无线量来自 ns-3 send/delivery 消息，每跳算一包；
+总线字节数为 `rescue.*` 消息 `data_json` 的 UTF-8 字节长度。未收到 outcome 时
+成功率保持未测量；无无线消息时发包量为实际的 0。指标由现有日志投影计算，
+`aeroagentsim metrics <run>` 同样输出这些指标。

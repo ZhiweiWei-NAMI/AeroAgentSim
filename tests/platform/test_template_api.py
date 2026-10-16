@@ -306,13 +306,14 @@ def test_all_shipped_template_translations_pass_through_http(tmp_path: Path) -> 
     ) as client:
         response = client.get("/v1/templates")
         assert response.status_code == 200, response.text
-        assert len(response.json()) == 9
+        assert len(response.json()) == 10
         for metadata in registry.list():
             detail = client.get(f"/v1/templates/{metadata['id']}")
             assert detail.status_code == 200, detail.text
             expected = {
                 **metadata,
-                "thumbnail_url": f"/v1/templates/{metadata['id']}/thumbnail",
+                **({"thumbnail_url": f"/v1/templates/{metadata['id']}/thumbnail"}
+                   if "thumbnail" in metadata else {}),
             }
             assert detail.json() == expected
             assert expected in response.json()
