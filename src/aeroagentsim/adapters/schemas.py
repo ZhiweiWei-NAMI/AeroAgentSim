@@ -434,7 +434,8 @@ def _descriptor(
     result: dict[str, Any],
 ) -> MessageDescriptor:
     return MessageDescriptor(
-        f"adapters.{backend}.{ident}", "command", payload, result_schema=result
+        f"adapters.{backend}.{ident}", "command", payload, result_schema=result,
+        cancel_support=backend == PX4_GAZEBO
     )
 
 

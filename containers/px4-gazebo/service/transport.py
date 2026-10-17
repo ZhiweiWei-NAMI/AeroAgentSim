@@ -17,6 +17,7 @@ class Gazebo:
         self.topics, self.callbacks = [], []
         self.lock = threading.Lock()
         self.sim_ns = 0
+        self.step_in_flight = False
         self.stats = None
         self.poses = {}
         self.contacts = []
@@ -231,6 +232,13 @@ class Gazebo:
         raise TimeoutError(f"Gazebo timed out waiting for {label}; stats={self.stats}")
 
     async def step(self, iterations, physics_step_ns):
+        self.step_in_flight = True
+        try:
+            await self._step(iterations, physics_step_ns)
+        finally:
+            self.step_in_flight = False
+
+    async def _step(self, iterations, physics_step_ns):
         self.check()
         if type(iterations) is not int or iterations <= 0:
             raise ValueError("multi_step must be positive integer")
