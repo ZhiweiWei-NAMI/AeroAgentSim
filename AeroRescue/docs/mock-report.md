@@ -1,6 +1,6 @@
 # AeroRescue 阶段验收包
 
-更新时间：2026-10-17 15:42 UTC。应用checkpoint e90d26c / PR18；平台196d1b1 / PR17。两PR均未合并，用户逐项审批尚待。
+更新时间：北京时间2026-10-18 00:37（UTC 2026-10-17 16:37）。应用源码95dbfcd / PR18；平台196d1b1 / PR17。两PR均未合并，用户逐项审批尚待。北京时间2026-10-18 01:05复核：源码95dbfcd的Tests CI已通过（run39048495347，Python 3.10/3.11非Docker任务成功，aerograph跳过）。
 
 ## 范围与结论
 
@@ -81,13 +81,58 @@ u4于283.6sim s释放后、回执前有序terminate/wait再启动；原operation
 
 C09 `mock-replay-four-42-rule-a2`实际aerokernel.replay耗时37.505s；cut16012、终点/seal406.2s一致，48动作状态逐一匹配，65024facts/1713messages/3523receipts，新模型/物理/相机调用0，源未变。源a2失败结论保持。
 
+新增C03/C07组件补验位于`runs/development/c03-c07-fault-components/`。失路后二次attempt实际经普通FileClient探测替代u2/u3/centre路由，同ID attempt2在8.4s ACK，5731B/commit1；无路径在13.6s公开截止失败，attempt0/无数据片/commit0；接受前丢分配耗尽2attempt、每次一片首发+2补发，task_accept明确拒绝未收消息。joint未释放组件在accepted后观察35sim s持续attached/released=false，无释放时刻/contact/回执。四项均为driver组件；后续五DSH结果分别列在下文。
+
+C03接受前丢分配五DSH`mock-C03-lost-assignment-42-a1`在180sim s受限观察结束：plan `c3d130c5d26b4b769f0961cc1d593ff8`耗尽两attempt，每片初发+2补发，接收端无commit，u2保持原offer任务，未接受该巡查、无实际飞行搜索调用。协调服务180s观察horizon产生expired，不是原900s自然任务截止；整run incomplete保留。证据为case-branch-observation。
+
+C04 `mock-C04-payload-unavailable-42-a1`五DSH实际完成无物资阴性：初始库存明确为0；u4报价235sim s观测、236.6s中心实收、有效至250s，中心保持10s窗口，于244s因有效库存0拒绝投送分配。释放0、返回完成、六进程exit0，墙钟279.45秒。terminal_failure是无物资的正确业务结案；该变体不是报价后动态卸货，动态撤回由独立低能运行证明。证据：resource-variant-analysis。
+
+C04身份置换`mock-C04-role-permutation-42-a1`五DSH按实际能力与报价选机：10.2sim s选u3巡查，243.2s按实收新版报价选载荷1kg的u1投送，u4执行中继，u2保留受保护原任务。303.2s交付完成；u1/u3/u4分别333.0/396.8/325.8s实际解除武装，六进程exit0，墙钟398.28秒。结果证明角色不硬绑原u1/u2/u3/u4编号；原始resource-variant-analysis保留映射与每轮实收bid。
+
+C03失路后二次attempt的五DSH运行`mock-C03-path-second-attempt-42-a1`完整交付：同一文件`15e4475ac6834069a79c2455af4defa6`在225.6→245.6sim s实际经历20秒路由中断（6个注入包），恢复后attempt2两片各发1次、248.8s ACK，324.2s交付并返航。工具调用6/53/201/19/47；原始case-branch-observation记录同ID、outage和receiver commit。
+
+C03指定无路径五DSH`mock-C03-no-valid-path-42-a1`自然到原消息deadline：文件218.6sim s创建，无有效路径时保持attempt0/无数据片/无commit；338.6s即原120s期限失败，中心349.2s结案证据不足并完成返航。CLI1为预期阴性业务终态，工具调用5/62/220/5/48。没有用可靠旁路或共享源文件伪造送达；证据为case-branch-observation。
+
+C07 joint未释放五DSH a2保留明确未完成：`mock-C07-joint-not-released-42-a2`最后939.8sim s执行器仍attached/released=false，无释放/contact/回执；业务deadline实际被世界horizon一同改成940s，940s提交最终状态查询后协调服务停止，没有后续状态回复。故该run只证明未假报释放，不证明900s自然失败终态或返航；记录为INCOMPLETE_BOUNDARY_CLOCK_CONFIGURATION，后续a4在分离业务截止与世界运行上限后完成复核，见下。
+
+C07后续a3采用5倍推进实验，900s业务截止与1040s世界上限已独立；但工具/无线相对时序改变，u2证据和报告直连attempt0超时，中心901s过期，u4未到release分支。`mock-C07-joint-not-released-42-a3/case-branch-observation.json`记录NOT_REACHED_RELEASE_BRANCH，不作为1倍性能或关节终态验证。
+
+真实模型当前阻碍：运行入口使用AAS_LLM_BASE_URL、AAS_LLM_MODEL、AAS_LLM_API_KEY；本执行环境三项均未绑定，尚未接入用户已有OpenCode/DeepSeek配置。核查仅查看变量名存在性，没有读取key值，不表示用户从未配置密钥。原真实API闭环要求继续保留。
+
+C07最终1倍推进a4 `mock-C07-joint-not-released-42-a4`准确覆盖关节未释放负例：900sim s新执行器观测仍attached/released=false，工具failed/release_not_observed，物理释放0、无contact回执；中心业务expired。u4在902.6s真实收到关闭消息后，以独立903.4→1023.4s固定返航窗口收尾，原任务900s截止没有修改；u2/u3也各有独立关闭来源窗口。原始动作终态u3=923.0s、u4=930.4s、u2=933.6s着地并解除武装；较晚self快照不作动作完成时间。六进程exit0，墙钟935.13秒。结论为“不脱离不报交付，且安全收尾通过”，不是救援交付成功。原始case-branch-observation保留deadline、执行器、关闭来源和返回状态。
+
+## 可复制运行入口
+
+先按AeroRescue/README.md安装Python应用及Node Harness依赖，并按docs/mock-visual-asset.md准备照片资产。以下在AeroRescue目录运行；python指已安装应用的解释器，MODEL_CACHE和SPRITE分别设为本机模型缓存目录与已准备的照片素材文件。每次使用新的run-id，保留独立输出目录。
+
+C01标准四机案例（无variant参数，默认完整场景）：
+
+```bash
+python tools/run_mock.py --scenario scenarios/rooftop-flood-mock.yaml \
+  --run-id my-C01-seed42 --case C01 --seed 42 \
+  --model-cache "$MODEL_CACHE" --person-sprite "$SPRITE" \
+  --stop-on-outcome
+```
+
+C07关节未释放阴性分支：
+
+```bash
+python tools/run_mock.py --scenario scenarios/rooftop-flood-mock.yaml \
+  --run-id my-C07-joint-seed42 --case C07 \
+  --variant joint_did_not_release --seed 42 \
+  --model-cache "$MODEL_CACHE" --person-sprite "$SPRITE" \
+  --until-ns 1040000000000 --wall-timeout 1100 --stop-on-outcome
+```
+
+C07业务截止仍为900秒；1040秒仅是世界运行观察窗口，为900秒的新状态回复及独立返航预算留出时间。该阴性案例应记录未脱离、不报交付及真实收尾，业务状态为expired/terminal_failure，进程退出码不单独代表分支验收结论。以上为已实跑入口的可移植路径写法，不会复用报告中的旧run目录。
+
 ## 逐项验收与审批
 
 [机器可读50项台账](mock-acceptance.csv)沿用原执行包编号。MOCK_PASS只评价本轮列明的软件范围；PARTIAL表示该范围尚有缺口，NOT_RUN/NOT_COVERED明确保留原任务。每项用户审批为PENDING_USER，只有用户明确决定后更新。原native台账没有改写PASS。
 
 | 编号 | 原要求 | 本轮mock可核内容 | 当前结果 | Native仍待 | 用户审批 |
 | --- | --- | --- | --- | --- | --- |
-| REQ-D01 | 正确仓库与main基线 | 核对应用/平台分支、main基线及PR目标 | PARTIAL：应用checkpoint e90d26c已push至PR18；平台196d1b1/PR17，均按main基线拆分，PR未合并。后续本轮结果与最终审批待归档。 | 保留平台与应用PR最终审批；不自动合并 | 待审批 |
+| REQ-D01 | 正确仓库与main基线 | 核对应用/平台分支、main基线及PR目标 | PARTIAL：应用源码95dbfcd已push至PR18，阶段文档9d4743b已push；平台196d1b1/PR17，均按main基线拆分，PR未合并。最终新增证据随本台账一并提交，PR待用户审批。 | 保留平台与应用PR最终审批；不自动合并 | 待审批 |
 | REQ-D02 | 目标云机与资源 | 记录本机运行环境与mock进程资源；不要求mock代替Docker | PARTIAL：本机实际完成五DSH及mock coordinator运行并记录资源；Docker/GPU原生环境仍不可用。 | Docker/Compose、OGRE2/EGL及实际graphics能力 | 待审批 |
 | REQ-D03 | 软件与资源锁 | 复用已安装实际依赖及本地模型，记录本轮实际使用路径 | PARTIAL：本轮实际使用现成Cordis/DSH依赖与真实ONNX/BGE；没有镜像构建记录，不增设形式hash门槛。 | 平台镜像构建与原生资产实际加载 | 待审批 |
 | REQ-D04 | 可重建镜像 | 独立新run目录冷启动五个DSH及mock coordinator，不下载模型 | PARTIAL：a3新run/private目录启动五端并完成；没有容器构建/冷卷证据。 | 干净镜像构建、新空容器卷和离线镜像冷启动 | 待审批 |
@@ -116,36 +161,36 @@ C09 `mock-replay-four-42-rule-a2`实际aerokernel.replay耗时37.505s；cut16012
 | REQ-C02 | 真实文件字节和分片 | 实际字节分片、hash及mock packet/attempt/commit关联 | MOCK_PASS：FileClient实际发送5731B PNG、6分片；两故障run均centre收到5731B且byte_equality=true，原始packet日志可关联。该5731B记录来自FileClient组件。 五DSH C03缺片闭环实际完成：1137B图经u3，chunk1首发丢失后仅该片补发1次，236.4sim s ACK、313.8s中心交付、返航完成。 | 原生packet逐跳与末跳delivery证据 | 待审批 |
 | REQ-C03 | 接收重组和应用ACK | 真实重组校验/落库/ACK代码；丢ACK分支需另run证据 | MOCK_PASS：FileClient故障run中最终ACK被实际mock drop，8.2sim s恢复ACK且状态succeeded；缺片run于9.0sim s收到ACK。H04构造器重建保留同ID/去重，commit仅1次且ACK后无重复。C07首finalACK丢失后也恢复并排入confirmation。 五DSH C03缺片闭环实际完成：1137B图经u3，chunk1首发丢失后仅该片补发1次，236.4sim s ACK、313.8s中心交付、返航完成。 | ns-3上的应用ACK时序与丢包恢复 | 待审批 |
 | REQ-C04 | 中继有效及保持 | 声明mock链路模型、真实probe和中继候选/保持流程 | PARTIAL：a1租约/a2回传路径失败保留；修复后a3中心实际完成交付且u3收到closure后返航succeeded。双DSH合法交接旧机等待新机真实hold及双端probe，64.2s实收接任才返航；移位全分支待。 | ns-3实际路径可达性与移动后的无线效果 | 待审批 |
-| REQ-C05 | 分片恢复与幂等 | 显式丢片/丢ACK故障下实际重试计数、deadline和持久去重 | PARTIAL：FileClient注入1ns寿命使指定chunk或final_ACK真实mock drop；缺片index1发送2次，其余1次，两run均attempt1成功。未覆盖全attempt/deadline/outbox恢复边界。 五DSH C03缺片闭环实际完成：1137B图经u3，chunk1首发丢失后仅该片补发1次，236.4sim s ACK、313.8s中心交付、返航完成。 五DSH C07 carrier receipt首finalACK丢失，原ID只query补ACK（285sim s）、chunk仅发1次，中心296.8s交付且closure完成。 五DSH C03文件首finalACK丢失也完成：两片均只发1次，query1，234.2s补ACK，中心312.8s交付及返航。 | 原生无线损伤条件下恢复与幂等 | 待审批 |
-| REQ-C06 | 无链路时不伪造成功 | 显式断链时保持pending/失败，不制造收件与ACK | PARTIAL：a2 carrier/receiver直连失效时centre receipts空且无outcome，未产生交付成功；有序停止保留NOT_PASSED。完整no_valid_path案例另待。 | 原生不可达链路及无可靠旁路核对 | 待审批 |
+| REQ-C05 | 分片恢复与幂等 | 显式丢片/丢ACK故障下实际重试计数、deadline和持久去重 | MOCK_PASS：缺片只补缺片，丢文件/回执ACK只query补确认，失路20s后同ID attempt2成功；对应五DSH均有终态和收尾。接受前丢plan两attempt各片初发+2补发后失败；H04重建去重commit仅1次。原120s期限不延长，所有重试均有逐包计数。 | 原生无线损伤条件下恢复与幂等 | 待审批 |
+| REQ-C06 | 无链路时不伪造成功 | 显式断链时保持pending/失败，不制造收件与ACK | MOCK_PASS：指定五DSH no_valid_path：文件218.6s创建、原120s期限338.6s到期失败，attempt0/无数据片/无commit；中心349.2s准确unresolved并返航。接受前丢分配五DSH两attempt每片最多2补发，无commit/u2未accept/未巡查；该run180s受限观察，整场未完成且不代表900s自然截止。 | 原生不可达链路及无可靠旁路核对 | 待审批 |
 | REQ-P01 | 包裹物理实体 | 声明mock包裹/接收面几何、质量和挂载状态 | PARTIAL：受控mock包裹按声明几何落在接收面内/外；接触来源明确mock_contact_model。尚无原生实体。 | Gazebo物理实体、真实挂载及Contact传感器 | 待审批 |
 | REQ-P02 | 释放真实生效 | 真实release请求触发mock分离/重力轨迹而非直接写成功 | MOCK_PASS：a3、seed43/44均由真实DSH调用release，经mock分离和重力轨迹形成接触，再完成交付；受控outside分支实际落偏且无receipt。 | 原生DetachableJoint动作与自由运动 | 待审批 |
 | REQ-P03 | 交付后置条件 | 模拟接触按持续时间生成receipt，经现有协议双ACK后校验 | MOCK_PASS：a3、seed43/44均完整接收接触receipt、经无线双ACK确认后中心交付结案。a3中心293.2sim s完成；直接C07丢receipt不确认、丢finalACK补ACK后确认，保留逐包因果。 | 原生Contact源与独立evaluator速度/落区判据 | 待审批 |
-| REQ-P04 | 投放异常不报完成 | 未释放/区域外/短接触/回执丢失分别运行，不报交付完成 | PARTIAL：FileClient受控包裹落[72,72,15.1]，inside_receiver=false，carrier receipt=0且未排入双ACK confirmation。joint未释放分支仍待。新增C07直接FileClient：命中接收面但同一receipt chunk_index0在attempt1/2各3次、共6次发送drop后carrier无receipt/无confirmation；首finalACK丢失分支重传后carrier receipt=1且confirmation入队。 五DSH C07 carrier receipt首finalACK丢失，原ID只query补ACK（285sim s）、chunk仅发1次，中心296.8s交付且closure完成。 | 对应真实物理异常分支与重启不重复释放 | 待审批 |
-| REQ-T01 | 本地参与与中心有限证据 | 中心仅用真实收到的mock radio bid与有效逐航段cost求解 | PARTIAL：a3中心实际保存已收bid与selected_bids message_id/commitment_version/有效期，收到1receipt和36reports后完成；成本估计偏差见F06。 | 原生无线收件和遥测成本输入 | 待审批 |
-| REQ-T02 | 单一任务和动作owner | 五个真实Cordis/DSH唯一派发owner；Python只执行接受的task/revision | MOCK_PASS：a3五端Cordis/DSH唯一派发，Python执行task/revision；C05新rev2接受后拒迟到rev1，取消中拒新动作，旧command_id重放被拒。 后续短radio顺序组件实拒非centre关闭、closed事件迟notice与pending接受，重启仍记closed，旧closure不打断无关open-C飞行。 C08原a1输入a3主323.6s交付，第二337.6s无bid结案；notice先到但accept仍pending，closure使接受failed，三机未接第二任务、432.2/346.6/353.4s disarm且closure=true。此run未证明已知全机不可用。 | 真实动作后端单owner及legacy engine停用证据 | 待审批 |
+| REQ-P04 | 投放异常不报完成 | 未释放/区域外/短接触/回执丢失分别运行，不报交付完成 | PARTIAL：落偏无receipt、receipt丢失不确认、ACK恢复才确认均有组件或五DSH实证。joint五DSH a4在900s新观测仍attached，failed/release_not_observed，物理释放0/无contact；业务expired，固定独立返航窗口内三机着地解除武装。a2世界/业务截止耦合未完成、a3五倍未达分支均保留。短接触独立分支尚无实际运行证据，保留待验。 | 短接触mock分支仍待；对应真实物理异常分支与重启不重复释放 | 待审批 |
+| REQ-T01 | 本地参与与中心有限证据 | 中心仅用真实收到的mock radio bid与有效逐航段cost求解 | MOCK_PASS：a3中心实际保存已收bid与selected_bids message_id/commitment_version/有效期，收到1receipt和36reports后完成；成本估计偏差见F06。 C04初始载荷缺失五DSH：实收u4库存0的有效bid后244s准确无资源，释放0、closure=true。不是after-offer动态卸货，terminal_failure为正确阴性结案。 C04身份置换五DSH：10.2s按bid选u3inspect，243.2s选载荷1kg的u1deliver；u4relay、u2保护原任务，303.2s交付并全收尾。 | 原生无线收件和遥测成本输入 | 待审批 |
+| REQ-T02 | 单一任务和动作owner | 五个真实Cordis/DSH唯一派发owner；Python只执行接受的task/revision | MOCK_PASS：a3五端Cordis/DSH唯一派发，Python执行task/revision；C05新rev2接受后拒迟到rev1，取消中拒新动作，旧command_id重放被拒。 后续短radio顺序组件实拒非centre关闭、closed事件迟notice与pending接受，重启仍记closed，旧closure不打断无关open-C飞行。 C08原a1输入a3主323.6s交付，第二337.6s无bid结案；notice先到但accept仍pending，closure使接受failed，三机未接第二任务、432.2/346.6/353.4s disarm且closure=true。此run未证明已知全机不可用。 C04身份置换五DSH：10.2s按bid选u3inspect，243.2s选载荷1kg的u1deliver；u4relay、u2保护原任务，303.2s交付并全收尾。 | 真实动作后端单owner及legacy engine停用证据 | 待审批 |
 | REQ-T03 | 承诺与任务恢复 | 实际承诺版本变化、无线撤回、旧bid失效和任务恢复 | PARTIAL：a3保留保护任务并正确返航；C04a1撤回通知丢失失败保留。C04a2实收withdrawal82.6sim s、取消确认96.6sim s并换u4 inspect；后投送bid迟到，348.4sim s终态unfulfilled_no_resource，case尚未完整交付。 | 原生资源变化下抢占/取消/恢复 | 待审批 |
 | REQ-T04 | 事件发现与多事件排队 | 由模拟新观察触发第二线索，检查事件排队和不双重分配 | PARTIAL：C08 queued由实际新帧/RT-DETR几何线索触发：centre228sim s收线索，234.6s发端实收queued通知；首事件326.2s交付后，第二事件329.6s因无独立需求结案unresolved_evidence。 C08 expired实收227.2sim s、queued通知233.8s、公示deadline249.6s准确expired移出队列；首事件331.2s交付，非protected三机返航，closure=true。 noeligible a2实际收到U2 bid soc.18144低于.2被排除，第二事件293s无资源；u3/u4未收bootstrap，主事件未交付、全run incomplete，保留部分证据。 C08原a1输入a3主323.6s交付，第二337.6s无bid结案；notice先到但accept仍pending，closure使接受failed，三机未接第二任务、432.2/346.6/353.4s disarm且closure=true。此run未证明已知全机不可用。 | 原生第二事件发现与完整多事件执行 | 待审批 |
-| REQ-T05 | 业务终态准确 | 逐run记录人员证据/需求来源/交付/业务终态，失败不改成功 | PARTIAL：C01三seed交付并收尾，旧a1/a2失败保留；C02无人、持续不确定五DSH均准确unresolved且无释放，遮挡a1漏检未交付，a3独立视角确认后157.8s交付；旧组件driver结案不计自主。C08排队后无独立需求unresolved、249.6s公开deadline expired均有实证。C08关闭修复a3主323.6s交付、第二337.6s无bid结案并完成返航；低能bid排除a2仍是独立不完整run。C04撤回换机成立但报价迟到，348.4s未交付。未跑的指定variant由E02列出。 | 原生完整救援与所有阴性/无资源/过期分支 | 待审批 |
+| REQ-T05 | 业务终态准确 | 逐run记录人员证据/需求来源/交付/业务终态，失败不改成功 | MOCK_PASS：C01三seed交付并收尾，旧a1/a2失败保留；C02无人、持续不确定五DSH均准确unresolved且无释放，遮挡a1漏检未交付，a3独立视角确认后157.8s交付；旧组件driver结案不计自主。C08排队后无独立需求unresolved、249.6s公开deadline expired均有实证。C08关闭修复a3主323.6s交付、第二337.6s无bid结案并完成返航；低能bid排除a2仍是独立不完整run。C04撤回换机成立但报价迟到，348.4s未交付。未跑的指定variant由E02列出。 C04初始载荷缺失五DSH：实收u4库存0的有效bid后244s准确无资源，释放0、closure=true。不是after-offer动态卸货，terminal_failure为正确阴性结案。 C07未释放900s实观测失败，业务expired但安全返航完成，无假交付。 | 原生完整救援与所有阴性/无资源/过期分支 | 待审批 |
 | REQ-H01 | 规则Agent跑真工具 | 五个真实DSH rule实例自主选择并调用共享工具，记录请求/完成序列 | MOCK_PASS：a3五个真实DSH自主派发完成交付及收尾；调用u1/u2/u3/u4/centre=6/49/254/19/43（合371），非CLI预排工具。seed43也实际completed_with_delivery（300sim s）且closure=true，墙钟395.01s。seed44也completed_with_delivery（304.4sim s）、closure=true；三seed均按各自当时源码运行。 | 同工具连接真实PX4/ns-3/物理载荷的完整rule闭环 | 待审批 |
-| REQ-H02 | 模型Agent实际闭环 | 本轮计划仅rule；不把本地rule adapter说成外部模型调用 | NOT_COVERED：本轮rule/mock未覆盖；原live模型验收要求未取消，待真实API验证。 | 真实模型完成C01 seed42及C04改计划分支 | 待审批 |
-| REQ-H03 | 异步作业不阻塞推进 | 真实跨进程pending→DSH idle→completion followup，mock时间继续推进 | PARTIAL：五端完整运行实际pending→DSH idle→completion followup继续推进；a3记录371次调用及各agent completion序列，保留取消、bid超时和失败；部分结束时挂起请求不冒称全部成功。 | 原生后端连接与推进在异步期间保持活性 | 待审批 |
+| REQ-H02 | 模型Agent实际闭环 | 本轮计划仅rule；不把本地rule adapter说成外部模型调用 | NOT_COVERED：本轮live未跑；当前运行环境未绑定launch实际使用的AAS_LLM_BASE_URL/AAS_LLM_MODEL/AAS_LLM_API_KEY变量，未接入用户OpenCode/DeepSeek配置。仅检查变量名存在性，未读取key值，不代表用户从未配置。原真实模型验收保留。 | 真实模型完成C01 seed42及C04改计划分支 | 待审批 |
+| REQ-H03 | 异步作业不阻塞推进 | 真实跨进程pending→DSH idle→completion followup，mock时间继续推进 | MOCK_PASS：五端完整运行实际pending→DSH idle→completion followup继续推进；a3记录371次调用及各agent completion序列，保留取消、bid超时和失败；部分结束时挂起请求不冒称全部成功。 | 原生后端连接与推进在异步期间保持活性 | 待审批 |
 | REQ-H04 | 重启后对账 | 真实DSH/worker恢复，对账持久请求与任务版本，不重复执行 | PARTIAL：真实RadioTransport构造器重建两分支：缺片5/6时重建后仅补片1、8.8sim s ACK；commit后丢finalACK重建、8.0sim s补ACK且不重传数据。5731B一致、commit1次、ACK后5s无重复、原预算/epoch保持；不是进程重启。 C06实际双机worker重启恢复收件/档案/任务游标，coordinator不重启且持续推进。 耐久run在283.6sim s有序terminate/wait重启u4，同一operation从released无receipt恢复到delivery_verified，release仅1次，coordinator不重启；不是崩溃/容器恢复，跨代源码未事前逐代冻结。 | 原生连接/执行机构/clock epoch重启对账 | 待审批 |
 | REQ-H05 | 可执行Skill清单 | 21个manifest实际被DSH加载，逐技能记录本轮真实调用及未调用项 | MOCK_PASS：21/21业务技能已有实际调用证据：a3五DSH自主17种，C06组件补3种历史技能，两DSH handover组件补接替。交接证据先ACK29.6s，实际hold/双端probe61.2/62.2s，旧机64.2s收到业务接任才release返航；未宣称中心自主选择接替。 | 每项所需原生工具调用及真实样例补齐 | 待审批 |
 | REQ-E01 | 原始证据可追溯 | 唯一mock run_manifest标明backend，原始日志与工具/帧/包/终态ID关联 | PARTIAL：逐run manifest、DSH请求/完成、帧/定位/hash、逐包ACK及业务终态可关联，失败原样保留；稳定45run主卷已归档，最后增量卷归档由交付索引定位。 | 原生源证据完整追溯且真值不回灌 | 待审批 |
-| REQ-E02 | 固定案例覆盖 | 列出实际运行的mock case/seed/variant，不把未跑项列覆盖 | PARTIAL：C01 rule seed42/43/44完整交付；C02无人/持续不确定/遮挡复核有独立五DSH结果；C03缺片/丢ACK及C07回执ACK闭环；C05/C06/C09/C10组件实跑，C08排队/过期/关闭收尾有记录。仍缺C03失路后二次attempt/no_valid_path/接受前丢分配，C04载荷不可用/身份置换/model，C07joint未释放；C04低能整场未交付，C08低能bid排除a2整run不完整。 | 完整C00–C10/variants及要求的rule/model seed集合 | 待审批 |
+| REQ-E02 | 固定案例覆盖 | 列出实际运行的mock case/seed/variant，不把未跑项列覆盖 | PARTIAL：C01三seed；C02无人/持续不确定/遮挡复核；C03直阻中继、缺片/丢ACK、失路后二次attempt、无路径均有五DSH结果，接受前丢分配为180s受限观察。C04保护任务/低能撤回/载荷缺失/身份置换均已跑，低能整场未交付。C05/C06/C09/C10有组件实证；C07异常含joint a4准确未释放并返航；C08排队/过期/关闭收尾已跑，低能a2与a3不得合并。真实model/native条件保留。 | 完整C00–C10/variants及要求的rule/model seed集合 | 待审批 |
 | REQ-E03 | 资源与持续运行 | 记录本轮真实墙钟时长/峰值/崩溃；不足30分钟不写达标 | MOCK_PASS：单run1811.806墙钟秒/1810sim s、61次活性采样、全六进程exit0；302.6sim s交付后返航等待，400墙钟秒后仅u3有1408次wait-until。CPU user294.57/system50.83s，childRSS319604KiB非并发总峰值。该通过限30min存活，不是30min持续复杂决策；live成本未测。 后续closed状态真实DSH+worker短跑12.13s，旧pending完成、新工具调用0；不回改耐久1408次成本。 | 四机原生30墙钟分钟持续运行及资源峰值 | 待审批 |
 | REQ-E04 | 离线回放 | 从本轮保留mock记录只读回放，与新run冷启动区别 | PARTIAL：实际aerokernel.replay用时37.505s：cut16012，终点/seal406.2sim s一致，48动作状态吻合；65024facts/1713messages/3523receipts；新模型/物理/相机调用0、源未改。源a2仍NOT_PASSED；完整冷启动另待。 | 原生保留run离线回放与完整容器冷启动 | 待审批 |
 | REQ-E05 | 交叉复核与PR | 逐50项证据与独立审阅、最终用户逐项审批 | PARTIAL：原50项ID/标题保持，逐项本轮范围/证据/原生待办与审批栏已完成；独立mock-review保留。用户审批全部PENDING_USER。 | 未完成原生项继续保留原状态并待用户决定 | 待审批 |
 
 ## 仍需审批和补验的事项
 
-已记录的运行均已终结，以下既定mock分支继续补验。当前结果构成阶段验收草稿，不将未执行分支补记通过：
+本轮指定mock运行已终结，逐项结果和失败均保留。以下限制继续明确列账：
 
-- C03：失路后二次attempt、完整no_valid_path、接受前丢分配仍缺指定案例。
-- C04：撤回换机链成功但投送因窗口超时未完成；载荷不可用、角色身份置换和真实模型改计划仍待。
-- C07：joint未释放分支仍待；其余分支分别标明五DSH或直接组件来源。
-- C08：a2实际低能bid排除与a3完整关闭收尾是不同运行，不能合成单次完整无eligible验收。
-- 检测固定开发图改进尚需独立留出集；时间/能耗代价仍未校准。容器及原生、live模型条件按50项表保留。
+- 原生PX4/Gazebo/ns-3、容器构建和隔离、真实传感器/物理条件尚未验证；真实模型环境未接入，原要求未取消。
+- C04低能撤回与换机成立，但后续通知超过10秒报价窗口，整场未交付。C08低能bid排除a2整run不完整；a3完整关闭收尾的第二事件没有收到bid，不能合成已知全机无eligible的一次运行。
+- C03接受前丢分配已证明未commit、未接受且不启动巡查；其180秒受限观察不代表原900秒自然任务截止。
+- 视觉改进在固定开发照片集上通过，独立留出集和原生指标未测。飞行时间/能耗代价未校准，不声称最优性。
+- 30分钟耐久为实际存活与任务后等待，非持续复杂决策；有序重启不等同突发崩溃恢复，跨重启源码未逐代事前冻结。
 
 用户可逐项选择接受本轮范围、要求修正或保留待办；所有审批栏当前均未填写。
