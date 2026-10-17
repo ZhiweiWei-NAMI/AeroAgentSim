@@ -70,6 +70,8 @@ def deterministic_bid(request: dict, vehicles: list[dict], policy: dict) -> dict
 
 def materialize(document: dict) -> None:
     """Explicit lowalt base keeps the prototype YAML readable instead of copying its registry."""
+    if any(e.get("config", {}).get("rescue", {}).get("profile") == "native_companion" for e in document["engines"].values()):
+        raise ValueError("native_companion uses the dedicated companion.coordinator entry; legacy LowaltTasks cannot own its actions")
     configs = [e["config"] for e in document["engines"].values()
                if e["plugin"] == "lowalt_tasks" and e["config"].get("rescue", {}).get("scene_base") == "lowalt"]
     if not configs:
@@ -109,6 +111,8 @@ def materialize(document: dict) -> None:
 
 def expand(document: dict) -> None:
     """Only rescue-enabled scenes gain these fields and independent harnesses."""
+    if any(row.get("config", {}).get("rescue", {}).get("profile") == "native_companion" for row in document["engines"].values()):
+        raise ValueError("native_companion must not construct legacy rescue UAV/centre/transport engines")
     owners = [(name, row["config"]) for name, row in document["engines"].items()
               if row["plugin"] == "lowalt_tasks" and "rescue" in row["config"]]
     if not owners:

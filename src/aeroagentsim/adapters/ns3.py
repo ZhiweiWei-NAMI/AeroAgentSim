@@ -31,6 +31,7 @@ class NS3Engine(LockstepEngine):
     def __init__(self, context: EngineBuild) -> None:
         config = context.config
         self.mobility = records(config["mobility"])
+        self.native_events: list[dict[str, Any]] = []
         self.refs = {ref.id: ref for ref in context.entities}
         self.lag_ns = integer(config["consumer_lag_ns"], "consumer lag", 1)
         step_ns = integer(config["step_ns"], "step_ns", 1)
@@ -117,6 +118,7 @@ class NS3Engine(LockstepEngine):
                     raise KernelError(
                         "ADAPTER_TIME", "packet availability differs from boundary"
                     )
+                self.native_events.append({"kind": event, "payload": dict(record)})
                 backend_id = self.packet_commands[record["packet_id"]]
                 command = self.pending[backend_id]
                 self.emit(ctx, event, record, record[time_key])

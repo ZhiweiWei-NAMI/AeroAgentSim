@@ -1,0 +1,134 @@
+# One shared simulator, one world owner, four private companion endpoints.
+name: aas-rescue
+x-companion: &companion
+  image: ${COMPANION_IMAGE:-aeroagentsim/companion:research}
+  build:
+    context: ../..
+    dockerfile: containers/companion/Dockerfile
+    additional_contexts:
+      # Build-only input. A prebuilt image runs without this host directory.
+      companion_models: ${MODEL_ROOT:-../../data/model-runtime}
+  init: true
+  user: '${AAS_UID:-1000}:${AAS_GID:-1000}'
+  environment: &companion-env
+    RUN_ID: ${RUN_ID:?set a fresh run identifier}
+    AGENT_MODE: ${AGENT_MODE:-rule}
+    DATA_DIR: /data
+    COMPANION_SOCKET: /run/aas-uav/agent.sock
+    RESCUE_CONFIG: ${SCENARIO:-/opt/aeroagentsim/scenarios/rescue/rooftop-flood-companion.yaml}
+    PROVIDER_PROFILE: ${PROVIDER_PROFILE:-default}
+  env_file:
+    - path: ${COMPANION_ENV_FILE:-./companion.env}
+      required: false
+  networks: [agents]
+services:
+  simulator:
+    user: '${AAS_UID:-1000}:${AAS_GID:-1000}'
+    image: aeroagentsim/px4-gazebo:standalone-companion
+    build:
+      context: ../../containers/px4-gazebo
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-4}
+    environment:
+      AAS_RUN_ID: ${RUN_ID}
+      AAS_PORT: 9000
+      AAS_COMPLETION_SOURCE: px4_estimate
+      AAS_SENSORS: '1'
+      GZ_SIM_RESOURCE_PATH: /assets/scene:/opt/px4-gazebo/share/gz/models:/opt/px4-gazebo/share/gz/worlds
+      AAS_DIAGNOSTIC_DIR: /diagnostics
+      NVIDIA_DRIVER_CAPABILITIES: graphics,utility
+    volumes:
+      - ${RUN_ROOT:?set the run data directory}/simulator:/diagnostics
+      - ${ASSET_ROOT:-./assets}:/assets/scene:ro
+      - ${WORLD_ROOT:-./worlds}:/worlds:ro
+    networks: [simulation]
+    healthcheck:
+      test: [CMD, /usr/bin/python3, -c, "from pathlib import Path; import sys; sys.exit(not any(row.split()[1].endswith(':2328') and row.split()[3]=='0A' for p in ('/proc/net/tcp','/proc/net/tcp6') if Path(p).exists() for row in Path(p).read_text().splitlines()[1:]))"]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+    init: true
+  radio:
+    user: '${AAS_UID:-1000}:${AAS_GID:-1000}'
+    image: aeroagentsim/ns3:standalone-companion
+    build:
+      context: ../../containers/ns3
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-4}
+    networks: [wireless]
+    healthcheck:
+      test: [CMD, /usr/bin/python3, -c, "from pathlib import Path; import sys; sys.exit(not any(row.split()[1].endswith(':2328') and row.split()[3]=='0A' for p in ('/proc/net/tcp','/proc/net/tcp6') if Path(p).exists() for row in Path(p).read_text().splitlines()[1:]))"]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+    init: true
+  coordinator:
+    <<: *companion
+    env_file: []
+    entrypoint: [python, -m, aeroagentsim.companion.coordinator]
+    command: [--scenario, '${SCENARIO:-/opt/aeroagentsim/scenarios/rescue/rooftop-flood-companion.yaml}',
+              --run-id, '${RUN_ID}', --data, /data, --socket-root, /run/aas,
+              --until-ns, '${UNTIL_NS:-900000000000}', --seed, '${SEED:-42}']
+    depends_on:
+      simulator: {condition: service_healthy}
+      radio: {condition: service_healthy}
+    networks: [simulation, wireless]
+    volumes:
+      - ${RUN_ROOT}/coordinator:/data
+      - ${RUN_ROOT}/sockets/u1:/run/aas/u1
+      - ${RUN_ROOT}/sockets/u2:/run/aas/u2
+      - ${RUN_ROOT}/sockets/u3:/run/aas/u3
+      - ${RUN_ROOT}/sockets/u4:/run/aas/u4
+      - ${RUN_ROOT}/sockets/centre:/run/aas/centre
+  centre-agent:
+    <<: *companion
+    command: [--role, centre]
+    depends_on: [coordinator]
+    environment:
+      <<: *companion-env
+      UAV_ID: centre
+    volumes:
+      - ${RUN_ROOT}/centre:/data
+      - ${RUN_ROOT}/sockets/centre:/run/aas-uav
+  uav-u1:
+    <<: *companion
+    depends_on: [coordinator]
+    environment:
+      <<: *companion-env
+      UAV_ID: u1
+    volumes:
+      - ${RUN_ROOT}/u1:/data
+      - ${RUN_ROOT}/sockets/u1:/run/aas-uav
+  uav-u2:
+    <<: *companion
+    depends_on: [coordinator]
+    environment:
+      <<: *companion-env
+      UAV_ID: u2
+    volumes:
+      - ${RUN_ROOT}/u2:/data
+      - ${RUN_ROOT}/sockets/u2:/run/aas-uav
+  uav-u3:
+    <<: *companion
+    depends_on: [coordinator]
+    environment:
+      <<: *companion-env
+      UAV_ID: u3
+    volumes:
+      - ${RUN_ROOT}/u3:/data
+      - ${RUN_ROOT}/sockets/u3:/run/aas-uav
+  uav-u4:
+    <<: *companion
+    depends_on: [coordinator]
+    environment:
+      <<: *companion-env
+      UAV_ID: u4
+    volumes:
+      - ${RUN_ROOT}/u4:/data
+      - ${RUN_ROOT}/sockets/u4:/run/aas-uav
+networks:
+  simulation:
+    internal: true
+  wireless:
+    internal: true
+  agents: {}

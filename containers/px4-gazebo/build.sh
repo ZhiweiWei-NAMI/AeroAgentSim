@@ -8,5 +8,6 @@ case "$image" in
 esac
 context=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 exec docker build --progress=plain --label aeroagentsim.job=release \
+    --build-arg BUILD_JOBS="${BUILD_JOBS:-4}" \
     --build-arg HTTP_PROXY --build-arg HTTPS_PROXY --build-arg NO_PROXY \
     -t "$image" "$context"

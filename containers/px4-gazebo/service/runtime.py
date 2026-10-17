@@ -18,6 +18,7 @@ class Runtime:
     def __init__(self):
         self.directory = None
         self.processes = self.gazebo = self.telemetry = self.commands = None
+        self.sensors = self.payload_adapter = None
         self.config = None
         self.origin_ns = self.sim_ns = 0
 
@@ -42,24 +43,56 @@ class Runtime:
         # PX4 emits an initial heartbeat at startup, but subsequent heartbeats
         # require simulation to run. Connect all gRPC streams before warmup.
         self.telemetry = Telemetry(config.vehicles)
+        self.telemetry.configure_estimates(
+            os.environ.get("AAS_RUN_ID", partition), partition, config.origin_wgs84,
+            lambda: self.gazebo.sim_ns,
+            altitude_datum=config.altitude_datum,
+            native_paused_callable=lambda: self.gazebo.stats is not None
+                and self.gazebo.stats[1] and not self.gazebo.step_in_flight,
+            log_directory=self.directory)
         await self.telemetry.connect()
+        if os.environ.get("AAS_SENSORS") == "1":
+            from .sensor_streams import SensorStreams
+            self.sensors = SensorStreams(self.gazebo, self.telemetry, config.vehicles,
+                os.environ.get("AAS_RUN_ID", partition), partition)
+            await self.sensors.start()
+        if config.payload:
+            from .payload_adapter import PayloadAdapter
+            self.payload_adapter = PayloadAdapter(config.payload, self.gazebo,
+                self.directory, partition, lambda: self.gazebo.sim_ns - self.origin_ns,
+                physics_step_ns=config.physics_step_ns)
+            await self.payload_adapter.start()
         steps = config.warmup // config.physics_step_ns
         for offset in range(0, steps, 125):
             await self.telemetry.heartbeat.pulse(self.gazebo.sim_ns)
+            await self.telemetry.pulse_estimates()
             await self.gazebo.step(min(125, steps - offset), config.physics_step_ns)
             self.processes.check()
         await self.telemetry.wait_ready()
         self.origin_ns = self.gazebo.sim_ns
         self.sim_ns = 0
+        self.telemetry.set_episode_origin(self.origin_ns)
+        if self.payload_adapter is not None:
+            carrier = next(v for v in config.vehicles if v.id == config.payload['carrier'])
+            await self.payload_adapter.initialize_attachment(carrier.model_name)
+        if self.sensors is not None:
+            self.sensors.set_episode_origin(self.origin_ns)
         poses = await self.poses()
-        altitude_offsets = {
-            vehicle.id: self.telemetry.cache[vehicle.id]["global_position"][
-                "absolute_altitude_m"
-            ]
-            - poses[vehicle.model_name]["position_enu"][2]
-            for vehicle in config.vehicles
-        }
-        self.commands = Commands(config, self.telemetry, altitude_offsets)
+        if os.environ.get("AAS_COMPLETION_SOURCE") == "px4_estimate":
+            if config.altitude_datum != "amsl":
+                raise ValueError("companion goto requires a declared world AMSL origin")
+            # The public world origin defines targets. Do not calibrate onboard
+            # commands against Gazebo's current vehicle position.
+            altitude_offsets = {v.id: config.origin_wgs84[2] for v in config.vehicles}
+        else:
+            altitude_offsets = {
+                vehicle.id: self.telemetry.cache[vehicle.id]["global_position"][
+                    "absolute_altitude_m"
+                ] - poses[vehicle.model_name]["position_enu"][2]
+                for vehicle in config.vehicles
+            }
+        self.commands = Commands(config, self.telemetry, altitude_offsets,
+            estimate_completion=os.environ.get("AAS_COMPLETION_SOURCE") == "px4_estimate")
         self.gazebo.drain_contacts()
         return {
             "reached_sim_ns": 0,
@@ -110,6 +143,7 @@ class Runtime:
         for offset in range(0, steps, 125):
             mark = time.perf_counter_ns()
             await self.telemetry.heartbeat.pulse(self.gazebo.sim_ns)
+            await self.telemetry.pulse_estimates()
             profile["heartbeat_release"] = (
                 profile.get("heartbeat_release", 0) + time.perf_counter_ns() - mark
             )
@@ -139,7 +173,16 @@ class Runtime:
             event["sim_ns"] -= self.origin_ns
         profile["contacts_drain"] = time.perf_counter_ns() - mark
         profile["runtime_total"] = time.perf_counter_ns() - started
+        payload_events, receiver_receipts = (self.payload_adapter.drain(self.sim_ns)
+            if self.payload_adapter else ([], []))
+        receiver_receipts = [{**r, "source_clock": "gazebo_sim",
+            "episode_origin_ns": self.origin_ns,
+            "contact_start_sim_ns": r["contact_start_ns"] - self.origin_ns,
+            "contact_end_sim_ns": r["contact_end_ns"] - self.origin_ns}
+            for r in receiver_receipts]
         result = {
+            "payload_events": payload_events,
+            "receiver_receipts": receiver_receipts,
             "reached_sim_ns": self.sim_ns,
             "telemetry": samples,
             "contacts": contacts,
@@ -153,9 +196,28 @@ class Runtime:
     def command(self, payload):
         return self.commands.accept(payload, self.sim_ns)
 
+    def cancel(self, payload):
+        return self.commands.cancel(payload, self.sim_ns)
+
+    def payload(self, payload):
+        if self.payload_adapter is None:
+            return {"status": "unavailable", "reason": "no physical payload configured"}
+        if payload["action"] == "release":
+            return self.payload_adapter.release(payload["vehicle"], payload["package_id"], self.sim_ns)
+        return self.payload_adapter.status(payload["vehicle"], payload["package_id"])
+
+    def capture(self, payload):
+        if self.sensors is None:
+            return {"status": "unavailable", "reason": "RGB-D sensor profile is disabled"}
+        vehicle = payload["vehicle"]
+        if payload.get("action", "poll") == "read":
+            return self.sensors.read_chunk(vehicle, payload["frame_id"], payload["kind"],
+                payload.get("offset", 0), payload.get("max_bytes", 262144))
+        return self.sensors.poll(vehicle, payload.get("after_sim_ns", -1))
+
     async def stop(self):
         errors = []
-        for subsystem in (self.commands, self.telemetry, self.gazebo, self.processes):
+        for subsystem in (self.commands, self.sensors, self.payload_adapter, self.telemetry, self.gazebo, self.processes):
             if subsystem is not None:
                 try:
                     await subsystem.stop()
@@ -166,8 +228,9 @@ class Runtime:
             if diagnostic:
                 destination = Path(diagnostic) / self.directory.name
                 destination.mkdir(parents=True, exist_ok=True)
-                for path in self.directory.glob("*.log"):
-                    shutil.copy2(path, destination / path.name)
+                for pattern in ("*.log", "*.jsonl"):
+                    for path in self.directory.glob(pattern):
+                        shutil.copy2(path, destination / path.name)
                 sdf = self.directory / "world.sdf"
                 if sdf.is_file():
                     shutil.copy2(sdf, destination / sdf.name)

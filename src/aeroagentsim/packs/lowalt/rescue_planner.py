@@ -1,4 +1,6 @@
-"""Small flood-rescue scheduler using straight-line, constant-speed travel.
+"""Bounded flood-rescue scheduler with optional received-only feasible leg costs.
+
+Legacy authored scenes retain straight-line, constant-speed travel.
 
 SOC is an eligibility threshold, not an energy prediction. Relay duration is
 setup; its UAV stays occupied until mission end, extended by runtime until ack.
@@ -10,13 +12,15 @@ from itertools import permutations, product
 from math import dist, inf, isfinite
 
 
-def solve_plan(vehicles: list[dict], bids: list[dict], graph: dict, now_s: float) -> dict:
+def solve_plan(vehicles: list[dict], bids: list[dict], graph: dict, now_s: float, *, leg_costs: dict | None = None) -> dict:
     """Enumerate assignments and orders for the small, schema-validated graph.
 
     Departures wait for commitments and dependencies, with relay setup as its
     readiness milestone. Assignment times are absolute simulation seconds;
     objective_s is elapsed makespan. This is not a general-purpose PDDL planner.
     """
+    # Native companions supply measured/planned local leg costs. The legacy
+    # authored profile retains its original constant-speed estimate.
     evaluated = 0
 
     def infeasible(reason: str) -> dict:
@@ -78,6 +82,8 @@ def solve_plan(vehicles: list[dict], bids: list[dict], graph: dict, now_s: float
         for order in orders:
             evaluated += 1
             state = initial.copy()
+            previous = {identity: "current" for identity in fleet}
+            remaining_energy = {identity: vehicle.get("available_energy_j") for identity, vehicle in fleet.items()}
             ready, held, schedule = [now_s] * len(actions), set(), []
             for index in order:
                 action, identity = actions[index], selected[index]
@@ -87,7 +93,22 @@ def solve_plan(vehicles: list[dict], bids: list[dict], graph: dict, now_s: float
                 free_at, position, remaining = state[identity]
                 dependency = max(ready[parent] for parent in parents[index]) if parents[index] else now_s
                 departure = max(free_at, availability[(identity, role)], dependency)
-                start = departure + dist(position, action["target"]) / vehicle["speed_m_s"]
+                if leg_costs is None:
+                    travel_s = dist(position, action["target"]) / vehicle["speed_m_s"]
+                else:
+                    leg = leg_costs.get((identity, previous[identity], action["id"]))
+                    if leg is None or leg.get("travel_s") is None or leg.get("energy_j") is None:
+                        break
+                    travel_s = leg["travel_s"]
+                    if not isfinite(travel_s) or travel_s < 0 or not isfinite(leg["energy_j"]) or leg["energy_j"] < 0:
+                        break
+                    budget = remaining_energy[identity]
+                    if budget is not None:
+                        if not isfinite(budget) or leg["energy_j"] > budget:
+                            break
+                        remaining_energy[identity] = budget - leg["energy_j"]
+                start = departure + travel_s
+                previous[identity] = action["id"]
                 end = start + action["duration_s"]
                 ready[index] = end
                 state[identity] = (end, action["target"], remaining - (payload if role == "deliver" else 0))

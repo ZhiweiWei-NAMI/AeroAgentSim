@@ -82,10 +82,12 @@ class Config:
     warmup: int
     physics_step_ns: int
     origin_wgs84: tuple
+    payload: dict | None = None
+    altitude_datum: str | None = None
 
 
 def prepare(payload, directory):
-    fields(payload, ("seed", "world", "vehicles", "warmup"))
+    fields(payload, ("seed", "world", "vehicles", "warmup"), ("payload", "altitude_datum"))
     seed = integer(payload["seed"], "seed", maximum=2**32 - 1)
     warmup = integer(payload["warmup"], "warmup", minimum=1, maximum=120_000_000_000)
     world_ref = payload["world"]
@@ -158,6 +160,12 @@ def prepare(payload, directory):
         ET.SubElement(include, "uri").text = f"model://{model}"
         ET.SubElement(include, "name").text = vehicle.model_name
         ET.SubElement(include, "pose").text = " ".join(format(v, ".17g") for v in pose)
+    if __import__("os").environ.get("AAS_SENSORS") == "1":
+        from .configure_rgbd import attach_rgbd
+        attach_rgbd(world, vehicles, directory)
+    if payload.get("payload") is not None:
+        from .payload_adapter import attach_payload
+        attach_payload(world, vehicles, directory, payload["payload"])
     # Preserve the installed system list, changing only pose publication.
     # SceneBroadcaster's dynamic topic has native model poses and timestamps;
     # 1000 Hz bounds wall-time publication delay (pose/info is fixed at 60 Hz).
@@ -172,4 +180,5 @@ def prepare(payload, directory):
     server.write(directory / "server.config", encoding="utf-8", xml_declaration=True)
     destination = directory / "world.sdf"
     ET.ElementTree(root).write(destination, encoding="utf-8", xml_declaration=True)
-    return Config(seed, name, destination, vehicles, warmup, step, origin)
+    return Config(seed, name, destination, vehicles, warmup, step, origin,
+                  payload.get("payload"), payload.get("altitude_datum"))

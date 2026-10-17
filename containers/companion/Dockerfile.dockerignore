@@ -1,0 +1,27 @@
+# Only installable source, skill manuals and public scenario templates enter
+# this build context. Models arrive through the separate named context.
+**
+!pyproject.toml
+!README.md
+!containers/
+!containers/companion/
+!containers/companion/requirements.txt
+!aerokernel/
+!aerokernel/pyproject.toml
+!aerokernel/README.md
+!aerokernel/aerokernel/
+!aerokernel/aerokernel/**
+!src/
+!src/aeroagentsim/
+!src/aeroagentsim/**
+!skills/
+!skills/rescue/
+!skills/rescue/**
+!scenarios/
+!scenarios/adapters/
+!scenarios/adapters/px4-flight.yaml
+!scenarios/adapters/authored-registry.json
+!scenarios/rescue/
+!scenarios/rescue/rooftop-flood-companion.yaml
+**/__pycache__/
+**/*.pyc

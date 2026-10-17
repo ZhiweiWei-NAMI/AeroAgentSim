@@ -1,0 +1,130 @@
+format: aeroagentsim.rescue-companion/v1
+profile: native_companion
+seed: 42
+until_ns: 900000000000
+max_real_time_factor: 1.0
+agent_mode: rule
+model_path: /models/rtdetrv2_r18vd_120e_coco.onnx
+embedding_path: /models/bge-small-zh-v1.5
+# This entry is consumed by companion.coordinator, never legacy rescue.expand.
+# Missing native services/models remain visible blockers; no authored detections.
+simulator:
+  host: simulator
+  port: 9000
+  world: /worlds/rooftop-flood.sdf
+  altitude_datum: amsl
+  warmup_ns: 10000000000
+radio:
+  host: radio
+  port: 9000
+  nodes:
+    - {id: centre, position_enu: [0, 0, 0]}
+    - {id: drop-receiver-1, position_enu: [60, 60, 15.05]}
+  reset:
+    channel: {tx_power_dbm: 20.0}
+    propagation: {exponent: 2.4}
+    # Authored building attenuation is a research channel input, not a measured RF model.
+    scene_volumes:
+      - {min_enu: [25, 10, 0], max_enu: [35, 50, 35], loss_db: 35.0}
+public_map:
+  id: rooftop-small-area-development
+  rescue_roof_id: roof-1
+  clearance_m: 1.0
+  obstacles:
+    - {id: obstructing-building, lower: [25, 10, 0], upper: [35, 50, 35]}
+    - {id: roof-1, lower: [40, 40, 0], upper: [80, 80, 15]}
+  search_polygon: [[35, 35], [85, 35], [85, 85], [35, 85]]
+  search_altitude_m: 40
+  search_row_spacing_m: 10
+  release_altitude_m: 18
+  drop_edge_margin_m: 1.0
+  receiver_polygon: [[55, 55], [65, 55], [65, 65], [55, 65]]
+  relay_candidates: [[10, 30, 30], [10, 60, 40], [60, 10, 40], [90, 60, 45]]
+  return_position_enu_m: [0, 0, 0]
+incident:
+  event_id: flood-rooftop-1
+  discover_secondary_clue: false
+  secondary_clue_separation_m: 15.0
+  secondary_clue_ttl_ns: 120000000000
+  secondary_demand_source: null
+  description: Search the reported flooded rooftop area, confirm people from images and support with supplies when safe.
+  demand_source: Public task notice reports the area is flood-isolated and requests emergency supplies.
+  deadline_ns: 900000000000
+  payload_kg: 1.0
+  initial_graph:
+    actions:
+      - {id: inspect-area, role: inspect, target: [60, 60, 40], duration_s: 30, after: []}
+    payload_kg: 1.0
+payload:
+  package_id: rescue-package-1
+  carrier: u4
+  receiver_pose: [60, 60, 15.05, 0, 0, 0]
+  receiver_size: [10, 10, 0.1]
+  attachment_offset_enu_m: [0, 0, -0.35]
+vehicles:
+  u1:
+    spawn: [-9, 0, 0.2, 0, 0, 0]
+    model: x500
+    capabilities: [deliver]
+    speed_m_s: 5
+    energy_per_m_j: 12
+    hover_power_w: 250
+    hover_power_source: declared initial research estimate, not measured PX4 power
+    capacity_j: 240000
+    initial_payload_kg: 0.0
+    energy_model: declared distance-proportional research estimate, not PX4 measured consumption
+    payload_capacity_kg: 2
+    initial_task:
+      task_id: protected-original-1
+      task_revision: 1
+      commitment: {protected: true, busy_until_s: 900}
+      workflow:
+        - {tool: flight-command, request: {action: arm}}
+        - {tool: flight-command, request: {action: takeoff, params: {altitude_m: 10}}}
+        - {tool: flight-command, request: {action: hold}}
+  u2:
+    spawn: [-3, 0, 0.2, 0, 0, 0]
+    model: x500
+    capabilities: [inspect]
+    speed_m_s: 5
+    energy_per_m_j: 12
+    hover_power_w: 250
+    hover_power_source: declared initial research estimate, not measured PX4 power
+    capacity_j: 240000
+    initial_payload_kg: 0.0
+    energy_model: declared distance-proportional research estimate, not PX4 measured consumption
+    payload_capacity_kg: 0
+    initial_task: {task_id: survey-ready-2, task_revision: 1, intent: offer}
+  u3:
+    spawn: [3, 0, 0.2, 0, 0, 0]
+    model: x500
+    capabilities: [relay]
+    speed_m_s: 5
+    energy_per_m_j: 12
+    hover_power_w: 250
+    hover_power_source: declared initial research estimate, not measured PX4 power
+    capacity_j: 240000
+    initial_payload_kg: 0.0
+    energy_model: declared distance-proportional research estimate, not PX4 measured consumption
+    payload_capacity_kg: 0
+    initial_task:
+      task_id: relay-ready-3
+      task_revision: 1
+      intent: offer
+      recovery_policy: {candidate_source: public_map.relay_candidates, readiness: actual_probe_round_trip, hold_until: end_to_end_ack_or_accepted_handover}
+  u4:
+    spawn: [9, 0, 0.6, 0, 0, 0]
+    model: x500
+    capabilities: [deliver]
+    speed_m_s: 5
+    energy_per_m_j: 12
+    hover_power_w: 250
+    hover_power_source: declared initial research estimate, not measured PX4 power
+    capacity_j: 240000
+    initial_payload_kg: null
+    energy_model: declared distance-proportional research estimate, not PX4 measured consumption
+    payload_capacity_kg: 2
+    initial_task: {task_id: supply-ready-4, task_revision: 1, intent: offer}
+perception:
+  engineering_horizontal_margin_m: 3.0
+  engineering_margin_basis: initial research allowance; not measured covariance; must be calibrated against C10
