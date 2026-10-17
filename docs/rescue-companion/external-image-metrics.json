@@ -1,0 +1,31 @@
+{
+  "dataset": "SeaDronesSee Object Detection v2",
+  "split": "official validation subset",
+  "scope": "external real-image person-to-swimmer baseline; not rooftop or localization accuracy",
+  "confidence": 0.5,
+  "matching_iou": 0.5,
+  "mapping": "COCO contiguous person label 0 to SeaDronesSee swimmer category 1",
+  "ignored_categories": "Non-swimmer categories excluded from positive GT; only explicit category-0 regions ignore predictions. Predictions on boats/buoys still count as FP.",
+  "images": 200,
+  "negative_images": 67,
+  "tp": 68,
+  "fp": 79,
+  "fn": 562,
+  "precision": 0.46258503401360546,
+  "recall": 0.10793650793650794,
+  "elapsed_wall_s": 104.12013888599995,
+  "providers": [
+    "CPUExecutionProvider"
+  ],
+  "model_sha256": "747d86394cea94326a5e9edb5f3fbe22fb6455d9a4f15570e45c5d2adcf19e25",
+  "privacy": {
+    "ort_telemetry": "disabled",
+    "native_network": "seccomp-denied"
+  },
+  "selection": {
+    "path": "seadronessee-odv2/subset-200-annotations.json",
+    "bytes": 326288,
+    "sha256": "9ecf9040ec9162b9f1b9bc2aa64dd6edecc4c46676a45929c94180b61c5a3a57"
+  },
+  "evidence_relative_path": "runs/acceptance/sds200-inference-a2"
+}

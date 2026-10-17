@@ -1,0 +1,151 @@
+{
+  "schema": "aeroagentsim.companion-models/v1",
+  "runtime_downloads": false,
+  "retrieval": {
+    "model": "BAAI/bge-small-zh-v1.5",
+    "converted_repository": "Qdrant/bge-small-zh-v1.5",
+    "revision": "46fbe35fd4374a00fee7de77dfddaeb6dd6a2c59",
+    "license": "MIT",
+    "directory": "${COMPANION_ASSET_ROOT}/bge-small-zh-v1.5",
+    "files": [
+      {
+        "path": "${COMPANION_ASSET_ROOT}/bge-small-zh-v1.5/README.md",
+        "bytes": 24,
+        "sha256": "d8d7a46d41a1a37fe4f0a5f637bf55c649310185329127d8a2204632e480be17"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/bge-small-zh-v1.5/config.json",
+        "bytes": 739,
+        "sha256": "9088751d39abbf86ec3d19ffca92ad62ad19075f7e59712e6c71217fa125d1d3"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/bge-small-zh-v1.5/model_optimized.onnx",
+        "bytes": 94781076,
+        "sha256": "1294ea4b6331115a353d81f96b85e8c8d7fdcc284453d5b2fab5b016230aad38"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/bge-small-zh-v1.5/ort_config.json",
+        "bytes": 1234,
+        "sha256": "97e78d1d21c2eb719e865b018f17915df6a12ed987446eb7f3f3a783a5afb1e1"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/bge-small-zh-v1.5/special_tokens_map.json",
+        "bytes": 125,
+        "sha256": "b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/bge-small-zh-v1.5/tokenizer.json",
+        "bytes": 439125,
+        "sha256": "48cea5d44424912a6fd1ea647bf4fe50b55ab8b1e5879c3275f80e339e8fae26"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/bge-small-zh-v1.5/tokenizer_config.json",
+        "bytes": 367,
+        "sha256": "e6f3b96db926a37d4039995fbf5ad17de158dfb8f6343d607e4dbaad18d75f5a"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/bge-small-zh-v1.5/vocab.txt",
+        "bytes": 109540,
+        "sha256": "45bbac6b341c319adc98a532532882e91a9cefc0329aa57bac9ae761c27b291c"
+      }
+    ],
+    "local_inference": {
+      "inputs": 2,
+      "dimension": 512,
+      "provider": "CPUExecutionProvider"
+    },
+    "fastembed_version": "0.9.0",
+    "offline_local_invocation": {
+      "provider": "CPUExecutionProvider",
+      "rows": 2,
+      "dimension": 512,
+      "native_network_guard": "confirmed_EPERM",
+      "ort_telemetry": "disabled",
+      "local_files_only": true,
+      "sample_vector_norms": [
+        0.9999999701976772,
+        1.0
+      ]
+    }
+  },
+  "detector": {
+    "source": "https://github.com/lyuwenyu/RT-DETR.git",
+    "revision": "df2a96c8c3a098567a1149bf0248da6efe6d495d",
+    "license": "Apache-2.0 (official RT-DETR repository)",
+    "checkpoint_url": "https://github.com/lyuwenyu/storage/releases/download/v0.2/rtdetrv2_r18vd_120e_coco_rerun_48.1.pth",
+    "checkpoint": {
+      "path": "${COMPANION_ASSET_ROOT}/rtdetrv2_r18vd_120e_coco_rerun_48.1.pth",
+      "bytes": 81198974,
+      "sha256": "2ace52184b620204004509b72752ac7bfe64aadaf7fc1d076b18df8ab5a5c77e"
+    },
+    "configuration": "configs/rtdetrv2/rtdetrv2_r18vd_120e_coco.yml",
+    "contract": {
+      "images": {
+        "dtype": "float32",
+        "shape": [
+          1,
+          3,
+          640,
+          640
+        ]
+      },
+      "orig_target_sizes": {
+        "dtype": "int64",
+        "order": [
+          "width",
+          "height"
+        ]
+      },
+      "preprocessing": "PIL RGB, bilinear resize to 640x640, /255, NCHW; no letterbox or mean/std",
+      "outputs": [
+        "labels",
+        "boxes",
+        "scores"
+      ],
+      "boxes": "original-image xyxy pixels",
+      "labels": "contiguous COCO 0..79; deploy returns before COCO category remap",
+      "person_label": 0,
+      "person_coco_category_id": 1
+    },
+    "export_status": "EXPORTED",
+    "export_command": [
+      "${COMPANION_ASSET_ROOT}/export-venv/bin/python",
+      "tools/export_onnx.py",
+      "-c",
+      "configs/rtdetrv2/rtdetrv2_r18vd_120e_coco.yml",
+      "-r",
+      "${COMPANION_ASSET_ROOT}/rtdetrv2_r18vd_120e_coco_rerun_48.1.pth",
+      "-o",
+      "${COMPANION_ASSET_ROOT}/rtdetrv2_r18vd_120e_coco.onnx",
+      "-u",
+      "PResNet.pretrained=False",
+      "--check"
+    ],
+    "onnx": {
+      "path": "${COMPANION_ASSET_ROOT}/rtdetrv2_r18vd_120e_coco.onnx",
+      "bytes": 80562949,
+      "sha256": "747d86394cea94326a5e9edb5f3fbe22fb6455d9a4f15570e45c5d2adcf19e25"
+    },
+    "export_log": "${COMPANION_ASSET_ROOT}/export.log"
+  },
+  "actual_equivalence": {
+    "images": 10,
+    "all_equivalent": true,
+    "confidence": 0.3,
+    "max_box_delta_px": 0.000244140625,
+    "max_score_delta": 2.4437904357910156e-06,
+    "scope": "export equivalence on real images, not detector accuracy or simulation acceptance",
+    "strict_load": {
+      "missing": [],
+      "unexpected": []
+    },
+    "evidence_attempt": "model-parity-a2",
+    "native_network": "seccomp-denied"
+  },
+  "runtime_mount": "${COMPANION_ASSET_ROOT}/model-runtime",
+  "privacy": {
+    "onnxruntime_telemetry": "disabled through official Python API before sessions",
+    "offline_evaluation": "process-local libseccomp denies socket/connect/sendto/sendmsg/sendmmsg before importing ORT",
+    "scope": "The runtime companion still needs its authorized service connections; only standalone offline evaluation denies all process networking."
+  }
+}
