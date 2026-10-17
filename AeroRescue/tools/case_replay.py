@@ -20,6 +20,9 @@ def replay_retained(source: Path, output: Path) -> dict:
     source = source.resolve()
     if not (source / "run-manifest.json").is_file():
         raise ValueError("replay source needs its retained run-manifest.json")
+    source_manifest = json.loads((source / "run-manifest.json").read_text())
+    backend = "mock" if source_manifest.get("backend") == "mock" else "native"
+    evidence_label = "MOCK" if backend == "mock" else "native"
     if output.resolve().is_relative_to(source):
         raise ValueError("replay output must be outside the retained source run")
     output.mkdir(parents=True, exist_ok=False)
@@ -41,7 +44,7 @@ def replay_retained(source: Path, output: Path) -> dict:
     reconstruction = None
     status, reason = (
         "BLOCKED",
-        "No unique nonempty native kernel journal to reconstruct",
+        f"No unique nonempty {evidence_label} kernel journal to reconstruct",
     )
     if len(journals) == 1 and journals[0].stat().st_size:
         journal = journals[0]
@@ -57,6 +60,8 @@ def replay_retained(source: Path, output: Path) -> dict:
                     for name in ("facts", "messages", "receipts"):
                         projected_counts[name] += len(projected[name])
             reconstruction = {
+                "backend": backend,
+                "evidence_source": f"{evidence_label} retained kernel journal",
                 "journal": str(journal.relative_to(source)),
                 "cut": view.cut.index,
                 "sim_ns": view.instant.ns,
@@ -69,10 +74,12 @@ def replay_retained(source: Path, output: Path) -> dict:
             if kernel.incomplete:
                 missing.append("Kernel journal reconstruction is incomplete")
             if view.instant.ns <= 0 or not projected_counts["facts"]:
-                missing.append("No nonzero native simulation progress/facts to replay")
+                missing.append(
+                    f"No nonzero {evidence_label} simulation progress/facts to replay"
+                )
             timing_path = journal.parent / "timing.json"
             if not timing_path.is_file():
-                missing.append("Native terminal timing is missing")
+                missing.append(f"{evidence_label} terminal timing is missing")
             else:
                 timing = json.loads(timing_path.read_text())
                 expected_ns = round(timing["sim_elapsed_s"] * 1_000_000_000)
@@ -81,13 +88,15 @@ def replay_retained(source: Path, output: Path) -> dict:
                     contradictions.append(
                         "Reconstructed kernel time differs from retained terminal time"
                     )
-            native_counts = {}
-            for name in ("native-flight-events.jsonl", "native-radio-events.jsonl"):
+            source_counts = {}
+            for name in (f"{backend}-flight-events.jsonl", f"{backend}-radio-events.jsonl"):
                 path = journal.parent / name
-                native_counts[name] = len(records(path)) if path.is_file() else 0
-            reconstruction["native_source_records"] = native_counts
-            if not all(native_counts.values()):
-                missing.append("Retained native flight/radio source events are missing")
+                source_counts[name] = len(records(path)) if path.is_file() else 0
+            reconstruction[f"{backend}_source_records"] = source_counts
+            if not all(source_counts.values()):
+                missing.append(
+                    f"Retained {evidence_label} flight/radio source events are missing"
+                )
             operations_path = journal.parent / "flight/operations.jsonl"
             latest = (
                 {row["operation_id"]: row for row in records(operations_path)}
@@ -125,7 +134,7 @@ def replay_retained(source: Path, output: Path) -> dict:
                     )
             if not reconstruction["actions"]:
                 missing.append(
-                    "No native flight operations can be compared with reconstructed actions"
+                    f"No {evidence_label} flight operations can be compared with reconstructed actions"
                 )
             status = "FAIL" if contradictions else "BLOCKED" if missing else "FINISHED"
             reason = "; ".join(contradictions + missing) or None
@@ -165,7 +174,6 @@ def replay_retained(source: Path, output: Path) -> dict:
         raise RuntimeError(
             "source logs changed during replay; stop their owning services first"
         )
-    source_manifest = json.loads((source / "run-manifest.json").read_text())
     states = [
         json.loads(p.read_text()) for p in selected if p.name == "runtime-state.json"
     ]
@@ -174,7 +182,21 @@ def replay_retained(source: Path, output: Path) -> dict:
         "source_run_id": source_manifest["run_id"],
         "status": status,
         "reason": reason,
-        "external_observations": "timeline.jsonl retains companion/native logs; agent decisions and camera samples are not regenerated",
+        "backend": backend,
+        "evidence_source": f"{evidence_label} retained logs; offline kernel reconstruction only",
+        "scope": "Reconstruction success does not establish rescue success or native acceptance.",
+        "source_business_outcome": {
+            key: source_manifest.get(key)
+            for key in (
+                "execution_status",
+                "stop_reason",
+                "completion",
+                "task_outcome",
+                "closure_complete",
+                "mock_acceptance",
+            )
+        },
+        "external_observations": f"timeline.jsonl retains companion/{evidence_label} logs; agent decisions and camera samples are not regenerated",
         "kernel_reconstruction": reconstruction,
         "records_read": counts,
         "source_records_unchanged": True,
@@ -189,6 +211,7 @@ def replay_retained(source: Path, output: Path) -> dict:
             }
             for r in states
         ],
+        "source_evidence_review_scope": "Existing native acceptance review; MOCK replay cannot satisfy native requirements",
         "source_evidence_review": verify(source),
     }
     write_json(output / "replay.json", report)

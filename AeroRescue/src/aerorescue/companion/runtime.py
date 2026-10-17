@@ -592,7 +592,18 @@ class CompanionRuntime:
 
     def _relay_decision(self) -> dict[str, Any] | None:
         results = self.state["results"]
-        peers = ["centre", *[identity for identity, profile in self.config.get("vehicles", {}).items() if "inspect" in profile.get("capabilities", []) and identity != self.uav_id]]
+        task = self.state["task"]
+        actions = task.get("incident", {}).get("initial_graph", {}).get("actions", task.get("assignments", []))
+        roles = {action.get("role") for action in actions}
+        # Public endpoint/capability roster and this received phase only. Never
+        # consult another vehicle's private commitment or runtime state.
+        service_peers = [uid for uid, profile in self.config.get("vehicles", {}).items()
+                         if uid != self.uav_id and "inspect" in roles and "inspect" in profile.get("capabilities", [])]
+        if "deliver" in roles and self.config.get("payload"):
+            service_peers.extend(self.config["payload"][key] for key in ("carrier", "receiver_id"))
+        service_peers = list(dict.fromkeys(uid for uid in service_peers if uid != self.uav_id))
+        if not service_peers:
+            return None
         local = self.state.get("self_state", {})
         for action in ("arm", "takeoff"):
             if action == "arm" and local.get("armed") is True or action == "takeoff" and local.get("landed_state") in {"IN_AIR", "in_air"}:
@@ -605,6 +616,9 @@ class CompanionRuntime:
         monitor = self.state.setdefault("relay_monitor", {"generation": 0, "candidate_offset": 0, "probe_round": 0})
         candidates = self.state["relay_policy"]["public_map"]["relay_candidates"]
         generation = monitor["generation"]
+        service_index = monitor.get("service_index", 0) % len(service_peers)
+        service_peer = service_peers[service_index]
+        peers = ["centre", service_peer]
         if not self.state.get("relay_held") or monitor.get("recovery_required"):
             if self.state["sim_ns"] < monitor.get("retry_after_ns", 0):
                 return None
@@ -626,22 +640,28 @@ class CompanionRuntime:
             if result is None or result["status"] != "succeeded":
                 return None
             monitor.update(last_result=result, checked_ns=self.state["sim_ns"])
-        for peer in peers:
-            key = "relay_notice_" + str(generation) + "_" + str(monitor["probe_round"]) + "_" + peer
-            if key not in results:
-                return self._policy_call("send-evidence", {"destination": peer, "route": [self.uav_id, peer], "data": {"kind": "relay_ready", "probe_results": result["probe_results"], "observed_at_ns": monitor["checked_ns"], "held_until": "ack_cancel_or_handover"}}, key)
-        if self.state["sim_ns"] - monitor["checked_ns"] < 5 * NS:
+        oldest_ack = min((row["result"].get("ack_received_ns", -5 * NS) for row in result["probe_results"]), default=-5 * NS)
+        measured_peers = {row["peer"] for row in result["probe_results"]}
+        if set(peers).issubset(measured_peers) and self.state["sim_ns"] < oldest_ack + 5 * NS:
+            for peer in peers:
+                key = "relay_notice_" + str(generation) + "_" + str(monitor["probe_round"]) + "_" + peer
+                if key not in results:
+                    return self._policy_call("send-evidence", {"destination": peer, "route": [self.uav_id, peer], "data": {"kind": "relay_ready", "service_peer": service_peer, "probe_results": result["probe_results"], "observed_at_ns": monitor["checked_ns"], "held_until": "ack_cancel_or_handover"}}, key)
             return None
+        # A new accepted phase clears tool results, not the held radio duty.
+        # Its old proofs may already be stale; remeasure instead of announcing.
         round_id = monitor["probe_round"]
-        for peer in peers:
+        next_index = (service_index + 1) % len(service_peers)
+        next_peers = ["centre", service_peers[next_index]]
+        for peer in next_peers:
             key = "relay_monitor_" + str(round_id) + "_" + peer
             if key not in results:
                 return self._policy_call("probe-route", {"destination": peer, "route": [self.uav_id, peer]}, key)
             if results[key]["status"] != "succeeded":
-                monitor.update(generation=generation + 1, recovery_required=True, candidate_offset=monitor["candidate_offset"] + result.get("current_candidate", 0) + 1, last_result=None, probe_round=round_id + 1)
+                monitor.update(generation=generation + 1, recovery_required=True, candidate_offset=monitor["candidate_offset"] + result.get("current_candidate", 0) + 1, last_result=None, probe_round=round_id + 1, service_index=next_index)
                 self._log("decisions.jsonl", {"decision": "relay_route_lost_reposition_under_received_policy", "peer": peer, "probe": results[key]})
                 return None
-        monitor.update(checked_ns=self.state["sim_ns"], probe_round=round_id + 1, last_result={"probe_results": [{"peer": peer, "result": results["relay_monitor_" + str(round_id) + "_" + peer]} for peer in peers], "current_candidate": result.get("current_candidate", 0)})
+        monitor.update(checked_ns=self.state["sim_ns"], probe_round=round_id + 1, service_index=next_index, last_result={"probe_results": [{"peer": peer, "result": results["relay_monitor_" + str(round_id) + "_" + peer]} for peer in next_peers], "current_candidate": result.get("current_candidate", 0)})
         # Publish the newly measured round immediately. Waiting another TTL here
         # expires its first probe before either endpoint can receive readiness.
         return self._relay_decision()

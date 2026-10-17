@@ -127,6 +127,8 @@ class Coordinator:
         self.bootstrap_messages: list[str] = []
         self.release_tasks: dict[str, dict[str, Any]] = {}
         self.receiver_transfers: dict[str, dict[str, Any]] = {}
+        self.receiver_id = scene.get('payload', {}).get('receiver_id', 'drop-receiver-1')
+        self.receiver_routes: dict[str, dict[str, Any]] = {}
         self.radio_fault_message: str | None = None
         self.radio_fault_fired = False
 
@@ -354,8 +356,9 @@ class Coordinator:
                     # or gain a fresh radio retry budget under a new identity.
                     message_id = 'receipt-' + uuid.uuid5(uuid.NAMESPACE_URL,
                         json.dumps([self.run_id, receipt['receipt_id'], destination])).hex
-                    self.transport.queue_message('drop-receiver-1', destination, 'receipt', receipt,
-                        deadline_ns=self.until_ns, now_ns=now_ns, message_id=message_id, **task)
+                    self.transport.queue_message(self.receiver_id, destination, 'receipt', receipt,
+                        deadline_ns=self.until_ns, now_ns=now_ns, message_id=message_id,
+                        route=self.receiver_route(task['event_id'], destination, now_ns), **task)
                     transfers.append({'destination': destination, 'message_id': message_id})
                 self.receiver_transfers.setdefault(receipt['receipt_id'], {
                     **task, 'receipt_id': receipt['receipt_id'], 'package_id': receipt['package_id'],
@@ -367,6 +370,7 @@ class Coordinator:
             self.log('native-radio-events.jsonl', event)
             self.transport.consume_native_event(event['kind'], event['payload'])
         self.radio.native_events.clear()
+        self.collect_receiver_routes(now_ns)
         self.confirm_receiver_transfers(now_ns)
         for uid in self.bridge.uav_ids:
             for delivered in self.transport.pop_delivered(uid):
@@ -390,6 +394,57 @@ class Coordinator:
             if status in TERMINAL:
                 del self.commands[operation_id]
 
+    def receiver_route(self, event_id: str, destination: str, now_ns: int) -> list[str]:
+        """Select a candidate from the receiver's own radio-delivered knowledge."""
+        ready = self.receiver_routes.get(event_id)
+        if destination == 'centre' and ready and now_ns <= ready['valid_until_ns']:
+            return [self.receiver_id, ready['relay'], destination]
+        return [self.receiver_id, destination]
+
+    def collect_receiver_routes(self, now_ns: int) -> None:
+        """The receiver learns routes like an agent, never from global readiness."""
+        for message in self.transport.pop_delivered(self.receiver_id):
+            # Persist the local delivered envelope before acknowledging its inbox.
+            self.log('receiver-radio-inbox.jsonl', message)
+            data, relay = message.get('data', {}), message['source']
+            proofs = data.get('probe_results', [])
+            valid_until = data.get('valid_until_ns', -1)
+            received_ns = message['received_ns']
+            valid = (message['kind'] == 'report' and data.get('kind') == 'relay_ready'
+                and data.get('service_peer') == self.receiver_id
+                and 'relay' in self.scene['vehicles'].get(relay, {}).get('capabilities', [])
+                and received_ns <= now_ns <= valid_until
+                and {p.get('destination') for p in proofs} == {'centre', self.receiver_id}
+                and all(p.get('source') == relay and p.get('status') == 'succeeded'
+                    and p.get('probe_only') is True and p.get('ack_received_ns') is not None
+                    and 0 <= now_ns - p['ack_received_ns'] <= 5_000_000_000
+                    and p['ack_received_ns'] <= received_ns
+                    and valid_until <= p['ack_received_ns'] + 5_000_000_000 for p in proofs))
+            if valid:
+                event_id = message['event_id']
+                previous = self.receiver_routes.get(event_id)
+                if previous is None or valid_until >= previous['valid_until_ns']:
+                    self.receiver_routes[event_id] = {'relay': relay, 'valid_until_ns': valid_until,
+                        'message_id': message['message_id']}
+                    # Only this receiver's own outbox may be rerouted. Keep the
+                    # original IDs, deadlines and retry counters; update_route
+                    # starts an actual round-trip probe over the candidate path.
+                    for receipt in self.receiver_transfers.values():
+                        if receipt['event_id'] != event_id:
+                            continue
+                        mids = [t['message_id'] for t in receipt['transfers']]
+                        if receipt.get('confirmation_message_id'):
+                            mids.append(receipt['confirmation_message_id'])
+                        for mid in mids:
+                            status = self.transport.status(mid)
+                            route = self.receiver_route(event_id, status['destination'], now_ns)
+                            if (status['destination'] == 'centre' and status['source'] == self.receiver_id
+                                    and status['status'] not in ('succeeded', 'failed') and status['route'] != route):
+                                self.transport.update_route(mid, route, now_ns)
+                                self.log('receiver-radio-routes.jsonl', {'message_id': mid, 'route': route,
+                                    'sim_ns': now_ns, 'learned_from_message_id': message['message_id']})
+            self.transport.acknowledge_local_delivery(self.receiver_id, message['message_id'])
+
     def confirm_receiver_transfers(self, now_ns: int) -> None:
         """The physical receiver reports only its own completed radio transfers."""
         for receipt in self.receiver_transfers.values():
@@ -408,13 +463,14 @@ class Coordinator:
             task = {key: receipt[key] for key in ('event_id', 'task_id', 'task_revision')}
             message_id = 'confirmation-' + uuid.uuid5(uuid.NAMESPACE_URL,
                 json.dumps([self.run_id, receipt['receipt_id'], 'delivery-confirmation'])).hex
-            self.transport.queue_message('drop-receiver-1', 'centre', 'report', data,
-                deadline_ns=self.until_ns, now_ns=now_ns, message_id=message_id, **task)
+            self.transport.queue_message(self.receiver_id, 'centre', 'report', data,
+                deadline_ns=self.until_ns, now_ns=now_ns, message_id=message_id,
+                route=self.receiver_route(task['event_id'], 'centre', now_ns), **task)
             receipt['confirmation_message_id'] = message_id
             # This is a queued notification, not a claim that centre received it.
             # Its own final ACK does not generate another confirmation.
             self.log('receiver-radio-confirmations.jsonl', {'run_id': self.run_id,
-                'source': 'drop-receiver-1', 'destination': 'centre', 'stage': 'queued',
+                'source': self.receiver_id, 'destination': 'centre', 'stage': 'queued',
                 'submitted_ns': now_ns, 'message_id': message_id, **task, **data})
 
     def wait_for_mock_clients(self) -> None:

@@ -9,6 +9,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import resource
 from pathlib import Path
 import signal
 import shutil
@@ -97,7 +98,8 @@ def main() -> int:
                 'source_scenario': str(args.scenario.resolve()), 'execution_status': 'RUNNING',
                 'note': 'Mock adapter results are simulated evidence, not native flight, radio, camera, or physical delivery acceptance.'}
     # Reproduction notes only: no hash/version admission check is introduced.
-    for name, command in [('source-status.txt', ['git', 'status', '--short']),
+    for name, command in [('source-head.txt', ['git', 'rev-parse', 'HEAD']),
+                          ('source-status.txt', ['git', 'status', '--short']),
                           ('source-diff.patch', ['git', 'diff', '--', 'AeroRescue/src', 'AeroRescue/harness', 'AeroRescue/scenarios', 'AeroRescue/tools/run_mock.py'])]:
         recorded = subprocess.run(command, cwd=REPO, text=True, capture_output=True)
         (root / name).write_text(recorded.stdout + recorded.stderr)
@@ -117,6 +119,7 @@ def main() -> int:
         write(root / f'{name}.command.json', command)
         processes[name] = subprocess.Popen(command, cwd=cwd, env=env, stdout=out, stderr=err, start_new_session=True)
     started = time.monotonic()
+    usage_before = resource.getrusage(resource.RUSAGE_CHILDREN)
     reason = 'wall_timeout'
     try:
         launch('coordinator', [args.python, '-m', 'aerorescue.companion.coordinator', '--backend', 'mock',
@@ -183,6 +186,16 @@ def main() -> int:
     summary = {'stop_reason': reason, 'wall_elapsed_s': time.monotonic() - started,
                'process_exit_codes': {name: proc.returncode for name, proc in processes.items()},
                'centre_outcome': read(root / 'agents/centre/outcome.json'), 'agents': {}}
+    usage_after = resource.getrusage(resource.RUSAGE_CHILDREN)
+    summary['resource_usage'] = {
+        'source': 'resource.getrusage(RUSAGE_CHILDREN)',
+        'user_cpu_s': usage_after.ru_utime - usage_before.ru_utime,
+        'system_cpu_s': usage_after.ru_stime - usage_before.ru_stime,
+        'linux_child_ru_maxrss_kib': usage_after.ru_maxrss,
+        'scope': 'Waited child-process accounting; ru_maxrss is not the aggregate concurrent process-tree or machine peak.',
+        'rule_adapter_network_model_tokens': 0,
+        'cost_note': 'Local rule mode makes no live provider request; zero network-model tokens does not estimate live-model cost.',
+    }
     for uid in agents:
         data = root / 'agents' / uid
         state = read(data / 'runtime-state.json')

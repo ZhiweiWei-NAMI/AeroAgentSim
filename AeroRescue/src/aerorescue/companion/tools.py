@@ -251,10 +251,16 @@ class CompanionTools:
                 current_ns = self.flight.state()["sim_ns"]
                 if any(current_ns - proof["ack_received_ns"] > 5 * NS for proof in proofs):
                     raise ValueError("one endpoint probe expired while collecting readiness; probe again")
-                required = {"centre", *[uid for uid, profile in self.config["vehicles"].items() if "inspect" in profile.get("capabilities", []) and uid != self.uav_id]}
+                service_peer = report.get("service_peer")
+                roster = set(self.config["vehicles"]) | {self.config.get("payload", {}).get("receiver_id")}
+                if service_peer not in roster or service_peer in {None, self.uav_id}:
+                    raise ValueError("relay readiness needs a public service endpoint")
+                required = {"centre", service_peer}
                 if not required.issubset({proof["destination"] for proof in proofs}):
-                    raise ValueError("relay readiness needs all configured endpoint probes")
-                report = {"kind": "relay_ready", "probe_results": proofs, "observed_at_ns": min(proof["ack_received_ns"] for proof in proofs), "valid_until_ns": min(proof["ack_received_ns"] for proof in proofs) + 5 * NS, "held_until": "ack_cancel_or_handover"}
+                    raise ValueError("relay readiness needs actual centre and service-endpoint probes")
+                if request.get("destination", "centre") not in required:
+                    raise ValueError("readiness notification must name a measured endpoint")
+                report = {"kind": "relay_ready", "service_peer": service_peer, "probe_results": proofs, "observed_at_ns": min(proof["ack_received_ns"] for proof in proofs), "valid_until_ns": min(proof["ack_received_ns"] for proof in proofs) + 5 * NS, "held_until": "ack_cancel_or_handover"}
             elif report.get("kind") == "delivery_verified":
                 package_id = report.get("delivery", {}).get("package_id")
                 actual = self.payload.status(package_id, self.context["sim_ns"])
