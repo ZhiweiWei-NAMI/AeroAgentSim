@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from aerokernel import ClockMapping, EntityRef, KernelError, Partition, Stamp, Timing
+from aerokernel.messages import Delivery
 from aerokernel.sdk import Command, EngineContext
+from aerokernel.values import thaw
 
 if TYPE_CHECKING:
     from aeroagentsim.platform.plugins import EngineBuild
@@ -21,6 +23,7 @@ FIELDS = {
     "mode": "flight_mode",
     "landed": "landed_state",
     "freshness": "freshness",
+    "estimate": "vehicle_estimate",
 }
 ACTIONS = ("arm", "takeoff", "goto", "hold", "land", "disarm")
 
@@ -33,6 +36,8 @@ class PX4GazeboEngine(LockstepEngine):
 
     def __init__(self, context: EngineBuild) -> None:
         config = context.config
+        self.latest_native: dict[str, Any] = {}
+        self.native_events: list[dict[str, Any]] = []
         self.fields = obj(config["fields"])
         if not self.fields or set(self.fields) - FIELDS.keys():
             raise ValueError(
@@ -150,11 +155,15 @@ class PX4GazeboEngine(LockstepEngine):
             )
         contacts: list[dict[str, Any]] = []
         updates: list[dict[str, Any]] = []
+        payload_events: list[dict[str, Any]] = []
+        receiver_receipts: list[dict[str, Any]] = []
         result: dict[str, Any]
         for at in boundaries:
             result = self.client.request("advance", {"to_sim_ns": at})
             if integer(result["reached_sim_ns"], "native frontier") != at:
                 raise KernelError("ADAPTER_TIME", "native control step missed frontier")
+            payload_events.extend(result.get("payload_events", []))
+            receiver_receipts.extend(result.get("receiver_receipts", []))
             for key, collected in (
                 ("contacts", contacts),
                 ("command_updates", updates),
@@ -166,11 +175,14 @@ class PX4GazeboEngine(LockstepEngine):
                             "ADAPTER_TIME", "native event ahead of control frontier"
                         )
                     collected.append(entry)
-        return {**result, "contacts": contacts, "command_updates": updates}
+        return {**result, "contacts": contacts, "command_updates": updates,
+                "payload_events": payload_events, "receiver_receipts": receiver_receipts}
 
     def project(
         self, ctx: EngineContext, result: dict[str, Any], *, bootstrap: bool
     ) -> None:
+        self.latest_native = result
+        self.native_events.extend(result.get("command_updates", []))
         if bootstrap:
             for ref in sorted(self.refs.values(), key=lambda r: r.id):
                 ctx.create(ref)
@@ -216,6 +228,25 @@ class PX4GazeboEngine(LockstepEngine):
                     ),
                 )
             self.command_updates(ctx, result["command_updates"])
+
+    def on_cancel(self, ctx: EngineContext, delivery: Delivery) -> None:
+        payload = obj(thaw(delivery.message.payload))
+        command = self.commands[payload["command_id"]]
+        backend_id = next((identity for identity, pending in self.pending.items()
+                           if pending.id == command.id), None)
+        if backend_id is None:
+            ctx.decide_cancel(command, delivery, False, "command already terminal")
+            return
+        vehicle = self.build.config["vehicles"][command.payload["entity"]]
+        result = self.client.request("cancel", {"vehicle": vehicle, "command_id": backend_id})
+        accepted = result["status"] == "accepted"
+        self.native_events.append({"kind": "cancel_response", "command_id": backend_id,
+            "kernel_command_id": command.id, "vehicle": vehicle,
+            "requested_sim_ns": self.confirmed_ns, "available_ns": ctx.now.ns,
+            "response": result})
+        ctx.decide_cancel(command, delivery, accepted, result.get("reason"))
+        if accepted:
+            self.statuses[backend_id] = "canceling"
 
     def command_payload(
         self, command: Command[dict[str, Any]], backend_id: str
