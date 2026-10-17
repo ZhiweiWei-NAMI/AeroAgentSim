@@ -84,8 +84,8 @@ class SensorStreams:
     def on_info(self, vehicle, message):
         if not self.active:
             return
-        with self.lock:
-            self.info[vehicle] = {
+        try:
+            info = {
                 "K": list(message.intrinsics.k),
                 "width": message.width,
                 "height": message.height,
@@ -97,6 +97,16 @@ class SensorStreams:
                 }.get(message.distortion.model),
                 "camera_info_source_ns": stamp(message.header),
             }
+            with self.lock:
+                self.info[vehicle] = info
+                self.errors.pop((vehicle, "camera_info"), None)
+        except Exception as error:
+            with self.lock:
+                self.errors[(vehicle, "camera_info")] = str(error)
+                self.error_history.append({
+                    "uav_id": vehicle, "stream": "camera_info", "reason": str(error),
+                    "received_wall_time": time.time_ns(),
+                })
 
     def on_image(self, vehicle, kind, message):
         if not self.active:

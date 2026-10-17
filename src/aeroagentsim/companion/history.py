@@ -13,8 +13,10 @@ import numpy as np
 
 class LocalBGE:
     def __init__(self, model_path: str | Path):
+        import onnxruntime as ort
         from fastembed import TextEmbedding
 
+        ort.disable_telemetry_events()
         self.model = TextEmbedding(
             model_name="BAAI/bge-small-zh-v1.5",
             specific_model_path=str(model_path),
@@ -133,6 +135,7 @@ class ObservationStore:
             rgb_bytes, ".png", {"frame_id": frame_id, "kind": "rgb"}
         )
         metadata.update(
+            acquisition_source=metadata.get("acquisition_source", metadata.get("source")),
             rgb_artifact_id=rgb["artifact_id"],
             rgb_sha256=rgb["sha256"],
             source="received" if received else "local",
@@ -249,7 +252,10 @@ class ObservationStore:
                         score = max(score, semantic)
                 if not score:
                     continue
-            results.append({**metadata, "retrieval_score": score})
+            result = {**metadata, "retrieval_score": score}
+            if region_enu is not None:
+                result["spatial_match_method"] = "candidate footprint bounding-box overlap, not exact observed-area coverage"
+            results.append(result)
         return sorted(
             results,
             key=lambda r: (r["retrieval_score"], r["observed_at"]),
@@ -308,6 +314,23 @@ class ObservationStore:
         metadata = self.observation(frame_id)
         locations = metadata.setdefault("locations", {})
         locations[location["detection_id"]] = location
+        with self.db:
+            self.db.execute(
+                "UPDATE observations SET metadata=? WHERE frame_id=?",
+                (json.dumps(metadata, ensure_ascii=False), frame_id),
+            )
+
+    def save_tracks(self, frame_id: str, result: dict[str, Any]) -> None:
+        metadata = self.observation(frame_id)
+        metadata["tracking"] = result
+        observed = {
+            item["detection_id"]: item["track_id"]
+            for item in result["tracks"]
+            if item["status"] == "observed"
+        }
+        for detection in metadata.get("last_analysis", {}).get("detections", []):
+            if detection["detection_id"] in observed:
+                detection["track_id"] = observed[detection["detection_id"]]
         with self.db:
             self.db.execute(
                 "UPDATE observations SET metadata=? WHERE frame_id=?",

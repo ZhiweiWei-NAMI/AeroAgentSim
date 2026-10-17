@@ -21,6 +21,7 @@ class RtdetrDetector:
     ):
         import onnxruntime as ort
 
+        ort.disable_telemetry_events()
         self.path = Path(model_path)
         self.threshold, self.person_label = score_threshold, person_label
         options = ort.SessionOptions()

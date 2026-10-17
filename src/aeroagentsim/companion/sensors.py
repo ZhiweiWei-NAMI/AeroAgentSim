@@ -16,7 +16,7 @@ class ClockMap:
     source_anchor_ns: int
     sim_anchor_ns: int
     method: str
-    uncertainty_ns: int = 0
+    uncertainty_ns: int | None = None
 
     def to_sim(self, source_ns: int, epoch: str) -> int:
         if epoch != self.clock_epoch:
@@ -71,11 +71,57 @@ def join_observation(
                 "method": "nearest",
                 "sample_times_ns": [closest["source_sim_ns"]],
                 "delta_ns": abs(closest["source_sim_ns"] - timestamp),
+                "clock_mapping_uncertainty_ns": closest.get("clock_map", {}).get("uncertainty_ns"),
+                "bound_status": "mapped source delta only; clock residual not established",
             },
         )
         return observation
     observation["localization_reason"] = "no PX4 pose within 40 ms"
     return observation
+
+
+def observed_surface_extent(
+    observation: dict[str, Any], depth: np.ndarray
+) -> dict[str, Any]:
+    """Sparse actual depth surfaces, with a candidate envelope for history search.
+
+    The convex envelope is not an assertion that occluded gaps were observed.
+    Coverage accounting must use the sampled surfaces, not fill this polygon.
+    """
+    from .geometry import backproject, quaternion_matrix
+
+    if observation.get("localization_status") != "available":
+        return {"footprint_status": "unavailable: synchronized estimate absent"}
+    calibration, estimate = observation["calibration"], observation["vehicle_estimate"]
+    extrinsic = np.asarray(calibration["T_body_frd_from_camera_optical"]).reshape(4, 4)
+    rotation = quaternion_matrix(estimate["attitude_body_frd_to_world_enu_xyzw"])
+    origin = np.asarray(estimate["position_enu_m"])
+    minimum, maximum = calibration.get("depth_min_m", .2), calibration.get("depth_max_m", 60.)
+    samples = []
+    for y in np.linspace(0, depth.shape[0] - 1, 13, dtype=int):
+        for x in np.linspace(0, depth.shape[1] - 1, 17, dtype=int):
+            value = float(depth[y, x])
+            if np.isfinite(value) and minimum <= value <= maximum:
+                camera = backproject([int(x), int(y)], value, calibration)
+                world = rotation @ (extrinsic @ np.append(camera, 1))[:3] + origin
+                samples.append(world.tolist())
+    points = sorted(set((p[0], p[1]) for p in samples))
+    def cross(o, a, b):
+        return (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0])
+    lower, upper = [], []
+    for sequence, half in ((points, lower), (reversed(points), upper)):
+        for point in sequence:
+            while len(half) >= 2 and cross(half[-2], half[-1], point) <= 0:
+                half.pop()
+            half.append(point)
+    hull = lower[:-1] + upper[:-1] if len(points) >= 3 else []
+    return {
+        "visible_surface_samples_enu_m": samples,
+        "visible_surface_sampling": "17x13 actual valid depth pixels; no occluded-area fill",
+        "footprint_enu": [list(p) for p in hull],
+        "footprint_status": "candidate_extent" if hull else "unavailable: insufficient depth",
+        "footprint_method": "convex envelope of sparse actual depth surfaces; spatial candidate filter only",
+    }
 
 
 def ingest_frame(
@@ -93,6 +139,18 @@ def ingest_frame(
     if depth.dtype != np.float32 or depth.ndim != 2:
         raise ValueError("native depth must be a two-dimensional float32 metre array")
     observation = join_observation(metadata, poses, available_sim_ns)
+    observation.update(observed_surface_extent(observation, depth))
+    calibration = metadata.get("calibration", {})
+    invalid = (~np.isfinite(depth) | (depth < calibration.get("depth_min_m", .2))
+               | (depth > calibration.get("depth_max_m", 60.)))
+    mask_stream = io.BytesIO()
+    np.save(mask_stream, invalid, allow_pickle=False)
+    mask = store.save_artifact(mask_stream.getvalue(), ".npy", {
+        "frame_id": observation["frame_id"], "kind": "invalid_depth_mask",
+        "rule": "nonfinite or outside native camera near/far range", "true_means": "invalid",
+    })
+    observation["depth_invalid_mask_artifact_id"] = mask["artifact_id"]
+    observation["depth_valid_fraction"] = float((~invalid).mean())
     stream = io.BytesIO()
     np.save(stream, depth, allow_pickle=False)
     return dict(store.record(observation, rgb_png, stream.getvalue()))

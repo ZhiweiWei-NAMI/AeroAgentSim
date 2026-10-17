@@ -64,6 +64,8 @@ class EstimateStreams:
         self.world_origin = None
         self.episode_origin_ns = 0
         self.last_request_ns = {}
+        self.streams_requested = set()
+        self.sync_events = {v.id: asyncio.Event() for v in vehicles}
         self.altitude_datum = None
         self.failure = {}
         self.log_directory = None
@@ -79,6 +81,15 @@ class EstimateStreams:
         log_directory=None,
         native_paused_callable=None,
     ):
+        if self.epoch is not None and self.epoch != clock_epoch:
+            self.origins.clear()
+            self.clock_maps.clear()
+            self.pending_sync.clear()
+            self.last_request_ns.clear()
+            self.streams_requested.clear()
+            self.failure.clear()
+            for records in (*self.positions.values(), *self.attitudes.values(), *self.raw.values()):
+                records.clear()
         self.run_id, self.epoch = run_id, clock_epoch
         self.world_origin, self.native_clock = world_origin_wgs84, native_clock_callable
         self.episode_origin_ns = episode_origin_ns
@@ -127,10 +138,13 @@ class EstimateStreams:
                     "source_anchor_ns": source,
                     "native_anchor_ns": now,
                     "method": "MAVLink TIMESYNC response at unchanged paused Gazebo frontier",
-                    "uncertainty_ns": 1_000_000,
+                    "uncertainty_ns": None,
+                    "source_resolution_ns": 1_000_000,
+                    "mapping_assumption": "PX4 lockstep boot clock at unchanged paused frontier; residual not yet measured",
                     "clock_epoch": self.epoch,
                     "source_clock": f"px4_boot:{config.index}",
                 }
+                self.sync_events[vehicle].set()
             return
         if name == "GPS_GLOBAL_ORIGIN":
             self.origins[vehicle] = record
@@ -161,12 +175,15 @@ class EstimateStreams:
         ):
             return
         native_ns = self.native_clock()
+        awaiting = []
         for vehicle, session in sessions.items():
             # Retry at most once per native second; the owner may call between
             # barriers. A missing response remains unavailable, not a deadlock.
             if native_ns - self.last_request_ns.get(vehicle, -(10**12)) < 1_000_000_000:
                 continue
             self.last_request_ns[vehicle] = native_ns
+            self.sync_events[vehicle].clear()
+            awaiting.append(self.sync_events[vehicle])
             token = time.monotonic_ns()
             self.pending_sync = {
                 key: value
@@ -184,6 +201,23 @@ class EstimateStreams:
                     json.dumps({"tc1": 0, "ts1": token}),
                 )
             )
+            if vehicle not in self.streams_requested:
+                # Explicitly request timestamp-bearing attitude and local pose.
+                # MAV_CMD_SET_MESSAGE_INTERVAL: param1 message ID, param2 usec.
+                # https://mavlink.io/en/messages/common.html#MAV_CMD_SET_MESSAGE_INTERVAL
+                for message_id in (31, 32):
+                    await session.mavlink_direct.send_message(
+                        message_type(
+                            "COMMAND_LONG", 0, 0, self.vehicles[vehicle].index + 1, 1,
+                            json.dumps({
+                                "command": 511, "confirmation": 0,
+                                "param1": message_id, "param2": 20_000,
+                                "param3": 0, "param4": 0, "param5": 0,
+                                "param6": 0, "param7": 0,
+                            }),
+                        )
+                    )
+                self.streams_requested.add(vehicle)
             if vehicle not in self.origins:
                 await session.mavlink_direct.send_message(
                     message_type(
@@ -207,7 +241,13 @@ class EstimateStreams:
                         ),
                     )
                 )
-        await asyncio.sleep(0)
+        if awaiting:
+            try:
+                # Real reply may arrive on another native thread. Keep the
+                # world paused for a bounded wall window, never advance here.
+                await asyncio.wait_for(asyncio.gather(*(event.wait() for event in awaiting)), timeout=.05)
+            except asyncio.TimeoutError:
+                pass  # no invented map: estimates remain unavailable
 
     def sample(self, vehicle, now_sim_ns, target_sim_ns=None, max_age_ns=250_000_000):
         unavailable = {

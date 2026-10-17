@@ -67,11 +67,16 @@ class PerceptionTools:
         uav_id: str,
         model_path: str | Path | None = None,
         embedding_path: str | Path | None = None,
+        *,
+        engineering_horizontal_margin_m: float | None = None,
+        engineering_margin_basis: str | None = None,
     ):
         self.store = ObservationStore(
             root, run_id, uav_id, LocalBGE(embedding_path) if embedding_path else None
         )
         self.model_path = model_path
+        self.engineering_horizontal_margin_m = engineering_horizontal_margin_m
+        self.engineering_margin_basis = engineering_margin_basis
         self._detector: RtdetrDetector | None = None
         self._tracker: PersonTracker | None = None
 
@@ -119,6 +124,12 @@ class PerceptionTools:
                 "status": "unavailable",
                 "reason": "detection is not present in this frame's recorded inference",
             }
+        if self.engineering_horizontal_margin_m is not None:
+            observation["calibration"] = {
+                **observation.get("calibration", {}),
+                "engineering_horizontal_margin_m": self.engineering_horizontal_margin_m,
+                "engineering_margin_basis": self.engineering_margin_basis,
+            }
         result = locate_target(
             observation, matches[0], np.load(io.BytesIO(content), allow_pickle=False)
         )
@@ -128,9 +139,15 @@ class PerceptionTools:
     def track(self, request: dict[str, Any]) -> dict[str, Any]:
         if self._tracker is None:
             self._tracker = PersonTracker(self.store.uav_id)
-        return self._tracker.update(
-            request["detections"], request["observed_at"], request["locations"]
+        observation = self.store.observation(request["frame_id"])
+        result = self._tracker.update(
+            observation.get("last_analysis", {}).get("detections", []),
+            observation["observed_at"],
+            observation.get("locations", {}),
         )
+        if result.get("status") == "succeeded":
+            self.store.save_tracks(observation["frame_id"], result)
+        return result
 
     def retrieve(self, request: dict[str, Any]) -> dict[str, Any]:
         if request.get("reanalyze_frame_id"):

@@ -180,7 +180,7 @@ def locate_target(
         "origin_version": estimate.get("origin_version"),
         "source_sim_ns": observation["observed_at"],
         "horizontal_uncertainty_m": calibration.get("engineering_horizontal_margin_m"),
-        "horizontal_uncertainty_source": "configured conservative engineering budget, not measured PX4 covariance"
+        "horizontal_uncertainty_source": calibration.get("engineering_margin_basis") or "configured conservative engineering budget, not measured PX4 covariance"
         if calibration.get("engineering_horizontal_margin_m") is not None
         else "unknown",
         "uncertainty": {
@@ -272,4 +272,70 @@ def compare_observations(
         "newly_observed_tracks": sorted(new - old),
         "not_observed_tracks": sorted(old - new),
         "absence_interpretation": "not observed; departure is not established",
+    }
+
+
+def site_visible_in_frame(
+    observation: dict[str, Any],
+    depth: np.ndarray,
+    position_enu_m: list[float],
+    depth_tolerance_m: float = 0.75,
+) -> dict[str, Any]:
+    """Check a known receiving surface against actual camera pose and depth.
+
+    This is site visibility evidence, not package recognition. The caller must
+    supply the receiving surface height, not the UAV's release altitude.
+    """
+    result = {
+        "frame_id": observation["frame_id"],
+        "observed_at": observation["observed_at"],
+        "visible": False,
+        "classification": "site_in_view_only; no package recognition",
+    }
+    estimate, calibration = observation.get("vehicle_estimate", {}), observation.get("calibration", {})
+    if observation.get("localization_status") != "available" or estimate.get("status") != "available":
+        return {**result, "status": "unavailable", "reason": "synchronized camera estimate unavailable"}
+    if not calibration.get("registered_rgb_depth") or list(depth.shape) != [calibration["height"], calibration["width"]]:
+        return {**result, "status": "unavailable", "reason": "registered depth unavailable"}
+    rotation = quaternion_matrix(estimate["attitude_body_frd_to_world_enu_xyzw"])
+    body = rotation.T @ (np.asarray(position_enu_m) - np.asarray(estimate["position_enu_m"]))
+    extrinsic = np.asarray(calibration["T_body_frd_from_camera_optical"]).reshape(4, 4)
+    optical = (np.linalg.inv(extrinsic) @ np.append(body, 1))[:3]
+    if optical[2] <= 0:
+        return {**result, "status": "available", "reason": "site behind the camera"}
+    k = np.asarray(calibration["K"]).reshape(3, 3)
+    distortion = np.asarray(calibration.get("distortion", []), dtype=float)
+    if distortion.size and np.any(distortion):
+        import cv2
+
+        points = optical.reshape(1, 1, 3).astype(np.float64)
+        if calibration.get("distortion_model") == "equidistant":
+            pixels, _ = cv2.fisheye.projectPoints(points, np.zeros(3), np.zeros(3), k.astype(float), distortion)
+        else:
+            pixels, _ = cv2.projectPoints(points, np.zeros(3), np.zeros(3), k.astype(float), distortion)
+        pixel = pixels.reshape(2)
+    else:
+        projected = k @ optical
+        pixel = projected[:2] / projected[2]
+    result["pixel_xy"] = pixel.tolist()
+    x, y = (int(round(value)) for value in pixel)
+    if not 1 <= x < depth.shape[1] - 1 or not 1 <= y < depth.shape[0] - 1:
+        return {**result, "status": "available", "reason": "site outside the recorded image"}
+    expected = float(optical[2] if calibration["depth_convention"] == "optical_z" else np.linalg.norm(optical))
+    nearby = depth[y-1:y+2, x-1:x+2]
+    valid = nearby[np.isfinite(nearby) & (nearby >= calibration.get("depth_min_m", .2)) & (nearby <= calibration.get("depth_max_m", 60.))]
+    if len(valid) < 5:
+        return {**result, "status": "unavailable", "reason": "site pixel lacks supported depth"}
+    measured = float(np.median(valid))
+    residual = measured - expected
+    return {
+        **result,
+        "status": "available",
+        "visible": abs(residual) <= depth_tolerance_m,
+        "expected_depth_m": expected,
+        "measured_depth_m": measured,
+        "depth_residual_m": residual,
+        "depth_tolerance_m": depth_tolerance_m,
+        "depth_tolerance_source": "declared site-visibility allowance; not calibrated sensor uncertainty",
+        "reason": "receiving surface imaged" if abs(residual) <= depth_tolerance_m else "site occluded or expected surface depth differs",
     }
