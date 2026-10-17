@@ -1,0 +1,20 @@
+{
+  "name": "aerorescue-harness",
+  "version": "1.0.0",
+  "description": "AeroRescue Cordis/DSH Harness; native flight and radio acceptance pending",
+  "scripts": {
+    "start": "node launch.mjs",
+    "help": "node launch.mjs --help"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@deepseek-ai/dsh": "^0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm-pi-ai": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+  },
+  "private": true
+}

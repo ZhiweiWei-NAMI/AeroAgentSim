@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "resume-or-return",
+  "description": "Resume explicitly saved task obligations or fly a public return route and land.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "resume-or-return",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "remaining_route or return_position_enu_m; received centre closure required while a relay role is held.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

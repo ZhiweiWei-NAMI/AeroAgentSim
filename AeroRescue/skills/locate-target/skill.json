@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "locate-target",
+  "description": "Back-project valid registered depth with same-time PX4 estimated pose.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "locate-target",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "frame_id, detection_id from actual stored inference.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

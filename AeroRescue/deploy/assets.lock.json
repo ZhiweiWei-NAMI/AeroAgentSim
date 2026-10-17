@@ -1,0 +1,62 @@
+{
+  "schema": "aerorescue.companion-assets/v1",
+  "runtime_downloads": false,
+  "human": {
+    "name": "makehuman_person",
+    "license": "CC0-1.0",
+    "source": "https://raw.githubusercontent.com/makehumancommunity/makehuman/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data/3dobjs/base.obj",
+    "revision": "a8bc2d54ff0ac92e78ff71431b1023eda42bf482",
+    "height_m": 1.75,
+    "vertices": 13380,
+    "body_polygons": 13378,
+    "adaptation": "body-only, Y-up to Z-up, grounded, scaled, solid clothing colors",
+    "render_status": "NOT_RUN: actual Gazebo camera verification required",
+    "physics": "visual static person; parcel and receiver require separate collision models",
+    "files": [
+      {
+        "path": "${COMPANION_ASSET_ROOT}/scene/makehuman_person/LICENSE.ASSETS.md",
+        "bytes": 6962,
+        "sha256": "f6089cba01cb570a24712b41ab8a586ccd3cc5ef53dc266ca50b95c288956d2c"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/scene/makehuman_person/meshes/person.mtl",
+        "bytes": 145,
+        "sha256": "efcaa4e22b761404b2c538c63af1a79edcbfb75e20b2b11b210bc492ecc52ddd"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/scene/makehuman_person/meshes/person.obj",
+        "bytes": 916461,
+        "sha256": "c5f22e71e95e3fc831b9c3122b0ea551112892bd5b0635da4e904d2eb035879d"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/scene/makehuman_person/model.config",
+        "bytes": 176,
+        "sha256": "db7e5618db87f49fd1dbf5fbe14526df66a442a0861dcec56e5c9d52741adba0"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/scene/makehuman_person/model.sdf",
+        "bytes": 203,
+        "sha256": "1b54852e5711c89374f21928e3fa51bda9e3cc43f6e9be79374fa04dd4fe2242"
+      },
+      {
+        "path": "${COMPANION_ASSET_ROOT}/scene/makehuman_person/source-base.obj",
+        "bytes": 1749303,
+        "sha256": "8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c"
+      }
+    ]
+  },
+  "external_dataset": {
+    "dataset": "SeaDronesSee Object Detection v2",
+    "license": "CC0-1.0",
+    "count": 200,
+    "negative_count": 67,
+    "negative_or_confuser_count": 156,
+    "bytes": 148605292,
+    "images": "${COMPANION_ASSET_ROOT}/seadronessee-odv2/images",
+    "frozen_manifest": "${COMPANION_ASSET_ROOT}/seadronessee-odv2/frozen-200-manifest.json",
+    "file_records": "${COMPANION_ASSET_ROOT}/seadronessee-odv2/downloaded-200.json",
+    "annotations": "${COMPANION_ASSET_ROOT}/seadronessee-odv2/subset-200-annotations.json",
+    "status": "SCORED",
+    "metrics": "docs/external-image-metrics.json"
+  }
+}

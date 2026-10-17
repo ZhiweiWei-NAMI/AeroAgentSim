@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "flight-command",
+  "description": "Submit an arm/takeoff/goto/hold/land primitive and yield until its actual operation completes.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "flight-command",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "action: arm/takeoff/goto/hold/land/disarm; params. goto uses position_enu_m and yaw_deg.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

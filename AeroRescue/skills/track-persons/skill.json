@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "track-persons",
+  "description": "Associate anonymous detections across actual frames.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "track-persons",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "frame_id. Detections and locations are loaded from the local archive.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "repository": "ZhiweiWei-NAMI/AeroAgentSim",
+  "branch": "feat/rescue-companion-native",
+  "base": "main",
+  "actual_start": "0b406d01f27920da45facd8d2d6cdde1e7c3d49e",
+  "reviewed_baseline": "0b406d01f27920da45facd8d2d6cdde1e7c3d49e",
+  "initial_worktree": "clean",
+  "main_delta": "none",
+  "native_run_status": "BLOCKED"
+}

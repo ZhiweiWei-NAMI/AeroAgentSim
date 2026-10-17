@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "hold-relay",
+  "description": "Fly a public candidate, probe the path, and retain the relay commitment.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "hold-relay",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "candidates: public legal ENU positions; peers: endpoint IDs; optional message_ids to hold for.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

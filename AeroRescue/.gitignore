@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.egg-info/
+node_modules/
+runs/
+data/
+deploy/companion.env
+deploy/assets/
+deploy/worlds/

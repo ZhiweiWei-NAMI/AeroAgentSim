@@ -1,0 +1,2 @@
+recursive-include skills *
+recursive-include scenarios *

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "search-area",
+  "description": "Fly a public-area coverage route and collect actual new frames at reached viewpoints.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "search-area",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "polygon: public ENU xy vertices; altitude_m; footprint_width_m (planning spacing only)",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

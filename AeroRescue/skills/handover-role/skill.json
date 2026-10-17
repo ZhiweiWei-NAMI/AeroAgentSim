@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "handover-role",
+  "description": "Send the current role and outstanding obligations to a replacement through radio.",
+  "entrypoint": {
+    "module": "aerorescue.companion.tools",
+    "command": "handover-role",
+    "request_flag": "--request",
+    "status_flag": "--status"
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": true
+  },
+  "request_format": {
+    "encoding": "JSON object passed as the --request argument",
+    "fields": "destination, data: outstanding role/obligations, optional route. Handover is not accepted until its radio reply arrives.",
+    "documentation": "SKILL.md"
+  },
+  "dependencies": [
+    "aerorescue"
+  ],
+  "completion": {
+    "submission": "accepted does not mean completed",
+    "poll": "status_flag with the returned request ID",
+    "pending": "yield without blocking simulation time"
+  }
+}

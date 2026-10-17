@@ -1,0 +1,8 @@
+node_modules/
+.dsh/
+smoke-trace.json
+config-schema.json
+composed.yml
+llm-*.ts
+
+.config-check/
