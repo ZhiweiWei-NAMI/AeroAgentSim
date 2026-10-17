@@ -70,6 +70,7 @@ class PerceptionTools:
         *,
         engineering_horizontal_margin_m: float | None = None,
         engineering_margin_basis: str | None = None,
+        detector_tile_size: int | None = None,
     ):
         self.store = ObservationStore(
             root, run_id, uav_id, LocalBGE(embedding_path) if embedding_path else None
@@ -77,6 +78,7 @@ class PerceptionTools:
         self.model_path = model_path
         self.engineering_horizontal_margin_m = engineering_horizontal_margin_m
         self.engineering_margin_basis = engineering_margin_basis
+        self.detector_tile_size = detector_tile_size
         self._detector: RtdetrDetector | None = None
         self._tracker: PersonTracker | None = None
 
@@ -87,7 +89,7 @@ class PerceptionTools:
                 "RT-DETRv2 model is not installed; detection unavailable"
             )
         if self._detector is None:
-            self._detector = RtdetrDetector(self.model_path)
+            self._detector = RtdetrDetector(self.model_path, tile_size=self.detector_tile_size)
         return self._detector
 
     def detect(self, request: dict[str, Any]) -> dict[str, Any]:

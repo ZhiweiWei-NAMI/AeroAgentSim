@@ -67,7 +67,7 @@ class CompanionTools:
     def perception_tools(self) -> Any:
         if self.perception is None:
             from .evidence import PerceptionTools
-            self.perception = PerceptionTools(self.root, self.run_id, self.uav_id, self.config.get("model_path") or os.environ.get("DETECTOR_MODEL_PATH"), self.config.get("embedding_path") or os.environ.get("EMBEDDING_MODEL_PATH"), engineering_horizontal_margin_m=self.config.get("perception", {}).get("engineering_horizontal_margin_m"), engineering_margin_basis=self.config.get("perception", {}).get("engineering_margin_basis"))
+            self.perception = PerceptionTools(self.root, self.run_id, self.uav_id, self.config.get("model_path") or os.environ.get("DETECTOR_MODEL_PATH"), self.config.get("embedding_path") or os.environ.get("EMBEDDING_MODEL_PATH"), engineering_horizontal_margin_m=self.config.get("perception", {}).get("engineering_horizontal_margin_m"), engineering_margin_basis=self.config.get("perception", {}).get("engineering_margin_basis"), detector_tile_size=self.config.get("perception", {}).get("detector_tile_size"))
             self.handlers.update(self.perception.handlers())
         return self.perception
 

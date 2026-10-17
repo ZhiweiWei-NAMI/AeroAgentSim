@@ -91,6 +91,8 @@ class MockWorld:
 
     def command(self, payload):
         uid, cid, action = payload['vehicle'], payload['command_id'], payload['action']
+        if cid in self.commands:
+            return {'status': 'rejected', 'reason': 'command_id already used', 'command_id': cid}
         if any(c['vehicle'] == uid and c['status'] not in ('succeeded', 'failed', 'canceled') for c in self.commands.values()):
             return {'status': 'rejected', 'reason': 'vehicle already has active command', 'command_id': cid}
         if action in ('takeoff', 'goto_location') and not self.vehicles[uid]['armed']:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,7 @@ import numpy as np
 
 class LocalBGE:
     def __init__(self, model_path: str | Path):
+        os.environ["ORT_DISABLE_TELEMETRY"] = "1"
         import onnxruntime as ort
         from fastembed import TextEmbedding
 

@@ -5,6 +5,8 @@ description: Run the installed ONNX person detector on a local frame.
 
 # detect-persons
 
+Optional configuration `perception.detector_tile_size: 640` keeps the full-image view and adds overlapping tiles with NMS at the unchanged 0.5 confidence threshold. It is disabled by default. A 1280×960 image uses 7 inference views; measured median CPU wall time was about 2.52 seconds in the recorded mock fixed-frame evaluation.
+
 Run the installed ONNX person detector on a local frame.
 
 Input: frame_id. Analysis time is injected by the worker.
