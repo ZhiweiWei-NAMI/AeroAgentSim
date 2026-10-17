@@ -32,7 +32,9 @@ remains required. Preserve failures and do not lower functional thresholds.
 No docker/podman executable, Docker socket, /dev/dri or NVIDIA device was found;
 process capabilities are empty. Native Docker build/run and four-UAV RGB-D
 execution are BLOCKED on this host. Do not attempt privileged nested Docker.
-Source and model preparation proceed independently; they do not count as native
+A direct Unix socket creation attempt also returned EPERM in the execution sandbox;
+the supported elevated execution attempt failed before running. No host security
+settings were changed. Source and model preparation proceed independently; they do not count as native
 acceptance. No training server is being used.
 
 ## Work ownership
@@ -51,3 +53,12 @@ acceptance. No training server is being used.
 
 P0 host/baseline recording is underway. P1–P8 are not complete. The initial
 acceptance matrix remains NOT_RUN; source code presence must not change it to PASS.
+
+## Completed software execution (not native acceptance)
+
+Official trained RT-DETRv2 R18 was exported to ONNX and compared on ten real
+SeaDronesSee images: matching detections within 0.000245 pixels and 0.00000245
+score difference. Local BGE retrieval, SQLite restart/history reanalysis and
+a 5,015-byte target crop were executed on a real image. Full image compression
+at a 30,000-byte budget returned unavailable and is preserved. No native flight,
+radio delivery or physical drop has passed yet.
