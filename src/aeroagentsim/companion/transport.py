@@ -74,8 +74,6 @@ class RadioTransport:
             raise ValueError("route must be acyclic and connect source/destination")
         if any(not node or "/" in node or node in {".", ".."} for node in route):
             raise ValueError("invalid radio identity")
-        if deadline_ns <= now_ns:
-            raise ValueError("message deadline has passed")
         message_id = message_id or uuid.uuid4().hex
         if not message_id.replace("-", "").replace("_", "").isalnum():
             raise ValueError("message_id must be an opaque safe identifier")
@@ -85,6 +83,8 @@ class RadioTransport:
             if (old["file_hash"], old["source"], old["destination"], old["event_id"], old["task_id"], old["task_revision"]) != (file_hash, source, destination, event_id, task_id, task_revision):
                 raise ValueError("message identity reused for different contents or task")
             return message_id
+        if deadline_ns <= now_ns:
+            raise ValueError("message deadline has passed")
         directory = self.spool / message_id
         directory.mkdir()
         chunks = [data[i:i + self.chunk_bytes] for i in range(0, len(data), self.chunk_bytes)] or [b""]

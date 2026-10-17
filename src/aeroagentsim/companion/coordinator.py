@@ -9,6 +9,7 @@ import math
 import os
 import signal
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -113,6 +114,65 @@ class Coordinator:
         self.commands: dict[str, str] = {}
         self.bootstrap_messages: list[str] = []
         self.release_tasks: dict[str, dict[str, Any]] = {}
+        self.radio_fault_message: str | None = None
+        self.radio_fault_fired = False
+
+    def inject_radio_lifetime(self, params: dict[str, Any], now_ns: int) -> dict[str, Any] | None:
+        """Select the four authored radio diagnostics; ns-3 decides the outcome."""
+        fault = self.scene.get('native_radio_fault')
+        if not fault:
+            return None
+        case, variant = fault['case_id'], fault['variant']
+        packet_id = params['packet_id'].rsplit('-h', 1)[0]
+        packet = self.transport.state['packets'][packet_id]
+        message = self.transport.state['messages'][packet['message_id']]
+        if case == 'C03':
+            if message['kind'] != 'file':
+                return None
+            if variant == 'missing_fragment_nack_then_retry' and len(message['chunk_hashes']) < 2:
+                return None  # There must be an actual required chunk 1 to lose.
+        elif case == 'C07':
+            if (message['kind'] != 'receipt' or message['source'] != 'drop-receiver-1'
+                    or message['destination'] != self.scene['payload']['carrier']):
+                return None
+        else:
+            raise ValueError('native_radio_fault supports only authored C03/C07 diagnostics')
+        # Keep one actual business message as the fault target across all its
+        # hops, retries and final acknowledgements. Startup notices never match.
+        if self.radio_fault_message is None:
+            self.radio_fault_message = packet['message_id']
+        if packet['message_id'] != self.radio_fault_message:
+            return None
+        route, hop, header = packet['route'], packet['hop'], packet['header']
+        if hop != len(route) - 2 or packet['native_id'] != params['packet_id']:
+            return None
+        kind = packet['kind']
+        chunk_index = header.get('chunk_index')
+        chunk_sends = message['chunk_sends'].get(str(chunk_index), 0)
+        if (case, variant) == ('C03', 'missing_fragment_nack_then_retry'):
+            selected = (not self.radio_fault_fired and kind == 'chunk' and chunk_index == 1
+                        and header['attempt'] == 1 and chunk_sends == 1)
+        elif (case, variant) in {('C03', 'final_ack_lost'), ('C07', 'confirmation_final_ack_lost')}:
+            selected = not self.radio_fault_fired and kind == 'final_ACK'
+        elif (case, variant) == ('C07', 'receiver_receipt_lost'):
+            # Carrier-only loss: the centre's independent receipt is untouched.
+            selected = kind == 'chunk'
+        else:
+            raise ValueError('unsupported native radio diagnostic variant')
+        if not selected:
+            return None
+        original = params['lifetime_ns']
+        params['lifetime_ns'] = 1
+        self.radio_fault_fired = True
+        return {'run_id': self.run_id, 'stage': 'kernel_queued', 'case_id': case,
+            'variant': variant, 'sim_ns': now_ns, 'native_packet_id': params['packet_id'],
+            'packet_id': packet_id, 'message_id': packet['message_id'],
+            **{key: message[key] for key in ('event_id', 'task_id', 'task_revision')},
+            'message_kind': message['kind'], 'packet_kind': kind,
+            'message_source': message['source'], 'message_destination': message['destination'],
+            'attempt': header['attempt'], 'chunk_index': chunk_index, 'chunk_send_count': chunk_sends,
+            'route': list(route), 'hop': hop, 'src': params['src'], 'dst': params['dst'],
+            'original_lifetime_ns': original, 'lifetime_ns': 1}
 
     def log(self, filename: str, value: dict[str, Any]) -> None:
         with (self.data / filename).open('a') as output:
@@ -272,8 +332,13 @@ class Coordinator:
             task = self.release_tasks.get(receipt['package_id'])
             if task is not None:
                 for destination in ('centre', self.scene['payload']['carrier']):
+                    # Re-draining one physical receipt must retain its existing
+                    # transfer, including terminal failure, not create success
+                    # or gain a fresh radio retry budget under a new identity.
+                    message_id = 'receipt-' + uuid.uuid5(uuid.NAMESPACE_URL,
+                        json.dumps([self.run_id, receipt['receipt_id'], destination])).hex
                     self.transport.queue_message('drop-receiver-1', destination, 'receipt', receipt,
-                        deadline_ns=self.until_ns, now_ns=now_ns, **task)
+                        deadline_ns=self.until_ns, now_ns=now_ns, message_id=message_id, **task)
         for event in self.flight.native_events:
             self.log('native-flight-events.jsonl', event)
         self.flight.native_events.clear()
@@ -318,8 +383,11 @@ class Coordinator:
                     self.handle(request, now_ns)
                 self.transport.tick(now_ns)
                 for params in self.transport.pop_commands():
-                    self.simulation.kernel.submit(CommandRequest('adapters.ns3.send', 'radio',
+                    injection = self.inject_radio_lifetime(params, now_ns)
+                    command_id = self.simulation.kernel.submit(CommandRequest('adapters.ns3.send', 'radio',
                         Instant(now_ns + 1), params))
+                    if injection is not None:
+                        self.log('native-fault-injections.jsonl', {**injection, 'kernel_command_id': command_id})
                 target = min(now_ns + 200_000_000, self.until_ns)
                 self.simulation.run_until(target)
                 self.collect(target)
