@@ -51,7 +51,7 @@ class CompanionTools:
         self.root, self.run_id, self.uav_id = Path(root), run_id, uav_id
         self.flight, self.config, self.submit_mission = flight, config, submit_mission
         self.context: dict[str, Any] = {}
-        self.payload = PayloadDelivery(root)
+        self.payload = PayloadDelivery(root, execution_backend=config.get("execution_backend", "native"))
         self.perception: Any = None
         self.handlers: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
             "search-area": self.search_area, "estimate-assignment": self.estimate_assignment,
@@ -86,7 +86,7 @@ class CompanionTools:
             output = self.handlers[name](request)
         except Exception as exc:
             output = {"status": "unavailable", "reason": str(exc)}
-        result = {"tool_call_id": request_id, "tool_name": name, "uav_id": self.uav_id, "run_id": self.run_id, "task_id": context.get("task_id"), "task_revision": context.get("task_revision"), "observed_at": context["sim_ns"], **output}
+        result = {"tool_call_id": request_id, "tool_name": name, "uav_id": self.uav_id, "run_id": self.run_id, "task_id": context.get("task_id"), "task_revision": context.get("task_revision"), "observed_at": context["sim_ns"], "execution_backend": self.config.get("execution_backend", "native"), **output}
         log = self.root / "logs" / "tool-trace.jsonl"
         log.parent.mkdir(parents=True, exist_ok=True)
         with log.open("ab") as stream:
@@ -180,9 +180,9 @@ class CompanionTools:
         configured_payload = self.config.get("payload", {})
         if configured_payload.get("carrier") == self.uav_id:
             measured = self._read_native("payload_status", package_id=configured_payload["package_id"])
-            payload = {"mass_kg": 1.0 if measured["status"] == "attached" else 0.0 if measured["status"] == "detached" else None, "source": "Gazebo detachable-joint observation, 1 kg physical package" if measured["status"] in {"attached", "detached"} else None}
+            payload = {"mass_kg": configured_payload.get("package_mass_kg", 1.0) if measured["status"] == "attached" else 0.0 if measured["status"] == "detached" else None, "source": measured.get("source") if measured["status"] in {"attached", "detached"} else None}
 
-        return {"status": "succeeded", "uav_id": self.uav_id, "observed_at_ns": local["observed_at_ns"], "valid_until_ns": local["valid_until_ns"], "position_enu_m": position, "capabilities": profile.get("capabilities", []), "roles": roles, "soc": soc, "soc_source": energy_state.get("source") if energy_state else "PX4 battery telemetry", "px4_soc": px4_soc, "local_energy": energy_state, "payload_kg": payload.get("mass_kg"), "payload_source": payload.get("source"), "payload_capacity_kg": profile.get("payload_capacity_kg"), "available_energy_j": available_energy, "speed_m_s": speed, "commitment": commitment, "commitment_version": self.context.get("commitment_version", 0), "available_after_s": max(now / NS, commitment.get("busy_until_s", now / NS)), "feasible_leg_costs": legs, "action_specs": request["actions"]}
+        return {"status": "succeeded", "uav_id": self.uav_id, "observed_at_ns": local["observed_at_ns"], "valid_until_ns": local["valid_until_ns"], "position_enu_m": position, "capabilities": profile.get("capabilities", []), "roles": roles, "soc": soc, "soc_source": energy_state.get("source") if energy_state else battery.get("source", "mock battery model" if self.config.get("execution_backend") == "mock" else "PX4 battery telemetry"), "px4_soc": px4_soc if self.config.get("execution_backend") != "mock" else None, "local_energy": energy_state, "payload_kg": payload.get("mass_kg"), "payload_source": payload.get("source"), "payload_capacity_kg": profile.get("payload_capacity_kg"), "available_energy_j": available_energy, "speed_m_s": speed, "commitment": commitment, "commitment_version": self.context.get("commitment_version", 0), "available_after_s": max(now / NS, commitment.get("busy_until_s", now / NS)), "feasible_leg_costs": legs, "action_specs": request["actions"]}
 
     def _message_fields(self, request: dict[str, Any]) -> dict[str, Any]:
         return {"destination": request.get("destination", "centre"), "event_id": self.context["event_id"], "task_id": self.context["task_id"], "task_revision": self.context["task_revision"], "deadline_ns": self.context["deadline_ns"], "route": request.get("route")}

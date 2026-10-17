@@ -16,8 +16,10 @@ from .transport import NS, encoded, save_json
 
 class LocalEnergyLedger:
     def __init__(self, root: str | Path, profile: dict[str, Any], *,
-                 run_id: str, uav_id: str) -> None:
+                 run_id: str, uav_id: str, execution_backend: str = "native") -> None:
         self.root, self.run_id, self.uav_id = Path(root), run_id, uav_id
+        self.execution_backend = execution_backend
+        self.estimate_source = 'mock_kinematic_model' if execution_backend == 'mock' else 'PX4_MavlinkDirect'
         budget = profile.get("energy_budget")
         self.enabled = budget is not None
         self.path = self.root / "energy-state.json"
@@ -53,9 +55,9 @@ class LocalEnergyLedger:
         last = self.state.get("last") or {}
         available = status == "available"
         result = {"status": status, "source": "declared_onboard_energy_model",
-            "kinematics_source": "PX4_MavlinkDirect/LOCAL_POSITION_NED",
+            "kinematics_source": self.estimate_source, "execution_backend": self.execution_backend,
             "initial_reserve_source": "explicit scenario energy_budget.initial_fraction",
-            "integration": "trapezoidal PX4 speed plus observed airborne hover power over source time",
+            "integration": "trapezoidal source speed plus observed airborne hover power over source time",
             "available_energy_j": self.state["remaining_j"] if available else None,
             "effective_fraction": self.state["remaining_j"] / self.parameters["capacity_j"] if available else None,
             "source_sim_ns": last.get("source_sim_ns"), "clock_epoch": last.get("clock_epoch"),
@@ -64,7 +66,7 @@ class LocalEnergyLedger:
             "observed_sim_ns": state.get("sim_ns"), "parameters": dict(self.parameters),
             "integrated_time_s": self.state["integrated_time_s"],
             "integrated_distance_m": self.state["integrated_distance_m"],
-            "px4_battery": copy.deepcopy(state.get("battery")),
+            ("mock_battery" if self.execution_backend == "mock" else "px4_battery"): copy.deepcopy(state.get("battery")),
             "reason": reason}
         self.state["snapshot"] = result
         save_json(self.path, self.state)
@@ -80,12 +82,12 @@ class LocalEnergyLedger:
             return {"status": "disabled", "available_energy_j": None,
                 "effective_fraction": None, "source": None,
                 "source_sim_ns": None, "clock_epoch": None,
-                "px4_battery": copy.deepcopy(state.get("battery"))}
+                ("mock_battery" if self.execution_backend == "mock" else "px4_battery"): copy.deepcopy(state.get("battery"))}
         if self.state.get("blocked_reason"):
             return self._result(state, "unavailable", self.state["blocked_reason"])
         estimate = state.get("vehicle_estimate") or {}
         if (state.get("uav_id") != self.uav_id or estimate.get("status") != "available"
-                or estimate.get("source") != "PX4_MavlinkDirect"):
+                or estimate.get("source") != self.estimate_source):
             return self._result(state, "unavailable", "own PX4 source estimate unavailable")
         stamp, now, epoch = estimate.get("source_sim_ns"), state.get("sim_ns"), estimate.get("clock_epoch")
         velocity = estimate.get("velocity_enu_m_s")

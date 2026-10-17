@@ -96,7 +96,12 @@ def adapter_document(scene: dict[str, Any], run_id: str, seed: int,
 
 class Coordinator:
     def __init__(self, scene: dict[str, Any], run_id: str, data: Path,
-                 socket_root: Path, *, seed: int = 42, until_ns: int = 900_000_000_000) -> None:
+                 socket_root: Path, *, seed: int = 42, until_ns: int = 900_000_000_000, backend: str = 'native') -> None:
+        if backend not in ('native', 'mock'):
+            raise ValueError('backend must be native or mock')
+        if scene.get('execution_backend', backend) != backend:
+            raise ValueError('scenario execution_backend differs from explicit backend')
+        self.backend = backend
         self.scene, self.run_id, self.data = scene, run_id, data
         data.mkdir(parents=True, exist_ok=True)
         self.until_ns = until_ns
@@ -104,7 +109,8 @@ class Coordinator:
         if not math.isfinite(self.max_real_time_factor) or self.max_real_time_factor <= 0:
             raise ValueError('max_real_time_factor must be positive')
         self.stop_requested = False
-        self.bridge = VehicleBridge(run_id, socket_root, data, tuple(scene['vehicles']) + ('centre',))
+        self.bridge = VehicleBridge(run_id, socket_root, data, tuple(scene['vehicles']) + ('centre',),
+            transport='file' if backend == 'mock' else 'unix')
         self.transport = RadioTransport(data / 'radio', run_id)
         self.document = adapter_document(scene, run_id, seed, until_ns)
         (data / 'resolved-scenario.yaml').write_text(yaml.safe_dump(self.document, sort_keys=False))
@@ -112,6 +118,11 @@ class Coordinator:
                                      catalog=register(EngineCatalog()))
         self.flight = next(e for e in self.simulation.engines if isinstance(e, PX4GazeboEngine))
         self.radio = next(e for e in self.simulation.engines if isinstance(e, NS3Engine))
+        if backend == 'mock':
+            from .mock_backend import MockWorld, MockRpcClient
+            self.mock_world = MockWorld(scene, run_id, data, seed)
+            self.flight.client = MockRpcClient(self.mock_world, 'flight')
+            self.radio.client = MockRpcClient(self.mock_world, 'radio')
         self.commands: dict[str, str] = {}
         self.bootstrap_messages: list[str] = []
         self.release_tasks: dict[str, dict[str, Any]] = {}
@@ -177,6 +188,9 @@ class Coordinator:
             'original_lifetime_ns': original, 'lifetime_ns': 1}
 
     def log(self, filename: str, value: dict[str, Any]) -> None:
+        if self.backend == 'mock':
+            filename = filename.replace('native-', 'mock-')
+            value = {**value, 'execution_backend': 'mock'}
         with (self.data / filename).open('a') as output:
             output.write(json.dumps(value, allow_nan=False) + '\n')
 
@@ -360,6 +374,8 @@ class Coordinator:
                 if 'content_path' in message:
                     content = Path(message.pop('content_path')).read_bytes()
                     message['content_base64'] = base64.b64encode(content).decode()
+                if self.backend == 'mock':
+                    message['execution_backend'] = 'mock'
                 self.bridge.deliver(uid, message)
         for operation_id, command_id in list(self.commands.items()):
             action = self.simulation.kernel.view().action(command_id)
@@ -401,6 +417,24 @@ class Coordinator:
                 'source': 'drop-receiver-1', 'destination': 'centre', 'stage': 'queued',
                 'submitted_ns': now_ns, 'message_id': message_id, **task, **data})
 
+    def wait_for_mock_clients(self) -> None:
+        options = self.scene.get('mock_backend', {})
+        expected = set(options.get('expected_clients', self.bridge.uav_ids))
+        if not expected <= set(self.bridge.uav_ids):
+            raise ValueError('mock expected_clients includes unknown endpoint')
+        ready = {'run_id': self.run_id, 'execution_backend': 'mock', 'sim_ns': 0,
+            'endpoints': {uid: 'file://' + str((self.bridge.socket_root / uid / 'agent.sock').resolve())
+                          for uid in self.bridge.uav_ids}}
+        (self.bridge.socket_root / 'ready.json').write_text(json.dumps(ready))
+        deadline = time.monotonic() + float(options.get('startup_timeout_s', 120))
+        while not expected <= self.bridge.connected_clients:
+            if self.stop_requested:
+                raise RuntimeError('mock startup stopped')
+            if time.monotonic() >= deadline:
+                raise TimeoutError('mock clients did not request initial state: ' + str(sorted(expected-self.bridge.connected_clients)))
+            self.bridge.poll_local_requests()
+            time.sleep(.005)
+
     def run(self) -> None:
         started = time.monotonic()
         episode_started = None
@@ -408,12 +442,15 @@ class Coordinator:
             self.bridge.start()
             self.simulation.start()
             self.collect(0)
+            if self.backend == 'mock':
+                self.wait_for_mock_clients()
             self.bootstrap()
             episode_started = time.monotonic()
             while not self.stop_requested:
                 now_ns = self.simulation.kernel.view().instant.ns
                 if now_ns >= self.until_ns:
                     break
+                self.bridge.poll_local_requests()
                 for request in self.bridge.drain_requests():
                     self.handle(request, now_ns)
                 self.transport.tick(now_ns)
@@ -430,7 +467,13 @@ class Coordinator:
                 # deadline budget. A slow backend incurs no additional delay.
                 remaining = target / 1e9 / self.max_real_time_factor - (time.monotonic() - episode_started)
                 if remaining > 0:
-                    time.sleep(remaining)
+                    if self.backend == 'native':
+                        time.sleep(remaining)
+                    else:
+                        deadline = time.monotonic() + remaining
+                        while not self.stop_requested and time.monotonic() < deadline:
+                            self.bridge.poll_local_requests()
+                            time.sleep(min(.005, max(0., deadline-time.monotonic())))
         finally:
             elapsed = time.monotonic() - started
             sim_ns = self.simulation.kernel.view().instant.ns
@@ -438,7 +481,7 @@ class Coordinator:
             (self.data / 'timing.json').write_text(json.dumps({'sim_elapsed_s': sim_ns / 1e9,
                 'wall_elapsed_s': elapsed, 'episode_wall_elapsed_s': episode_elapsed,
                 'max_real_time_factor': self.max_real_time_factor,
-                'real_time_factor': sim_ns / 1e9 / max(episode_elapsed, 1e-9)}))
+                'real_time_factor': sim_ns / 1e9 / max(episode_elapsed, 1e-9), 'execution_backend': self.backend}))
             try:
                 self.simulation.close()
             finally:
@@ -447,6 +490,7 @@ class Coordinator:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--backend', choices=('native', 'mock'), default='native')
     parser.add_argument('--scenario', type=Path, required=True)
     parser.add_argument('--run-id', default=os.getenv('RUN_ID'), required=os.getenv('RUN_ID') is None)
     parser.add_argument('--data', type=Path, default=Path('/data'))
@@ -456,7 +500,7 @@ def main() -> None:
     args = parser.parse_args()
     scene = yaml.safe_load(args.scenario.read_text())
     owner = Coordinator(scene, args.run_id, args.data, args.socket_root,
-                        seed=args.seed, until_ns=args.until_ns)
+                        seed=args.seed, until_ns=args.until_ns, backend=args.backend)
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, lambda *_: setattr(owner, 'stop_requested', True))
     owner.run()

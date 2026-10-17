@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import socket
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -16,12 +17,31 @@ class FlightClient:
 
     def request(self, op: str, **params: Any) -> dict[str, Any]:
         request = dict(request_id=uuid.uuid4().hex, run_id=self.run_id, op=op, **params)
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-            connection.settimeout(self.timeout_s)
-            connection.connect(self.socket_path)
-            connection.sendall((json.dumps(request, allow_nan=False) + '\n').encode())
-            with connection.makefile('rb') as reader:
-                response = json.loads(reader.readline(8 * 1024 * 1024))
+        if self.socket_path.startswith('file://'):
+            endpoint = Path(self.socket_path.removeprefix('file://'))
+            if not endpoint.is_dir():
+                raise RuntimeError('mock file endpoint is not ready')
+            identity = request['request_id']
+            temporary = endpoint / (identity + '.writing')
+            temporary.write_text(json.dumps(request, allow_nan=False))
+            temporary.replace(endpoint / (identity + '.request.json'))
+            result_path = endpoint / (identity + '.response.json')
+            deadline = time.monotonic() + self.timeout_s
+            while not result_path.exists():
+                if (endpoint / 'closed.json').exists():
+                    raise RuntimeError('mock coordinator stopped')
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('mock request timed out; do not replay stateful commands')
+                time.sleep(.005)
+            response = json.loads(result_path.read_text())
+            result_path.unlink()
+        else:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+                connection.settimeout(self.timeout_s)
+                connection.connect(self.socket_path)
+                connection.sendall((json.dumps(request, allow_nan=False) + '\n').encode())
+                with connection.makefile('rb') as reader:
+                    response = json.loads(reader.readline(8 * 1024 * 1024))
         if response.get('status') == 'error':
             raise RuntimeError(response.get('reason', 'coordinator request failed'))
         return response

@@ -17,3 +17,17 @@ The companion image defaults to the Node harness, which starts its local Python 
 Local execution verified a real `read-evidence` result and official DSH session resume without repeating its notification or tool execution. That request was explicitly queued; autonomous native rescue-task selection, flight and radio execution remain unverified. Docker is unavailable on this host, so the integrated image has not been built.
 
 See docs/guide.md and docs/STATUS.md for execution limitations. Packaging/import checks are not native acceptance.
+
+## Explicit mock run
+
+The mock backend uses the same kernel, adapter request/reply objects, task worker and radio transfer code. It substitutes kinematic flight, RGB-D scene rendering, parcel motion and packet delivery; native remains the default coordinator backend.
+
+Prepare the local photo asset with `tools/prepare_mock_sprite.py` as described in `docs/mock-visual-asset.md`. With the installed Python dependencies, Harness dependencies (`cd harness && npm ci`) and existing runtime models, run from this directory:
+
+```sh
+python tools/run_mock.py --scenario scenarios/rooftop-flood-mock.yaml \
+  --run-id C01-42-rule-attempt1 --seed 42 --stop-on-outcome \
+  --model-cache /path/to/runtime-models --person-sprite /path/to/person-sprite.png
+```
+
+Each attempt gets a new directory under `runs/mock/`, five separate Cordis/DSH owners and per-agent histories. The summary separates process shutdown, task outcome and return completion. This source checkpoint does not mark the four-agent rescue acceptance complete; current evidence and remaining work are recorded separately in `docs/mock-report.md` when available.

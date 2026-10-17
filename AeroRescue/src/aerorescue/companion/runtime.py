@@ -48,9 +48,9 @@ class CompanionRuntime:
                     mission["reconcile_required"] = True
         self.flight = FlightClient(socket_path, run_id)
         self.tools = CompanionTools(self.root, run_id, uav_id, self.flight, config, self.submit_mission)
-        self.centre = RescueCentre(self.root) if role == "centre" else None
+        self.centre = RescueCentre(self.root, execution_backend=config.get("execution_backend", "native")) if role == "centre" else None
         from .energy import LocalEnergyLedger
-        self.energy = LocalEnergyLedger(self.root, config.get("vehicles", {}).get(uav_id, {}), run_id=run_id, uav_id=uav_id) if role == "uav" else None
+        self.energy = LocalEnergyLedger(self.root, config.get("vehicles", {}).get(uav_id, {}), run_id=run_id, uav_id=uav_id, execution_backend=config.get("execution_backend", "native")) if role == "uav" else None
         # Cordis owns every policy/model turn. This process never builds a provider.
         if not execution_only:
             raise ValueError("The application worker is execution-only; select rule/model in Cordis")
@@ -642,7 +642,9 @@ class CompanionRuntime:
                 self._log("decisions.jsonl", {"decision": "relay_route_lost_reposition_under_received_policy", "peer": peer, "probe": results[key]})
                 return None
         monitor.update(checked_ns=self.state["sim_ns"], probe_round=round_id + 1, last_result={"probe_results": [{"peer": peer, "result": results["relay_monitor_" + str(round_id) + "_" + peer]} for peer in peers], "current_candidate": result.get("current_candidate", 0)})
-        return None
+        # Publish the newly measured round immediately. Waiting another TTL here
+        # expires its first probe before either endpoint can receive readiness.
+        return self._relay_decision()
 
     def _delivery_decision(self) -> dict[str, Any] | None:
         results, task = self.state["results"], self.state["task"]
@@ -1271,7 +1273,7 @@ class CompanionRuntime:
         return call
 
     def _publish_harness(self, *, ready: bool = False) -> None:
-        context = {"run_id": self.run_id, "uav_id": self.uav_id, "role": self.role, "sim_ns": self.state["sim_ns"], "decision_event_version": self.state.get("decision_event_version", 0), **self._local_context(self.state.get("self_state", {})), "resource_invalidation": self.state.get("resource_invalidation"), "task_blocker": self.state.get("task_blocker"), "control_operations": self.state.get("control_operations", {}), "gateway": self.state.get("gateway", {"status": "unknown"}), "unacknowledged_control": self.state.get("control_inflight")}
+        context = {"run_id": self.run_id, "uav_id": self.uav_id, "role": self.role, "execution_backend": self.config.get("execution_backend", "native"), "sim_ns": self.state["sim_ns"], "decision_event_version": self.state.get("decision_event_version", 0), **self._local_context(self.state.get("self_state", {})), "resource_invalidation": self.state.get("resource_invalidation"), "task_blocker": self.state.get("task_blocker"), "control_operations": self.state.get("control_operations", {}), "gateway": self.state.get("gateway", {"status": "unknown"}), "unacknowledged_control": self.state.get("control_inflight")}
         if self.centre is not None:
             context["centre"] = self.centre.state
             context["public_action_graph"] = self.config.get("incident", {}).get("initial_graph")

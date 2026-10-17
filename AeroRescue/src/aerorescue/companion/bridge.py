@@ -15,8 +15,10 @@ FLIGHT_ACTIONS = frozenset({'arm', 'takeoff', 'goto', 'hold', 'land', 'disarm'})
 
 class VehicleBridge:
     def __init__(self, run_id: str, socket_root: str | Path, data_root: str | Path,
-                 uav_ids: tuple[str, ...] = ('u1', 'u2', 'u3', 'u4', 'centre')) -> None:
+                 uav_ids: tuple[str, ...] = ('u1', 'u2', 'u3', 'u4', 'centre'), *, transport: str = 'unix') -> None:
         self.run_id = run_id
+        self.transport = transport
+        self.connected_clients: set[str] = set()
         self.socket_root = Path(socket_root)
         self.operations = Operations(Path(data_root) / 'flight', run_id)
         self.uav_ids = uav_ids
@@ -34,6 +36,13 @@ class VehicleBridge:
         self.sim_ns = 0
 
     def start(self) -> None:
+        if self.transport == 'file':
+            for uav_id in self.uav_ids:
+                endpoint = self.socket_root / uav_id / 'agent.sock'
+                endpoint.mkdir(parents=True, mode=0o700)
+                (endpoint / 'endpoint.json').write_text(json.dumps({'run_id': self.run_id,
+                    'uav_id': uav_id, 'execution_backend': 'mock'}))
+            return
         bridge = self
         for uav_id in self.uav_ids:
             directory = self.socket_root / uav_id
@@ -83,6 +92,7 @@ class VehicleBridge:
                 raise PermissionError('identity is fixed by the private endpoint')
             op = request['op']
             if op == 'state':
+                self.connected_clients.add(uav_id)
                 return dict(self.state_cache.get(uav_id, {
                     'status': 'unavailable', 'reason': 'no estimated telemetry yet',
                     'uav_id': uav_id, 'sim_ns': self.sim_ns}))
@@ -146,6 +156,26 @@ class VehicleBridge:
                 return {'status': 'pending', 'sim_ns': self.sim_ns}
             raise ValueError('unknown operation; world control is not exposed')
 
+    def poll_local_requests(self) -> None:
+        """Explicit mock IPC only; identities come from each endpoint directory."""
+        if self.transport != 'file':
+            return
+        for uid in self.uav_ids:
+            endpoint = self.socket_root / uid / 'agent.sock'
+            for path in sorted(endpoint.glob('*.request.json')):
+                try:
+                    if path.stat().st_size > 8 * 1024 * 1024:
+                        raise ValueError('request exceeds frame limit')
+                    result = self.handle(uid, json.loads(path.read_text()))
+                except (ValueError, KeyError, PermissionError, RuntimeError, OSError) as error:
+                    result = {'status': 'error', 'reason': str(error)}
+                result = {**result, 'execution_backend': 'mock'}
+                response = path.with_name(path.name.replace('.request.json', '.response.json'))
+                temp = response.with_suffix('.writing')
+                temp.write_text(json.dumps(result, allow_nan=False))
+                temp.replace(response)
+                path.unlink()
+
     def drain_requests(self) -> list[dict[str, Any]]:
         requests = []
         with self.lock:
@@ -167,7 +197,7 @@ class VehicleBridge:
                 'reason': 'PX4 estimate not provided'})
             self.state_cache[uav_id] = {'uav_id': uav_id, 'sim_ns': sim_ns,
                 'status': estimate['status'], 'vehicle_estimate': estimate,
-                **{k: sample[k] for k in ('armed', 'flight_mode', 'landed_state', 'battery') if k in sample}}
+                **{k: sample[k] for k in ('armed', 'flight_mode', 'landed_state', 'battery', 'battery_source') if k in sample}}
 
     def deliver(self, node: str, message: dict[str, Any]) -> None:
         with self.lock:
@@ -185,6 +215,10 @@ class VehicleBridge:
             self.replies[request['request_id']] = {**result, 'uav_id': request['uav_id']}
 
     def close(self) -> None:
+        if self.transport == 'file':
+            for uid in self.uav_ids:
+                (self.socket_root / uid / 'agent.sock' / 'closed.json').write_text(
+                    json.dumps({'run_id': self.run_id, 'sim_ns': self.sim_ns, 'execution_backend': 'mock'}))
         for server in self.servers:
             server.shutdown()
             server.server_close()

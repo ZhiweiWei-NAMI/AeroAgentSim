@@ -12,8 +12,11 @@ from .assignment_solver import solve_plan
 class RescueCentre:
     """No world/vehicle API is available to this object."""
 
-    def __init__(self, data_dir: str | Path) -> None:
+    def __init__(self, data_dir: str | Path, *, execution_backend: str = "native") -> None:
         import json
+        if execution_backend not in {"native", "mock"}:
+            raise ValueError("unknown centre execution backend")
+        self.execution_backend = execution_backend
         self.path = Path(data_dir) / "centre-state.json"
         self.state: dict[str, Any] = {"incidents": {}, "queue": [], "active": None, "consumed": []}
         if self.path.exists():
@@ -79,7 +82,8 @@ class RescueCentre:
                 elif event_id != self.state["active"] and event_id not in self.state["queue"]:
                     self.state["queue"].append(event_id)
         elif kind == "receipt":
-            if envelope["source"] != "drop-receiver-1" or data.get("source") != "gazebo_contact_sensor":
+            expected = "mock_contact_model" if self.execution_backend == "mock" else "gazebo_contact_sensor"
+            if envelope["source"] != "drop-receiver-1" or data.get("source") != expected:
                 raise ValueError("delivery receipt must come from the physical receiver")
             incident["receipts"].append(envelope)
         save_json(self.path, self.state)
@@ -174,7 +178,7 @@ class RescueCentre:
         incident = self.state["incidents"][event_id]
         if outcome == "completed_with_delivery" and (not incident.get("verified_delivery", {}).get("receipt_confirmation_message_id") or not incident["demand_source"]):
             raise ValueError("completion needs receiver-confirmed receipt transfers and an explicit demand source")
-        result = {"event_id": event_id, "outcome": outcome, "finished_ns": now_ns}
+        result = {"event_id": event_id, "outcome": outcome, "finished_ns": now_ns, "execution_backend": self.execution_backend}
         incident.update(status=outcome, outcome=result)
         if event_id in self.state["queue"]:
             self.state["queue"].remove(event_id)

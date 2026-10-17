@@ -10,7 +10,10 @@ from .transport import NS, save_json
 
 
 class PayloadDelivery:
-    def __init__(self, root: str | Path) -> None:
+    def __init__(self, root: str | Path, *, execution_backend: str = "native") -> None:
+        if execution_backend not in {"native", "mock"}:
+            raise ValueError("unknown payload execution backend")
+        self.execution_backend = execution_backend
         self.path = Path(root) / "payload-state.json"
         self.packages: dict[str, dict[str, Any]] = json.loads(self.path.read_text()) if self.path.exists() else {}
 
@@ -19,7 +22,7 @@ class PayloadDelivery:
         if previous is not None:
             # Unknown after restart must be reconciled, never release twice.
             return {**previous, "repeat_release": False}
-        result = {"package_id": package_id, "operation_id": operation_id, "task_id": task_id, "task_revision": task_revision, "status": "release_requested", "requested_ns": now_ns, "released": False, "observed_at_site": False, "receipt_delivered": False, "delivery_verified": False, "drop_site": drop_site}
+        result = {"execution_backend": self.execution_backend, "package_id": package_id, "operation_id": operation_id, "task_id": task_id, "task_revision": task_revision, "status": "release_requested", "requested_ns": now_ns, "released": False, "observed_at_site": False, "receipt_delivered": False, "delivery_verified": False, "drop_site": drop_site}
         self.packages[package_id] = result
         save_json(self.path, self.packages)
         return result
@@ -31,8 +34,10 @@ class PayloadDelivery:
             package["status"] = "delivery_verified"
 
     def actuator_state(self, package_id: str, state: str, source_ns: int | None, source: str, observed_sim_ns: int | None = None, release_interval_ns: list[int] | None = None) -> dict[str, Any]:
-        if source != "gazebo_detachable_joint" and not (source == "gazebo_detachable_joint_component_query" and state == "attached"):
-            raise ValueError("physical joint state required; component lookup cannot prove detachment")
+        expected = "mock_detachable_joint" if self.execution_backend == "mock" else "gazebo_detachable_joint"
+        component_attached = self.execution_backend == "native" and source == "gazebo_detachable_joint_component_query" and state == "attached"
+        if source != expected and not component_attached:
+            raise ValueError("joint source does not match the explicitly configured execution backend")
         package = self.packages[package_id]
         if state == "detached":
             if source_ns is None and observed_sim_ns is None:
@@ -57,7 +62,8 @@ class PayloadDelivery:
         package = self.packages[record["package_id"]]
         if envelope.get("source") != "drop-receiver-1" or not envelope.get("native_packet_ids") or "received_ns" not in envelope:
             raise ValueError("receipt must have actually arrived through radio")
-        if record.get("source") != "gazebo_contact_sensor" or record.get("contact_duration_ns", 0) < NS:
+        expected = "mock_contact_model" if self.execution_backend == "mock" else "gazebo_contact_sensor"
+        if record.get("source") != expected or record.get("contact_duration_ns", 0) < NS:
             raise ValueError("sustained physical contact evidence required")
         if (envelope["task_id"], envelope["task_revision"]) != (package["task_id"], package["task_revision"]):
             raise ValueError("stale payload receipt")
