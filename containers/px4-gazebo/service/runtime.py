@@ -72,6 +72,9 @@ class Runtime:
         self.origin_ns = self.gazebo.sim_ns
         self.sim_ns = 0
         self.telemetry.set_episode_origin(self.origin_ns)
+        if self.payload_adapter is not None:
+            carrier = next(v for v in config.vehicles if v.id == config.payload['carrier'])
+            await self.payload_adapter.initialize_attachment(carrier.model_name)
         if self.sensors is not None:
             self.sensors.set_episode_origin(self.origin_ns)
         poses = await self.poses()

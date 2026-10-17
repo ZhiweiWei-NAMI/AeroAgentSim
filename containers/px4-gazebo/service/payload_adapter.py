@@ -65,6 +65,26 @@ class PayloadAdapter:
         if not self.publisher:
             raise RuntimeError('could not advertise payload release topic')
 
+    async def initialize_attachment(self, carrier_model):
+        # The initial attached transition can precede subscriber discovery even
+        # while Gazebo is paused. Query the real joint; never infer from config.
+        with self.lock:
+            if self.state['status'] != 'unavailable':
+                return
+        result = await self.gazebo.payload_attachment(carrier_model, self.config['package_id'])
+        with self.lock:
+            if self.state['status'] != 'unavailable':
+                return
+            if result['status'] != 'attached':
+                self.state['reason'] = result.get('reason', 'native joint unavailable')
+                return
+            observed = max(0, self.logical_clock())
+            self.state.update(result, observed_sim_ns=observed,
+                              source_time_ns=observed, source_clock='episode_sim',
+                              native_source_clock='gazebo_sim', received_wall_ns=time.time_ns())
+            self.state.pop('reason', None)
+            self.events.append(dict(self.state))
+
     def on_state(self, message):
         with self.lock:
             if message.data not in {'attached', 'detached'}:
@@ -73,7 +93,10 @@ class PayloadAdapter:
             # availability and an interval, never pretend this is source time.
             observed = max(0, self.logical_clock())
             self.state.update(status=message.data, released=message.data == 'detached',
+                              source='gazebo_detachable_joint', source_time_ns=None, source_clock=None,
                               observed_sim_ns=observed, received_wall_ns=time.time_ns())
+            self.state.pop('native_source_time_ns', None)
+            self.state.pop('native_source_clock', None)
             self.state.pop('reason', None)
             if self.release_request is not None and message.data == 'detached':
                 self.state['release_interval_ns'] = [self.release_request['accepted_sim_ns'], observed]
