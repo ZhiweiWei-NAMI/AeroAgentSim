@@ -52,6 +52,13 @@ class RescueCentre:
                 incident["bids"][identity] = {**data, "uav_id": identity, "received_ns": envelope["received_ns"], "message_id": mid}
         elif kind in {"report", "file"}:
             incident["reports"].append(envelope)
+            if kind == "report" and data.get("kind") == "new_incident_clue" and not incident.get("clue_message_id"):
+                incident.update(clue_message_id=mid, clue_source=envelope["source"], deadline_ns=data["deadline_ns"], demand_source=data.get("demand_source"), graph=data["graph"], parent_event_id=data["parent_event_id"], status="queued", phase="inspect")
+                if self.state["active"] is None:
+                    self.state["active"] = event_id
+                    incident["status"] = "needs_new_notice"
+                elif event_id != self.state["active"] and event_id not in self.state["queue"]:
+                    self.state["queue"].append(event_id)
         elif kind == "receipt":
             if envelope["source"] != "drop-receiver-1" or data.get("source") != "gazebo_contact_sensor":
                 raise ValueError("delivery receipt must come from the physical receiver")
@@ -117,6 +124,8 @@ class RescueCentre:
             raise ValueError("completion needs radio receipt and an explicit demand source")
         result = {"event_id": event_id, "outcome": outcome, "finished_ns": now_ns}
         incident.update(status=outcome, outcome=result)
+        if event_id in self.state["queue"]:
+            self.state["queue"].remove(event_id)
         if self.state["active"] == event_id:
             self.state["active"] = self.state["queue"].pop(0) if self.state["queue"] else None
             if self.state["active"] is not None:

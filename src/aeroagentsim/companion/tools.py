@@ -77,6 +77,8 @@ class CompanionTools:
         self.context = context
         request_id = uuid.uuid4().hex
         try:
+            if (context.get("commitment") or {}).get("protected") and name in {"search-area", "hold-relay", "deliver-supply", "reobserve-target"}:
+                raise ValueError("protected original commitment cannot be replaced by a rescue mission")
             if name not in self.handlers:
                 self.perception_tools()
             if name == "detect-persons" or name == "retrieve-sightings" and request.get("reanalyze_frame_id"):
@@ -191,6 +193,8 @@ class CompanionTools:
     def send_evidence(self, request: dict[str, Any]) -> dict[str, Any]:
         if "artifact_id" not in request:
             report = dict(request.get("data", {}))
+            if report.get("kind") == "new_incident_clue":
+                return self.report_secondary_clue(request)
             if report.get("observation_verdict") == "confirmed":
                 perception = self.perception_tools()
                 records = {}
@@ -226,6 +230,20 @@ class CompanionTools:
                     raise ValueError("transmitted image must contain one of the verified detections, with its real source-frame provenance")
                 site = self.select_drop_site({"frame_id": records["second"]["frame_id"], "detection_id": records["second"]["detection_id"], "observation_refs": [{"frame_id": row["frame_id"], "detection_id": row["detection_id"]} for row in records.values()]})
                 report = {"observation_verdict": "confirmed", **records, "verification": verification, "evidence_transfer": transfer["result"], "drop_site": site, "observed_at_ns": records["second"]["observed_at"]}
+            elif report.get("kind") == "relay_ready":
+                proofs = []
+                for row in report.get("probe_results", []):
+                    measured = self._read_native("radio_status", message_id=row["result"]["message_id"])
+                    if measured["status"] != "succeeded" or not measured.get("probe_only") or measured.get("source") != self.uav_id or self.context["sim_ns"] - measured.get("ack_received_ns", -10 * NS) > 5 * NS:
+                        raise ValueError("relay readiness requires recent actual source-bound probe round trips")
+                    proofs.append(measured)
+                current_ns = self.flight.state()["sim_ns"]
+                if any(current_ns - proof["ack_received_ns"] > 5 * NS for proof in proofs):
+                    raise ValueError("one endpoint probe expired while collecting readiness; probe again")
+                required = {"centre", *[uid for uid, profile in self.config["vehicles"].items() if "inspect" in profile.get("capabilities", []) and uid != self.uav_id]}
+                if not required.issubset({proof["destination"] for proof in proofs}):
+                    raise ValueError("relay readiness needs all configured endpoint probes")
+                report = {"kind": "relay_ready", "probe_results": proofs, "observed_at_ns": min(proof["ack_received_ns"] for proof in proofs), "valid_until_ns": min(proof["ack_received_ns"] for proof in proofs) + 5 * NS, "held_until": "ack_cancel_or_handover"}
             elif report.get("kind") == "delivery_verified":
                 package_id = report.get("delivery", {}).get("package_id")
                 actual = self.payload.status(package_id, self.context["sim_ns"])
@@ -235,6 +253,37 @@ class CompanionTools:
             return self.send_message("report", {**request, "data": report})
         content, metadata = self.perception_tools().store.read(request["artifact_id"])
         return self.flight.request("radio_send", kind="file", content_base64=base64.b64encode(content).decode(), metadata=metadata, **self._message_fields(request))
+
+    def report_secondary_clue(self, request: dict[str, Any]) -> dict[str, Any]:
+        """A new event starts from archive references, never supplied positions."""
+        from .transport import digest
+        data = request["data"]
+        perception = self.perception_tools()
+        first = perception.store.observation(data["reference_frame_id"])
+        second = perception.store.observation(data["frame_id"])
+        if first["frame_id"] == second["frame_id"] or second["observed_at"] <= first["observed_at"]:
+            raise ValueError("a secondary clue needs a genuinely newer captured frame")
+        previous = perception.locate({"frame_id": first["frame_id"], "detection_id": data["reference_detection_id"]})
+        located = perception.locate({"frame_id": second["frame_id"], "detection_id": data["detection_id"]})
+        separation = self.config.get("incident", {}).get("secondary_clue_separation_m", 15.0)
+        if previous.get("status") != "available" or located.get("status") != "available" or math.dist(previous["position_enu_m"][:2], located["position_enu_m"][:2]) < separation:
+            raise ValueError("secondary clue has no distinct, actually located spatial candidate")
+        parent = self.context["event_id"]
+        event_id = "clue-" + digest(encoded([self.run_id, self.uav_id, parent]))[:20]
+        ledger = self.root / "tasks" / (event_id + ".json")
+        if ledger.exists():
+            return json.loads(ledger.read_text())["submission"]
+        ttl = int(self.config.get("incident", {}).get("secondary_clue_ttl_ns", 120 * NS))
+        deadline = min(self.context["deadline_ns"], self.context["sim_ns"] + ttl)
+        if deadline <= self.context["sim_ns"]:
+            raise ValueError("secondary observation is already beyond its declared clue deadline")
+        point = list(located["position_enu_m"])
+        point[2] = self.config["public_map"]["search_altitude_m"]
+        clue = {"kind": "new_incident_clue", "parent_event_id": parent, "frame_id": second["frame_id"], "detection_id": data["detection_id"], "observed_at_ns": second["observed_at"], "discovered_at_ns": self.context["sim_ns"], "location": located, "observation_verdict": "unverified_clue", "demand_source": self.config.get("incident", {}).get("secondary_demand_source"), "deadline_ns": deadline, "graph": {"actions": [{"id": "inspect-clue", "role": "inspect", "target": point, "duration_s": 30, "after": []}], "payload_kg": 1.0}}
+        fields = {**self._message_fields(request), "event_id": event_id, "task_id": event_id + "-clue", "task_revision": 1, "deadline_ns": deadline}
+        reply = self.flight.request("radio_send", kind="report", data=clue, **fields)
+        save_json(ledger, {"event_id": event_id, "clue": clue, "submission": reply})
+        return reply
 
     def probe_route(self, request: dict[str, Any]) -> dict[str, Any]:
         return self.flight.request("probe_route", destination=request["destination"], route=request.get("route"), deadline_ns=self.context["deadline_ns"])
@@ -352,7 +401,7 @@ class CompanionTools:
             steps.extend({"action": "goto", "params": {"position_enu_m": p, "yaw_deg": 0}} for p in self._route(previous, point))
             previous = point
         if not request.get("remaining_route"):
-            steps.append({"action": "land", "params": {}})
+            steps.extend([{"action": "land", "params": {}}, {"action": "disarm", "params": {}}])
         return self.submit_mission("resume-or-return", steps, {"remaining_obligations": request.get("remaining_route", [])})
 
 

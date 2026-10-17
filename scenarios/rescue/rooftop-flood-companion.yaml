@@ -43,6 +43,10 @@ public_map:
   return_position_enu_m: [0, 0, 0]
 incident:
   event_id: flood-rooftop-1
+  discover_secondary_clue: false
+  secondary_clue_separation_m: 15.0
+  secondary_clue_ttl_ns: 120000000000
+  secondary_demand_source: null
   description: Search the reported flooded rooftop area, confirm people from images and support with supplies when safe.
   demand_source: Public task notice reports the area is flood-isolated and requests emergency supplies.
   deadline_ns: 900000000000

@@ -31,8 +31,8 @@ class PayloadDelivery:
             package["status"] = "delivery_verified"
 
     def actuator_state(self, package_id: str, state: str, source_ns: int | None, source: str, observed_sim_ns: int | None = None, release_interval_ns: list[int] | None = None) -> dict[str, Any]:
-        if source != "gazebo_detachable_joint":
-            raise ValueError("physical joint state required")
+        if source != "gazebo_detachable_joint" and not (source == "gazebo_detachable_joint_component_query" and state == "attached"):
+            raise ValueError("physical joint state required; component lookup cannot prove detachment")
         package = self.packages[package_id]
         if state == "detached":
             if source_ns is None and observed_sim_ns is None:

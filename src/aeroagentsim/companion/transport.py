@@ -307,4 +307,4 @@ class RadioTransport:
 
     def status(self, message_id: str) -> dict[str, Any]:
         message = self.state["messages"][message_id]
-        return {key: message[key] for key in ("message_id", "status", "attempt", "deadline_ns", "file_hash", "size", "chunk_sends")}
+        return {key: message.get(key) for key in ("message_id", "status", "attempt", "deadline_ns", "file_hash", "size", "chunk_sends", "source", "destination", "route", "probe_only", "ack_received_ns")}

@@ -130,10 +130,15 @@ class CompanionRuntime:
             self.state["relay_release_authorized"] = message["message_id"]
             self.state["relay_held"] = False
             self.state.pop("task_blocker", None)
-        if message.get("kind") == "report" and message.get("data", {}).get("kind") == "relay_ready":
+        relevant_event = self.centre.state["active"] if self.centre is not None else current_task.get("event_id")
+        if message.get("kind") == "report" and message.get("data", {}).get("kind") == "relay_ready" and message["event_id"] == relevant_event and message["data"].get("valid_until_ns", -1) >= self.state["sim_ns"]:
             self.state["ready_relay"] = message["source"]
+            self.state["ready_relay_valid_until_ns"] = message["data"]["valid_until_ns"]
+            self.state["ready_relay_event_id"] = message["event_id"]
             if self.active_tool and self.active_tool.get("message_id"):
                 self.flight.request("radio_route", message_id=self.active_tool["message_id"], route=self._evidence_route())
+            if self.centre is not None:
+                self._reroute_centre_outbox(message["source"])
         if self.centre is not None:
             self.centre.consume(message, self.state["sim_ns"])
         if self.role != "uav" or message["kind"] not in {"notice", "plan"}:
@@ -148,6 +153,10 @@ class CompanionRuntime:
             return
         if old and message["task_id"] == old["task_id"] and message["task_revision"] < old["task_revision"]:
             return
+        if old and self.state.get("relay_held") and message["event_id"] != old.get("event_id"):
+            self.state["pending_task"] = message
+            self._log("decisions.jsonl", {"decision": "new_event_waits_for_radio_relay_release", "message_id": message["message_id"]})
+            return
         if old and (self.active_tool is not None or self.future is not None or any(m["status"] not in TERMINAL for m in self.state["missions"].values())):
             self._log("decisions.jsonl", {"decision": "new_task_waits_for_cancel_or_completion", "message_id": message["message_id"]})
             self.state["pending_task"] = message
@@ -161,9 +170,17 @@ class CompanionRuntime:
             ]
         self.state.pop("task_blocker", None)
         self.state.pop("inspection", None)
+        if task.get("recovery_policy"):
+            self.state["relay_policy"] = {"event_id": task["event_id"], "policy": task["recovery_policy"], "public_map": task["public_map"]}
         if not old or task["event_id"] != old.get("event_id"):
             self.state.pop("mission_closed", None)
             self.state.pop("relay_release_authorized", None)
+            self.state.pop("relay_monitor", None)
+            self.state.pop("ready_relay", None)
+            self.state.pop("ready_relay_valid_until_ns", None)
+            self.state.pop("ready_relay_event_id", None)
+            if self.state.get("relay_policy", {}).get("event_id") != task["event_id"]:
+                self.state.pop("relay_policy", None)
         self.state.update(task=task, step_index=0, results={}, commitment_version=self.state["commitment_version"] + 1)
         self._log("decisions.jsonl", {"decision": "radio_task_accepted", "message_id": message["message_id"], "task_id": task["task_id"], "task_revision": task["task_revision"]})
 
@@ -194,6 +211,11 @@ class CompanionRuntime:
             return result
         if result.get("message_id"):
             pending["message_id"] = result["message_id"]
+        if result.get("status") == "accepted" and result.get("message_id") and pending.get("call", {}).get("request", {}).get("data", {}).get("kind") == "relay_ready":
+            # Readiness announcements remain in the persistent radio outbox.
+            # Waiting for their peer ACK here would block route recovery when
+            # that moving peer has already left the measured path.
+            return {**result, "status": "submitted", "delivery_status": "pending", "reason": "readiness announcement queued; no delivery claim"}
         if pending.get("message_id") and result.get("status") not in TERMINAL:
             query = self.flight.request("radio_status", message_id=pending["message_id"])
             pending["request_id"] = query["request_id"]
@@ -221,7 +243,7 @@ class CompanionRuntime:
                     if released.get("status") not in TERMINAL | {"detached"}:
                         continue
                     if released.get("released"):
-                        self.tools.payload.actuator_state(mission["metadata"]["package_id"], "detached", released.get("source_time_ns"), "gazebo_detachable_joint", observed_sim_ns=released.get("observed_sim_ns"), release_interval_ns=released.get("release_interval_ns"))
+                        self.tools.payload.actuator_state(mission["metadata"]["package_id"], "detached", released.get("source_time_ns"), released["source"], observed_sim_ns=released.get("observed_sim_ns"), release_interval_ns=released.get("release_interval_ns"))
                 mission.update(status="canceled", reason="remaining steps canceled by received centre closure; submitted physical operation reconciled")
                 continue
             if self.state["sim_ns"] >= mission["deadline_ns"]:
@@ -271,7 +293,7 @@ class CompanionRuntime:
                     if not result.get("released"):
                         mission.update(status="failed", reason="release_not_observed")
                         continue
-                    self.tools.payload.actuator_state(mission["metadata"]["package_id"], "detached", result.get("source_time_ns"), "gazebo_detachable_joint", observed_sim_ns=result.get("observed_sim_ns"), release_interval_ns=result.get("release_interval_ns"))
+                    self.tools.payload.actuator_state(mission["metadata"]["package_id"], "detached", result.get("source_time_ns"), result["source"], observed_sim_ns=result.get("observed_sim_ns"), release_interval_ns=result.get("release_interval_ns"))
                 if pending["kind"] == "probe":
                     mission.setdefault("probe_results", []).append({"peer": pending["params"]["destination"], "result": result})
                     if len(mission["probe_results"]) == len(mission["metadata"]["required_peers"]):
@@ -315,6 +337,28 @@ class CompanionRuntime:
     def _policy_call(self, tool: str, request: dict[str, Any], key: str) -> dict[str, Any]:
         return {"tool": tool, "request": request, "result_key": key, "continue_on_unavailable": True}
 
+    def _secondary_clue_decision(self, first: dict[str, Any], frames: list[dict[str, Any]]) -> dict[str, Any] | None:
+        if not self.config.get("incident", {}).get("discover_secondary_clue", False):
+            return None
+        results = self.state["results"]
+        if "secondary_clue" in results:
+            return None
+        for index, frame in enumerate(frames):
+            if frame["observed_at"] <= first["observed_at"]:
+                continue
+            key = "secondary_detect_" + str(index)
+            if key not in results:
+                return self._policy_call("detect-persons", {"frame_id": frame["frame_id"]}, key)
+            for detection in results[key].get("detections", []):
+                locate_key = "secondary_locate_" + str(index) + "_" + detection["detection_id"]
+                if locate_key not in results:
+                    return self._policy_call("locate-target", {"frame_id": frame["frame_id"], "detection_id": detection["detection_id"]}, locate_key)
+                location = results[locate_key]
+                from math import dist
+                if location.get("status") == "available" and dist(location["position_enu_m"][:2], first["location"]["position_enu_m"][:2]) >= self.config["incident"].get("secondary_clue_separation_m", 15.0):
+                    return self._policy_call("send-evidence", {"data": {"kind": "new_incident_clue", "reference_frame_id": first["frame_id"], "reference_detection_id": first["detection_id"], "frame_id": frame["frame_id"], "detection_id": detection["detection_id"]}, "route": self._evidence_route()}, "secondary_clue")
+        return None
+
     def _inspection_decision(self) -> dict[str, Any] | None:
         results = self.state["results"]
         search = results.get("search", {})
@@ -351,6 +395,9 @@ class CompanionRuntime:
             if first is None:
                 report = {"observation_verdict": "uncertain", "reason": policy.get("failure", "No located person in the actually captured frames; planned coverage is not proof of observed coverage"), "frame_ids": [row["frame_id"] for row in frames]}
                 return self._policy_call("send-evidence", {"data": report, "destination": "centre", "route": self._evidence_route()}, "inspection_report")
+        second_clue = self._secondary_clue_decision(first, frames)
+        if second_clue:
+            return second_clue
         if "new_view" not in results:
             return self._policy_call("reobserve-target", {"frame_id": first["frame_id"], "detection_id": first["detection_id"]}, "new_view")
         new_view = results["new_view"]
@@ -396,26 +443,68 @@ class CompanionRuntime:
         report = {"observation_verdict": verdict, "first": first, "second": second, "verification": results["verification"], "evidence_transfer": results.get("evidence_transfer"), "drop_site": results.get("drop_site"), "observed_at_ns": second_frame["observed_at"]}
         return self._policy_call("send-evidence", {"data": report, "destination": "centre", "route": self._evidence_route()}, "inspection_report")
 
+    def _ready_relay(self) -> str | None:
+        event_id = self.centre.state["active"] if self.centre is not None else (self.state.get("task") or {}).get("event_id")
+        if self.state.get("ready_relay_valid_until_ns", -1) < self.state["sim_ns"] or self.state.get("ready_relay_event_id") != event_id:
+            return None
+        return self.state.get("ready_relay")
+
     def _evidence_route(self) -> list[str]:
-        relay = self.state.get("ready_relay")
+        relay = self._ready_relay()
         return [self.uav_id, relay, "centre"] if relay and relay != self.uav_id else [self.uav_id, "centre"]
 
     def _relay_decision(self) -> dict[str, Any] | None:
         results = self.state["results"]
         peers = ["centre", *[identity for identity, profile in self.config.get("vehicles", {}).items() if "inspect" in profile.get("capabilities", []) and identity != self.uav_id]]
+        local = self.state.get("self_state", {})
         for action in ("arm", "takeoff"):
+            if action == "arm" and local.get("armed") is True or action == "takeoff" and local.get("landed_state") in {"IN_AIR", "in_air"}:
+                continue
             key = "relay_" + action
             if key not in results:
                 return self._policy_call("flight-command", {"action": action, "params": {"altitude_m": 30} if action == "takeoff" else {}}, key)
-        if "relay_hold" not in results:
-            return self._policy_call("hold-relay", {"candidates": self.state["task"]["public_map"]["relay_candidates"], "peers": peers, "message_ids": []}, "relay_hold")
-        result = results["relay_hold"]
-        if result["status"] != "succeeded":
-            return None
-        for peer in peers:
-            key = "relay_notice_" + peer
+            if results[key]["status"] != "succeeded":
+                return None
+        monitor = self.state.setdefault("relay_monitor", {"generation": 0, "candidate_offset": 0, "probe_round": 0})
+        candidates = self.state["relay_policy"]["public_map"]["relay_candidates"]
+        generation = monitor["generation"]
+        if not self.state.get("relay_held") or monitor.get("recovery_required"):
+            if self.state["sim_ns"] < monitor.get("retry_after_ns", 0):
+                return None
+            key = "relay_hold_" + str(generation)
             if key not in results:
-                return self._policy_call("send-evidence", {"destination": peer, "route": [self.uav_id, peer], "data": {"kind": "relay_ready", "probe_results": result["probe_results"], "observed_at_ns": self.state["sim_ns"], "held_until": "ack_cancel_or_handover"}}, key)
+                offset = monitor["candidate_offset"] % len(candidates)
+                ordered = candidates[offset:] + candidates[:offset]
+                return self._policy_call("hold-relay", {"candidates": ordered, "peers": peers, "message_ids": []}, key)
+            result = results[key]
+            if result["status"] != "succeeded":
+                monitor.update(generation=generation + 1, recovery_required=True, retry_after_ns=self.state["sim_ns"] + 10 * NS)
+                return None
+            monitor.update(last_result=result, recovery_required=False, checked_ns=self.state["sim_ns"])
+        result = monitor.get("last_result")
+        if result is None:
+            # The mission has just completed and set relay_held; consume its
+            # persisted result before sending any readiness claim.
+            result = results.get("relay_hold_" + str(generation))
+            if result is None or result["status"] != "succeeded":
+                return None
+            monitor.update(last_result=result, checked_ns=self.state["sim_ns"])
+        for peer in peers:
+            key = "relay_notice_" + str(generation) + "_" + str(monitor["probe_round"]) + "_" + peer
+            if key not in results:
+                return self._policy_call("send-evidence", {"destination": peer, "route": [self.uav_id, peer], "data": {"kind": "relay_ready", "probe_results": result["probe_results"], "observed_at_ns": monitor["checked_ns"], "held_until": "ack_cancel_or_handover"}}, key)
+        if self.state["sim_ns"] - monitor["checked_ns"] < 5 * NS:
+            return None
+        round_id = monitor["probe_round"]
+        for peer in peers:
+            key = "relay_monitor_" + str(round_id) + "_" + peer
+            if key not in results:
+                return self._policy_call("probe-route", {"destination": peer, "route": [self.uav_id, peer]}, key)
+            if results[key]["status"] != "succeeded":
+                monitor.update(generation=generation + 1, recovery_required=True, candidate_offset=monitor["candidate_offset"] + result.get("current_candidate", 0) + 1, last_result=None, probe_round=round_id + 1)
+                self._log("decisions.jsonl", {"decision": "relay_route_lost_reposition_under_received_policy", "peer": peer, "probe": results[key]})
+                return None
+        monitor.update(checked_ns=self.state["sim_ns"], probe_round=round_id + 1, last_result={"probe_results": [{"peer": peer, "result": results["relay_monitor_" + str(round_id) + "_" + peer]} for peer in peers], "current_candidate": result.get("current_candidate", 0)})
         return None
 
     def _delivery_decision(self) -> dict[str, Any] | None:
@@ -469,7 +558,7 @@ class CompanionRuntime:
                 return self._inspection_decision()
             if task.get("intent") == "deliver":
                 return self._delivery_decision()
-            if task.get("recovery_policy"):
+            if self.state.get("relay_policy", {}).get("event_id") == task["event_id"]:
                 return self._relay_decision()
             return None
         step = steps[index]
@@ -543,7 +632,7 @@ class CompanionRuntime:
             self.state["last_assignment_estimate"] = result
         if call["tool"] == "send-evidence" and result.get("message_id") and result.get("status") == "succeeded":
             save_json(self.root / "outbox" / (result["message_id"] + ".json"), {"result": result, "request": call["request"], **self.context()})
-        if result.get("status") in {"succeeded", "available", "confirmed", "rejected", "uncertain", "delivery_verified"}:
+        if result.get("status") in {"succeeded", "submitted", "available", "confirmed", "rejected", "uncertain", "delivery_verified"}:
             if not call.get("local_request_id"):
                 self.state["step_index"] += 1
         elif self.mode == "rule" and not call.get("local_request_id") and not call.get("continue_on_unavailable") and not self.state.get("mission_closed"):
@@ -576,6 +665,18 @@ class CompanionRuntime:
                 raise ValueError("changed action target, role or duration requires freshly estimated radio bids")
         graph_result["payload_kg"] = graph.get("payload_kg", 0)
         return graph_result
+
+    def _reroute_centre_outbox(self, relay: str) -> None:
+        submissions = [{"request_id": row["request_id"], "destination": row["uav_id"]} for row in self.state.get("plan_submissions", [])]
+        for incident in self.centre.state["incidents"].values():
+            submissions.extend(row for row in incident.get("notice_requests", []) if isinstance(row, dict))
+            submissions.extend(incident.get("closure_submissions", []))
+            if incident.get("clue_ack_submission"):
+                submissions.append({"request_id": incident["clue_ack_submission"], "destination": incident["clue_source"]})
+        for row in submissions:
+            reply = self.flight.request("result", pending_request_id=row["request_id"])
+            if reply.get("message_id") and row["destination"] != relay:
+                self.flight.request("radio_route", message_id=reply["message_id"], route=["centre", relay, row["destination"]])
 
     def _publish_plan(self, event_id: str, graph: dict[str, Any]) -> None:
         now = self.state["sim_ns"]
@@ -616,8 +717,8 @@ class CompanionRuntime:
         incident.update(status="submitting_notice", graph=graph, bids={}, notice_requests=[], expected_tasks={})
         for uid in self.config["vehicles"]:
             data = {"task": {"intent": "offer", "deadline_ns": incident["deadline_ns"]}, "incident": {"initial_graph": graph, "deadline_ns": incident["deadline_ns"], "demand_source": incident["demand_source"]}, "public_map": self.config["public_map"]}
-            reply = self.flight.request("radio_send", destination=uid, kind="notice", data=data, event_id=event_id, task_id=event_id + "-offer", task_revision=incident["task_revision"] + 1, deadline_ns=incident["deadline_ns"], route=["centre", self.state["ready_relay"], uid] if self.state.get("ready_relay") and uid != self.state["ready_relay"] else ["centre", uid])
-            incident["notice_requests"].append(reply["request_id"])
+            reply = self.flight.request("radio_send", destination=uid, kind="notice", data=data, event_id=event_id, task_id=event_id + "-offer", task_revision=incident["task_revision"] + 1, deadline_ns=incident["deadline_ns"], route=["centre", self.state["ready_relay"], uid] if self._ready_relay() and uid != self.state["ready_relay"] else ["centre", uid])
+            incident["notice_requests"].append({"request_id": reply["request_id"], "destination": uid})
         save_json(self.centre.path, self.centre.state)
 
     def _broadcast_delivery_notice(self, event_id: str, report: dict[str, Any]) -> None:
@@ -632,7 +733,9 @@ class CompanionRuntime:
                 continue
             submissions = []
             for uid in self.config["vehicles"]:
-                relay = self.state.get("ready_relay")
+                # A terminal cancellation can use the last candidate route:
+                # the transport must freshly probe it before sending any data.
+                relay = self.state.get("ready_relay") if self.state.get("ready_relay_event_id") == event_id else None
                 route = ["centre", relay, uid] if relay and relay != uid else ["centre", uid]
                 reply = self.flight.request("radio_send", destination=uid, kind="report", data={"kind": "mission_closed", **incident["outcome"], "release_basis": "centre terminal outcome; cancel remaining rescue and relay obligations"}, event_id=event_id, task_id=event_id + "-closure", task_revision=incident["task_revision"], deadline_ns=max(self.state["sim_ns"] + 30 * NS, incident["deadline_ns"]), route=route)
                 submissions.append({"destination": uid, "request_id": reply["request_id"]})
@@ -680,12 +783,28 @@ class CompanionRuntime:
                 return
         save_json(self.centre.path, self.centre.state)
 
+    def _acknowledge_clues(self) -> None:
+        for event_id, incident in self.centre.state["incidents"].items():
+            if not incident.get("clue_message_id") or incident.get("clue_ack_submission"):
+                continue
+            data = {"kind": "incident_status", "event_id": event_id, "status": "queued" if event_id in self.centre.state["queue"] else incident["status"], "demand_status": "known" if incident.get("demand_source") else "unverified", "deadline_ns": incident["deadline_ns"], "clue_message_id": incident["clue_message_id"]}
+            source = incident["clue_source"]
+            relay = self._ready_relay()
+            route = ["centre", relay, source] if relay and relay != source else ["centre", source]
+            reply = self.flight.request("radio_send", destination=source, kind="report", data=data, event_id=event_id, task_id=event_id + "-status", task_revision=1, deadline_ns=max(self.state["sim_ns"] + 30 * NS, incident["deadline_ns"]), route=route)
+            incident["clue_ack_submission"] = reply["request_id"]
+            save_json(self.centre.path, self.centre.state)
+
     def _centre_tick(self, state: dict[str, Any]) -> None:
         now = self.state["sim_ns"]
         for notice in state.get("notice_submissions", []):
             event_id = notice["event_id"]
             if not self.centre.state["incidents"].get(event_id, {}).get("notice_anchor_confirmed"):
                 self.centre.notice_submitted(event_id, notice["submitted_ns"], notice["deadline_ns"], notice["demand_source"])
+        self._acknowledge_clues()
+        for queued in list(self.centre.state["queue"]):
+            if now >= self.centre.state["incidents"][queued]["deadline_ns"]:
+                save_json(self.root / "outcomes" / (queued + ".json"), self.centre.finish(queued, "expired", now))
         self._publish_closures()
         active = self.centre.state["active"]
         if active is None:
@@ -696,7 +815,8 @@ class CompanionRuntime:
             return
         if incident["status"] == "needs_new_notice":
             graph = incident.get("graph")
-            if graph is None:
+            if graph is None or not incident.get("demand_source"):
+                incident["reason"] = "New clue has no confirmed public demand source" if not incident.get("demand_source") else "No public action graph"
                 save_json(self.root / "outcome.json", self.centre.finish(active, "unresolved_evidence", now))
             else:
                 self._broadcast_offer_notice(active, graph)
@@ -706,7 +826,8 @@ class CompanionRuntime:
             return
         if incident["status"] == "submitting_notice":
             submitted = []
-            for request_id in incident["notice_requests"]:
+            for submission in incident["notice_requests"]:
+                request_id = submission["request_id"] if isinstance(submission, dict) else submission
                 reply = self.flight.request("result", pending_request_id=request_id)
                 if reply.get("submitted_ns") is not None:
                     submitted.append(reply["submitted_ns"])
@@ -752,14 +873,14 @@ class CompanionRuntime:
             self._save()
             return
         self._advance_missions()
-        if self.state.get("pending_task") and self.active_tool is None and self.future is None and not any(m["status"] not in TERMINAL for m in self.state["missions"].values()):
+        if self.state.get("pending_task") and (not self.state.get("relay_held") or self.state["pending_task"]["event_id"] == (self.state.get("task") or {}).get("event_id")) and self.active_tool is None and self.future is None and not any(m["status"] not in TERMINAL for m in self.state["missions"].values()):
             self._consume_message(self.state.pop("pending_task"))
         if self.active_tool:
             active = self.active_tool
             if "flight_operation_id" in active and self.state.get("mission_closed") and active["call"]["tool"] != "resume-or-return":
                 self.flight.cancel(active["flight_operation_id"])
             result = self.state["missions"][active["operation_id"]] if "operation_id" in active else self.flight.poll(active["flight_operation_id"]) if "flight_operation_id" in active else self._poll_pending(active)
-            if result.get("status") in TERMINAL | {"available", "confirmed", "uncertain"}:
+            if result.get("status") in TERMINAL | {"submitted", "available", "confirmed", "uncertain"}:
                 self.active_tool = None
                 self._complete_tool(result, active["call"])
             self._save()
