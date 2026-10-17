@@ -28,7 +28,10 @@ remains required. Preserve failures and do not lower functional thresholds.
 
 ## Current host observation
 
-2026-10-17: Debian 13.6, x86_64, approximately 9.7 GiB RAM and 28 GiB free disk.
+2026-10-17 11:08 UTC: Debian 13.6, x86_64, approximately 9.7 GiB RAM
+(8.8 GiB available) and 24 GiB free disk. The repository/environment uses
+approximately 1.6 GiB and the models/data/recovery cache 3.0 GiB. No complete
+container-image or four-UAV runtime footprint has been measured.
 No docker/podman executable, Docker socket, /dev/dri or NVIDIA device was found;
 process capabilities are empty. Native Docker build/run and four-UAV RGB-D
 execution are BLOCKED on this host. Do not attempt privileged nested Docker.
@@ -51,8 +54,13 @@ acceptance. No training server is being used.
 
 ## Remaining
 
-P0 host/baseline recording is underway. P1–P8 are not complete. The initial
-acceptance matrix remains NOT_RUN; source code presence must not change it to PASS.
+P0 host/baseline recording is saved. Existing P1 build commands were attempted
+and failed because Docker is unavailable. P1–P8 remain incomplete; the working
+acceptance matrix distinguishes BLOCKED and NOT_RUN, with no native PASS.
+Four-machine routing, flight cancellation, native sensor export, physical
+payload plumbing and the companion task loop are implemented on the branch.
+Case-specific execution drivers are still being completed and reviewed.
+Source execution checks do not substitute for shared-world native runs.
 
 ## Completed software execution (not native acceptance)
 
@@ -62,3 +70,21 @@ score difference. Local BGE retrieval, SQLite restart/history reanalysis and
 a 5,015-byte target crop were executed on a real image. Full image compression
 at a 30,000-byte budget returned unavailable and is preserved. No native flight,
 radio delivery or physical drop has passed yet.
+
+The frozen 200-image SeaDronesSee subset was evaluated with the runtime's 0.5
+confidence and 0.5 IoU: 68 true positives, 79 false positives and 562 misses,
+giving precision 46.26% and recall 10.79%. This is insufficient for a reliable
+water-person detection claim. Keep these failures; do not treat export parity
+as evidence of detection quality. The required native-scene perception samples
+remain unavailable until the simulator can run.
+
+## Large-artifact recovery
+
+The owner has the private Drive recovery link in the project conversation.
+
+It contains the original requirements, input imagery, prepared models/assets
+and actual execution records, including failed attempts. The container-images
+directory is empty because no container image has been built on this host.
+Use the recovery index and restore instructions in that directory; large
+archives are split into ordered parts. Use current branch preparation scripts
+or the uploaded model update package when restoring the older model archive.

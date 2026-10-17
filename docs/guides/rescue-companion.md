@@ -26,18 +26,20 @@ The coordinating developer reviews each completed checkpoint before publishing.
 
 ## Private data recovery
 
-[Recovery folder](https://drive.google.com/drive/folders/1Txz-gkOQ3Kkwa6hgB8ynxuv_V4_cJ2oQ):
-[input data](https://drive.google.com/drive/folders/18aCCLqLsyfuBxmhDb2tDFTY7N2qmEHi6),
-[models/assets](https://drive.google.com/drive/folders/1cIGWo-G5ql3mEyMOuWwhbyPRt7yzjVu2),
-[container images](https://drive.google.com/drive/folders/10J5I0GVx0pc2evoo8VTDBfso-0xiPW3Y),
-[runs/evidence](https://drive.google.com/drive/folders/1anNqPLDxfWtlWmMHJwIIXPGbotoeRV1C).
+The owner retains the private recovery directory and download links in the
+project conversation. Repository documentation lists filenames only.
 
-Uploaded files:
-- [Original execution package](https://drive.google.com/file/d/1rZ_8rpVI6mdl_PJO5Oq3ULzy1R8pKt0o/view)
-- [P0/P1 host and failed-build logs](https://drive.google.com/file/d/1CT9zV8i9exLIi_Orvs3cmL4RiTxwh4Rb/view)
-- [model-runtime-assets.tar.gz.part-00](https://drive.google.com/file/d/1BExlgyJURpUDvSVxfwvYk-PXymPkirh0/view)
-- [model-runtime-assets.tar.gz.part-01](https://drive.google.com/file/d/10sDVLQMCqoyYin8W_Aj_DkEHG4Rxz01l/view)
-- [model-runtime-assets.tar.gz.part-02](https://drive.google.com/file/d/1u4TahKszDDXvLkJRf1NPfRWa8pL6PVKs/view)
+Recovery folders contain inputs, models/assets, container images and runs/evidence.
+The container-images folder is currently empty. Retain all previous attempts.
+Available artifacts include the original execution package, model preparation
+update, scene/real-image archive parts, P0/P1 failed-build logs, and controlled
+source-check/blocked-case evidence. Controlled checks are labeled separately
+from native execution.
+
+Model archive filenames:
+- model-runtime-assets.tar.gz.part-00
+- model-runtime-assets.tar.gz.part-01
+- model-runtime-assets.tar.gz.part-02
 
 Download all three model parts with those filenames. Restore the 204,724,315-byte
 archive, then put only ONNX and BGE in the directory mounted to companions:
@@ -59,8 +61,9 @@ with `docker load --input <archive>`. Keep earlier run archives separately.
 ## Build and run
 
 On a Docker-capable host, prepare models and scene assets as described above.
-Set `ASSET_ROOT` to the directory containing `makehuman_person/` and `WORLD_ROOT`
-to the directory containing the prepared world SDF; these mount only in simulator:
+Set `ASSET_ROOT` to the restored `cache/scene` directory containing
+`makehuman_person/`. The runner generates each attempt's world and keeps its
+labels evaluator-only. Add `--gpu` when using the supplied NVIDIA override:
 
 ```sh
 ./tools/companion/check-host.sh --out runs/acceptance/P0/host-report.json
@@ -83,7 +86,33 @@ C01 starts the eight-service Compose deployment. The entrypoint creates fresh
 private data/socket directories, sets host UID/GID, uses local images, records
 output and stops only its unique project. The default limits are 900 simulated
 seconds and 7,200 wall seconds. `FINISHED` is process execution status; case
-results come from observed behavior. C02–C10 still need dedicated drivers.
+results come from observed behavior.
+
+Additional case entrypoints:
+- C02: `--variant no_person|occluded_then_visible|still_uncertain` builds the
+  corresponding physical world before the common decision loop.
+- C03: `missing_fragment_nack_then_retry|final_ack_lost` captures and packages a
+  real near-base image with original channel attenuation, then injects one native
+  delivery timeout. Its receiver is the coordinator transport service; centre
+  planning stays stopped. Full blocked-direct → relay recovery remains.
+- C04: protected-task, absent physical payload and role/ID permutation variants.
+- C05: `--variant queued_not_dispatched|running_cancel_with_late_results` drives
+  queued cancel or measured 3±0.25 m/s running cancel, then stale-revision input.
+- C06: actual history acquisition, exact-time/absence query, companion restart,
+  repeated query and one old-frame inference. The full 20 positive/5 absence
+  query benchmark and cross-UAV tests remain.
+- C07: `receiver_receipt_lost|confirmation_final_ack_lost` applies native delivery
+  timeouts to the actual carrier receipt or its first ACK; the centre copy is separate.
+- C08: actual later-frame detection/location can produce a separate clue and
+  radio event; `second_incident_queued` or five-second `deadline_expired`.
+- C09: fresh offline rule deployment, then read-only kernel journal reconstruction
+  and existing projector output. Time/action states are compared with native logs.
+  Replay a stopped run without Docker using `--replay-run <retained-run>`.
+- C10 scores retained native inference with `--perception-samples <frozen.json>`,
+  `--perception-annotations <evaluator.json>` and `--inference-run <run>`.
+Missing drivers: C03 direct/relay blockage, route loss, no path and lost assignment;
+C04 dynamic energy; C05 late model/low-level callback; C07 stuck joint and out-of-zone
+release; C08 no-eligible resource setup; C10 native sample acquisition/reset.
 
 ## Review and retain results
 
@@ -94,13 +123,16 @@ python tools/companion/export_evidence.py --run-root runs/acceptance --archive
 
 The read-only checker decodes RGB/float32 depth, recomputes goto/hold settling
 and landing state from PX4 estimates, and checks file/chunk bytes against
-native-radio delivery, receiver commits and final ACKs. It returns exit 1 for
+native-radio delivery, receiver commits and final ACKs. Fault cases also require
+a matched native drop, actual missing-fragment recovery or receipt timeout. It returns exit 1 for
 contradictions and 2 for incomplete evidence. Whole-case review is still required.
 
 Exports retain all attempts and baseline diagnostics, copy the result ledger,
 and show coverage gaps across 31 required combinations. `--archive` adds
 `runs.tar.gz`; source records stay unchanged. Missing evidence stays BLOCKED.
-The current diagnostic export is `runs/exports/companion-c00-c01-blocked/`.
+The current diagnostic export is `runs/exports/companion-final-checkpoint-20261017-a2/`;
+`C09-42-rule-a2/replay/` records the missing native WAL in the blocked C00 source.
+Actual case-world preparations are in `runs/acceptance/case-scene-preparations/`.
 
 Remaining work: native four-UAV flight/cancellation and identity checks;
 headless RGB-D and clock/origin calibration; damaged-link recovery; physical

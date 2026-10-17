@@ -54,6 +54,7 @@ def export(root: Path, output: Path, archive: bool) -> dict:
         (r.get("case_id"), r.get("seed"), r.get("agent_mode"), r.get("variant_id"))
         for r in reports
         if r.get("execution_status") == "FINISHED"
+        and r.get("execution_scope") not in {"replay_only", "scoring_only"}
     }
     missing = [
         {"case_id": c, "seed": s, "agent_mode": m, "variant_id": v}

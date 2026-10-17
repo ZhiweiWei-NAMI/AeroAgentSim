@@ -55,6 +55,7 @@ def radio_check(run: Path) -> dict[str, Any]:
     # Coordinator records actual native deliveries separately from application
     # receiver bookkeeping. Application logs alone cannot prove native transit.
     native_delivered = set()
+    native_sizes = {}
     for row in raw:
         payload = row.get("payload", row.get("data", row.get("event", row)))
         if isinstance(payload, dict) and row.get("kind", row.get("type")) in {
@@ -63,6 +64,7 @@ def radio_check(run: Path) -> dict[str, Any]:
             "ns3.delivery",
         }:
             native_delivered.add(payload.get("packet_id"))
+            native_sizes[payload.get("packet_id")] = payload.get("size")
     commits = acknowledgements = chunks = 0
     errors: list[str] = []
     for ledger in ledgers:
@@ -86,6 +88,41 @@ def radio_check(run: Path) -> dict[str, Any]:
             elif event == "native_submit":
                 submitted[pid] = row
                 header = row.get("header", {})
+                data_size = 0
+                if header.get("kind") == "chunk":
+                    source_part = (
+                        ledger.parent
+                        / "private-payloads"
+                        / str(mid)
+                        / str(header.get("chunk_index"))
+                    )
+                    if not source_part.is_file():
+                        errors.append(
+                            f"{mid}: original submitted chunk bytes are missing"
+                        )
+                    else:
+                        data_size = source_part.stat().st_size
+                        if data_size > 1024:
+                            errors.append(f"{mid}: chunk data exceeds 1024 bytes")
+                header_size = len(
+                    json.dumps(
+                        header,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                        allow_nan=False,
+                    ).encode()
+                )
+                if row.get("size") != header_size + data_size:
+                    errors.append(
+                        f"{mid}: modeled packet size omits or changes application header/data bytes"
+                    )
+                if native_sizes.get(pid) is not None and native_sizes[pid] != row.get(
+                    "size"
+                ):
+                    errors.append(
+                        f"{mid}: raw native delivered size differs from submitted bytes"
+                    )
                 # Count original sends, not every relay hop, against retry budget.
                 if header.get("kind") == "chunk" and str(pid).endswith("-h0"):
                     key = (mid, header.get("attempt"), header.get("chunk_index"))
@@ -403,6 +440,392 @@ def flight_check(run: Path) -> dict[str, Any]:
     )
 
 
+def cancellation_check(run: Path) -> dict[str, Any]:
+    operations = [
+        row for path in run.rglob("operations.jsonl") for row in records(path)
+    ]
+    telemetry = [
+        row for path in run.rglob("estimated-telemetry.jsonl") for row in records(path)
+    ]
+    native = [
+        row for path in run.rglob("native-flight-events.jsonl") for row in records(path)
+    ]
+    latest = {row["operation_id"]: row for row in operations}
+    canceled = [row for row in latest.values() if row.get("status") == "canceled"]
+    if not canceled or not telemetry:
+        return result(
+            "cancellation_observations",
+            "BLOCKED",
+            "No canceled operation and independent PX4 estimates",
+        )
+    checked, missing, errors = [], [], []
+    for operation in canceled:
+        oid, uid = operation["operation_id"], operation["uav_id"]
+        history = [row for row in operations if row["operation_id"] == oid]
+        if not operation.get("dispatched"):
+            end = operation.get("completed_sim_ns")
+            samples = [
+                row
+                for row in telemetry
+                if row.get("uav_id") == uid
+                and end is not None
+                and end <= row["sim_ns"] <= end + 5_300_000_000
+            ]
+            if any(
+                row.get("dispatched") or row.get("kernel_command_id") for row in history
+            ):
+                errors.append(oid + ": queued cancellation later dispatched")
+            elif (
+                not samples
+                or samples[-1]["sim_ns"] < end + 5_000_000_000
+                or not list(run.rglob("kernel.jsonl"))
+            ):
+                missing.append(oid + ": no independent 5-second post-cancel record")
+            elif any(
+                row.get("armed") is None or row.get("landed_state") is None
+                for row in samples
+            ):
+                missing.append(
+                    oid + ": ground cancellation lacks actual armed/landed telemetry"
+                )
+            elif any(
+                row.get("armed") is True or row.get("landed_state") != "ON_GROUND"
+                for row in samples
+            ) or any(
+                row.get("vehicle") == uid and row.get("status") == "running"
+                for row in native
+            ):
+                errors.append(
+                    oid
+                    + ": queued ground cancellation was followed by actual arming/dispatch"
+                )
+            else:
+                checked.append(oid)
+            continue
+        response = next(
+            (
+                row
+                for row in native
+                if row.get("kind") == "cancel_response"
+                and row.get("kernel_command_id") == operation.get("kernel_command_id")
+                and row.get("response", {}).get("status") == "accepted"
+            ),
+            None,
+        )
+        terminal = next(
+            (
+                row
+                for row in native
+                if response
+                and row.get("command_id") == response["command_id"]
+                and row.get("status") == "canceled"
+            ),
+            None,
+        )
+        if not response or not terminal:
+            missing.append(oid + ": native accepted-cancel or terminal event absent")
+            continue
+        accepted_ns, end_ns = response["response"]["sim_ns"], terminal["sim_ns"]
+        samples = [
+            row
+            for row in telemetry
+            if row.get("uav_id") == uid
+            and isinstance(row.get("vehicle_estimate"), dict)
+            and row["vehicle_estimate"].get("source") == "PX4_MavlinkDirect"
+            and row["vehicle_estimate"].get("status") == "available"
+        ]
+        initial = [
+            row
+            for row in samples
+            if 0
+            <= accepted_ns - row["vehicle_estimate"]["source_sim_ns"]
+            <= 300_000_000
+        ]
+        if not initial:
+            missing.append(oid + ": no source-timed velocity at cancel acceptance")
+        else:
+            speed = math.hypot(*initial[-1]["vehicle_estimate"]["velocity_enu_m_s"][:2])
+            if not 2.75 <= speed <= 3.25:
+                errors.append(
+                    oid
+                    + f": actual initial horizontal speed {speed:.3f} m/s outside [2.75,3.25]"
+                )
+        if not 0 <= end_ns - accepted_ns <= 5_000_000_000:
+            errors.append(oid + ": native cancellation exceeded five simulated seconds")
+        held_since = previous = None
+        held = False
+        for row in samples:
+            estimate = row["vehicle_estimate"]
+            now = estimate["source_sim_ns"]
+            if not accepted_ns <= now <= end_ns:
+                continue
+            if previous == now:
+                continue
+            good = (
+                row.get("flight_mode") == "HOLD"
+                and math.dist(estimate["velocity_enu_m_s"], [0, 0, 0]) < 1
+            )
+            if not good or previous is not None and now - previous > 300_000_000:
+                held_since, held = None, False
+            if good and held_since is None:
+                held_since = now
+            if (
+                good
+                and now - held_since >= 1_000_000_000
+                and end_ns - now <= 300_000_000
+            ):
+                held = True
+            previous = now
+        if not held:
+            errors.append(
+                oid
+                + ": canceled lacks source-timed HOLD and one-second low-speed settling"
+            )
+        if (
+            not samples
+            or max(row["sim_ns"] for row in samples) < end_ns + 5_000_000_000
+        ):
+            missing.append(oid + ": post-cancel five-second observation incomplete")
+        checked.append(oid)
+    return result(
+        "cancellation_observations",
+        "FAIL" if errors else "BLOCKED" if missing else "PASS",
+        "; ".join(errors + missing)
+        or "Native cancellation timing and independent PX4 observations agree; late callback isolation remains separate",
+        checked=checked,
+        unavailable=missing,
+    )
+
+
+def radio_fault_check(run: Path) -> dict[str, Any]:
+    """Match these four authored losses to native drops and actual recovery."""
+    manifest = read_json(run / "run-manifest.json")
+    injections = [
+        r for p in run.rglob("native-fault-injections.jsonl") for r in records(p)
+    ]
+    if not injections:
+        return result(
+            "native_radio_fault",
+            "BLOCKED",
+            "No matching real file/receipt packet reached the native fault injection",
+        )
+    raw = [r for p in run.rglob("native-radio-events.jsonl") for r in records(p)]
+    drops = {
+        r["payload"]["packet_id"]: r["payload"] for r in raw if r.get("kind") == "drop"
+    }
+    ledgers = list(run.rglob("packet-ledger.jsonl"))
+    if len(ledgers) != 1:
+        return result(
+            "native_radio_fault", "BLOCKED", "One retained transport ledger is required"
+        )
+    ledger = records(ledgers[0])
+    mid = injections[0]["message_id"]
+    rows = [r for r in ledger if r.get("message_id") == mid]
+    errors, missing = [], []
+    variant = manifest["variant_id"]
+    submissions = {r["packet_id"]: r for r in rows if r["event"] == "native_submit"}
+    expected_kind = (
+        "final_ACK"
+        if variant in {"final_ack_lost", "confirmation_final_ack_lost"}
+        else "chunk"
+    )
+    queued = next((r for r in rows if r["event"] == "queued"), {})
+    if queued.get("kind") != ("file" if manifest["case_id"] == "C03" else "receipt"):
+        errors.append("Selected native loss is not the required business file/receipt")
+    for injection in injections:
+        pid = injection["native_packet_id"]
+        if (
+            injection.get("case_id") != manifest["case_id"]
+            or injection.get("variant") != manifest["variant_id"]
+            or injection["message_id"] != mid
+        ):
+            errors.append(
+                "Injection does not match the selected case and unique message"
+            )
+        submitted = submissions.get(pid, {})
+        header = submitted.get("header", {})
+        if not submitted:
+            missing.append(f"{pid}: original native submission is missing")
+        elif (
+            injection.get("packet_kind") != expected_kind
+            or header.get("kind") != expected_kind
+        ):
+            errors.append(f"{pid}: wrong protocol packet selected for this variant")
+        if variant == "missing_fragment_nack_then_retry" and (
+            injection.get("chunk_index") != 1
+            or header.get("chunk_index") != 1
+            or injection.get("attempt") != 1
+            or header.get("attempt") != 1
+            or injection.get("chunk_send_count") != 1
+        ):
+            errors.append(
+                f"{pid}: loss must target the first send of attempt-1 chunk-1"
+            )
+        if (
+            injection.get("lifetime_ns") != 1
+            or injection.get("stage") != "kernel_queued"
+        ):
+            errors.append(f"{pid}: missing native lifetime-expiry submission")
+        drop = drops.get(pid)
+        if drop is None:
+            missing.append(f"{pid}: no native drop outcome")
+        elif drop.get("reason") != "delivery_timeout":
+            errors.append(
+                f"{pid}: native drop reason is not the requested delivery_timeout"
+            )
+        if any(
+            r.get("packet_id") == pid
+            and r.get("event")
+            in {"last_hop_delivery", "receiver_chunk_commit", "radio_final_ack"}
+            for r in rows
+        ):
+            errors.append(f"{pid}: expired packet became visible to receiver")
+    commits = [r for r in rows if r["event"] == "receiver_file_commit"]
+    acknowledgements = [r for r in rows if r["event"] == "radio_final_ack"]
+    submitted = [r for r in rows if r["event"] == "native_submit"]
+    queries = [
+        r
+        for r in submitted
+        if r["header"]["kind"] == "status_query"
+        and r["packet_id"].endswith("-h0")
+        and r["sim_ns"] > injections[0]["sim_ns"]
+    ]
+    if not queries:
+        missing.append("No post-loss five-second native status query")
+    else:
+        query = queries[0]
+        preceding = [
+            r["sim_ns"]
+            for r in submitted
+            if r["packet_id"].endswith("-h0")
+            and r["sim_ns"] < query["sim_ns"]
+            and r["header"]["kind"] in {"chunk", "status_query", "probe"}
+        ]
+        if not preceding:
+            missing.append("No protocol timer anchor before status query")
+        elif not 5_000_000_000 <= query["sim_ns"] - max(preceding) <= 5_500_000_000:
+            errors.append(
+                "Status query did not follow the five-sim-second timeout within one boundary"
+            )
+        if not any(
+            r["event"] == "last_hop_delivery"
+            and r.get("header", {}).get("kind") == "status_query"
+            and r["sim_ns"] >= query["sim_ns"]
+            for r in rows
+        ):
+            missing.append("Status query has no actual last-hop native delivery")
+    variant = manifest["variant_id"]
+    if variant == "receiver_receipt_lost":
+        if commits or acknowledgements:
+            errors.append(
+                "Persistently lost carrier receipt was committed or acknowledged"
+            )
+        carrier = injections[0]["message_destination"]
+        payload_path = run / "data" / carrier / "payload-state.json"
+        packages = read_json(payload_path).values() if payload_path.is_file() else []
+        matching = [p for p in packages if p.get("task_id") == injections[0]["task_id"]]
+        if not matching or not any(
+            p.get("status") == "receipt_unconfirmed" for p in matching
+        ):
+            missing.append(
+                "Carrier has no recorded 30-second receipt_unconfirmed outcome"
+            )
+        if any(p.get("delivery_verified") for p in matching):
+            errors.append("Carrier claimed delivery_verified without its receipt")
+    else:
+        if len(commits) > 1:
+            errors.append("Repeated transfer created duplicate receiver commits")
+        elif not commits or not acknowledgements:
+            missing.append("No single durable file commit and recovered final ACK")
+        if manifest["case_id"] == "C03":
+            queued = next((r for r in rows if r["event"] == "queued"), {})
+            path = (
+                ledgers[0].parent
+                / "received"
+                / str(queued.get("destination"))
+                / mid
+                / "content"
+            )
+            if path.is_file():
+                from PIL import Image
+
+                with Image.open(path) as image:
+                    image.load()
+                if (
+                    variant == "missing_fragment_nack_then_retry"
+                    and path.stat().st_size <= 1024
+                ):
+                    errors.append(
+                        "The selected evidence image has no required second fragment"
+                    )
+            else:
+                missing.append("The received decodable evidence image is missing")
+        if variant == "missing_fragment_nack_then_retry":
+            response = [
+                r
+                for r in rows
+                if r["event"] == "last_hop_delivery"
+                and r.get("header", {}).get("kind") == "status_response"
+                and 1 in r["header"].get("missing_chunks", [])
+            ]
+            repaired = [
+                r
+                for r in rows
+                if r["event"] == "receiver_chunk_commit" and r.get("chunk_index") == 1
+            ]
+            if not response or not repaired:
+                missing.append(
+                    "No delivered missing-fragment response followed by actual chunk-1 repair"
+                )
+            elif repaired[0]["sim_ns"] < response[0]["sim_ns"] or any(
+                r["sim_ns"] < repaired[0]["sim_ns"] for r in commits
+            ):
+                errors.append("Receiver completed before missing-fragment recovery")
+    if manifest["case_id"] == "C07":
+        centre_path = run / "data/centre/centre-state.json"
+        if not centre_path.is_file():
+            missing.append(
+                "Centre state missing; early task completion cannot be checked"
+            )
+        else:
+            incident = (
+                read_json(centre_path)
+                .get("incidents", {})
+                .get(injections[0]["event_id"], {})
+            )
+            outcome = incident.get("outcome")
+            if not outcome:
+                missing.append(
+                    "No retained centre outcome for the affected receipt event"
+                )
+            elif outcome.get("outcome") == "completed_with_delivery":
+                recovered = [
+                    r["sim_ns"]
+                    for r in acknowledgements
+                    if r["sim_ns"] > injections[0]["sim_ns"]
+                ]
+                if (
+                    variant == "receiver_receipt_lost"
+                    or not recovered
+                    or outcome["finished_ns"] < min(recovered)
+                ):
+                    errors.append(
+                        "Task completed before the affected receipt transfer had a final ACK"
+                    )
+    return result(
+        "native_radio_fault",
+        "FAIL" if errors else "BLOCKED" if missing else "PASS",
+        "; ".join(errors + missing)
+        or "Native delivery_timeout and retained receiver/recovery observations agree",
+        message_id=mid,
+        injected_packets=len(injections),
+        matched_native_drops=sum(r["native_packet_id"] in drops for r in injections),
+        receiver_commits=len(commits),
+        final_acknowledgements=len(acknowledgements),
+        scope="Carrier-only C07 receipt loss; native application expiry, not RF/MAC random loss",
+    )
+
+
 def verify(run: Path) -> dict[str, Any]:
     run = run.resolve()
     manifest_path = run / "run-manifest.json"
@@ -415,7 +838,12 @@ def verify(run: Path) -> dict[str, Any]:
         }
     manifest = read_json(manifest_path)
     checks = []
-    for check in (radio_check, sensor_check, flight_check):
+    inspectors = [radio_check, sensor_check, flight_check]
+    if manifest.get("case_id") == "C05":
+        inspectors.append(cancellation_check)
+    if manifest.get("case_id") in {"C03", "C07"}:
+        inspectors.append(radio_fault_check)
+    for check in inspectors:
         try:
             checks.append(check(run))
         except (
@@ -445,6 +873,8 @@ def verify(run: Path) -> dict[str, Any]:
         "variant_id": manifest.get("variant_id"),
         "status": status,
         "execution_status": manifest.get("execution_status"),
+        "execution_scope": manifest.get("execution_scope", "native_driver"),
+        "driver_scope": manifest.get("driver_scope"),
         "checks": checks,
         "reason": manifest.get("reason")
         or "Partial artifact checks only. Original case flight/task/fault-injection criteria still require independent review.",
