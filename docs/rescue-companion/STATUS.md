@@ -16,6 +16,13 @@ integrity checks where needed for actual radio delivery. Functional evidence
 (camera inputs, estimated poses, actions, communication and physical delivery)
 remains required. Preserve failures and do not lower functional thresholds.
 
+The owner additionally requires Cordis as the final Harness composition core,
+reusing DSH session/agent-loop/tool services with rescue-specific plugins.
+The current Python decision loop is an implementation checkpoint, not that final
+Harness. Its execution programs remain reusable; the Cordis decision integration
+must replace the competing loop before delivery. Runtime model weights also belong
+inside the companion image, with per-UAV observations/history on separate volumes.
+
 ## Recovery
 
 - Repository: ZhiweiWei-NAMI/AeroAgentSim

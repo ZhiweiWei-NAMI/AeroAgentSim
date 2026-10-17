@@ -9,6 +9,8 @@ Send a local capability and cost bid through radio.
 
 Input: destination, optional route. Uses the last actual estimate-assignment result.
 
+The estimate must still be within its validity interval and match the current commitment version. Re-estimate after a resource-change event. Resource withdrawals and cancellation confirmations are emitted from actual local Harness state; do not invent those messages through send-evidence.
+
 Run through the already-running local worker:
 
     python -m aeroagentsim.companion.tools offer-rescue-role --data-dir /data --request '{"destination":"centre"}'

@@ -1,10 +1,13 @@
 # One shared simulator, one world owner, four private companion endpoints.
 name: aas-rescue
 x-companion: &companion
-  image: aeroagentsim/companion:research
+  image: ${COMPANION_IMAGE:-aeroagentsim/companion:research}
   build:
     context: ../..
     dockerfile: containers/companion/Dockerfile
+    additional_contexts:
+      # Build-only input. A prebuilt image runs without this host directory.
+      companion_models: ${MODEL_ROOT:-../../data/model-runtime}
   init: true
   user: '${AAS_UID:-1000}:${AAS_GID:-1000}'
   environment: &companion-env
@@ -12,7 +15,6 @@ x-companion: &companion
     AGENT_MODE: ${AGENT_MODE:-rule}
     DATA_DIR: /data
     COMPANION_SOCKET: /run/aas-uav/agent.sock
-    MODEL_DIR: /models
     RESCUE_CONFIG: ${SCENARIO:-/opt/aeroagentsim/scenarios/rescue/rooftop-flood-companion.yaml}
     PROVIDER_PROFILE: ${PROVIDER_PROFILE:-default}
   env_file:
@@ -87,7 +89,6 @@ services:
       UAV_ID: centre
     volumes:
       - ${RUN_ROOT}/centre:/data
-      - ${MODEL_ROOT:-./models}:/models:ro
       - ${RUN_ROOT}/sockets/centre:/run/aas-uav
   uav-u1:
     <<: *companion
@@ -97,7 +98,6 @@ services:
       UAV_ID: u1
     volumes:
       - ${RUN_ROOT}/u1:/data
-      - ${MODEL_ROOT:-./models}:/models:ro
       - ${RUN_ROOT}/sockets/u1:/run/aas-uav
   uav-u2:
     <<: *companion
@@ -107,7 +107,6 @@ services:
       UAV_ID: u2
     volumes:
       - ${RUN_ROOT}/u2:/data
-      - ${MODEL_ROOT:-./models}:/models:ro
       - ${RUN_ROOT}/sockets/u2:/run/aas-uav
   uav-u3:
     <<: *companion
@@ -117,7 +116,6 @@ services:
       UAV_ID: u3
     volumes:
       - ${RUN_ROOT}/u3:/data
-      - ${MODEL_ROOT:-./models}:/models:ro
       - ${RUN_ROOT}/sockets/u3:/run/aas-uav
   uav-u4:
     <<: *companion
@@ -127,7 +125,6 @@ services:
       UAV_ID: u4
     volumes:
       - ${RUN_ROOT}/u4:/data
-      - ${MODEL_ROOT:-./models}:/models:ro
       - ${RUN_ROOT}/sockets/u4:/run/aas-uav
 networks:
   simulation:

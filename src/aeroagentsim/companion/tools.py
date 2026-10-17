@@ -164,9 +164,16 @@ class CompanionTools:
         estimate_report = PublicMapPlanner(self.config.get("public_map", {})).estimate_legs(local, request["actions"], now)
         legs = estimate_report.get("feasible_leg_costs", [])
         battery = state.get("battery", {})
-        soc = battery.get("remaining_fraction") if isinstance(battery, dict) else None
-        if soc is None and profile.get("energy_model"):
-            soc = None  # Do not accept resource claims from a model/tool request.
+        px4_soc = battery.get("remaining_fraction") if isinstance(battery, dict) else None
+        energy_state = self.context.get("local_energy")
+        if energy_state is None and profile.get("energy_budget") is not None:
+            energy_state = {"status": "unavailable", "source": "declared_onboard_energy_model", "reason": "local ledger observation is missing"}
+        if energy_state:
+            soc = energy_state.get("effective_fraction") if energy_state["status"] == "available" else None
+            available_energy = energy_state.get("available_energy_j") if energy_state["status"] == "available" else None
+        else:
+            soc = px4_soc
+            available_energy = soc * profile["capacity_j"] if soc is not None and profile.get("capacity_j") is not None else None
         commitment = self.context.get("commitment") or {}
         roles = [] if commitment.get("protected") else list(profile.get("capabilities", []))
         payload = self.context.get("payload_state") or {"mass_kg": profile.get("initial_payload_kg"), "source": "explicit scenario initial inventory" if profile.get("initial_payload_kg") is not None else None}
@@ -175,7 +182,7 @@ class CompanionTools:
             measured = self._read_native("payload_status", package_id=configured_payload["package_id"])
             payload = {"mass_kg": 1.0 if measured["status"] == "attached" else 0.0 if measured["status"] == "detached" else None, "source": "Gazebo detachable-joint observation, 1 kg physical package" if measured["status"] in {"attached", "detached"} else None}
 
-        return {"status": "succeeded", "uav_id": self.uav_id, "observed_at_ns": local["observed_at_ns"], "valid_until_ns": local["valid_until_ns"], "position_enu_m": position, "capabilities": profile.get("capabilities", []), "roles": roles, "soc": soc, "soc_source": "PX4 battery telemetry" if battery else profile.get("energy_model"), "payload_kg": payload.get("mass_kg"), "payload_source": payload.get("source"), "payload_capacity_kg": profile.get("payload_capacity_kg"), "available_energy_j": soc * profile["capacity_j"] if soc is not None and profile.get("capacity_j") is not None else None, "speed_m_s": speed, "commitment": commitment, "commitment_version": self.context.get("commitment_version", 0), "available_after_s": max(now / NS, commitment.get("busy_until_s", now / NS)), "feasible_leg_costs": legs, "action_specs": request["actions"]}
+        return {"status": "succeeded", "uav_id": self.uav_id, "observed_at_ns": local["observed_at_ns"], "valid_until_ns": local["valid_until_ns"], "position_enu_m": position, "capabilities": profile.get("capabilities", []), "roles": roles, "soc": soc, "soc_source": energy_state.get("source") if energy_state else "PX4 battery telemetry", "px4_soc": px4_soc, "local_energy": energy_state, "payload_kg": payload.get("mass_kg"), "payload_source": payload.get("source"), "payload_capacity_kg": profile.get("payload_capacity_kg"), "available_energy_j": available_energy, "speed_m_s": speed, "commitment": commitment, "commitment_version": self.context.get("commitment_version", 0), "available_after_s": max(now / NS, commitment.get("busy_until_s", now / NS)), "feasible_leg_costs": legs, "action_specs": request["actions"]}
 
     def _message_fields(self, request: dict[str, Any]) -> dict[str, Any]:
         return {"destination": request.get("destination", "centre"), "event_id": self.context["event_id"], "task_id": self.context["task_id"], "task_revision": self.context["task_revision"], "deadline_ns": self.context["deadline_ns"], "route": request.get("route")}
@@ -185,6 +192,8 @@ class CompanionTools:
         estimate = self.context.get("last_assignment_estimate")
         if not estimate:
             raise ValueError("estimate-assignment must run before offering a role")
+        if estimate["commitment_version"] != self.context["commitment_version"] or estimate["valid_until_ns"] < self.context["sim_ns"]:
+            raise ValueError("local resource estimate expired or its commitment changed; estimate again before offering")
         return self.send_message("bid", {**request, "data": estimate})
 
     def send_message(self, kind: str, request: dict[str, Any]) -> dict[str, Any]:
@@ -193,6 +202,8 @@ class CompanionTools:
     def send_evidence(self, request: dict[str, Any]) -> dict[str, Any]:
         if "artifact_id" not in request:
             report = dict(request.get("data", {}))
+            if report.get("kind") in {"resource_withdrawal", "assignment_canceled", "delivery_confirmation", "cancel_assignment"}:
+                raise ValueError("resource and cancellation protocol reports are emitted only from recorded local Harness events")
             if report.get("kind") == "new_incident_clue":
                 return self.report_secondary_clue(request)
             if report.get("observation_verdict") == "confirmed":

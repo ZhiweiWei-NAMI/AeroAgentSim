@@ -48,8 +48,23 @@ class RescueCentre:
             if data.get("uav_id") not in (None, identity):
                 raise ValueError("bid identity differs from bound radio sender")
             previous = incident["bids"].get(identity)
-            if previous is None or (data["commitment_version"], data["observed_at_ns"]) > (previous["commitment_version"], previous["observed_at_ns"]):
-                incident["bids"][identity] = {**data, "uav_id": identity, "received_ns": envelope["received_ns"], "message_id": mid}
+            floor = incident.get("resource_versions", {}).get(identity, -1)
+            expected = incident.get("bid_tasks", {}).get(identity)
+            current_round = not incident.get("bid_tasks") or expected and (envelope["task_id"], envelope["task_revision"]) == (expected["task_id"], expected["task_revision"])
+            if current_round and data["commitment_version"] >= floor and (previous is None or (data["commitment_version"], data["observed_at_ns"]) > (previous["commitment_version"], previous["observed_at_ns"])):
+                incident["bids"][identity] = {**data, "uav_id": identity, "received_ns": envelope["received_ns"], "message_id": mid, "task_id": envelope["task_id"], "task_revision": envelope["task_revision"]}
+        elif kind == "report" and data.get("kind") == "resource_withdrawal":
+            identity = envelope["source"]
+            versions = incident.setdefault("resource_versions", {})
+            if data["commitment_version"] > versions.get(identity, -1):
+                versions[identity] = data["commitment_version"]
+                incident.setdefault("resource_withdrawals", []).append(envelope)
+                bid = incident["bids"].get(identity)
+                if bid and bid["commitment_version"] < data["commitment_version"]:
+                    del incident["bids"][identity]
+                selected = incident.get("last_plan", {}).get("selected_bids", {}).get(identity)
+                if incident.get("status") == "executing" and selected and selected["commitment_version"] < data["commitment_version"]:
+                    incident["replan_requested"] = {"source": identity, "withdrawal_message_id": mid, "received_ns": envelope["received_ns"], "reason": data.get("reason")}
         elif kind == "report" and data.get("kind") == "delivery_confirmation":
             if envelope["source"] != "drop-receiver-1":
                 raise ValueError("receipt transfer confirmation must come from the physical receiver")
@@ -106,6 +121,7 @@ class RescueCentre:
         result = solve_plan(fleet, bids, graph, now_ns / NS, leg_costs=legs)
         incident["task_revision"] += 1
         result.update(event_id=event_id, task_revision=incident["task_revision"], received_bid_ids=[row["message_id"] for row in incident["bids"].values()], excluded=rejected, missing_bid_policy="unknown", planned_at_ns=now_ns)
+        result["selected_bids"] = {uid: {key: incident["bids"][uid][key] for key in ("message_id", "commitment_version", "valid_until_ns")} for uid in {row["vehicle"] for row in result.get("assignments", [])}}
         incident["last_plan"] = result
         save_json(self.path, self.state)
         return result

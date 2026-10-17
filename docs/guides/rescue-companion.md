@@ -42,7 +42,7 @@ Model archive filenames:
 - model-runtime-assets.tar.gz.part-02
 
 Download all three model parts with those filenames. Restore the 204,724,315-byte
-archive, then put only ONNX and BGE in the directory mounted to companions:
+archive, then put only ONNX and BGE in the model build-input directory:
 
 ```sh
 cat model-runtime-assets.tar.gz.part-* > model-runtime-assets.tar.gz
@@ -54,8 +54,9 @@ export MODEL_ROOT="$PWD/data/model-runtime"
 ```
 
 The archive also contains the trained checkpoint and export source/instructions.
-Keep evaluation images/annotations and credentials outside the mounted model
-directory. Container images remain to be built; restore future image archives
+Keep evaluation images/annotations and credentials outside that directory.
+The Dockerfile copies the required inference files into the image; no runtime
+model volume is required. Container images remain to be built; restore future image archives
 with `docker load --input <archive>`. Keep earlier run archives separately.
 
 ## Build and run
@@ -69,6 +70,7 @@ labels evaluator-only. Add `--gpu` when using the supplied NVIDIA override:
 ./tools/companion/check-host.sh --out runs/acceptance/P0/host-report.json
 containers/px4-gazebo/build.sh
 containers/ns3/build.sh
+sh containers/companion/build.sh
 export RUN_ID=build-only RUN_ROOT="$PWD/runs/build-only"
 docker compose -f deploy/rescue/compose.yaml build
 python tools/companion/run_case.py --list
@@ -95,12 +97,17 @@ Additional case entrypoints:
   real near-base image with original channel attenuation, then injects one native
   delivery timeout. Its receiver is the coordinator transport service; centre
   planning stays stopped. Full blocked-direct → relay recovery remains.
-- C04: protected-task, absent physical payload and role/ID permutation variants.
+- C04: protected-task, absent payload, role/ID permutation and
+  `low_energy_after_offer`. The latter gives U2 a declared 0.23 energy reserve,
+  gives U4 inspect capability and swaps their public horizontal spawn positions.
+  Local PX4 motion/source time debits the declared energy budget; PX4 SOC is kept.
+  Coverage requires actual U2 selection, a drop below 0.2, delivered withdrawal,
+  native cancellation, new radio notices and a received replacement assignment.
 - C05: `--variant queued_not_dispatched|running_cancel_with_late_results` drives
   queued cancel or measured 3±0.25 m/s running cancel, then stale-revision input.
-- C06: actual history acquisition, exact-time/absence query, companion restart,
-  repeated query and one old-frame inference. The full 20 positive/5 absence
-  query benchmark and cross-UAV tests remain.
+- C06: freezes 20 positive/5 absence queries from real local observations, then
+  executes the same corpus before/after restart plus a separate old-frame
+  reanalysis. Missing corpus material stays BLOCKED; cross-UAV copies remain.
 - C07: `receiver_receipt_lost|confirmation_final_ack_lost` applies native delivery
   timeouts to the actual carrier receipt or its first ACK; the centre copy is separate.
 - C08: actual later-frame detection/location can produce a separate clue and
@@ -111,7 +118,7 @@ Additional case entrypoints:
 - C10 scores retained native inference with `--perception-samples <frozen.json>`,
   `--perception-annotations <evaluator.json>` and `--inference-run <run>`.
 Missing drivers: C03 direct/relay blockage, route loss, no path and lost assignment;
-C04 dynamic energy; C05 late model/low-level callback; C07 stuck joint and out-of-zone
+C05 late model/low-level callback; C07 stuck joint and out-of-zone
 release; C08 no-eligible resource setup; C10 native sample acquisition/reset.
 
 ## Review and retain results

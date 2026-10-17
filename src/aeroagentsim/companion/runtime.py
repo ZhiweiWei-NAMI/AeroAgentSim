@@ -46,6 +46,8 @@ class CompanionRuntime:
         self.flight = FlightClient(socket_path, run_id)
         self.tools = CompanionTools(self.root, run_id, uav_id, self.flight, config, self.submit_mission)
         self.centre = RescueCentre(self.root) if role == "centre" else None
+        from .energy import LocalEnergyLedger
+        self.energy = LocalEnergyLedger(self.root, config.get("vehicles", {}).get(uav_id, {}), run_id=run_id, uav_id=uav_id) if role == "uav" else None
         self.provider: Any = None
         if agent_mode == "model":
             from aeroagentsim.agents.provider import OpenAIProvider
@@ -56,6 +58,7 @@ class CompanionRuntime:
         self.future: concurrent.futures.Future[Any] | None = None
         self.future_kind = ""
         self.future_revision: tuple[str, int] | None = None
+        self.future_commitment_version: int | None = None
         self.future_call: dict[str, Any] | None = None
         self.active_tool: dict[str, Any] | None = self.state.get("active_tool")
         if self.state.get("tool_inflight") and self.active_tool is None:
@@ -80,7 +83,72 @@ class CompanionRuntime:
 
     def context(self) -> dict[str, Any]:
         task = self.state.get("task") or {}
-        return {"sim_ns": self.state["sim_ns"], "event_id": task.get("event_id", ""), "task_id": task.get("task_id", ""), "task_revision": task.get("task_revision", 0), "deadline_ns": task.get("deadline_ns", self.state["sim_ns"] + 120 * NS), "commitment": task.get("commitment"), "commitment_version": self.state["commitment_version"], "relay_held": self.state.get("relay_held", False), "relay_release_authorized": self.state.get("relay_release_authorized"), "last_assignment_estimate": self.state.get("last_assignment_estimate"), "payload_state": self.state.get("payload_state")}
+        return {"sim_ns": self.state["sim_ns"], "event_id": task.get("event_id", ""), "task_id": task.get("task_id", ""), "task_revision": task.get("task_revision", 0), "deadline_ns": task.get("deadline_ns", self.state["sim_ns"] + 120 * NS), "commitment": task.get("commitment"), "commitment_version": self.state["commitment_version"], "relay_held": self.state.get("relay_held", False), "relay_release_authorized": self.state.get("relay_release_authorized"), "last_assignment_estimate": self.state.get("last_assignment_estimate"), "payload_state": self.state.get("payload_state"), "local_energy": self.state.get("local_energy")}
+
+    def _send_resource_report(self, key: str, data: dict[str, Any], task: dict[str, Any]) -> None:
+        submissions = self.state.setdefault("resource_submissions", {})
+        if key in submissions:
+            return
+        entry = {"status": "submitting", "data": data, "event_id": task["event_id"]}
+        submissions[key] = entry
+        self._save()
+        reply = self.flight.request("radio_send", destination="centre", kind="report", data=data,
+            event_id=task["event_id"], task_id=task["task_id"], task_revision=task["task_revision"],
+            deadline_ns=task.get("deadline_ns", self.state["sim_ns"] + 120 * NS), route=self._evidence_route())
+        entry.update(status="pending", request_id=reply["request_id"])
+        self._log("resource-events.jsonl", {"stage": "radio_submission", **entry})
+
+    def _withdraw_resources(self, reason: str, task: dict[str, Any]) -> None:
+        previous = self.state["commitment_version"]
+        self.state["commitment_version"] = previous + 1
+        self.state.pop("last_assignment_estimate", None)
+        self._decision_event()
+        offer = self.state.get("last_offer", {})
+        data = {"kind": "resource_withdrawal", "reason": reason, "commitment_version": previous + 1,
+            "invalidated_commitment_version": offer.get("summary", {}).get("commitment_version", previous),
+            "bid_message_id": offer.get("message_id"), "observed_at_ns": self.state["sim_ns"], "local_energy": self.state.get("local_energy")}
+        if offer:
+            offer["withdrawn"] = True
+        self._send_resource_report(task["event_id"] + "-withdraw-" + str(previous + 1), data, task)
+
+    def _resource_tick(self, local_state: dict[str, Any]) -> None:
+        if self.energy is not None:
+            snapshot = self.energy.observe(local_state)
+            self.state["local_energy"] = None if snapshot["status"] == "disabled" else snapshot
+        offer = self.state.get("last_offer")
+        budget = self.state.get("local_energy")
+        if offer and not offer.get("withdrawn") and budget and (offer.get("summary", {}).get("soc") or 0) >= 0.2:
+            if budget["status"] != "available" or budget["effective_fraction"] < 0.2:
+                self._withdraw_resources("local energy estimate unavailable" if budget["status"] != "available" else "declared local energy budget crossed the solver's existing 0.2 eligibility floor", self.state.get("task") or offer["task"])
+        for entry in self.state.get("resource_submissions", {}).values():
+            if entry["status"] == "submitting":
+                entry.update(status="reconcile_required", reason="interrupted radio submission; no acknowledged request ID")
+            elif entry["status"] == "pending":
+                result = self._poll_pending(entry)
+                if result.get("status") in TERMINAL:
+                    entry.update(status=result["status"], result=result)
+                    self._log("resource-events.jsonl", {"stage": "radio_terminal", **entry})
+
+    def _assignment_is_canceled(self, task: dict[str, Any]) -> bool:
+        cancel = self.state.get("assignment_cancel")
+        return bool(cancel and (cancel["task_id"], cancel["task_revision"]) == (task.get("task_id"), task.get("task_revision")))
+
+    def _assignment_cancel_tick(self) -> None:
+        cancel = self.state.get("assignment_cancel")
+        if not cancel or cancel.get("report_submitted"):
+            return
+        if self.state["sim_ns"] >= cancel["data"]["deadline_ns"]:
+            cancel["failure"] = "cancellation confirmation deadline reached; actual operation state retained"
+            self.state["task_blocker"] = {"status": "failed", "reason": cancel["failure"]}
+            return
+        if self.future is not None or self.active_tool is not None or any(self._assignment_is_canceled(m) and m["status"] not in TERMINAL for m in self.state["missions"].values()):
+            return
+        released = any((p["task_id"], p["task_revision"]) == (cancel["task_id"], cancel["task_revision"]) and p.get("released") for p in self.tools.payload.packages.values())
+        data = {"kind": "assignment_canceled", "cancel_message_id": cancel["message_id"],
+            "operation_results": cancel.get("operation_results", []), "no_active_operation": True,
+            "payload_already_released": released, "commitment_version": self.state["commitment_version"]}
+        self._send_resource_report("cancel-" + cancel["message_id"], data, {**cancel, "deadline_ns": cancel["data"]["deadline_ns"]})
+        cancel["report_submitted"] = True
 
     def submit_mission(self, name: str, steps: list[dict[str, Any]], metadata: dict[str, Any]) -> dict[str, Any]:
         return {"status": "accepted", "mission_spec": {"name": name, "steps": steps, "metadata": metadata}}
@@ -125,6 +193,16 @@ class CompanionRuntime:
 
     def _consume_message(self, message: dict[str, Any]) -> None:
         current_task = self.state.get("task") or {}
+        if message.get("kind") == "report" and message["source"] == "centre" and message.get("data", {}).get("kind") == "cancel_assignment" and not (current_task.get("commitment") or {}).get("protected"):
+            self.state["assignment_cancel"] = {**message, "operation_results": []}
+            revoked = [message["task_id"], message["task_revision"]]
+            if revoked not in self.state.setdefault("revoked_assignments", []):
+                self.state["revoked_assignments"].append(revoked)
+            if self._assignment_is_canceled(current_task):
+                self.state["relay_held"] = False
+                self.state.pop("task_blocker", None)
+            if self.state.get("pending_task") and self._assignment_is_canceled(self.state["pending_task"]):
+                self.state.pop("pending_task")
         if message.get("kind") == "report" and message["source"] == "centre" and message.get("data", {}).get("kind") == "mission_closed" and message["event_id"] == current_task.get("event_id") and not (current_task.get("commitment") or {}).get("protected"):
             self.state["mission_closed"] = message
             self.state["relay_release_authorized"] = message["message_id"]
@@ -151,8 +229,22 @@ class CompanionRuntime:
         if old and (old.get("commitment") or {}).get("protected") and old["task_id"] != message["task_id"]:
             self._log("decisions.jsonl", {"decision": "protected_task_retained", "message_id": message["message_id"]})
             return
-        if old and message["task_id"] == old["task_id"] and message["task_revision"] < old["task_revision"]:
+        if old and message["event_id"] == old["event_id"] and message["task_revision"] < old["task_revision"]:
             return
+        if [message["task_id"], message["task_revision"]] in self.state.get("revoked_assignments", []):
+            return
+        selected = data.get("selected_bid")
+        if message["kind"] == "plan" and selected:
+            budget = self.state.get("local_energy")
+            offered_id = self.state.get("last_offer", {}).get("message_id")
+            invalid = selected["commitment_version"] != self.state["commitment_version"] or selected["valid_until_ns"] < self.state["sim_ns"] or bool(offered_id and selected["message_id"] != offered_id)
+            if budget:
+                invalid = invalid or budget["status"] != "available" or budget["effective_fraction"] < 0.2 or data.get("assignment_energy_j", 0) > budget["available_energy_j"]
+            if invalid:
+                self.state.setdefault("revoked_assignments", []).append([message["task_id"], message["task_revision"]])
+                self._withdraw_resources("received plan references an expired or changed local resource commitment", {**message, "deadline_ns": data.get("deadline_ns", self.state["sim_ns"] + 120 * NS)})
+                self._log("resource-events.jsonl", {"stage": "stale_plan_rejected", "message_id": message["message_id"], "selected_bid": selected})
+                return
         if old and self.state.get("relay_held") and message["event_id"] != old.get("event_id"):
             self.state["pending_task"] = message
             self._log("decisions.jsonl", {"decision": "new_event_waits_for_radio_relay_release", "message_id": message["message_id"]})
@@ -170,6 +262,8 @@ class CompanionRuntime:
             ]
         self.state.pop("task_blocker", None)
         self.state.pop("inspection", None)
+        if self.state.get("assignment_cancel") and message["task_revision"] > self.state["assignment_cancel"]["task_revision"]:
+            self.state.pop("assignment_cancel")
         if task.get("recovery_policy"):
             self.state["relay_policy"] = {"event_id": task["event_id"], "policy": task["recovery_policy"], "public_map": task["public_map"]}
         if not old or task["event_id"] != old.get("event_id"):
@@ -211,6 +305,8 @@ class CompanionRuntime:
             return result
         if result.get("message_id"):
             pending["message_id"] = result["message_id"]
+            if pending.get("call", {}).get("tool") == "offer-rescue-role" and self.state.get("last_offer"):
+                self.state["last_offer"]["message_id"] = result["message_id"]
         if result.get("status") == "accepted" and result.get("message_id") and pending.get("call", {}).get("request", {}).get("data", {}).get("kind") == "relay_ready":
             # Readiness announcements remain in the persistent radio outbox.
             # Waiting for their peer ACK here would block route recovery when
@@ -232,19 +328,21 @@ class CompanionRuntime:
         for mission in self.state["missions"].values():
             if mission["status"] in TERMINAL:
                 continue
-            if self.state.get("mission_closed", {}).get("event_id") == mission["event_id"] and mission["tool_name"] != "resume-or-return":
+            if (self.state.get("mission_closed", {}).get("event_id") == mission["event_id"] and mission["tool_name"] != "resume-or-return") or self._assignment_is_canceled(mission):
                 pending = mission.get("pending") or {}
                 if pending.get("kind") == "flight":
                     canceled = self.flight.cancel(pending["operation_id"])
                     if canceled.get("status") not in TERMINAL:
                         continue
+                    if self._assignment_is_canceled(mission):
+                        self.state["assignment_cancel"]["operation_results"].append(canceled)
                 elif pending.get("kind") == "release":
                     released = self._poll_pending(pending)
                     if released.get("status") not in TERMINAL | {"detached"}:
                         continue
                     if released.get("released"):
                         self.tools.payload.actuator_state(mission["metadata"]["package_id"], "detached", released.get("source_time_ns"), released["source"], observed_sim_ns=released.get("observed_sim_ns"), release_interval_ns=released.get("release_interval_ns"))
-                mission.update(status="canceled", reason="remaining steps canceled by received centre closure; submitted physical operation reconciled")
+                mission.update(status="canceled", reason="remaining steps canceled by received centre request; submitted physical operation reconciled")
                 continue
             if self.state["sim_ns"] >= mission["deadline_ns"]:
                 if (mission.get("pending") or {}).get("kind") == "flight":
@@ -583,7 +681,7 @@ class CompanionRuntime:
         for mid in self.state["seen_messages"][-20:]:
             message = json.loads((self.root / "inbox" / mid / "message.json").read_text())
             inbox.append({k: v for k, v in message.items() if k not in {"content_path", "native_packet_ids"}})
-        return {"self": local_state, "task": self.state["task"], "results": results, "inbox": inbox, "delivery_wait": self.state.get("delivery_wait")}
+        return {"self": local_state, "task": self.state["task"], "results": results, "inbox": inbox, "delivery_wait": self.state.get("delivery_wait"), "local_energy": self.state.get("local_energy"), "commitment_version": self.state["commitment_version"], "assignment_cancel": self.state.get("assignment_cancel")}
 
     def _model_decision(self, context: dict[str, Any]) -> dict[str, Any]:
         skills_root = Path(os.environ.get("AAS_SKILLS_DIR", str(Path(__file__).resolve().parents[3] / "skills" / "rescue")))
@@ -605,6 +703,8 @@ class CompanionRuntime:
         return {"tool": function["name"].replace("_", "-"), "request": json.loads(arguments["request_json"]), "result_key": calls[0].get("id", str(self.state["model_calls"]))}
 
     def _start_tool(self, call: dict[str, Any]) -> None:
+        if call["tool"] == "offer-rescue-role":
+            call = {**call, "offered_summary": self.state.get("last_assignment_estimate")}
         self.future_call = call
         self.future_kind = "tool"
         context = self.context()
@@ -615,6 +715,10 @@ class CompanionRuntime:
 
     def _complete_tool(self, result: dict[str, Any], call: dict[str, Any]) -> None:
         self.state.pop("tool_inflight", None)
+        if call["tool"] == "offer-rescue-role" and result.get("request_id") and not result.get("message_id") and result["status"] == "pending":
+            self.state["last_offer"] = {"request_id": result["request_id"], "summary": call.get("offered_summary") or {}, "task": self.state["task"], "submitted_ns": self.state["sim_ns"]}
+        if call["tool"] == "offer-rescue-role" and result.get("message_id") and self.state.get("last_offer"):
+            self.state["last_offer"].update(message_id=result["message_id"], status=result["status"], completed_ns=self.state["sim_ns"])
         if "mission_spec" in result:
             result = {**result, **self._register_mission(**result["mission_spec"])}
             result.pop("mission_spec")
@@ -635,7 +739,7 @@ class CompanionRuntime:
         if result.get("status") in {"succeeded", "submitted", "available", "confirmed", "rejected", "uncertain", "delivery_verified"}:
             if not call.get("local_request_id"):
                 self.state["step_index"] += 1
-        elif self.mode == "rule" and not call.get("local_request_id") and not call.get("continue_on_unavailable") and not self.state.get("mission_closed"):
+        elif self.mode == "rule" and not call.get("local_request_id") and not call.get("continue_on_unavailable") and not self.state.get("mission_closed") and not self._assignment_is_canceled(self.state.get("task") or {}):
             self.state["task_blocker"] = result
         self._decision_event()
         self._log("decisions.jsonl", {"call": call, "result": result})
@@ -689,6 +793,7 @@ class CompanionRuntime:
         if result["status"] != "feasible":
             return
         incident = self.centre.state["incidents"][event_id]
+        incident["graph"] = graph
         public = self.config.get("public_map", {})
         groups: dict[str, list[dict[str, Any]]] = {}
         for assignment in result["assignments"]:
@@ -702,7 +807,12 @@ class CompanionRuntime:
             for assignment in assignments:
                 if assignment["role"] == "inspect":
                     workflow.append({"tool": "search-area", "request": {"polygon": public["search_polygon"], "altitude_m": public["search_altitude_m"], "footprint_width_m": public["search_row_spacing_m"] / 0.7}, "result_key": "search"})
-            data = {"intent": assignments[-1]["role"], "assignments": assignments, "workflow": workflow, "deadline_ns": incident["deadline_ns"], "demand_source": incident["demand_source"], "public_map": public}
+            previous, energy_j = "current", 0.0
+            for assignment in assignments:
+                leg = next(row for row in incident["bids"][uid]["feasible_leg_costs"] if row["from_action"] == previous and row["to_action"] == assignment["action"])
+                energy_j += leg["energy_j"]
+                previous = assignment["action"]
+            data = {"intent": assignments[-1]["role"], "assignments": assignments, "workflow": workflow, "deadline_ns": incident["deadline_ns"], "demand_source": incident["demand_source"], "public_map": public, "selected_bid": result["selected_bids"][uid], "assignment_energy_j": energy_j}
             if assignments[-1]["role"] == "deliver":
                 data.update(target_report=incident["target_report"], package_id=self.config["payload"]["package_id"])
             task_id = event_id + "-" + uid
@@ -715,11 +825,67 @@ class CompanionRuntime:
     def _broadcast_offer_notice(self, event_id: str, graph: dict[str, Any]) -> None:
         incident = self.centre.state["incidents"][event_id]
         incident.update(status="submitting_notice", graph=graph, bids={}, notice_requests=[], expected_tasks={})
+        incident["bid_tasks"] = {uid: {"task_id": event_id + "-offer", "task_revision": incident["task_revision"] + 1} for uid in self.config["vehicles"]}
         for uid in self.config["vehicles"]:
             data = {"task": {"intent": "offer", "deadline_ns": incident["deadline_ns"]}, "incident": {"initial_graph": graph, "deadline_ns": incident["deadline_ns"], "demand_source": incident["demand_source"]}, "public_map": self.config["public_map"]}
             reply = self.flight.request("radio_send", destination=uid, kind="notice", data=data, event_id=event_id, task_id=event_id + "-offer", task_revision=incident["task_revision"] + 1, deadline_ns=incident["deadline_ns"], route=["centre", self.state["ready_relay"], uid] if self._ready_relay() and uid != self.state["ready_relay"] else ["centre", uid])
             incident["notice_requests"].append({"request_id": reply["request_id"], "destination": uid})
         save_json(self.centre.path, self.centre.state)
+
+    def _centre_resource_replan(self, event_id: str, incident: dict[str, Any]) -> bool:
+        request = incident.get("replan_requested")
+        if not request:
+            return False
+        now = self.state["sim_ns"]
+        if request["received_ns"] > now:
+            return True
+        if "cancel_requests" not in request:
+            # The current action graph is solved as one unit. Cancel its current
+            # assignments before asking for a replacement graph, never overlap.
+            request.update(cancel_deadline_ns=min(incident["deadline_ns"], now + 120 * NS), cancel_requests=[{"uav_id": uid, **task} for uid, task in incident.get("expected_tasks", {}).items()])
+            save_json(self.centre.path, self.centre.state)
+            for submission in request["cancel_requests"]:
+                uid = submission["uav_id"]
+                task = {key: submission[key] for key in ("task_id", "task_revision")}
+                data = {"kind": "cancel_assignment", "reason": request["reason"], "withdrawal_message_id": request["withdrawal_message_id"], "deadline_ns": request["cancel_deadline_ns"]}
+                relay = self._ready_relay()
+                try:
+                    reply = self.flight.request("radio_send", destination=uid, kind="report", data=data,
+                        event_id=event_id, **task, deadline_ns=request["cancel_deadline_ns"],
+                        route=["centre", relay, uid] if relay and relay != uid else ["centre", uid])
+                    submission["request_id"] = reply["request_id"]
+                except RuntimeError as exc:
+                    submission["failure"] = str(exc)
+            incident["status"] = "canceling_for_resource_change"
+            self._log("resource-events.jsonl", {"stage": "cancel_assignments_submitted", "event_id": event_id, **request})
+        confirmed = []
+        for cancel in request["cancel_requests"]:
+            if not cancel.get("request_id"):
+                continue
+            try:
+                reply = self.flight.request("result", pending_request_id=cancel["request_id"])
+            except RuntimeError as exc:
+                cancel["failure"] = str(exc)
+                continue
+            if reply.get("message_id"):
+                cancel["message_id"] = reply["message_id"]
+            acknowledgement = next((row for row in incident["reports"] if cancel.get("message_id") and row["source"] == cancel["uav_id"] and row["task_id"] == cancel["task_id"] and row["task_revision"] == cancel["task_revision"] and row["received_ns"] <= now and row.get("data", {}).get("kind") == "assignment_canceled" and row["data"].get("cancel_message_id") == cancel["message_id"] and row["data"].get("no_active_operation") and all(op.get("status") in TERMINAL for op in row["data"].get("operation_results", []))), None)
+            if acknowledgement:
+                if acknowledgement["data"].get("payload_already_released"):
+                    incident["reason"] = "Resources changed after a physical release; replacement delivery is not authorized"
+                    save_json(self.root / "outcome.json", self.centre.finish(event_id, "failed_execution", now))
+                    return True
+                confirmed.append(acknowledgement["message_id"])
+        if len(confirmed) == len(request["cancel_requests"]):
+            incident.setdefault("resource_replans", []).append({**request, "cancel_confirmation_message_ids": confirmed, "confirmed_ns": now})
+            self._log("resource-events.jsonl", {"stage": "radio_cancellations_confirmed", "event_id": event_id, "message_ids": confirmed})
+            incident.pop("replan_requested")
+            self._broadcast_offer_notice(event_id, incident["graph"])
+        elif now >= request["cancel_deadline_ns"]:
+            incident["reason"] = "Affected assignment cancellation was not confirmed over radio before its deadline"
+            save_json(self.root / "outcome.json", self.centre.finish(event_id, "failed_execution", now))
+        save_json(self.centre.path, self.centre.state)
+        return True
 
     def _broadcast_delivery_notice(self, event_id: str, report: dict[str, Any]) -> None:
         incident = self.centre.state["incidents"][event_id]
@@ -801,6 +967,10 @@ class CompanionRuntime:
             event_id = notice["event_id"]
             if not self.centre.state["incidents"].get(event_id, {}).get("notice_anchor_confirmed"):
                 self.centre.notice_submitted(event_id, notice["submitted_ns"], notice["deadline_ns"], notice["demand_source"])
+                incident = self.centre.state["incidents"][event_id]
+                incident["bid_tasks"] = {uid: {"task_id": row.get("initial_task", {}).get("task_id", "initial-" + uid), "task_revision": row.get("initial_task", {}).get("task_revision", 1)} for uid, row in self.config["vehicles"].items()}
+                incident["bids"] = {uid: bid for uid, bid in incident["bids"].items() if uid in incident["bid_tasks"] and all(bid.get(key) == incident["bid_tasks"][uid][key] for key in ("task_id", "task_revision"))}
+                save_json(self.centre.path, self.centre.state)
         self._acknowledge_clues()
         for queued in list(self.centre.state["queue"]):
             if now >= self.centre.state["incidents"][queued]["deadline_ns"]:
@@ -812,6 +982,8 @@ class CompanionRuntime:
         incident = self.centre.state["incidents"][active]
         if now >= incident["deadline_ns"]:
             save_json(self.root / "outcome.json", self.centre.finish(active, "expired", now))
+            return
+        if self._centre_resource_replan(active, incident):
             return
         if incident["status"] == "needs_new_notice":
             graph = incident.get("graph")
@@ -866,6 +1038,8 @@ class CompanionRuntime:
         if tuple(state.get(key) for key in ("status", "armed", "landed_state")) != tuple(previous.get(key) for key in ("status", "armed", "landed_state")):
             self._decision_event()
         self.state["self_state"] = state
+        if self.role == "uav":
+            self._resource_tick(state)
         for message in self.flight.request("radio_inbox").get("messages", []):
             self._persist_message(message)
         if self.centre is not None:
@@ -873,14 +1047,18 @@ class CompanionRuntime:
             self._save()
             return
         self._advance_missions()
+        self._assignment_cancel_tick()
         if self.state.get("pending_task") and (not self.state.get("relay_held") or self.state["pending_task"]["event_id"] == (self.state.get("task") or {}).get("event_id")) and self.active_tool is None and self.future is None and not any(m["status"] not in TERMINAL for m in self.state["missions"].values()):
             self._consume_message(self.state.pop("pending_task"))
         if self.active_tool:
             active = self.active_tool
-            if "flight_operation_id" in active and self.state.get("mission_closed") and active["call"]["tool"] != "resume-or-return":
+            cancel_assignment = self._assignment_is_canceled(self.state.get("task") or {})
+            if "flight_operation_id" in active and (cancel_assignment or self.state.get("mission_closed") and active["call"]["tool"] != "resume-or-return"):
                 self.flight.cancel(active["flight_operation_id"])
             result = self.state["missions"][active["operation_id"]] if "operation_id" in active else self.flight.poll(active["flight_operation_id"]) if "flight_operation_id" in active else self._poll_pending(active)
             if result.get("status") in TERMINAL | {"submitted", "available", "confirmed", "uncertain"}:
+                if cancel_assignment and "flight_operation_id" in active:
+                    self.state["assignment_cancel"]["operation_results"].append(result)
                 self.active_tool = None
                 self._complete_tool(result, active["call"])
             self._save()
@@ -901,7 +1079,7 @@ class CompanionRuntime:
                 self._save()
                 return  # Model failure never silently switches to rule.
             if self.future_kind == "model":
-                if self.state.get("pending_task") or self.state.get("mission_closed"):
+                if self.future_commitment_version != self.state["commitment_version"] or self.state.get("pending_task") or self.state.get("mission_closed") or self.state.get("assignment_cancel"):
                     self._log("decisions.jsonl", {"decision": "late_model_action_ignored_after_new_task_or_closure"})
                 elif result.get("tool"):
                     self._start_tool(result)
@@ -914,7 +1092,7 @@ class CompanionRuntime:
             call = json.loads(queued.read_text())
             queued.rename(queued.with_name(queued.name.replace(".queued.json", ".running.json")))
             self._start_tool({**call, "result_key": "cli-" + call["request_id"], "local_request_id": call["request_id"]})
-        elif self.state.get("task") and (not self.state.get("task_blocker") or self.state.get("mission_closed")):
+        elif self.state.get("task") and not self._assignment_is_canceled(self.state["task"]) and (not self.state.get("task_blocker") or self.state.get("mission_closed")):
             if self.mode == "rule" or self.state.get("mission_closed"):
                 call = self._closure_return() if self.state.get("mission_closed") else self._rule_decision()
                 if call:
@@ -925,6 +1103,7 @@ class CompanionRuntime:
                 self.future_kind = "model"
                 current = self.context()
                 self.future_revision = (current["task_id"], current["task_revision"])
+                self.future_commitment_version = self.state["commitment_version"]
                 model_context = self._model_context(state)
                 self.future = self.executor.submit(self._model_decision, model_context)
         self._save()

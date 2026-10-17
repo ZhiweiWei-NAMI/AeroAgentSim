@@ -119,6 +119,16 @@ def prepare_scene(
             scene.pop("payload", None)
             for vehicle in scene["vehicles"].values():
                 vehicle["initial_payload_kg"] = 0.0
+        elif variant == "low_energy_after_offer":
+            u2, u4 = scene["vehicles"]["u2"], scene["vehicles"]["u4"]
+            u2["energy_budget"] = {
+                "initial_fraction": 0.23,
+                "max_gap_ns": 1_000_000_000,
+            }
+            u4["capabilities"] = list(dict.fromkeys([*u4["capabilities"], "inspect"]))
+            # Exchange public horizontal locations, preserving the loaded
+            # carrier's ground clearance and each vehicle's declared attitude.
+            u2["spawn"][:2], u4["spawn"][:2] = u4["spawn"][:2], u2["spawn"][:2]
         elif variant == "role_id_permutation":
             ids = list(scene["vehicles"])
             mapping = dict(zip(ids, ids[1:] + ids[:1]))
@@ -160,6 +170,223 @@ def prepare_scene(
     path = run / "case-compose.yaml"
     path.write_text(yaml.safe_dump(override, sort_keys=False))
     return command + ["-f", str(path)]
+
+
+def low_energy_observations(run: Path) -> dict:
+    """Read this branch's real plans, local budget and native/radio outcomes."""
+    from verify_run import records
+
+    def rows(path: str) -> list[dict]:
+        target = run / "data" / path
+        return records(target) if target.is_file() else []
+
+    plans = [
+        r["centre_plan"]
+        for r in rows("centre/logs/decisions.jsonl")
+        if r.get("centre_plan", {}).get("status") == "feasible"
+    ]
+    report = {
+        "status": "BLOCKED",
+        "reason": "Initial inspect assignment to u2 was not observed",
+        "scope": "Observed low-energy replanning branch only; whole-case acceptance remains separate",
+    }
+    if not plans or not any(
+        a["vehicle"] == "u2" and a["role"] == "inspect"
+        for a in plans[0].get("assignments", [])
+    ):
+        return report
+    first = plans[0]
+    report["initial_plan"] = first
+    ledger = rows("coordinator/radio/packet-ledger.jsonl")
+    if not ledger:
+        ledger = rows("coordinator/packet-ledger.jsonl")
+    raw_deliveries = {
+        r["payload"]["packet_id"]
+        for r in rows("coordinator/native-radio-events.jsonl")
+        if r.get("kind") == "delivery"
+    }
+    commits = {
+        r["message_id"]: r for r in ledger if r.get("event") == "receiver_file_commit"
+    }
+
+    def arrived(mid: str) -> bool:
+        ids = commits.get(mid, {}).get("native_packet_ids", [])
+        return bool(ids) and set(ids).issubset(raw_deliveries)
+
+    missing = []
+    energy = [
+        r
+        for r in rows("u2/logs/energy-ledger.jsonl")
+        if r.get("status") == "available"
+        and r.get("source") == "declared_onboard_energy_model"
+    ]
+    before = [
+        r
+        for r in energy
+        if r["effective_fraction"] >= 0.2
+        and r["source_sim_ns"] <= first["planned_at_ns"]
+    ]
+    after = [
+        r
+        for r in energy
+        if r["effective_fraction"] < 0.2
+        and r["source_sim_ns"] > first["planned_at_ns"]
+        and (r.get("interval") or {}).get("debited_energy_j", 0) > 0
+    ]
+    if not before or not after:
+        missing.append(
+            "No source-timed local consumption crossing from eligible to below 0.2 after selection"
+        )
+    report["energy_crossing"] = {
+        "before": before[-1] if before else None,
+        "after": after[0] if after else None,
+    }
+    centre_path = run / "data/centre/centre-state.json"
+    incident = (
+        json.loads(centre_path.read_text())
+        .get("incidents", {})
+        .get(first["event_id"], {})
+        if centre_path.is_file()
+        else {}
+    )
+    bid_id = first.get("selected_bids", {}).get("u2", {}).get("message_id")
+    withdrawals = [
+        r
+        for r in incident.get("resource_withdrawals", [])
+        if r.get("source") == "u2"
+        and bid_id is not None
+        and r.get("data", {}).get("bid_message_id") == bid_id
+        and r.get("data", {}).get("local_energy", {}).get("status") == "available"
+        and r["data"]["local_energy"]["effective_fraction"] < 0.2
+        and after
+        and r["received_ns"] >= after[0]["source_sim_ns"]
+        and arrived(r["message_id"])
+    ]
+    if not withdrawals:
+        missing.append("Selected u2 bid has no radio-delivered withdrawal at centre")
+    report["withdrawals"] = withdrawals
+    native = rows("coordinator/native-flight-events.jsonl")
+    responses = {
+        r["kernel_command_id"]: r
+        for r in native
+        if r.get("kind") == "cancel_response"
+        and r.get("response", {}).get("status") == "accepted"
+    }
+    latest = {r["operation_id"]: r for r in rows("coordinator/flight/operations.jsonl")}
+    canceled = []
+    for operation in latest.values():
+        if (
+            operation.get("uav_id") != "u2"
+            or operation.get("task_revision") != first["task_revision"]
+            or operation.get("task_id") != first["event_id"] + "-u2"
+            or operation.get("status") != "canceled"
+        ):
+            continue
+        response = responses.get(operation.get("kernel_command_id"), {})
+        canceled.extend(
+            r
+            for r in native
+            if response
+            and r.get("command_id") == response["command_id"]
+            and r.get("status") == "canceled"
+            and withdrawals
+            and r["sim_ns"] >= withdrawals[0]["received_ns"]
+        )
+    if not canceled:
+        missing.append("No actual native cancellation of u2's selected task")
+    reports = [
+        r
+        for r in incident.get("reports", [])
+        if r.get("source") == "u2"
+        and r.get("data", {}).get("kind") == "assignment_canceled"
+        and r.get("task_revision") == first["task_revision"]
+        and r.get("task_id") == first["event_id"] + "-u2"
+        and canceled
+        and r["received_ns"] >= min(e["sim_ns"] for e in canceled)
+        and arrived(r["message_id"])
+    ]
+    if not reports:
+        missing.append("No radio-delivered assignment cancellation confirmation")
+    later = [
+        p
+        for p in plans[1:]
+        if p.get("event_id") == first["event_id"]
+        and p["task_revision"] > first["task_revision"]
+        and any(
+            a["role"] == "inspect" and a["vehicle"] != "u2"
+            for a in p.get("assignments", [])
+        )
+    ]
+    replacement_ids = (
+        {
+            a["vehicle"]
+            for a in later[0]["assignments"]
+            if a["role"] == "inspect" and a["vehicle"] != "u2"
+        }
+        if later
+        else set()
+    )
+    notices = [
+        r
+        for r in ledger
+        if r.get("event") == "queued"
+        and r.get("kind") == "notice"
+        and r.get("event_id") == first["event_id"]
+        and later
+        and r.get("task_revision") == later[0]["task_revision"]
+        and r.get("task_id") == first["event_id"] + "-offer"
+        and r.get("destination") in replacement_ids
+        and reports
+        and r["sim_ns"] >= reports[0]["received_ns"]
+        and arrived(r["message_id"])
+    ]
+    if not later or not replacement_ids.issubset({r["destination"] for r in notices}):
+        missing.append(
+            "No newly delivered notice and later different-vehicle inspect plan"
+        )
+    elif later[0]["planned_at_ns"] < max(
+        reports[0]["received_ns"],
+        max(commits[r["message_id"]]["received_ns"] for r in notices),
+    ):
+        report.update(
+            status="FAIL",
+            reason="Replanning preceded delivered cancellation/new notice",
+        )
+        return report
+    received_plans = [
+        r
+        for r in ledger
+        if r.get("event") == "queued"
+        and r.get("kind") == "plan"
+        and r.get("event_id") == first["event_id"]
+        and later
+        and r.get("task_revision") == later[0]["task_revision"]
+        and r.get("destination")
+        in {
+            a["vehicle"]
+            for a in later[0]["assignments"]
+            if a["role"] == "inspect" and a["vehicle"] != "u2"
+        }
+        and arrived(r["message_id"])
+    ]
+    if not received_plans:
+        missing.append(
+            "Changed inspect assignment was not actually received over native radio"
+        )
+    report.update(
+        received_reassignment_ids=[r["message_id"] for r in received_plans],
+        canceled_native_events=canceled,
+        cancellation_reports=reports,
+        later_plans=later,
+        new_notice_received_ns={
+            r["message_id"]: commits[r["message_id"]]["received_ns"] for r in notices
+        },
+    )
+    if missing:
+        report["reason"] = "; ".join(missing)
+    else:
+        report.update(status="FINISHED", reason=None)
+    return report
 
 
 def main() -> int:
@@ -296,9 +523,9 @@ def main() -> int:
             "C02": "Physical no-person or canopy geometry, actual common decision loop",
             "C03": "Near-base image fragment/final-ACK diagnostic with original attenuation and coordinator-owned receiver; centre decision worker is stopped; full blocked-direct to relay recovery remains",
             "C07": "Common physical delivery with carrier-only receipt or first confirmation ACK native delivery-timeout injection",
-            "C04": "Protected commitment, physical absent payload, or capability/identity permutation",
+            "C04": "Protected commitment, absent payload, capability/identity permutation, or PX4-motion-integrated declared energy decline and radio replanning",
             "C05": "Queued/running cancellation and stale-revision action injection; late model/low-level callback injection remains",
-            "C06": "Actual old-frame retrieval/reanalysis and same-volume companion restart; 20/5 query benchmark and cross-UAV radio copies remain",
+            "C06": "Actual frozen 20-positive/5-absence query corpus before/after same-volume restart and old-frame reanalysis; cross-UAV radio copies remain",
             "C08": "Actual later-frame detection/location produces a separated second clue and radio event; queue/short deadline variants",
             "C09": "Fresh offline rule deployment and retained-log replay, or replay-only when requested",
         }.get(args.case, "Shared-world rescue task loop"),
@@ -426,7 +653,6 @@ def main() -> int:
                 and args.variant
                 not in {"receiver_receipt_lost", "confirmation_final_ack_lost"}
             )
-            or (args.case == "C04" and args.variant == "low_energy_after_offer")
             or (args.case == "C08" and args.variant == "no_eligible_vehicle")
         ):
             raise RuntimeError(
@@ -538,6 +764,20 @@ def main() -> int:
             finished_at=dt.datetime.now(dt.timezone.utc).isoformat(),
             wall_elapsed_s=time.monotonic() - started,
         )
+        write_json(run / "run-manifest.json", manifest)
+    if (
+        args.case == "C04"
+        and args.variant == "low_energy_after_offer"
+        and manifest["execution_status"] == "FINISHED"
+    ):
+        try:
+            observed = low_energy_observations(run)
+            write_json(run / "energy-branch-observations.json", observed)
+            manifest.update(
+                execution_status=observed["status"], reason=observed["reason"]
+            )
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            manifest.update(execution_status="FAIL", reason=str(error))
         write_json(run / "run-manifest.json", manifest)
     if args.case in {"C03", "C07"} and manifest["execution_status"] == "FINISHED":
         from verify_run import radio_fault_check
