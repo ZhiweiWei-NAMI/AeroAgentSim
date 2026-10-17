@@ -7,7 +7,7 @@ description: Read a local artifact or radio-delivered copy.
 
 Read a local artifact or radio-delivered copy.
 
-Input: artifact_id registered in this local store (including received copies).
+Input: artifact_id registered in this local store. Add frame_id to select a real observation, or message_id to select one radio-received copy (mutually exclusive). These references must match the artifact. A message_id or frame_id can also select its RGB artifact without artifact_id. Content hashes can be shared by multiple observations; artifact_id alone does not identify an observation time or sender.
 
 Run through the already-running local worker:
 

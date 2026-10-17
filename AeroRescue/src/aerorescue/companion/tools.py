@@ -31,7 +31,7 @@ TOOL_DESCRIPTIONS = {
     "probe-route": "Submit actual radio probes and return pending while the world advances.",
     "send-evidence": "Transfer real file bytes or structured report through damaged radio.",
     "hold-relay": "Fly a public candidate, probe the path, and retain the relay commitment.",
-    "handover-role": "Send the current role and outstanding obligations to a replacement through radio.",
+    "handover-role": "Transfer a held relay using delivered evidence, actual replacement flight/probes and a task-bound radio acceptance before releasing the old owner.",
     "select-drop-site": "Choose a point inside the public receiving polygon away from uncertain people locations.",
     "deliver-supply": "Fly to a safe selected point, then command the physical release actuator.",
     "verify-delivery": "Require observed detachment, a new frame and an actual radio contact receipt.",
@@ -57,11 +57,12 @@ class CompanionTools:
             "search-area": self.search_area, "estimate-assignment": self.estimate_assignment,
             "offer-rescue-role": self.offer_role,
             "probe-route": self.probe_route, "send-evidence": self.send_evidence,
-            "hold-relay": self.hold_relay, "handover-role": lambda r: self.send_message("handover", r),
+            "hold-relay": self.hold_relay, "handover-role": self.handover_role,
             "select-drop-site": self.select_drop_site, "deliver-supply": self.deliver_supply,
             "verify-delivery": self.verify_delivery, "resume-or-return": self.resume_or_return,
             "reobserve-target": self.reobserve_target,
             "flight-command": self.flight_command,
+            "read-evidence": self.read_evidence,
         }
 
     def perception_tools(self) -> Any:
@@ -69,7 +70,53 @@ class CompanionTools:
             from .evidence import PerceptionTools
             self.perception = PerceptionTools(self.root, self.run_id, self.uav_id, self.config.get("model_path") or os.environ.get("DETECTOR_MODEL_PATH"), self.config.get("embedding_path") or os.environ.get("EMBEDDING_MODEL_PATH"), engineering_horizontal_margin_m=self.config.get("perception", {}).get("engineering_horizontal_margin_m"), engineering_margin_basis=self.config.get("perception", {}).get("engineering_margin_basis"), detector_tile_size=self.config.get("perception", {}).get("detector_tile_size"))
             self.handlers.update(self.perception.handlers())
+            self.handlers["read-evidence"] = self.read_evidence
         return self.perception
+
+    def _evidence_content(self, request: dict[str, Any]) -> tuple[bytes, dict[str, Any], str]:
+        """Resolve a content object and, if requested, one real observation/copy."""
+        if request.get("frame_id") and request.get("message_id"):
+            raise ValueError("select either an observation frame or a received message copy")
+        store = self.perception_tools().store
+        frame, message = None, None
+        artifact_id = request.get("artifact_id")
+        if request.get("frame_id"):
+            frame = store.observation(request["frame_id"])
+            artifact_id = artifact_id or frame["rgb_artifact_id"]
+        if request.get("message_id"):
+            mid = request["message_id"]
+            if not isinstance(mid, str) or not mid.replace("-", "").isalnum():
+                raise ValueError("invalid received message reference")
+            message = json.loads((self.root / "inbox" / mid / "message.json").read_text())
+            if message.get("kind") != "file" or message.get("destination") != self.uav_id or not message.get("native_packet_ids"):
+                raise ValueError("reference is not this endpoint's radio-committed file")
+            if artifact_id and artifact_id != message.get("artifact_id"):
+                raise ValueError("artifact does not belong to the selected received copy")
+            artifact_id = message["artifact_id"]
+        content, metadata = store.read(artifact_id)
+        if message is not None:
+            from .transport import digest
+            if digest(content) != message["file_hash"]:
+                raise ValueError("received copy content differs from its radio manifest")
+            metadata = {**message.get("metadata", {}), "radio_sender": message["source"],
+                        "received_at": message["received_ns"], "radio_message_id": message["message_id"],
+                        "provenance_scope": "selected_radio_copy"}
+        elif frame is not None:
+            if artifact_id not in {frame.get("rgb_artifact_id"), frame.get("depth_artifact_id")} and metadata.get("source_artifact_id") != frame["rgb_artifact_id"]:
+                raise ValueError("artifact is not an image, depth or derived crop of the selected frame")
+            metadata = {**metadata, "source_frame_id": frame["frame_id"], "observer": frame["uav_id"],
+                        "observed_at": frame["observed_at"], "acquisition_source": frame.get("acquisition_source"),
+                        "observation_run_id": frame.get("run_id"), "provenance_scope": "selected_observation"}
+        else:
+            metadata = {**metadata, "provenance_scope": "content_only_observation_unspecified"}
+            for field in ("observer", "observed_at", "acquisition_source", "observation_run_id", "received_at", "radio_sender", "radio_message_id"):
+                metadata[field] = None
+        return content, metadata, artifact_id
+
+    def read_evidence(self, request: dict[str, Any]) -> dict[str, Any]:
+        content, metadata, artifact_id = self._evidence_content(request)
+        return {"status": "succeeded", "artifact_id": artifact_id, "bytes": len(content),
+                "path": str(self.perception_tools().store.artifact_path(artifact_id)), "metadata": metadata}
 
     def call(self, name: str, request: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
         name = name.replace("_", "-")
@@ -79,6 +126,8 @@ class CompanionTools:
         try:
             if (context.get("commitment") or {}).get("protected") and name in {"search-area", "hold-relay", "deliver-supply", "reobserve-target"}:
                 raise ValueError("protected original commitment cannot be replaced by a rescue mission")
+            if context.get("relay_held") and not context.get("relay_release_authorized") and name in {"search-area", "deliver-supply", "reobserve-target"}:
+                raise ValueError("held relay responsibility must be released before an independent departure mission")
             if name not in self.handlers:
                 self.perception_tools()
             if name == "detect-persons" or name == "retrieve-sightings" and request.get("reanalyze_frame_id"):
@@ -108,6 +157,8 @@ class CompanionTools:
 
     def flight_command(self, request: dict[str, Any]) -> dict[str, Any]:
         action, params = request["action"], request.get("params", {})
+        if self.context.get("relay_held") and not self.context.get("relay_release_authorized") and action in {"goto", "land", "disarm", "takeoff"}:
+            raise ValueError("held relay responsibility must be released before an independent departure command")
         if action == "goto":
             route = self._route(self._position(), params["position_enu_m"])
             return self.submit_mission("flight-command", [{"action": "goto", "params": {"position_enu_m": point, "yaw_deg": params.get("yaw_deg", 0)}} for point in route], {"route_source": "public-map corridor_astar"})
@@ -200,7 +251,7 @@ class CompanionTools:
         return self.flight.request("radio_send", kind=kind, data=request.get("data", request), **self._message_fields(request))
 
     def send_evidence(self, request: dict[str, Any]) -> dict[str, Any]:
-        if "artifact_id" not in request:
+        if not any(key in request for key in ("artifact_id", "frame_id", "message_id")):
             report = dict(request.get("data", {}))
             if report.get("kind") in {"resource_withdrawal", "assignment_canceled", "delivery_confirmation", "cancel_assignment"}:
                 raise ValueError("resource and cancellation protocol reports are emitted only from recorded local Harness events")
@@ -221,10 +272,9 @@ class CompanionTools:
                 if not mid.replace("-", "").isalnum():
                     raise ValueError("confirmed report needs a completed local evidence transfer reference")
                 transfer = json.loads((self.root / "outbox" / (mid + ".json")).read_text())
-                if (transfer["task_id"], transfer["task_revision"]) != (self.context["task_id"], self.context["task_revision"]) or not transfer["request"].get("artifact_id") or transfer["result"]["status"] != "succeeded":
+                if (transfer["task_id"], transfer["task_revision"]) != (self.context["task_id"], self.context["task_revision"]) or not any(k in transfer["request"] for k in ("artifact_id", "frame_id", "message_id")) or transfer["result"]["status"] != "succeeded":
                     raise ValueError("evidence transfer must belong to this accepted task and have a real final ACK")
-                artifact_id = transfer["request"]["artifact_id"]
-                _, artifact_metadata = perception.store.read(artifact_id)
+                _, artifact_metadata, artifact_id = self._evidence_content(transfer["request"])
                 linked = False
                 for reference in records.values():
                     frame = perception.store.observation(reference["frame_id"])
@@ -268,7 +318,7 @@ class CompanionTools:
                     raise ValueError("delivery report requires this task's recorded physical, frame and radio evidence")
                 report = {"kind": "delivery_verified", "delivery": actual}
             return self.send_message("report", {**request, "data": report})
-        content, metadata = self.perception_tools().store.read(request["artifact_id"])
+        content, metadata, _ = self._evidence_content(request)
         return self.flight.request("radio_send", kind="file", content_base64=base64.b64encode(content).decode(), metadata=metadata, **self._message_fields(request))
 
     def report_secondary_clue(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -319,6 +369,94 @@ class CompanionTools:
                 steps.append({"action": "probe", "params": {"destination": peer, "route": [self.uav_id, peer]}, "candidate_index": candidate_index})
             previous = point
         return self.submit_mission("hold-relay", steps, {"required_peers": peers, "hold_until_ack_for": request.get("message_ids", []), "exit_requires": "end-to-end ACK, cancellation or accepted handover"})
+
+    def _handover_message(self, message_id: str) -> dict[str, Any]:
+        if not isinstance(message_id, str) or not message_id.replace("-", "").isalnum():
+            raise ValueError("invalid handover message reference")
+        message = json.loads((self.root / "inbox" / message_id / "message.json").read_text())
+        if message.get("kind") != "handover" or message.get("destination") != self.uav_id or not message.get("native_packet_ids") or message["event_id"] != self.context["event_id"]:
+            raise ValueError("handover requires this task's actually received radio message")
+        return message
+
+    def handover_role(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Concrete relay transfer; a proposal's final ACK never releases its owner."""
+        action = request.get("action", "propose")
+        if action == "propose":
+            mission = self.context.get("relay_mission")
+            destination = request["destination"]
+            if not self.context.get("relay_held") or not mission or destination == self.uav_id or "relay" not in self.config["vehicles"].get(destination, {}).get("capabilities", []):
+                raise ValueError("a held relay and a publicly relay-capable replacement are required")
+            previous = self.context.get("handover_outgoing")
+            if previous and previous.get("status") not in {"failed", "timed_out", "released"}:
+                raise ValueError("a relay handover is already outstanding")
+            for mid in mission["metadata"].get("hold_until_ack_for", []):
+                if self._read_native("radio_status", message_id=mid).get("status") != "succeeded":
+                    raise ValueError("existing relay message obligations have not reached final ACK")
+            evidence = []
+            for mid in request.get("evidence_message_ids", []):
+                if not isinstance(mid, str) or not mid.replace("-", "").isalnum():
+                    raise ValueError("invalid completed evidence transfer reference")
+                sent = json.loads((self.root / "outbox" / (mid + ".json")).read_text())
+                transfer = self._read_native("radio_status", message_id=mid)
+                if transfer.get("status") != "succeeded" or transfer.get("source") != self.uav_id or transfer.get("destination") != destination or not any(k in sent["request"] for k in ("artifact_id", "frame_id", "message_id")) or any(sent[k] != self.context[k] for k in ("event_id", "task_id", "task_revision")):
+                    raise ValueError("required handover evidence must already be fully delivered to the replacement")
+                evidence.append({"message_id": mid, "file_hash": transfer["file_hash"], "ack_received_ns": transfer["ack_received_ns"]})
+            data = {"kind": "relay_handover_offer", "position_enu_m": self._position(),
+                    "peers": mission["metadata"]["required_peers"], "evidence": evidence,
+                    "previous_task": {k: self.context[k] for k in ("event_id", "task_id", "task_revision")},
+                    "deadline_ns": min(self.context["deadline_ns"], self.context["sim_ns"] + 120 * NS)}
+            reply = self.send_message("handover", {**request, "data": data})
+            return {**reply, "handover_offer": {"destination": destination, "data": data, "status": "submitting"}}
+        if action == "accept":
+            offer = self._handover_message(request["message_id"])
+            data = offer["data"]
+            if data.get("kind") != "relay_handover_offer" or data["deadline_ns"] <= self.context["sim_ns"]:
+                raise ValueError("relay offer is not current")
+            if data.get("previous_task") != {k: offer[k] for k in ("event_id", "task_id", "task_revision")}:
+                raise ValueError("offering task version differs from the received message")
+            if not self.context.get("handover_authorized") or (self.context.get("commitment") or {}).get("protected") or self.context.get("relay_held"):
+                raise ValueError("this accepted task does not authorize a free relay replacement")
+            if "relay" not in self.config["vehicles"][self.uav_id].get("capabilities", []) or self.uav_id in data["peers"]:
+                raise ValueError("replacement cannot serve the offered relay peer set")
+            for expected in data["evidence"]:
+                _, _, artifact_id = self._evidence_content({"message_id": expected["message_id"]})
+                copy = json.loads((self.root / "inbox" / expected["message_id"] / "message.json").read_text())
+                if artifact_id != expected["file_hash"] or copy["source"] != offer["source"] or any(copy[k] != offer[k] for k in ("event_id", "task_id", "task_revision")):
+                    raise ValueError("handover evidence copy does not match the offering task")
+            return {"status": "succeeded", "handover_accept": offer}
+        if action == "acknowledge":
+            incoming = self.context.get("handover_incoming") or {}
+            offer = self._handover_message(request["message_id"])
+            mission = self.context.get("relay_mission")
+            if incoming.get("message_id") != offer["message_id"] or not self.context.get("relay_held") or not mission or mission["metadata"]["required_peers"] != offer["data"]["peers"] or math.dist(self._position(), offer["data"]["position_enu_m"]) > 2.0:
+                raise ValueError("replacement must actually hold the offered relay point and peer set")
+            proofs = [self._read_native("radio_status", message_id=p["result"]["message_id"]) for p in mission["probe_results"]]
+            now = self.flight.state()["sim_ns"]
+            if now >= offer["data"]["deadline_ns"] or any(p.get("status") != "succeeded" or not p.get("probe_only") or p.get("source") != self.uav_id or now - p.get("ack_received_ns", -10 * NS) > 5 * NS for p in proofs):
+                raise ValueError("replacement needs fresh real probe ACKs before acknowledging responsibility")
+            data = {"kind": "relay_handover_accepted", "offer_message_id": offer["message_id"],
+                    "previous_task": offer["data"]["previous_task"], "accepted_task": {k: self.context[k] for k in ("event_id", "task_id", "task_revision")},
+                    "position_enu_m": self._position(), "peers": offer["data"]["peers"], "evidence": offer["data"]["evidence"],
+                    "probe_results": proofs, "accepted_at_ns": now, "responsibility": "held_until_centre_release_or_confirmed_handover"}
+            return self.send_message("handover", {"destination": offer["source"], "data": data})
+        if action == "release":
+            reply = self._handover_message(request["message_id"])
+            outgoing = self.context.get("handover_outgoing") or {}
+            data = reply["data"]
+            if outgoing.get("data", {}).get("previous_task") != {k: self.context[k] for k in ("event_id", "task_id", "task_revision")}:
+                raise ValueError("handover acknowledgement belongs to a replaced local task")
+            if data.get("kind") != "relay_handover_accepted" or data.get("offer_message_id") != outgoing.get("message_id") or reply["source"] != outgoing.get("destination") or data.get("previous_task") != outgoing.get("data", {}).get("previous_task") or data.get("evidence") != outgoing["data"]["evidence"] or reply["received_ns"] > outgoing["data"]["deadline_ns"]:
+                raise ValueError("no current replacement acceptance matching this relay offer")
+            if data.get("accepted_task") != {k: reply[k] for k in ("event_id", "task_id", "task_revision")} or data.get("responsibility") != "held_until_centre_release_or_confirmed_handover" or data.get("peers") != outgoing["data"]["peers"]:
+                raise ValueError("replacement responsibility is not bound to its actual task version")
+            proofs = data.get("probe_results", [])
+            if not isinstance(data.get("accepted_at_ns"), int) or data["accepted_at_ns"] > reply["received_ns"] or math.dist(data["position_enu_m"], outgoing["data"]["position_enu_m"]) > 2.0 or {p.get("destination") for p in proofs} != set(data["peers"]) or any(p.get("source") != reply["source"] or p.get("status") != "succeeded" or not p.get("probe_only") or not isinstance(p.get("ack_received_ns"), int) or not 0 <= data["accepted_at_ns"] - p["ack_received_ns"] <= 5 * NS for p in proofs):
+                raise ValueError("replacement acceptance lacks its source-bound measured relay paths")
+            return {"status": "succeeded", "handover_release": reply}
+        if action == "status":
+            outgoing = self.context.get("handover_outgoing") or {}
+            return {"status": "unavailable", "reason": "replacement confirmation deadline expired; original relay responsibility retained", "handover_timed_out": self.context["sim_ns"] >= outgoing.get("data", {}).get("deadline_ns", 2**63)}
+        raise ValueError("handover action must be propose, accept, acknowledge, release or status")
 
     def select_drop_site(self, request: dict[str, Any]) -> dict[str, Any]:
         public = self.config.get("public_map", {})

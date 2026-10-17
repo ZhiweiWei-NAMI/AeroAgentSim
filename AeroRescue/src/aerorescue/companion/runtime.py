@@ -94,7 +94,9 @@ class CompanionRuntime:
 
     def context(self) -> dict[str, Any]:
         task = self.state.get("task") or {}
-        return {"sim_ns": self.state["sim_ns"], "event_id": task.get("event_id", ""), "task_id": task.get("task_id", ""), "task_revision": task.get("task_revision", 0), "deadline_ns": task.get("deadline_ns", self.state["sim_ns"] + 120 * NS), "commitment": task.get("commitment"), "commitment_version": self.state["commitment_version"], "relay_held": self.state.get("relay_held", False), "relay_release_authorized": self.state.get("relay_release_authorized"), "last_assignment_estimate": self.state.get("last_assignment_estimate"), "payload_state": self.state.get("payload_state"), "local_energy": self.state.get("local_energy")}
+        relays = [m for m in self.state["missions"].values() if m["tool_name"] == "hold-relay" and m["status"] == "succeeded" and (m["task_id"], m["task_revision"]) == (task.get("task_id"), task.get("task_revision"))]
+        relay = {k: copy.deepcopy(relays[-1][k]) for k in ("operation_id", "metadata", "probe_results")} if relays else None
+        return {"sim_ns": self.state["sim_ns"], "event_id": task.get("event_id", ""), "task_id": task.get("task_id", ""), "task_revision": task.get("task_revision", 0), "deadline_ns": task.get("deadline_ns", self.state["sim_ns"] + 120 * NS), "commitment": task.get("commitment"), "commitment_version": self.state["commitment_version"], "relay_held": self.state.get("relay_held", False), "relay_release_authorized": self.state.get("relay_release_authorized"), "last_assignment_estimate": self.state.get("last_assignment_estimate"), "payload_state": self.state.get("payload_state"), "local_energy": self.state.get("local_energy"), "relay_mission": relay, "handover_authorized": task.get("accept_relay_handover", False), "handover_incoming": copy.deepcopy(self.state.get("handover_incoming")), "handover_outgoing": copy.deepcopy(self.state.get("handover_outgoing"))}
 
     def _send_resource_report(self, key: str, data: dict[str, Any], task: dict[str, Any]) -> None:
         submissions = self.state.setdefault("resource_submissions", {})
@@ -189,7 +191,7 @@ class CompanionRuntime:
                 archive = ObservationStore(self.root, self.run_id, self.uav_id)
                 try:
                     suffix = ".jpg" if raw.startswith(b"\xff\xd8") else ".png" if raw.startswith(b"\x89PNG") else ".bin"
-                    artifact = archive.save_artifact(raw, suffix, {**local.get("metadata", {}), "observer": local["source"], "received_at": local["received_ns"], "radio_message_id": mid})
+                    artifact = archive.save_artifact(raw, suffix, {**local.get("metadata", {}), "radio_sender": local["source"], "received_at": local["received_ns"], "radio_message_id": mid})
                     local["artifact_id"] = artifact["artifact_id"]
                 finally:
                     archive.close()
@@ -230,6 +232,15 @@ class CompanionRuntime:
             self.state["ready_relay_event_id"] = message["event_id"]
             if self.active_tool and self.active_tool.get("message_id"):
                 self.flight.request("radio_route", message_id=self.active_tool["message_id"], route=self._evidence_route())
+            for submission in self.state.get("resource_submissions", {}).values():
+                if submission["status"] != "pending" or submission["event_id"] != relevant_event:
+                    continue
+                mid = submission.get("message_id")
+                if not mid:
+                    mid = self.flight.request("result", pending_request_id=submission["request_id"]).get("message_id")
+                if mid:
+                    reply = self.flight.request("radio_route", message_id=mid, route=self._evidence_route())
+                    self._log("resource-events.jsonl", {"stage": "radio_reroute_submitted", "message_id": mid, "route": self._evidence_route(), "request_id": reply.get("request_id")})
             if self.centre is not None:
                 self._reroute_centre_outbox(message["source"])
         if self.centre is not None:
@@ -277,6 +288,9 @@ class CompanionRuntime:
             ]
         self.state.pop("task_blocker", None)
         self.state.pop("inspection", None)
+        if old and (old["task_id"], old["task_revision"]) != (task["task_id"], task["task_revision"]):
+            for key in ("handover_incoming", "handover_outgoing", "handover_released"):
+                self.state.pop(key, None)
         if self.state.get("assignment_cancel") and message["task_revision"] > self.state["assignment_cancel"]["task_revision"]:
             self.state.pop("assignment_cancel")
         if task.get("recovery_policy"):
@@ -431,6 +445,11 @@ class CompanionRuntime:
                     mission.setdefault("probe_results", []).append({"peer": pending["params"]["destination"], "result": result})
                     if len(mission["probe_results"]) == len(mission["metadata"]["required_peers"]):
                         self.state["relay_held"] = True
+                        # A newly established responsibility supersedes any
+                        # release of an earlier hold, even within the same task.
+                        self.state.pop("relay_release_authorized", None)
+                        self.state.pop("handover_released", None)
+                        self.state["results"].pop("return_after_handover", None)
                         mission.update(status="succeeded", reason="measured_route_ready_relay_retained", last_result=result)
                         continue
                 mission.update(index=mission["index"] + 1, pending=None, last_result=result, reconcile_required=False)
@@ -572,7 +591,7 @@ class CompanionRuntime:
             if package["status"] != "succeeded":
                 verdict = "uncertain"
             elif "evidence_transfer" not in results:
-                return self._policy_call("send-evidence", {"artifact_id": package["artifact_id"], "destination": "centre", "route": self._evidence_route()}, "evidence_transfer")
+                return self._policy_call("send-evidence", {"artifact_id": package["artifact_id"], "frame_id": first["frame_id"], "destination": "centre", "route": self._evidence_route()}, "evidence_transfer")
             elif results["evidence_transfer"]["status"] != "succeeded":
                 verdict = "uncertain"
             if verdict == "confirmed" and "drop_site" not in results:
@@ -710,6 +729,9 @@ class CompanionRuntime:
         task = self.state.get("task")
         if not task:
             return None
+        handover = self._handover_decision()
+        if handover is not None or self.state.get("handover_released"):
+            return handover
         steps = task.get("workflow", [])
         index = self.state["step_index"]
         if index >= len(steps):
@@ -729,6 +751,44 @@ class CompanionRuntime:
                 return self._rule_decision()
         return {"tool": step["tool"], "request": self._resolve(step.get("request", {})), "result_key": step.get("result_key", str(index))}
 
+    def _handover_decision(self) -> dict[str, Any] | None:
+        task, results = self.state["task"], self.state["results"]
+        if self.state.get("handover_released"):
+            if "return_after_handover" not in results:
+                spawn = self.config["vehicles"][self.uav_id]["spawn"]
+                return self._policy_call("resume-or-return", {"return_position_enu_m": [spawn[0], spawn[1], max(3.0, spawn[2])]}, "return_after_handover")
+            return None
+        for mid in self.state["seen_messages"]:
+            message = self._received(mid)
+            if message["kind"] != "handover" or message["event_id"] != task["event_id"]:
+                continue
+            kind = message.get("data", {}).get("kind")
+            action = "accept" if kind == "relay_handover_offer" else "release" if kind == "relay_handover_accepted" else None
+            key = "handover-" + str(action) + "-" + mid
+            if action and key not in results and mid not in self.state.get("handover_applied_messages", []):
+                return self._policy_call("handover-role", {"action": action, "message_id": mid}, key)
+        incoming = self.state.get("handover_incoming")
+        if incoming and incoming["event_id"] == task["event_id"]:
+            prefix = "handover-" + incoming["message_id"]
+            local = self.state.get("self_state", {})
+            for action in ("arm", "takeoff"):
+                if action == "arm" and local.get("armed") is True or action == "takeoff" and local.get("landed_state") in {"IN_AIR", "in_air"}:
+                    continue
+                key = prefix + "-" + action
+                if key not in results:
+                    return self._policy_call("flight-command", {"action": action, "params": {"altitude_m": incoming["data"]["position_enu_m"][2]} if action == "takeoff" else {}}, key)
+                if results[key]["status"] != "succeeded":
+                    return None
+            key = prefix + "-hold"
+            if key not in results:
+                return self._policy_call("hold-relay", {"candidates": [incoming["data"]["position_enu_m"]], "peers": incoming["data"]["peers"]}, key)
+            if results[key]["status"] == "succeeded" and prefix + "-ack" not in results:
+                return self._policy_call("handover-role", {"action": "acknowledge", "message_id": incoming["message_id"]}, prefix + "-ack")
+        outgoing = self.state.get("handover_outgoing")
+        if outgoing and outgoing.get("status") == "offered" and self.state["sim_ns"] >= outgoing["data"]["deadline_ns"]:
+            return self._policy_call("handover-role", {"action": "status"}, "handover-timeout-" + outgoing["message_id"])
+        return None
+
     def _local_context(self, local_state: dict[str, Any]) -> dict[str, Any]:
         # Actual local references stay visible without resending every numerical
         # depth footprint and historical low-level mission step to the provider.
@@ -742,7 +802,7 @@ class CompanionRuntime:
         for mid in self.state["seen_messages"][-20:]:
             message = json.loads((self.root / "inbox" / mid / "message.json").read_text())
             inbox.append({k: v for k, v in message.items() if k not in {"content_path", "native_packet_ids"}})
-        return {"self": local_state, "task": self.state["task"], "results": results, "inbox": inbox, "delivery_wait": self.state.get("delivery_wait"), "local_energy": self.state.get("local_energy"), "commitment_version": self.state["commitment_version"], "assignment_cancel": self.state.get("assignment_cancel")}
+        return {"self": local_state, "task": self.state["task"], "results": results, "inbox": inbox, "delivery_wait": self.state.get("delivery_wait"), "local_energy": self.state.get("local_energy"), "commitment_version": self.state["commitment_version"], "assignment_cancel": self.state.get("assignment_cancel"), "handover_incoming": self.state.get("handover_incoming"), "handover_outgoing": self.state.get("handover_outgoing"), "handover_released": self.state.get("handover_released")}
 
     def _start_tool(self, call: dict[str, Any]) -> None:
         if call["tool"] == "offer-rescue-role":
@@ -757,6 +817,28 @@ class CompanionRuntime:
 
     def _complete_tool(self, result: dict[str, Any], call: dict[str, Any]) -> None:
         self.state.pop("tool_inflight", None)
+        if call["tool"] == "handover-role":
+            if call["request"].get("action") in {"accept", "release"} and result.get("status") not in {"pending", "accepted", "running"}:
+                self.state.setdefault("handover_applied_messages", []).append(call["request"]["message_id"])
+            if result.get("handover_offer"):
+                self.state["handover_outgoing"] = result["handover_offer"]
+            if call["request"].get("action", "propose") == "propose" and result.get("message_id") and self.state.get("handover_outgoing"):
+                self.state["handover_outgoing"].update(message_id=result["message_id"], status="offered" if result["status"] == "succeeded" else result["status"])
+            if result.get("handover_accept"):
+                self.state["handover_incoming"] = result["handover_accept"]
+            if call["request"].get("action") == "acknowledge" and result.get("status") == "succeeded":
+                incoming = self.state["handover_incoming"]
+                mission = self.context()["relay_mission"]
+                self.state["relay_policy"] = {"event_id": incoming["event_id"], "policy": "accepted_relay_handover", "public_map": {**self.config["public_map"], "relay_candidates": [incoming["data"]["position_enu_m"]]}}
+                self.state["relay_monitor"] = {"generation": 0, "candidate_offset": 0, "probe_round": 0, "checked_ns": self.state["sim_ns"], "last_result": {"probe_results": mission["probe_results"], "current_candidate": 0}}
+            if result.get("handover_release"):
+                self.state["handover_released"] = result["handover_release"]
+                self.state["relay_held"] = False
+                self.state["relay_release_authorized"] = result["handover_release"]["message_id"]
+                self.state["handover_outgoing"]["status"] = "released"
+                self.state.pop("relay_policy", None)
+            if result.get("handover_timed_out"):
+                self.state["handover_outgoing"]["status"] = "timed_out"
         if call["tool"] == "offer-rescue-role" and result.get("request_id") and not result.get("message_id") and result["status"] == "pending":
             self.state["last_offer"] = {"request_id": result["request_id"], "summary": call.get("offered_summary") or {}, "task": self.state["task"], "submitted_ns": self.state["sim_ns"]}
         if call["tool"] == "offer-rescue-role" and result.get("message_id") and self.state.get("last_offer"):
@@ -793,6 +875,8 @@ class CompanionRuntime:
         for incident in self.centre.state["incidents"].values():
             submissions.extend(row for row in incident.get("notice_requests", []) if isinstance(row, dict))
             submissions.extend(incident.get("closure_submissions", []))
+            submissions.extend({"request_id": row["request_id"], "destination": row["uav_id"]}
+                               for row in incident.get("replan_requested", {}).get("cancel_requests", []) if row.get("request_id"))
             if incident.get("clue_ack_submission"):
                 submissions.append({"request_id": incident["clue_ack_submission"], "destination": incident["clue_source"]})
         for row in submissions:
@@ -1407,6 +1491,10 @@ class CompanionRuntime:
                 self._decision_event()
         if self.role == "uav":
             self._resource_tick(local)
+        outgoing = self.state.get("handover_outgoing")
+        if outgoing and outgoing.get("status") == "offered" and not outgoing.get("deadline_observed") and self.state["sim_ns"] >= outgoing["data"]["deadline_ns"]:
+            outgoing["deadline_observed"] = True
+            self._decision_event()  # Timer fact only; Cordis still selects the response.
         for message in self.flight.request("radio_inbox").get("messages", []):
             self._persist_message(message)
         if self.centre is not None:
